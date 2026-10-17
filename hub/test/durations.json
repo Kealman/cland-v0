@@ -4370,63 +4370,63 @@
     },
     "hub/test/scenarios/crew-launch.test.ts::Coordinator launches the three harnesses with clauses and a correlated native reply": {
       "seconds": 10.280204,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 8.699832–10.280204 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. A real Coordinator spoke starts and stops Claude Code, Codex and OpenCode sequentially, observes each native clause and first-turn usage, and checks a correlated native reply."
     },
     "hub/test/scenarios/droplet-verify.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": {
       "seconds": 14.171859,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 9.047177–14.171858 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults."
     },
     "hub/test/scenarios/droplet-verify.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": {
       "seconds": 8.855992,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 5.965037–8.855992 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults."
     },
     "hub/test/scenarios/hub-lifecycle.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep": {
       "seconds": 5.117699,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 2.729968–5.117698 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Four sequential real daemon startups prove fixture, opt-in, production and override orphan-sweep decisions and stop each owned PID."
     },
     "hub/test/scenarios/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": {
       "seconds": 8.877118,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 6.817013–8.877118 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion."
     },
     "hub/test/scenarios/release.test.ts::sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push": {
       "seconds": 5.157982,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 3.986329–5.157981 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion."
     },
     "hub/test/scenarios/stage-close.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
       "seconds": 12.124693,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 8.436448–12.124692 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Three native Git merges, real verifier spokes, stage-cover fixture reopening, QA retry and the separate epic demo cross the stage-close seams."
     },
     "hub/test/scenarios/ticket-flow.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
       "seconds": 11.960486,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 8.740475–11.960485 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow."
     },
     "hub/test/scenarios/ticket-flow.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
       "seconds": 9.477424,
-      "owner": "T-707",
+      "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24",
       "reason": "Observed 6.276371–9.477424 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow."
