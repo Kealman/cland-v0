@@ -3,7 +3,7 @@ id: T-731
 kind: task
 title: "startup-smoke listening-hang case: the 2 s test budget ends before a loaded Linux hub reaches its first connection"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by: []
 regression_of: T-706
-topic: null
-branch: null
+topic: topic-430
+branch: t/T-731-startup-smoke-listening-hang-case-the-2
 created: 2026-10-17T09:52:07.766Z
-updated: 2026-10-17T09:52:07.766Z
+updated: 2026-10-17T09:52:36.289Z
 ---
 
 ## Summary

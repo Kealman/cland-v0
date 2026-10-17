@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-429
 branch: t/T-729-the-legacy-allowance-lint-compares
 created: 2026-10-17T08:49:03.786Z
-updated: 2026-10-17T08:59:48.252Z
+updated: 2026-10-17T09:52:27.752Z
 ---
 
 ## Summary
