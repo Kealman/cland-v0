@@ -81,6 +81,33 @@ change the direct-source `qualifies` value or policy findings used by admission
 and the tier lint gate. The qualifying tier never automatically retags a file.
 The legacy hermetic manifest admission still checks each test's own source only.
 
+### Runtime tier resource report
+
+The suite runner preloads a resource tripwire in each manifest-declared T1/T2
+worker before loading its test file. It runs in ordinary package phases, explicit
+manifest test targets and load-gate repetitions. T3/T4 workers retain their native
+APIs. T1 reports child-process starts and socket listen/connect
+entry points (including HTTP, HTTPS, TLS and fetch through the shared net boundary); T2 reports child-process starts. The documented `cland` and
+`clandWithEnv` helpers exempt only their synchronous CLI launch in T2. Calling the
+same CLI directly is still a mismatch; native Git/ps probes and fake harness
+binaries are not exempt.
+
+Each `tier-mismatch {…}` line carries file, full test name, declared tier,
+resource, mode and the first stack for that test/resource pair. It never includes
+call arguments, environment values or command lines. `CLAND_TEST_TIER_MODE` is
+the single rollout setting: `report-only` by default, `enforce` when D53 goes
+hard. Report-only delegates to the real API without changing the test result;
+enforce reports and throws at the call. Its receipt remains a hard run failure
+after assertion quarantine, even if the error is caught or the worker exit code
+is reset. Each load repetition checks its own receipt before excusing assertions.
+
+Names use Node's public [`getTestContext()`](https://nodejs.org/docs/latest-v24.x/api/test.html#gettestcontext) when available. On Node before 24.19,
+the tripwire stays active with file-only attribution and one missing-API warning
+per instrumented worker. Import-time calls and file cleanup have an explicit
+file-level label. Node 24.21 attributes global hooks to their owning scope (for
+example `<root>` for file-level `beforeEach`), while test bodies use their full
+nested names. No global async hook or per-test instrumentation is added.
+
 ### In-process harnesses
 
 Hub rules use `projectHub(t, root, env, { harnesses: 'fake', probes: 'fake', clock })` by default,

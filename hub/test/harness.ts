@@ -9,6 +9,7 @@ import type { Clock } from '../src/hub/clock.ts';
 import './cover-quiet.ts';
 import './account-fixture-env.ts';
 import { execFile } from 'node:child_process';
+import { clandCliLaunch } from './tier-cli.ts';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
@@ -318,7 +319,7 @@ export async function clandWithEnv(cwd: string, extra: Record<string, string>, .
   return new Promise((resolve, reject) => {
     // Merge waits up to 60 s for the hub; the outer process budget must also allow CLI startup.
     const timeout = args[0] === 'merge' ? 65_000 : 30_000;
-    execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout }, (err, stdout, stderr) => {
+    clandCliLaunch(() => execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout }, (err, stdout, stderr) => {
       if (err && typeof err.code !== 'number') reject(err);
       else {
         const daemonPid = /\bpid +(\d+)/.exec(stdout)?.[1];
@@ -326,7 +327,7 @@ export async function clandWithEnv(cwd: string, extra: Record<string, string>, .
         try { rememberResultProcesses(JSON.parse(stdout), cwd); } catch { /* plain CLI output */ }
         resolve({ code: err ? (err.code as number) : 0, stdout, stderr });
       }
-    });
+    }));
   });
 }
 

@@ -65,6 +65,10 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     durationManifest = await readDurationManifest(options.cwd ?? process.cwd());
     if (durationManifest) lintDurationManifest(durationManifest);
     const quarantine = await readQuarantineManifest(options.cwd ?? process.cwd());
+    const tiers = await readTierAssignments(options.cwd ?? process.cwd());
+    // D53 rollout switch: report-only now; enforce when resource budgets go hard.
+    const tierResourceMode = process.env.CLAND_TEST_TIER_MODE ?? 'report-only';
+    if (!['report-only', 'enforce'].includes(tierResourceMode)) throw new Error('CLAND_TEST_TIER_MODE must be report-only or enforce');
     budgetOverheadMs += performance.now() - budgetStarted;
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
     if (!options.force && process.env.CLAND_TEST_SKIP_LOCK !== '1') {
@@ -117,7 +121,16 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       delete env.DIGITALOCEAN_TOKEN;
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_QUARANTINE;
+      delete env.CLAND_TEST_TIER_ASSIGNMENTS;
+      delete env.CLAND_TEST_TIER_REPORT;
       if (!root) throw new Error('suite phase root is missing');
+      const tierTrips = join(root, 'tier-mismatches.jsonl');
+      if (tiers && args.includes('--test')) {
+        env.CLAND_TEST_TIER_ASSIGNMENTS = join(root, 'tier-assignments.json');
+        env.CLAND_TEST_TIER_MODE = tierResourceMode;
+        env.CLAND_TEST_TIER_REPORT = tierTrips;
+        await writeFile(env.CLAND_TEST_TIER_ASSIGNMENTS, JSON.stringify({ tests: Object.fromEntries(tiers), report: tierTrips }));
+      }
       const gate = join(root, `start-${index}`);
       const bootstrap = join(root, `bootstrap-${index}.mjs`);
       await writeFile(bootstrap, `import { access } from 'node:fs/promises'; import { setTimeout } from 'node:timers/promises';
@@ -156,7 +169,7 @@ process.chdir(cwd);`);
         env.CLAND_TEST_QUARANTINE = JSON.stringify(quarantine);
         reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`);
       }
-      active = spawn(process.execPath, ['--import', bootstrap, ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
+      active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
       // Install exit listeners before publication awaits; the bootstrap cannot start tests yet.
       const done = new Promise<number>((resolve, reject) => { active!.once('error', reject); active!.once('exit', (value, signal) => resolve(value ?? (signal === 'SIGINT' ? 130 : 143))); });
       activeIdentity = captureProcess(active.pid);
@@ -178,12 +191,23 @@ process.chdir(cwd);`);
       let code = phaseOutcome.value;
       const loadResult = gateOutcome.value;
       loadExtraWallMs += loadResult.extraWallMs;
+      // Includes repetition-only trips; each test/resource needs one first stack.
+      const reportedTrips = new Set<string>();
+      let tierFailed = false;
+      for (const line of (await readFile(tierTrips, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; })).split('\n').filter(Boolean)) {
+        const row = line.startsWith('tier-mismatch {') ? JSON.parse(line.slice('tier-mismatch '.length)) as { file: string; name: string; resource: string; mode: string } : undefined;
+        if (row?.mode === 'enforce') tierFailed = true;
+        const key = row ? JSON.stringify([row.file, row.name, row.resource]) : line;
+        if (!reportedTrips.has(key)) { reportedTrips.add(key); process.stdout.write(line + '\n'); }
+      }
       if (checkQuarantine) {
         const receipt = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
         for (const result of receipt.results) process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
         process.stdout.write(`suite test failures ${JSON.stringify(receipt.failures)}\n`);
         if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && receipt.excused > 0) code = 0;
       }
+      // Resource policy is independent of assertion quarantine or caught errors.
+      if (tierFailed) code = 1;
       let budgetFailed = false;
       if (durationManifest && args.includes('--test')) {
         const budgetStarted = performance.now();

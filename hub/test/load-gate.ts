@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { open, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, open, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { StringDecoder } from 'node:string_decoder';
@@ -70,10 +70,12 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       const quarantinePath = `${receipt}.quarantine`;
       const gate = `${receipt}.start`;
       const env: NodeJS.ProcessEnv = { ...options.env, CLAND_LOAD_GATE_START: gate };
+      const tierReceipt = `${receipt}.tiers`;
+      if (env.CLAND_TEST_TIER_ASSIGNMENTS) env.CLAND_TEST_TIER_REPORT = tierReceipt;
       delete env.NODE_V8_COVERAGE;
       delete env.CLAND_SUITE_SELECTION;
       const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`] : [];
-      const child = spawn(process.execPath, ['--import', bootstrap, '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
+      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
       const done = new Promise<number>((resolve, reject) => {
         child.once('error', reject);
         child.once('exit', (code) => resolve(code ?? 1));
@@ -101,27 +103,32 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         clearTimeout(timer);
         if (timedOut) await cleanupOwnedProcesses([identity]);
         const code = await done;
+        const tierText = env.CLAND_TEST_TIER_ASSIGNMENTS ? await readFile(tierReceipt, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; }) : '';
+        const tierFailed = tierText.split('\n').some(line => line.startsWith('tier-mismatch {') && JSON.parse(line.slice('tier-mismatch '.length)).mode === 'enforce');
+        // Preserve the phase's single deduplicated list, but decide this worker's
+        // policy before applying assertion quarantine or accepting a passing test.
+        if (tierText && options.env.CLAND_TEST_TIER_REPORT) await appendFile(options.env.CLAND_TEST_TIER_REPORT, tierText);
         const records = await readFile(receipt, 'utf8').then(text => text.split('\n').slice(0, -1).filter(Boolean).map(line => JSON.parse(line) as LoadGateEvent), error => { if (error.code === 'ENOENT') return []; throw error; });
         const results = records.filter(record => record.file === event.file && record.name === event.name && record.passed !== undefined);
-        if (!timedOut && code === 0 && results.length === 1) {
+        if (!tierFailed && !timedOut && code === 0 && results.length === 1) {
           const result = results[0]!;
           if (result.passed) passed++;
           else if (result.skipReason) { skipped++; skipReasons.add(result.skipReason); }
         }
-        if (!timedOut && code === 1 && quarantine && results.length === 1) {
+        if (!tierFailed && !timedOut && code === 1 && quarantine && results.length === 1) {
           const checked = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
           if (checked.complete && checked.cancelled === 0 && !checked.failures.length && checked.excused > 0) {
             excused++;
             for (const result of checked.results) if (result.outcome === 'fail') process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
           }
         }
-        const success = !timedOut && code === 0 && results.length === 1 && (results[0]!.passed || results[0]!.skipReason);
+        const success = !tierFailed && !timedOut && code === 0 && results.length === 1 && (results[0]!.passed || results[0]!.skipReason);
         if (!success) {
           const diagnostics = records.filter(record => record.diagnostic).map(record => ({ name: record.name, error: record.diagnostic }));
           const failure = redactLoadDiagnostic({ file: event.file, name: event.name, repetition: repetition + 1,
             status: timedOut ? 'timed out (outer deadline)' : 'failed',
             ...(timedOut ? { timeoutMs: options.timeoutMs, graceMs: 250 } : {}),
-            diagnostics: diagnostics.length ? diagnostics : [{ name: event.name, error: { message: `runner exit ${code}; expected one passing receipt, received ${results.length}` } }],
+            diagnostics: diagnostics.length ? diagnostics : [{ name: event.name, error: { message: tierFailed ? 'enforced resource tier violation' : `runner exit ${code}; expected one passing receipt, received ${results.length}` } }],
           }, options.env);
           process.stderr.write(`load gate failure ${JSON.stringify(failure)}\n`);
         }
