@@ -12,6 +12,7 @@
     "hub/test/account-limits.test.ts": "T3",
     "hub/test/account-poller.test.ts": "T3",
     "hub/test/accounts.test.ts": "T3",
+    "hub/test/adapter-composition.test.ts": "T2",
     "hub/test/adapter-native-boundary.test.ts": "T3",
     "hub/test/agents-checkpoint.test.ts": "T1",
     "hub/test/agents-filters.test.ts": "T3",
@@ -28,7 +29,11 @@
     "hub/test/asks-cli.test.ts": "T3",
     "hub/test/asks.test.ts": "T3",
     "hub/test/claude-code-accounts.test.ts": "T3",
-    "hub/test/claude-code-adapter.test.ts": "T3",
+    "hub/test/claude-code-adapter.test.ts": {
+      "tier": "T3",
+      "contract": "claude-code"
+    },
+    "hub/test/claude-code-environment.test.ts": "T2",
     "hub/test/claude-code-sessions.test.ts": "T3",
     "hub/test/cli-identity.test.ts": "T3",
     "hub/test/cli-imports.test.ts": "T3",

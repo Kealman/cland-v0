@@ -1,14 +1,18 @@
+// T3 lifecycle: real Claude hook-process ordering and pre-release failure cleanup,
+// native bridge confirmations, PID reuse and stop escalation.
 // The Claude Code adapter's edges: the order of a session's signals, which launch a signal belongs to, deliveries
 // that wait across a launch, a rename or an unconfirmed inject, resume under a reused pid, and a stop that fails.
-// As in `claude-code-adapter.test.ts`: a real daemon, the fake Claude Code at the harness process boundary, the
+// As in `claude-code-adapter.test.ts`: an in-process hub, the fake Claude Code at the harness process boundary, the
 // real `cland hook` processes, and a scripted UI on the daemon's socket. Nothing inside the hub is mocked.
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { afterCleanup, beforeDirectories, ownProcess } from './process-cleanup.ts';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, sleep, spawnSpoke, projectHub, startDaemon, tempProject, type FrameClient, NO_PS } from './harness.ts';
+import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, spawnSpoke, projectHub, tempProject, type FrameClient, NO_PS } from './harness.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
 type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
@@ -63,21 +67,32 @@ const injected = (ui: FrameClient, id: string, timeoutMs = 15_000) => ui.waitFor
 
 /**
  * One `cland hook <event>` as a harness runs it, the payload on stdin; `done` resolves when it exited (it waits for
- * the hub's answer). `slowStartMs` holds the process up before `cland` runs, as a loaded machine does; `started`
+ * the hub's answer). `held` gates the process before `cland` runs on fd 3; `started`
  * resolves once the process is running (its start time, the signal's time, is behind it), whatever the machine's load.
  */
-function hook(root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; slowStartMs?: number }): { started: Promise<void>; done: Promise<void> } {
+function hook(t: TestContext, root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; held?: boolean }): { started: Promise<void>; done: Promise<void>; release: () => void; pid: number } {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
   const MARK = 'cland-test-hook-started';
-  env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`process.stderr.write(${JSON.stringify(`${MARK}\n`)}); const t = Date.now(); while (Date.now() - t < ${o.slowStartMs ?? 0});`)}`;
+  env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`process.stderr.write(${JSON.stringify(`${MARK}\n`)}); ${o.held ? "const { createReadStream } = await import('node:fs'); await new Promise(resolve => createReadStream(null, { fd: 3 }).once('data', resolve));" : ''}`)}`;
   const args = [CLI_ENTRY, 'hook', event, '--session', o.session, ...(o.launch ? ['--launch', o.launch] : []), '--hub-file', join(root, '.cland', 'hub.json')];
   let markStarted!: () => void;
   const started = new Promise<void>((resolve) => (markStarted = resolve));
+  let release = () => {};
+  let pid!: number;
   const done = new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'pipe'] });
+    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'pipe', 'pipe'], timeout: 15_000, killSignal: 'SIGKILL' });
+    pid = child.pid!;
+    ownProcess(t, child.pid); // Resource cleanup and signal cleanup both own this exact child identity.
+    let released = false;
+    release = () => {
+      if (released) return;
+      released = true;
+      const gate = child.stdio[3] as import('node:stream').Writable;
+      if (!gate.destroyed && !gate.writableEnded && child.exitCode === null && child.signalCode === null) gate.end('release');
+    };
     let err = '';
-    child.stderr.on('data', (c: Buffer) => {
+    child.stderr!.on('data', (c: Buffer) => {
       err += String(c);
       if (err.includes(MARK)) markStarted();
       const rest = String(c).replace(`${MARK}\n`, '');
@@ -88,9 +103,12 @@ function hook(root: string, event: string, o: { session: string; launch?: string
       markStarted();
       resolve();
     });
-    child.stdin.end(JSON.stringify(o.payload ?? {}));
+    child.stdin!.end(JSON.stringify(o.payload ?? {}));
   });
-  return { started, done };
+  // ownProcess runs before this step in normal teardown; it also owns signal cleanup.
+  // Observe close before directory removal, even if an assertion failed while fd 3 was held.
+  beforeDirectories(t, async () => { await done; });
+  return { started, done, release: () => release(), pid };
 }
 
 test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
@@ -104,12 +122,13 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await clauseTurnDone(ui, 'coord', mark);
 
-  // the Stop of a turn fires first, but its process takes 1.5 s to start; the next turn's start fires after it
-  const stop = hook(root, 'turn-end', { session: 'coord', launch: launched.sessionId, slowStartMs: 1500 });
-  await stop.started; // the harness fired it: its process runs (and stalls)
-  await sleep(150); // the gap between the two events the harness fired
-  await hook(root, 'turn-start', { session: 'coord', launch: launched.sessionId }).done;
+  // Stop's process starts first but is gated before cland loads. The next hook's completed
+  // busy report is the positive ordering barrier; releasing Stop makes it arrive last.
+  const stop = hook(t, root, 'turn-end', { session: 'coord', launch: launched.sessionId, held: true });
+  await stop.started;
+  await hook(t, root, 'turn-start', { session: 'coord', launch: launched.sessionId }).done;
   await presentAs(ui, 'coord', 'busy');
+  stop.release();
   await stop.done;
   assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
@@ -141,7 +160,7 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
   const secondId = (second.message as { id: string }).id;
   await eventually('both inputs answered', () => ui.frames.filter((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'coord' && ['pong: first turn', 'pong: second turn'].includes((f.message as { text: string }).text)).length === 2 ? true : undefined);
   const at = Date.now() + 10_000;
-  const signal = (event: string, payload: Record<string, unknown>) => hook(root, event, { session: 'coord', launch: launched.sessionId, payload }).done;
+  const signal = (event: string, payload: Record<string, unknown>) => hook(t, root, event, { session: 'coord', launch: launched.sessionId, payload }).done;
   await signal('turn-start', { at, prompt_id: 'first', ids: [firstId] });
   await signal('turn-start', { at: at + 2000, prompt_id: 'second', ids: [secondId] });
   await signal('turn-start', { at: at + 100, prompt_id: 'first', ids: [firstId] }); // A's older hook arrives after B's
@@ -194,8 +213,8 @@ test('a signal from an earlier launch under the same name changes nothing of the
   assert.equal(row.sessionId, second.sessionId);
 
   // the first launch's hooks, late: its own conversation id, a turn start
-  await hook(root, 'session-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
-  await hook(root, 'turn-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
+  await hook(t, root, 'session-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
+  await hook(t, root, 'turn-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
   const after = await harness(ui, 'impl-1');
   assert.equal(after.harnessSessionId, row.harnessSessionId, "the replacement keeps its own conversation id");
   assert.equal(after.state, 'idle', 'and its own state');
@@ -213,7 +232,7 @@ test('a late SessionStart does not revive a session whose process is gone', asyn
   await killDaemon((await withDiscoveredPid(ui, launched)).pid);
   await eventually('the process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
 
-  await hook(root, 'session-start', { session: 'impl-1', launch: launched.sessionId, payload: { session_id: launched.harnessSessionId } }).done;
+  await hook(t, root, 'session-start', { session: 'impl-1', launch: launched.sessionId, payload: { session_id: launched.harnessSessionId } }).done;
   const row = await harness(ui, 'impl-1');
   assert.equal(row.status, 'exited');
   assert.equal(row.state, 'unknown');
@@ -274,16 +293,17 @@ test('a session renamed while a message waits for its inject still gets it, and 
   await clauseAnswered(ui, 'pool-1');
 });
 
-test('resume never adopts another session that reuses the pid: no identity match, no resume', async (t) => {
+test('Claude process resume never adopts another session that reuses the pid: no identity match, no resume', async (t) => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const first = await projectHub(t, root, fake.env);
+  const { discovery } = first;
   const ui = await connectUi(t, discovery);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
   const discovered = await withDiscoveredPid(ui, launched);
   ui.close();
-  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+  await first.stop();
 
   // the session dies while no hub runs, and its pid is taken by another session (the table is made to say so)
   await killDaemon(discovered.pid);
@@ -296,7 +316,7 @@ test('resume never adopts another session that reuses the pid: no identity match
   db.prepare('update harness_processes set pid = ? where name = ?').run(other.pid, 'coord');
   db.close();
 
-  const second = await startDaemon(t, root, fake.env);
+  const second = await projectHub(t, root, fake.env);
   const ui2 = await connectUi(t, second.discovery);
   const row = await eventually('coord not resumed', async () => {
     const h = (await status(ui2)).harnesses.find((x) => x.name === 'coord');
@@ -339,4 +359,34 @@ test('stop kills a Claude Code process that ignores SIGTERM and waits for its ex
   assert.equal(pidAlive(discovered.pid), false, 'stop returns only after exit');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"harness-ended"/);
+});
+
+// Run the real registered teardown after a controlled exception without failing the outer test.
+// This scope captures only node:test's after registration; the production ownership steps are unchanged.
+test('a held Claude hook is reaped before fixture removal after a pre-release failure', async t => {
+  const cleanups: Array<() => unknown | Promise<unknown>> = [];
+  const scope = { after: (cleanup: () => unknown | Promise<unknown>) => cleanups.push(cleanup) } as unknown as TestContext;
+  const root = await tempProject(scope);
+  const held = hook(scope, root, 'turn-end', { session: 'unlaunched', held: true });
+  const cleanup = async () => { for (const step of cleanups) await step(); };
+  t.after(cleanup); // Covers failures in this regression probe itself too; owned disposers are idempotent.
+  let closedBeforeRemoval = false;
+  beforeDirectories(scope, async () => {
+    await held.done;
+    assert.equal(pidAlive(held.pid), false, 'the held child has exited');
+    assert.equal(existsSync(root), true, 'completion is observed while the fixture still exists');
+    closedBeforeRemoval = true;
+  });
+  afterCleanup(scope, () => {
+    assert.equal(closedBeforeRemoval, true);
+    assert.equal(existsSync(root), false, 'directory removal follows the completion receipt');
+  });
+  const failure = new Error('controlled failure before releasing the hook');
+  await assert.rejects(async () => {
+    try {
+      await held.started;
+      assert.equal(pidAlive(held.pid), true, 'the child is still held when the body fails');
+      throw failure;
+    } finally { await cleanup(); }
+  }, error => error === failure);
 });

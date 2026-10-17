@@ -1,11 +1,18 @@
-// The Claude Code adapter (spec 4.2, 4.3; #24) against a fake Claude Code at the harness process boundary: a
-// real daemon in a temporary project launches the fake (`test/fakes/claude-code/claude`, first on the PATH),
-// which starts the real spoke, runs the real `cland hook` commands and loads the real cland mod. The UI side is a
-// scripted client on the daemon's Unix socket. Nothing inside the hub is mocked or read directly.
+// T3 Claude Code contract: the real fake binary starts the real spoke, hooks and cland mod.
+// Each harness step is proved once (test titles below are the checklist):
+// - "Claude Code binary contract": launch/attach, role clause in the first turn, inject through
+//   the mod bridge to injected, hook signals to state, model and usage, permission hooks.
+// - "Claude Code StopFailure hook": failure reaches Agents, events and the sender.
+// - "a crashed Claude Code process": process exit and replacement bridge identity.
+// - "Claude Code mod confirmation timeout": missing native confirmation and retry.
+// - "after a hub restart": resume across a real hub-process restart, with hooks/mod reconnected.
+// - "Claude unpinned binary launch": stop, native-conversation relaunch and environment frame.
+// Schedule and signed-out-latch cases temporarily remain until T-696's Clock seam lands
+// (Coordinator decision in topic-422); their negative waits migrate with that seam.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
+import { readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, withDiscoveredPid, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, killDaemon, sleep, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
@@ -14,10 +21,10 @@ type Harness = { name: string; harness: string; pid: number | null; harnessId: s
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 type StateEvent = { type: 'session.state'; session: string; state: string; source: string; approvalCommand?: string };
 
-test('a Claude Code StopFailure is recorded in Agents and the events view and reported to the sender', async (t) => {
+test('Claude Code StopFailure hook reports its turn failure to Agents, events and sender', async (t) => {
   const root = await tempProject(t);
-  // Keep pushed hook states observable and authoritative while staging the turn.
-  const fake = await fakeClaude(t, { pollMs: 600_000, turnMs: 1000 });
+  // Drain hook/mod posts at turn boundaries so pushed states remain observable.
+  const fake = await fakeClaude(t, { pollMs: 600_000, awaitSignals: true });
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -77,12 +84,12 @@ const hubLog = async (root: string, ui: FrameClient) => {
   return readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
 };
 
-test('a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod', async (t) => {
+test('Claude Code binary contract: launch, attach, first clause, mod injection, hook state and usage', async (t) => {
   const root = await tempProject(t);
   // the polled fallback out of the way (a loaded machine runs a hook's process late, and a poll would beat it): every
   // state asserted here must come from a push (a hook, the mod)
   // and `--bg` returns after the session's SessionStart hook already posted (seen with the real harness)
-  // a turn long enough that its busy is still news when a hook's process (a node start) reports it
+  // A one-second fake turn keeps busy observable while real hook processes start.
   const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, turnMs: 1000 });
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
@@ -213,8 +220,6 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const logged = await exitLogLines();
   assert.equal(logged.length, 1, 'one log event for the crash');
   assert.match(logged[0] as string, /"session":"impl-1"/);
-  await sleep(100);
-  assert.equal((await exitLogLines()).length, 1, 'still one log event after settling');
 
   // the same name again: its hooks and its mod, arriving before the launch returns, belong to the new process
   const again = await launch(ui, 'impl-1', { role: 'implementer' });
@@ -225,11 +230,12 @@ test('a crashed Claude Code process: the state turns unknown and the hub logs it
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'are you back?', to: ['impl-1'] });
   const id = (sent.value as { message: { id: string } }).message.id;
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 45_000);
+  assert.equal((await exitLogLines()).length, 1, 'the replacement injection is a barrier after crash handling');
   const log = await hubLog(root, ui);
   assert.ok(!log.includes(`"inject-unconfirmed","session":"impl-1","id":"${id}"`), `injected at once, through the new process:\n${log.split('\n').filter((l) => /impl-1|bridge|inject/.test(l)).slice(-40).join('\n')}`);
 });
 
-test('an inject the harness never confirmed stays delivered, is logged, and is retried at the next idle', async (t) => {
+test('Claude Code mod confirmation timeout leaves delivery retryable at the next turn', async (t) => {
   const root = await tempProject(t);
   // The retry needs an observed busy→idle transition, not a turn shorter than its hook processes' startup.
   const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
@@ -244,7 +250,8 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
   // An earlier attempt may have failed before the bridge connected; only this timeout proves the drop.
   await eventually('the dropped inject timed out', async () => ((await hubLog(root, ui)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}","error":"the mod did not confirm the turn within `) ? true : undefined));
   const injected = async () => (await hubLog(root, ui)).includes(`"event":"injected","id":"${clause}"`);
-  await sleep(5 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: five idle polls must not retry.
+  // The observed unconfirmed-inject record is the completion barrier. Hub-only repeated idle
+  // notifications are covered in adapter-composition.test.ts without a binary or elapsed-time wait.
   assert.equal(await injected(), false, 'not confirmed: still delivered');
 
   // the next turn ends idle: what waited is injected again, and this time confirmed
@@ -257,8 +264,8 @@ test('an inject the harness never confirmed stays delivered, is logged, and is r
 
 test('after a hub restart, resume re-finds the running session through the process table and state reporting continues', async (t) => {
   const root = await tempProject(t);
-  // A slow poll keeps restarted states on the hook/mod path; a long turn keeps busy observable during hook startup.
-  const fake = await fakeClaude(t, { pollMs: 10_000, turnMs: 1000 });
+  // A slow poll keeps restarted states on the hook/mod path; hook receipts order each turn.
+  const fake = await fakeClaude(t, { pollMs: 10_000, awaitSignals: true });
   const first = await startDaemon(t, root, fake.env);
   const ui = await connectUi(t, first.discovery);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
@@ -291,37 +298,6 @@ test('after a hub restart, resume re-finds the running session through the proce
   await aTurn(ui2, 'coord', mark); // busy pushed after the restart, then idle
   await presentAs(ui2, 'coord', 'idle');
 });
-
-test('a message for a session with no adapter stays delivered; an unknown session or harness is refused', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const unknownHarness = await ui.request({ type: 'session.launch', name: 'x', harness: 'nope' });
-  assert.equal(unknownHarness.ok, false);
-  assert.match(unknownHarness.error ?? '', /no adapter for harness "nope"/);
-  const badRole = await ui.request({ type: 'session.launch', name: 'x', role: 'boss' });
-  assert.match(badRole.error ?? '', /unknown role "boss"/);
-  const attach = await ui.request({ type: 'session.attach', session: 'nobody' });
-  assert.match(attach.error ?? '', /no session "nobody" was launched by this hub/);
-  // a hook signal for a session the hub did not launch changes nothing
-  const signal = await ui.request({ type: 'session.signal', session: 'nobody', event: 'turn-start' });
-  assert.deepEqual(signal.value, { applied: false });
-
-  // a session nobody launched (a spoke started by hand, with a role the human assigned): accepted is as far as its
-  // messages go, its state unknown
-  assert.equal((await ui.request({ type: 'role.set', session: 'plain', role: 'implementer' })).ok, true);
-  const plain = await spawnSpoke({ discover: true, cwd: root, name: 'plain', sessionId: 'sess-plain' });
-  t.after(() => plain.close());
-  await presentAs(ui, 'plain', 'unknown');
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'hi', to: ['plain'] });
-  const id = (sent.value as { message: { id: string } }).message.id;
-  await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'delivered');
-  await sleep(3 * Number(fake.env.CLAND_ADAPTER_POLL_MS)); // Negative: three idle polls cannot inject a message without an adapter.
-  assert.ok(!ui.frames.some((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected'));
-});
-
 
 test('Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives', { timeout: 30_000 }, async (t) => {
   t.after(() => t.mock.timers.reset());
@@ -472,52 +448,37 @@ test('an expired --bg launch latches a directory once without any discovery or r
   assert.equal(journal.split('\n').filter(line => line.includes('"event":"claude-signed-out"')).length, 1);
 });
 
-for (const selection of ['unpinned', 'pathless account', 'pinned account', 'inherited directory']) {
-  test(`Claude ${selection} launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)`, async (t) => {
-    const root = await tempProject(t);
-    const fake = await fakeClaude(t);
-    const config = join(root, 'registry');
-    const pinned = join(root, "account's directory");
-    await mkdir(join(config, 'cland'), { recursive: true });
-    await mkdir(pinned);
-    await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.pathless]\nharness = "claude-code"\n[accounts.pinned]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(pinned)}\n`);
-    const explicit = selection === 'pinned account' ? pinned : selection === 'inherited directory' ? fake.home : null;
-    // Override the harness's scratch selection with undefined to model an unset variable in the hub.
-    // projectHub's overrides are typed as strings, but Node omits undefined values from child environments.
-    const env = Object.assign({ ...fake.env, HOME: fake.home, XDG_CONFIG_HOME: config }, { CLAUDE_CONFIG_DIR: selection === 'inherited directory' ? explicit : undefined }) as Record<string, string>;
-    const { discovery } = await projectHub(t, root, env);
-    const ui = await connectUi(t, discovery);
-    const extra = selection === 'pinned account' ? { account: 'pinned' } : selection === 'pathless account' ? { account: 'pathless' } : {};
-    const p = await launch(ui, 'plain', extra);
-    assert.equal(p.status, 'running');
-    if (selection !== 'inherited directory') assert.equal(p.attach?.includes('CLAUDE_CONFIG_DIR='), explicit !== null);
-    assert.equal((await ui.request({ type: 'session.stop', session: p.name })).ok, true);
-    const resumed = await ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30_000);
-    assert.equal(resumed.ok, true, resumed.error);
-    assert.equal((resumed.value as { found: boolean }).found, true);
-    assert.equal((await ui.request({ type: 'session.stop', session: p.name })).ok, true);
+// One real environment frame proof; the four-way table lives in claude-code-environment.test.ts.
+test('Claude unpinned binary launch, native relaunch and remedies preserve an unset CLAUDE_CONFIG_DIR (T-603)', async t => {
+  const root = await tempProject(t);
+  const fake = await fakeClaude(t);
+  // Model an unset variable even if the hub inherited a human's selection.
+  const env: Record<string, string> = { ...fake.env, HOME: fake.home };
+  Object.assign(env, { CLAUDE_CONFIG_DIR: undefined });
+  const { discovery } = await projectHub(t, root, env);
+  const ui = await connectUi(t, discovery);
+  const p = await launch(ui, 'plain');
+  assert.equal(p.status, 'running');
+  assert.equal(p.attach?.includes('CLAUDE_CONFIG_DIR='), false);
+  assert.equal((await ui.request({ type: 'session.stop', session: p.name })).ok, true);
+  const resumed = await ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30_000);
+  assert.equal(resumed.ok, true, resumed.error);
+  assert.equal((resumed.value as { found: boolean }).found, true);
+  assert.equal((await ui.request({ type: 'session.stop', session: p.name })).ok, true);
 
-    const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map((line) => JSON.parse(line) as { args: string[]; configDir: string; CLAUDE_CONFIG_DIR: string | null });
-    const commands = calls.filter(c => c.args.includes('--bg') || c.args[0] === 'agents' || c.args[0] === 'stop');
-    const bg = commands.filter(c => c.args.includes('--bg'));
-    assert.equal(bg.length, 2, 'launch and relaunch both reach the harness');
-    assert.ok(bg[1]?.args.includes('--resume'), 'relaunch resumes the native conversation');
-    assert.ok(calls.some(c => c.args[0] === 'agents'), 'discovery reaches the harness');
-    assert.ok(commands.every(c => c.CLAUDE_CONFIG_DIR === explicit), 'launch, resume, discovery and stop preserve the explicit selection');
-    assert.ok(commands.every(c => c.configDir === (explicit ?? join(fake.home, '.claude'))), 'directory bookkeeping retains its fallback');
-
-    await writeFile(join(fake.home, 'logged-out'), '');
-    const failed = await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'failed', ...extra });
-    assert.equal(failed.ok, false);
-    if ('account' in extra) {
-      assert.ok(failed.error?.includes('claude auth login'));
-      assert.ok(failed.error?.includes('trust the project'));
-      assert.equal(failed.error?.includes('CLAUDE_CONFIG_DIR='), explicit !== null);
-    }
-    const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
-    const notice = history.messages.find(m => m.kind === 'claude-signed-out');
-    assert.ok(notice);
-    assert.ok(notice.text.includes('claude auth login'));
-    assert.equal(notice.text.includes('CLAUDE_CONFIG_DIR='), explicit !== null);
-  });
-}
+  const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[]; configDir: string; CLAUDE_CONFIG_DIR: string | null });
+  const commands = calls.filter(c => c.args.includes('--bg') || c.args[0] === 'agents' || c.args[0] === 'stop');
+  const bg = commands.filter(c => c.args.includes('--bg'));
+  assert.equal(bg.length, 2, 'launch and relaunch both reach the harness');
+  assert.ok(bg[1]?.args.includes('--resume'), 'relaunch resumes the native conversation');
+  assert.ok(calls.some(c => c.args[0] === 'agents'), 'discovery reaches the harness');
+  assert.ok(commands.every(c => c.CLAUDE_CONFIG_DIR === null), 'launch, resume, discovery and stop preserve the implicit selection');
+  assert.ok(commands.every(c => c.configDir === join(fake.home, '.claude')), 'directory bookkeeping retains its fallback');
+  await writeFile(join(fake.home, 'logged-out'), '');
+  assert.equal((await ui.request({ type: 'session.launch', harness: 'claude-code', name: 'failed' })).ok, false);
+  const history = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<{ kind?: string; text: string }> };
+  const notice = history.messages.find(m => m.kind === 'claude-signed-out');
+  assert.ok(notice);
+  assert.ok(notice.text.includes('claude auth login'));
+  assert.equal(notice.text.includes('CLAUDE_CONFIG_DIR='), false);
+});

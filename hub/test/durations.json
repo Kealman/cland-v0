@@ -144,12 +144,12 @@
       "tests": 6
     },
     "hub/test/claude-code-adapter.test.ts": {
-      "seconds": 56.219873,
+      "seconds": 35.014601,
       "tests": 9
     },
     "hub/test/claude-code-sessions.test.ts": {
-      "seconds": 40.798841,
-      "tests": 10
+      "seconds": 26.359923,
+      "tests": 11
     },
     "hub/test/cli-identity.test.ts": {
       "seconds": 31.014491,
@@ -994,6 +994,14 @@
     "nvim/test/verification-view.test.ts": {
       "seconds": 6.30693,
       "tests": 1
+    },
+    "hub/test/claude-code-environment.test.ts": {
+      "seconds": 0.005697,
+      "tests": 1
+    },
+    "hub/test/adapter-composition.test.ts": {
+      "seconds": 0.517101,
+      "tests": 3
     }
   },
   "tests": {
@@ -1259,25 +1267,6 @@
     "hub/test/claude-code-accounts.test.ts::Claude account commands and attach use their own directory and named accounts exclude inherited authentication": 7.612171,
     "hub/test/claude-code-accounts.test.ts::discovery, watch and restart share each live directory schedule; saved directories survive registry and hub environment edits": 25.316992,
     "hub/test/claude-code-accounts.test.ts::logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods": 96.007549,
-    "hub/test/claude-code-adapter.test.ts::a Claude Code StopFailure is recorded in Agents and the events view and reported to the sender": 6.528995,
-    "hub/test/claude-code-adapter.test.ts::a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works": 5.632107,
-    "hub/test/claude-code-adapter.test.ts::a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod": 11.564467,
-    "hub/test/claude-code-adapter.test.ts::a message for a session with no adapter stays delivered; an unknown session or harness is refused": 0.961298,
-    "hub/test/claude-code-adapter.test.ts::a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success": 8.644136,
-    "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": 8.661203,
-    "hub/test/claude-code-adapter.test.ts::an expired --bg launch latches a directory once without any discovery or retry calls": 1.24517,
-    "hub/test/claude-code-adapter.test.ts::an inject the harness never confirmed stays delivered, is logged, and is retried at the next idle": 5.587335,
-    "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": 7.395162,
-    "hub/test/claude-code-sessions.test.ts::a late SessionStart does not revive a session whose process is gone": 2.887917,
-    "hub/test/claude-code-sessions.test.ts::a message the spoke accepted during the launch is injected once the launch's early bridge and SessionStart are in": 3.125989,
-    "hub/test/claude-code-sessions.test.ts::a session renamed while a message waits for its inject still gets it, and its confirmation counts": 3.844983,
-    "hub/test/claude-code-sessions.test.ts::a signal from an earlier launch under the same name changes nothing of the process that replaced it": 4.404581,
-    "hub/test/claude-code-sessions.test.ts::a stop whose `claude stop` fails falls back to SIGTERM and stops the session": 2.091279,
-    "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": 5.775672,
-    "hub/test/claude-code-sessions.test.ts::late Claude start and StopFailure hooks keep failure notes with their own turn sender": 6.481037,
-    "hub/test/claude-code-sessions.test.ts::resume never adopts another session that reuses the pid: no identity match, no resume": 4.550667,
-    "hub/test/claude-code-sessions.test.ts::signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start": 5.021305,
-    "hub/test/claude-code-sessions.test.ts::stop kills a Claude Code process that ignores SIGTERM and waits for its exit": 2.615411,
     "hub/test/cli-identity.test.ts::cland hub stop from a session's shell signals nothing when the hub does not answer: only a confirmed request, or the human, may fall back to the signal": 11.580439,
     "hub/test/cli-identity.test.ts::cland task view and task comment from a session's shell work as the session: the comment's author is the session, within its role's scope": 3.636591,
     "hub/test/cli-identity.test.ts::cland topic answer from a session's shell is refused with the typed error: the ask stays open and the audit names the session": 3.917948,
@@ -3266,7 +3255,31 @@
     "nvim/test/vboard.test.ts::the board shows hub sections, rank, glyphs, verdicts and criteria; all reaches unscheduled work": 0.562555,
     "nvim/test/vboard.test.ts::without an open release the board keeps its unscheduled view": 0.399927,
     "nvim/test/verification-queue.test.ts::sessions queue line follows hub snapshots and events, including events racing a refresh": 0.608348,
-    "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.30693
+    "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.30693,
+    "hub/test/claude-code-environment.test.ts::Claude environment composition preserves implicit, pathless, pinned and inherited selections (T-603)": 0.005697,
+    "hub/test/claude-code-adapter.test.ts::Claude Code StopFailure hook reports its turn failure to Agents, events and sender": 2.755693,
+    "hub/test/claude-code-adapter.test.ts::Claude Code binary contract: launch, attach, first clause, mod injection, hook state and usage": 9.49137,
+    "hub/test/claude-code-adapter.test.ts::a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works": 2.802862,
+    "hub/test/claude-code-adapter.test.ts::Claude Code mod confirmation timeout leaves delivery retryable at the next turn": 2.89848,
+    "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": 3.665025,
+    "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": 2.837359,
+    "hub/test/claude-code-adapter.test.ts::a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success": 6.499991,
+    "hub/test/claude-code-adapter.test.ts::an expired --bg launch latches a directory once without any discovery or retry calls": 0.859046,
+    "hub/test/claude-code-adapter.test.ts::Claude unpinned binary launch, native relaunch and remedies preserve an unset CLAUDE_CONFIG_DIR (T-603)": 3.204775,
+    "hub/test/adapter-composition.test.ts::the hub composes clause, launch brief, artifact envelope and Lead claim for every flavour": 0.34152,
+    "hub/test/adapter-composition.test.ts::hub refusals and adapterless delivery need no harness process": 0.092772,
+    "hub/test/adapter-composition.test.ts::rejected injection stays delivered across idle observations and retries on the next busy-to-idle": 0.082809,
+    "hub/test/claude-code-sessions.test.ts::signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start": 2.200213,
+    "hub/test/claude-code-sessions.test.ts::late Claude start and StopFailure hooks keep failure notes with their own turn sender": 4.776715,
+    "hub/test/claude-code-sessions.test.ts::a signal from an earlier launch under the same name changes nothing of the process that replaced it": 2.839813,
+    "hub/test/claude-code-sessions.test.ts::a late SessionStart does not revive a session whose process is gone": 1.06623,
+    "hub/test/claude-code-sessions.test.ts::a message the spoke accepted during the launch is injected once the launch's early bridge and SessionStart are in": 1.556822,
+    "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": 4.526497,
+    "hub/test/claude-code-sessions.test.ts::a session renamed while a message waits for its inject still gets it, and its confirmation counts": 3.26355,
+    "hub/test/claude-code-sessions.test.ts::Claude process resume never adopts another session that reuses the pid: no identity match, no resume": 2.381756,
+    "hub/test/claude-code-sessions.test.ts::a stop whose `claude stop` fails falls back to SIGTERM and stops the session": 1.503238,
+    "hub/test/claude-code-sessions.test.ts::stop kills a Claude Code process that ignores SIGTERM and waits for its exit": 2.195571,
+    "hub/test/claude-code-sessions.test.ts::a held Claude hook is reaped before fixture removal after a pre-release failure": 0.049518
   },
   "allow": {
     "hub/test/lead-launch.test.ts::an Implementer cannot launch Leads even with a session.launch grant": {
@@ -3381,67 +3394,6 @@
     "hub/test/claude-code-accounts.test.ts::logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods": {
       "seconds": 96.007549,
       "reason": "Proves the signed-out latch holds across a hub restart for three real 30-second Claude discovery periods (T-437 C2); the period is the production schedule under test, so the wait cannot be shortened without weakening the proof.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts": {
-      "file": true,
-      "seconds": 56.219873,
-      "reason": "File budget: Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::Claude pathless account launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
-      "seconds": 5.627064,
-      "reason": "Proves a path-less account keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks failed-launch guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.627 s with all five load repetitions passing.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::Claude inherited directory launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
-      "seconds": 5.627064,
-      "reason": "Proves an inherited CLAUDE_CONFIG_DIR is kept through real fake-harness launch, stop and native-conversation relaunch, then checks the failed-launch guidance, like its pathless and unpinned siblings. T-603 merged it without an allowance. Droplet runs measured 4.728 s (A-4094) and 5.916 s (A-4092), over the 5 s budget in the latter. The baseline matches its siblings.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::Claude pinned account launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
-      "seconds": 5.711633,
-      "reason": "Proves a pinned account keeps its CLAUDE_CONFIG_DIR through real fake-harness launch, stop and native-conversation relaunch, then checks the failed-launch guidance, like its pathless and unpinned siblings. T-603 merged it without an allowance. Droplet runs measured 5.082 s (A-4094) and 7.603 s (A-4092), and A-4094 failed the 5 s budget on it. The baseline matches its siblings.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::Claude unpinned launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
-      "seconds": 5.711633,
-      "reason": "Proves an unpinned session keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks signed-out guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.712 s with all five load repetitions passing.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod": {
-      "seconds": 11.564467,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success": {
-      "seconds": 8.644136,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": {
-      "seconds": 8.661203,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": {
-      "seconds": 7.395162,
-      "reason": "Exercises real Claude fake-harness launch, stop with an undiscovered PID, and persisted discovery across a projectHub reopen. T-585 controls Date at the production 30-second interval; only real child startup, frame delivery and negative liveness-poll windows consume wall time.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": {
-      "seconds": 5.775672,
-      "reason": "Waits for live injection confirmation and a later idle event to prove retry ordering at the adapter boundary.",
       "owner": "E-677",
       "legacy": true
     },

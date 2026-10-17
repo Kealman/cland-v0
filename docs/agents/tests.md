@@ -76,6 +76,27 @@ are reserved for one real-binary adapter contract file per harness and T3
 scenarios. They are not the default for routing, roles, subscriptions or tracker
 rules. Existing files migrate under E-677; new tests use the in-process adapter.
 
+### Real-binary adapter contract checklist
+
+Each harness has one T3 manifest entry `{ "tier": "T3", "contract": "<harness>" }`.
+Its header maps each of these steps to the test that proves it once through the
+fake binary and the real spoke, hooks/mod or native protocol:
+
+- Launch and the harness's attach command.
+- Role clause in the first native turn.
+- Delivery through the adapter bridge to `injected`, with the reply correlated to its input.
+- Harness signals reaching session state, including approval and failure where supported.
+- Model and usage reports, matching the advertised capabilities.
+- Stop; resume across a hub-process restart; native-conversation relaunch.
+
+Input permutations use a table at the environment/planning seam, with one binary
+frame proof. Hub-owned brief ordering, artifact envelopes and Lead claims belong
+in `hub/test/adapter-composition.test.ts`, shared across all three flavours.
+Contract files retain assertions about the native first-turn/transport boundary;
+they do not repeat the shared hub rule. Negative assertions wait for a positive
+completion receipt or use fake time. Record a declaration-by-declaration assertion
+map, before/after file seconds and process-start call sites in the review evidence.
+
 ## Fixtures
 
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
