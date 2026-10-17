@@ -2,8 +2,8 @@
 id: T-741
 kind: task
 title: "Eight T2-tagged tests that start git, jq or a check runner: move them to injected readers or retag T3"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-452
 branch: t/T-741-eight-t2-tagged-tests-that-start-git-jq
 created: 2026-10-17T15:18:07.293Z
-updated: 2026-10-17T17:51:35.764Z
+updated: 2026-10-17T18:20:20.798Z
+closed: 2026-10-17T18:20:20.798Z
 ---
 
 ## Summary
@@ -167,3 +168,7 @@ Standards0/Spec0 findings. Delta clear; verify all C1/C2 at49c0ef7e under the ex
 Durable review A-4681.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T18:20:20.798Z
+
+Merged 7a45bb301adc0bdd44f9751f8eb07c3eba0dad19 onto dev.
