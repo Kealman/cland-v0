@@ -2,8 +2,8 @@
 id: T-744
 kind: task
 title: Test lint judges a file's tier without following its fixture and helper imports
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-454
 branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T18:27:20.995Z
+updated: 2026-10-17T20:04:52.512Z
+closed: 2026-10-17T20:04:52.512Z
 ---
 
 ## Summary
@@ -181,3 +182,7 @@ Standards0/Spec0 findings. Final clear; verify all C1/C2 at ef549ee5. No per-ite
 Durable review A-4698.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T20:04:52.512Z
+
+Merged 2934b66e5c4b6842c5e76cef53f28f34a5d5785b onto dev.
