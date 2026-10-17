@@ -2,8 +2,8 @@
 id: T-689
 kind: task
 title: cland verify all is reserved to the Coordinator, the human and occasions; task runs use the diff selection
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-413
 branch: t/T-689-cland-verify-all-is-reserved-to-the
 created: 2026-10-16T19:59:28.743Z
-updated: 2026-10-17T03:26:06.659Z
+updated: 2026-10-17T03:26:13.413Z
+closed: 2026-10-17T03:26:13.413Z
 ---
 
 ## Summary
@@ -198,3 +199,7 @@ Linux x64 c-8 lon1, two workers, suite 2430.44 seconds, peak 9.74, reported life
 Review artifact A-4290.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-17T03:26:13.413Z
+
+Merged 977cc20a7b317de7da122dc6a7f368ca3cfbd8e6 onto dev.
