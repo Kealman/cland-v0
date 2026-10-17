@@ -3,7 +3,7 @@ id: T-697
 kind: task
 title: Suites and the droplet executor take the hub Clock, and an in-process fake provider and scripted machine replace HTTP, ssh and the worker in T2
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -15,9 +15,9 @@ parent: E-677
 blocked_by:
   - T-685
 topic: null
-branch: null
+branch: t/T-697-suites-and-the-droplet-executor-take-the
 created: 2026-10-16T19:59:36.515Z
-updated: 2026-10-16T20:00:52.136Z
+updated: 2026-10-17T06:27:32.228Z
 ---
 
 ## Summary

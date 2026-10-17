@@ -3,7 +3,7 @@ id: T-691
 kind: task
 title: claude-code-adapter.test.ts becomes Claude Code's one contract file; its permutations and negative sleeps leave the real binary
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -16,9 +16,9 @@ blocked_by:
   - T-686
   - T-679
 topic: null
-branch: null
+branch: t/T-691-claude-code-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.709Z
-updated: 2026-10-16T20:00:51.918Z
+updated: 2026-10-17T06:27:31.120Z
 ---
 
 ## Summary

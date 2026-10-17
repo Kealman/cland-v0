@@ -3,7 +3,7 @@ id: T-696
 kind: task
 title: AccountPoller takes the hub Clock, and the five account files stop sleeping through real poll windows
 state: open
-status: planned
+status: in progress
 size: L
 labels:
   - v0.1.4
@@ -15,9 +15,9 @@ parent: E-677
 blocked_by:
   - T-685
 topic: null
-branch: null
+branch: t/T-696-accountpoller-takes-the-hub-clock-and
 created: 2026-10-16T19:59:36.370Z
-updated: 2026-10-16T20:00:52.493Z
+updated: 2026-10-17T06:27:33.381Z
 ---
 
 ## Summary

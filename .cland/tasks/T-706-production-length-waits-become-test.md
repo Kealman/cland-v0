@@ -3,7 +3,7 @@ id: T-706
 kind: task
 title: Production-length waits become test knobs, and perf cases, the full QA case set and harness self-tests move to T4
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -15,9 +15,9 @@ assignee: null
 parent: E-677
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-16T20:00:52.602Z
+updated: 2026-10-17T06:27:35.769Z
 ---
 
 ## Summary

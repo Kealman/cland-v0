@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-418
 branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-17T05:12:34.399Z
+updated: 2026-10-17T06:15:04.926Z
 ---
 
 ## Summary
@@ -30,7 +30,7 @@ The load gate keeps, for each failed repetition, the test's assertion message, e
 ## Acceptance criteria
 
 - [x] C1. A planted test that fails one of five load-gate repetitions shows that repetition's assertion message and stack in the durable suite log and the result artifact, proved by a runner test.
-  - done: impl-720 · 2026-10-17T05:12:13.077Z
+  - done: impl-720 · 2026-10-17T06:14:44.458Z
 - [x] C2. Passing repetitions are still reported only as counts, and the reported diagnostics carry no environment value, proved by the same test file.
   - done: impl-720 · 2026-10-17T05:12:13.290Z
 
@@ -156,3 +156,57 @@ M3 resolved in source by the reasoned measured allowance. Production serializer,
 Claimant reports controlled red-before/green-after for the collision, whole runner 20/20 in 27.319 s, typecheck/tier lint and duration owner/date lint green. The failed old-head A-4313 is retained as failure/measurement evidence, not substituted for a new-head green.
 
 Source clear with no remaining findings. C1/C2 await normal mode-free same-head droplet verification and remain unverified.
+
+### rev-30 · 2026-10-17T06:12:33.235Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-second-gate
+commit: 92ab691b620d5e6d41457fab171b141621387b7f
+scope: evidence
+findings: [{"severity":"medium","text":"M4: The required deadline lifecycle regression fails repetition 1 on its own 8000 ms Node test timeout in A-4318, yielding 4/5 and exit 1. Ordinary execution already takes 7.734 s. Establish a controlled cause and a justified bound for fixture setup/continuation/cleanup while retaining the subject's configured 1 s + 250 ms deadline, diagnostic, all-five/next-identity and exact-worker proof; this owned timeout is not qualifying green evidence.","file":"hub/test/durations-runner.test.ts","line":108}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Second evidence review T-720 at unchanged 92ab691b620d5e6d41457fab171b141621387b7f. Normal mode-free droplet c11f6533-2833-4f95-9697-6ab219608dc2 / A-4318 exits 1. Ordinary phase totals: 2077 tests, 2072 pass, zero fail/cancelled, five skips; Neovim was not reached.
+
+## Standards
+No new standards finding. M3's measured allowance prevents the prior hard-budget miss; no hard duration-budget failure appears.
+
+## Spec
+Medium M4 — hub/test/durations-runner.test.ts:108: the newly required timeout lifecycle case fails repetition 1 with ERR_TEST_FAILURE / testTimeoutFailure, message "test timed out after 8000ms" (redacted in the durable diagnostic), then finishes 4/5. Its ordinary case passes in 7.733529098 s, close to its explicit 8 s outer test bound. The new production diagnostic path makes this cause visible; the receipt does not establish a different underlying assertion failure. A controlled correction must retain the configured subject deadline (1 s + 250 ms), earlier assertion/stack, continued repetitions and following identity, summary and exact-worker cleanup checks, while accounting for the fixture's setup/continuation/cleanup work. No unchanged retry qualifies this as green.
+
+Positive evidence retained: the diagnostic log/summary runner case passes ordinary 4.527 s and 5/5. All four pure/reporter tests pass ordinary and 5/5 each. M1 redaction and M2 sanitized-frame expectations are not reopened. C2's positive privacy/count proof is retained but remains unverified pending a passing task gate.
+
+Verdict not clear due owned required timeout scope. C1 failed for incomplete required runner proof; C2 not failed again. New-head source review is required before verification. Source A-4316 and failed A-4318 remain durable; lifetime/cost are unknown in this receipt. Read-only audit, no Reviewer execution.
+
+Criteria: C1 failed (M4: Required timeout lifecycle regression hits its own 8000 ms timeout in repetition 1 (4/5), so added deadline/cleanup scope lacks a green gate.).
+
+### impl-720 · 2026-10-17T06:14:44.665Z
+
+M4 correction pushed as 7c117ff93c46fc968496c150d2fc88399315d55f. A-4318 identifies the enclosing 8s test watchdog as the sole failure (ordinary proof 7.734s). Lifecycle fixture now uses runSuite directly, has a separate 30s enclosing watchdog and 20s dated allowance for ten fresh-process startup/cleanup under load, and explicitly checks the unchanged subject deadline metadata 1000ms+250ms. Unconditional live socket, assertion/frame/summary/all-five/next-identity/exact-PID proofs are retained; production code unchanged. Typecheck, tier lint, allowance owner/date lint pass; runner 20/20 in 26.253s (lifecycle 2.904s). New source review requested before any retry.
+
+### rev-30 · 2026-10-17T06:15:04.926Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-watchdog-correction
+commit: 7c117ff93c46fc968496c150d2fc88399315d55f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source correction review T-720 at 7c117ff93c46fc968496c150d2fc88399315d55f, delta from 92ab691b620d5e6d41457fab171b141621387b7f. One commit, two test/manifest files, no dev merge; origin branch matches. Read-only review.
+
+## Standards
+No findings. The allowance retains an open E-676 owner and seven-day UTC dates, with an updated reason distinguishing measured Linux fixture cost from the subject deadline. No baseline/global-gate changes or new real-time wait.
+
+## Spec
+M4 resolved in source. A-4318 explicitly identifies the former enclosing 8000 ms test timeout; ordinary execution was 7.734 s. The fixture now calls runSuite directly, removing package admission/planning from this lifecycle check while the separate package diagnostic regression remains intact. A 30 s enclosing watchdog and reasoned 20 s allowance provide setup/ten-process/cleanup margin. The socket still stays open indefinitely without termination; the subject still uses configured test_timeout=1000 ms plus 250 ms grace. New numeric receipt assertions require repetition 1, timeoutMs 1000 and graceMs 250, preventing this fixture correction from relaxing the behavior under test.
+
+Earlier assertion, actual sanitized source frame, result summary, remaining repetitions/following identity, six total attempts and exact PID-gone checks all remain. Production serializer/reporter/deadline/cleanup code is unchanged; M1-M3 remain resolved.
+
+Claimant reports typecheck/tier/allowance lint green and whole runner 20/20 in 26.253 s, including lifecycle 2.904 s at load below 2. This supports the correction; A-4318 remains a failed old-head receipt, not final evidence.
+
+Source clear, no remaining findings. C1/C2 remain unverified pending normal mode-free exact-head droplet verification.

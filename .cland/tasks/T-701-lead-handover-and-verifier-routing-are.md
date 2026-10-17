@@ -3,7 +3,7 @@ id: T-701
 kind: task
 title: Lead, handover and verifier routing are asserted on the hub's recorded messages in T2, with one process proof per family
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -16,9 +16,9 @@ blocked_by:
   - T-686
   - T-687
 topic: null
-branch: null
+branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-16T20:00:52.520Z
+updated: 2026-10-17T06:27:34.626Z
 ---
 
 ## Summary

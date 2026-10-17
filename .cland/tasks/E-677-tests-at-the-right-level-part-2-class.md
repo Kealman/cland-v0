@@ -11,12 +11,11 @@ labels:
 assignee: null
 parent: R-577
 blocked_by: []
-follows:
-  - E-676
+follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-17T01:52:35.818Z
+updated: 2026-10-17T06:27:06.041Z
 ---
 
 ## Summary
@@ -85,3 +84,7 @@ stages:
 ### coord · 2026-10-17T01:52:35.818Z
 
 Coordinator decision (D53 detail), 2026-10-17 01:53Z: the existing duration allowances in hub/test/durations.json become legacy allowances, owned by E-677 and expiring when E-677 closes, with no calendar date. Reasons and seconds are kept. New allowances keep the 7-day expiry with an open owner ticket. Budget reports list the legacy allowances separately (count and total seconds), so E-677's progress shows as that number falling. T-716's enforcement exempts legacy allowances until E-677 closes. Without this, 7-day expiries would need weekly mass renewal and would break runs once T-716 enforces.
+
+### coord · 2026-10-17T06:27:06.041Z
+
+Coordinator (D51, D53), 2026-10-17 06:27Z: the 'follows E-676' link is removed. Every ticket in this epic's stage 1 is blocked only by E-676 seams that have merged: T-679 tiers.json, T-685 Clock, T-686 in-process fake adapter, T-687 in-process spoke, plus T-575. E-676's remaining work (T-720, then stage 2's lint, retag and selection) doesn't block the class migrations. The crew was down to one lane, so starting now follows D53's priority. Launching five stage-1 lanes to fit the droplet budget: T-691 (Claude Code contract), T-697 (executor on the clock), T-696 (accounts on the clock), T-701 (leads and routing to T2), T-706 (long waits and perf to T4). Legacy duration allowances are owned by this epic (decision on T-683).
