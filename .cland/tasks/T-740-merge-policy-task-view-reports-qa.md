@@ -2,8 +2,8 @@
 id: T-740
 kind: task
 title: "merge-policy: 'task view reports QA satisfaction…' saw 'lane or gate inputs changed during lookup' on a loaded droplet"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-448
 branch: t/T-740-merge-policy-task-view-reports-qa
 created: 2026-10-17T15:12:22.689Z
-updated: 2026-10-17T15:29:28.429Z
+updated: 2026-10-17T15:57:11.401Z
+closed: 2026-10-17T15:57:11.401Z
 ---
 
 ## Summary
@@ -76,3 +77,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4591. Exact-head A-4590 / c830d6ac independently checked final exit 0: selected hub 34/34 plus Neovim smoke 12/12, total 46 passes with zero failures/skips. Affected QA-satisfaction case executes and passes at 1.234820814 s. Source A-4589 and diagnosis A-4580/A-4581 remain current; ten whole-file Mac logs each 12/12 independently audited, no skips/failures/late diagnostics. Origin unchanged and C1 claimant done current. C1 verified; no full-suite claim, exception, additional run or per-item QA required. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T15:57:11.401Z
+
+Merged d4c2efd9a60f15ebaee33baa06dab0ad207a25a5 onto dev.
