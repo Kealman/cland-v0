@@ -2,8 +2,8 @@
 id: T-688
 kind: task
 title: "Coverage selection narrows instead of falling back: Neovim importers only, a file's covering tests for top-level edits, old maps that still map"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-419
 branch: t/T-688-coverage-selection-narrows-instead-of
 created: 2026-10-16T19:59:28.645Z
-updated: 2026-10-17T05:07:28.014Z
+updated: 2026-10-17T05:07:35.242Z
+closed: 2026-10-17T05:07:35.242Z
 ---
 
 ## Summary
@@ -130,3 +131,7 @@ A-4311 has full hub plus Neovim, exit zero. Independent phase totals: 2472 tests
 Final review clear; C1-C6 verified. No source changes or additional verification requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-17T05:07:35.242Z
+
+Merged c3f3c0ada6e441f1866d502ac22528cebaf1ed0a onto dev.
