@@ -1,4 +1,4 @@
-// T2: merge policy through the dispatcher; one CLI override/refusal proof uses real Git.
+// T3: native Git worktrees, refs and rebases prove merge admission and repository landing boundaries.
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,4 +1,4 @@
-// T2: init/update filesystem matrices use their module entry points and real Git.
+// T3: native Git repositories prove init/update provisioning and committed-tree boundaries.
 // Three CLI runs keep the committed-set, idempotent text and old-version contracts.
 // Process races, shell hooks and the real Claude binary contract live in init-process.test.ts.
 import fs from 'node:fs';

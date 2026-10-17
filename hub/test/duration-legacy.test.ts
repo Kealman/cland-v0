@@ -1,4 +1,4 @@
-// T2: lint runs in-process against real scratch Git histories; Git is the native boundary under test.
+// T3: native Git histories and immutable candidate trees prove legacy duration allowance admission.
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
