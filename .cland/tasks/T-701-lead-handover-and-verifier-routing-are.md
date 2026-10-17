@@ -2,8 +2,8 @@
 id: T-701
 kind: task
 title: Lead, handover and verifier routing are asserted on the hub's recorded messages in T2, with one process proof per family
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-421
 branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-17T09:52:09.087Z
+updated: 2026-10-17T09:52:39.988Z
+closed: 2026-10-17T09:52:39.988Z
 ---
 
 ## Summary
@@ -251,3 +252,7 @@ C5 is carried forward under the explicit primary disposition, not represented as
 Conflict delta clear, no findings; C1-C5 verified/current at 4232c430 under the accepted evidence carry-forward. No new task verification requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T09:52:39.988Z
+
+Merged f20bd3c3afae348d46ad570687c7d4152ff34ad6 onto dev.
