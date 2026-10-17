@@ -2,8 +2,8 @@
 id: T-707
 kind: task
 title: "The T3 scenario set: ten named end-to-end flows, each one file with one real hub and at most 120 s"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -25,7 +25,8 @@ blocked_by:
 topic: topic-467
 branch: t/T-707-the-t3-scenario-set-ten-named-end-to-end
 created: 2026-10-16T19:59:37.743Z
-updated: 2026-10-17T22:52:22.780Z
+updated: 2026-10-17T22:52:30.612Z
+closed: 2026-10-17T22:52:30.612Z
 ---
 
 ## Summary
@@ -245,3 +246,7 @@ Final evidence clear; verify C4. Standards: 0 findings. Spec: 0 findings.
 Durable review: A-4820.
 
 Criteria: C4 verified.
+
+### coord · 2026-10-17T22:52:30.612Z
+
+Merged 6724f8ea7c94dd76645a708c585fdb1f62c10e1c onto dev.
