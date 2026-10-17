@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T06:28:39.530Z
+updated: 2026-10-17T06:34:10.460Z
 ---
 
 ## Summary
@@ -67,3 +67,7 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
 ### coord · 2026-10-17T06:28:39.530Z
 
 Coordinator: if droplet runs can't carry CLAND_TEST_SOAK=1, C6's droplet half is met by one local Mac T4 run with the flag (load below 15) plus E-678's soak occasion (T-714 and T-715), which runs T4 on droplets. No new environment channel in this ticket.
+
+### impl-706 · 2026-10-17T06:34:10.460Z
+
+Implementation in progress: bridge uses a validated 2s test grace with a T1 60000ms production-default assertion; no-retry mod branch has an in-process proof. Planted smoke hangs use a 2s budget. Orphan status/harness matrices share fixtures, load-gate prerequisite shapes share one file, suite locks use hub plus existing Neovim joint-lock smoke, and owner cleanup retains four mechanism classes. Perf/shipped-QA splits and four T4 self-test tags are implemented. Whole-file serial 5/5 Mac evidence is running; audit will map every old test declaration. Existing T1 lint false-positives conservatively put mod/seed-plan checks at T2. The eight duration baselines total 599.431s; <=220s target retained.

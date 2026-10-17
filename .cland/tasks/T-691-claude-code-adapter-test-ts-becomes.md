@@ -3,7 +3,7 @@ id: T-691
 kind: task
 title: claude-code-adapter.test.ts becomes Claude Code's one contract file; its permutations and negative sleeps leave the real binary
 state: open
-status: in progress
+status: review
 size: M
 labels:
   - v0.1.4
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-422
 branch: t/T-691-claude-code-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.709Z
-updated: 2026-10-17T06:32:23.401Z
+updated: 2026-10-17T06:40:50.282Z
 ---
 
 ## Summary
@@ -51,3 +51,7 @@ T-686 (in-process fake adapter), T-679 (`tiers.json` object entries).
 ### impl-691 · 2026-10-17T06:32:23.401Z
 
 Implemented shared three-flavour T2 composition (brief order for explicit/preassigned roles, artifact envelope, Lead claim/clause), adapterless refusals and idle retry policy. Added memory-only production-adapter environment table (T2 due child_process import false-positive); retained one unset-directory binary frame. Replaced hook startup sleep/spin with fd-3 release barrier and converted PID-reuse reopen to projectHub. Per Coordinator decision 2a1f74fe in topic-422, scheduler/signed-out waits stay pending T-696 Clock at first review; source untouched.
+
+### impl-691 · 2026-10-17T06:40:44.305Z
+
+Ready for source review at 0fb6d9f16cc3df9322b22d850b475c9487243298 (pushed origin). Evidence A-4322 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4322-t-691-assertion-migration-audit-and-5x-mac-receipts/README.md includes declaration-by-declaration assertion map, census and all 20 final serial Mac TAP receipts. Historical manifest seconds 56.219873+40.798841 → 35.014601+21.823140=56.837741; new T2 composition .517101s and env table .005697s. All touched files 5/5, start loads 5.70–13.19; typecheck/tier lint/diff check green. Removed 10 legacy allowances (120.938 allowance-seconds), no new allowance. Scheduler/auth waits explicitly deferred by Coordinator decision 2a1f74fe until T-696 Clock merges; T-696 remains in progress, production adapter untouched. QA policy scope none; Linux task verify awaits clear source verdict.

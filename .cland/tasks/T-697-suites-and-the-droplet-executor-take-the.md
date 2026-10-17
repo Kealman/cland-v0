@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-420
 branch: t/T-697-suites-and-the-droplet-executor-take-the
 created: 2026-10-16T19:59:36.515Z
-updated: 2026-10-17T06:27:44.260Z
+updated: 2026-10-17T06:37:41.037Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ The executor and suite files are the heaviest class: `suite-remote-budget` 143.9
 ## Blocked by
 
 T-685 (hub Clock seam).
+
+## Comments
+
+### impl-697 · 2026-10-17T06:37:41.037Z
+
+Implemented the hub Clock across Suites, droplet acquisition/release/preparation, demo expiry and spend accounting. Added injectable provider/remote-run/host boundaries and a shared direct/HTTP fake provider; scripted fixtures omit the reaper, SSH/SCP and suite worker. First unchanged process regressions passed: executor-run 21/21 (112.98s), suite-close-recovery 5/5 (33.63s). Running the required five serial whole-file repetitions at load <15; the audit will map all original declarations and timing allowances.

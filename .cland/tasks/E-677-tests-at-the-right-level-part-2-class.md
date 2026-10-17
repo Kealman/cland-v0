@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-17T06:33:43.967Z
+updated: 2026-10-17T06:42:01.115Z
 ---
 
 ## Summary
@@ -58,6 +58,7 @@ stages:
         - T-699
         - T-700
       - - T-696
+        - T-726
       - - T-701
       - - T-704
       - - T-705
@@ -89,3 +90,7 @@ Coordinator decision (D53 detail), 2026-10-17 01:53Z: the existing duration allo
 ### coord · 2026-10-17T06:27:06.041Z
 
 Coordinator (D51, D53), 2026-10-17 06:27Z: the 'follows E-676' link is removed. Every ticket in this epic's stage 1 is blocked only by E-676 seams that have merged: T-679 tiers.json, T-685 Clock, T-686 in-process fake adapter, T-687 in-process spoke, plus T-575. E-676's remaining work (T-720, then stage 2's lint, retag and selection) doesn't block the class migrations. The crew was down to one lane, so starting now follows D53's priority. Launching five stage-1 lanes to fit the droplet budget: T-691 (Claude Code contract), T-697 (executor on the clock), T-696 (accounts on the clock), T-701 (leads and routing to T2), T-706 (long waits and perf to T4). Legacy duration allowances are owned by this epic (decision on T-683).
+
+### coord · 2026-10-17T06:34:55.418Z
+
+Coordinator, for every ticket in this epic: seconds criteria are judged from the ticket's evidence artifact (per-file 5/5 medians on the Mac, plus the per-file seconds from the exact-head droplet run), not from hub/test/durations.json. Baselines refresh only from green integrated runs, which the Coordinator does at stage close. A ticket may shrink or remove legacy allowances for the tests it speeds up, but doesn't rewrite baselines.
