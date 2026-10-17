@@ -3,7 +3,7 @@ id: T-741
 kind: task
 title: "Eight T2-tagged tests that start git, jq or a check runner: move them to injected readers or retag T3"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-452
 branch: t/T-741-eight-t2-tagged-tests-that-start-git-jq
 created: 2026-10-17T15:18:07.293Z
-updated: 2026-10-17T16:51:43.578Z
+updated: 2026-10-17T17:32:24.433Z
 ---
 
 ## Summary
@@ -35,7 +35,10 @@ For each file, either replace the child with T-719's injected reader or an in-pr
 - [x] C1. All eight files are T2 with no non-cland child process, or T3 with a lifecycle header, and `npm run test:lint` reports none of them below its qualifying tier.
   - done: impl-741 · 2026-10-17T16:43:05.882Z
   - verified: rev-30 [reviewer] · run rev-20261017-741-source · 2026-10-17T16:51:43.578Z · commit 578ed3439e99f00432ac7b5b985a939bc1a6b44d
-- [ ] C2. An audit maps every moved assertion, and each touched file passes 5/5 on the Mac and once in the task's droplet verify.
+  - verified: rev-30 [reviewer] · run rev-20261017-741-final · 2026-10-17T17:32:22.850Z · commit 578ed3439e99f00432ac7b5b985a939bc1a6b44d
+- [x] C2. An audit maps every moved assertion, and each touched file passes 5/5 on the Mac and once in the task's droplet verify.
+  - done: impl-741 · 2026-10-17T17:31:36.121Z
+  - verified: rev-30 [reviewer] · run rev-20261017-741-final · 2026-10-17T17:32:22.850Z · commit 578ed3439e99f00432ac7b5b985a939bc1a6b44d
 
 ## Comments
 
@@ -90,3 +93,39 @@ Standards0findings; Spec0findings.
 Durable review: A-4635.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-17T17:32:22.850Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-741-final
+commit: 578ed3439e99f00432ac7b5b985a939bc1a6b44d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-741 final evidence review — clear
+
+Exact source-reviewed head578ed3439e99f00432ac7b5b985a939bc1a6b44d remains the branch tip. Current full source verdict rev-20261017-741-source / A-4635 verifies C1. Task view confirms claimant C2 done and passed exact-head droplet5a82d710-55ca-47cc-8da5-cccd309ec90e / A-4664. No source changes. Read-only receipt review; no Reviewer execution.
+
+A-4664 ends exit0. Normal automatic hub-only selection plus Neovim smoke runs host npm run check/typecheck/report-only lint, then144/144 hermetic,1952machine/1947pass+5skip,12/12smoke. Total2108tests/2103pass/0fail/0cancelled/5unrelated prerequisite skips. No hard duration-budget or failed load-gate line.
+
+All ten destination files have actual positive suite-timing receipts, covering every46 original declarations:
+lead-permissions2/4.397505049s; Lead component4/1.575651293s; release-item8/4.996945608s; skills-tracker8/1.382878313s; jq contract1/0.485153824s; suite-check3/1.413447757s; suite-dry-run4/2.356661117s; queue-policy1/0.195821958s; territory-cli14/7.605395641s; verify-all1/1.405012001s. Sum25.814472561Linux test-seconds. All five moved identities (four Lead, one jq) pass5/5each,25/25. No touched case skips.
+
+C2 verified with unchanged assertion/source audit A-4635 plus Mac A-4632/A-4633: all ten destination files5/5, independently audited along with originals at source review.46 declarations and462 original assertion expressions including helpers remain mapped, with three extra fake guards. Mac median top-level test-time sum59.406702580s→47.929752168s; separate subprocess-wall sums62.488213625s→51.503426458s. Linux25.814472561s is disclosed separately, not substituted for the Mac comparison. Initial debug red and overlapped original release baseline remain excluded as documented.
+
+C1 remains current: six original native files and jq contract retain T3 headers; three destination components use the injected/native-replaced seams. The prior zero-child/one-intended-CLI census and source boundary review apply unchanged. No production changes or hidden removal of Git/npm/native proofs.
+
+Supplied accounting: c-8lon1 Linuxx64 6.8.0-142-generic,Node24.21.0/Neovim0.12.5,2workers,lifetime1600s,cost$0.1111. Suite1535.82s,peak1mload9.45,extra gate wall6.89s; smoke19.77s completes. T3 ratchet4381.253s versus4358.593s base says would refuse growth in report-only mode; this is explicitly disclosed, not a hard failure or a claim of ratchet compliance. Missing split-file baselines/report-only tier findings also remain visible.
+
+Final evidence clear, findings[], C1/C2 verified across current source and same-head receipt. No per-item QA; no further task run requested. Standards0/Spec0remaining findings.
+
+Durable review: A-4668.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-741 · 2026-10-17T17:32:24.433Z
+
+Exact reviewed head 578ed343 verified green by droplet run 5a82d710-55ca-47cc-8da5-cccd309ec90e (A-4664): 2103 pass, 0 failures, 5 unrelated skips; Linux x64, c-8 lon1, workers 2, lifetime 1600s, $0.1111. A-4667 confirms all 46 scoped declarations in all ten destination files passed without skips; all five moved declarations also passed load gate 5/5. C2 now done. Expected report-only T3 increase +22.660s is exactly the observed seconds of six promoted native files plus the extracted jq contract, broken down in A-4667; Coordinator will refresh T3 base at E-677 stage close before hard budgets. Awaiting final same-head evidence verdict.

@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T17:30:31.733Z
+updated: 2026-10-17T17:36:25.913Z
 ---
 
 ## Summary
@@ -45,11 +45,14 @@ Each hub rule runs as a T2 table over T-686's fake adapter flavours: model and u
 - [x] C2. Their fake-binary call sites fall from 23 to 6 or less, `spawnSpoke` sites from 21 to 4 or less, and numeric sleeps from 4 to 0.
   - done: impl-695 · 2026-10-17T16:17:46.318Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
+  - verified: rev-30 [reviewer] · run rev-20261017-695-combined-delta · 2026-10-17T17:36:25.913Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 - [x] C3. Each hub rule has one T2 table test over the three flavours that passes the tier lint, and each per-harness difference names the contract-file or scenario test that proves it.
   - done: impl-695 · 2026-10-17T17:30:05.657Z
+  - verified: rev-30 [reviewer] · run rev-20261017-695-combined-delta · 2026-10-17T17:36:25.913Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-695 · 2026-10-17T16:17:47.301Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
+  - verified: rev-30 [reviewer] · run rev-20261017-695-combined-delta · 2026-10-17T17:36:25.913Z · commit fc2dc89d27711234c77772a6401da7be02ef5fc8
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - failed: rev-30 [reviewer] · 2026-10-17T17:15:41.264Z · note A-4644 exits1 with five owned hard duration budgets and no Neovim smoke receipt; await the explicitly authorized unchanged-head retry before final evidence clearance.
 
@@ -186,3 +189,49 @@ Criteria: C3 failed (The held T2 fixtures still start native infrastructure prob
 ### impl-695 · 2026-10-17T17:30:31.733Z
 
 Coordinator-authorized shared-dev/T-719 merge and fixture correction pushed at fc2dc89d. All four complete T2 files prove zero child processes (imports through teardown), with guarded TaskWorktrees no-territory answers and fake startup probes; no prepared Git repositories remain there. Actual Git worktree/cwd/cleanup and CLI-stop proofs remain in the approved native file. A-4663 contains the audit supplement and fresh Mac5/5 for all5coveragefiles; reported-test median sum35.351592999s. C3 marked done again. Combined delta review requested; C5 awaits source clearance and the authorized new-head verification run.
+
+### rev-30 · 2026-10-17T17:36:25.913Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-695-combined-delta
+commit: fc2dc89d27711234c77772a6401da7be02ef5fc8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-695 combined source delta — clear
+
+Exact head fc2dc89d27711234c77772a6401da7be02ef5fc8, branch t/T-695-hub-rules-proven-once-per-harness. Prior reviewed allowance head45cb9d5e follows09f1b18c. Authorized merge b361c7ed has parents45cb9d5e and incoming dev03e31bf1; fc2dc89d adds the resource-boundary correction. Primary Coordinator d8b91df7 authorizes this rule11 merge, injection, census and fresh medians before one new-head run. Read-only review; no Reviewer tests, edits or delegation.
+
+## Standards
+No remaining findings. M2 from A-4657 is resolved. T-719's inherited projectHub fake preset injects tracker Git/readBase and in-process PID liveness/unknown start identity. All model/progress projectHub calls request fake probes, adapters and FakeClock. Other progress fixtures use their existing in-process startHub.
+
+Crew/usage use the new31-line rule-fixture.ts. TaskWorktrees' separate execFile edge answers only git config --get cland.managed with no territory; it never forwards a child. The exact file/argument tuple is asserted at invocation and every recorded call is checked again in teardown, so the production territory catch cannot hide an unexpected command. Builtin ESM bindings are synchronized and the mock restored in finally. This is a narrow test-only boundary, with native Git coverage retained separately. No prepared Git repository remains in these T2 files.
+
+A-4663's complete-file recorder script, initialization files and logs were read. Each of the four full files exits0 with zero child records across imports/declarations/teardown; both parent and test-worker recorder files exist and are empty. Mocked no-territory calls do not forward into recorder/native execution; source guards establish their permitted shape. Source hashes for all five coverage files and support helper match committed fc2dc89d. This is supplied census evidence, not an independently executed Reviewer run. Supplied report lint classifies all four T2 and retained native T3 without scoped findings.
+
+## Spec and assertion preservation
+C2/C3/C4 refreshed. Delta compared directly with prior reviewed tests. Model and progress assertions are unchanged. Usage retains publication/dedup/coalescing/limits/pending-stop/quiet/exactly-once/item attribution, exact normalized README jq contract and in-process latest-final/grouping/null aggregation. Actual CLI stop argument/exit proof moves to the native restart case, where exit0 and exactly-one-final remain explicit; T2 pending-publication stop still traverses the production dispatcher.
+
+Crew's six flavour/context cells start in an ordinary previous-item directory and move to the root through production pool handoff, proving cwd change, launch/name/item identity, retained/reset context, resumeConversation, brief and stop ownership. No-territory worktree:null is asserted. Native worktree equality and cwd-not-root claims remain in all six actual Git/native handoffs; cwd-not-root is now explicit there. Their branch/claim/cap/cleanup/native PID/thread/history and brief assertions are retained. No native assertion is justified merely by future T-707/T-708 work.
+
+Four T2 files now have zero fake-binary, spawnSpoke and numeric-sleep sites. Retained native split still has two fakeClaude and three fakeCodex sites plus OpenCode setup, one spawnSpoke and no numeric sleeps, meeting6/4/0 limits. Contract/scenario references and original assertion mapping remain applicable; A-4663 explicitly supersedes old infrastructure exceptions and records each changed boundary.
+
+## Merge/manifests
+Own diff against incoming dev is eight test/support/manifest files; no own production change. Durations version/source/budget/files/tests exactly equal incoming03e31bf1: no task-authored measured-baseline rewrite. Unrelated allowance changes are inherited dev. Prior removed obsolete allowances/native renamed entries remain; five approved measured entries survive with E-677 ownership, added2026-10-17/expires2026-10-24: crew7s, usage7s, OpenCode retain9s/reset8s, native whole-file85s/file:true. Exact Linux A-4644 measurements and reasons were checked in the prior delta; crew/usage reasons now explicitly say their measurements predate fake-probe correction. They are bounded historical allowances pending new-head receipt/stage refresh, not claimed fresh timing.
+
+Tiers retain every incoming dev entry and only change the four requested rule files T3→T2 plus sorted new native T3 entry. Inherited T-719, T-700 and other shared changes are taken from authorized dev.
+
+## Raw Mac evidence and limits
+A-4663's25 accepted full-file logs independently parsed: model4, usage5, progress9, crew3, native9 tests per run, five each;150pass,zero fail/cancelled/skipped. Native repeats3–7 are the accepted final set; preliminary1–2 remain disclosed/excluded. Final source metadata matches head; no claim of per-sample commit stamping is added.
+
+Reported-test median seconds: model0.248010792, usage0.456595541, progress1.359060583, crew0.924129541, native32.363796542; sum35.351592999. Node file-wall36.938744333 and subprocess-wall37.116 are separately labeled. Maximum sampled load5.667. Under the launch brief's explicit Mac5/5 comparison, this supports C1≤85, including the native split. Historical manifest164.9 and prior same-Mac subprocess106.348 use their stated metrics. Prior09f1b18c Linux99.738860237 remains historical disclosure only; new-head Linux seconds are pending.
+
+The old A-4644 run failed five hard budgets; cancelled retry A-4651 is not passing evidence. Allowance replay is not execution. C1/final timing and C5 remain unverified pending the one authorized mode-free exact-head droplet run. Static typecheck/tiers/report lint supplied green; no Reviewer execution. No per-item QA.
+
+Source clear; Standards0/Spec0 findings. Verify C2/C3/C4 at fc2dc89d; leave C1/C5 pending Linux evidence. The Implementer may submit the single authorized normal mode-free droplet verification at this reviewed head.
+Durable review A-4670.
+
+Criteria: C2 verified, C3 verified, C4 verified.
