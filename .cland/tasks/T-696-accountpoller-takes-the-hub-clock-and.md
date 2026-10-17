@@ -3,7 +3,7 @@ id: T-696
 kind: task
 title: AccountPoller takes the hub Clock, and the five account files stop sleeping through real poll windows
 state: open
-status: review
+status: in progress
 size: L
 criterion_seq: 6
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-423
 branch: t/T-696-accountpoller-takes-the-hub-clock-and
 created: 2026-10-16T19:59:36.370Z
-updated: 2026-10-17T07:09:43.331Z
+updated: 2026-10-17T07:52:50.920Z
 ---
 
 ## Summary
@@ -45,6 +45,7 @@ Size L because one seam, the clock in `hub/src/accounts/poller.ts`, and one fixt
   - done: impl-696 · 2026-10-17T07:08:51.656Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
 - [ ] C2. The five files' manifest seconds fall from 378.7 s (A-3877) to 170 s or less.
+  - verified: rev-30 [reviewer] · run rev-20261017-696-first-gate · 2026-10-17T07:52:50.417Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
 - [x] C3. The five files hold no numeric sleep and no elapsed-milliseconds assertion except the reasoned ones in the T3 process-group kill test, proved by the test lint.
   - done: impl-696 · 2026-10-17T06:58:15.551Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
@@ -55,6 +56,7 @@ Size L because one seam, the clock in `hub/src/accounts/poller.ts`, and one fixt
   - done: impl-696 · 2026-10-17T07:08:51.955Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
 - [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-17T07:52:50.920Z · note M4: Same-head task verification has an unresolved subscription-hygiene replacement-PID timeout; hub exits one before Neovim despite all touched account files passing.
 
 ## Blocked by
 
@@ -131,3 +133,30 @@ A-4344 independently audited: all 60 indexed receipts exist, match current commi
 Source correction clear, no remaining findings. The old not-clear A-4342 remains the historical finding record; M1/M2/L1 are resolved here. Task verification may proceed at this head.
 
 Criteria: C1 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-17T07:52:50.920Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-696-first-gate
+commit: 36a42528b870be68b5196b54eaca6005e1e1d4ed
+scope: evidence
+findings: [{"severity":"medium","text":"M4: Exact-head Linux fails the replacement PID discovery after 45000 ms. The fixture freezes its timestamp-only now during that wait, while T-696 now passes the resulting hub Clock into Claude directory eligibility. A first pre-PID snapshot can therefore prevent later timer polls becoming eligible. This causal mechanism is inferred from source and needs controlled reproduction/correction or primary classification; the red task gate cannot yet be considered unrelated/known.","file":"hub/test/subscription-hygiene.test.ts","line":49}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence review T-696 at unchanged 36a42528b870be68b5196b54eaca6005e1e1d4ed, source-clear A-4347 / rev-20261017-696-cleanup-correction. Completed mode-free droplet 181884dc-bd8c-4851-a8c7-a2b1df0fd420 / A-4365 exits one. Hub record matches; read-only audit, no Reviewer execution.
+
+## Standards
+No new account-fixture ownership or hard-budget finding. Previous M1/M2/L1 remain resolved: all ten Clock cases, including the controlled pre-release cleanup proof, pass ordinarily and 5/5; native equal-read completion and the coalescing owner also pass. No hard duration-budget line appears. Tier wall/identity overages and duration regression notices remain report-only.
+
+## Spec
+Medium M4 — hub/test/subscription-hygiene.test.ts:49: the task gate fails its second native PID-discovery wait (replacement session) after 45000 ms. This is the only ordinary failure; no load gate fails. It is outside the authored account test files, but compatibility with the newly broadened Clock seam is unresolved. Static evidence identifies a concrete mechanism worth reproducing: this fixture passes a timestamp-only now closure that remains frozen during each native PID wait; resolveClock wraps that now with real timers, and T-696 now passes core.clock into ClaudeCodeAdapter. Directory eligibility uses clock.now minus lastAgentsAt, so a first snapshot taken before the replacement PID is visible can suppress every later real timer poll while now stays fixed. The historical timeout is observed; the precise scheduling cause remains an inference, not a claimed controlled reproduction. Preserve lifecycle transition assertions and establish/correct this fixture/seam compatibility before a new gate, or obtain primary Coordinator classification. It cannot currently be assumed an unrelated known flake.
+
+C2 timing evidence is established at this head under primary 779d2fee: original five Linux test-second sums from durable timing rows are Claude accounts 39.361350, account-limited 41.012748, account-poller 10.433845, accounts 44.764410, account-limits 12.659910, total 148.232263811 (<170). Mac five-file medians in A-4344 total 90.194345. Baselines remain unchanged per the integrated-stage-refresh policy; these measured sums satisfy that explicit disposition. C2 is verified separately with this review run. All twelve touched files execute successfully and all twenty-one task-added identities have 105/105 fresh load repetitions. A-4344's 60 matching Mac receipts remain valid. C1/C3/C4/C5 source verification stands.
+
+C6 final settlement is not clear because the task verification is red and Neovim smoke is not reached. Totals: 2091 tests, 2085 pass, one fail, five skips, no cancellations; free 70/70 and machine 2015 pass/one fail/five skips. Linux x64 c-8 lon1, two workers; wall 2409.13 s, peak 13.67, lifetime 2482 s, cost $0.1723. Completed host typecheck uses candidate-tree receipt 9e39015a97d6bacd97039abec918b6047bb104b6 remotely.
+
+Evidence verdict not clear due M4. Bugs/S compatibility candidate reported to lead T-696 for classification; no separate duplicate ticket is presumed. No unchanged retry or source edit is authorized by this verdict; any correction/head change needs source review first.
+
+Criteria: C6 failed (M4: Same-head task verification has an unresolved subscription-hygiene replacement-PID timeout; hub exits one before Neovim despite all touched account files passing.).
