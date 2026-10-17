@@ -3,7 +3,7 @@ id: T-696
 kind: task
 title: AccountPoller takes the hub Clock, and the five account files stop sleeping through real poll windows
 state: open
-status: review
+status: ready
 size: L
 criterion_seq: 6
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-423
 branch: t/T-696-accountpoller-takes-the-hub-clock-and
 created: 2026-10-16T19:59:36.370Z
-updated: 2026-10-17T08:06:02.450Z
+updated: 2026-10-17T08:57:25.365Z
 ---
 
 ## Summary
@@ -45,22 +45,35 @@ Size L because one seam, the clock in `hub/src/accounts/poller.ts`, and one fixt
   - done: impl-696 · 2026-10-17T07:08:51.656Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
   - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
-- [ ] C2. The five files' manifest seconds fall from 378.7 s (A-3877) to 170 s or less.
+  - verified: rev-30 [reviewer] · run rev-20261017-696-final · 2026-10-17T08:55:12.390Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-conflict-delta · 2026-10-17T08:57:23.489Z · commit 034d16355cc314b062ad04e4f52b828bd7b51086
+- [x] C2. The five files' manifest seconds fall from 378.7 s (A-3877) to 170 s or less.
   - verified: rev-30 [reviewer] · run rev-20261017-696-first-gate · 2026-10-17T07:52:50.417Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
+  - done: impl-696 · 2026-10-17T08:54:44.262Z
+  - verified: rev-30 [reviewer] · run rev-20261017-696-final · 2026-10-17T08:55:12.390Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-conflict-delta · 2026-10-17T08:57:23.489Z · commit 034d16355cc314b062ad04e4f52b828bd7b51086
 - [x] C3. The five files hold no numeric sleep and no elapsed-milliseconds assertion except the reasoned ones in the T3 process-group kill test, proved by the test lint.
   - done: impl-696 · 2026-10-17T06:58:15.551Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
   - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-final · 2026-10-17T08:55:12.390Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-conflict-delta · 2026-10-17T08:57:23.489Z · commit 034d16355cc314b062ad04e4f52b828bd7b51086
 - [x] C4. Their `startDaemon` call sites fall from 25 to 5 or less and fake-binary sites from 8 to 3 or less.
   - done: impl-696 · 2026-10-17T06:58:15.904Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
   - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-final · 2026-10-17T08:55:12.390Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-conflict-delta · 2026-10-17T08:57:23.489Z · commit 034d16355cc314b062ad04e4f52b828bd7b51086
 - [x] C5. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-696 · 2026-10-17T07:08:51.955Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
   - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
-- [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T08:01:56.091Z · note M5: New default-realClock delayed-PID proof has no failure-path owner of its hidden native worker; ownership and controlled pre-publication cleanup proof are required before verification.
+  - verified: rev-30 [reviewer] · run rev-20261017-696-final · 2026-10-17T08:55:12.390Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-conflict-delta · 2026-10-17T08:57:23.489Z · commit 034d16355cc314b062ad04e4f52b828bd7b51086
+- [x] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-696 · 2026-10-17T08:54:44.620Z
+  - verified: rev-30 [reviewer] · run rev-20261017-696-final · 2026-10-17T08:55:12.390Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+  - verified: rev-30 [reviewer] · run rev-20261017-696-conflict-delta · 2026-10-17T08:57:23.489Z · commit 034d16355cc314b062ad04e4f52b828bd7b51086
 
 ## Blocked by
 
@@ -226,3 +239,65 @@ A-4388 independently audited: all 65 indexed Mac logs match current committed te
 Source correction clear with no remaining findings. Normal mode-free exact-head droplet verification may proceed. C2/C6 final freshness awaits that receipt; all failed old-head evidence remains historical.
 
 Criteria: C1 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-696 · 2026-10-17T08:54:45.053Z
+
+Exact reviewed-head droplet retry25f10014-85c4-403d-b3de-dd96d00c0fd5 is green at3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b (A-4421). Final evidence A-4422: original five files133.668s Linux/86.889s Mac median, below170s target; extracted files1.228s Linux/0.279s Mac. All13 touched files passed Linux and have65 matching Mac receipts A-4389;115/115 owned load repetitions passed. Full result2112 tests,2107pass,0fail,5skip; Neovim smoke completed. DropletLinuxc-8lon1,lifetime2293s,cost$0.1593. C2/C6 marked done with evidence for Reviewer final settlement. No source change since review/run; retaining claim until merge.
+
+### rev-30 · 2026-10-17T08:55:12.390Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-696-final
+commit: 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-696 at 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b, unchanged from source clearance A-4390 / rev-20261017-696-native-ownership. Origin and hub record match. Mode-free droplet 25f10014-85c4-403d-b3de-dd96d00c0fd5 / A-4421 exits zero, hub-only plus completed Neovim smoke. A-4422's per-file table independently matches durable timing rows. Read-only audit; no Reviewer execution.
+
+## Standards
+No remaining findings. M1/M2/L1/M4/M5 corrections remain intact. Clock held-read failure cleanup passes ordinary in 0.134 s; the default-realClock delayed-PID proof passes in 3.148 s and the hidden-worker pre-publication cleanup control in 1.855 s. Their reviewed assertions retain owned draining, exact PID publication/exit, and worker exit while omission marker/root still exist. The previously red subscription-hygiene native lifecycle case passes in 2.771 s with the complete progressing offset real Clock and unchanged lifecycle/digest assertions. No hard duration-budget or failing load gate appears. Tier/legacy duration overages are report-only.
+
+## Spec and criteria
+C2 refreshed at this exact head under primary E-677 timing policy: original five Linux test-second totals are claude-code-accounts 33.059192, account-limited 37.154613, account-poller 9.642805, accounts 41.682608, account-limits 12.129082; unrounded sum 133.668298709 (<170). Mac five-file median total is 86.889 s. Seven extracted lower-tier files add 1.228 s Linux/0.279 s Mac; subscription-hygiene's additional compatibility file is disclosed separately (50.060 s Linux), outside the original target. No partial baseline refresh is claimed; only the sixteen reviewed obsolete account allowances are removed.
+
+C6 verified. All thirteen touched test files pass on exact-head Linux, and all twenty-three task additions have ordinary passes plus 115/115 fresh load repetitions. A-4389 contains the accepted 65 Mac whole-file receipts, thirteen files x5, each matching committed source hashes and admitted serially below load 15. Its evidence.json and all raw logs were independently confirmed byte-identical to audited A-4388; only the carried-forward README arithmetic typo was corrected. This supplies current proof, rather than reusing the failed old-head Linux A-4365.
+
+C1/C3/C4/C5 source verification remains current and is refreshed with the final pass: injected AccountPoller Clock/FakeClock scheduling and persistence/latch proof; removed numeric scheduling waits; one native daemon preload site and shared three-binary fixture selection; complete original declaration audit A-4326 plus mapped new native lifecycle controls. The approved retained native-contract split is explicit. T-726's limits-time consistency and T-728's broader legacy-now callback deprecation remain separately owned follow-ups, not claimed implemented here.
+
+Counts independently sum to 2112 tests, 2107 pass, zero failures/cancellations, five skips: free 74/74; machine 2021 pass/5 skip; Neovim smoke 12/12. Host typecheck completes with candidate-tree receipt 1a2738ed00ddba8f3246708786f647be86ded307 reused remotely. Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite wall 2222.38 s, peak one-minute load 11.11, lifetime 2293 s, cost $0.1593.
+
+Final review clear, C1-C6 verified at this exact head; no remaining findings. Old not-clear source/gate artifacts remain the historical diagnosis and correction record.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-696 · 2026-10-17T08:56:35.696Z
+
+Coordinator-authorized conflict-only dev merge cdd17ca5 completed/pushed at034d16355cc314b062ad04e4f52b828bd7b51086, incoming9ed38812. A-4424 documents sole tiers conflict resolution: all dev entries plus7 own sorted additions; dev's fixture-isolation T4 retained. Durations auto merge equals dev minus16 own removals; no other edits. All13 owned test sources remain hash-identical. Typecheck/test:tiers and diff check pass. Per explicit disposition, green run25f10014/A-4421 at3ec2a6cf stands and no verify rerun is needed; integrated batch cover validates merged tree. Requesting conflict-only delta review.
+
+### rev-30 · 2026-10-17T08:57:23.489Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-696-conflict-delta
+commit: 034d16355cc314b062ad04e4f52b828bd7b51086
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only delta review T-696 at 034d16355cc314b062ad04e4f52b828bd7b51086, merge parents final-green 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b and dev 9ed388126a7bb24c6c1f900bfe63c0d1bb2da7b4. Origin matches. Primary Coordinator cdd17ca5 authorizes this rule-11 tier conflict merge, explicitly retains run 25f10014/A-4421 as task evidence with no rerun, and assigns combined-tree validation to the next integrated batch cover. A-4424 records static check results. Read-only review; no Reviewer execution.
+
+## Standards
+No findings. Parsed tiers.json independently equals incoming dev plus the seven existing T-696 additions against common base 010c9955; no extra overrides. Incoming account-fixture-isolation T4 classification is retained. Sorted manifest resolution preserves both entry sets. durations.json is incoming dev minus exactly sixteen existing obsolete account allowance removals, with zero new or modified allowance values and every non-allow field equal to dev. No timing baseline refresh.
+
+## Spec and freshness
+No findings. All thirteen task test Git blobs are identical to green 3ec2a6cf. The normalized zero-context own patch outside the two manifests is independently unchanged before/after merge, excluding only Git index/hunk-location metadata. Thus the production Clock/permission seams, complete offset-realClock compatibility correction, owned fake/native failure controls, assertion map and census remain as finally reviewed. Claimant reports typecheck, tier lint and whitespace checks green after merge.
+
+C1-C6 are refreshed under the explicit evidence carry-forward. A-4421 at the first parent supplies accepted exact-task hub plus Neovim smoke execution (2107 pass, zero fail, five skips), thirteen touched files, 115/115 owned repetitions and original five-file Linux total 133.668298709 s (<170); A-4389 supplies source-matched 65 Mac whole-file receipts and 86.889 s five-file medians. A-4423 remains the detailed final receipt/criteria audit. These are first-parent measurements retained by policy, not a claim of executing 034d1635. Combined-tree interactions and the incoming T4 classification belong to the integrated cover as directed. T-726/T-728 follow-up boundaries remain explicit.
+
+Conflict delta clear with no findings; C1-C6 current at this head. No new task verification requested.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

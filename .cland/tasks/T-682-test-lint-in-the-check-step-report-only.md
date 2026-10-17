@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T08:50:50.393Z
+updated: 2026-10-17T08:54:15.026Z
 ---
 
 ## Summary
@@ -42,20 +42,24 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:54.489Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
 - [x] C2. A planted numeric sleep used as a wait and a planted elapsed-milliseconds assertion each produce a finding, and the reasoned marker suppresses it, proved by lint tests.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:54.776Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
 - [x] C3. A T3 file without a lifecycle header produces a finding, and a Neovim file using only the stub hub qualifies for T2, proved by lint tests.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:55.162Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
 - [x] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
   - done: impl-682 · 2026-10-17T08:50:39.453Z
 - [x] C5. The repository's finding counts per rule at the merge head are recorded on this item as the baseline T-684 freezes.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.898Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
   - done: impl-682 · 2026-10-17T08:50:39.812Z
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
 
 ## Comments
 
@@ -175,3 +179,22 @@ Criteria: C4 failed (New interrupted-check fixture fails ordinary phase and0/5Li
 M4/A-4408 corrected in 57740c18; Coordinator-authorized dev merge 8c90f61d completed cleanly at pushed head dca244d35be5fbeeadf2d155e42892a5fc9f9a7d. Registered cleanup remains intentionally SIGKILL. Test now holds writer with fs.watch, signals exact writer PID, observes separately bounded completed-handler stdout receipt after its root write, then aborts npm and invokes registered cleanup. Original nonzero command/PID-gone/stopped-file/root-removal assertions retained. No sleeps or duration allowance. A cleanup-before-npm-abort control reproduced exact ENOENT red on old test, now passes; probes removed. A-4418 diagnosis/red-green and A-4416 five serial passes.
 Dev durations.json adopted unchanged (diff origin/dev empty), so typecheck, test:tiers and npm check now pass. Integration check/lint code remains intact in merged suite-shards/suites/worker/droplet runner. At load4.29 merged serial files pass: suite-check 1.229s, test-lint 0.279s, suite-tiers 0.667s, suite-dry-run 3.483s, suite-tier-report 0.214s.
 C5 refreshed merged baseline A-4414 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4414-t-682-merged-lint-baseline-at-dca244d3.json): 408 findings/236 affected of270 files; tier-import0, tier-process0, waits125, elapsed50, T3header233. Fresh complete check A-4415. Source review requested covering writer correction plus authorized dev merge before replacement verification.
+
+### rev-31 · 2026-10-17T08:53:52.436Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-682-source-5
+commit: dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected writer receipt + authorized dev merge source clear; Standards0/Spec0 findings, A-4420. M4 resolved: observe bounded CHECK-STOPPED after synchronous root write; fs.watch deliberately keeps writer alive for subsequent abort/forceful owned cleanup. Nonzero command, PID gone, writable-root receipt and root-removal assertions retained. Controlled old-red/new-green A-4418 and five serial receipts A-4416 inspected. Scanner/binder/fixtures/oracles/check selection/local worker byte-unchanged; overlapping T-697 hostGate injection and candidate check command both retained, remote command/receipt match preserved. durations exactly incoming dev; tiers sorted incoming entries+only two own. Exact origin tip and diff check clean. A-4414 current baseline408(125wait/50elapsed/233headers),236affected/270files matches once-after-typecheck A-4415; original FPcontrols T1zero. C1/C2/C3/C5 verified. C4 runtime remains pending replacement exact-head diff-selected gate; failed A-4406 is not final evidence. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
+
+### impl-682 · 2026-10-17T08:54:15.026Z
+
+Corrected source delta clear rev-20261017-682-source-5 at dca244d3 (A-4420), C1/C2/C3/C5 verified; C4/final await replacement Linux receipt. Exact-head diff-selected droplet verify c7ed55b1-309e-4a0f-ad90-eba0552fdc81 submitted successfully, queue position1, reports topic-426 to Implementer/Coordinator/assigned Reviewer. Head remains dca244d35be5fbeeadf2d155e42892a5fc9f9a7d; idle until hub result.
