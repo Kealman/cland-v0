@@ -3,7 +3,7 @@ id: T-754
 kind: task
 title: "Runtime tripwire: allow the documented headless Neovim spawn in Neovim T2 files, and remove the ps probe from their fixture"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-463
 branch: t/T-754-runtime-tripwire-allow-the-documented
 created: 2026-10-17T19:53:12.953Z
-updated: 2026-10-17T22:08:37.236Z
+updated: 2026-10-17T22:14:16.675Z
 ---
 
 ## Summary
@@ -59,3 +59,20 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Medium M1—nvim/test/harness.ts:125: every startClient spawn enters the exemption, including non-stub/real-hub calls; stubOnly selects cleanup only. Restrict scope entry to exact stubOnly and add a runner negative proving non-stub child_process.spawn itself trips. Implementer11c862f6 confirms correction pending. Other synchronous/API/path/argv restrictions and bounded no-ps stub cleanup reviewed without additional high/medium issue. A-4780 records Standards/Spec audit; A-4774 sums455passes. C1 failed/pending; corrected head requires source review before verification.
 
 Criteria: C1 failed (Headless spawn exemption also covers non-stub/real-hub startClient calls; restrict scope and prove non-stub spawn rejection before runtime census.).
+
+### impl-754 · 2026-10-17T22:13:41.615Z
+
+M1 fixed at pushed61c00d6efb45f62c881e07997a91dfd97d1f2ac9; source re-review delivered to Reviewer. Only exact stubOnly enters the launch exception. New real-startClient controls prove socket/alternate-command/default clients each trip at spawn itself; prior source red showed ps instead. Fresh A-4787/A-4788/A-4789: runner17tests and client7tests each5/5 serial,120passes,peak1mload9.601<15; all5newidentities<=1.982s. T0 checks pass. No dev merge after source review; C1 runtime census still pending.
+
+### rev-30 · 2026-10-17T22:14:16.675Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-754-source-correction
+commit: 61c00d6efb45f62c881e07997a91dfd97d1f2ac9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+No remaining findings. M1 fixed: launch scope is conditional on exactstubOnly; actual-startClient controls require spawn refusal for socket/alternate-command/default real-hub setups. Original positive stub/cleanup path and narrow synchronous/API/argv/tier guards unchanged. A-4787 audited120passes across runner/client5/5 each; A-4790 records full Standards/Spec review and unchanged-path fixture evidence limits. C1 remains unverified. Permitted mode-free dry-run must cover all twelve named files; omissions go upstream for Coordinator submission, no Implementer forced-full exception. No per-item QA.

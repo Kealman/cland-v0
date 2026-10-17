@@ -3,7 +3,7 @@ id: T-750
 kind: task
 title: projectHub defaults to fake harnesses and fake probes; native probes become opt-in
 state: open
-status: in progress
+status: review
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-17T21:58:24.990Z
+updated: 2026-10-17T22:22:44.261Z
 ---
 
 ## Summary
@@ -45,3 +45,24 @@ Coordinator decisions: named nativeProjectHub wrapper and import-only T3 opt-ins
 ### coord · 2026-10-17T21:58:24.990Z
 
 Scope note (coord, 21:58Z): trips that reach R1 files through fixtures owned by T-751 are T-751's residual and are judged under T-751's C1. These fixtures are close-run-fixture and remote-fixture, for example in suite-close-component. T-750's C1 counts every other R1 row. The review request and full-run evidence name those rows as "T-751-owned residual".
+
+### impl-750 · 2026-10-17T22:19:20.554Z
+
+Source pushed at 9d8a037bf5febf9823d0bbafc559d2f58facd8ef after merging origin/dev 7ec8680f. A-4794 assertion/scope map and Mac medians; A-4795 every native caller; A-4796 full raw before/after samples; A-4797 targeted trip proof. All27 timing files5/5 and10 native import samples green; 21 owned R1 files zero trips under enforce. C1 awaits same-head droplet receipt with Coordinator-owned residual exceptions; C2 implementation mapped, T-753 merge-policy classification remains explicitly pending as Coordinator instructed.
+
+### impl-750 · 2026-10-17T22:21:44.189Z
+
+Supplemental durable raw reporter proof A-4801 contains all280 green whole-file outputs (27×5 before,27×5 after,10 native samples); environment values redacted. Reviewer measurement question answered with Coordinator decision06ae69bc, which exempts import-only native swaps from5/5 and requires about10 serial samples instead.
+
+### rev-30 · 2026-10-17T22:22:44.260Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-750-source
+commit: 9d8a037bf5febf9823d0bbafc559d2f58facd8ef
+scope: full
+findings: [{"severity":"low","text":"The item-lead after median is stale (5.789s); final A-4796 samples and A-4801 reporter bundle support 1.213s. Publish a supplemental correction; no source-head change needed.","file":".cland/artifacts/A-4794-t-750-review-evidence-defaults-assertions-caller-map-and-mac-medians.md","line":44}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+Source clear at 9d8a037b; A-4803. Standards: one low evidence-table discrepancy, no high/medium. Spec: no findings. Native production defaults preserved across territory/merge-lock/compatibility seams; 88 mechanically changed files are import-only, with relocated stop/CLI assertions retained. Caller map covers 89 native opt-ins. Primary 06ae69bc measurement population audited: A-4801 280 raw successful whole-file outputs, 1440 pass/0 fail/cancel/skip; 27 before/after five-run medians checked. C1 remains unverified until full-population exact-head droplet trip evidence; C2 remains unverified pending T-753 classification and runtime proof. Named T-751/T-752 residuals follow primary dispositions d5a3a80c/6621d69b/900f3777. Inspect normal mode-free dry-run, then submit at this head; if dependencies land, authorized integration needs fresh delta review before verification. Do not use all mode to bypass the role restriction.

@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-465
 branch: t/T-702-subscriptions-digests-and-session
 created: 2026-10-16T19:59:37.198Z
-updated: 2026-10-17T22:08:59.890Z
+updated: 2026-10-17T22:13:04.553Z
 ---
 
 ## Summary
@@ -47,12 +47,16 @@ These files prove hub rules (digest ordering, steering, usage thresholds, archiv
 
 - [x] C1. The five files' manifest seconds fall from 245.8 s (A-3877) to 130 s or less.
   - done: impl-702 · 2026-10-17T22:08:35.171Z
+  - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
 - [x] C2. Their fake-binary call sites fall from 22 to 5 or less, `startDaemon` sites from 37 to 6 or less, and numeric sleeps from 8 to 0.
   - done: impl-702 · 2026-10-17T22:08:35.721Z
+  - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
 - [x] C3. The moved rules pass the tier lint as T1 or T2, and the remaining T3 tests each name their process behaviour.
   - done: impl-702 · 2026-10-17T22:08:38.462Z
+  - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-702 · 2026-10-17T22:08:38.995Z
+  - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
 
 ## Blocked by
@@ -64,3 +68,18 @@ T-685 (hub Clock seam), T-686, T-687. Starts after T-575 merges (it touches `ses
 ### impl-702 · 2026-10-17T22:00:48.749Z
 
 Implementation now migrates the five rule files to T2, adds T1 checkpoint replay/prune proofs, and retains native PID recovery, Git review/QA and merge boundaries plus one Claude digest frame in named T3 splits. Typecheck/tiers pass; test lint has no findings in touched files. Running every touched file whole-file 5/5 serially under load <15; C4 audit inventories all 53 original declarations and 522 assertion sites.
+
+### rev-30 · 2026-10-17T22:13:04.553Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-702-source
+commit: c14def9938ad21371a98d15761ba430ed31391dd
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec clear, no findings. Assertion map matches525 original sites/53declarations+3helpers; in-process rule/replay/clock seams retain observations and four namedT3 carriers retain native boundaries. Census4binary/4daemon/0sleep. A-4779 raw50accepted runs310passes/0fail-cancel-skip;13source hashes match. Recomputed all-destination Mac median sum41.580233420s≤130 (rounded table41.581), primary efacfb05 metric. Four dated E-677 allowances supported; exploratory exact connected identity5.964867s is A-4783, used only for allowance. Baselines unchanged. Audit A-4785. C1–C4 verified; C5 awaits positive exact-head droplet receipts for every touched destination. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
