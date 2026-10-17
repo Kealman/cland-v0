@@ -3,7 +3,7 @@ id: T-748
 kind: task
 title: "Runtime resource tripwire in the T1 and T2 phases: a test that really spawns, binds or opens a socket fails by name"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T18:40:07.232Z
+updated: 2026-10-17T19:20:20.092Z
 ---
 
 ## Summary
@@ -34,8 +34,9 @@ Tripped calls fail the test with file, test name, resource and stack, and the ru
 ## Acceptance criteria
 
 - [x] C1. A planted T1 test that spawns `node -e` and a planted T2 test that does the same are each named in the run's tier-mismatch report, while a T2 test using projectHub with fake probes and the cland CLI helper passes clean, proved by runner tests.
-  - done: impl-748 · 2026-10-17T18:01:08.766Z
   - verified: rev-30 [reviewer] · run rev-20261017-748-source-correction · 2026-10-17T18:02:21.251Z · commit 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
+  - done: impl-748 · 2026-10-17T18:51:55.677Z
+  - verified: rev-30 [reviewer] · run rev-20261017-748-runtime-fix-delta · 2026-10-17T18:53:26.376Z · commit 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
 - [ ] C2. An integrated cover at the merge head lists every current T1/T2 file that trips. The review request lists them, each routed to a fix or a retag.
   - failed: rev-30 [reviewer] · 2026-10-17T18:40:07.232Z · note A-4699 fails two functional cases and two hard budgets, stops before Neovim, and supplies only a partial hub trip census without complete fix/retag routing; await owned fixes and accepted complete evidence.
 
@@ -183,3 +184,48 @@ This note supersedes A-4700 solely to correct the raw numeric precision of M3; t
 Durable review A-4701.
 
 Criteria: C2 failed (A-4699 fails two functional cases and two hard budgets, stops before Neovim, and supplies only a partial hub trip census without complete fix/retag routing; await owned fixes and accepted complete evidence.).
+
+### rev-30 · 2026-10-17T18:53:26.376Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-748-runtime-fix-delta
+commit: 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-748 runtime-fix delta source — clear
+
+Exact head2ef020dc38bbf45b5b79b6ed5467e305209e4e87. Prior reviewed34ecdf01, authorized merge4ddcab2f with incoming devdf8e962979edcea23f907339f58c7aad761b2920, then two-file owned correction2ef020dc. Primary8b9e28f0 read directly authorizes rule11 dev merge for T-742/shared fixes, identifies copied fixture as task-owned and restart as T-746. Read-only review; no Reviewer execution.
+
+## Standards
+No findings. Independent JSON comparison proves tiers.json is exactly the complete incoming dev map plus sorted tier-context:T1 and tier-tripwire-runner:T3 entries. Dev thread-seed-plan:T1 retained; no other task-authored retag. Own diff against incoming dev contains only the expected runner/test/docs files, no durations.json change.
+
+Tripwire, CLI exception, context fallback, preload, load gate and runSuite implementations independently byte-identical to source-cleared34ecdf01. Prior authoritative enforced receipt fix remains intact, including quarantine/caught/reset and repetition isolation. Merge inherited T-742/T-695/T-741/T-690/T-727 and other shared changes; no new policy/trap boundary is authored.
+
+## Spec / runtime findings resolved in source
+M2/A-4701 fixed: suite-coverage.test.ts:46 adds tier-cli.ts to copied harness assets. Its helper imports only node:url and resolves copied hub/bin/cland.ts; that entry is already copied. Existing real daemon/spoke/CLI/fake-binary descendant coverage, malformed/truncated/missing/unclaimable receipt checks and final source-attribution assertions are unchanged. Read-only harness-copy search finds this single fixed copy-list consumer. Supplied full coverage file5/5 passes establish the formerly missing module path now loads.
+
+M3's cost concentration corrected without raising a budget/allowance. One combined four-run repetition test becomes four independently named report-only/enforce × caught/uncaught cases, each invoking one fresh fixture. All policy checks are retained: report-only exit0/5of5, enforce exit1/0of5/no quarantine excuse, trip name and one deduplicated row; enforce now also explicitly checks exactly one row. No cross-run state-sharing assertion was removed; these are fresh independent mode/catch contracts.
+
+Five raw samples per new case independently read:
+report-only uncaught1.285764–1.421831s; enforce uncaught1.171971–1.361686s; report-only caught1.293032–1.556218s; enforce caught1.195532–1.307968s. They are current Mac observations, not promised loaded-Linux costs. New-head hard-gate acceptance remains pending execution.
+
+C1 refreshed from unchanged runtime design and corrected full runner proof. Prior M1 enforcement finding remains resolved. No remaining source blocker.
+
+## Corrected evidence
+A-4706 log independently parsed: five12-case tripwire files, five2-case coverage files, five43-case runner files, five6-case runner-contract files=315passes. Supplemental duration14/quarantine6/context2=22passes;337accepted top-level passes total,zero failure/cancellation/skips. All invocations explicitly serial at unchanged committed source, supplied peak1mload5.35<15. Walls tripwire12.767–13.653s,coverage2.449–2.765s,runner59.290–60.422s,contract14.280–14.431s; supplemental25.103/3.025/0.094s. Static typecheck/tiers/diffcheck supplied green; manifest44free/238machine.
+
+## C2 and shared disposition
+A-4702/A-4703 preserve the first red-run snapshot:424report-only rows in52hub files (40T1 rows/8files,384T2 rows/44files). No Neovim execution or accepted final census is inferred. Routes cover exactly52files: R0six already-retagged files, R1thirty-four fixture-probe files, R2nine duration-context files, R3three native-Git files. Primary8d7d3100 read directly files R1 into T-750/T-751, R2T-752, R3T-753. R0 must be checked at the corrected-head run: lead-permissions/release-item/suite-check/suite-dry-run/territory-cli/verify-all are nowT3 via incoming dev. Lowered tiers still needing facts remain routed, not claimed clean.
+
+Primary76f6cdf1 read directly assigns shared resume-component hard5s failure to the next integrated durations-baseline refresh, prohibits task-side edits. Primary8b9e28f0 assigns restart startup timeoutT-746; taking T-742 may remove it. If only these shared reds remain, keep head and report run id for Coordinator disposition; neither instruction is a blanket advance acceptance of an unobserved failed run. No speculative allowance/assertion change.
+
+C2 remains failed/unverified pending corrected-head full receipt, updated complete trip list with fix/retag owners and R0 confirmation. Source clearance does not convert A-4699 into passing evidence. Primary6fa5c798 authorizes sourceclear→normal mode-free exact-head droplet; if not full, escalate to Coordinator for census cover. Next integrated dev cover repeats after merge. No per-item QA.
+
+Standards0/Spec0 findings. Source delta clear; verify C1 at2ef020dc, leave C2 pending.
+Durable review A-4708.
+
+Criteria: C1 verified.

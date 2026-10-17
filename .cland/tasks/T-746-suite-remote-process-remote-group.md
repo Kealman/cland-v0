@@ -4,7 +4,7 @@ kind: task
 title: "suite-remote-process: 'remote group started' misses its 15 s bound on dev (1 in 5 on the Mac)"
 state: open
 status: backlog
-size: S
+size: M
 labels:
   - v0.1.4
   - verification
@@ -17,7 +17,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T17:23:11.458Z
-updated: 2026-10-17T18:39:34.258Z
+updated: 2026-10-17T19:20:44.221Z
 ---
 
 ## Summary
@@ -37,3 +37,14 @@ After T-742 lands, rerun the file 20× whole-file on the Mac. If it still fails,
 ### coord · 2026-10-17T18:39:34.258Z
 
 Same signature in a second file: suite-close-recovery.test.ts "a sharded close handles restart with one result and confirmed cleanup" failed at line 19 with "remote group started: not within 15000 ms" in T-748's run f6262d9d (A-4699, branch base before T-742). The fix should cover every caller of the remote-group start wait, not just suite-remote-process.
+
+### coord · 2026-10-17T19:20:44.130Z
+
+Widening: the same class of wall-bound remote-fixture waits fails on loaded droplets in several files, not only the "remote group started" wait.
+- Integrated cover dfcc6b36 (A-4709, classified load-flake): five failures.
+  - executor-run.test.ts startReplyLost and startMarkerOnly.
+  - suite-close.test.ts "integrated remote close collects each map…", failing with "already has a suite queued or running".
+  - suite-close-recovery.test.ts "a sharded close handles restart…", failing on "remote group started".
+  - session-native-lifecycle (codex, keep_context=false).
+- T-748's run 29716dcc (A-4710): suite-close "occasion refuses implementers…" failed with "shard-2: machine readiness deadline reached".
+All of these pass 3/3 on the Mac at dev. Fix scope: every scripted-remote fixture wait (group start, machine readiness, release) uses hub-clock receipts or a load-scaled bound instead of a fixed wall-clock deadline. Size grows to M.
