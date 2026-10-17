@@ -3,7 +3,7 @@ id: T-729
 kind: task
 title: The legacy-allowance lint compares against the branch's merge base, not current dev
 state: open
-status: in progress
+status: review
 size: S
 rank: 6580
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-429
 branch: t/T-729-the-legacy-allowance-lint-compares
 created: 2026-10-17T08:49:03.786Z
-updated: 2026-10-17T08:58:19.075Z
+updated: 2026-10-17T08:59:48.252Z
 ---
 
 ## Summary
@@ -30,8 +30,9 @@ The check judges an allowance against the branch's own merge base with dev, not 
 
 ## Acceptance criteria
 
-- [ ] C1. A branch holding an untouched legacy allowance that dev has since removed passes the lint, and a branch that adds a new legacy allowance is still refused, proved by a lint test on a scratch repository with both histories.
-  - failed: rev-31 [reviewer] · 2026-10-17T08:58:19.075Z · note The new scratch-history proof needs T2 classification and cancellation-safe ownership/join before deleting its Git repository.
+- [x] C1. A branch holding an untouched legacy allowance that dev has since removed passes the lint, and a branch that adds a new legacy allowance is still refused, proved by a lint test on a scratch repository with both histories.
+  - done: impl-729 · 2026-10-17T08:59:14.609Z
+  - verified: rev-31 [reviewer] · run rev-20261017-729-source-2 · 2026-10-17T08:59:48.252Z · commit c6fafe033a984a34afae6f485195c16d6b44a611
 - [x] C2. The same rule holds at verify admission and at the merge gate, proved by the existing admission and merge-gate tests with the new case added.
   - done: impl-729 · 2026-10-17T08:56:37.671Z
 
@@ -55,3 +56,18 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Source not clear; Standards2medium/Spec0, A-4427. Implementer f3c49c35 accepts real-Git T2 classification and no exception. Cancellation cleanup owner question sent separately; normal awaited success and per-command timeout do not establish test-cancellation writer-before-rm ordering. Core merge-base implementation and pinned synthetic-tree history correct; live owner/schema/date/reason validation unchanged. Admission/merge tables retain positive dev-retirement and new/conversion refusal coverage. Exact origin head/diff whitespace checked; A-4425 local targeted/typecheck/tier checks inspected. C1 failed for the proof's tier/cleanup; C2 source present but final runtime unverified. Fresh corrected source review before diff-selected verify; no Reviewer edits/tests.
 
 Criteria: C1 failed (The new scratch-history proof needs T2 classification and cancellation-safe ownership/join before deleting its Git repository.).
+
+### rev-31 · 2026-10-17T08:59:48.252Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-729-source-2
+commit: c6fafe033a984a34afae6f485195c16d6b44a611
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; Standards0/Spec0 findings, A-4429. Both prior mediums resolved: new real-Git fixture is T2, and withHistory registers teardown before first Git, joins the complete scenario on every outcome before rm, while normal await preserves original error. Existing command bounds and every history/assertion proof retained. Only test helper/header and tier entry changed; production and admission/merge proofs byte-unchanged, no dev merge, exact origin tip and whitespace checked. Merge-base baseline/pinned synthetic-tree task+dev histories and new/conversion refusals remain correct. A-4428 fresh history2/2, typecheck/tierlint green; unchanged local evidence A-4425 inspected. C1 verified. C2 final execution remains pending same-head diff-selected droplet receipt; source clearance is not final readiness. No Reviewer edits/tests.
+
+Criteria: C1 verified.
