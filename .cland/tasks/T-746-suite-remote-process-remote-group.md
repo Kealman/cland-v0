@@ -2,8 +2,8 @@
 id: T-746
 kind: task
 title: "suite-remote-process: 'remote group started' misses its 15 s bound on dev (1 in 5 on the Mac)"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-457
 branch: t/T-746-suite-remote-process-remote-group
 created: 2026-10-17T17:23:11.458Z
-updated: 2026-10-17T20:15:51.562Z
+updated: 2026-10-17T20:36:41.381Z
+closed: 2026-10-17T20:36:41.381Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ Standards0/Spec0 findings. Final clear; verify all(C1) atc949d19d. No per-item Q
 Durable review A-4724.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T20:36:41.381Z
+
+Merged 4e3404d0c10097b777c137b7c98cfcac722198de onto dev.
