@@ -2,8 +2,8 @@
 id: T-693
 kind: task
 title: opencode-adapter.test.ts becomes OpenCode's contract file without the cross-adapter duplicates
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-434
 branch: t/T-693-opencode-adapter-test-ts-becomes
 created: 2026-10-16T19:59:35.909Z
-updated: 2026-10-17T12:30:47.928Z
+updated: 2026-10-17T13:40:54.256Z
+closed: 2026-10-17T13:40:54.256Z
 ---
 
 ## Summary
@@ -106,3 +107,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear under primaryf2856399/5ee61bcf; source A-4483 unchanged. A-4506/ef1934ff exact head:2072tests/2067pass/0fail/5skip; all22 owned cases and14new identities5/5 (70/70) pass. Only hard red is external verifier-routing Codex relaunch5.254s, known T-734 allowanceb170e855 on dev; primary explicitly accepts receipt and directs keep head/final verdict. No overall-green or Neovim-executed claim. C2: independently recomputed ten A-4482 raw Mac logs, all5/5 whole files zero fail/cancel/skip; median test-seconds31.117505877+1.563123500=32.680629377<=45, native call census24→14 unchanged. Distinct whole-file sum33.576109458. Primary5ee61bcf makes Mac decisive; Linux48.220389073+8.830077555=57.050466628 disclosed (>45), peak10.32/extra gate49.51s, no causal normalization. C1/C3 source-current refreshed; C2/C4 now verified. Linux2workers,suite2720.47s,reported lifetime2805s/cost$0.1948. No new run or source change requested.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-17T13:40:54.256Z
+
+Merged e07fe54be16380074405e5584ccc4fe72b5adc82 onto dev.
