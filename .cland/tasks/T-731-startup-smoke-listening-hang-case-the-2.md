@@ -2,8 +2,8 @@
 id: T-731
 kind: task
 title: "startup-smoke listening-hang case: the 2 s test budget ends before a loaded Linux hub reaches its first connection"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ regression_of: T-706
 topic: topic-430
 branch: t/T-731-startup-smoke-listening-hang-case-the-2
 created: 2026-10-17T09:52:07.766Z
-updated: 2026-10-17T10:30:35.315Z
+updated: 2026-10-17T10:30:43.542Z
+closed: 2026-10-17T10:30:43.542Z
 ---
 
 ## Summary
@@ -96,3 +97,7 @@ Selected hub phase 22/22 and Neovim smoke12/12 independently sum to34 tests,34 p
 Final review clear, no findings; C1/C2 verified at this exact head. Coordinator's stated integrated-cover/merge sequencing remains its rollout responsibility.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T10:30:43.542Z
+
+Merged 79191a95a91b33a1f09ef85498f8833c342ee273 onto dev.

@@ -3,7 +3,7 @@ id: T-692
 kind: task
 title: codex-adapter.test.ts becomes Codex's contract file; steer, snapshot and recovery permutations move to a scripted native transport
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-427
 branch: t/T-692-codex-adapter-test-ts-becomes-codex-s
 created: 2026-10-16T19:59:35.806Z
-updated: 2026-10-17T10:11:26.531Z
+updated: 2026-10-17T10:30:42.764Z
 ---
 
 ## Summary
@@ -34,32 +34,38 @@ updated: 2026-10-17T10:11:26.531Z
 
 ## Acceptance criteria
 
-- [ ] C1. `codex-adapter.test.ts` is the `codex` contract entry, with its header mapping each checklist step to one test.
+- [x] C1. `codex-adapter.test.ts` is the `codex` contract entry, with its header mapping each checklist step to one test.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
   - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
-- [ ] C2. The steer, snapshot and recovery permutations run in a T1 or T2 file on the scripted transport, passing the tier lint.
+  - done: impl-692 · 2026-10-17T10:30:40.766Z
+- [x] C2. The steer, snapshot and recovery permutations run in a T1 or T2 file on the scripted transport, passing the tier lint.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
   - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
-- [ ] C3. Manifest seconds of the touched and new files fall from 99.1 s (A-3877) to 55 s or less, and their fake-binary call sites from 33 to 15 or less.
+  - done: impl-692 · 2026-10-17T10:30:41.058Z
+- [x] C3. Manifest seconds of the touched and new files fall from 99.1 s (A-3877) to 55 s or less, and their fake-binary call sites from 33 to 15 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
-- [ ] C4. Their `startDaemon` call sites fall from 9 to 2 or less, each in a test naming its restart behaviour.
+  - done: impl-692 · 2026-10-17T10:30:41.429Z
+- [x] C4. Their `startDaemon` call sites fall from 9 to 2 or less, each in a test naming its restart behaviour.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
   - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
-- [ ] C5. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+  - done: impl-692 · 2026-10-17T10:30:41.729Z
+- [x] C5. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
   - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.531Z · commit ae783036b64f0d336fa9e74462c830ba73009645
-- [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-692 · 2026-10-17T10:30:42.105Z
+- [x] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.531Z · commit ae783036b64f0d336fa9e74462c830ba73009645
+  - done: impl-692 · 2026-10-17T10:30:42.404Z
 
 ## Blocked by
 
