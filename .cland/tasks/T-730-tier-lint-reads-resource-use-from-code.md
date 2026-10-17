@@ -3,7 +3,7 @@ id: T-730
 kind: task
 title: Tier lint reads resource use from code, not words in string literals
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-439
 branch: t/T-730-tier-lint-reads-resource-use-from-code
 created: 2026-10-17T08:58:32.895Z
-updated: 2026-10-17T11:33:36.836Z
+updated: 2026-10-17T14:58:53.147Z
 ---
 
 ## Summary
@@ -33,9 +33,8 @@ The tier lint decides a file's resource use from code: imports, and calls of the
 - [x] C1. A T1 test file that only names `nvim/test/x.test.ts` and "harness" inside string literals and comments gets no machine or harness finding, proved by a lint test.
   - done: impl-730 · 2026-10-17T11:31:08.760Z
   - verified: rev-30 [reviewer] · run rev-20261017-730-source · 2026-10-17T11:33:08.360Z · commit e1ebf77b02ab5233f7071bb35510269dab4bcfe4
-- [x] C2. A file that imports or calls a Neovim or process helper still gets its finding, and the classification of every file in hub/test/tiers.json on dev is unchanged or differs only where a literal caused it, listed in the review request.
-  - done: impl-730 · 2026-10-17T11:31:09.139Z
-  - verified: rev-30 [reviewer] · run rev-20261017-730-source · 2026-10-17T11:33:08.360Z · commit e1ebf77b02ab5233f7071bb35510269dab4bcfe4
+- [ ] C2. A file that imports or calls a Neovim or process helper still gets its finding, and the classification of every file in hub/test/tiers.json on dev is unchanged or differs only where a literal caused it, listed in the review request.
+  - failed: rev-30 [reviewer] · 2026-10-17T14:58:53.147Z · note Existing package shared-resource refusal fixtures are admitted by the new predicate and both hit120s timeouts; correct code-aware policy/fixtures and preserve boundary coverage before re-review.
 
 ## Notes
 
@@ -79,3 +78,18 @@ Criteria: C1 verified, C2 verified.
 ### impl-730 · 2026-10-17T11:33:36.836Z
 
 Source review clear: rev-20261017-730-source, A-4480, at e1ebf77b02ab5233f7071bb35510269dab4bcfe4. Exact-head droplet verify submission was refused before queueing by live admission: verify-tiers says T1 hub/test/test-lint.test.ts touches machine resources. No run id exists. Candidate npm run test:tiers passes, suggesting live hub uses older resource-word matching. Reported blocker to lead T-730 and Reviewer; no retry or alternate route per rule 5. Holding reviewed head pending an authorized admission correction.
+
+### rev-30 · 2026-10-17T14:58:53.147Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-730-runtime
+commit: e1ebf77b02ab5233f7071bb35510269dab4bcfe4
+scope: evidence
+findings: [{"severity":"medium","text":"M1: the two package-admission fixtures still expect shared-lock filesystem lookups to be refused, but touchesMachineResources now admits their existsSync('/tmp/cland-suite[‑nvim].lock') calls. Unlike an inert reporter string, these inputs execute a filesystem read; they proceed into runPackageSuite instead of producing the expected exit1/resource error and both hit120s timeouts in A-4557. Preserve code-aware inert-data acceptance while making the package-level resource-refusal fixtures/policy coherent; retain an actual shared-resource refusal proof and rerun these bounded package cases before a new source review.","file":"hub/test/suite-runner.test.ts","line":755}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear on A-4557/6569987b exit124. M1 suite-runner.test.ts:755–756: executed existsSync(shared-lock-path) fixtures still expect exit1/resource refusal, but the new sole AST qualification predicate admits them; both package cases run into120s timeouts. Fix package-boundary compatibility while retaining inert reporter-data acceptance and genuine resource-refusal meaning, then focused evidence/new-head source review. I missed this caller compatibility in prior source review. Raw log also shows out-of-diff ask-chain forward case red9.731s; classification belongs to lead.84/84 is only completed free phase, not a zero-failure whole run; machine incomplete, Neovim not reached. C2 failed, C1 source support retained. No unchanged-head retry or full task run requested.
+
+Criteria: C2 failed (Existing package shared-resource refusal fixtures are admitted by the new predicate and both hit120s timeouts; correct code-aware policy/fixtures and preserve boundary coverage before re-review.).

@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-443
 branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T14:43:04.611Z
+updated: 2026-10-17T14:58:54.011Z
 ---
 
 ## Summary
@@ -36,8 +36,10 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 ## Acceptance criteria
 
 - [ ] C1. The five files' manifest seconds fall from 268.0 s (A-3877) to 180 s or less.
-- [ ] C2. Fake droplets created by the five files fall from the count recorded before (from the fake provider's request log) by at least a third.
-- [ ] C3. Every remaining T3 test in the five files names its process behaviour, and the moved rules pass the tier lint as T1.
+- [x] C2. Fake droplets created by the five files fall from the count recorded before (from the fake provider's request log) by at least a third.
+  - done: impl-700 · 2026-10-17T14:58:54.011Z
+- [x] C3. Every remaining T3 test in the five files names its process behaviour, and the moved rules pass the tier lint as T1.
+  - done: impl-700 · 2026-10-17T14:58:30.836Z
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-700 · 2026-10-17T14:43:04.611Z
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.

@@ -3,7 +3,7 @@ id: T-738
 kind: task
 title: "executor-run real-worker proof: the 'host gate … (not repeated)' reuse marker is intermittently absent from a passing run's log"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-445
+branch: t/T-738-executor-run-real-worker-proof-the-host
 created: 2026-10-17T14:48:29.088Z
-updated: 2026-10-17T14:57:08.927Z
+updated: 2026-10-17T14:58:14.925Z
 ---
 
 ## Summary
@@ -37,3 +37,7 @@ Find out which. If the reuse is sometimes skipped, that's a product bug in the h
 ### coord · 2026-10-17T14:57:08.927Z
 
 Cause found by impl-700 (A-4556), independent of T-700's diff: when the first RemoteRun.start receipt is pending and the start succeeds on retry, Suites.#launch appends another local "Workers … admitted" header without moving remoteLogStart, so #collectLog counts those local bytes as already-collected remote output and skips a remote prefix (the host-gate marker in this case; potentially any early remote lines). Deterministic T1 replay fails in ~68 ms on dev. Product bug in remote log collection, not only a test flake.
+
+### impl-738 · 2026-10-17T14:58:14.925Z
+
+Red reproduced before product fix: node --test hub/test/suite-remote-log.test.ts fails in 68 ms on the current dev product (26f6ad11), missing the host-gate receipt prefix. A-4556 replay landed at the authorized T1 Suites/RemoteRun seam. Guarding the admission header with remoteLogStart === undefined makes the same replay green; it now asserts the full remote suffix and a single admission header. Auditing remaining #launch retry paths and running required repetitions next.
