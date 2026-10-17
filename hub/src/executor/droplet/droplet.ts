@@ -55,8 +55,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   // durable leases left by preparation, restarts or unconfirmed acquire cleanup.
   async #reserve(lease: DropletLease, budget: number, deadline: number): Promise<void> {
     const path = join(this.root, '.cland/run/executor/budget.lock');
-    // Lock ownership probes use OS time; translate the remaining hub-time budget.
-    const lock = await acquireLockWithRetry(path, Date.now() + Math.max(0, deadline - this.clock.now().getTime()));
+    const lock = await acquireLockWithRetry(path, deadline, { clock: this.clock, wait: this.dependencies.wait });
     try {
       if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
       await this.#save(lease);
@@ -151,7 +150,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     try {
       await (this.dependencies.host ?? processHost).createKey(dir, name, this.#env);
       await this.#reserve(lease, config.verification.remoteBudget, runDeadline);
-      await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock);
+      await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.wait);
       lease.watchdog = await (this.dependencies.host ?? processHost).armWatchdog(dir, this.#env);
       await this.#save(lease);
       const publicKey = await readFile(join(dir, 'key.pub'), 'utf8');

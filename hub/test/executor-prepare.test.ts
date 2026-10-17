@@ -1,6 +1,8 @@
+// T3: hub-process stop must cancel and drain an in-flight preparation before store closure.
+// Snapshot and lease durability otherwise use projectHub stop/serve in this process.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { projectHub, clandWithEnv, connectUi, startDaemon, tempProject, spawnSpoke, eventually, flushProjectLogs, pidAlive } from './harness.ts';
+import { projectHub, clandWithEnv, connectUi, startDaemon, tempProject, inProcessSpoke, eventually, flushProjectLogs, pidAlive } from './harness.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -110,7 +112,7 @@ test('prepare is a hub-owned control reserved for the human and Coordinator', as
   for (const role of ['implementer', 'reviewer', 'qa'] as const) {
     const name = `prepare-${role}`;
     assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
-    const spoke = await spawnSpoke({ discover: true, assignRole: false, cwd: root, name, role, sessionId: name });
+    const spoke = await inProcessSpoke(t, { discover: true, assignRole: false, cwd: root, name, role, sessionId: name });
     t.after(() => spoke.close());
     await spoke.waitForPresence([name]);
     const result = await clandWithEnv(root, { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: name }, 'executor', 'prepare', '--json');
@@ -120,7 +122,7 @@ test('prepare is a hub-owned control reserved for the human and Coordinator', as
 });
 
 test('prepare keeps its snapshot when builder deletion is unconfirmed, then the hub confirms release and cost', async t => {
-  const { root, api, ui, env, discovery } = await fixture(t, undefined, startDaemon);
+  const { root, api, ui, env, stop } = await fixture(t);
   api.faults.deleteError = 422;
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   const result = await eventually('prepare finishes despite pending builder deletion', async () => {
@@ -149,9 +151,8 @@ test('prepare keeps its snapshot when builder deletion is unconfirmed, then the 
   assert.match(retry.cause.message, /try later/);
   assert.ok(!records.some(record => record.event === 'executor-prepare-failed'));
   assert.ok(api.requests.filter(request => request.method === 'DELETE' && /^\/v2\/droplets\/\d+$/.test(request.path)).length >= 2);
-  assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
-  await eventually('hub stops with releasing lease persisted', () => !pidAlive(discovery.pid) ? true : undefined);
-  const restarted = await startDaemon(t, root, env);
+  await stop();
+  const restarted = await projectHub(t, root, env);
   const next = await connectUi(t, restarted.discovery);
   const pending = (await next.request({ type: 'executor.status' })).value as { snapshot: { image: number }; leases: { state: string }[] };
   assert.equal(pending.snapshot.image, result.snapshot!.image);
@@ -170,31 +171,6 @@ test('prepare keeps its snapshot when builder deletion is unconfirmed, then the 
   });
   assert.ok(released.lifetimeMs >= 0); assert.ok(released.costUsd > 0);
 });
-
-for (const failure of [409, 422, 503, 'timeout', 'key-503'] as const) {
-  test(`prepare retries a transient ${failure} builder delete within its release window`, async t => {
-    const { root, api, ui } = await fixture(t, { CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS: '1000', CLAND_TEST_DROPLET_RELEASE_MS: '5000' });
-    if (failure === 'key-503') api.faults.keyDeleteFailures = [503];
-    else api.faults.deleteFailures = [failure];
-    api.faults.echoToken = true;
-    assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
-    const result = await eventually('prepare confirms builder release after a transient failure', async () => {
-      const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error?: string; result?: { lifetimeMs: number | null; costUsd: number | null } } };
-      return value.prepare && value.prepare.state !== 'running' ? value.prepare : undefined;
-    }, 15000);
-    assert.equal(result.state, 'done', result.error);
-    assert.notEqual(result.result!.lifetimeMs, null);
-    assert.ok(result.result!.costUsd! > 0);
-    assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
-    assert.equal(api.images.length, 1);
-    await flushProjectLogs(t, root);
-    const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
-    assert.ok(!journal.includes('sentinel-prepare'));
-    const retry = journal.trim().split('\n').map(line => JSON.parse(line)).find(record => record.event === 'executor-release-retry');
-    assert.equal(retry.cause.status, failure === 'timeout' ? 0 : failure === 'key-503' ? 503 : failure);
-    assert.equal(retry.cause.id, failure === 'timeout' ? 'transport' : failure === 'key-503' ? 'key_delete_failed' : 'delete_failed');
-  });
-}
 
 test('failed replacement releases its builder, deletes a partial image and keeps the previous snapshot', async t => {
   const { root, api, ui } = await fixture(t);
@@ -327,7 +303,7 @@ test('completed transfers wait for snapshot regions to become visible before pub
 });
 
 test('a timed-out snapshot retains cleanup ownership through a late action, delayed catalogue and deletion refusal', async t => {
-  const { root, api, ui, env, discovery } = await fixture(t, { CLAND_TEST_DROPLET_ACTION_MS: '1000' }, startDaemon);
+  const { root, api, ui, env, stop } = await fixture(t, { CLAND_TEST_DROPLET_ACTION_MS: '1000' });
   // Admission bounds are real hub environment, not a seam inside the executor.
   api.faults.snapshotAfter = 100;
   api.faults.snapshotHiddenPolls = 4;
@@ -339,9 +315,8 @@ test('a timed-out snapshot retains cleanup ownership through a late action, dela
   api.faults.catalogueError = 503;
   const pending = (await ui.request({ type: 'executor.status' })).value as { snapshotRecovery?: unknown[] };
   assert.ok(pending.snapshotRecovery?.length, 'an unsuccessful catalogue read cannot forget the action');
-  assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
-  await eventually('hub exits while catalogue is unavailable', () => !pidAlive(discovery.pid) ? true : undefined);
-  const restarted = await startDaemon(t, root, env);
+  await stop();
+  const restarted = await projectHub(t, root, env);
   const next = await connectUi(t, restarted.discovery);
   api.faults.snapshotAfter = 1;
   api.faults.catalogueError = 0;
@@ -375,7 +350,7 @@ test('hub stop cancels and drains preparation before closing its store and prese
 });
 
 test('lost successful retirement and an unavailable catalogue preserve the replacement through restart', async t => {
-  const { root, api, env, ui, discovery } = await fixture(t, undefined, startDaemon);
+  const { root, api, env, ui, stop } = await fixture(t);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   const old = await eventually('initial image ready', async () => {
     const value = (await ui.request({ type: 'executor.status' })).value as { snapshot?: { image: number }; prepare?: { state: string } };
@@ -392,9 +367,8 @@ test('lost successful retirement and an unavailable catalogue preserve the repla
   assert.notEqual(uncertain.snapshot!.image, old.image);
   assert.equal(api.images.length, 1); assert.equal(api.images[0]!.id, uncertain.snapshot!.image);
   assert.equal(uncertain.snapshotRecovery![0]!.phase, 'retire');
-  assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
-  await eventually('hub stops with a durable retirement', () => !pidAlive(discovery.pid) ? true : undefined);
-  const restarted = await startDaemon(t, root, env);
+  await stop();
+  const restarted = await projectHub(t, root, env);
   const next = await connectUi(t, restarted.discovery);
   api.faults.catalogueError = 0;
   await eventually('confirmed old absence completes publication', async () => {

@@ -29,7 +29,7 @@ export function remoteWaits(clock: FakeClock) {
     }
     return settled;
   }
-  return { wait, run };
+  return { wait, run, get pending() { return [...pending].map(receipt => receipt.due); } };
 }
 
 export function drive<T>(fixture: { waits: ReturnType<typeof remoteWaits> }, work: Promise<T>): Promise<T> {

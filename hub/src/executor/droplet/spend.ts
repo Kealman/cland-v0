@@ -3,7 +3,7 @@ import { realClock, type Clock } from '../../hub/clock.ts';
 import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
-import { acquireLockWithRetry } from '../../hub/lock.ts';
+import { acquireLockWithRetry, type LockRetryTiming } from '../../hub/lock.ts';
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
 
 type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
@@ -23,14 +23,14 @@ function totals(ledger: Ledger, clock: Clock) {
   const spent = ledger.entries.filter(e => e.released?.startsWith(day)).reduce((sum, e) => sum + (e.cost ?? 0), 0);
   return { day, spent, reserved };
 }
-async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv): Promise<T> {
+async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, timing?: LockRetryTiming): Promise<T> {
   const path = spendPath(env);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const lock = await acquireLockWithRetry(`${path}.lock`);
+  const lock = await acquireLockWithRetry(`${path}.lock`, undefined, timing);
   try { const ledger = await read(path); const result = work(ledger); await durableJson(path, ledger); return result; }
   finally { await lock.release(); }
 }
-export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<void> {
+export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait?: (ms: number) => Promise<void>): Promise<void> {
   await locked(ledger => {
     if (ledger.entries.some(e => e.lease === lease.lease)) return;
     const reservation = Math.max(60000, Date.parse(lease.deadline) - Date.parse(lease.created)) / 3600000 * lease.priceHourly;
@@ -39,7 +39,7 @@ export async function reserveSpend(project: string, lease: DropletLease, cap: nu
     if (spent + reserved - (group?.reservation ?? 0) + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
     if (group) ledger.entries.splice(ledger.entries.indexOf(group), 1);
     ledger.entries.push({ project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
-  }, env);
+  }, env, { clock, wait });
 }
 export async function settleSpend(lease: DropletLease, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   if (lease.state !== 'released' || lease.costUsd === undefined) return;

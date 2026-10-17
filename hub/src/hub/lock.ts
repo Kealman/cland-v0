@@ -8,6 +8,7 @@
 // Every lifecycle change holds a crash-recoverable directory guard (`hub.lock.break`), so a stale-lock
 // recoverer cannot remove what another starter just created.
 import fs from 'node:fs/promises';
+import { realClock, type Clock } from './clock.ts';
 import { withCleanup, withCleanupAsync } from '../cleanup.ts';
 import { randomUUID } from 'node:crypto';
 import { setImmediate } from 'node:timers';
@@ -373,22 +374,27 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
 }
 
 /** Wait through transient executor contention, without changing the hub lock's fail-fast contract. */
-export async function acquireLockWithRetry(path: string, deadline = Date.now() + 60000): Promise<AsyncHubLock> {
-  const started = Date.now();
+export type LockRetryTiming = { clock?: Clock; wait?: ((ms: number) => Promise<void>) | undefined };
+export async function acquireLockWithRetry(path: string, deadline?: number, timing: LockRetryTiming = {}): Promise<AsyncHubLock> {
+  const clock = timing.clock ?? realClock;
+  const started = clock.now().getTime();
+  deadline ??= started + 60000;
   const limit = Math.min(deadline, started + 60000);
   let backoff = 25;
   let last: unknown;
-  while (Date.now() < limit) {
-    try { return await acquireLockAsync(path, undefined, Math.min(limit, Date.now() + 15000), 'UTC'); }
+  while (clock.now().getTime() < limit) {
+    // OS identity probes retain native deadlines; only contention/backoff uses hub time.
+    try { return await acquireLockAsync(path, undefined, Date.now() + Math.min(15000, limit - clock.now().getTime()), 'UTC'); }
     catch (error) {
       // Cleanup failures keep their primary error type; they are not safe contention.
       if (!(error instanceof HubLocked || error instanceof LockAcquisitionTimeout) || error.message.includes('; cleanup failed:')) throw error;
       last = error;
     }
-    const remaining = limit - Date.now();
+    const remaining = limit - clock.now().getTime();
     if (remaining <= 0) break;
-    await new Promise(resolve => setTimeout(resolve, Math.min(backoff, remaining)));
+    const ms = Math.min(backoff, remaining);
+    await (timing.wait?.(ms) ?? new Promise<void>(resolve => clock.setTimeout(resolve, ms)));
     backoff = Math.min(backoff * 2, 1000);
   }
-  throw new Error(`lock ${path}: acquisition deadline reached after waiting ${Date.now() - started} ms`, { cause: last });
+  throw new Error(`lock ${path}: acquisition deadline reached after waiting ${clock.now().getTime() - started} ms`, { cause: last });
 }
