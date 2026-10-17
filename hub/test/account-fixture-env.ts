@@ -26,4 +26,22 @@ process.env.FAKE_CODEX_HOME = join(root, 'fake-codex');
 process.env.FAKE_OPENCODE_HOME = join(root, 'fake-opencode');
 // A launched Implementer can carry real binary overrides; none is a fixture default.
 for (const key of ['CLAND_CLAUDE_BIN', 'CLAND_CODEX_BIN', 'CLAND_OPENCODE_BIN']) delete process.env[key];
-process.env.PATH = ['claude-code', 'codex', 'opencode'].map(name => fileURLToPath(new URL(`./fakes/${name}/`, import.meta.url))).join(':') + ':' + (process.env.PATH ?? '');
+process.env.PATH = accountBinaries().PATH!;
+
+/** One native-binary selection shared by the account contract fixtures. */
+export function accountBinaries(): Record<string, string> {
+  const directories = ['claude-code', 'codex', 'opencode'].map(name => fileURLToPath(new URL(`./fakes/${name}/`, import.meta.url)));
+  return { PATH: directories.join(':') + ':' + (process.env.PATH ?? ''), CLAND_CLAUDE_BIN: join(directories[0]!, 'claude'), CLAND_CODEX_BIN: join(directories[1]!, 'codex'), CLAND_OPENCODE_BIN: join(directories[2]!, 'opencode') };
+}
+
+// Lazy imports keep the generic harness's isolation preload independent of its fixture factories.
+export async function accountClaude(t: import('node:test').TestContext) {
+  const { fakeClaude } = await import('./harness.ts');
+  const fake = await fakeClaude(t);
+  return { ...fake, env: { ...fake.env, ...accountBinaries() } };
+}
+export async function accountCodex(t: import('node:test').TestContext) {
+  const { fakeCodex } = await import('./harness.ts');
+  const fake = await fakeCodex(t);
+  return { ...fake, env: { ...fake.env, ...accountBinaries() } };
+}

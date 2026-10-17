@@ -14,12 +14,15 @@ import { fixedRoles } from '../src/roles/config.ts';
 import { projectSessions } from '../src/adapters/index.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { writeDiscovery } from '../src/project.ts';
+import { realClock } from '../src/hub/clock.ts';
 
+// T3: a native Claude process dies and relaunches; its PID discovery needs progressing real time.
 test('launched, died and launched within sixty seconds preserve every transition', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t, { pollMs: 50 });
-  let now = Date.now();
-  const hub = await startHub({ now: () => new Date(now) });
+  let offset = 0;
+  const clock = { ...realClock, now: () => new Date(realClock.now().getTime() + offset) };
+  const hub = await startHub({ clock });
   onCleanup(t, () => hub.close());
   const dir = join(root, '.cland');
   await mkdir(dir, { recursive: true });
@@ -40,10 +43,10 @@ test('launched, died and launched within sixty seconds preserve every transition
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
   const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  now += 1000;
+  offset += 1000;
   process.kill(p.pid, 'SIGKILL');
   await ui.waitFor(f => f.type === 'session.process' && (f.process as { sessionId: string; status: string }).sessionId === p.sessionId && (f.process as { status: string }).status === 'exited');
-  now += 1000;
+  offset += 1000;
   const relaunched = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true });
   assert.equal(relaunched.ok, true, relaunched.error);
   const replacement = await withDiscoveredPid(ui, (relaunched.value as { process: { sessionId: string } }).process);

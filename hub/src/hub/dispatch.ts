@@ -1559,7 +1559,10 @@ export class Dispatcher {
         }
         if (isClientRequest(frame) && frame.type === 'account.clear') {
           const resumed = this.#guard.resumer(frame.type, client);
-          if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, 'account.clear', 'account clearing belongs to the Coordinator or the human');
+          if (caller) {
+            const decision = decide(caller.role, undefined, { tool: 'account.clear' });
+            if (!decision.ok) return this.#refuse(caller, frame, peer, decision.permission, decision.reason);
+          }
           const authorize = () => {
             const now = this.#asSession(frame);
             if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, 'account.clear', 'account clearing belongs to the Coordinator or the human');

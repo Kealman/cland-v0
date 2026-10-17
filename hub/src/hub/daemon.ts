@@ -357,7 +357,7 @@ export async function serveProject(root: string, options: { droplet?: DropletDep
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
-  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env);
+  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock);
   hub.dispatcher.useAccountPoller(accountPoller);
   void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.

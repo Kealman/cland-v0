@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { AppServerClient, RpcError } from '../adapters/codex/app-server.ts';
 import { accountEnvironment, readAccounts, selectAccount, type Account } from './registry.ts';
 import { codexWindows, type AccountList, type AccountReading, type LimitWindow } from './limits.ts';
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import type { HubCore } from '../hub/core.ts';
 import type { Sessions } from '../adapters/sessions.ts';
 import type { LogFn } from '../log.ts';
@@ -45,14 +46,15 @@ function claudeUsage(output: string): LimitWindow[] {
 
 /** Durable floors, per-account single flight, and two harness processes across the hub. */
 export class AccountPoller {
+  readonly #clock: Clock;
   readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
-  readonly #sessions: Sessions;
+  readonly #sessions: Pick<Sessions, 'list' | 'readAccountLimits'>;
   readonly #root: string;
   readonly #log: LogFn;
   readonly #schedule = new Map<string, Schedule>();
   readonly #hitNames = new Set<string>();
-  readonly #hits = new Map<string, { timer: NodeJS.Timeout | null; work: Promise<void>; finish: () => void }>();
+  readonly #hits = new Map<string, { timer: ClockTimer | null; work: Promise<void>; finish: () => void }>();
   readonly #pending = new Map<string, Promise<void>>();
   readonly #queue: Array<() => void> = [];
   readonly #kills = new Set<() => void>();
@@ -61,8 +63,9 @@ export class AccountPoller {
   readonly #bound: number;
   #active = 0;
   #closed = false;
-  #timer: NodeJS.Timeout | null = null;
-  constructor(core: HubCore, sessions: Sessions, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env) {
+  #timer: ClockTimer | null = null;
+  constructor(core: HubCore, sessions: Pick<Sessions, 'list' | 'readAccountLimits'>, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock) {
+    this.#clock = clock;
     this.#env = env;
     this.#floor = timing('FLOOR', 15 * 60_000, env); this.#minimum = timing('MINIMUM', 5 * 60_000, env); this.#bound = timing('BOUND', 30_000, env);
     this.#core = core; this.#sessions = sessions; this.#root = root; this.#log = log;
@@ -75,7 +78,7 @@ export class AccountPoller {
     if (this.#closed || this.#timer) return;
     for (const name of this.#hitNames) void this.poll(name);
     void this.#all(false).catch(() => {});
-    this.#timer = setInterval(() => { void this.#all(false).catch(() => {}); }, Math.min(this.#floor, 60_000));
+    this.#timer = this.#clock.setInterval(() => { void this.#all(false).catch(() => {}); }, Math.min(this.#floor, 60_000));
     this.#timer.unref();
   }
   async refresh(): Promise<AccountList> { await this.#all(true); return this.#core.accountLimits.list(await readAccounts(this.#env)); }
@@ -88,9 +91,9 @@ export class AccountPoller {
     this.#saveHits();
     let resolve!: () => void;
     const work = new Promise<void>(done => { resolve = done; });
-    const hit = { timer: null as NodeJS.Timeout | null, work, finish: () => {
+    const hit = { timer: null as ClockTimer | null, work, finish: () => {
       if (this.#hits.get(name) !== hit) return;
-      clearTimeout(hit.timer ?? undefined);
+      this.#clock.clearTimeout(hit.timer ?? undefined);
       this.#hits.delete(name);
       // Close cancels local waits, but a restart must retain the outstanding hit.
       if (!this.#closed) { this.#hitNames.delete(name); this.#saveHits(); }
@@ -103,7 +106,7 @@ export class AccountPoller {
       if (pending) { void pending.then(attempt); return; }
       const delay = this.#wait(name, true);
       if (delay > 0) {
-        hit.timer = setTimeout(attempt, Math.min(delay, 2 ** 31 - 1));
+        hit.timer = this.#clock.setTimeout(attempt, Math.min(delay, 2 ** 31 - 1));
         hit.timer.unref();
         return;
       }
@@ -123,7 +126,7 @@ export class AccountPoller {
   #wait(name: string, refresh: boolean): number {
     const state = this.#schedule.get(name);
     const floor = state?.failures ? this.#floor * 2 ** Math.min(state.failures, 2) : refresh ? this.#minimum : this.#floor;
-    return state ? Math.max(0, state.at + floor - Date.now()) : 0;
+    return state ? Math.max(0, state.at + floor - this.#clock.now().getTime()) : 0;
   }
   async #all(refresh: boolean): Promise<void> {
     if (this.#closed) return;
@@ -158,7 +161,7 @@ export class AccountPoller {
   #drain(): void { while (this.#active < 2 && this.#queue.length) this.#queue.shift()?.(); }
   #save(): void { this.#core.store.setMeta('account-polls', JSON.stringify([...this.#schedule])); }
   async #run(account: Account): Promise<void> {
-    const at = Date.now();
+    const at = this.#clock.now().getTime();
     const state = { at, failures: this.#schedule.get(account.name)?.failures ?? 0 };
     this.#schedule.set(account.name, state);
     this.#save(); // Persist the attempt before starting a process, including a hub crash.
@@ -179,9 +182,9 @@ export class AccountPoller {
       }
     } finally {
       if (!this.#closed) {
-        state.at = Date.now();
+        state.at = this.#clock.now().getTime();
         this.#save();
-        this.#log({ event: 'account-polled', account: account.name, harness: account.harness, ms: Date.now() - at, ok });
+        this.#log({ event: 'account-polled', account: account.name, harness: account.harness, ms: this.#clock.now().getTime() - at, ok });
       }
     }
   }
@@ -263,7 +266,7 @@ export class AccountPoller {
   }
   async close(): Promise<void> {
     this.#closed = true;
-    if (this.#timer) clearInterval(this.#timer);
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
     for (const hit of [...this.#hits.values()]) hit.finish();
     for (const kill of this.#kills) kill();
     while (this.#queue.length) this.#queue.shift()?.();

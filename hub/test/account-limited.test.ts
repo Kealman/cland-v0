@@ -1,20 +1,23 @@
-// Hard limits cross the real hub frame protocol and the three fake harnesses.
+// T3: native hard-limit error/hook contracts and an end-to-end account-limit hit.
+// Deferred eligibility uses FakeClock; permission permutations are T1 in account-permissions.test.ts.
+import { accountBinaries, accountClaude, accountCodex } from './account-fixture-env.ts';
+import { FakeClock } from './fake-clock.ts';
+import { inProcessSpoke } from './harness.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, projectHub, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, killDaemon, projectHub, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 type Result = { ok: boolean; value?: unknown; error?: string; code?: string; account?: string; resetsAt?: string | null; permission?: string; role?: string };
 
-async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, failed = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
+async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, failed = false) {
   const root = await tempProject(t);
   const config = join(root, 'config');
-  const claude = await fakeClaude(t);
-  const codex = await fakeCodex(t);
+  const claude = await accountClaude(t);
+  const codex = await accountCodex(t);
   const oc = join(root, 'fake-opencode');
   for (const dir of [join(config, 'cland'), join(root, '.cland'), join(root, 'codex-a'), join(root, 'codex-b'), join(root, 'claude-b'), join(root, 'oc-b'), oc]) await mkdir(dir, { recursive: true });
   await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.codex-a]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-a'))}\n[accounts.codex-b]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-b'))}\n[accounts.claude-b]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(join(root, 'claude-b'))}\n[accounts.oc-b]\nharness = "opencode"\ndata_home = ${JSON.stringify(join(root, 'oc-b'))}\n`);
@@ -23,18 +26,20 @@ async function fixture(t: TestContext, extraEnv: Record<string, string> = {}, fa
   await writeFile(join(root, '.cland', 'roles.toml'), '[reviewer.launch]\nharness = "codex"\naccount = "codex-a"\n');
   await writeFile(join(root, '.cland', 'crew.toml'), '[crew.reviewer]\npolicy = "pool"\nsize = 4\nkeep_context = true\n');
   const env = { ...claude.env, ...codex.env, XDG_CONFIG_HOME: config, FAKE_OPENCODE_HOME: oc, FAKE_OPENCODE_TURN_MS: '30', CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '1',
-    PATH: ['claude-code', 'codex', 'opencode'].map(h => fileURLToPath(new URL(`./fakes/${h}`, import.meta.url))).join(':') + ':' + (process.env.PATH ?? ''), ...extraEnv };
-  const daemon = await serve(t, root, env);
+    ...accountBinaries(), ...extraEnv };
+  const clock = new FakeClock(Date.now());
+  const daemon = await projectHub(t, root, env, { clock });
   const ui = await connectUi(t, daemon.discovery);
   await ui.request({ type: 'subscribe' });
-  await eventually('startup Claude poll settled', async () => (await journal(root, ui)).some(e => e.event === 'account-polled' && e.account === 'claude-b') || undefined);
+  await eventually('all startup polls settled', async () => (await journal(root, ui)).filter(e => e.event === 'account-polled').length === 3 || undefined);
   t.after(async () => {
     for (const file of await readdir(join(oc, 'servers')).catch(() => [])) {
       const s = JSON.parse(await readFile(join(oc, 'servers', file), 'utf8')) as { pid: number };
       await killDaemon(s.pid);
     }
   });
-  return { root, env, ui, daemon, codex, claude };
+  await clock.advance(1);
+  return { root, env, ui, daemon, codex, claude, clock };
 }
 async function launch(ui: FrameClient, name: string, account: string, extra: Record<string, unknown> = {}) {
   const r = await ui.request({ type: 'session.launch', name, account, role: 'reviewer', ...extra }, 30_000);
@@ -64,10 +69,10 @@ const limits = (reset: string, usedPercent = 0) => ({ rateLimits: { limitId: 'co
 
 for (const completedOnly of [false, true]) test(`Codex ${completedOnly ? 'failed completion' : 'error notification'} marks once, refuses launch, relaunch and retained handoff, and clears by hand`, async t => {
   const f = await fixture(t);
-  const coord = await spawnSpoke({ cwd: f.root, discover: true, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
-  const reset = new Date(Date.now() + 120_000).toISOString();
+  const reset = new Date(f.clock.now().getTime() + 120_000).toISOString();
   await writeFile(join(f.root, 'codex-a', 'rate-limits.json'), JSON.stringify(limits(reset)));
   const p = await launch(f.ui, 'rev-one', 'codex-a', { role: 'reviewer' });
   await idle(f.ui, p.name);
@@ -140,7 +145,7 @@ test('Claude hard StopFailure and OpenCode quota mark; overloaded and the two re
     await eventually('failed turn recorded', async () => (await journal(f.root, f.ui)).some(e => e.event === 'turn-failed' && e.session === p.name) || undefined);
     assert.equal((await account(f.ui, p.account!)).limited, undefined);
   }
-  const reset = new Date(Date.now() + 120_000).toISOString();
+  const reset = new Date(f.clock.now().getTime() + 120_000).toISOString();
   assert.equal((await f.ui.request({ type: 'session.signal', session: claude.name, launch: claude.sessionId, event: 'mod-measure', payload: { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: reset }] } })).ok, true);
   await send(f.ui, claude.name, 'hit the usage limit');
   assert.equal((await eventually('Claude limited', async () => (await account(f.ui, 'claude-b')).limited)).resetsAt, reset);
@@ -155,15 +160,15 @@ test('Claude hard StopFailure and OpenCode quota mark; overloaded and the two re
 });
 
 test('mark survives restart; live re-find succeeds, reset lifts the mark, and the next launch succeeds', async t => {
-  const f = await fixture(t, {}, false, startDaemon);
-  const reset = new Date(Date.now() + 30_000).toISOString();
+  const f = await fixture(t);
+  const reset = new Date(f.clock.now().getTime() + 30_000).toISOString();
   await writeFile(join(f.root, 'codex-a', 'rate-limits.json'), JSON.stringify(limits(reset)));
   const p = await launch(f.ui, 'persisted', 'codex-a');
   await idle(f.ui, p.name);
   await send(f.ui, p.name, 'hit the usage limit');
   const mark = await eventually('saved mark', async () => (await account(f.ui, 'codex-a')).limited);
-  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
-  const next = await startDaemon(t, f.root, f.env);
+  await f.daemon.stop();
+  const next = await projectHub(t, f.root, f.env, { clock: f.clock });
   const ui = await connectUi(t, next.discovery);
   await ui.request({ type: 'subscribe' });
   assert.deepEqual((await account(ui, 'codex-a')).limited, mark);
@@ -172,7 +177,8 @@ test('mark survives restart; live re-find succeeds, reset lifts the mark, and th
   assert.equal(rows.processes.find(r => r.name === p.name)?.pid, p.pid);
   const refusal = await ui.request({ type: 'session.launch', name: 'before-reset', account: 'codex-a' }) as Result;
   assert.equal(refusal.code, 'account-limited');
-  await ui.waitFor(e => e.type === 'account' && (e.account as AccountView).name === 'codex-a' && !(e.account as AccountView).limited, 45_000);
+  await f.clock.advance(30_001);
+  await ui.waitFor(e => e.type === 'account' && (e.account as AccountView).name === 'codex-a' && !(e.account as AccountView).limited);
   assert.equal((await account(ui, 'codex-a')).limited, undefined);
   assert.ok((await journal(f.root, ui)).some(e => e.event === 'account-limit-lifted' && e.by === 'reset'));
   await launch(ui, 'after-reset', 'codex-a');
@@ -184,9 +190,9 @@ test('account.clear permits human and Coordinator shells only, with typed inline
   await idle(f.ui, oc.name);
   await send(f.ui, oc.name, 'hit the usage limit');
   await eventually('held mark', async () => (await account(f.ui, 'oc-b')).limited);
-  for (const role of ['implementer', 'reviewer', 'qa', 'lead', 'aide']) {
+  for (const role of ['implementer']) {
     const name = `${role}-shell`;
-    const spoke = await spawnSpoke({ cwd: f.root, discover: true, name, role });
+    const spoke = await inProcessSpoke(t, { cwd: f.root, discover: true, name, role });
     t.after(() => spoke.close());
     await spoke.waitForPresence([name]);
     const r = await f.ui.request({ type: 'account.clear', account: 'oc-b', as: { name } }) as Result;
@@ -199,7 +205,7 @@ test('account.clear permits human and Coordinator shells only, with typed inline
     assert.match(cli.stderr, /forbidden.*account.clear/);
     assert.ok((await account(f.ui, 'oc-b')).limited);
   }
-  const coord = await spawnSpoke({ cwd: f.root, discover: true, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { cwd: f.root, discover: true, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const clear = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'coord' }, 'account', 'clear', 'oc-b');
@@ -212,7 +218,7 @@ test('Claude without a full push learns its reset from one after-hit harness pol
   const f = await fixture(t);
   const p = await launch(f.ui, 'claude-poll', 'claude-b', { role: 'implementer' });
   await idle(f.ui, p.name);
-  const reset = new Date(Date.now() + 120_000).toISOString();
+  const reset = new Date(f.clock.now().getTime() + 120_000).toISOString();
   await writeFile(join(f.root, 'claude-b', 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [{ kind: 'session', percent: 100, resets_at: reset }] } }));
   const before = await journal(f.root, f.ui);
   await send(f.ui, p.name, 'hit the usage limit');
@@ -227,7 +233,7 @@ test('Claude without a full push learns its reset from one after-hit harness pol
 
 test('a hard hit before the native first-turn response is retained through launch publication', async t => {
   const f = await fixture(t);
-  const reset = new Date(Date.now() + 120_000).toISOString();
+  const reset = new Date(f.clock.now().getTime() + 120_000).toISOString();
   await writeFile(join(f.root, 'codex-a', 'rate-limits.json'), JSON.stringify(limits(reset)));
   const p = await launch(f.ui, 'early-hit', 'codex-a', { brief: 'hit the usage limit; fail recovered turn before response' });
   const mark = await eventually('early hit saved', async () => (await account(f.ui, 'codex-a')).limited);
@@ -239,13 +245,13 @@ test('a hard hit before the native first-turn response is retained through launc
 
 for (const failed of [false, true]) test(`after-hit read waits for a recent ${failed ? 'failed poll backoff' : 'poll minimum'} and duplicate hits share it`, async t => {
   const pollDelayMs = failed ? 16000 : 12000;
-  const f = await fixture(t, { CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: failed ? '6000' : '12000', CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: failed ? '8000' : '60000' }, failed, failed ? projectHub : startDaemon);
+  const f = await fixture(t, { CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: failed ? '6000' : '12000', CLAND_TEST_ACCOUNT_POLL_FLOOR_MS: failed ? '8000' : '60000' }, failed);
   const p = await launch(f.ui, 'waiting-claude', 'claude-b', { role: 'implementer' });
   await idle(f.ui, p.name);
   let ui = f.ui;
   const { unlink } = await import('node:fs/promises');
   if (failed) await unlink(join(f.root, 'claude-b', 'usage-fail'));
-  const reset = new Date(Date.now() + 120_000).toISOString();
+  const reset = new Date(f.clock.now().getTime() + 120_000).toISOString();
   await writeFile(join(f.root, 'claude-b', 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [{ kind: 'session', percent: 100, resets_at: reset }] } }));
   const before = (await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b');
   await send(ui, p.name, 'hit the usage limit');
@@ -258,20 +264,20 @@ for (const failed of [false, true]) test(`after-hit read waits for a recent ${fa
   // A refresh stays bounded and cached while the after-hit read is waiting.
   assert.equal((await ui.request({ type: 'account.poll' }, 3000)).ok, true);
   if (!failed) {
-    assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
-    const next = await startDaemon(t, f.root, f.env);
+    await f.daemon.stop();
+    const next = await projectHub(t, f.root, f.env, { clock: f.clock });
     ui = await connectUi(t, next.discovery);
     assert.deepEqual((await account(ui, 'claude-b')).limited, mark, 'restart retains the mark and outstanding read');
   }
-  // Allow the asserted minimum/backoff plus time for the harness poll to complete.
-  // The reset alone does not prove that the deferred poll has logged its completion.
+  await f.clock.advance(pollDelayMs - 2);
+  assert.equal((await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b').length, before.length, 'still ineligible just before the boundary');
+  await f.clock.advance(2);
   await eventually('deferred poll supplies reset', async () => {
     if ((await account(ui, 'claude-b')).limited?.resetsAt !== reset) return undefined;
     return (await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b').length === before.length + 1 || undefined;
   }, pollDelayMs + 5000);
   const after = (await journal(f.root, ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b');
   assert.equal(after.length, before.length + 1);
-  assert.ok(Date.parse(String(after.at(-1)!.ts)) - Date.parse(String(before.at(-1)!.ts)) >= pollDelayMs);
   assert.equal((await journal(f.root, ui)).filter(e => e.event === 'account-limited' && e.account === 'claude-b').length, 1);
 });
 
@@ -280,9 +286,10 @@ test('an expired full reading cannot lift a new hard hit while its after-hit pol
   const f = await fixture(t, { CLAND_TEST_ACCOUNT_POLL_MINIMUM_MS: '8000' });
   const p = await launch(f.ui, 'expired-window', 'claude-b', { role: 'implementer' });
   await idle(f.ui, p.name);
-  const expired = new Date(Date.now() - 60_000).toISOString();
-  const future = new Date(Date.now() + 120_000).toISOString();
+  const expired = new Date(f.clock.now().getTime() - 60_000).toISOString();
+  const future = new Date(f.clock.now().getTime() + 120_000).toISOString();
   await f.ui.request({ type: 'session.signal', session: p.name, launch: p.sessionId, event: 'mod-measure', payload: { rateLimits: [{ kind: 'five_hour', percentUsed: 100, resetsAt: expired }] } });
+  await f.clock.advance(1000);
   await eventually('expired cached window published', async () => (await account(f.ui, 'claude-b')).windows.some(w => w.resetsAt === expired) || undefined);
   await writeFile(join(f.root, 'claude-b', 'usage-report.json'), JSON.stringify({ rate_limits: { limits: [{ kind: 'session', percent: 100, resets_at: future }] } }));
   await writeFile(join(f.root, 'claude-b', 'usage-hold'), '1');
@@ -290,6 +297,7 @@ test('an expired full reading cannot lift a new hard hit while its after-hit pol
   await send(f.ui, p.name, 'hit the usage limit');
   const mark = await eventually('new mark remains held', async () => (await account(f.ui, 'claude-b')).limited);
   assert.equal(mark.resetsAt, null);
+  await f.clock.advance(8000);
   await eventually('after-hit read waiting on fake answer', async () => (await f.claude.calls()).filter(c => c.args[0] === '-p').length === priorPolls + 1 || undefined);
   assert.deepEqual((await account(f.ui, 'claude-b')).limited, mark);
   const r = await f.ui.request({ type: 'session.launch', name: 'held-launch', account: 'claude-b' }) as Result;
@@ -297,6 +305,7 @@ test('an expired full reading cannot lift a new hard hit while its after-hit pol
   assert.equal(r.resetsAt, null);
   assert.match(r.error!, /until cleared/);
   await writeFile(join(f.root, 'claude-b', 'usage-release'), '1');
+  await eventually('released after-hit poll completion receipt', async () => (await journal(f.root, f.ui)).filter(e => e.event === 'account-polled' && e.account === 'claude-b').length === priorPolls + 1 || undefined);
   await eventually('future reset learnt', async () => (await account(f.ui, 'claude-b')).limited?.resetsAt === future || undefined);
   const logs = await journal(f.root, f.ui);
   assert.equal(logs.filter(e => e.event === 'account-limit-lifted' && e.account === 'claude-b').length, 0);

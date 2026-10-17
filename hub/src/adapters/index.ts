@@ -64,6 +64,7 @@ export function projectSessions(options: { core: HubCore; root: string; db?: str
       replacements.set(adapter.harness, adapter);
     }
     register(replacements.get('claude-code') ?? own(new ClaudeCodeAdapter(host, {
+      clock: options.core.clock,
       ...(env.CLAND_CLAUDE_BIN ? { bin: env.CLAND_CLAUDE_BIN } : {}),
       ...(pollMs ? { pollMs } : {}),
       ...(claudeAgentsMs ? { agentsMs: claudeAgentsMs } : {}),

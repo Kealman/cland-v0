@@ -1,3 +1,4 @@
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 // The Claude Code adapter (spec 4.3, research `harness-surfaces` §1). Claude Code has no server a host can
 // join; everything comes from inside each session or from its own CLI:
 //
@@ -88,6 +89,8 @@ export const HOOK_EVENTS: Readonly<Record<string, string>> = {
 type AgentEntry = { pid?: number; id?: string; sessionId?: string; status?: string; state?: string; waitingFor?: string; cwd?: string };
 
 export type ClaudeCodeOptions = {
+  /** Shared hub time for directory polling; native transport deadlines stay real. */
+  clock?: Clock;
   /** The `claude` executable: `CLAND_CLAUDE_BIN`, else `claude` on the PATH. */
   bin?: string;
   /** How often the processes' pids are checked (no CLI), ms. */
@@ -192,6 +195,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly capabilities = CLAUDE_CODE_CAPABILITIES;
   readonly clauseAtSpawn = CLAUDE_CODE_CLAUSE_AT_SPAWN;
   readonly #host: AdapterHost;
+  readonly #clock: Clock;
   readonly #bin: string;
   readonly #pollMs: number;
   readonly #injectTimeoutMs: number;
@@ -212,10 +216,11 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #usage = new Map<string, SessionUsage>();
   /** Sessions being stopped: still watched, but their exit is the stop's to report. */
   readonly #stopping = new Set<string>();
-  #timer: NodeJS.Timeout | null = null;
+  #timer: ClockTimer | null = null;
 
   constructor(host: AdapterHost, options: ClaudeCodeOptions = {}) {
     this.#host = host;
+    this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
     this.#bin = options.bin ?? this.#processEnv.CLAND_CLAUDE_BIN ?? 'claude';
     this.#pollMs = options.pollMs ?? 5000;
@@ -283,7 +288,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#host.adapterState?.write(`claude-poll:${d.configDir}`, JSON.stringify({ lastAt: d.lastAgentsAt, signedOut: d.signedOut, signedOutAt: d.signedOutAt, signedOutId: d.signedOutId, entries: d.entries }));
   }
 
-  #markSignedOut(p: HarnessProcess, at = Date.now()): void {
+  #markSignedOut(p: HarnessProcess, at = this.#clock.now().getTime()): void {
     const d = this.#directory(p);
     d.signedOutAt = Math.max(d.signedOutAt, at);
     if (d.signedOut) { this.#saveSchedule(d); return; }
@@ -295,7 +300,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#host.log({ event: 'claude-signed-out', configDir: d.configDir, account: p.account ?? null, login: `${this.#dirPrefix(p)}claude auth login` });
   }
 
-  #recovered(d: DirectorySchedule, at = Date.now()): void {
+  #recovered(d: DirectorySchedule, at = this.#clock.now().getTime()): void {
     if (!d.signedOut || at < d.signedOutAt) return;
     d.signedOut = false;
     this.#saveSchedule(d);
@@ -305,8 +310,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const d = this.#directory(p);
     if (this.#closed || d.signedOut || ![...this.#watched.values()].some(watched => this.#directory(watched) === d)) return Promise.resolve(null);
     if (d.agentsFlight) return d.agentsFlight;
-    if (Date.now() - d.lastAgentsAt < this.#agentsMs) return Promise.resolve(d.entries);
-    d.lastAgentsAt = Date.now();
+    if (this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) return Promise.resolve(d.entries);
+    d.lastAgentsAt = this.#clock.now().getTime();
     this.#saveSchedule(d);
     d.agentsFlight = continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, AgentEntry[] | null, unknown> {
       try {
@@ -323,7 +328,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         if (!this.#closed) {
           // Count from completion as well as invocation: slow CLI startup cannot shorten
           // the observable 30-second floor, and a restart retains either timestamp.
-          d.lastAgentsAt = Date.now();
+          d.lastAgentsAt = this.#clock.now().getTime();
           this.#saveSchedule(d);
         }
       }
@@ -488,7 +493,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     pending.resolve();
   }
 
-  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess, at = Date.now()): Interpretation {
+  interpret(event: string, payload: Record<string, unknown>, p?: HarnessProcess, at = this.#clock.now().getTime()): Interpretation {
     const meaning = interpret(event, payload);
     if (p && event === 'turn-end' && payload.hook_event_name === 'StopFailure' && payload.error === 'authentication_failed') {
       this.#markSignedOut(p, at);
@@ -536,7 +541,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   watch(p: HarnessProcess): void {
     this.#watched.set(p.sessionId, p);
     if (!this.#timer) {
-      this.#timer = setInterval(() => void this.#poll(), this.#pollMs);
+      this.#timer = this.#clock.setInterval(() => void this.#poll(), this.#pollMs);
       this.#timer.unref();
     }
   }
@@ -546,7 +551,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#prompts.delete(sessionId);
     this.#watched.delete(sessionId);
     if (this.#watched.size === 0 && this.#timer) {
-      clearInterval(this.#timer);
+      this.#clock.clearInterval(this.#timer);
       this.#timer = null;
     }
   }
@@ -570,7 +575,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     const directories = new Map<DirectorySchedule, HarnessProcess>();
     for (const p of this.#watched.values()) if (!this.#stopping.has(p.sessionId)) directories.set(this.#directory(p), p);
     await Promise.all([...directories].map(async ([d, representative]) => {
-      const at = Date.now();
+      const at = this.#clock.now().getTime();
       if (d.agentsFlight || d.signedOut || at - d.lastAgentsAt < this.#agentsMs) return;
       const entries = await this.#agents(representative);
       if (!entries) return;
@@ -643,8 +648,8 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       // slot rather than treating a suppressed query as evidence that the session exited.
       const cached = d.agentsVersion === previous;
       const candidate = this.#find(entries, p);
-      if (!d.signedOut && (!candidate || (cached && (!p.pidStarted || p.pid !== candidate.pid))) && Date.now() - d.lastAgentsAt < this.#agentsMs) {
-        yield* wait(new Promise(resolve => setTimeout(resolve, Math.max(1, this.#agentsMs - (Date.now() - d.lastAgentsAt)))));
+      if (!d.signedOut && (!candidate || (cached && (!p.pidStarted || p.pid !== candidate.pid))) && this.#clock.now().getTime() - d.lastAgentsAt < this.#agentsMs) {
+        yield* wait(new Promise<void>(resolve => this.#clock.setTimeout(resolve, Math.max(1, this.#agentsMs - (this.#clock.now().getTime() - d.lastAgentsAt)))));
         entries = (yield* wait(this.#agents(p, resumed))) ?? [];
       }
       // Authentication may fail while a shared query or the next slot is awaited.
@@ -676,7 +681,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#closed = true;
     for (const prompts of this.#prompts.values()) for (const prompt of prompts.values()) prompt.resolve?.([]);
     this.#prompts.clear();
-    if (this.#timer) clearInterval(this.#timer);
+    if (this.#timer) this.#clock.clearInterval(this.#timer);
     this.#timer = null;
     this.#watched.clear();
     for (const pending of this.#pending.values()) {

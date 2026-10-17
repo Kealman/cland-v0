@@ -190,6 +190,7 @@ export function decide(role: string | null, grants: readonly string[] | undefine
   // normalised before anything is decided: a blank item is no item (review of #32)
   const call: ToolCall = { ...input, item: typeof input.item === 'string' ? input.item.trim() || null : (input.item ?? null) };
   const { tool } = call;
+  if (tool === 'account.clear') return role === 'coordinator' ? { ok: true } : { ok: false, permission: tool, reason: 'account clearing belongs to the Coordinator or the human' };
   if (tool === 'inbox.decline' || tool === 'inbox.read') return { ok: false, permission: tool, reason: 'only the human acts on inbox rows' };
   // §3.7: every session may ask the human for review, QA or a handover.
   // The hub validates the request fields before recording anything.

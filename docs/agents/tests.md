@@ -118,8 +118,9 @@ for every time-dependent collaborator in a fixture. `clock` and the legacy
 `now` override are mutually exclusive.
 
 Do not mock global timers in a `projectHub` scheduling test: sockets, journal
-flush and I/O retries, native adapter polling/reconnect, AccountPoller and suite
-execution keep real time. Verification-wait metrics alone use hub time.
+flush and I/O retries, native transport/reconnect deadlines, AccountPoller child-process deadlines and suite
+execution keep real time. AccountPoller eligibility and Claude directory schedules
+use the hub Clock. Verification-wait metrics alone use hub time.
 
 Keep `startDaemon` only when an assertion concerns the hub process: startup,
 shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping,
