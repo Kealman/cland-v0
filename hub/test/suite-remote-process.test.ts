@@ -5,8 +5,8 @@ import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fixture } from './remote-fixture.ts';
-import { cland, clandWithEnv, eventually, projectHub, spawnSpoke } from './harness.ts';
+import { fixture, remoteEventually as eventually } from './remote-fixture.ts';
+import { cland, clandWithEnv, projectHub, spawnSpoke } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 

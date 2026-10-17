@@ -7,10 +7,10 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject, pidAlive } from './harness.ts';
+import { projectHub, cland, clandWithEnv, connectUi, flushProjectLogs, startDaemon, tempProject, pidAlive } from './harness.ts';
 import { ownProcess, onCleanup } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
-import { fixture } from './remote-fixture.ts';
+import { fixture, remoteEventually as eventually, remoteWaitMs } from './remote-fixture.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { candidateTree } from '../src/verification-tree.ts';
 
@@ -202,7 +202,7 @@ test('provider loss and verify cancel each report once and release the machine a
 
 
 test('remote start reconciles executed-but-lost replies and marker-only interruptions', async t => {
-  const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_DROPLET_WATCHDOG_STOP_MS: '500' } });
+  const f = await fixture(t, { hub: projectHub, test: longTest, env: { CLAND_TEST_DROPLET_WATCHDOG_STOP_MS: String(remoteWaitMs(500)) } });
   for (const fault of ['startReplyLost', 'startMarkerOnly'] as const) await t.test(fault, async () => {
     await f.api.setMachineFaults({ startReplyLost: 0, startMarkerOnly: 0, [fault]: 1 });
     const job = await f.launch('--fresh'); const remote = await f.remote(job.id);

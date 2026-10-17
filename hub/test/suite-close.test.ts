@@ -8,7 +8,8 @@ import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { cland, clandWithEnv, eventually, projectHub } from './harness.ts';
+import { remoteEventually as eventually } from './remote-fixture.ts';
+import { cland, clandWithEnv, projectHub } from './harness.ts';
 
 const exec = promisify(execFile);
 

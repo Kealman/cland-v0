@@ -8,7 +8,8 @@ import { execFile } from 'node:child_process';
 import { parseArgs, promisify } from 'node:util';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { availableParallelism, loadavg } from 'node:os';
+import { cland, clandWithEnv, connectUi, eventually, inProcessSpoke, spawnSpoke, projectHub, startDaemon, tempProject, testWaitMs } from './harness.ts';
 import { beforeDirectories, cleanupProcesses, ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
@@ -16,6 +17,15 @@ import { fixtureGuard } from './fixture-guard.ts';
 
 const exec = promisify(execFile);
 const token = 'sentinel-remote-suite-token';
+
+/** Failure budgets for real SSH/worker receipts, scaled by runnable work per CPU.
+ * These do not delay success or advance the scripted machine's product clock. */
+export function remoteWaitMs(baseMs = 30_000): number {
+  return Math.ceil(testWaitMs(baseMs) * Math.max(1, loadavg()[0]! / availableParallelism()));
+}
+export function remoteEventually<T>(what: string, check: () => Promise<T | undefined> | T | undefined, baseMs?: number): Promise<T> {
+  return eventually(what, check, remoteWaitMs(baseMs));
+}
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
 export async function fixture(t: TestContext, options: { machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const scripted = options.machine === 'scripted';
@@ -75,7 +85,11 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     for (const file of ['setsid', 'timeout', 'sha256sum', 'flock']) await chmod(join(bin, file), 0o700);
   }
   const bin = join(api.stateRoot, 'bin');
-  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '200', CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: '500', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
+  // Short deadlines belong to the fake clock. Real SSH subprocesses must survive
+  // loaded suite workers; a 200 ms readiness bound can kill even their first probe.
+  const machineMs = scripted ? 200 : remoteWaitMs(10_000);
+  const cleanupMs = scripted ? 500 : remoteWaitMs(10_000);
+  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: String(machineMs), CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: String(cleanupMs), CLAND_TEST_DROPLET_RELEASE_MS: String(cleanupMs), CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
   if (options.territory) {
     const initialized = await cland(root, 'init');
     assert.equal(initialized.code, 0, initialized.stderr);
@@ -105,8 +119,8 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     return JSON.parse(submitted.stdout) as { id: string; pid: number | null; cached?: { run: string } };
   };
   const messages = async (id: string, client = ui) => ((await client.request({ type: 'topic.history', topic })).value as { messages: { id: string; text: string }[] }).messages.filter(m => m.id === `suite:${id}`);
-  const result = async (id: string, client = ui) => eventually('remote result', async () => (await messages(id, client))[0], 20000);
-  const remote = async (id: string, client = ui) => eventually('remote group started', async () => {
+  const result = async (id: string, client = ui) => remoteEventually('remote result', async () => (await messages(id, client))[0]);
+  const remote = async (id: string, client = ui) => remoteEventually('remote group started', async () => {
     for (const directory of api.machineDirs.values()) {
       const home = join(directory, 'home/runner');
       const pgid = await readFile(join(home, 'runs', id, 'pgid'), 'utf8').catch(() => '');
@@ -116,6 +130,6 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     }
     const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text);
     return;
-  }, 15000);
+  });
   return { clock, waits: machine.waits, machine, dependencies, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }
