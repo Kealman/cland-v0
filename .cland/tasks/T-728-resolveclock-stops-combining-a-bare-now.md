@@ -3,8 +3,9 @@ id: T-728
 kind: task
 title: resolveClock stops combining a bare now callback with native timers; fixtures pass a complete Clock
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.4
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-438
 branch: t/T-728-resolveclock-stops-combining-a-bare-now
 created: 2026-10-17T07:54:46.590Z
-updated: 2026-10-17T11:38:51.842Z
+updated: 2026-10-17T11:57:01.737Z
 ---
 
 ## Summary
@@ -29,12 +30,39 @@ updated: 2026-10-17T11:38:51.842Z
 
 ## Acceptance criteria
 
-- [ ] C1. Passing a bare `now` callback to a hub or adapter fixture is refused or explicitly wrapped, proved by a T1 test, and no fixture in hub/test still passes one.
+- [x] C1. Passing a bare `now` callback to a hub or adapter fixture is refused or explicitly wrapped, proved by a T1 test, and no fixture in hub/test still passes one.
+  - done: impl-728 · 2026-10-17T11:53:48.656Z
+  - verified: rev-30 [reviewer] · run rev-20261017-728-source · 2026-10-17T11:55:56.397Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
 - [ ] C2. Every migrated fixture's tests keep their assertions' meaning, and the touched files pass 5/5 serially on the Mac and in the task's droplet verify.
-- [ ] C3. "Test levels" in docs/agents/tests.md says a test injects one complete Clock, never a bare now callback.
+- [x] C3. "Test levels" in docs/agents/tests.md says a test injects one complete Clock, never a bare now callback.
+  - done: impl-728 · 2026-10-17T11:53:49.020Z
+  - verified: rev-30 [reviewer] · run rev-20261017-728-source · 2026-10-17T11:55:56.397Z · commit 4bf57a1ce8324166788b803f1a18bbd848c8ca34
 
 ## Comments
 
 ### impl-728 · 2026-10-17T11:38:51.842Z
 
 Implementation in progress: resolveClock now rejects bare now injection at type and runtime boundaries; T1 red→green regression records the refusal and complete/default clock identity. Migrated the 16 legacy HubCore/startHub call sites (including hub/src/hub/store.test.ts) to FakeClock, with protocol-only cases on inProcessSpoke. Native subscription relaunch retains its explicit offset realClock. Visibility's exact seven-day and +1ms assertions reopen retained storage in-process before the timer-free leap. No baselines or allowances changed. Typecheck and test:tiers pass; report-only test lint captured. Serial Mac 5/5 checks running; one asks approval timeout is under comparison with the Coordinator per A-4481.
+
+### impl-728 · 2026-10-17T11:54:05.800Z
+
+Review requested from the Reviewer role at committed/pushed 4bf57a1ce8324166788b803f1a18bbd848c8ca34. Evidence A-4492 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4492-t-728-assertion-audit-and-mac-5-5-timing-evidence.md includes every changed declaration, unchanged assertion meanings, manifest baselines and all serial 5/5 file samples. All ten files are green, typecheck/tiers green, native approval completion fix 10/10 isolated plus asks 5/5; control and attribution limits are documented per Coordinator. C1/C3 done. C2 awaits exact-reviewed-head droplet verify after source clear. No item QA required by policy.
+
+### rev-30 · 2026-10-17T11:55:56.397Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-728-source
+commit: 4bf57a1ce8324166788b803f1a18bbd848c8ca34
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at4bf57a1c against fixed c0763941; Standards0/Spec0 findings, full analysis A-4494. ClockOptions and resolveClock refuse bare timestamp injection while preserving default/supplied Clock identity; T1 refusal/type regression and pinned-tree caller audit support C1. Docs complete-clock rule supports C3. Ten-file assertion audit preserves TTL/retention/coalescing/visibility boundaries; no removed old assertions, new native process starts, wall waits or allowance/baseline edits. Primary Coordinator6959c9af authorizes native approval completion sequencing; usage receipt and fresh frame watermark precede permission, retaining idle/approval/attach/needsYou assertions. Historical widened-race attribution remains unproven and disclosed. A-4492 supplies Mac5/5 per file and approval10/10; C2 remains pending same-head droplet/final execution audit. Normal mode-free task verify may run at this exact head; no per-item QA.
+
+Criteria: C1 verified, C3 verified.
+
+### impl-728 · 2026-10-17T11:57:01.737Z
+
+Source clear: rev-20261017-728-source / A-4494 at 4bf57a1ce8324166788b803f1a18bbd848c8ca34, no findings, C1/C3 verified. Exact-head droplet submit was refused before queue/run creation: verify-tiers classified T1 clock.test.ts as touching machine resources. Coordinator decision c2c9ea1c-f1c1-4d1d-82ba-011e5386c3ca identifies the stale live word-matching scanner, also seen by T-730, and directs no source split or head change. Holding this reviewed head until the Coordinator's explicit “hub restarted, verify open” notice, then resubmitting the same mode-free droplet command with impl-728/coord/rev-30 recipients. C2 pending; no execution evidence created by the refusal.

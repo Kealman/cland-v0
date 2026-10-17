@@ -3,8 +3,9 @@ id: T-699
 kind: task
 title: "executor-safety and executor-prepare: barriers instead of 16 s negatives, one fixture for the refusal and retry tables"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-435
 branch: t/T-699-executor-safety-and-executor-prepare
 created: 2026-10-16T19:59:36.725Z
-updated: 2026-10-17T11:33:47.410Z
+updated: 2026-10-17T11:59:01.367Z
 ---
 
 ## Summary
@@ -34,11 +35,19 @@ updated: 2026-10-17T11:33:47.410Z
 
 ## Acceptance criteria
 
-- [ ] C1. The two files' manifest seconds fall from 204.6 s (A-3877) to 110 s or less.
-- [ ] C2. No `pause(16000)` or other numeric wait is left in `executor-safety.test.ts`, proved by the test lint.
-- [ ] C3. Remote fixtures built for the refusal causes fall from 5 to 1, and `startDaemon` call sites in the two files from 6 to 2 or less.
-- [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+- [x] C1. The two files' manifest seconds fall from 204.6 s (A-3877) to 110 s or less.
+  - done: impl-699 · 2026-10-17T11:46:40.736Z
+- [x] C2. No `pause(16000)` or other numeric wait is left in `executor-safety.test.ts`, proved by the test lint.
+  - done: impl-699 · 2026-10-17T11:46:41.094Z
+  - verified: rev-30 [reviewer] · run rev-20261017-699-cleanup-correction · 2026-10-17T11:59:01.367Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
+- [x] C3. Remote fixtures built for the refusal causes fall from 5 to 1, and `startDaemon` call sites in the two files from 6 to 2 or less.
+  - done: impl-699 · 2026-10-17T11:46:41.588Z
+  - verified: rev-30 [reviewer] · run rev-20261017-699-cleanup-correction · 2026-10-17T11:59:01.367Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
+- [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+  - done: impl-699 · 2026-10-17T11:46:41.996Z
+  - verified: rev-30 [reviewer] · run rev-20261017-699-cleanup-correction · 2026-10-17T11:59:01.367Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-17T11:51:53.331Z · note New frozen-clock lock and pre-start cancellation tests can hang on assertion-failure teardown; correct and prove cleanup before fresh task verification.
 
 ## Comments
 
@@ -49,3 +58,45 @@ Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness 
 ### impl-699 · 2026-10-17T11:33:47.410Z
 
 Migration in progress: lock contention now uses retry receipts and FakeClock beyond the former 15s boundary; five refusal causes use a minimal in-process executor table with one 422 frame proof (Coordinator-approved interpretation). Retry causes share one provider fixture. Durability restarts now use projectHub except the real hub-stop/drain lifecycle proof. Serial whole-file measurements and assertion audit follow.
+
+### impl-699 · 2026-10-17T11:46:56.888Z
+
+Implementation pushed at 467ad0fa; source review requested from Reviewer in topic-435. Evidence A-4484 contains declaration-by-declaration assertion audit, Mac 35/35 serial full-file logs, timing summary and lint/typecheck receipts. Original pair median 204.579→107.770s; all seven factored files total119.574s. Explicit daemon call sites6→2, actual hub starts13→4. Eight legacy allowances removed, two shrunk; baselines unchanged. C5 awaits same-head droplet verification after clear source review.
+
+### impl-699 · 2026-10-17T11:47:40.045Z
+
+Coordinator timing disposition 76d73694: C1 applies to all seven files, judged on summed exact-head Linux droplet seconds. Mac medians total119.574s are disclosure only. C1 remains unverified pending that receipt; if Linux exceeds110s, report total and three costliest declarations to lead T-699 for a further-work/exception decision. Reviewer informed via ask.answer.
+
+### rev-30 · 2026-10-17T11:51:53.331Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-699-source
+commit: 467ad0fa25999b3e6d4cda6ec33d9f39582dd824
+scope: full
+findings: [{"severity":"medium","text":"M1: failure cleanup releases the held filesystem lock but leaves the in-flight acquisition asleep on remoteWaits/FakeClock. A failure at the pending-wait/no-create/no-fallback assertions (lines40–46) skips drive at48; remote-fixture then awaits stopHub and Suites.close awaits #launchWork, so teardown cannot finish. Own and settle the acquisition, including its registered product waits, before stopping the hub/removing roots; retain the pre-release assertions and add controlled assertion-failure cleanup proof for both lock kinds.","file":"hub/test/executor-admission-lock.test.ts","line":35},{"severity":"medium","text":"M2: failure cleanup cancels both pre-start acquisitions and then finish() waits for machine.started(). If an assertion fails while beforeCreate is held, cancellation makes Suites.#launch stop at its cancelled check before remote.start; scriptedMachine resolves started only from remote.start, so finish waits forever and never reaches f.stop. Drain/cancel tracked launch work without requiring a start receipt after cancellation; prove cleanup for a controlled pre-start assertion failure.","file":"hub/test/executor-safety-component.test.ts","line":84}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Source not clear; two medium teardown findings in A-4491. M1 executor-admission-lock.test.ts:35 releases the native lock on failure but never drives/drains its pending FakeClock retry; stopHub awaits launch work indefinitely. M2 executor-safety-component.test.ts:84 cancels pre-start acquisitions then waits for machine.started, although cancellation prevents start; cleanup never reaches f.stop. Preserve existing assertions and prove controlled pre-start assertion-failure cleanup. C2–C4 otherwise supported by source/audit; no criterion verification on this pass. A-4484 normal paths35/35 whole-file logs pass (160 test receipts, zero failures/cancellations/skips). C1 remains pending all-seven exact-head Linux total<=110s under primary Coordinator76d73694; Mac119.574066211s disclosed only. No Reviewer execution. Exact corrected head needs source review before verify.
+
+Criteria: C5 failed (New frozen-clock lock and pre-start cancellation tests can hang on assertion-failure teardown; correct and prove cleanup before fresh task verification.).
+
+### impl-699 · 2026-10-17T11:57:43.774Z
+
+M1/M2 fixed and new-head review requested at d7539519. A-4497 carries fresh 5/5 whole-file logs for both corrected files, controlled assertion-failure cleanup proofs for both lock kinds and both blocked same-name creates, and correction audit. Other five files unchanged from A-4484. C1 remains pending the all-seven exact-head Linux total (Mac119.038s disclosed only); C5 awaits that run after clear source review.
+
+### rev-30 · 2026-10-17T11:59:01.367Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-699-cleanup-correction
+commit: d7539519cf80aad6155f5341a5246dc42bf10181
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear, A-4499; M1/M2 from A-4491 closed. Both owners track submitted runs, cancel by suite before releasing barriers, drive only registered waits to finished/released receipt, separately bound the report, then stop all tracked hubs and assert no waits/unreleased leases. Failure cleanup requires no start receipt. Original negative/concurrency/legacy ownership assertions preserved. Controlled assertion-failure proofs cover both locks and both blocked same-name acquisitions; ten fresh raw whole-file logs pass5/5 each with50 receipts/zero fail/cancel/skip. Other five unchanged files retain A-4484 evidence. Standards0/Spec0 findings; C2/C3/C4 verified. C1 pending all-seven exact-head Linux sum<=110s under Coordinator76d73694 (Mac119.037951755s disclosure only); overage requires total/top-three declarations and primary decision. C5 source blocker resolved, final mark remains pending exact-head droplet evidence. Normal mode-free verification can follow at this exact head, subject to hub admission. No Reviewer execution.
+
+Criteria: C2 verified, C3 verified, C4 verified.
