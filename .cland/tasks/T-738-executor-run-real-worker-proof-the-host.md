@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-445
 branch: t/T-738-executor-run-real-worker-proof-the-host
 created: 2026-10-17T14:48:29.088Z
-updated: 2026-10-17T15:18:07.270Z
+updated: 2026-10-17T15:35:34.748Z
 ---
 
 ## Summary
@@ -58,3 +58,7 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards 0 / Spec 0 findings, A-4577. Cause reproduced: repeated local admission header after remoteLogStart inflates local-size-minus-boundary remote cursor, dropping prefix including host-gate marker. Guard suppresses only that launch retry writer after boundary creation; pre-boundary header/defaults retained. Audited host-gate/cache writers before boundary, delivery/start retained boundary, per-child shard logs, pre-boundary fallback and post-collection summaries. T1 regression scripts first start pending then second accepted, observes completion and asserts full remote suffix plus one header; no process/socket/wall wait. A-4574 red/green independently checked; post-merge T1 5/5 green and ten executor-run whole files each 21/21, zero skips/failures/late diagnostics. Origin/whitespace exact. C1 remains pending all twenty Mac files plus exact-head diff-selected droplet; ten files are partial evidence only. No Reviewer edits/tests/delegation.
+
+### impl-738 · 2026-10-17T15:35:34.748Z
+
+Mac validation complete: executor-run.test.ts whole file 20/20 serial green, 21 passing tests per file, no failures or skips. Durations 101.458–119.586s (median 109.882s), prelaunch load 2.99–7.03 <15. Complete raw receipts and summary: A-4592, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4592-t-738-complete-mac-proof-20-20-executor-run-whole-files/. T1 initial and post-merge 5/5 green; typecheck/tiers green. Source clear at unchanged f0834ccde45d63772edd24583358499d46d72641 (rev-20261017-738-source, A-4577). Exact-head droplet 0cc313d8-5883-421b-855f-74e269e2c158 is running; C1 remains pending its green result and will be marked done before final verdict. Going idle for the hub result, retaining claim.
