@@ -109,6 +109,7 @@ export class FakeHarness implements HarnessAdapter {
   model(name: string, model: string): void { this.#signal(name, undefined, model); }
   busy(name: string): void { this.#signal(name, 'busy'); }
   idle(name: string): void { this.#signal(name, 'idle'); }
+  waitingForApproval(name: string): void { this.#signal(name, 'waiting for approval'); }
   turn(name: string, options: { afterMs?: number; usage?: SessionUsage; model?: string } = {}): void {
     this.#signal(name, 'busy', options.model);
     const sessionId = this.#session(name).process.sessionId;

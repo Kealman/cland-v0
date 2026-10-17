@@ -66,7 +66,7 @@
     "hub/test/freshness.test.ts": "T3",
     "hub/test/handover-integrity.test.ts": "T3",
     "hub/test/handover.test.ts": "T3",
-    "hub/test/heartbeat.test.ts": "T3",
+    "hub/test/heartbeat.test.ts": "T2",
     "hub/test/hook-bridge-doctor.test.ts": "T3",
     "hub/test/hook-bridge.test.ts": "T3",
     "hub/test/human-routing.test.ts": "T3",

@@ -1,34 +1,94 @@
-import test from 'node:test';
+// T2 component: FakeClock drives hub rules; only the project fixtures retain real socket edges.
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, projectHub, startHub, tempProject, clauseAnswered, withDiscoveredPid } from './harness.ts';
+import { connectUi, dispatcherUi, frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { createHubBase, type HubBase } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
-import { fixture as remoteFixture } from './remote-fixture.ts';
-import { fixture as suiteFixture } from './suite-fixture.ts';
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { CrewFile } from '../src/crew.ts';
 import { fixedRoles } from '../src/roles/config.ts';
+import { FakeClock } from './fake-clock.ts';
+import type { Dispatcher } from '../src/hub/dispatch.ts';
+import type { SuiteJob } from '../src/hub/suites.ts';
+import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import type { Message } from '../src/protocol.ts';
 
 const heartbeat = (frame: Record<string, unknown>) => frame.type === 'message' && (frame.message as Message).detail?.event === 'heartbeat';
+const notes = async (ui: FrameClient) => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.detail?.event === 'heartbeat');
+
+// A protocol peer is enough for heartbeat routing; the MCP/spoke contract is tested elsewhere.
+async function session(t: TestContext, hub: HubBase, root: string, ui: FrameClient, name: string, role: string, sessionId: string) {
+  assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
+  return protocolPeer(t, hub.dispatcher, root, name, sessionId);
+}
+
+async function protocolPeer(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>, root: string, name: string, sessionId: string, launchToken?: string) {
+  let receive = (_line: string) => {};
+  let open = true;
+  const conversation = dispatcher.open({
+    send: frame => {
+      receive(`${JSON.stringify(frame)}\n`);
+      if (frame.type === 'role' || frame.type === 'deliver') queueMicrotask(() => peer.send({ type: 'ack', id: frame.id }));
+    },
+    close: () => { open = false; }, isOpen: () => open,
+  }, { authenticated: true, edge: 'socket' });
+  const peer = frameClient(line => conversation.receive(line.trimEnd()), fn => { receive = fn; }, () => { if (open) { open = false; conversation.closed(); } }, root);
+  onCleanup(t, () => peer.close());
+  peer.send({ type: 'hello', protocol: 2, name, sessionId, cwd: root, ...(launchToken ? { launchToken } : {}) });
+  await peer.waitFor(frame => frame.type === 'welcome');
+  await peer.waitFor(frame => frame.type === 'role');
+  return peer;
+}
+
+async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeoutMs?: number } = {}) {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const tracker = new Tracker({ root, db: join(root, 'tracker.db'), now: () => clock.now() });
+  tracker.start();
+  const crew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
+  await crew.start();
+  const hub = createHubBase({ secret: 'heartbeat', clock, store: new Store(), tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
+  beforeDirectories(t, async () => {
+    try { await hub.close(); }
+    finally { try { await crew.stop(); } finally { await tracker.stop(); } }
+  });
+  const ui = await dispatcherUi(t, hub.dispatcher, root);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const coord = await session(t, hub, root, ui, 'coord', 'coordinator', 'stable-coord');
+  // The first scheduler tick observes a connected session and establishes its schedule.
+  await clock.advance(heartbeatMs / 4);
+  return { root, clock, tracker, crew, hub, ui, coord };
+}
+
+// Digest tests consume the scheduler's durable facts, not executor process lifecycles.
+function job(clock: FakeClock, root: string, id: string, fields: Partial<SuiteJob> = {}): SuiteJob {
+  return { id, mode: 'auto', executor: 'local', cwd: root, topic: 'agents', to: ['impl'],
+    actor: { name: 'impl', sessionId: 'impl-id', shell: true }, head: 'head', branch: 'task', log: '', result: '', gate: '',
+    pid: null, started: clock.now().toISOString(), outcome: null, artifact: null, reported: false, error: null, state: 'running', ...fields };
+}
 
 test('an idle Coordinator wakes for a heartbeat with a digest, without adding a needs-you', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_HEARTBEAT_MS: '300', CLAND_IDLE_NOTIFY_MS: '60' });
+  const clock = new FakeClock();
+  const { discovery, dispatcher, fakes } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '300', CLAND_IDLE_NOTIFY_MS: '60' }, { clock, harnesses: 'fake' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  await clauseAnswered(ui, 'coord');
+  const p = (launched.value as { process: { sessionId: string } }).process;
+  await protocolPeer(t, dispatcher, root, 'coord', p.sessionId, fakes['claude-code']!.spawns[0]!.launchToken);
+  fakes['claude-code']!.idle('coord');
   const before = await ui.request({ type: 'inbox.list' });
-  const fired = await eventually('idle session is stale in its heartbeat', () => ui.frames.find(f => heartbeat(f) && (f.message as Message).text.includes('coord idle · age')));
+  await clock.advance(300);
+  const fired = await ui.waitFor(f => heartbeat(f) && (f.message as Message).text.includes('coord idle · age'));
   const message = fired.message as Message;
   assert.match(message.text, /In flight[\s\S]*Stale/);
-  await ui.waitFor(f => f.type === 'message' && (f.message as Message).from === 'coord' && (f.message as Message).text.includes('In flight'));
+  // The native adapter receipt proves the digest reached the Coordinator's input.
+  await ui.waitFor(f => f.type === 'delivery' && f.message === message.id && f.stage === 'injected');
+  assert.ok(fakes['claude-code']!.injections.some(i => i.message.id === message.id && i.message.text.includes('In flight')));
   const after = await ui.request({ type: 'inbox.list' });
   assert.equal((after.value as { needsYou: number }).needsYou, (before.value as { needsYou: number }).needsYou);
   const events = await ui.request({ type: 'events.list', filter: { kinds: ['heartbeat'] } });
@@ -36,105 +96,79 @@ test('an idle Coordinator wakes for a heartbeat with a digest, without adding a 
   assert.ok(p.sessionId);
 });
 
-
 test('busy and approval-waiting Coordinators coalesce heartbeats into the next turn without steering', async t => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { turnMs: 200 });
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_HEARTBEAT_MS: '100' });
+  const clock = new FakeClock();
+  const { discovery, dispatcher, fakes } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '100' }, { clock, harnesses: 'fake' });
+  const fake = fakes.codex!;
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
   const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'codex' });
   assert.equal(launched.ok, true, launched.error);
-  const p = (launched.value as { process: { pid: number; sessionId: string } }).process;
-  await eventually('Coordinator idle', async () => {
-    const listing = await ui.request({ type: 'session.list' });
-    return (listing.value as { processes: Array<{ state: string }> }).processes[0]?.state === 'idle' || undefined;
-  });
+  const p = (launched.value as { process: { sessionId: string } }).process;
+  await protocolPeer(t, dispatcher, root, 'coord', p.sessionId, fake.spawns[0]!.launchToken);
+  fake.idle('coord');
   await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'needs approval' });
-  await eventually('Coordinator busy', async () => {
-    const listing = await ui.request({ type: 'session.list' });
-    return (listing.value as { processes: Array<{ state: string }> }).processes[0]?.state === 'busy' || undefined;
-  });
+  fake.busy('coord');
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: '1m' });
+  await clock.advance(100);
   const busyHeartbeat = await ui.waitFor(heartbeat);
   assert.equal((busyHeartbeat.message as Message).detail?.digest, 'turn');
+  fake.waitingForApproval('coord');
   await ui.waitFor(f => f.type === 'session.state' && f.state === 'waiting for approval');
-  await eventually('three approval-waiting heartbeat firings', () => ui.frames.filter(heartbeat).length >= 3 || undefined);
+  await clock.advance(300);
+  assert.ok(ui.frames.filter(heartbeat).length >= 3);
   await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'a steered report' });
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
-  const notes = ui.frames.filter(heartbeat).map(f => f.message as Message);
-  assert.ok(notes.every(m => m.detail?.digest === 'turn'));
-  const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-  const pending = (history.value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.detail?.event === 'heartbeat' && m.stage === 'queued');
+  const heartbeats = ui.frames.filter(heartbeat).map(f => f.message as Message);
+  assert.ok(heartbeats.every(m => m.detail?.digest === 'turn'));
+  const pending = (await notes(ui)).filter(m => m.stage === 'queued');
   assert.equal(pending.length, 1);
-  assert.equal(pending[0]!.id, notes.at(-1)!.id);
-  assert.doesNotMatch(await fake.log(p.pid), /heartbeat · coord/, 'the blocked turn receives no heartbeat input');
-  await writeFile(join(fake.home, 'approve'), 'yes');
-  await eventually('approval answered', async () => {
-    const listing = await ui.request({ type: 'session.list' });
-    return (listing.value as { processes: Array<{ state: string }> }).processes[0]?.state === 'idle' || undefined;
-  });
+  assert.equal(pending[0]!.id, heartbeats.at(-1)!.id);
+  const injectedHeartbeats = () => fake.injections.flatMap(i => [i.message, ...(i.message.digest ?? [])]).filter(m => m.text.includes('heartbeat · coord'));
+  assert.equal(injectedHeartbeats().length, 0, 'the blocked turn receives no heartbeat input');
+  fake.idle('coord');
   await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'the next turn' });
-  await eventually('one heartbeat in the next turn', async () => {
-    const log = await fake.log(p.pid);
-    return log.includes('the next turn') && log.includes('heartbeat · coord') ? log : undefined;
-  });
-  const log = await fake.log(p.pid);
-  assert.equal((log.match(/heartbeat · coord/g) ?? []).length, 1);
-  assert.doesNotMatch(log, /steered[^\n]*heartbeat/);
+  const next = fake.injections.find(i => i.message.text.includes('the next turn'))!;
+  await ui.waitFor(f => f.type === 'delivery' && f.message === next.message.id && f.stage === 'injected');
+  assert.equal(injectedHeartbeats().length, 1);
+  assert.ok(next.message.digest?.some(m => m.id === pending[0]!.id));
+  assert.ok(fake.injections.filter(i => i.message.text.includes('a steered report')).every(i => !i.message.digest?.some(m => m.text.includes('heartbeat · coord'))));
 });
 
 test('a missed heartbeat survives hub restart and fires once rather than replaying missed intervals', async t => {
   const root = await tempProject(t);
   const db = join(root, 'heartbeat.db');
-  let clock = Date.now();
-  const now = () => new Date(clock);
-  t.mock.timers.enable({ apis: ['setInterval'] });
-  let hub = await startHub({ store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, now });
+  const clock = new FakeClock();
+  let hub = createHubBase({ secret: 'heartbeat', store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, clock });
   beforeDirectories(t, () => hub.close());
-  let ui = await connectWsUi(t, hub);
+  let ui = await dispatcherUi(t, hub.dispatcher, root);
   await ui.request({ type: 'subscribe' });
-  assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
-  const coord = await spawnSpoke({ hub, name: 'coord', sessionId: 'stable-coord', role: 'coordinator' });
-  onCleanup(t, () => coord.close());
-  await coord.waitForPresence(['coord']);
-  const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages.filter(m => m.detail?.event === 'heartbeat');
-  t.mock.timers.tick(300); // Observe the session and start its schedule at frozen time.
-  assert.equal((await history()).length, 0);
-  clock += 300;
-  t.mock.timers.tick(300);
+  const coord = await session(t, hub, root, ui, 'coord', 'coordinator', 'stable-coord');
+  await clock.advance(75); // Establish the connected session's schedule.
+  assert.equal((await notes(ui)).length, 0);
+  await clock.advance(300);
   await ui.waitFor(heartbeat);
-  assert.equal((await history()).length, 1);
-  ui.close();
-  const port = hub.port;
+  assert.equal((await notes(ui)).length, 1);
+  coord.close(); ui.close();
   await hub.close();
-  clock += 950; // More than three intervals pass with no hub to fire them.
-  hub = await startHub({ port, store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, now });
-  ui = await connectWsUi(t, hub);
+  await clock.advance(975); // More than three intervals pass with no hub to fire them.
+  hub = createHubBase({ secret: 'heartbeat', store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, clock });
+  ui = await dispatcherUi(t, hub.dispatcher, root);
   await ui.request({ type: 'subscribe' });
-  t.mock.timers.tick(300);
+  await clock.advance(75);
   await ui.waitFor(heartbeat);
-  assert.equal((await history()).length, 2, 'the missed intervals produce exactly one firing');
-  // Repeated scheduler ticks cannot replay the backlog or fire before a full
-  // interval has passed since the overdue delivery, regardless of I/O load.
-  t.mock.timers.tick(1200);
-  clock += 299;
-  t.mock.timers.tick(300);
-  assert.equal((await history()).length, 2, 'no replay before the next full interval');
-  clock += 1;
-  t.mock.timers.tick(300);
-  assert.equal((await history()).length, 3, 'the next interval produces one ordinary firing');
+  assert.equal((await notes(ui)).length, 2, 'the missed intervals produce exactly one firing');
+  // Repeated scheduler ticks before the next full interval cannot replay the backlog.
+  await clock.advance(299);
+  assert.equal((await notes(ui)).length, 2, 'no replay before the next full interval');
+  await clock.advance(1);
+  assert.equal((await notes(ui)).length, 3, 'the next interval produces one ordinary firing');
 });
 
 test('the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions', async t => {
-  const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '200' });
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'digest-coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
+  const { clock, ui, coord } = await fixture(t, 200);
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
   const items: string[] = [];
   for (let i = 0; i < 12; i++) {
@@ -147,11 +181,12 @@ test('the digest ages review and ready items and open asks, caps both sections, 
     assert.equal(claimed.ok, true, claimed.error);
     assert.equal((await ui.request({ type: 'task.edit', item: id, status: i === 0 ? 'review' : 'ready' })).ok, true);
   }
-  const asked = await coord.call<{ ok: boolean }>('ask', { topic: 'general', question: 'Which repair should wait?', options: ['one', 'two'] });
+  const asked = await coord.request({ type: 'ask', topic: 'general', question: 'Which repair should wait?', options: ['one', 'two'] });
   assert.equal(asked.ok, true);
   const before = ui.frames.length;
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: '1m' });
-  const matured = await eventually('all rows age through one interval', () => ui.frames.slice(before).find(f => heartbeat(f) && Number((f.message as Message).detail?.stale) === 13));
+  await clock.advance(400);
+  const matured = await ui.waitFor(f => ui.frames.indexOf(f) >= before && heartbeat(f) && Number((f.message as Message).detail?.stale) === 13);
   const message = matured.message as Message;
   assert.equal(message.detail?.inFlight, 13);
   assert.match(message.text, new RegExp(`${items[0]} review.*impl-0`));
@@ -161,135 +196,81 @@ test('the digest ages review and ready items and open asks, caps both sections, 
   assert.equal(message.text.split('Stale (13)')[1]!.split('\n').filter(line => line.startsWith('- ')).length, 11);
 });
 
-
 test('the digest includes running and queued runs and ages timeouts and ended runs without results', async t => {
-  const f = await suiteFixture(t, 'node -e "const fs=require(\'fs\');const p=setInterval(()=>{if(fs.existsSync(\'finish\'))clearInterval(p)},20)"', undefined, '', { CLAND_HEARTBEAT_MS: '100', CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS: '100' });
-  const coord = await spawnSpoke({ cwd: f.root, discover: true, name: 'coord', sessionId: 'run-digest-coord', role: 'coordinator' });
-  // A directory cleanup failure must not skip closing this spoke and keep Node alive.
-  onCleanup(t, () => coord.close());
-  const runs: string[] = [];
-  const digest = async (pattern: RegExp) => eventually('run facts in heartbeat', async () => {
-    const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.find(m => m.detail?.event === 'heartbeat' && pattern.test(m.text));
-  }, 2500);
-  try {
-    const first = await f.launch('auto');
-    runs.push(first.id);
-    // Timeout age can elapse during launch; wait for both facts in one digest.
-    const running = await digest(new RegExp(`run ${first.id} running · impl[\\s\\S]*run ${first.id} past its timeout · age`));
-    assert.match(running.text, new RegExp(`run ${first.id} running · impl`));
-    const secondResult = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['impl'] });
-    assert.equal(secondResult.ok, true, secondResult.error);
-    const second = secondResult.value as { id: string };
-    runs.push(second.id);
-    const queued = await digest(new RegExp(`run ${second.id} queued · human`));
-    assert.ok(queued);
-    assert.equal((await f.ui.request({ type: 'role.clear', session: 'impl' })).ok, true);
-    await writeFile(join(f.root, 'finish'), 'done');
-    await digest(new RegExp(`run ${first.id} ended without a posted result · age`));
-  } finally {
-    // The queued worker can start while the first result is withheld. Release
-    // and observe every submitted run even if a digest assertion failed, before
-    // teardown stops the hub and removes the workers' writable fixture root.
-    await writeFile(join(f.root, 'finish'), 'done');
-    for (const id of runs) {
-      await eventually(`digest worker ${id} writes its completion receipt`, () =>
-        readFile(join(f.root, '.cland/run/suites', id, 'result.json'), 'utf8').then(() => true, error => {
-          if (error.code === 'ENOENT') return undefined;
-          throw error;
-        }));
-    }
-    assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-    await eventually('both digest runs post their results', async () => {
-      const results = await f.results();
-      return results.length === runs.length && runs.every(id => results.some(result => result.id === `suite:${id}`)) || undefined;
-    });
-  }
+  const { clock, root, hub, ui } = await fixture(t, 100, { runTimeoutMs: 100 });
+  const first = job(clock, root, 'running');
+  hub.core.store.setMeta('suite-jobs', JSON.stringify([first]));
+  await clock.advance(200);
+  const running = (await notes(ui)).find(m => /run running running · impl[\s\S]*run running past its timeout · age/.test(m.text));
+  assert.ok(running, 'timeout and running facts occur together');
+  assert.match(running.text, /run running running · impl/);
+  const second = job(clock, root, 'queued', { state: 'queued', actor: null, started: null });
+  hub.core.store.setMeta('suite-jobs', JSON.stringify([first, second]));
+  await clock.advance(100);
+  assert.ok((await notes(ui)).some(m => /run queued queued · human/.test(m.text)));
+  // Completion and withheld publication are independent durable facts. No worker is needed.
+  first.outcome = { code: 0, cause: 'exit' };
+  first.finished = clock.now().toISOString();
+  hub.core.store.setMeta('suite-jobs', JSON.stringify([first, second]));
+  await clock.advance(100);
+  assert.ok((await notes(ui)).some(m => /run running ended without a posted result · age/.test(m.text)));
 });
 
-
 test('open asks show their age while a queued review request suppresses the missing-review row', async t => {
-  const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '150' });
-  const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'ask-digest-coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const created = await coord.call<{ item: { id: string } }>('task.create', { size: 'S', title: 'Pending review' });
-  const id = created.item.id;
+  const { clock, ui, coord } = await fixture(t, 150);
+  const created = await coord.request({ type: 'task.create', size: 'S', title: 'Pending review' });
+  assert.equal(created.ok, true, created.error);
+  const id = (created.value as { item: { id: string } }).item.id;
   await ui.request({ type: 'task.edit', item: id, status: 'review' });
-  await coord.call('send', { to: ['reviewer'], text: `review request ${id}\nBranch and source to review` });
-  await coord.call('ask', { topic: 'general', question: 'A decision is still needed', options: ['yes', 'no'] });
-  const aged = await eventually('open ask age in heartbeat', async () => {
-    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.find(m => m.detail?.event === 'heartbeat' && /ask .* unanswered · age/.test(m.text));
-  });
+  await coord.request({ type: 'send', to: ['reviewer'], text: `review request ${id}\nBranch and source to review` });
+  await coord.request({ type: 'ask', topic: 'general', question: 'A decision is still needed', options: ['yes', 'no'] });
+  await clock.advance(300);
+  const aged = (await notes(ui)).find(m => /ask .* unanswered · age/.test(m.text))!;
   assert.match(aged.text, /A decision is still needed/);
   assert.doesNotMatch(aged.text, new RegExp(`${id} review without`));
 });
 
 test('live remote leases appear in the heartbeat beside their verification run', async t => {
-  const f = await remoteFixture(t, { env: { CLAND_HEARTBEAT_MS: '100' } });
-  const coord = await spawnSpoke({ cwd: f.root, discover: true, name: 'coord', sessionId: 'lease-digest-coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  const job = await f.launch();
-  const digest = await eventually('live lease in heartbeat', async () => {
-    const history = await f.ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.find(m => m.detail?.event === 'heartbeat' && /lease cland-.* · (creating|active) · expires/.test(m.text));
-  });
-  assert.match(digest.text, new RegExp(`run ${job.id}`));
-  await f.result(job.id);
+  const { clock, root, hub, ui } = await fixture(t, 100);
+  const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'live', run: 'remote', name: 'cland-heartbeat',
+    created: clock.now().toISOString(), deadline: new Date(clock.now().getTime() + 1000).toISOString(), resource: 123,
+    tags: ['cland'], size: 'test', region: 'test', priceHourly: 0, keyName: 'test', state: 'active', keyId: 1 };
+  const remote = job(clock, root, 'remote', { executor: 'droplet', lease });
+  hub.core.store.setMeta('suite-jobs', JSON.stringify([remote]));
+  hub.core.store.setMeta('executor-leases', JSON.stringify([lease]));
+  await clock.advance(100);
+  const digest = (await notes(ui)).find(m => /lease cland-.* · (creating|active) · expires/.test(m.text))!;
+  assert.ok(digest);
+  assert.match(digest.text, new RegExp(`run ${remote.id}`));
 });
 
 test('roles have independent heartbeat schedules, renaming retains identity, and revocation stops firing', async t => {
-  const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root, { CLAND_HEARTBEAT_MS: '150' });
-  const ui = await connectUi(t, discovery);
+  const { clock, root, hub, ui, coord } = await fixture(t, 150);
+  hub.core.setSessionState('stable-coord', 'coord', 'idle', 'test adapter');
   await ui.request({ type: 'crew.set', key: 'qa.heartbeat', value: '1m' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', sessionId: 'rename-stable', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const history = async () => ((await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] }).messages.filter(m => m.detail?.event === 'heartbeat');
-  await eventually('Coordinator schedule started', async () => (await history()).length || undefined);
-  assert.equal((await coord.call<{ ok: boolean }>('rename', { name: 'coord-renamed' })).ok, true);
-  const qa = await spawnSpoke({ cwd: root, discover: true, name: 'quality', sessionId: 'qa-stable', role: 'qa' });
-  t.after(() => qa.close());
-  await qa.waitForPresence(['coord-renamed', 'quality']);
-  const both = await eventually('both roles have their own firings', async () => {
-    const notes = await history();
-    return notes.some(m => m.text.startsWith('heartbeat · coord-renamed')) && notes.some(m => m.text.startsWith('heartbeat · quality')) ? notes : undefined;
-  });
+  await clock.advance(200);
+  assert.equal((await coord.request({ type: 'rename', name: 'coord-renamed' })).ok, true);
+  await session(t, hub, root, ui, 'quality', 'qa', 'qa-stable');
+  hub.core.setSessionState('qa-stable', 'quality', 'idle', 'test adapter');
+  await clock.advance(300);
+  const both = await notes(ui);
+  assert.ok(both.some(m => m.text.startsWith('heartbeat · coord-renamed')));
+  assert.ok(both.some(m => m.text.startsWith('heartbeat · quality')));
   assert.ok(both.some(m => m.text.startsWith('heartbeat · coord ·')));
-  const who = await coord.call<{ sessions: Array<{ name: string; sessionId: string }> }>('who');
-  assert.equal(who.sessions.find(s => s.name === 'coord-renamed')?.sessionId, 'rename-stable');
+  const who = (await coord.request({ type: 'who' })).value as { sessions: Array<{ name: string; sessionId: string }> };
+  assert.equal(who.sessions.find(s => s.name === 'coord-renamed')?.sessionId, 'stable-coord');
   await ui.request({ type: 'role.clear', session: 'coord-renamed' });
-  const afterClear = (await history()).filter(m => m.text.startsWith('heartbeat · coord-renamed')).length;
-  const qaCount = (await history()).filter(m => m.text.startsWith('heartbeat · quality')).length;
-  await eventually('two QA intervals after revocation', async () => (await history()).filter(m => m.text.startsWith('heartbeat · quality')).length >= qaCount + 2 || undefined);
-  assert.equal((await history()).filter(m => m.text.startsWith('heartbeat · coord-renamed')).length, afterClear);
+  const afterClear = (await notes(ui)).filter(m => m.text.startsWith('heartbeat · coord-renamed')).length;
+  const qaCount = (await notes(ui)).filter(m => m.text.startsWith('heartbeat · quality')).length;
+  await clock.advance(300);
+  assert.ok((await notes(ui)).filter(m => m.text.startsWith('heartbeat · quality')).length >= qaCount + 2);
+  assert.equal((await notes(ui)).filter(m => m.text.startsWith('heartbeat · coord-renamed')).length, afterClear);
 });
 
-
 test('watched review and ready transitions wait a full interval even when a hand edit retains an old updated date', async t => {
-  const root = await tempProject(t);
-  let clock: number | undefined;
-  const now = () => new Date(clock ?? Date.now());
-  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), now });
-  tracker.start();
-  t.after(() => tracker.stop());
-  const crew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
-  await crew.start();
-  t.after(() => crew.stop());
-  const hub = await startHub({ tracker, crew, roles: fixedRoles(), heartbeatMs: 200, now });
-  t.after(() => hub.close());
-  const ui = await connectWsUi(t, hub);
-  await ui.request({ type: 'subscribe' });
-  await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
-  const coord = await spawnSpoke({ hub, name: 'coord', sessionId: 'retained-updated-coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
+  const { root, clock, ui } = await fixture(t, 200);
+  await clock.advance(200);
   await ui.waitFor(heartbeat);
-  clock = Date.now(); // Freeze age while real watcher I/O observes both transitions.
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: 'off' });
   const items: Array<{ id: string; file: string; status: string }> = [];
   for (const status of ['review', 'ready']) {
@@ -297,7 +278,7 @@ test('watched review and ready transitions wait a full interval even when a hand
     assert.equal(created.ok, true, created.error);
     items.push({ ...(created.value as { item: { id: string; file: string } }).item, status });
   }
-  clock += 250; // The paused schedule is overdue before either watched transition.
+  await clock.advance(250); // The paused schedule is overdue before either watched transition.
   for (const item of items) {
     const path = join(root, '.cland/tasks', item.file);
     const source = await readFile(path, 'utf8');
@@ -307,8 +288,9 @@ test('watched review and ready transitions wait a full interval even when a hand
   }
   const cursor = ui.frames.length;
   await ui.request({ type: 'crew.set', key: 'coordinator.heartbeat', value: '1m' });
-  const first = await eventually('overdue firing after the watched transitions', () => ui.frames.slice(cursor).find(heartbeat));
+  await clock.advance(50);
+  const first = await ui.waitFor(f => ui.frames.indexOf(f) >= cursor && heartbeat(f));
   assert.equal((first.message as Message).detail?.stale, 0, 'an old updated date does not age a newly observed state');
-  clock += 200;
-  await eventually('both watched states age through a full interval', () => ui.frames.slice(cursor).find(f => heartbeat(f) && (f.message as Message).detail?.stale === 2));
+  await clock.advance(200);
+  await ui.waitFor(f => ui.frames.indexOf(f) >= cursor && heartbeat(f) && (f.message as Message).detail?.stale === 2);
 });
