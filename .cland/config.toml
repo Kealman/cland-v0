@@ -21,7 +21,8 @@ executor = "droplet"
 # D53 (2026-10-16): droplet runs at 2 workers take 40–50 min of suite wall (T-686 run 16016692: 3025 s lifetime), so the bounds keep a margin.
 lifetime = "90m"
 run_timeout = "75m"
-daily_spend_usd = 14
+# D55 (2026-10-17): $24 for 2026-10-17 only, so the D53 test wave runs to midnight; back to 14 for 2026-10-18.
+daily_spend_usd = 24
 
 [verification.droplet]
 # D53 (2026-10-16): 2 workers per c-8 (T-655: green at peak load 9; 4 workers peaked at 16 and went red).
