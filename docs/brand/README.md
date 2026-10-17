@@ -13,7 +13,7 @@ Decided with the human on 2026-10-17. Everything public is in English only.
   2. Turn your AIs into a team.
   3. Your subscriptions can do more.
   4. Assemble your AI crew.
-  5. Get more from every plan you pay for. (the X header's second line)
+  5. Get more from every plan you pay for.
 
 The pitch behind them: cland makes several AI subscriptions work as one system. The load spreads across plans, and a strong model leads cheaper and open models that do the legwork.
 
@@ -35,3 +35,5 @@ Colours come from the workbench (`docs/design/main-screen/README.md`): ground `#
 | `png/favicon-32.png`, `png/favicon-180.png`, `png/favicon-512.png` | Favicon, Apple touch icon, PWA icon |
 
 SVG renders are made with `rsvg-convert`; the HTML sources are rendered with headless Chrome at their own size (`--window-size=W,H --screenshot`), JetBrains Mono from Google Fonts.
+
+The X header keeps its content inside the phone's safe zone: x 300 to 1200 and y 160 to 470 of 1500×500. On a phone X crops about 125 px off each side, the status bar covers the top 150 px and the back and search buttons sit at the sides; on desktop the avatar covers the bottom left.
