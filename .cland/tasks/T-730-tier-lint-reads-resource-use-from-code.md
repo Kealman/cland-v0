@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-439
 branch: t/T-730-tier-lint-reads-resource-use-from-code
 created: 2026-10-17T08:58:32.895Z
-updated: 2026-10-17T15:06:59.053Z
+updated: 2026-10-17T15:12:48.479Z
 ---
 
 ## Summary
@@ -139,3 +139,7 @@ Source clear; M1 resolved, no remaining findings. Refresh C1/C2 source verificat
 Durable review: A-4562.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-730 · 2026-10-17T15:12:48.479Z
+
+Same-head droplet verification ff69cf52-32fa-424a-a6b2-45323f6c1ffb passed at reviewed 733193450009713abf324d2a6b47910fcb98aadb: exit0, hub-selected plus Neovim smoke, 230pass/0fail/0cancelled/0skipped. Linux x64 c-8 lon1, Node24.21.0, Neovim0.12.5; droplet lifetime272s, cost$0.0189. Evidence A-4570 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4570-suite-ff69cf52-32fa-424a-a6b2-45323f6c1ffb-auto-at-7331934.log. Reviewer received the same-head result directly; final evidence verdict pending. No source/head changes after source delta clearance rev-20261017-730-lock-correction.
