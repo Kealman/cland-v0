@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-427
 branch: t/T-692-codex-adapter-test-ts-becomes-codex-s
 created: 2026-10-16T19:59:35.806Z
-updated: 2026-10-17T09:27:53.689Z
+updated: 2026-10-17T10:11:26.531Z
 ---
 
 ## Summary
@@ -38,22 +38,28 @@ updated: 2026-10-17T09:27:53.689Z
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
+  - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
 - [ ] C2. The steer, snapshot and recovery permutations run in a T1 or T2 file on the scripted transport, passing the tier lint.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
+  - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
 - [ ] C3. Manifest seconds of the touched and new files fall from 99.1 s (A-3877) to 55 s or less, and their fake-binary call sites from 33 to 15 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
+  - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
 - [ ] C4. Their `startDaemon` call sites fall from 9 to 2 or less, each in a test naming its restart behaviour.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
+  - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.530Z · commit ae783036b64f0d336fa9e74462c830ba73009645
 - [ ] C5. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-692-source · 2026-10-17T08:39:44.336Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
   - verified: rev-30 [reviewer] · run rev-20261017-692-harness-merge · 2026-10-17T09:27:40.238Z · commit ae783036b64f0d336fa9e74462c830ba73009645
+  - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.531Z · commit ae783036b64f0d336fa9e74462c830ba73009645
 - [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-692-final · 2026-10-17T09:25:07.288Z · commit 95fafe3ab9fb76c4db27b9f8be35c60992f14947
+  - verified: rev-30 [reviewer] · run rev-20261017-692-merged-final · 2026-10-17T10:11:26.531Z · commit ae783036b64f0d336fa9e74462c830ba73009645
 
 ## Blocked by
 
@@ -172,3 +178,32 @@ Criteria: C1 verified, C2 verified, C4 verified, C5 verified.
 ### impl-692 · 2026-10-17T09:27:53.689Z
 
 Delta source clear at ae783036b64f0d336fa9e74462c830ba73009645 (rev-20261017-692-harness-merge / A-4439). Submitted fresh mode-free droplet verification 05742a49-105f-467f-a1aa-44ef94e212ff at that exact head, reporting to topic-427 and item lead/Coordinator/Reviewer. Queue admission succeeded. No further source/head changes; waiting for result.
+
+### impl-692 · 2026-10-17T10:11:05.738Z
+
+Fresh exact-head Linux verification 05742a49-105f-467f-a1aa-44ef94e212ff passed at delta-reviewed ae783036b64f0d336fa9e74462c830ba73009645, A-4452. Automatic full selection due to harness.ts Neovim import: 2444 tests, 2436 pass, zero failures/cancellations, eight suite skips. All 26 owned cases have positive receipts: contract 12 / 35.893143934 s; delivery 2 / 1.056590219 s; scripted native 12 / 4.183648679 s; combined 41.133382832 s (<55). All 16 new owned identities passed 5/5 load repetitions (80/80). Source/head unchanged since delta-clear A-4439; clean working tree. c-8 lon1 Linux x64, Node 24.21.0, Neovim 0.12.5, two workers; suite 2499.76 s, peak load 9.97, lifetime 2563 s, cost $0.1780. C3/C6 have replacement same-head evidence; awaiting final Reviewer settlement. Coordinator instructed keeping this head unchanged for the next merge batch.
+
+### rev-30 · 2026-10-17T10:11:26.531Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-692-merged-final
+commit: ae783036b64f0d336fa9e74462c830ba73009645
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final evidence review T-692 at ae783036b64f0d336fa9e74462c830ba73009645, unchanged from source clearance A-4439 / rev-20261017-692-harness-merge. Origin and hub record match. Required fresh mode-free droplet05742a49-105f-467f-a1aa-44ef94e212ff / A-4452 finishes exit0 in full mode, including full Neovim. This is merged-head execution; prior-head A-4436 is not substituted. Read-only audit; no Reviewer execution.
+
+Standards: no findings. All26 owned ordinary cases have positive receipts (12 contract,2 delivery,12 scripted-native); all16 new identities have5/5 fresh load repetitions,80/80. No functional failure, cancellation, failing load gate or hard duration-budget line appears. Tier projections and duration overages are report-only. The reviewed harness union retains both droplet dependencies and adapter factories, with unchanged production/split test blobs.
+
+C3 verified under E-677's timing disposition: independently summed ordinary Linux test-seconds are contract35.893143934, delivery1.056590219 and native4.183648679, totaling41.133382832 (<55). Accepted A-4400 five-run Mac medians total17.721520125 (<55), supplemented by Coordinator-requested post-merge3/3 reruns per file in A-4438 (about17.788s combined medians) and three component compatibility files. The source-reviewed fakeCodex census stays33→13 tokens (12 calls plus definition), within15. No partial manifest baseline refresh is claimed; only the previously reviewed Codex legacy allowance is removed.
+
+C6 verified from the fifteen accepted Mac whole-file logs on identical owned test source, the nine additional post-merge Codex logs and three component logs directed by primary507229d6, plus current exact-head Linux execution of all three touched test files. No owned case is skipped. C1/C2/C4/C5 source conditions remain current and are refreshed: codex native checklist/first-clause and refusal, lowered native transport permutations, two daemon calls in the explicit restart contract, and complete original assertion map.
+
+Counts independently reconcile: hub free57/57; hub machine1993 total,1988 pass/five skips; Neovim394 total,391 pass/three skips. Combined2444 tests,2436 pass,zero fail/cancel,eight suite skips. Host typecheck succeeds with candidate-tree gate40f1de4cc28ee9358369516a8eb75deb4d77d835 reused remotely. Linux x64 c-8 lon1,Node24.21.0/Neovim0.12.5,two workers; suite2499.76s,peak1m load9.97,load-gate extra wall29.02s,lifetime2563s,cost$0.1780.
+
+Final review clear, no findings; C1-C6 verified at this exact head. Coordinator's integrated-cover/batch sequencing remains its rollout responsibility.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

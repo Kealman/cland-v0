@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-428
 branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T09:10:15.019Z
+updated: 2026-10-17T10:07:14.312Z
 ---
 
 ## Summary
@@ -42,12 +42,15 @@ These rules run as T1 tests on `Suites` with a fake executor (T-697) and a `Fake
 - [x] C2. The scheduling, ETA, cache and cover rules sit in T1 files that pass the tier lint, and the kept T3 tests each name their process behaviour.
   - done: impl-698 · 2026-10-17T09:00:40.931Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
+  - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 - [x] C3. Fake droplets started by these files fall from the count recorded before (from the fake provider's request log) to 4 or less.
   - done: impl-698 · 2026-10-17T09:00:41.297Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
+  - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-698 · 2026-10-17T09:00:41.616Z
   - verified: rev-30 [reviewer] · run rev-20261017-698-m1-correction · 2026-10-17T09:10:15.019Z · commit 5922850e3b7f9404aca3c1bde5b71b11423b08c8
+  - verified: rev-30 [reviewer] · run rev-20261017-698-phase-merge · 2026-10-17T10:07:14.312Z · commit 87aa55d71340b2efd11c9bad9202533eb036de9d
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - failed: rev-30 [reviewer] · 2026-10-17T09:06:09.654Z · note M1: Held candidate/provider I/O can block the fixture's first teardown hook before later release hooks run; own release/drain before Suites.close and prove pre-release failure cleanup.
 
@@ -125,5 +128,44 @@ A-4433 independently audited: 45 zero-failure/cancellation/skip Mac logs, five p
 C1 timing remains unverified until exact-head Linux per-file seconds establish <=120 under E-677's primary timing disposition. C5 remains pending corrected-head droplet execution; the successful Mac portion is established. Prior failed C5 finding is corrected in source, but this pass does not claim its Linux condition. The reviewed 24 obsolete allowance removals and two E-677-owned seven-day process allowances are unchanged; all baseline fields remain unchanged.
 
 Source correction clear, no findings. Required normal mode-free exact-head droplet verification may proceed. Final C1/C5 settlement waits for its receipt.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-698 · 2026-10-17T10:01:50.423Z
+
+Exact reviewed-head droplet98ee3395 (A-4446) failed deterministic suite-tiers phase expectation0/5 and three native runner-contract duration budgets. All nine migration files' assertions passed; first Linux summed86.860668189 test-seconds. Comparison: dev601d9cde passes, task5922850e isolated snapshot reproduces exact five retag moves/deleted reload path mismatch. Corrected phase expectation preserves frozen legacy contract separately and checks all current live tier membership; legacy-shards fixture byte-identical. Added three8s E-677-owned allowances (2026-10-17 to2026-10-24) for unchanged native cross-process proofs measured5.617/5.591/5.528s. Coordinator74997981 explicitly authorized origin/dev merge under rule11; merged601d9cde afterfix, preserving dev's unmodified duration entries/baselines and sorted tiers. Typecheck/tier lint/whole corrected tier file pass. Ten-file serial5/5 is running before delta review; no new verification yet.
+
+### impl-698 · 2026-10-17T10:05:46.225Z
+
+Correction and authorized merge are pushed at 87aa55d71340b2efd11c9bad9202533eb036de9d. Phase fixture unchanged; frozen legacy compatibility and live current-tier phase membership now pass separately. Three unchanged native >5s cases have scoped 8s E-677 allowances expiring 2026-10-24. Fixed in a70d0d45, then merged authorized dev601d9cde in2996a800; retained every unmodified dev duration entry/baseline and both sorted tier sets. All ten task files pass fresh serial whole-file5/5 (50 green logs), median total36.004694419 test-seconds/38.106870625 wall, max load2.810. Typecheck/tier lint/whitespace green. A-4448 contains task/dev red-green comparison and all50 receipts; A-4449 updated assertion audit and Linux86.861s nine-file observation from red A-4446. Requesting one delta review covering fix+merge before next exact-head verification.
+
+### rev-30 · 2026-10-17T10:07:14.312Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-698-phase-merge
+commit: 87aa55d71340b2efd11c9bad9202533eb036de9d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Correction and authorized merge source review T-698 at 87aa55d71340b2efd11c9bad9202533eb036de9d. Origin matches. Delta from reviewed 5922850e: correction a70d0d45, merge2996a800 with dev601d9cdec32ea385d3e72fb23bc8e0ca57ae6ef5, then evidence documentation. Primary Coordinator 40a23949 owns the failed phase test/budgets; 74997981 explicitly authorizes this full rule-11 merge, manifest reconciliation, serial checks, one delta review and new exact-head verification. Reviewed A-4446/A-4448/A-4449. Read-only audit; no Reviewer execution.
+
+Standards
+No findings. The frozen hub/test/fixtures/legacy-shards.json Git blob is unchanged. The corrected legacy test builds a scratch project containing that fixed declared file set and legacy manifest, then compares packageShards to explicit historical free/machine targets, one/four workers and the Neovim package target. Its filesystem cleanup owns no process writers. A separate live-tree test independently compares the complete manifest key set with globbed test files, then compares the full planner result to current T1/free versus T2–T4/machine placement, workers1/4 and the unchanged Neovim phase. It no longer equates deliberately migrated files with an obsolete partition. Both historical compatibility and current live coverage/phase claims remain asserted.
+
+The three scoped8s allowances preserve unchanged native contract assertions: two-phase lease metadata and UTC/legacy holder identity. A-4446 measures5.617244231 /5.591393930 /5.527962421s respectively. Each allowance names the native boundary, measured run, E-677 owner, added2026-10-17 and expiry2026-10-24. Existing two20s remote-process allowances are unchanged.
+
+Independent merge audit: all sixteen previously reviewed own patches outside documentation, manifests and the new suite-tiers correction are normalized-zero-context identical relative to their old/new incoming dev. This includes SuiteCandidate, Suites, Clock classification, scripted machines, every migrated fixture/test, M1's release/drain controls and retained process bodies. tiers.json exactly equals incoming dev plus the already reviewed task delta and is sorted. durations.json equals incoming dev in every non-allow field and retained allowance, with exactly24 prior removals and five task additions (two reviewed20s plus three new8s); no extra modification or timing-baseline refresh. Incoming T-729 lint and T-696/T-701 changes remain intact.
+
+Spec and evidence
+A-4446 is retained red evidence, not a qualifying final run: one ordinary failure plus0/5 phase-plan identity and three hard duration budgets. The isolated task snapshot reproduces precisely the five migrated T1 moves and removed config-reload path; the isolated dev case passes. The corrected phase file passes8/8 in its focused receipt. Thus the correction addresses the demonstrated mismatch without changing the captured fixture or hiding current coverage.
+
+A-4448 independently audited: fifty raw whole-file Mac receipts, ten files x5, each zero failures/cancellations/skips. Indexed run-boundary loads are <=2.55517578125 across1/5/15minute windows (stricter than the request's conservative2.810 summary). Recomputed median test-second sum is36.004694419 including the newly touched tier file, versus37.187079958 for the preceding nine-file round. The ten medians are accounting1.221027208, cache0.511765208, cover0.241586836, protocol1.944922374, queue0.119409626, remote-budget1.177041293, remote-process17.388307041, runner-contract13.077897, scheduling0.205092624, tiers0.117645209. Static typecheck/tier-lint logs are green; whitespace check is reported green. No new native process is introduced by the two phase checks; the accepted six POST attempts/three successful process starts census remains applicable.
+
+C2/C3/C4 source verification refreshed: lower-tier policy and headed native proofs; successful-start census<=4 under primary79089639; complete48-declaration map plus M1 controls and corrected legacy/live phase checks. No behavior claim is dropped. C1 timing and C5 final execution remain pending a green exact-head Linux receipt. The prior nine-file86.860668189s observation belongs to failed5922850e and does not settle those criteria at87aa55d7.
+
+Delta source clear, no findings. Required mode-free exact-head droplet verification may proceed.
 
 Criteria: C2 verified, C3 verified, C4 verified.

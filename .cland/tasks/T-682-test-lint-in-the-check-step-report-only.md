@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T08:54:15.026Z
+updated: 2026-10-17T10:28:29.114Z
 ---
 
 ## Summary
@@ -43,23 +43,27 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
   - done: impl-682 · 2026-10-17T08:03:54.489Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-7 · 2026-10-17T10:28:29.114Z · commit af43a920c32b8120c4cc0ea675bc4a56a5e62ded
 - [x] C2. A planted numeric sleep used as a wait and a planted elapsed-milliseconds assertion each produce a finding, and the reasoned marker suppresses it, proved by lint tests.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:54.776Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-7 · 2026-10-17T10:28:29.114Z · commit af43a920c32b8120c4cc0ea675bc4a56a5e62ded
 - [x] C3. A T3 file without a lifecycle header produces a finding, and a Neovim file using only the stub hub qualifies for T2, proved by lint tests.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:55.162Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-7 · 2026-10-17T10:28:29.114Z · commit af43a920c32b8120c4cc0ea675bc4a56a5e62ded
 - [x] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
-  - done: impl-682 · 2026-10-17T08:50:39.453Z
+  - done: impl-682 · 2026-10-17T10:27:30.815Z
 - [x] C5. The repository's finding counts per rule at the merge head are recorded on this item as the baseline T-684 freezes.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.898Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
-  - done: impl-682 · 2026-10-17T08:50:39.812Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-5 · 2026-10-17T08:53:52.436Z · commit dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
+  - done: impl-682 · 2026-10-17T10:27:31.105Z
+  - verified: rev-31 [reviewer] · run rev-20261017-682-source-7 · 2026-10-17T10:28:29.114Z · commit af43a920c32b8120c4cc0ea675bc4a56a5e62ded
 
 ## Comments
 
@@ -198,3 +202,61 @@ Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
 ### impl-682 · 2026-10-17T08:54:15.026Z
 
 Corrected source delta clear rev-20261017-682-source-5 at dca244d3 (A-4420), C1/C2/C3/C5 verified; C4/final await replacement Linux receipt. Exact-head diff-selected droplet verify c7ed55b1-309e-4a0f-ad90-eba0552fdc81 submitted successfully, queue position1, reports topic-426 to Implementer/Coordinator/assigned Reviewer. Head remains dca244d35be5fbeeadf2d155e42892a5fc9f9a7d; idle until hub result.
+
+### rev-31 · 2026-10-17T10:11:25.022Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-682-evidence-2
+commit: dca244d35be5fbeeadf2d155e42892a5fc9f9a7d
+scope: evidence
+findings: [{"severity":"medium","text":"Unbounded child-close joins in stop and beforeDirectories hang the own interruption test on Linux (~240s ordinarily, 0/5 outer-deadline load probes); separately bound/observe owned-writer cleanup and pipe close before root removal.","file":"hub/test/suite-check.test.ts","line":26}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Replacement Linux gate not clear, A-4453. A-4451/c7ed55b1 at unchanged dca244d3: own interrupted-check case240030.958ms, five120000ms outer-deadline failures, finalexit124/run timeout75m, no Neovim. 61pass headline is completed free phase, not successful full run. Implementer2bc436f3 confirms raw close joins unbounded; will separately bound cleanup/pipe close and own observed writer while live, with controlled Linux proof. Exact cleanup root cause unproven; no generic-helper failure claim or allowance/retry remedy. C4 failed; C1/C2/C3/C5 source continuity remains current A-4420. Exact origin tip checked. Corrected head needs source review before verification. No Reviewer edits/tests.
+
+Criteria: C4 failed (Own interrupted-check case hangs on Linux and fails all five load probes; replacement verification exits124 at75m before Neovim.).
+
+### impl-682 · 2026-10-17T10:19:33.497Z
+
+A-4453/C4 correction pushed at b6b7ce483d1d9da0862bc332d7c07582d1842fab. Confirmed local boundary: old npm-only cleanup can return while a separately grouped writer retains stdout, leaving raw ChildProcess close pending. Linux-like control reproduced old hang at shortened2s test deadline with trace 'npm cleanup returned; awaiting pipe close'. Actual Linux process-group topology wasn't logged; no manual droplet used; local Docker daemon unavailable.
+Correction owns the observed live writer PID before abort, waits for its parent WRITER-REAPED receipt before stopping npm/launcher, and separately bounds/names command completion, writer/npm cleanup, reaping and inherited pipe close. Outer AggregateError includes the stalled boundary; failure destroys only fixture streams to prevent failed teardown from holding Node open. Ordered shutdown precedes safety owners. Original nonzero exit, live writer, exact PID-gone, handler root-write and root-removal assertions remain. No production cleanup/budget change. Detached topology is now the persistent regression;5/5 serial passes. Deliberately omitting ordered writer ownership yields named pipe-close failure in2.2s, not outer timeout; probes/debug removed.
+Coordinator overlap decision b87ee249 authorized dev/T-729 merge c20c335c. Only tiers.json conflict: both test-lint T1 and thread-seed-plan T2 retained/sorted. T-729 merge-base policy and this task classification both retained. Fresh typecheck, test:tiers, npm check and targeted files pass; suite-check2/2 in0.743s; test-lint0.194s; suite-tiers0.384s; suite-dry-run2.728s; suite-tier-report0.139s; duration-legacy2/2 in0.766s.
+Exact-head C5 baseline A-4456/lint-baseline.json:383 findings/220 affected of289 files; tier-import0, tier-process0, waits119, elapsed48, missing headers216. A-4456 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4456-t-682-retained-writer-ownership-and-bounded-close-proof-at-b6b7ce48) includes controls,5x logs, merged check and current baseline. Delta review requested before another verify.
+
+### rev-31 · 2026-10-17T10:20:52.097Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-682-source-6
+commit: b6b7ce483d1d9da0862bc332d7c07582d1842fab
+scope: delta
+findings: [{"severity":"medium","text":"Detached writer starts before CHECK-HELD/PID read/ownWriter; startup cancellation can leave it outside npm-group ownership while teardown destroys pipes and removes its live root. Cover that interval and prove held-startup cancellation cleanup.","file":"hub/test/suite-check.test.ts","line":104}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source delta not clear; Standards1medium/Spec C4 proof incomplete, A-4457. Positive M5 shutdown path now bounded and explicitly owns/reaps writer before npm/pipe closure; inspected old-red, named missing-owner negative and5positive host controls A-4456. New separate-group topology introduces pre-readiness ownership gap: launcher spawns writer at104, ownWriter only130; no launcher's writer-finally owner, so early cancellation has emptywriters[] and negative-control retained-pipe scenario without its extra safety owner. Keep harder topology, add startup ownership/held-cancel proof; no actual Linux proof claimed. Authorized merge preserves T-729 helper/callers and own classifier; durations exactdev, tiers sorteddev+twoown; scanner/binder/worker/oracles unchanged. Current baseline383=119wait+48elapsed+216headers,220affected/289files matches one-after-typecheck npmcheck. Origin/diffcheck clean. C4 failed, no verify before corrected-source verdict. No Reviewer edits/tests.
+
+Criteria: C4 failed (Retained-writer cleanup proof still lacks ownership before readiness; cancellation can remove its root while the detached writer remains live.).
+
+### impl-682 · 2026-10-17T10:27:30.789Z
+
+A-4457 startup-ownership gap corrected/pushed at af43a920c32b8120c4cc0ea675bc4a56a5e62ded (dec756b5/af43a920; no further dev merge). Root ownership begins at fixture creation with canonical path/inode registration. Guarded disposal requires successful command/scoped-root cleanup and preserves a failed-cleanup root. After stopping npm/launcher to prevent further spawning, ordered cleanup uses existing scoped process discovery to reap unobserved separate-group writers before pipe close/removal. Guard also performs root discovery if setup failed before command attachment. No production cleanup/budget change.
+New held-startup cancellation test deliberately never calls ownWriter: observe WRITER-STARTUP-HELD, cancel before normal readiness, then assert live-before-cancel, bounded exact PID reaping/final ESRCH, intact root before removal, removed root afterward. Original positive PID/root/handler assertion set remains. Disabling root discovery in a probe produces the named2.2s pipe-close failure; root is preserved. Probe safety cleanup and independent PID-gone check precede manual probe-root removal; no probes/debug remain. Canonicalizing root also fixed the host /var vs /private/var discovery mismatch exposed by this control.
+A-4458 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4458-t-682-canonical-root-ownership-and-held-startup-cancellation-proof) contains control evidence,10/10 passes across5 serial interrupted/startup runs at load1.36, current check and baseline. Final whole file3/3 in1.634s (ordinary0.620, interrupted0.382, startup0.377); npm check/typecheck and test:tiers pass. Exact-head baseline unchanged383/220 affected of289: waits119, elapsed48, T3headers216, tier rules0. Fresh delta source review requested; actual Linux replacement remains pending.
+
+### rev-31 · 2026-10-17T10:28:29.114Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-682-source-7
+commit: af43a920c32b8120c4cc0ea675bc4a56a5e62ded
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; Standards0/Spec0 findings, A-4459. M6 resolved: canonical owned-root disposer registered before command launch; known writers/reaping then npm/launcher stop then scoped discovery of unobserved separate-group writers, before bounded pipe join/root removal. Guard handles setup before command attachment and preserves root on failure. New held-startup control observes live writer without ownWriter/normal readiness, cancels, asserts bounded reaping/final ESRCH, nonzero command, intact then removed root; original positive assertions retained. Inspected A-4458 discovery-disabled named2.229s red and10/10 paired host passes; final3/3 file reported1.634s. No actual Linux proof claimed. Only testfile changes since b6b7ce48; no dev merge, production/authorized T729 merge unchanged. Exact origin/diffcheck clean. C5 current383=119wait+48elapsed+216headers,220affected/289files matches once-after-typecheck checklog; originalFPcontrolsT1zero. C1/C2/C3/C5 verified. C4 awaits replacement exact-head diff-selected Linux gate; historical A-4451 not clear. No Reviewer edits/tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
