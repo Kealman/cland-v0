@@ -2,8 +2,8 @@
 id: T-755
 kind: task
 title: Integrated dev covers run about 55% slower than task full runs of the same code
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-458
 branch: t/T-755-integrated-dev-covers-run-about-55
 created: 2026-10-17T20:04:48.908Z
-updated: 2026-10-17T22:11:22.282Z
+updated: 2026-10-17T22:11:43.557Z
+closed: 2026-10-17T22:11:43.557Z
 ---
 
 ## Summary
@@ -178,3 +179,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 No findings. Exact-head4c77542c/A-4781 exits0:2114pass/0fail-cancel/5prerequisite skips, actual hub phases+Neovim smoke completed. All six owned ordinary cases and30/30 load repetitions pass; tmpfs6.178395376s/fallback5.179125727s within reviewed dated allowances. A-4782 records positive rows, provenance and machine accounting1536s/$0.1066. C1/C2 verified across source chain and current green. No live-host/performance improvement claimed; T-756 remains responsible after merge/restart under Coordinator split. Earlier failed receipts remain failed historical evidence.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T22:11:43.557Z
+
+Merged 67ec6a8f6909b6bb77ec22cee549e56ec4ae659a onto dev.
