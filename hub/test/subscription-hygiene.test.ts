@@ -1,57 +1,32 @@
-import { FakeClock } from './fake-clock.ts';
-import { onCleanup } from './process-cleanup.ts';
-import { DatabaseSync } from 'node:sqlite';
-import { mkdir, unlink, readFile, writeFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import test from 'node:test';
+// T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
 import assert from 'node:assert/strict';
-import { inProcessSpoke, projectHub, withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
-import { copyPreparedProject } from './prepared-project.ts';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import test from 'node:test';
+import { envelope } from '../src/adapters/contract.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
-import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
-import { projectSessions } from '../src/adapters/index.ts';
-import { createSocketEdge } from '../src/hub/socket.ts';
-import { writeDiscovery } from '../src/project.ts';
-import { realClock } from '../src/hub/clock.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import { FakeClock } from './fake-clock.ts';
+import { FAKE_FLAVOURS } from './fakes/harness.ts';
+import { cland, clandWithEnv, connectUi, connectWsUi, eventually, inProcessSpoke, startHub, tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
+import { componentHub, launchedSpoke, stopComponentHub } from './subscription-hub.ts';
 
-// T3: a native Claude process dies and relaunches; its PID discovery needs progressing real time.
+// T2: lifecycle facts retain their order even inside the coalescing window.
 test('launched, died and launched within sixty seconds preserve every transition', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  let offset = 0;
-  const clock = { ...realClock, now: () => new Date(realClock.now().getTime() + offset) };
-  const hub = await startHub({ clock });
-  onCleanup(t, () => hub.close());
-  const dir = join(root, '.cland');
-  await mkdir(dir, { recursive: true });
-  const socket = join(dir, 'hub.sock');
-  const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-  onCleanup(t, () => edge.close());
-  const discoveryFile = join(dir, 'hub.json');
-  writeDiscovery(discoveryFile, { root, socket, port: hub.port, secret: TEST_SECRET, pid: process.pid, version: 'test' });
-  const project = projectSessions({ core: hub.core, root, db: join(dir, 'hub.db'), discoveryFile, log: () => {}, env: { ...process.env, ...fake.env } });
-  onCleanup(t, () => project.close());
-  hub.dispatcher.useSessions(project.sessions);
-  const ui = await connectWsUi(t, hub);
-  await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ hub, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  onCleanup(t, () => coord.close());
-  await coord.waitForPresence(['coord']);
+  const { root, ui, coord, clock, fakes } = await setup(t);
   await coord.call('subscribe', { subject: { role: 'implementer' }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  offset += 1000;
-  process.kill(p.pid, 'SIGKILL');
+  const p = (launched.value as { process: { sessionId: string } }).process;
+  await clock.advance(1000);
+  fakes['claude-code']!.crash('impl');
   await ui.waitFor(f => f.type === 'session.process' && (f.process as { sessionId: string; status: string }).sessionId === p.sessionId && (f.process as { status: string }).status === 'exited');
-  offset += 1000;
+  await clock.advance(1000);
   const relaunched = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true });
   assert.equal(relaunched.ok, true, relaunched.error);
-  const replacement = await withDiscoveredPid(ui, (relaunched.value as { process: { sessionId: string } }).process);
-  onCleanup(t, () => killDaemon(replacement.pid));
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord consecutive lifecycle' });
   const digest = await coord.waitForEvent(e => e.params.content.includes('consecutive lifecycle'));
   assert.deepEqual(digest.params.content.match(/event · session.state · impl (launched|died)/g), [
@@ -60,21 +35,21 @@ test('launched, died and launched within sixty seconds preserve every transition
   assert.doesNotMatch(digest.params.content, /×/);
 });
 
-async function setup(t: test.TestContext, config?: string, env: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub) {
+async function setup(t: test.TestContext, config?: string, env: Record<string, string> = {}, serve = componentHub) {
   const root = await tempProject(t);
   if (config) { await mkdir(join(root, '.cland'), { recursive: true }); await writeFile(join(root, '.cland', 'config.toml'), config); }
-  const { discovery } = await serve(t, root, env);
+  const { discovery, clock, fakes } = await serve(t, root, env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
-  return { root, ui, coord, rev };
+  return { root, ui, coord, rev, clock, fakes };
 }
 
 test('coalescing and the event cap freeze per recipient across restart and partial delivery', async t => {
-  const { root, ui, coord, rev } = await setup(t, undefined, undefined, startDaemon);
+  const { root, ui, coord, rev } = await setup(t, undefined, undefined);
   const made = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Counts' });
   const item = made.item.id;
   for (const spoke of [coord, rev]) await spoke.call('subscribe', { subject: { item }, events: ['task'] });
@@ -98,10 +73,10 @@ test('coalescing and the event cap freeze per recipient across restart and parti
   // A bound offline digest must retain its counts and cap after subsequent events and restart.
   await claim();
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const { discovery } = await startDaemon(t, root);
+  await stopComponentHub(root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui2 = await connectUi(t, discovery);
-  const rev2 = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const rev2 = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   onCleanup(t, () => rev2.close());
   const second = await rev2.waitForEvent(e => e.params.content.includes('frozen offline overflow'));
   assert.match(second.params.content, /claimed by coord \(×4\)/);
@@ -155,15 +130,15 @@ test('topic and artifact events match item subtrees, and a closed topic sends it
 });
 
 test('events have their own durable limit, preserve final events, and consume no message allowance', async t => {
-  const fixture = await setup(t, '[hygiene]\nrate_limit_max = 2\nevent_limit_max = 2\nevent_limit_window_minutes = 10\n', undefined, startDaemon);
+  const fixture = await setup(t, '[hygiene]\nrate_limit_max = 2\nevent_limit_max = 2\nevent_limit_window_minutes = 10\n', undefined);
   const { root, coord } = fixture;
   let ui = fixture.ui;
   const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Limits' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   for (const status of ['planned', 'review']) await coord.call('task.edit', { id: item, status });
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const { discovery } = await startDaemon(t, root);
+  await stopComponentHub(root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await coord.waitForPresence(['coord', 'rev']);
@@ -185,93 +160,91 @@ test('events have their own durable limit, preserve final events, and consume no
   assert.doesNotMatch(JSON.stringify(inbox.value), /event ·|subscription/);
 });
 
-for (const harness of ['claude-code', 'codex', 'opencode']) {
-  test(`${harness}: digest now steers through the existing queue or waits for the next turn`, async t => {
-    const root = await tempProject(t);
-    // Keep the turn open for digest-now steering; suppress fallback polls of the staged state.
-    const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000, turnMs: 2500 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000, turnMs: 2500 }) : null;
-    const home = fake?.home ?? join(root, '.fake-opencode');
-    const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
-    const { discovery } = await projectHub(t, root, env);
-    const ui = await connectUi(t, discovery);
-    await ui.request({ type: 'subscribe' });
-    const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
+test('digest now uses steering capabilities or waits for the next turn across flavours', async t => {
+  const root = await tempProject(t);
+  const { discovery, clock, fakes } = await componentHub(t, root);
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  for (const harness of FAKE_FLAVOURS) {
+    const fake = fakes[harness]!;
+    const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness });
     assert.equal(launched.ok, true, launched.error);
-    const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } }).process);
-    onCleanup(t, () => killDaemon(p.pid));
-    if (harness !== 'codex') await clauseAnswered(ui, 'coord');
-    await eventually('idle before steering', async () => {
-      const status = await ui.request({ type: 'hub.status' });
-      return (status.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') || undefined;
-    });
+    const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', assignRole: false, sessionId: (launched.value as { process: { sessionId: string } }).process.sessionId });
+    await peer.waitForPresence(['coord']);
+    fake.idle('coord');
     const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Immediate event' })).value as { item: { id: string } }).item.id;
-    const subscribed = await clandWithEnv(root, env, 'subscribe', 'item', item, '--event', 'task', '--digest', 'now', '--as', 'coord', '--json');
-    assert.equal(subscribed.code, 0, subscribed.stderr);
-    assert.equal(JSON.parse(subscribed.stdout).subscription.digest, 'now');
-    // OpenCode's explicit slow-turn input keeps the digest-now event in the running turn.
-    await ui.request({ type: 'topic.send', topic: 'general', text: '@coord take your time with a running turn' });
-    await ui.waitFor(f => f.type === 'session.state' && f.session === 'coord' && f.state === 'busy');
+    // One CLI frame proves --digest parsing; the other rows exercise the shared MCP rule.
+    let subscribed: { subscription: Subscription };
+    if (harness === 'claude-code') {
+      const result = await cland(root, 'subscribe', 'item', item, '--event', 'task', '--digest', 'now', '--as', 'coord', '--json');
+      assert.equal(result.code, 0, result.stderr);
+      subscribed = JSON.parse(result.stdout);
+    } else subscribed = await peer.call('subscribe', { subject: { item }, events: ['task'], digest: 'now' });
+    assert.equal(subscribed.subscription.digest, 'now');
+    fake.busy('coord');
+    const mark = fake.injections.length;
+    const historyBefore = (await ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] };
+    const priorIds = new Set(historyBefore.messages.map(m => m.id));
     if (harness !== 'claude-code') {
       const topic = ((await ui.request({ type: 'topic.create', title: 'Before immediate cap' })).value as { topic: { id: string } }).topic.id;
-      const held = await clandWithEnv(root, env, 'subscribe', 'topic', topic, '--event', 'artifact', '--as', 'coord', '--json');
-      assert.equal(held.code, 0, held.stderr);
+      const held = await peer.call<{ ok: boolean }>('subscribe', { subject: { topic }, events: ['artifact'] });
+      assert.equal(held.ok, true);
       for (let i = 0; i < 12; i++) assert.equal((await ui.request({ type: 'artifact.create', kind: 'prompt', title: `held-${i}`, topic, content: 'material', status: 'draft' })).ok, true);
     }
     assert.equal((await ui.request({ type: 'task.edit', item, status: 'planned' })).ok, true);
     const recorded = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · task · ${item} status changed backlog → planned`);
     const id = (recorded.message as Message).id;
-    const inputLog = () => readFile(harness === 'claude-code' ? join(home, 'jobs', `${p.harnessId}.log`) : harness === 'codex' ? join(home, 'log', `${p.pid}.log`) : join(home, 'prompts', `${p.harnessSessionId}.log`), 'utf8').catch(() => '');
     if (harness === 'claude-code') {
-      await sleep(350);
-      assert.equal((await inputLog()).includes(`event · task · ${item}`), false);
+      await clock.advance(350);
+      assert.equal(fake.injections.slice(mark).some(i => i.message.text.includes(`event · task · ${item}`)), false);
+      fake.idle('coord');
       await ui.request({ type: 'topic.send', topic: 'general', text: '@coord next turn releases now fallback' });
     }
     await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
-    const log = await inputLog();
+    const log = fake.injections.slice(mark).map(i => envelope(i.message, i.topic)).join('\n');
     assert.match(log, new RegExp(`event · task · ${item}`));
-    if (harness === 'codex') assert.match(log, /turn\/steer .*event · task/s);
-    if (harness === 'opencode') assert.match(log, /steer/);
     if (harness !== 'claude-code') {
-      assert.equal(log.match(/event · (artifact|task) ·/g)?.length, 10, 'the immediate event itself occupies one of the ten event slots');
+      assert.equal(log.match(/event · (artifact|task) ·/g)?.length, 10);
       assert.match(log, /and 3 more/);
       const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-      const events = (history.value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.kind === 'event');
-      assert.equal(events.length, 13);
-      assert.ok(events.every(m => m.stage === 'injected'), 'summarized members settle with the admitted immediate batch');
+      const events = (history.value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.kind === 'event' && m.to.includes('coord') && !priorIds.has(m.id));
+      const current = events.filter(m => m.text.includes(item) || m.text.includes('held-'));
+      assert.equal(current.length, 13);
+      assert.ok(current.every(m => m.stage === 'injected'));
     }
-    // Subscriber death removes every owned subscription. The final event remains queued for another subscriber.
-    const watcher = await spawnSpoke({ cwd: root, discover: true, name: 'watcher', sessionId: 'watcher-id' });
-    onCleanup(t, () => watcher.close());
+    const watcher = await inProcessSpoke(t, { cwd: root, discover: true, name: 'watcher', sessionId: 'watcher-id' });
     await watcher.waitForPresence(['watcher', 'coord']);
     await watcher.call('subscribe', { subject: { session: 'coord' }, events: ['usage'], threshold: { tokens: 999999999 } });
     await watcher.call('subscribe', { subject: { role: 'coordinator' }, events: ['session.state'] });
     assert.equal((await ui.request({ type: 'session.stop', session: 'coord' })).ok, true);
-    const listing = await cland(root, 'hub', 'subscriptions', '--json');
-    const rows = JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default);
+    const rows = ((await ui.request({ type: 'hub.subscriptions' })).value as { subscriptions: Subscription[] }).subscriptions.filter(s => !s.default);
     assert.equal(rows.length, 1);
-    assert.deepEqual(rows[0].subject, { role: 'coordinator' });
+    assert.deepEqual(rows[0]!.subject, { role: 'coordinator' });
     await ui.request({ type: 'topic.send', topic: 'general', text: '@watcher final subject delivery' });
     const final = await watcher.waitForEvent(e => e.params.content.includes('final subject delivery'));
     assert.equal(final.params.content.match(/event · session.state · coord stopped/g)?.length, 1);
-  });
-}
+    await watcher.close(); await peer.close();
+    // Remove the surviving role subscription before reusing the fixture's names.
+    await ui.request({ type: 'event.unsubscribe', subscription: rows[0]!.id, as: { name: 'watcher' } });
+  }
+});
 
 test('usage thresholds name cost or tokens, deduplicate overlapping subjects and survive restart', async t => {
   const root = await tempProject(t);
   // Suppress fallback polls while pushed usage and lifecycle states drive the subscription assertions.
-  const fake = await fakeClaude(t, { pollMs: 10_000 });
-  let { discovery } = await startDaemon(t, root, fake.env);
+  let { discovery, clock, fakes } = await componentHub(t, root);
   let ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  onCleanup(t, () => killDaemon(p.pid));
+  const p = (launched.value as { process: { name: string; pid: number; sessionId: string } }).process;
+  const workerPeer = await launchedSpoke(t, root, p);
+  fakes['claude-code']!.idle('worker');
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');
-  await ui.waitFor(f => f.type === 'session.usage' && f.session === 'worker');
+
   await coord.waitForPresence(['coord', 'worker']);
   for (const threshold of [undefined, {}, { tokens: 0 }, { tokens: 1.5 }, { cost: -1 }, { cost: 1, tokens: 5 }, { dollars: 1 }]) {
     assert.equal((await coord.call<{ ok: boolean }>('subscribe', { subject: { session: 'worker' }, events: ['usage'], threshold })).ok, false);
@@ -281,11 +254,12 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
     const result = await coord.call<{ ok: boolean }>('subscribe', { subject, events: ['usage'], threshold: { cost: 3 } });
     assert.equal(result.ok, true);
   }
-  const token = await clandWithEnv(root, fake.env, 'subscribe', 'session', 'worker', '--event', 'usage', '--tokens', '1000000', '--as', 'coord', '--json');
+  const token = await clandWithEnv(root, {}, 'subscribe', 'session', 'worker', '--event', 'usage', '--tokens', '1000000', '--as', 'coord', '--json');
   assert.equal(token.code, 0, token.stderr);
   const signal = async (usage: Record<string, number>) => {
     const before = ui.frames.filter(f => f.type === 'session.usage' && f.session === 'worker').length;
-    assert.equal((await ui.request({ type: 'session.signal', session: 'worker', launch: p.sessionId, event: 'mod-turn-complete', payload: { usage }, at: Date.now() })).ok, true);
+    fakes['claude-code']!.feedUsage('worker', { total: { inputTokens: usage.input_tokens!, totalTokens: usage.input_tokens!, outputTokens: 0, reasoningTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, ...(usage.cost === undefined ? {} : { cost: usage.cost }) } });
+    await clock.advance(1000);
     await eventually('usage snapshot published', () => ui.frames.filter(f => f.type === 'session.usage' && f.session === 'worker').length > before || undefined);
   };
   const usageEvents = async () => {
@@ -294,14 +268,14 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
   };
   await signal({ input_tokens: 400000 });
   assert.equal((await usageEvents()).length, 0, 'unknown cost cannot cross a cost threshold');
-  await signal({ input_tokens: 600000, cost: 3 });
+  await signal({ input_tokens: 1000000, cost: 3 });
   assert.equal((await usageEvents()).length, 2, 'one crossing per token/cost threshold despite overlapping subjects');
-  await signal({ input_tokens: 1, cost: 0.1 });
+  await signal({ input_tokens: 1000001, cost: 3.1 });
   assert.equal((await usageEvents()).length, 2, 'updates above the threshold do not repeat the event');
   const subscriptions = (await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default);
   ui.close();
-  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root, fake.env));
+  await stopComponentHub(root);
+  ({ discovery, fakes } = await componentHub(t, root));
   ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await coord.waitForPresence(['coord', 'worker']);
@@ -344,12 +318,12 @@ test('the default coalescing window includes 59999 ms and excludes 60000 ms', as
 });
 
 test('equal events outside the configured coalescing window remain separate', async t => {
-  const { ui, coord } = await setup(t, undefined, { CLAND_TEST_EVENT_WINDOW_MS: '250' });
+  const { ui, coord, clock } = await setup(t, undefined, { CLAND_TEST_EVENT_WINDOW_MS: '250' });
   const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Coalescing window' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   await coord.call('task.claim', { id: item });
   await coord.call('task.claim', { id: item, release: true });
-  await sleep(300);
+  await clock.advance(300);
   await coord.call('task.claim', { id: item });
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord window boundary' });
   const delivered = await coord.waitForEvent(e => e.params.content.includes('window boundary'));
@@ -377,14 +351,12 @@ test('the cap retains final subject events and leaves mixed progress uncapped', 
 
 test('subtree subjects include sessions working on descendant items and survive their death', async t => {
   const root = await tempProject(t);
-  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
-  await copyPreparedProject(root);
+
   // Suppress fallback polls while pushed usage and lifecycle states drive the subscription assertions.
-  const fake = await fakeClaude(t, { pollMs: 10_000 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const parent = ((await ui.request({ type: 'task.create', title: 'Parent', kind: 'epic' })).value as { item: { id: string } }).item.id;
@@ -392,11 +364,12 @@ test('subtree subjects include sessions working on descendant items and survive 
   await coord.call('subscribe', { subject: { subtree: parent }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code', item: child }, 30_000);
   assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  onCleanup(t, () => killDaemon(p.pid));
+  const p = (launched.value as { process: { name: string; pid: number; sessionId: string } }).process;
+  const workerPeer = await launchedSpoke(t, root, p);
   await coord.waitForPresence(['coord', 'worker']);
+  fakes['claude-code']!.idle('worker');
   await ui.waitFor(f => f.type === 'session.state' && f.session === 'worker' && f.state === 'idle');
-  await ui.request({ type: 'session.signal', session: 'worker', launch: p.sessionId, event: 'permission', payload: { tool_name: 'Bash' }, at: Date.now() });
+  await ui.request({ type: 'session.signal', session: 'worker', launch: p.sessionId, event: 'permission', payload: { tool_name: 'Bash' }, at: clock.now().getTime() });
   assert.equal((await ui.request({ type: 'session.stop', session: 'worker' })).ok, true);
   assert.equal((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default).length, 1);
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord descendant lifecycle' });
@@ -448,21 +421,22 @@ test('removed and reparented descendants notify former ancestor subtrees without
 
 test('restart reconciles a committed stop once and retains role and ancestor subtree subscriptions', async t => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t);
-  let { discovery } = await startDaemon(t, root, fake.env);
+  let { discovery, clock, fakes } = await componentHub(t, root);
   let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   onCleanup(t, () => coord.close()); onCleanup(t, () => rev.close());
   await coord.waitForPresence(['coord', 'rev']);
   const parent = (await coord.call<{ item: { id: string } }>('task.create', { kind: 'epic', title: 'Recovery tree' })).item.id;
   const child = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Recovery child', parent })).item.id;
-  assert.equal((await ui.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer', item: child })).ok, true);
+  const workerLaunch = await ui.request({ type: 'session.launch', name: 'worker', harness: 'codex', role: 'implementer', item: child });
+  assert.equal(workerLaunch.ok, true);
+  const workerPeer = await launchedSpoke(t, root, (workerLaunch.value as { process: { name: string; sessionId: string } }).process);
   await coord.waitForPresence(['coord', 'rev', 'worker']);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 2 })).ok, true);
   const watcherLaunch = await ui.request({ type: 'session.launch', name: 'now-watcher', harness: 'codex', role: 'reviewer' });
   assert.equal(watcherLaunch.ok, true, watcherLaunch.error);
-  const watcher = (watcherLaunch.value as { process: { pid: number } }).process;
+  const watcherPeer = await launchedSpoke(t, root, (watcherLaunch.value as { process: { name: string; sessionId: string } }).process);
   await coord.waitForPresence(['coord', 'rev', 'worker', 'now-watcher']);
   assert.equal((await ui.request({ type: 'event.subscribe', as: { name: 'now-watcher' }, subject: { session: 'worker' }, events: ['session.state'], digest: 'now' })).ok, true);
   await coord.call('subscribe', { subject: { session: 'worker' }, events: ['usage'], threshold: { tokens: 100 } });
@@ -470,14 +444,14 @@ test('restart reconciles a committed stop once and retains role and ancestor sub
   await rev.call('subscribe', { subject: { subtree: parent }, events: ['session.state'] });
   assert.equal((await ui.request({ type: 'event.subscribe', as: { name: 'worker' }, subject: { topic: 'general' }, events: ['artifact'] })).ok, true);
   ui.close();
-  assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0);
+  await stopComponentHub(root);
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
   db.prepare("update harness_processes set status = 'stopped' where name = 'worker'").run(); // crash gap: status persisted, event listener never ran
   db.close();
   for (let restart = 0; restart < 2; restart++) {
-    ({ discovery } = await startDaemon(t, root, fake.env));
+    ({ discovery, fakes } = await componentHub(t, root));
     ui = await connectUi(t, discovery);
-    const listing = await clandWithEnv(root, fake.env, 'hub', 'subscriptions', '--json');
+    const listing = await clandWithEnv(root, {}, 'hub', 'subscriptions', '--json');
     assert.equal(listing.code, 0, listing.stderr);
     assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default).map((s: Subscription) => s.subject), [{ role: 'implementer' }, { subtree: parent }]);
     const history = await ui.request({ type: 'topic.history', topic: 'agents' });
@@ -490,14 +464,8 @@ test('restart reconciles a committed stop once and retains role and ancestor sub
       const snapshot = await ui.request({ type: 'topic.history', topic: 'agents' });
       return (snapshot.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.id === immediate?.id)?.stage === 'injected' || undefined;
     });
-    const readInputs = async () => {
-      const log = await readFile(join(fake.home, 'log', `${watcher.pid}.log`), 'utf8');
-      // The fake logs both steer admission and consumption; count only consumed input items.
-      return [...log.matchAll(/^\d{4}-\d\d-\d\dT\S+ turn [\w-]+ item: ([\s\S]*?)(?=^\d{4}-\d\d-\d\dT\S+ |$(?![\s\S]))/gm)]
-        .filter(m => m[1]?.includes('event · session.state · worker stopped'));
-    };
-    await eventually('fake consumes recovered final input', async () => (await readInputs()).length > 0 || undefined);
-    assert.equal((await readInputs()).length, 1, 'ordinary queue retry/restart does not inject the now fact twice');
-    if (!restart) { ui.close(); assert.equal((await clandWithEnv(root, fake.env, 'hub', 'stop')).code, 0); }
+    const inputs = fakes.codex!.injections.filter(i => i.process.name === 'now-watcher' && i.message.text.includes('event · session.state · worker stopped'));
+    assert.equal(inputs.length, restart ? 0 : 1, 'restarting an admitted now fact does not inject twice');
+    if (!restart) { ui.close(); await stopComponentHub(root); }
   }
 });

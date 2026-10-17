@@ -4975,6 +4975,41 @@
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands.",
       "owner": "E-677",
       "legacy": true
+    },
+    "hub/test/default-subscriptions-lifecycle.test.ts::a lead death while the hub is down reaches the offline Coordinator once after restart": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Native Claude PID death while the hub process is down, followed by two real daemon recovery starts, proves one durable offline death."
+    },
+    "hub/test/default-subscriptions-lifecycle.test.ts::terminal recovery routes an older pooled Reviewer death past its already-dead lead": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Two native Claude processes are killed while the daemon is down; two daemon starts prove terminal ordering and no replay."
+    },
+    "hub/test/default-subscriptions-lifecycle.test.ts::terminal recovery routes an older pooled Reviewer death past its verified-stopped lead with pending cleanup": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Two native Claude deaths plus durable pending-stop recovery require two daemon starts to prove no duplicate final event."
+    },
+    "hub/test/default-subscriptions-workflow.test.ts::the item lead runs not-clear, re-review and QA; only ready starts the Coordinator (connected)": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Real Git worktree creation, two committed heads and authenticated review/QA provenance are the native ready-event frame proof; routing rules run separately at T2."
+    },
+    "hub/test/default-subscriptions-lifecycle.test.ts::a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Native Claude Reviewer stop and Implementer SIGKILL prove real PID lifecycle routing and injected warning delivery; observed 7.126 s on Linux in run 28b82998 (A-4813). Timer and routing permutations run separately at T2."
     }
   }
 }

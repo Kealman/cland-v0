@@ -1,21 +1,24 @@
+// T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import assert from 'node:assert/strict';
-import { withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectSocket, connectUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, projectHub, startDaemon, tempProject, sleep } from './harness.ts';
+import { envelope } from '../src/adapters/contract.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
+import { FAKE_FLAVOURS } from './fakes/harness.ts';
+import { cland, clandWithEnv, connectSocket, connectUi, eventually, inProcessSpoke, tempProject } from './harness.ts';
+import { componentHub, launchedSpoke, stopComponentHub } from './subscription-hub.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 
 type Subscription = { id: string; subject: { item: string } | { session: string }; events: string[]; digest: string; default?: true };
 
 test('caller-owned subscriptions hold task status events in the ordinary next-turn digest', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Subscription target', assignee: 'impl' });
@@ -32,7 +35,7 @@ test('caller-owned subscriptions hold task status events in the ordinary next-tu
   const queued = await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).to.includes('coord'));
   assert.equal((queued.message as Message).text, `event · task · ${item.id} status changed in progress → planned`);
   assert.equal((queued.message as Message & { stage: string }).stage, 'queued');
-  await sleep(100);
+  await clock.advance(100);
   assert.equal(coord.events.length, mark, 'an event cannot start a turn');
   assert.equal((await impl.call<{ ok: boolean }>('send', { to: ['coord'], text: 'forged event', kind: 'event' })).ok, false);
   const socket = await connectSocket(discovery.socket);
@@ -61,11 +64,11 @@ test('caller-owned subscriptions hold task status events in the ordinary next-tu
 
 test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued event for its next turn', async t => {
   const root = await tempProject(t);
-  let { discovery } = await startDaemon(t, root);
+  let { discovery, clock, fakes } = await componentHub(t, root);
   let ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Durable subscription', assignee: 'impl' });
@@ -76,8 +79,8 @@ test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued e
   await coord.call('task.edit', { id: item.id, status: 'planned' });
   await ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).to.includes('coord'));
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await stopComponentHub(root);
+  ({ discovery, fakes } = await componentHub(t, root));
   ui = await connectUi(t, discovery);
   await coord.waitForPresence(['coord', 'impl']);
   const listing = await cland(root, 'subscriptions', '--as', 'coord', '--json');
@@ -105,16 +108,16 @@ test('CLI and MCP share durable subscriptions; unsubscribing leaves the queued e
 
 test('an unchanged cached item emits its first committed status change after restart', async t => {
   const root = await tempProject(t);
-  let { discovery } = await startDaemon(t, root);
+  let { discovery, clock, fakes } = await componentHub(t, root);
   let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Unchanged cached item' });
   await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await stopComponentHub(root);
+  ({ discovery, fakes } = await componentHub(t, root));
   ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   await coord.waitForPresence(['coord']);
@@ -122,7 +125,7 @@ test('an unchanged cached item emits its first committed status change after res
   assert.deepEqual((before.value as { messages: Message[] }).messages.filter(m => m.kind === 'event'), [], 'restart itself emits no task transition');
   assert.equal((await coord.call<{ ok: boolean }>('task.edit', { id: item.id, status: 'planned' })).ok, true);
   await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · task · ${item.id} status changed backlog → planned`);
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'impl-id' });
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'impl-id' });
   t.after(() => sender.close());
   await sender.waitForPresence(['coord', 'impl']);
   await sender.call('send', { to: ['coord'], text: 'first post-restart turn' });
@@ -132,16 +135,16 @@ test('an unchanged cached item emits its first committed status change after res
 
 test('adopting a provisional claim at hello does not announce another claim', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Provisional claim', assignee: 'impl' });
   await coord.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   assert.equal((await ui.request({ type: 'task.claim', item: item.id, as: { name: 'impl' } })).ok, true);
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
   t.after(() => impl.close());
   await impl.waitForPresence(['coord', 'impl']);
   await eventually('provisional claim adopted', async () => {
@@ -157,17 +160,15 @@ test('adopting a provisional claim at hello does not announce another claim', as
 
 test('resume --relaunch announces each transition into running once for the same session id', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   await coord.call('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   const launched = await ui.request({ type: 'session.launch', name: 'impl', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const first = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  t.after(() => killDaemon(first.pid));
+  const first = (launched.value as { process: { pid: number; sessionId: string } }).process;
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord freeze initial launch' });
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
   for (const count of [2, 3]) {
@@ -175,8 +176,7 @@ test('resume --relaunch announces each transition into running once for the same
     await coord.call('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
     const result = await cland(root, 'session', 'resume', 'impl', '--relaunch', '--json');
     assert.equal(result.code, 0, result.stderr);
-    const process = await withDiscoveredPid(ui, JSON.parse(result.stdout).process as { pid: number; sessionId: string });
-    t.after(() => killDaemon(process.pid));
+    const process = JSON.parse(result.stdout).process as { pid: number; sessionId: string };
     assert.equal(process.sessionId, first.sessionId, 'relaunch retains the stable session identity');
     await eventually('launched event after relaunch', async () => {
       const history = await ui.request({ type: 'topic.history', topic: 'agents' });
@@ -191,31 +191,31 @@ test('resume --relaunch announces each transition into running once for the same
 
 test('session state and lifecycle events include death, held until the Coordinator next turns', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await coord.call<{ ok: boolean }>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] })).ok, true);
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' });
   assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  t.after(() => killDaemon(p.pid));
+  const p = (launched.value as { process: { name: string; pid: number; sessionId: string } }).process;
+  const workerPeer = await launchedSpoke(t, root, p);
   await coord.waitForPresence(['coord', 'impl']);
   const event = (text: string) => ui.waitFor(f => f.type === 'message' && (f.message as Message).kind === 'event' && (f.message as Message).text === `event · session.state · impl ${text}`);
   await event('launched');
   for (const [state, hook, payload] of [['idle', 'turn-end', {}], ['busy', 'turn-start', {}], ['waiting for human', 'permission', { tool_name: 'AskUserQuestion' }], ['waiting for approval', 'permission', { tool_name: 'Bash' }]] as const) {
-    const result = await ui.request({ type: 'session.signal', session: 'impl', launch: p.sessionId, event: hook, payload, at: Date.now() });
+    const result = await ui.request({ type: 'session.signal', session: 'impl', launch: p.sessionId, event: hook, payload, at: clock.now().getTime() });
     assert.equal(result.ok, true, result.error);
     await event(state);
   }
-  process.kill(p.pid, 'SIGKILL');
+  fakes['claude-code']!.crash('impl');
+  await workerPeer.close();
   const death = await event('died');
   assert.equal((death.message as Message & { stage: string }).stage, 'queued');
   assert.equal(coord.events.some(e => e.params.content.includes('event · session.state')), false);
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'messenger', sessionId: 'messenger' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'messenger', sessionId: 'messenger' });
   t.after(() => impl.close());
   await impl.waitForPresence(['coord', 'messenger']);
   await impl.call('send', { to: ['coord'], text: 'Coordinator next turn' });
@@ -234,12 +234,12 @@ test('session state and lifecycle events include death, held until the Coordinat
 
 test('task events report claims, verdicts and closes once; ordinary comments do not become events', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await impl.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'impl', 'rev']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Workflow events', assignee: 'impl' });
@@ -268,63 +268,60 @@ test('task events report claims, verdicts and closes once; ordinary comments do 
   ]);
 });
 
-for (const harness of ['claude-code', 'codex', 'opencode']) {
-  test(`${harness}: events and progress use one ordered next-turn digest, before and after restart`, async t => {
+test('events and progress keep one ordered digest across flavour restarts', async t => {
+  for (const harness of FAKE_FLAVOURS) {
     const root = await tempProject(t);
-    // Suppress fallback polls while the test stages pushed session states.
-    const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000 }) : null;
-    const home = fake?.home ?? join(root, '.fake-opencode');
-    const env = fake?.env ?? { PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`, FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000' };
-    let { discovery } = await startDaemon(t, root, env);
+    let { discovery, clock, fakes } = await componentHub(t, root);
     let ui = await connectUi(t, discovery);
     await ui.request({ type: 'subscribe' });
-    const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
+    const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness });
     assert.equal(launched.ok, true, launched.error);
-    const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string; harnessId: string; harnessSessionId: string } }).process);
-    t.after(() => killDaemon(p.pid));
-    if (harness !== 'codex') await clauseAnswered(ui, 'coord');
-    const idle = () => eventually('coord idle', async () => {
-      const result = await ui.request({ type: 'hub.status', flushLogs: true });
-      return (result.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') || undefined;
-    });
+    const p = (launched.value as { process: { sessionId: string } }).process;
+    let peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: p.sessionId, assignRole: false });
+    await peer.waitForPresence(['coord']);
+    const idle = async () => { fakes[harness]!.idle('coord'); };
     await idle();
-    const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
+    const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
     t.after(() => sender.close());
     await sender.waitForPresence(['impl', 'coord']);
     const made = await ui.request({ size: 'M', type: 'task.create', title: 'Harness subscription' });
     const item = (made.value as { item: { id: string } }).item;
-    const subscribed = await clandWithEnv(root, env, 'subscribe', 'item', item.id, '--event', 'task', '--as', 'coord', '--json');
-    assert.equal(subscribed.code, 0, subscribed.stderr);
+    const subscribed = await peer.call<{ subscription: Subscription }>('subscribe', { subject: { item: item.id }, events: ['task'] });
+    const logs: string[] = [];
+    let seen = 0;
     const inputLog = async () => {
-      const log = await readFile(harness === 'claude-code' ? join(home, 'jobs', `${p.harnessId}.log`) : harness === 'codex' ? join(home, 'log', `${p.pid}.inputs.jsonl`) : join(home, 'prompts', `${p.harnessSessionId}.log`), 'utf8').catch(() => '');
-      // Codex logs a steer both at RPC admission and when the turn consumes it. Count
-      // consumption receipts so a busy turn's diagnostic echo cannot become a third input.
-      return harness === 'codex' ? log.split('\n').filter(Boolean).map(line => (JSON.parse(line) as { text: string }).text).join('\n') : log;
+      const entries = fakes[harness]!.injections;
+      logs.push(...entries.slice(seen).map(i => envelope(i.message, i.topic))); seen = entries.length;
+      return logs.join('\n');
     };
     for (const restart of [false, true]) {
+
       const prefix = restart ? 'durable' : 'initial';
       await sender.call('send', { to: ['coord'], text: `${prefix} progress before`, kind: 'progress' });
       assert.equal((await ui.request({ type: 'task.edit', item: item.id, status: restart ? 'review' : 'planned' })).ok, true);
       const eventText = `event · task · ${item.id} status changed ${restart ? 'planned → review' : 'backlog → planned'}`;
       const recorded = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === eventText);
       await sender.call('send', { to: ['coord'], text: `${prefix} progress after`, kind: 'progress' });
-      await sleep(150);
+      await clock.advance(150);
       assert.equal((await inputLog()).includes(eventText), false);
       if (restart) {
+        await inputLog();
         ui.close();
-        assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
-        ({ discovery } = await startDaemon(t, root, env));
+        await stopComponentHub(root);
+        ({ discovery, fakes } = await componentHub(t, root));
         ui = await connectUi(t, discovery);
         await ui.request({ type: 'subscribe' });
+        seen = 0;
         await sender.waitForPresence(['coord', 'impl']);
         await idle();
-        const listing = await clandWithEnv(root, env, 'subscriptions', '--as', 'coord', '--json');
+        const listing = await cland(root, 'subscriptions', '--as', 'coord', '--json');
         assert.equal(listing.code, 0, listing.stderr);
-        assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default), [JSON.parse(subscribed.stdout).subscription]);
+        assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default), [subscribed.subscription]);
         assert.equal((await inputLog()).includes(eventText), false, 'restart role clauses leave events held');
       }
       const report = `${prefix} report releases events`;
       await sender.call('send', { to: ['coord'], text: report });
+
       const log = await eventually('mixed digest reaches harness', async () => {
         const log = await inputLog();
         return log.includes(report) && log.includes(eventText) ? log : undefined;
@@ -347,16 +344,17 @@ for (const harness of ['claude-code', 'codex', 'opencode']) {
       assert.ok(journal.filter(entry => entry.event === 'event-delivery').every(entry => entry.text === undefined));
       assert.equal(JSON.stringify(journal).includes(eventText), false, 'event journal records metadata, never the event body');
     }
-  });
-}
+    await peer.close(); await sender.close(); ui.close(); await stopComponentHub(root);
+  }
+});
 
 test('fan-out preserves independent recipient digests when one subscriber disconnects', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  let qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  let qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
   t.after(async () => { await coord.close(); await rev.close(); await qa.close(); });
   await coord.waitForPresence(['coord', 'rev', 'qa-1']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Fan-out' });
@@ -374,7 +372,7 @@ test('fan-out preserves independent recipient digests when one subscriber discon
   assert.match(first.params.content, /before event[\s\S]*backlog → planned[\s\S]*after event[\s\S]*planned → review[\s\S]*shared trigger/);
   const queued = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.equal((queued.value as { messages: Array<Message & { stage: string }> }).messages.find(m => m.text === 'shared trigger')?.stage, 'queued');
-  qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
+  qa = await inProcessSpoke(t, { cwd: root, discover: true, name: 'qa-1', role: 'qa', sessionId: 'qa-id' });
   const second = await qa.waitForEvent(e => e.params.meta?.from === 'coord' && e.params.content.includes('shared trigger'));
   assert.match(second.params.content, /before event[\s\S]*backlog → planned[\s\S]*after event[\s\S]*shared trigger/);
   assert.doesNotMatch(second.params.content, /planned → review/);
@@ -388,11 +386,11 @@ test('fan-out preserves independent recipient digests when one subscriber discon
 test('subscribe and unsubscribe racing an awaited task write take effect before its event is recorded', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  const { discovery } = await projectHub(t, root, gate.env);
+  const { discovery, clock, fakes } = await componentHub(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'rev']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Racing subscription' });
@@ -414,9 +412,9 @@ test('subscribe and unsubscribe racing an awaited task write take effect before 
 
 test('renames preserve subscription ownership and each converging subject id', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const { discovery, clock, fakes } = await componentHub(t, root);
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'rev']);
   const subscriptions = [];
@@ -430,9 +428,9 @@ test('renames preserve subscription ownership and each converging subject id', a
 
 test('invalid subjects and events are refused at the frame and MCP boundaries; CLI identities stay hub-held', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   for (const [subject, events] of [
@@ -452,21 +450,23 @@ test('invalid subjects and events are refused at the frame and MCP boundaries; C
 
 test('a terminal session role update preserves a subscription created for its next launch', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code' })).ok, true);
+  const implPeer = await launchedSpoke(t, root, ((await ui.request({ type: 'session.list' })).value as { processes: Array<{ name: string; sessionId: string }> }).processes.find(p => p.name === 'impl')!);
   await coord.waitForPresence(['coord', 'impl']);
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
+  await implPeer.close();
   const subscribed = await coord.call<{ subscription: Subscription }>('subscribe', { subject: { session: 'impl' }, events: ['session.state'] });
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'qa' })).ok, true);
   assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.filter((s: Subscription) => !s.default), [subscribed.subscription], 'a metadata update is not another terminal occurrence');
   assert.equal((await ui.request({ type: 'session.resume', session: 'impl', relaunch: true })).ok, true);
   await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl launched');
+  fakes['claude-code']!.idle('impl');
   // The resumed first turn may already be complete when launch returns. Observe
   // its idle event before checking that no prior terminal fact was replayed.
   await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl idle');

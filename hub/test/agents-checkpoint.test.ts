@@ -1,8 +1,11 @@
-import test from 'node:test';
+// T1: journal projection and retention recovery use the in-process Store checkpoint.
 import assert from 'node:assert/strict';
-import { HubCore, AGENTS, AGENTS_JOURNAL_CHECKPOINT } from '../src/hub/core.ts';
-import { Journal } from '../src/hub/journal.ts';
+import test from 'node:test';
 import { agentsRecord, replayAgentsRecord } from '../src/hub/agents-topic.ts';
+import { AGENTS, AGENTS_JOURNAL_CHECKPOINT, HubCore } from '../src/hub/core.ts';
+import { Journal } from '../src/hub/journal.ts';
+import { Store } from '../src/hub/store.ts';
+import { FakeClock } from './fake-clock.ts';
 
 test('detaching an Agents recorder preserves queued notices for restart without reading the closed store', async () => {
   const records: Record<string, unknown>[] = [];
@@ -61,3 +64,49 @@ for (const olderPrefix of [true, false]) {
     assert.equal(replayAgentsRecord(core, [...previous, later]), 0, 'later notice recovers once');
   });
 }
+
+test('a journalled claim lost before projection recovers in order exactly once', async t => {
+  const clock = new FakeClock();
+  const store = new Store();
+  t.after(() => store.close());
+  const first = new HubCore({ store, clock });
+  const records: Record<string, unknown>[] = [];
+  const recorder = agentsRecord();
+  recorder.attach(first);
+  recorder.tap(entry => records.push(entry))({ event: 'task-claimed', id: 'T-1', session: 'alpha' });
+  await Promise.resolve();
+  const recorded = first.topicHistory(AGENTS.id).messages[0]!;
+  assert.equal(records[0]!.agentsNotice, recorded.id, 'journal identity matches the projected claim');
+  recorder.attach(null);
+  first.close();
+  const lost = { ...records[0], ts: clock.now().toISOString(), id: 'T-2', session: 'beta', agentsNotice: 'lost-claim' };
+  const restarted = new HubCore({ store, clock });
+  t.after(() => restarted.close());
+  assert.equal(replayAgentsRecord(restarted, [...records, lost]), 1);
+  assert.deepEqual(restarted.topicHistory(AGENTS.id).messages.map(m => m.text), ['alpha claimed T-1', 'beta claimed T-2']);
+  assert.equal(replayAgentsRecord(restarted, [...records, lost]), 0);
+});
+
+test('retention pruning every lifecycle notice preserves the no-replay checkpoint', async t => {
+  const clock = new FakeClock();
+  const store = new Store();
+  t.after(() => store.close());
+  const first = new HubCore({ store, clock });
+  const records: Record<string, unknown>[] = [];
+  const recorder = agentsRecord();
+  recorder.attach(first);
+  recorder.tap(entry => records.push(entry))({ event: 'role-assigned', session: 'alpha', role: 'implementer' });
+  recorder.tap(entry => records.push(entry))({ event: 'task-claimed', session: 'alpha', id: 'T-1' });
+  await Promise.resolve();
+  assert.equal(first.topicHistory(AGENTS.id).messages.length, 2);
+  await clock.advance(1001);
+  store.prune(clock.now().getTime(), 1000);
+  assert.deepEqual(first.topicHistory(AGENTS.id).messages, []);
+  recorder.attach(null); first.close();
+  const restarted = new HubCore({ store, clock });
+  t.after(() => restarted.close());
+  const logs: Record<string, unknown>[] = [];
+  assert.equal(replayAgentsRecord(restarted, records, entry => logs.push(entry)), 0);
+  assert.deepEqual(restarted.topicHistory(AGENTS.id).messages, []);
+  assert.equal(logs.some(entry => entry.event === 'agents-record-replayed'), false);
+});

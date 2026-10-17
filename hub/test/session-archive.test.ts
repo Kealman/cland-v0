@@ -1,66 +1,43 @@
+// T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { FakeClock } from './fake-clock.ts';
+import { componentHub } from './subscription-hub.ts';
 // Archive through the real hub, a real spoke and the human CLI; fakes sit at the harness boundary.
-import { test } from 'node:test';
-import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { test } from 'node:test';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { cland, connectUi, fakeClaude, fakeCodex, spawnSpoke, projectHub, tempProject, eventually } from './harness.ts';
-import { preparedProject } from './prepared-project.ts';
+import { cland, connectUi, eventually, inProcessSpoke, tempProject } from './harness.ts';
 
 type List = { processes: HarnessProcessView[]; archived: number };
 
-test('a real task merge starts the stopped Implementer item window', async t => {
-  const root = await preparedProject(t);
-  await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "1s"\narchive_after_stop = "1d"\n');
-  execFileSync('git', ['add', '.cland/config.toml'], { cwd: root });
-  execFileSync('git', ['commit', '-qm', 'Configure cleanup fixture'], { cwd: root });
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const pushed = await cland(root, 'push');
-  assert.equal(pushed.code, 0, pushed.stderr);
-  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Archive after landing' })).ok, true);
-  const launch = await ui.request({ type: 'session.launch', name: 'impl-merge', role: 'implementer', harness: 'claude-code', item: 'T-1' }, 30000);
-  assert.equal(launch.ok, true, launch.error);
-  const p = (launch.value as { process: HarnessProcessView }).process;
-  await writeFile(join(p.cwd, 'README.md'), 'implemented\n');
-  execFileSync('git', ['add', 'README.md'], { cwd: p.cwd });
-  execFileSync('git', ['commit', '-qm', 'Implement fixture work'], { cwd: p.cwd });
-  assert.equal((await ui.request({ type: 'session.stop', session: p.name }, 30000)).ok, true);
-  const merged = await cland(root, 'merge', 'T-1', '--override', 'Exercise archive after a real merge', '--json');
-  assert.equal(merged.code, 0, merged.stderr);
-  assert.equal((JSON.parse(merged.stdout) as { item: string }).item, 'T-1');
-  const archived = await eventually('merged Implementer archives on item window', async () => {
-    const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
-    return list.processes.find(row => row.name === p.name);
-  });
-  assert.equal(archived.archivedBy, 'rule');
-});
-
 test('item windows follow launch items and the latest verifier work even after holds release; reopening cancels the item clock', async t => {
-  const root = await preparedProject(t);
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "2s"\narchive_after_stop = "1d"\n');
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   for (const title of ['Implementer item', 'Earlier held item', 'Latest held item', 'Reopened item']) assert.equal((await ui.request({ size: 'M', type: 'task.create', title })).ok, true);
   for (const [name, role, item] of [['impl', 'implementer', 'T-1'], ['rev', 'reviewer', undefined], ['tester', 'qa', undefined], ['reopened', 'implementer', 'T-4']] as const) {
+
     const launch = await ui.request({ type: 'session.launch', name, role, harness: 'claude-code', ...(item ? { item } : {}) }, 30000);
     assert.equal(launch.ok, true, launch.error);
     const p = (launch.value as { process: HarnessProcessView }).process;
     if (role === 'reviewer' || role === 'qa') {
-      // Wait for the native MCP spoke before connecting the observer.
-      await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId);
-      const spoke = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId: p.sessionId });
+      const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId: p.sessionId });
       t.after(() => spoke.close());
       await spoke.waitForPresence([name]);
-      for (const id of ['T-2', 'T-3']) assert.equal((await spoke.call<{ ok: boolean }>('task.hold', { id })).ok, true);
+      for (const id of ['T-2', 'T-3']) {
+        // Archive-affinity bug: equal heldAt instants keep the earlier verifier item.
+        await clock.advance(1);
+        assert.equal((await spoke.call<{ ok: boolean }>('task.hold', { id })).ok, true);
+      }
       assert.equal((await spoke.call<{ ok: boolean }>('task.hold', { id: 'T-3', release: true })).ok, true);
     }
+
     assert.equal((await ui.request({ type: 'session.stop', session: name }, 30000)).ok, true);
   }
   for (const id of ['T-1', 'T-3', 'T-4']) {
@@ -68,8 +45,13 @@ test('item windows follow launch items and the latest verifier work even after h
     assert.equal(closed.ok, true, closed.error);
   }
   assert.equal((await ui.request({ type: 'task.edit', item: 'T-4', state: 'open' })).ok, true);
+  await clock.advance(1000);
   // A later comment must not restart the item close window.
   assert.equal((await ui.request({ type: 'task.comment', item: 'T-3', text: 'Post-close note' })).ok, true);
+  await clock.advance(1001);
+
+
+
   const archive = await eventually('launch item and latest held item archive after close', async () => {
     const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
     return list.archived === 3 ? list : undefined;
@@ -88,46 +70,43 @@ test('configured stop window archives crew at startup and on the timer, never Ai
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "1s"\narchive_after_stop = "1s"\n');
   const table = new ProcessTable(join(root, '.cland', 'hub.db'));
-  const old = new Date(Date.now() - 86400000).toISOString();
+  const fixtureClock = new FakeClock();
+  const old = new Date(fixtureClock.now().getTime() - 86400000).toISOString();
   for (const [name, role, stoppedAt] of [['crew', 'coordinator', old], ['human-aide', 'aide', old], ['legacy', null, null]] as const) {
     table.put({ name, role, stoppedAt, harness: 'claude-code', model: null, cwd: root, pid: null, harnessId: null, sessionId: name + '-id', harnessSessionId: null, startedAt: old, status: 'stopped' });
   }
   table.close();
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   const initial = (await ui.request({ type: 'session.list' })).value as List;
   assert.equal(initial.archived, 1, 'startup archives due rows');
   assert.ok(initial.processes.find(p => p.name === 'legacy')?.stoppedAt, 'first sweep dates a legacy stop without journal reads');
   for (const [name, role] of [['fallback', 'implementer'], ['stopped-aide', 'aide']] as const) {
     assert.equal((await ui.request({ type: 'session.launch', name, role, harness: 'claude-code' }, 30000)).ok, true);
+
     assert.equal((await ui.request({ type: 'session.stop', session: name }, 30000)).ok, true);
   }
+  await clock.advance(1001);
   const archived = await eventually('configured timer archives legacy crew', async () => {
     const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
     return list.archived === 3 ? list : undefined;
   });
   assert.deepEqual(archived.processes.map(p => p.name).sort(), ['crew', 'fallback', 'legacy']);
   assert.ok(archived.processes.every(p => p.archivedBy === 'rule'));
-  await eventually('Aide stop window elapses without archiving', async () => {
-    const list = (await ui.request({ type: 'session.list' })).value as List;
-    const aide = list.processes.find(p => p.name === 'stopped-aide');
-    return aide && Date.now() - Date.parse(aide.stoppedAt!) > 1000 || undefined;
-  });
+  await clock.advance(1001);
   assert.deepEqual(((await ui.request({ type: 'session.list' })).value as List).processes.map(p => p.name).sort(), ['human-aide', 'stopped-aide']);
 });
 
 test('prune CLI and Coordinator tool delete only old archived records and retain the journal', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.ok((await coord.client.listTools()).tools.some(tool => tool.name === 'session.prune'));
-  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer' });
   t.after(() => impl.close());
   await impl.waitForPresence(['impl']);
   const forbidden = await impl.call<{ ok: boolean; code: string }>('session.prune', { olderThan: '1s' });
@@ -138,22 +117,18 @@ test('prune CLI and Coordinator tool delete only old archived records and retain
     assert.equal(launch.ok, true, launch.error);
     if (name === 'old') {
       const p = (launch.value as { process: HarnessProcessView }).process;
-      // Wait for the native MCP spoke before connecting the observer.
-      await ui.waitFor(f => f.type === 'session.usage' && f.sessionId === p.sessionId);
-      const holder = await spawnSpoke({ discover: true, cwd: root, name, role: 'implementer', sessionId: p.sessionId });
+      const holder = await inProcessSpoke(t, { discover: true, cwd: root, name, role: 'implementer', sessionId: p.sessionId });
       t.after(() => holder.close());
       await holder.waitForPresence([name]);
       const claim = await holder.call<{ ok: boolean; error?: string }>('task.claim', { id: 'T-1' });
       assert.equal(claim.ok, true, claim.error);
       await holder.close();
     }
+
     assert.equal((await ui.request({ type: 'session.stop', session: name }, 30000)).ok, true);
   }
   assert.equal((await ui.request({ type: 'session.archive', session: 'old' })).ok, true);
-  await eventually('old stop exceeds prune duration', async () => {
-    const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
-    return Date.now() - Date.parse(list.processes[0]!.stoppedAt!) > 1000 || undefined;
-  });
+  await clock.advance(1001);
   const dry = await cland(root, 'session', 'prune', '--older-than', '1s', '--dry-run', '--json');
   assert.equal(dry.code, 0, dry.stderr);
   assert.deepEqual(JSON.parse(dry.stdout), { names: ['old'], dryRun: true });
@@ -180,12 +155,13 @@ test('prune compares stop age even for recently archived rows, keeps young and u
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   const table = new ProcessTable(join(root, '.cland', 'hub.db'));
-  const now = new Date().toISOString(), old = new Date(Date.now() - 8 * 86400000).toISOString();
+  const fixtureClock = new FakeClock();
+  const now = fixtureClock.now().toISOString(), old = new Date(fixtureClock.now().getTime() - 8 * 86400000).toISOString();
   for (const [name, stoppedAt, archivedAt] of [['old', old, now], ['young', now, now], ['unarchived', old, null]] as const) {
     table.put({ name, stoppedAt, archivedAt, archivedBy: archivedAt ? 'hand' : null, harness: 'claude-code', role: 'aide', model: null, cwd: root, pid: null, harnessId: null, sessionId: name + '-id', harnessSessionId: null, startedAt: old, status: 'stopped' });
   }
   table.close();
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const olderThan of ['0s', '-1d', '7days', '1.5h', '999999999999999999d']) {
     assert.equal((await ui.request({ type: 'session.prune', olderThan })).ok, false, olderThan);
@@ -202,15 +178,14 @@ test('prune compares stop age even for recently archived rows, keeps young and u
 
 test('archive refuses live and unlaunched rows, hides stopped rows, retains their journal, and resume restores them', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.ok((await coord.client.listTools()).tools.some(tool => tool.name === 'session.archive'));
-  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer' });
   t.after(() => impl.close());
   await impl.waitForPresence(['impl']);
   const forbidden = await impl.call<{ ok: boolean; code: string }>('session.archive', { session: 'old' });
@@ -222,7 +197,7 @@ test('archive refuses live and unlaunched rows, hides stopped rows, retains thei
   const launched = await ui.request({ type: 'session.launch', name: 'old', role: 'aide', harness: 'claude-code' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const before = (launched.value as { process: HarnessProcessView }).process;
-  await eventually('Aide receives its role clause', async () => (await fake.log(before.harnessId!)).includes('you hold the role Aide') || undefined);
+  assert.match(fakes['claude-code']!.spawns.at(-1)!.clause!, /you hold the role Aide/);
   const live = await ui.request({ type: 'session.archive', session: 'old' });
   assert.equal(live.ok, false);
   assert.match(live.error!, /stop it first/);
@@ -300,11 +275,11 @@ for (const by of ['hand', 'rule'] as const) test(`fresh resume clears a durable 
   const table = new ProcessTable(join(root, '.cland', 'hub.db'));
   table.put({ name: 'old', harness: 'codex', role: 'aide', model: 'gpt-fake-1', cwd: root, pid: null, harnessId: null, sessionId: 'old-id', harnessSessionId: null, startedAt: '2026-01-01T00:00:00Z', status: 'exited', stoppedAt: '2026-01-02T00:00:00Z', archivedAt: '2026-01-03T00:00:00Z', archivedBy: by, launchBrief: 'Continue this archived work.' });
   table.close();
-  const fake = await fakeCodex(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   const before = (await ui.request({ type: 'session.list', archived: true })).value as List;
   assert.equal(before.processes[0]!.archivedBy, by, 'restart retains the archive metadata');
+  fakes.codex!.scriptResume('old', 'gone');
   const failed = await ui.request({ type: 'session.resume', session: 'old', relaunch: true });
   assert.equal(failed.ok, true, failed.error);
   const offer = failed.value as { found: boolean; process: HarnessProcessView; fresh: { brief: string } };

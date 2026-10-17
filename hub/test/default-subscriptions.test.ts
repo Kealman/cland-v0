@@ -1,18 +1,17 @@
-import test from 'node:test';
+// T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { projectHub, testWaitMs, withDiscoveredPid, connectUi, spawnSpoke, startDaemon, tempProject, fakeClaude, eventually, killDaemon, cland, sleep } from './harness.ts';
-import { copyPreparedProject } from './prepared-project.ts';
+import test from 'node:test';
+import { envelope } from '../src/adapters/contract.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
+import { connectUi, eventually, inProcessSpoke, tempProject } from './harness.ts';
+import { componentHub, launchedSpoke, stopComponentHub } from './subscription-hub.ts';
 
 test('default item subscriptions follow claims and explicit subscriptions widen them', async t => {
   const root = await tempProject(t);
-  let { discovery } = await startDaemon(t, root);
+  let { discovery, clock, fakes } = await componentHub(t, root);
   let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Default ownership', assignee: 'impl' });
@@ -35,8 +34,8 @@ test('default item subscriptions follow claims and explicit subscriptions widen 
   assert.match((await coord.waitForEvent(e => e.params.content.includes('explicit next turn'))).params.content, /status changed review → qa/);
   const beforeRestart = (await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions;
   ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await stopComponentHub(root);
+  ({ discovery, fakes } = await componentHub(t, root));
   ui = await connectUi(t, discovery);
   await coord.waitForPresence(['coord', 'impl']);
   assert.deepEqual((await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, beforeRestart);
@@ -49,11 +48,11 @@ test('default item subscriptions follow claims and explicit subscriptions widen 
 
 test('an Aide lead owns its subtree defaults without receiving crew broadcasts', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const aide = await spawnSpoke({ cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const aide = await inProcessSpoke(t, { cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await aide.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'aide-1', 'rev']);
   const { item: parent } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Aide subtree', kind: 'epic' });
@@ -81,11 +80,11 @@ test('an Aide lead owns its subtree defaults without receiving crew broadcasts',
 
 test('a coalesced explicit event keeps later default lead provenance after an Aide transition', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const lead = await spawnSpoke({ cwd: root, discover: true, name: 'lead-1', role: 'implementer', sessionId: 'lead-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const lead = await inProcessSpoke(t, { cwd: root, discover: true, name: 'lead-1', role: 'implementer', sessionId: 'lead-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
   t.after(async () => { await coord.close(); await lead.close(); await rev.close(); });
   await coord.waitForPresence(['coord', 'lead-1', 'rev']);
   const { item: parent } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Future lead', kind: 'epic', assignee: 'lead-1' });
@@ -109,83 +108,11 @@ test('a coalesced explicit event keeps later default lead provenance after an Ai
   assert.ok(delivered.params.content.includes(`${text} (×2)`), delivered.params.content);
 });
 
-test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events', async t => {
-  const root = await tempProject(t);
-  // Keep pushed states authoritative while the idle notification timer runs.
-  const fake = await fakeClaude(t, { pollMs: 50, pushTrustMs: 120_000 });
-  const idleNotifyMs = 800;
-  const { discovery } = await projectHub(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: String(idleNotifyMs) });
-  const ui = await connectUi(t, discovery);
-  await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Review lifecycle', assignee: 'impl' });
-  const implLaunch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
-  assert.equal(implLaunch.ok, true, implLaunch.error);
-  const implProcess = await withDiscoveredPid(ui, (implLaunch.value as { process: { pid: number; sessionId: string; harnessId: string } }).process);
-  t.after(() => killDaemon(implProcess.pid));
-  await coord.waitForPresence(['coord', 'impl']);
-  const revLaunch = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' });
-  assert.equal(revLaunch.ok, true, revLaunch.error);
-  await coord.waitForPresence(['coord', 'impl', 'rev']);
-  // The faster fixture can reach the injected states before the clause's late
-  // Stop/mod signals. Settle that automatic turn before testing cancellation.
-  const reviewer = (revLaunch.value as { process: { harnessId: string } }).process;
-  await eventually('Reviewer clause signals settled', async () => {
-    const log = await fake.log(reviewer.harnessId);
-    return log.includes('hooks Stop done') && log.includes('session.measure done') ? true : undefined;
-  });
-  assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
-  const signal = async (session: string, event: string) => {
-    const result = await ui.request({ type: 'session.signal', session, event, payload: event === 'permission' ? { tool_name: 'Bash' } : {}, at: Date.now() });
-    assert.equal(result.ok, true, result.error);
-  };
-  await signal('rev', 'turn-start');
-  await signal('rev', 'permission');
-  const approval = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev waiting for approval');
-  assert.deepEqual((approval.message as Message).to, ['impl']);
-  await signal('rev', 'turn-start');
-  await signal('rev', 'turn-end');
-  await signal('rev', 'turn-start');
-  await sleep(1.125 * idleNotifyMs); // Negative: busy cancels the configured 800 ms idle timer.
-  assert.equal(ui.frames.some(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev idle 1 min'), false, 'returning to busy cancels the idle timer');
-  await signal('rev', 'turn-end');
-  const idle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev idle 1 min');
-  assert.deepEqual((idle.message as Message).to, ['impl']);
-  assert.equal(ui.frames.some(f => f.type === 'message' && (f.message as Message).kind === 'event' && ['event · session.state · rev idle', 'event · session.state · rev busy', 'event · session.state · rev launched'].includes((f.message as Message).text)), false);
-  await signal('impl', 'turn-start');
-  await signal('impl', 'turn-end');
-  const leadIdle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl idle 1 min');
-  assert.deepEqual((leadIdle.message as Message).to, ['coord']);
-  assert.equal((await ui.request({ type: 'session.stop', session: 'rev' })).ok, true);
-  const stopped = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · rev stopped · ${item.id}`);
-  assert.deepEqual((stopped.message as Message).to, ['impl']);
-  assert.equal((stopped.message as Message & { stage: string }).stage, 'queued');
-  await coord.call('send', { to: ['impl'], text: 'release reviewer event' });
-  const log = await eventually('Reviewer stop injected into lead', async () => {
-    const text = await fake.log(implProcess.harnessId);
-    return text.includes('release reviewer event') ? text : undefined;
-  });
-  assert.match(log, /rev stopped[\s\S]*release reviewer event/);
-  process.kill(implProcess.pid, 'SIGKILL');
-  const died = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
-  assert.deepEqual((died.message as Message).to, ['coord']);
-  assert.equal((died.message as Message & { stage: string }).stage, 'queued');
-  await ui.request({ type: 'topic.send', topic: 'general', text: '@coord release death event' });
-  assert.match((await coord.waitForEvent(e => e.params.content.includes('release death event'))).params.content, /impl died/);
-  const inbox = await ui.request({ type: 'inbox.list' });
-  assert.equal('notifications' in (inbox.value as object), false);
-  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; warning?: boolean }> };
-  assert.ok(events.rows.some(r => r.text.includes('impl died') && r.warning));
-  assert.equal((inbox.value as { needsYou: number }).needsYou, 0);
-});
-
 test('a claim before hello already belongs to its lead and adopts that lead identity once', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
@@ -194,7 +121,7 @@ test('a claim before hello already belongs to its lead and adopts that lead iden
   assert.deepEqual((await coord.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
   const listing = await ui.request({ type: 'hub.subscriptions' });
   assert.deepEqual((listing.value as { subscriptions: Array<Subscription & { subscriber: string }> }).subscriptions.map(s => [s.subscriber, s.subject]), [['impl', { item: item.id }]]);
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-real' });
   t.after(() => impl.close());
   await impl.waitForPresence(['coord', 'impl']);
   await coord.call('send', { to: ['impl'], text: 'pending lead next turn' });
@@ -207,46 +134,12 @@ test('a claim before hello already belongs to its lead and adopts that lead iden
   assert.deepEqual((await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions, []);
 });
 
-test('a lead death while the hub is down reaches the offline Coordinator once after restart', async t => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  let { discovery } = await startDaemon(t, root, fake.env);
-  let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Recover default', assignee: 'impl' });
-  const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
-  assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  t.after(() => killDaemon(p.pid));
-  await coord.waitForPresence(['coord', 'impl']);
-  ui.close();
-  await coord.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  process.kill(p.pid, 'SIGKILL');
-  for (let restart = 0; restart < 2; restart++) {
-    ({ discovery } = await startDaemon(t, root, fake.env));
-    ui = await connectUi(t, discovery);
-    const deaths = await eventually('offline Coordinator death queued', async () => {
-      const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-      const events = (history.value as { messages: Array<Message & { stage: string }> }).messages.filter(m => m.text === `event · session.state · impl died · ${item.id}`);
-      return events.length ? events : undefined;
-    });
-    assert.equal(deaths.length, 1);
-    assert.deepEqual(deaths[0]?.to, ['coord']);
-    assert.equal(deaths[0]?.stage, 'queued');
-    ui.close();
-    assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  }
-});
-
 test('removing a claimed item sends its final default event to the previous lead', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
   const { item } = await coord.call<{ item: { id: string; path: string } }>('task.create', { size: 'M', title: 'Removed default', assignee: 'impl' });
@@ -263,70 +156,13 @@ test('removing a claimed item sends its final default event to the previous lead
   assert.deepEqual(removed[0]?.to, ['impl']);
 });
 
-for (const pendingReceipt of [false, true]) test(`terminal recovery routes an older pooled Reviewer death past its ${pendingReceipt ? 'verified-stopped lead with pending cleanup' : 'already-dead lead'}`, async t => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  let { discovery } = await startDaemon(t, root, fake.env);
-  let ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  // Await each launch's correlated completion receipt: Claude's native agents probe
-  // alone has a 15 s deadline, so the generic 5 s frame budget can expire under load.
-  const reviewer = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' }, testWaitMs(30_000));
-  assert.equal(reviewer.ok, true, reviewer.error);
-  const r = await withDiscoveredPid(ui, (reviewer.value as { process: { pid: number; sessionId: string } }).process);
-  t.after(() => killDaemon(r.pid));
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Terminal lead order', assignee: 'impl' });
-  const implementer = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id }, testWaitMs(30_000));
-  assert.equal(implementer.ok, true, implementer.error);
-  const p = await withDiscoveredPid(ui, (implementer.value as { process: { pid: number; sessionId: string } }).process);
-  t.after(() => killDaemon(p.pid));
-  await coord.waitForPresence(['coord', 'rev', 'impl']);
-  assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
-  ui.close();
-  await coord.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  process.kill(r.pid, 'SIGKILL');
-  process.kill(p.pid, 'SIGKILL');
-  // Reuse subscription-hygiene.test.ts's recovery arrangement: durable facts committed before terminal fan-out.
-  // Coordinator authorized this fixture arrangement; all assertions use frame history.
-  const { DatabaseSync } = await import('node:sqlite');
-  const { join } = await import('node:path');
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  db.prepare("update harness_processes set status = 'exited' where name in ('rev', 'impl')").run();
-  db.close();
-  if (pendingReceipt) {
-    const { ProcessTable } = await import('../src/adapters/processes.ts');
-    const table = new ProcessTable(join(root, '.cland', 'hub.db'));
-    const process = table.get('impl');
-    assert.ok(process);
-    table.pendingStop({ process, error: 'crash after verified stop', published: true, stages: { stopped: true, rowRemoved: false, roleRolledBack: false } });
-    table.close();
-  }
-  for (let restart = 0; restart < 2; restart++) {
-    ({ discovery } = await startDaemon(t, root, fake.env));
-    ui = await connectUi(t, discovery);
-    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-    const deaths = (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.text.includes(' died'));
-    assert.deepEqual(deaths.map(m => [m.text, m.to]), [
-      [`event · session.state · rev died · ${item.id}`, ['coord']],
-      ...(!pendingReceipt ? [[`event · session.state · impl died · ${item.id}`, ['coord']]] : []),
-    ]);
-    ui.close();
-    assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  }
-});
-
-
 test('unclaimed descendants inherit their nearest claimed ancestor lead', async t => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t, { pollMs: 50 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
   t.after(async () => { await coord.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'impl']);
   const parent = await ui.request({ type: 'task.create', title: 'Claimed container', kind: 'release', assignee: 'impl' });
@@ -346,24 +182,25 @@ test('unclaimed descendants inherit their nearest claimed ancestor lead', async 
   assert.deepEqual((await impl.call<{ subscriptions: Subscription[] }>('subscriptions')).subscriptions.map(s => s.subject), [{ item: parentId }, { item: childId }, { item: grandchildId }]);
   const launched = await ui.request({ type: 'session.launch', name: 'child-lead', role: 'implementer', harness: 'claude-code', item: childId });
   assert.equal(launched.ok, true, launched.error);
-  const p = await withDiscoveredPid(ui, (launched.value as { process: { pid: number; sessionId: string } }).process);
-  t.after(() => killDaemon(p.pid));
+  const p = (launched.value as { process: { name: string; pid: number; sessionId: string } }).process;
+  const workerPeer = await launchedSpoke(t, root, p);
   await coord.waitForPresence(['coord', 'impl', 'child-lead']);
   await coord.call('task.close', { id: grandchildId });
   const inherited = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · task · ${grandchildId} closed`);
   assert.deepEqual((inherited.message as Message).to, ['child-lead']);
-  process.kill(p.pid, 'SIGKILL');
+  fakes['claude-code']!.crash('child-lead');
+  await workerPeer.close();
   const death = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · child-lead died · ${childId}`);
   assert.deepEqual((death.message as Message).to, ['impl'], 'a gone child lead routes to the nearest ancestor lead');
 });
 
 test('anonymous hellos cannot give another name the claimant default identity', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'unknown' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'unknown' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const rev = await inProcessSpoke(t, { cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'unknown' });
+  const impl = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'unknown' });
   t.after(async () => { await coord.close(); await rev.close(); await impl.close(); });
   await coord.waitForPresence(['coord', 'rev', 'impl']);
   const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Anonymous claimant', assignee: 'impl' });
@@ -377,84 +214,69 @@ test('anonymous hellos cannot give another name the claimant default identity', 
 });
 
 
-for (const restart of [false, true]) test(`the item lead runs not-clear, re-review and QA; only ready starts the Coordinator (${restart ? 'after restart' : 'connected'})`, async t => {
+test('default warning routing follows holds and cancels idle notifications on busy', async t => {
   const root = await tempProject(t);
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  await copyPreparedProject(root);
-  let { discovery } = await startDaemon(t, root);
-  let ui = await connectUi(t, discovery);
-  let coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  const impl = await spawnSpoke({ cwd: root, discover: true, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
-  const rev = await spawnSpoke({ cwd: root, discover: true, name: 'rev', role: 'reviewer', sessionId: 'rev-id' });
-  const qa = await spawnSpoke({ cwd: root, discover: true, name: 'qa-one', role: 'qa', sessionId: 'qa-id' });
-  t.after(async () => { await Promise.all([coord, impl, rev, qa].map(s => s.close())); });
-  await coord.waitForPresence(['coord', 'impl', 'rev', 'qa-one']);
-  const { item: epic } = await coord.call<{ item: { id: string } }>('task.create', { title: 'Loop plan', kind: 'epic' });
-  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Own loop', assignee: 'impl', parent: epic.id });
-  await coord.call('task.plan', { id: epic.id, op: 'set', yaml: `stages:\n- name: Loop\n  qa: {scope: affected, when: per-item}\n  lanes: [[${item.id}]]\n` });
-  const plannedText = `event · task · ${item.id} status changed backlog → planned`;
-  const plannedEvent = await eventually('planned setup event recorded for Coordinator', async () => {
-    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.find(m => m.kind === 'event' && m.to.includes('coord') && m.text === plannedText);
+  const idleNotifyMs = 800;
+  const { discovery, clock, fakes } = await componentHub(t, root, { CLAND_IDLE_NOTIFY_MS: String(idleNotifyMs) });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  t.after(() => coord.close());
+  await coord.waitForPresence(['coord']);
+  const { item } = await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Review lifecycle', assignee: 'impl' });
+  const implLaunch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', item: item.id });
+  assert.equal(implLaunch.ok, true, implLaunch.error);
+  const implProcess = (implLaunch.value as { process: { name: string; role: string; sessionId: string; harnessId: string } }).process;
+  const implPeer = await launchedSpoke(t, root, implProcess);
+  await coord.waitForPresence(['coord', 'impl']);
+  const revLaunch = await ui.request({ type: 'session.launch', name: 'rev', role: 'reviewer', harness: 'claude-code' });
+  assert.equal(revLaunch.ok, true, revLaunch.error);
+
+  const revPeer = await launchedSpoke(t, root, (revLaunch.value as { process: { name: string; role: string; sessionId: string } }).process);
+  assert.equal((await ui.request({ type: 'task.hold', item: item.id, as: { name: 'rev' } })).ok, true);
+  const signal = async (session: string, event: string) => {
+    const result = await ui.request({ type: 'session.signal', session, event, payload: event === 'permission' ? { tool_name: 'Bash' } : {}, at: clock.now().getTime() });
+    assert.equal(result.ok, true, result.error);
+  };
+  await signal('rev', 'turn-start');
+  await signal('rev', 'permission');
+  const approval = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev waiting for approval');
+  assert.deepEqual((approval.message as Message).to, ['impl']);
+  await signal('rev', 'turn-start');
+  await signal('rev', 'turn-end');
+  await signal('rev', 'turn-start');
+  await clock.advance(1.125 * idleNotifyMs); // Negative: busy cancels the configured 800 ms idle timer.
+  assert.equal(ui.frames.some(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev idle 1 min'), false, 'returning to busy cancels the idle timer');
+  await signal('rev', 'turn-end');
+  await clock.advance(idleNotifyMs);
+  const idle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · rev idle 1 min');
+  assert.deepEqual((idle.message as Message).to, ['impl']);
+  assert.equal(ui.frames.some(f => f.type === 'message' && (f.message as Message).kind === 'event' && ['event · session.state · rev idle', 'event · session.state · rev busy', 'event · session.state · rev launched'].includes((f.message as Message).text)), false);
+  await signal('impl', 'turn-start');
+  await signal('impl', 'turn-end');
+  await clock.advance(idleNotifyMs);
+  const leadIdle = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === 'event · session.state · impl idle 1 min');
+  assert.deepEqual((leadIdle.message as Message).to, ['coord']);
+  assert.equal((await ui.request({ type: 'session.stop', session: 'rev' })).ok, true);
+  const stopped = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · rev stopped · ${item.id}`);
+  assert.deepEqual((stopped.message as Message).to, ['impl']);
+  assert.equal((stopped.message as Message & { stage: string }).stage, 'queued');
+  await coord.call('send', { to: ['impl'], text: 'release reviewer event' });
+  const log = await eventually('Reviewer stop injected into lead', async () => {
+    const text = fakes['claude-code']!.injections.filter(i => i.process.name === 'impl').map(i => envelope(i.message, i.topic)).join('\n');
+    return text.includes('release reviewer event') ? text : undefined;
   });
-  assert.equal(plannedEvent.detail?.digest, 'turn', 'planning waits for the Coordinator next turn');
-  const claimed = await impl.call<{ ok: boolean; worktree: { path: string } }>('task.claim', { id: item.id });
-  assert.equal(claimed.ok, true);
-  const work = claimed.worktree.path;
-  await writeFile(join(work, 'feature'), 'first\n');
-  git(work, 'add', 'feature');
-  git(work, 'commit', '-qm', 'First pass');
-  const request = async (who: typeof rev, role: string, text: string) => {
-    const sent = await impl.call<{ ok: boolean }>('send', { to: [role], kind: 'report', text });
-    assert.equal(sent.ok, true);
-    await who.waitForEvent(e => e.params.content.includes(text));
-  };
-  await impl.call('task.edit', { id: item.id, status: 'review' });
-  await request(rev, 'reviewer', `review request ${item.id} first pass`);
-  await rev.call('task.hold', { id: item.id });
-  await rev.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'not clear', run: 'loop-first' });
-  await rev.call('send', { to: [`lead ${item.id}`], kind: 'report', text: `review not clear ${item.id}` });
-  const finding = await impl.waitForEvent(e => e.params.content.includes(`review not clear ${item.id}`));
-  assert.match(finding.params.content, /verdict posted review not clear/);
-  assert.equal(coord.events.some(e => e.params.content.includes(`event · task · ${item.id}`)), false);
-  await writeFile(join(work, 'feature'), 'fixed\n');
-  git(work, 'add', 'feature');
-  git(work, 'commit', '-qm', 'Fix findings');
-  await request(rev, 'reviewer', `review request ${item.id} fixed pass`);
-  await rev.call('task.hold', { id: item.id });
-  await rev.call('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'loop-fixed' });
-  await rev.call('send', { to: [`lead ${item.id}`], text: `review clear ${item.id}` });
-  await impl.waitForEvent(e => e.params.content.includes(`review clear ${item.id}`));
-  await request(qa, 'qa', `qa request ${item.id} qa/briefs/${item.id}.md`);
-  await qa.call('task.hold', { id: item.id });
-  const before = await coord.call<{ item: { status: string } }>('task.view', { id: item.id });
-  assert.notEqual(before.item.status, 'ready');
-  if (restart) await coord.close();
-  await qa.call('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'loop-qa' });
-  const readyText = `event · task · ${item.id} status changed qa → ready`;
-  const readyHistory = async () => {
-    const history = await ui.request({ type: 'topic.history', topic: 'agents' });
-    return (history.value as { messages: Message[] }).messages.filter(m => m.kind === 'event' && m.to.includes('coord') && m.text.includes(`task · ${item.id}`) && m.id !== plannedEvent.id);
-  };
-  await eventually('one ready event recorded for Coordinator', async () => (await readyHistory()).some(m => m.text === readyText) ? true : undefined);
-  if (restart) {
-    ui.close();
-    assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-    ({ discovery } = await startDaemon(t, root));
-    ui = await connectUi(t, discovery);
-    coord = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
-  }
-  const ready = await coord.waitForEvent(e => e.params.content.includes(readyText));
-  assert.equal(ready.params.meta?.kind, 'event', 'ready itself starts a turn without a relay message');
-  const deliveries = await readyHistory();
-  assert.equal(deliveries.length, 1, JSON.stringify(deliveries));
-  assert.equal(deliveries[0]?.detail?.digest, 'now');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
-  assert.equal(journal.filter(e => e.event === 'event-delivery' && e.id === plannedEvent.id && e.to?.includes('coord') && e.digest === 'turn').length, 1, 'the setup planned event is accounted for separately');
-  assert.equal(journal.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord') && e.id !== plannedEvent.id).length, 1);
-  await sleep(100);
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const settled = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
-  assert.equal(settled.filter(e => e.event === 'event-delivery' && e.subject?.item === item.id && e.to?.includes('coord') && e.id !== plannedEvent.id).length, 1, 'still one ready delivery after settling');
+  assert.match(log, /rev stopped[\s\S]*release reviewer event/);
+  fakes['claude-code']!.crash('impl');
+  await implPeer.close(); await revPeer.close();
+  const died = await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `event · session.state · impl died · ${item.id}`);
+  assert.deepEqual((died.message as Message).to, ['coord']);
+  assert.equal((died.message as Message & { stage: string }).stage, 'queued');
+  await ui.request({ type: 'topic.send', topic: 'general', text: '@coord release death event' });
+  assert.match((await coord.waitForEvent(e => e.params.content.includes('release death event'))).params.content, /impl died/);
+  const inbox = await ui.request({ type: 'inbox.list' });
+  assert.equal('notifications' in (inbox.value as object), false);
+  const events = (await ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; warning?: boolean }> };
+  assert.ok(events.rows.some(r => r.text.includes('impl died') && r.warning));
+  assert.equal((inbox.value as { needsYou: number }).needsYou, 0);
 });

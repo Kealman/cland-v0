@@ -1,12 +1,12 @@
-// The Agents topic as the record, the journal and hygiene (spec 4.2 and 4.5, #34): a real hub in a temporary
-// project, scripted spokes over MCP, a UI client speaking the frames, `cland` as its own process, restarts through
-// `cland hub stop` and `start`. Nothing inside the hub is reached into.
-import { test, type TestContext } from 'node:test';
+// T2: hub rules use real socket frames, in-process harnesses/spokes and one FakeClock.
+import { FakeClock } from './fake-clock.ts';
+import { componentHub, stopComponentHub } from './subscription-hub.ts';
+// Agents record and hygiene through production MCP/frame handlers; stop/serve reopens durable state.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import { cland, flushProjectLogs, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, sleep, projectHub, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { test, type TestContext } from 'node:test';
+import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, inProcessSpoke, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 
 type Message = { id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; replyTo?: string; kind?: string; detail?: Record<string, unknown> };
 type Refusal = { code: string; rule: string; until?: string };
@@ -25,7 +25,7 @@ async function ok<T>(ui: FrameClient, frame: { type: string } & Record<string, u
 const history = async (ui: FrameClient, topic: string) => (await ok<{ messages: Message[] }>(ui, { type: 'topic.history', topic, limit: 200 })).messages;
 
 async function spoke(t: TestContext, root: string, name: string, role: string): Promise<Session> {
-  const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
+  const s = await inProcessSpoke(t, { discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
   t.after(() => s.close());
   await s.waitForPresence([name]);
   return s;
@@ -54,9 +54,8 @@ async function journalLines(root: string): Promise<Array<Record<string, unknown>
 }
 
 async function restart(t: TestContext, root: string): Promise<FrameClient> {
-  const stopped = await cland(root, 'hub', 'stop');
-  assert.equal(stopped.code, 0, stopped.stderr);
-  const { discovery } = await startDaemon(t, root);
+  await stopComponentHub(root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   return ui;
@@ -64,7 +63,7 @@ async function restart(t: TestContext, root: string): Promise<FrameClient> {
 
 test('agent-to-agent messages are recorded in Agents with sender, role and time, General shows nothing of them, and a reply in Agents addresses the sender', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const alpha = await spoke(t, root, 'alpha', 'implementer');
   const beta = await spoke(t, root, 'beta', 'reviewer');
   await alpha.waitForPresence(['alpha', 'beta']);
@@ -121,8 +120,7 @@ test('agent-to-agent messages are recorded in Agents with sender, role and time,
 
 test('lifecycle events land in Agents as notices with kinds — role assignment and revocation, a claim and its release, a session start and stop — and no tool-level noise does', async (t) => {
   const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const alpha = await spoke(t, root, 'alpha', 'implementer');
@@ -130,14 +128,14 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
 
   // a role that may claim any item under #30's permission table
   await ok(ui, { type: 'role.set', session: 'alpha', role: 'coordinator' });
-  assert.equal((await clandWithEnv(root, fake.env, 'task', 'create', '--size', 'M', 'Journal the hub')).code, 0);
+  assert.equal((await clandWithEnv(root, {}, 'task', 'create', '--size', 'M', 'Journal the hub')).code, 0);
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
   assert.equal((await alpha.call<{ ok: boolean }>('task.claim', { id: 'T-1', release: true })).ok, true);
   await ok(ui, { type: 'role.clear', session: 'alpha' });
 
   const launched = await ui.request({ type: 'session.launch', name: 'coord-1', role: 'coordinator' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
-  await clauseAnswered(ui, 'coord-1');
+  fakes['claude-code']!.idle('coord-1');
   assert.equal((await ui.request({ type: 'session.stop', session: 'coord-1' }, 15_000)).ok, true);
 
   const notices = await eventually('the notices in Agents', async () => {
@@ -172,7 +170,7 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
     return grants.length ? grants : undefined;
   });
   assert.equal(launchGrants.length, 1);
-  await sleep(100);
+  await clock.advance(100);
   await ok(ui, { type: 'hub.status', flushLogs: true });
   assert.equal((await journalLines(root)).filter(l => l.event === 'role-taken-at-launch' && l.session === 'coord-1').length, 1, 'still one launch grant after settling');
   assert.equal(launchGrants[0]?.agentsNotice, notices.find(m => m.kind === 'role-assign' && /^coord-1 took Coordinator at launch/.test(m.text))?.id);
@@ -181,7 +179,7 @@ test('lifecycle events land in Agents as notices with kinds — role assignment 
 test('a looping pair trips the breaker at the configured threshold: both get the typed refusal, Agents shows the mute, it survives a restart until `cland hub unmute`; a changed threshold applies at the next start; the journal only grows', async (t) => {
   const root = await tempProject(t);
   await writeConfig(root, { loop_breaker_max: 3, loop_breaker_window_minutes: 5, loop_breaker_mute_minutes: 10, rate_limit_max: 100 });
-  const { discovery } = await startDaemon(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root, {}, { clock: new FakeClock(new Date()) });
   let ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const alpha = await spoke(t, root, 'alpha', 'implementer');
@@ -203,7 +201,7 @@ test('a looping pair trips the breaker at the configured threshold: both get the
   assert.equal(refusal?.refusal?.code, 'hygiene');
   assert.equal(refusal?.refusal?.rule, 'loop');
   const until = refusal?.refusal?.until as string;
-  assert.ok(Date.parse(until) > Date.now() + 9 * 60_000, until);
+  assert.ok(Date.parse(until) > clock.now().getTime() + 9 * 60_000, until);
   // both parties hear of it, typed
   for (const s of [alpha, beta]) {
     const e = await s.waitForEvent((x) => x.params.meta?.kind === 'mute');
@@ -265,11 +263,12 @@ test('a looping pair trips the breaker at the configured threshold: both get the
 });
 
 test('hygiene refusals are typed: the size cap and the rate limit refuse the send itself, with code, rule and reason', async (t) => {
-  const hub = await startHub({ rateLimit: { max: 1, windowMs: 60_000 }, maxTextBytes: 64 });
+  const clock = new FakeClock();
+  const hub = await startHub({ clock, rateLimit: { max: 1, windowMs: 60_000 }, maxTextBytes: 64 });
   t.after(() => hub.close());
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
   t.after(() => alpha.close());
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   t.after(() => beta.close());
   await alpha.waitForPresence(['alpha', 'beta']);
   const big = await alpha.call<Send>('send', { to: ['beta'], text: 'x'.repeat(65) });
@@ -286,7 +285,7 @@ test('hygiene refusals are typed: the size cap and the rate limit refuse the sen
 
 test('an agent-to-agent message in another topic is referenced in Agents (sender, addressees, topic, message id), its text not repeated', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery, clock, fakes } = await componentHub(t, root);
   const alpha = await spoke(t, root, 'alpha', 'implementer');
   const beta = await spoke(t, root, 'beta', 'reviewer');
   await alpha.waitForPresence(['alpha', 'beta']);
@@ -310,61 +309,11 @@ test('an agent-to-agent message in another topic is referenced in Agents (sender
   assert.equal((await history(ui, 'agents')).filter((m) => m.kind === 'agent-message').length, 1);
 });
 
-test('a lifecycle event journalled but not yet recorded in Agents when the hub died is recorded at the next start, once', async (t) => {
-  const root = await tempProject(t);
-  const first = await startDaemon(t, root);
-  let ui = await connectUi(t, first.discovery);
-  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Recorded')).code, 0);
-  assert.equal((await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha')).code, 0);
-  const recorded = await eventually('the claim in Agents', async () => (await history(ui, 'agents')).find((m) => m.kind === 'claim'));
-  ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const lines = await journalLines(root);
-  const claimed = lines.find((l) => l.event === 'task-claimed');
-  assert.ok(claimed && typeof claimed.agentsNotice === 'string', `the journalled event names its notice: ${JSON.stringify(claimed)}`);
-  assert.equal(claimed.agentsNotice, recorded.id);
-
-  // the state a crash leaves: the event's journal line written, its notice never recorded (the hub died between)
-  const lost = { ...claimed, ts: new Date().toISOString(), id: 'T-2', session: 'beta', agentsNotice: '00000000-0000-4000-8000-00000000c1a1' };
-  await writeFile(join(root, '.cland', 'journal.jsonl'), `${JSON.stringify(lost)}\n`, { flag: 'a' });
-
-  const again = await startDaemon(t, root);
-  ui = await connectUi(t, again.discovery);
-  const claims = await eventually('the lost claim recorded', async () => {
-    const c = (await history(ui, 'agents')).filter((m) => m.kind === 'claim');
-    return c.some((m) => m.id === lost.agentsNotice) ? c : undefined;
-  });
-  assert.deepEqual(claims.map((m) => m.text), ['alpha claimed T-1', 'beta claimed T-2']);
-});
-
-test('lifecycle notices retention removed are not brought back by the journal: no replay after every notice was pruned', async (t) => {
-  const root = await tempProject(t);
-  const first = await startDaemon(t, root);
-  const ui = await connectUi(t, first.discovery);
-  assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Recorded')).code, 0);
-  assert.equal((await cland(root, 'task', 'claim', 'T-1', '--as', 'alpha')).code, 0);
-  await eventually('the claim in Agents', async () => (await history(ui, 'agents')).find((m) => m.kind === 'claim'));
-  ui.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  // what retention leaves once every lifecycle notice is past the window: none of them in the store
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  db.exec("delete from messages where topic = 'agents'");
-  db.close();
-
-  const again = await startDaemon(t, root);
-  const after = await connectUi(t, again.discovery);
-  await sleep(300);
-  const agents = await history(after, 'agents');
-  assert.deepEqual(agents.filter((m) => m.kind === 'claim' || m.kind === 'role-assign'), [], JSON.stringify(agents));
-  await ok(after, { type: 'hub.status', flushLogs: true });
-  assert.ok(!(await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).includes('"event":"agents-record-replayed"'));
-});
-
 test('a journal whose last line was cut off mid-write gets a newline before the next record: every later record parses', async (t) => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'journal.jsonl'), '{"ts":"2026-10-01T00:00:00.000Z","event":"hub-started"}\n{"ts":"2026-10-01T00:00:01.000Z","event":"se');
-  await projectHub(t, root);
+  await componentHub(t, root);
   await flushProjectLogs(t, root);
   const text = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
   const lines = text.split('\n').filter(Boolean);
