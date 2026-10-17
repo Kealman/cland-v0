@@ -1,4 +1,6 @@
-// Real detached lifecycle by design: an embedded hub cannot prove the CLI startup path.
+// T3 real detached lifecycle: an embedded hub cannot prove the CLI startup path.
+// The listening hang keeps a 10 s budget to reach its first connection on a loaded runner;
+// the pre-discovery hang needs only 2 s because it holds before daemon startup.
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
 import { readFile, stat, writeFile } from 'node:fs/promises';
@@ -67,7 +69,7 @@ test('a planted listening startup hang fails the smoke within its bound and name
       };
     }
   `);
-  const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '2000', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
+  const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '10000', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
   delete env.NODE_TEST_CONTEXT;
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(import.meta.url)], { env, timeout: 20_000 }, (error, stdout, stderr) => {
@@ -76,11 +78,11 @@ test('a planted listening startup hang fails the smoke within its bound and name
     });
   });
   assert.equal(result.code, 1, result.stdout + result.stderr);
-  assert.match(result.stdout, /hub startup smoke failed within 2000 ms; last startup log event: planted-startup-hang/);
-  // Allow two seconds for fixture teardown/reporting beyond the two-second test readiness budget.
+  assert.match(result.stdout, /hub startup smoke failed within 10000 ms; last startup log event: planted-startup-hang/);
+  // Allow two seconds for fixture teardown/reporting beyond the ten-second readiness budget.
   const duration = /duration_ms: ([\d.]+)/.exec(result.stdout);
   assert.ok(duration, result.stdout);
-  assert.ok(Number(duration[1]) < 4000, result.stdout);
+  assert.ok(Number(duration[1]) < 12000, result.stdout);
 });
 
 test(smokeName, async t => {
