@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-455
 branch: t/T-742-some-droplet-results-print-lifetime
 created: 2026-10-17T15:49:20.649Z
-updated: 2026-10-17T17:15:35.933Z
+updated: 2026-10-17T17:15:56.484Z
 ---
 
 ## Summary
@@ -40,3 +40,7 @@ Third case, and this one fails the run: T-695's run e9bd92a9 (A-4644) on the res
 ### coord · 2026-10-17T17:15:35.933Z
 
 Correction to the third case: e9bd92a9's exit 1 came from T-695's own new-test budget lines (five identities over 5 s), not from this defect. What remains for T-742 there is the missing Neovim smoke shard line and lifetime/cost "unknown". T-694's run bf76cf3d on the same hub reported both normally, so the gap is intermittent.
+
+### coord · 2026-10-17T17:15:56.484Z
+
+Cause narrowed by the stand-in's oversight check (2026-10-17 17:16Z). The spend is charged and the droplets are gone; only the result line races. For e9bd92a9 the journal shows executor-release-retry and executor-release-unconfirmed at 17:13:09Z (DigitalOcean request deadline reached), suite-result written 0.5 s later, then executor-lease-released at 17:13:42Z with lifetimeMs 2266532 and costUsd 0.157. The ledger holds that entry, and droplet 610025677 is absent from the DO list. The two earlier cases (droplet 609910076 at 06:11Z, 609954708 at 10:28Z) have the same shape. Fix direction: the result waits for the release retry, or lifetime and cost are backfilled from the ledger or the lease-released event.

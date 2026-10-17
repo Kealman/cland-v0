@@ -3,7 +3,7 @@ id: T-695
 kind: task
 title: Hub rules proven once per harness through three binaries collapse to one in-process table and one real frame proof
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T17:13:17.697Z
+updated: 2026-10-17T17:15:41.264Z
 ---
 
 ## Summary
@@ -52,6 +52,7 @@ Each hub rule runs as a T2 table over T-686's fake adapter flavours: model and u
   - done: impl-695 · 2026-10-17T16:17:47.301Z
   - verified: rev-30 [reviewer] · run rev-20261017-695-source · 2026-10-17T16:23:49.658Z · commit 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-17T17:15:41.264Z · note A-4644 exits1 with five owned hard duration budgets and no Neovim smoke receipt; await the explicitly authorized unchanged-head retry before final evidence clearance.
 
 ## Blocked by
 
@@ -106,3 +107,45 @@ Source clear, Standards0/Spec0 findings; verify C2/C3/C4. C1 and C5 remain unver
 Durable source review A-4617.
 
 Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T17:15:41.264Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-695-runtime
+commit: 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4
+scope: evidence
+findings: [{"severity":"medium","text":"A-4644 has five task-owned hard duration-budget failures: crew handoff5.044s, two OpenCode native pool cases6.968s/5.907s, usage final totals5.114s (each >5s), and native file65.367s (>60s). Assertions and all23 owned load gates pass, but this run is exit1 and does not establish C5. Coordinator separately authorizes one unchanged-head T-742 retry; keep source unchanged for that retry.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Disposition update after A-4649 was prepared: primary Coordinator 8d2680a6-d415-4453-af33-309ae65df08f authorizes exactly one unchanged-head retry for T-742; Implementer reports submitted 01bb9319-a478-4597-ab1f-b593db1c9beb. That instruction supersedes A-4649's proposed budget-patch sequencing: keep head/allowances unchanged for the authorized retry. This verdict records the failed A-4644 evidence only; it does not revoke that explicit retry authorization. Its five duration budget lines are hard failures under the active legacy gate, distinct from report-only tier diagnostics. A-4650 discloses paired timing values and the same failures. C1 is supported on the launch brief's reported Mac-median interpretation; no C1 failure is recorded.
+
+# T-695 runtime evidence review — not clear
+
+Exact reviewed head 09f1b18ccd0db3603e18e4d7a4ee5c9a83a360d4 remains the branch tip; current full source verdict rev-20261017-695-source / A-4617 still covers unchanged product/test bytes. Run e9bd92a9-7eeb-42c4-87fe-0d1907c29abb / A-4644 finishes exit 1 and task view records failed. Read-only receipt review; no Reviewer execution.
+
+## Standards / execution finding
+M1 (medium), hub/test/durations.json, evidenced by A-4644 lines7094–7098: five task-owned hard duration-budget failures prevent a clear C5 result:
+- crew-launch::Implementer handoff retains or resets native context across flavours —5.044s >5s;
+- session-native-lifecycle::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=true) —6.968s >5s;
+- the same keep_context=false identity —5.907s >5s;
+- session-usage::final totals and cost aggregate by launch item despite a changed verifier hold across flavours —5.114s >5s;
+- session-native-lifecycle whole file —65.367s >60s.
+These are hard legacy new-identity/file admission failures, distinct from the report-only tier budget/regression notices. Correct the measured allowances with valid ownership/reasons or reduce the demonstrated cost, then request fresh source review at the changed head before another verification. No failed assertion or unknown functional defect is inferred from the duration failures.
+
+## Spec and receipts
+Ordinary counts2082total/2077pass/0fail/0cancelled/5prerequisite skips. All five coverage files execute positively: session-model4 declarations, usage5, progress9, crew3 and retained native9, total30 top-level receipts. All23 owned new load identities pass5/5,115/115. This does not turn the failed ordinary budget gate green. Hub-only mode stops after its failed hub phases; Neovim smoke is not reached.
+
+Per-file Linux top-level test-seconds independently summed:
+session-model4.327945804; session-usage11.114043164; progress8.520035746; crew-launch10.409936520; retained native65.366899003; total99.738860237s. The retained native coverage is included, not omitted to compare only four fast files. Accepted Mac5/5 median sum35.083453878s remains separately disclosed against C1's85s target. The Implementer cites the launch brief's Mac-median target interpretation in b84eb514; the exact Linux sum is correctness/disclosure evidence, not a hidden replacement metric. C1 is not failed here; its final mark remains unverified pending the corrected-head evidence pass and timing disposition. No causal load inflation factor is claimed.
+
+C2/C3/C4 source marks remain current: bounded fake-binary/spoke/sleep counts including the retained native split, flavour rule tables/native differences, and full assertion map including exact README jq program and in-process aggregation correction. A-4616/A-4617 Mac evidence and source analysis are unchanged; no additional source finding in this evidence pass.
+
+Supplied executor: Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers. Lifetime/cost unknown, not inferred. Suite2179.91s,peak1mload10.61,load-gate extra wall7.93s; free36.18s,machine2143.71s. Host typecheck gate recorded at ade0dfe09c27d82fb4b3557d8ea0784db5558a31, not repeated remotely. Unrelated duration regression/report-only notices are not classified as new blockers by this review.
+
+Evidence not clear; fail C5 for the five hard budgets. C1 remains unverified; C2/C3/C4 retain current source verification. No unchanged retry requested. No per-item QA. Standards/execution: one medium finding; Spec: C5 lacks a passing task verify, no additional assertion-mapping defect.
+
+Durable receipt audit: A-4649; later execution disposition and paired timing evidence: A-4650.
+
+Criteria: C5 failed (A-4644 exits1 with five owned hard duration budgets and no Neovim smoke receipt; await the explicitly authorized unchanged-head retry before final evidence clearance.).
