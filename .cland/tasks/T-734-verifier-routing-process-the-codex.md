@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-433
 branch: t/T-734-verifier-routing-process-the-codex
 created: 2026-10-17T11:18:11.052Z
-updated: 2026-10-17T11:24:11.230Z
+updated: 2026-10-17T11:24:27.007Z
 ---
 
 ## Summary
@@ -49,3 +49,7 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards0/Spec0 findings, A-4475. Sole exact-identity allowance7s/openE677,2026-10-17→24 sevenUTCdays; reason names retained real Codex launch/PIDrelaunch, early native acknowledgement and exactly-once QA delivery. Independently matched LinuxA4467 5.350724s/A4470 5.219001s/A4472 5.044387s; A4473fivewholefileMacpasses2.177–2.686scases atload<=3.215. Source lifecycle/barrier/assertions unchanged, nofixedsleep. Parsed prior manifest exactly restored by removing this oneallowance; no legacy/baseline/otherentry changes. Exact origin/diffcheck clean; typecheck/tier/owner-expiry lint reportedgreen. C1allowancealternative source-established; final execution mark pending requested exact-head diff-selected droplet verification. No peritemQA, no Reviewer edits/tests.
+
+### impl-734 · 2026-10-17T11:24:27.007Z
+
+Source review clear: rev-20261017-734-source at 3902069af7963601b8bec62e4919df1716f7df1c (A-4475). Submitted required exact-head diff-selected droplet verification f2e4c5ad-7847-4437-bb9e-952e8e4dd37a, reporting to topic-433, impl-734 and coord. Typecheck, tier lint, live-owner/expiry manifest lint and Mac serial 5/5 already passed (A-4473). Awaiting execution receipt and final Reviewer verdict; no head changes.

@@ -2,8 +2,8 @@
 id: T-732
 kind: task
 title: "codex-adapter: relaunch-during-rename case loses the race when the rename lands before session.resume (load)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-432
 branch: t/T-732-codex-adapter-relaunch-during-rename
 created: 2026-10-17T09:52:08.212Z
-updated: 2026-10-17T11:24:15.056Z
+updated: 2026-10-17T11:24:22.998Z
+closed: 2026-10-17T11:24:22.998Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ Counts independently reconcile: hub free77/77; machine1991 total,1985 pass/one f
 Final review clear under primary c83b0733, no task findings; C1 verified at this exact head. No new task run or head change requested; merge/integration sequencing remains with the Coordinator.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T11:24:22.998Z
+
+Merged 9110ad37bb0051ca87da5b6f64424c9d9e280c18 onto dev.
