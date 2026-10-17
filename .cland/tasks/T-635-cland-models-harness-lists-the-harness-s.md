@@ -2,8 +2,8 @@
 id: T-635
 kind: task
 title: cland models <harness> lists the harness's model ids from a cached probe
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-391
 branch: t/T-635-cland-models-harness-lists-the-harness-s
 created: 2026-10-16T16:04:12.499Z
-updated: 2026-10-17T01:13:07.235Z
+updated: 2026-10-17T01:50:57.979Z
+closed: 2026-10-17T01:50:57.979Z
 ---
 
 ## Summary
@@ -447,3 +448,7 @@ Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite 2623.69 secon
 Review artifact A-4265.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-17T01:50:57.979Z
+
+Merged e981985c0e4eba10d07572980a00a85f0aeb0726 onto dev.

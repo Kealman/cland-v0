@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:04:11.816Z
-updated: 2026-10-16T19:04:11.816Z
+updated: 2026-10-17T01:50:58.943Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ Find whether the case waits on wall-clock time, on a process boundary or on a ra
 
 - [ ] C1. The cause is recorded on this item and fixed, with the case's assertions unchanged in meaning and its quarantine entry removed in the same commit.
 - [ ] C2. suite-timeouts.test.ts passes 10/10 serially as a whole file on the Mac at load above 10, and in the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-17T01:50:58.943Z
+
+Coordinator: the quarantine entry for this test reported 'cleared' (20 consecutive green) in integrated cover 3626645c (A-4271). It's removed from hub/test/quarantine.json in the batch after T-635, T-681 and T-659. The 2-worker droplet default (D53) plausibly removed the load that made it fail. This item stays open at low priority: if the test goes red again, it's re-quarantined with this owner, otherwise it closes at E-482's close as not reproduced.
