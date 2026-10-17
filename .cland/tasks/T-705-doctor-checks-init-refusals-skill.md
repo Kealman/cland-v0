@@ -3,7 +3,7 @@ id: T-705
 kind: task
 title: Doctor checks, init refusals, skill template commands and worktree discovery run in-process, with three real CLI runs each at most
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-677
 blocked_by: []
-topic: null
-branch: null
+topic: topic-437
+branch: t/T-705-doctor-checks-init-refusals-skill
 created: 2026-10-16T19:59:37.526Z
-updated: 2026-10-16T20:00:52.576Z
+updated: 2026-10-17T11:42:12.413Z
 ---
 
 ## Summary
@@ -45,3 +45,9 @@ These files spawn the CLI once per matrix cell, for logic that their modules exp
 - [ ] C3. The moved matrices are T1 or T2 tests that pass the tier lint, and the kept CLI runs each name the CLI behaviour they prove.
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+
+## Comments
+
+### impl-705 · 2026-10-17T11:42:12.413Z
+
+Implementation in progress: doctor matrices use runDoctor with injected output/probe boundaries; init and territory filesystem matrices use module entry points; skills commands parse exact template argv in-process with an injected stdin source; worktree discovery has one status proof per cwd. Retained doctor lifecycle and init binary/concurrent-writer contracts are split out and included in timing totals. Mac 5/5 serial run and per-file spawn census started. Required assertion migration audit will accompany review. Necessary runTask env forwarding bug confirmed red without the fix, as accepted by Coordinator.

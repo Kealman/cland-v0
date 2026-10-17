@@ -3,7 +3,7 @@ id: T-704
 kind: task
 title: Permission and validation tables run through the dispatcher, with one CLI proof per command family
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-687
-topic: null
-branch: null
+topic: topic-436
+branch: t/T-704-permission-and-validation-tables-run
 created: 2026-10-16T19:59:37.407Z
-updated: 2026-10-16T20:00:52.548Z
+updated: 2026-10-17T11:36:09.793Z
 ---
 
 ## Summary
@@ -51,3 +51,9 @@ updated: 2026-10-16T20:00:52.548Z
 ## Blocked by
 
 T-687 (in-process spoke).
+
+## Comments
+
+### impl-704 · 2026-10-17T11:36:09.793Z
+
+Migration underway: consolidated permission-integrity into permissions (launched Bash-shell identity proof retained in cli-identity), dispatcher tables replace repeated CLI calls; rulebook operations moved to a module fixture with an injected Clock; criterion crash recovery isolated as a lifecycle test. New pure merge-override classifier preserves the production predicate, with component landing effects still covered. First permissions and rulebook-file runs pass; serial file validation and assertion audit next.

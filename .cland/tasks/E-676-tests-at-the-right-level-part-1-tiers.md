@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-17T11:27:23.135Z
+updated: 2026-10-17T11:42:55.235Z
 ---
 
 ## Summary
@@ -68,6 +68,7 @@ stages:
     lanes:
       - - T-682
         - T-730
+        - T-735
         - T-684
       - - T-690
       - - T-729

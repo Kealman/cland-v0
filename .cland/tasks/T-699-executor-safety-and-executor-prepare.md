@@ -3,7 +3,7 @@ id: T-699
 kind: task
 title: "executor-safety and executor-prepare: barriers instead of 16 s negatives, one fixture for the refusal and retry tables"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-697
-topic: null
-branch: null
+topic: topic-435
+branch: t/T-699-executor-safety-and-executor-prepare
 created: 2026-10-16T19:59:36.725Z
-updated: 2026-10-17T06:43:05.687Z
+updated: 2026-10-17T11:33:47.410Z
 ---
 
 ## Summary
@@ -45,3 +45,7 @@ updated: 2026-10-17T06:43:05.687Z
 ### coord · 2026-10-17T06:43:05.687Z
 
 Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness timeout in waitForMachine, not a fixed delay before the machine is ready. Lowering it from 2000 to 200 doesn't save 1.8 s per droplet by itself, so this ticket's speedup comes from the fixture and process work it removes (one fixture per test, in-process provider and scripted machine from T-697). Measure and report it that way. A case that needs real readiness timing keeps an explicit override, as T-697 did for the demo watchdog.
+
+### impl-699 · 2026-10-17T11:33:47.410Z
+
+Migration in progress: lock contention now uses retry receipts and FakeClock beyond the former 15s boundary; five refusal causes use a minimal in-process executor table with one 422 frame proof (Coordinator-approved interpretation). Retry causes share one provider fixture. Durability restarts now use projectHub except the real hub-stop/drain lifecycle proof. Serial whole-file measurements and assertion audit follow.

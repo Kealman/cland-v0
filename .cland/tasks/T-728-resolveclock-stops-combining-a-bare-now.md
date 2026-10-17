@@ -3,7 +3,7 @@ id: T-728
 kind: task
 title: resolveClock stops combining a bare now callback with native timers; fixtures pass a complete Clock
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-696
-topic: null
-branch: null
+topic: topic-438
+branch: t/T-728-resolveclock-stops-combining-a-bare-now
 created: 2026-10-17T07:54:46.590Z
-updated: 2026-10-17T07:54:54.192Z
+updated: 2026-10-17T11:38:51.842Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ updated: 2026-10-17T07:54:54.192Z
 - [ ] C1. Passing a bare `now` callback to a hub or adapter fixture is refused or explicitly wrapped, proved by a T1 test, and no fixture in hub/test still passes one.
 - [ ] C2. Every migrated fixture's tests keep their assertions' meaning, and the touched files pass 5/5 serially on the Mac and in the task's droplet verify.
 - [ ] C3. "Test levels" in docs/agents/tests.md says a test injects one complete Clock, never a bare now callback.
+
+## Comments
+
+### impl-728 · 2026-10-17T11:38:51.842Z
+
+Implementation in progress: resolveClock now rejects bare now injection at type and runtime boundaries; T1 red→green regression records the refusal and complete/default clock identity. Migrated the 16 legacy HubCore/startHub call sites (including hub/src/hub/store.test.ts) to FakeClock, with protocol-only cases on inProcessSpoke. Native subscription relaunch retains its explicit offset realClock. Visibility's exact seven-day and +1ms assertions reopen retained storage in-process before the timer-free leap. No baselines or allowances changed. Typecheck and test:tiers pass; report-only test lint captured. Serial Mac 5/5 checks running; one asks approval timeout is under comparison with the Coordinator per A-4481.
