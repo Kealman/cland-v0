@@ -2,8 +2,8 @@
 id: T-735
 kind: task
 title: Test lint misses child processes started through wrapped calls such as promisify(execFile)
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-446
 branch: t/T-735-test-lint-misses-child-processes-started
 created: 2026-10-17T11:42:54.922Z
-updated: 2026-10-17T15:54:29.863Z
+updated: 2026-10-17T15:57:42.112Z
+closed: 2026-10-17T15:57:42.112Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4600. Independently audited exact-head A-4598 / ccd6efb9 exit 0: 2103 tests / 2098 passes / 0 failures / 5 prerequisite skips, including 12/12 Neovim smoke. Wrapper and generic-child controls pass ordinarily and 5/5, all five new lint identities 5/5; tracker-criterion-crash reports qualifies T3. C1 verified; C2 source current and independently corroborated by actual qualifier-row comparison against baseline-source A-4595: exactly 43 changes, no missing/extra census paths. Eight declared-T2 follow-ups remain T-741; no retags. A-4584 fifteen raw Mac files and source A-4588 remain applicable; origin unchanged. Hub-only plus smoke, report-only lint 354 findings/206 files disclosed, not a zero-finding/full-Neovim claim. No exception/additional run/per-item QA. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T15:57:42.112Z
+
+Merged b5cd8b4ff581715c856a03c9e6a97cc0cd2c6148 onto dev.
