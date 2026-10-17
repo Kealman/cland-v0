@@ -20,7 +20,7 @@ import { DropletExecutor } from '../executor/droplet/droplet.ts';
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
-import { Suites, SuiteAdmissionError, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
+import { Suites, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
 import { reportSharedDefects } from './shared-defects.ts';
 import { quarantineResults, recordQuarantineResults, type QuarantineHistory } from '../suite-quarantine.ts';
 import { describeSelection, selectPackageSuite } from '../suite-selection.ts';
@@ -189,7 +189,7 @@ export class Dispatcher {
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -602,6 +602,14 @@ export class Dispatcher {
     return caller;
   }
 
+  #reportAccounting(job: Readonly<SuiteJob>): void {
+    const core = this.#options.core;
+    const machines = (job.shards ?? [job]).filter(source => source.machine).map(source => `${source.shardName ? source.shardName + ': ' : ''}${source.machine!.name} · ${machineAccounting(source.machine!)}`);
+    const id = core.noticeTo(job.topic, { id: `suite-accounting:${job.id}`, kind: 'report', to: job.to,
+      text: `suite accounting correction ${job.id} · ${machines.join('; ')}`,
+      detail: { event: 'verification-accounting-confirmed', id: job.id, item: job.item ?? null } });
+    if (!id) throw new Error('accounting correction topic unavailable');
+  }
   async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
     const core = this.#options.core;
     if (job.outcome?.cause.includes('cleanup incomplete: unverified inherited-pipe writer')) {
@@ -617,7 +625,7 @@ export class Dispatcher {
     const messageId = `suite:${job.id}`;
     const platform = job.platform;
     const machine = job.machine;
-    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · lifetime ${machine.lifetimeMs === null ? 'unknown' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost $${machine.costUsd === null ? 'unknown' : machine.costUsd.toFixed(4)}` : ''}${job.workers === undefined ? '' : ` · workers ${job.workers}`}${job.size ? ` · requested size ${job.size}` : ''}${job.cacheBypass ? `\nCache bypassed: ${job.cacheBypass}` : ''}`;
+    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · ${machineAccounting(machine)}` : ''}${job.workers === undefined ? '' : ` · workers ${job.workers}`}${job.size ? ` · requested size ${job.size}` : ''}${job.cacheBypass ? `\nCache bypassed: ${job.cacheBypass}` : ''}`;
     if (job.requesterDied) {
       // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
       const key = `suite-death:${job.id}`;

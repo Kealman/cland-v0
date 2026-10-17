@@ -293,6 +293,13 @@ locally with a warn notice naming `remote budget <n>/<n> full` and a
 An explicit droplet request, or a default droplet request with `local_fallback = false`,
 remains a remote waiter, including when preparation
 or unconfirmed cleanup holds the remote budget; later local requests can proceed.
+The hub persists a finished remote run's outcome and collected log before cleanup.
+Its final result waits up to 120 seconds on the hub Clock for confirmed lease
+lifetime and cost. If release stays unconfirmed, the result marks accounting
+"pending confirmation"; the executor sweep retains its remote reservation and
+retries cleanup. Once the durable lease confirms release, the hub posts one
+accounting correction in the same topic. Restart resumes from the saved outcome
+without polling the deleted machine and retains the wait window/correction state.
 `--executor local` and human hand runs use the local slot behind compatibility leases. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
 `cland verify queue [--json]` prints `local: <holder or none>`, then one

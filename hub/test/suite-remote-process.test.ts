@@ -1,6 +1,6 @@
 // T3: delivered remote workers exit before their receipts release provider capacity.
-// Real shell completion, failed spend settlement and unconfirmed provider deletion
-// prove the process receipt/accounting boundary; policy permutations live in T1.
+// Real shell completion with failed spend settlement proves the process receipt
+// boundary; unconfirmed deletion policy lives in suite-accounting (T2).
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -87,26 +87,5 @@ test('finished remote runs free both budget slots despite failed spend settlemen
     release.resolve();
     await writeFile(ledger, saved);
   }
-});
-
-test('an unconfirmed release posts its receipt while the live lease still guards admission', async t => {
-  const f = await fixture(t, { hub: projectHub, test: barrier, config: 'remote_budget=1\nlifetime="15m"\nrun_timeout="5m"' });
-  const first = await caller(t, f, 'first'); const waiting = await caller(t, f, 'waiting');
-  const a = await first.launch('droplet');
-  const machine = await f.remote(a.id); await started(join(machine.home, 'cland'));
-  const b = await waiting.launch('droplet');
-  f.api.faults.deleteError = 403;
-  try {
-    await writeFile(join(machine.home, 'cland/.cland/finish'), 'yes');
-    await eventually('candidate exited before failed deletion', async () => (await readFile(join(machine.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
-    assert.match((await finished(f, first.topic, a.id)).text, /exit 0/);
-    assert.equal(f.api.droplets.length, 1);
-    assert.deepEqual((await queue(f)).waiters.map(w => w.id), [b.id], 'the durable lease still reserves provider capacity');
-  } finally { f.api.faults.deleteError = 0; }
-  const next = await f.remote(b.id); await started(join(next.home, 'cland'));
-  await writeFile(join(next.home, 'cland/.cland/finish'), 'yes');
-  await eventually('waiter candidate exited', async () => (await readFile(join(next.run, 'done'), 'utf8').catch(() => '')).trim() || undefined, 20000);
-  await finished(f, waiting.topic, b.id);
-  assert.deepEqual(f.api.droplets, []);
 });
 

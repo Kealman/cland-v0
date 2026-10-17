@@ -237,15 +237,15 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     await this.#prepareWork;
   }
 
-  async release(lease: DropletLease): Promise<Released> {
+  async release(lease: DropletLease, deadline?: number): Promise<Released> {
     const pending = this.#releases.get(lease.lease);
     if (pending) return pending;
-    const release = this.#release(lease).finally(() => { this.#releases.delete(lease.lease); });
+    const release = this.#release(lease, deadline).finally(() => { this.#releases.delete(lease.lease); });
     this.#releases.set(lease.lease, release);
     return release;
   }
 
-  async #release(lease: DropletLease): Promise<Released> {
+  async #release(lease: DropletLease, deadline = Infinity): Promise<Released> {
     await this.#changeLease(lease, async () => {
       const persisted = await readLease(leaseDir(this.root, lease));
       if (persisted.name !== lease.name || persisted.lease !== lease.lease) throw new Error('droplet lease identity changed; refusing release');
@@ -255,7 +255,8 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       await this.#save(lease);
     });
     if (lease.state === 'released') { await settleSpend(lease, this.#env); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
-    const limit = this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env);
+    const limit = Math.min(deadline, this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env));
+    if (limit <= this.clock.now().getTime()) return { lifetimeMs: null, costUsd: null };
     let cause: { status?: number; id?: string; message: string } | undefined;
     do {
       try {

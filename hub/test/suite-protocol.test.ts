@@ -9,6 +9,7 @@ import { Store } from '../src/hub/store.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
+import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 
 async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '') {
   const root = await tempProject(t); const clock = new FakeClock();
@@ -21,7 +22,7 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
     outcome: { code: 1, cause: '' }, artifact: null, reported: true, error: null, state: 'finished', cleaned: true, integrated: true, executor: 'local', platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'none' },
     cover: { status: 'red', cause: 'test-failure', tests: ['hub/test/planned-stage.test.ts::stage landing query budget'] } };
   const store = new Store(join(root, '.cland/hub.db')); store.setMeta('suite-jobs', JSON.stringify(make(base))); store.close();
-  const hub = await projectHub(t, root, {}, { clock, harnesses: 'fake' }); const ui = await connectUi(t, hub.discovery);
+  const hub = await projectHub(t, root, {}, { clock, harnesses: 'fake', probes: 'fake' }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui };
 }
 
@@ -86,6 +87,24 @@ test('a recovered integrated receipt posts the derived cover to the domain journ
   const receipt = journal.find(e => e.event === 'suite-result' && e.id === 'cover-0');
   assert.deepEqual(receipt.cover, status.suites![0]!.cover); assert.equal(receipt.executor, 'local');
   for (const event of ['suite-result', 'verification-timing']) { const entry = journal.find(e => e.event === event && e.id === 'cover-0'); assert.equal(entry.executor, 'local'); assert.deepEqual(entry.platform, status.suites![0]!.platform); }
+});
+
+test('late lease confirmation posts one accounting correction in the original report topic', async t => {
+  const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'settled', run: 'cover-0', name: 'cland-settled', tags: ['cland'],
+    size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: 'settled', keyId: null, resource: 123,
+    created: '2026-10-16T11:00:00Z', deadline: '2026-10-16T13:00:00Z', state: 'released', lifetimeMs: 60000, costUsd: 0.0042 };
+  const f = await seed(t, base => [{ ...base, executor: 'droplet', lease, accountingPending: true,
+    machine: { name: lease.name, size: lease.size, region: lease.region, lifetimeMs: null, costUsd: null } }]);
+  await writeLease(f.root, lease);
+  await f.ui.request({ type: 'subscribe' });
+  await f.clock.advance(1000);
+  const event = await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === 'suite-accounting:cover-0');
+  const message = event.message as { text: string; topic: string };
+  assert.equal(message.topic, 'general');
+  assert.match(message.text, /suite accounting correction cover-0.*lifetime 60 s · cost \$0\.0042/);
+  await f.clock.advance(2000);
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { id: string }[] };
+  assert.equal(history.messages.filter(message => message.id === 'suite-accounting:cover-0').length, 1);
 });
 
 test('scratch hub defaults to fixture leases without a project verification override', async t => {

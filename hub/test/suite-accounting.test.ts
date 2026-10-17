@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { machineAccounting, type SuiteJob } from '../src/hub/suites.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -15,6 +17,71 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+
+test('a finished run waits for confirmed lease accounting before publishing its receipt', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1 }, '', true);
+  const log = '# tests 1\n# pass 1\nshard duration Neovim smoke 1s\n';
+  f.machine.script({ outcome: 'slow', log });
+  const job = await remote(f); await running(f, job.id);
+  const waiting = await remote(f);
+  f.api.faults.deleteError = 503;
+  await f.machine.waits.run(f.finish(job.id, 0, log, false));
+  assert.ok(f.logs.some(entry => entry.event === 'executor-release-unconfirmed'));
+  assert.equal(f.status(job.id).reported, false, 'an unconfirmed release cannot publish unknown lifetime/cost');
+  assert.deepEqual(f.suites.snapshot().waiters.map(waiter => waiter.id), [waiting.id], 'the durable lease still guards remote admission');
+  assert.equal(f.api.droplets.length, 1);
+  await f.reopen();
+  f.api.faults.deleteError = 0;
+  await f.tick();
+  await f.machine.waits.run(f.result(job.id));
+  const report = f.reports.find(report => report.id === job.id)!;
+  const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
+  const ledger = JSON.parse(await readFile(join(f.root, '.cland/executor-state/spend.json'), 'utf8'));
+  assert.equal(lease.state, 'released');
+  assert.equal(report.machine!.lifetimeMs, lease.lifetimeMs);
+  assert.equal(report.machine!.costUsd, ledger.entries.find((entry: { run: string }) => entry.run === job.id).cost);
+  assert.equal(typeof report.machine!.lifetimeMs, 'number');
+  assert.equal(typeof report.machine!.costUsd, 'number');
+  assert.match(await f.log(job.id), /shard duration Neovim smoke 1s/);
+  assert.equal(f.reports.length, 1);
+  await running(f, waiting.id);
+  await f.finish(waiting.id);
+});
+
+test('past-window accounting publishes pending confirmation then corrects once from the released lease', async t => {
+  const corrections: SuiteJob[] = [];
+  const f = await suiteUnit(t, { executor: 'droplet', onAccountingConfirmed: job => { corrections.push(structuredClone(job)); } }, '', true);
+  const job = await remote(f); await running(f, job.id);
+  f.api.faults.deleteError = 503;
+  await f.machine.waits.run(f.finish(job.id, 0, undefined, false));
+  assert.equal(f.status(job.id).reported, false);
+  const waitStarted = (await f.jobs()).find(saved => saved.id === job.id)!.accountingWaitStarted;
+  await f.reopen();
+  assert.equal((await f.jobs()).find(saved => saved.id === job.id)!.accountingWaitStarted, waitStarted);
+  await f.tick(119000); await f.machine.waits.run(f.suites.settled());
+  assert.equal(f.status(job.id).reported, false, 'restart retains the full confirmation window');
+  await f.tick(1001);
+  await f.machine.waits.run(f.result(job.id));
+  assert.equal(f.reports.length, 1);
+  assert.equal(f.reports[0]!.accountingPending, true);
+  assert.equal(machineAccounting(f.reports[0]!.machine!), 'lifetime pending confirmation · cost pending confirmation');
+  assert.equal(corrections.length, 0);
+  await f.reopen();
+  f.api.faults.deleteError = 0;
+  // Only the executor owns provider deletion; the correction reads its durable
+  // released lease rather than querying a machine whose worker is already gone.
+  const executor = new DropletExecutor(f.root, f.store, undefined, { DIGITALOCEAN_TOKEN: 'suite-unit-token', CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state') }, () => f.config, { ...f.machine.dependencies, api: f.api.provider });
+  await f.machine.waits.run(executor.sweep());
+  await f.tick(); await f.suites.settled();
+  assert.equal(corrections.length, 1);
+  const lease = (await readLeases(f.root)).find(lease => lease.run === job.id)!;
+  assert.equal(corrections[0]!.machine!.lifetimeMs, lease.lifetimeMs);
+  assert.equal(corrections[0]!.machine!.costUsd, lease.costUsd);
+  assert.doesNotMatch(machineAccounting(corrections[0]!.machine!), /unknown|pending/);
+  await f.reopen(); await f.tick(); await f.suites.settled();
+  assert.equal(corrections.length, 1, 'restart must not duplicate the correction');
+  assert.equal(f.reports.length, 1, 'correction does not re-run or re-post the suite result');
+});
 
 for (const budget of [1, 2]) test(`explicit droplet refuses an uncovered reservation with remote budget ${budget}`, async t => {
   const f = await suiteUnit(t, { remoteBudget: budget }, 'daily_spend_usd=0.1\nlifetime="15m"\nrun_timeout="5m"', true);

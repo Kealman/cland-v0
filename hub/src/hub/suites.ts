@@ -48,6 +48,7 @@ export type SuiteJob = {
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
+  accountingWaitStarted?: string; accountingPending?: boolean;
   cancelled?: boolean;
   tree?: string | null; finished?: string;
   cached?: { run: string; head: string; tree: string };
@@ -66,12 +67,16 @@ export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
-export type SuiteSchedulerOptions = { candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
+const ACCOUNTING_WAIT_MS = 120_000;
 const KEY = 'suite-jobs';
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
+  return `lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
+}
 function elapsed(since: string | undefined | null, now: number): number | null {
   const start = Date.parse(since ?? '');
   return Number.isFinite(start) ? Math.max(0, now - start) : null;
@@ -575,6 +580,7 @@ export class Suites {
     if (shards.some(shard => !shard.reported)) return false;
     await this.#droplet.releaseShardReservations(shards.map(shard => shard.id));
     const failures = shards.filter(shard => shard.outcome?.code !== 0);
+    job.accountingPending = shards.some(shard => shard.accountingPending);
     job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; ') };
     const platform = shards.find(shard => shard.platform)?.platform;
     if (platform) job.platform = platform;
@@ -602,9 +608,9 @@ export class Suites {
       // Keep counts machine-readable and label every failure in the merged log.
       return `--- ${shard.shardName} ---\n${log.replace(/^(\s*(?:not ok \d+|✖ |duration budget: ).*)$/gm, `$1 [${shard.shardName}]`)}`;
     }));
-    const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · cost $${(shard.machine?.costUsd ?? 0).toFixed(4)}`);
+    const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}`);
     const prefix = (await readFile(job.log, 'utf8')).split('\n--- close shards ---\n')[0];
-    await writeFile(job.log, `${prefix}\n--- close shards ---\noccasion ${job.occasion}\n${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost $${shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    await writeFile(job.log, `${prefix}\n--- close shards ---\noccasion ${job.occasion}\n${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
     job.groupMerged = true; job.cleaned = true; this.#save(job);
     return true;
   }
@@ -666,6 +672,9 @@ export class Suites {
   }
   async #tick(): Promise<void> {
     await this.#reaping;
+    await Promise.all(this.#jobs.filter(job => job.reported && job.accountingPending).map(job => this.#confirmAccounting(job).catch(error => {
+      job.error = `accounting confirmation: ${String(error)}`; this.#save(job);
+    })));
     for (const job of this.#jobs) if (job.executor === 'droplet' && job.state === 'launching' && !job.outcome && !this.#launching.has(job.id) && !await this.#restoreRemoteResult(job) && this.#clock.now().getTime() >= (job.nextPoll ?? 0)) this.#launchRemote(job);
     await Promise.all(this.#jobs.map(job => this.#inspectJob(job)));
     if (this.#closed) return;
@@ -753,6 +762,22 @@ export class Suites {
     job.state = 'finished'; this.#save(job);
     return true;
   }
+  async #confirmAccounting(job: SuiteJob): Promise<void> {
+    const sources = job.shards ?? [job];
+    for (const source of sources) {
+      if (!source.lease || source.machine?.lifetimeMs !== null && source.machine?.costUsd !== null) continue;
+      const lease = await readLease(leaseDir(this.#root, source.lease as DropletLease));
+      if (lease.lease !== (source.lease as DropletLease).lease || lease.name !== (source.lease as DropletLease).name) throw new Error('accounting lease identity changed');
+      if (lease.state !== 'released' || lease.lifetimeMs === undefined || lease.costUsd === undefined) return;
+      source.lease = lease;
+      source.machine = { name: lease.name, size: lease.size, region: lease.region, lifetimeMs: lease.lifetimeMs, costUsd: lease.costUsd };
+    }
+    // Publication is idempotent by run id. Save the confirmed numbers only after
+    // the notice succeeds so a crash or unavailable topic retries the correction.
+    await this.#options.onAccountingConfirmed?.(job);
+    for (const source of sources) source.accountingPending = false;
+    job.accountingPending = false; job.error = null; this.#save(job);
+  }
   async #inspect(job: SuiteJob): Promise<void> {
     this.#announceFallback(job);
     this.#announceShardingSkip(job);
@@ -797,6 +822,8 @@ export class Suites {
         if (job.lease) {
           if (remote) {
             const lease = job.lease as DropletLease;
+            job.accountingWaitStarted ??= this.#clock.now().toISOString();
+            this.#save(job);
             if (job.cancelled || job.timedOut) {
               await this.#droplet.cancel(lease, 'SIGTERM');
               await this.#collectLog(job).catch(() => {});
@@ -807,15 +834,23 @@ export class Suites {
               const map = parseCoverageMap(await readFile(path, 'utf8'));
               if (map.head !== job.head || map.tree !== job.tree) throw new Error('coverage map provenance mismatch');
             }
-            // Resource deletion and shared spend settlement can fail independently.
-            // A terminal run must still report; the executor sweep owns retries and
-            // unreleased durable leases continue to guard remote admission.
-            const released = await this.#droplet.release(lease).catch(error => {
+            // Retain the durable outcome/log while release retries. A bounded
+            // window catches normal provider lag without holding a verdict
+            // indefinitely; late confirmation gets its own correction notice.
+            const released = await this.#droplet.release(lease, Date.parse(job.accountingWaitStarted) + ACCOUNTING_WAIT_MS).catch(error => {
               this.#options.log?.({ event: 'verification-release-deferred', id: job.id, lease: lease.lease, error: String(error) });
               return { lifetimeMs: lease.lifetimeMs ?? null, costUsd: lease.costUsd ?? null };
             });
             job.machine = { name: lease.name, size: lease.size, region: lease.region, ...released };
             this.#save(job);
+            if (released.lifetimeMs === null || released.costUsd === null) {
+              if (this.#clock.now().getTime() - Date.parse(job.accountingWaitStarted) < ACCOUNTING_WAIT_MS) {
+                job.error = 'awaiting confirmed remote lease lifetime and cost';
+                this.#save(job);
+                return;
+              }
+              job.accountingPending = true;
+            }
           } else {
             if (job.cancelled) await this.#local.cancel(job.lease, 'SIGTERM');
             await this.#local.release(job.lease);
