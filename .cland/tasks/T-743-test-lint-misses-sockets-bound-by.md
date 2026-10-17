@@ -2,8 +2,8 @@
 id: T-743
 kind: task
 title: "Test lint misses sockets bound by constructors such as new WebSocketServer({ port: 0 })"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-453
 branch: t/T-743-test-lint-misses-sockets-bound-by
 created: 2026-10-17T16:00:31.334Z
-updated: 2026-10-17T16:52:37.026Z
+updated: 2026-10-17T17:12:16.731Z
+closed: 2026-10-17T17:12:16.731Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ Final evidence clear; findings[]; C1 reverified with rev-20261017-743-final. Sta
 Durable final review: A-4636.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-17T17:12:16.731Z
+
+Merged f3c6344c3ca25f192aef7790512525c5292a0e8e onto dev.
