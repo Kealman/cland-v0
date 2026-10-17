@@ -3,7 +3,7 @@ id: T-701
 kind: task
 title: Lead, handover and verifier routing are asserted on the hub's recorded messages in T2, with one process proof per family
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-421
 branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-17T08:29:36.361Z
+updated: 2026-10-17T09:52:09.087Z
 ---
 
 ## Summary
@@ -50,29 +50,34 @@ Routing to a Lead or a verifier is a hub rule, but these files launch two to fiv
 
 ## Acceptance criteria
 
-- [ ] C1. The seven files' manifest seconds fall from 244.7 s (A-3877) to 115 s or less.
+- [x] C1. The seven files' manifest seconds fall from 244.7 s (A-3877) to 115 s or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
-- [ ] C2. Their fake-binary call sites fall from 18 to 5 or less, `spawnSpoke` sites from 57 to 10 or less, and `startDaemon` sites from 23 to 4 or less.
+  - done: impl-701 · 2026-10-17T09:52:06.999Z
+- [x] C2. Their fake-binary call sites fall from 18 to 5 or less, `spawnSpoke` sites from 57 to 10 or less, and `startDaemon` sites from 23 to 4 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
-- [ ] C3. Routing assertions read the hub's recorded messages, and no test outside the kept T3 proofs reads a fake harness log, proved by a source check.
+  - done: impl-701 · 2026-10-17T09:52:07.461Z
+- [x] C3. Routing assertions read the hub's recorded messages, and no test outside the kept T3 proofs reads a fake harness log, proved by a source check.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
-- [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+  - done: impl-701 · 2026-10-17T09:52:07.867Z
+- [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-701 · 2026-10-17T09:52:08.324Z
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
   - verified: rev-30 [reviewer] · run rev-20261017-701-conflict-delta · 2026-10-17T08:29:36.361Z · commit 4232c43047e5a9a7e7b3e4fbf3a4c72b9dd4f0fc
+  - done: impl-701 · 2026-10-17T09:52:08.720Z
 
 ## Blocked by
 
