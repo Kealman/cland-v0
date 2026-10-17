@@ -2,8 +2,8 @@
 id: T-694
 kind: task
 title: Session resume, launch and stop-race matrices run on the in-process fake adapter, with one real proof per harness
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T17:14:55.998Z
+updated: 2026-10-17T17:16:18.656Z
+closed: 2026-10-17T17:16:18.656Z
 ---
 
 ## Summary
@@ -231,3 +232,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Fresh final evidence clear; Standards 0 / Spec 0 findings, A-4647. Independently audited exact-head A-4645 / bf76cf3d final exit 0: 2093 tests / 2088 passes / 0 failures / 5 prerequisite skips, including 12/12 Neovim smoke. All nineteen owned cases across seven files pass and ten new identities pass 5/5 load gates. Linux summed test time 52.950189068 s and fresh seven-file Mac 5/5 median sum 36.931053875 s both meet 55 s including added cleanup coverage. Cleanup 5.403437722 s and stop component 3.242258450 s are within current measured allowances; no failing duration-budget lines. C1/C5 verified; C2/C3/C4 current from A-4625, unchanged origin head. This fresh green gate replaces historical red receipt reuse, no exception needed. Hub-only plus smoke, not full Neovim. No further run or per-item QA. No Reviewer edits/tests.
 
 Criteria: C1 verified, C5 verified.
+
+### coord · 2026-10-17T17:16:18.656Z
+
+Merged 67e2ac034ec207a1a25df2f6c6ac9167f2e86f15 onto dev.
