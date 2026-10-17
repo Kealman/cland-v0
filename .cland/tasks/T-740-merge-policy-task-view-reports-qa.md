@@ -1,0 +1,33 @@
+---
+id: T-740
+kind: task
+title: "merge-policy: 'task view reports QA satisfaction…' saw 'lane or gate inputs changed during lookup' on a loaded droplet"
+state: open
+status: backlog
+size: S
+labels:
+  - v0.1.4
+  - verification
+  - hub
+  - flake
+  - needs-triage
+assignee: null
+parent: E-482
+blocked_by: []
+topic: null
+branch: null
+created: 2026-10-17T15:12:22.689Z
+updated: 2026-10-17T15:12:22.689Z
+---
+
+## Summary
+
+In T-719's run 122d1a12 (A-4563, droplet c-8, peak load 13.1), `hub/test/merge-policy.test.ts::task view reports QA satisfaction from the same durable evidence as the merge gate` failed with `merge-changed: T-1: lane or gate inputs changed during lookup; try again`. The whole file passed 5/5 on the Mac both at T-719's head and at dev (A-4569). That fixture uses projectHub's native defaults, and the file and merge.ts are byte-identical to dev. The gate re-reads its inputs, and something in the fixture or in the hub's own background work changed one between the two reads.
+
+## What to build
+
+Find which input changed: a tracker write, a background sweep or a clock-stamped field. Then either make the test wait for that write's receipt before the lookup, or, if the hub changes a gate input with no user action, fix the hub.
+
+## Acceptance criteria
+
+- [ ] C1. The changed input is named with evidence, and the case passes 10/10 whole-file on the Mac plus once in a droplet verify.

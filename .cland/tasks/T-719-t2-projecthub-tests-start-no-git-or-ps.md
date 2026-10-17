@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-444
 branch: t/T-719-t2-projecthub-tests-start-no-git-or-ps
 created: 2026-10-16T20:09:33.790Z
-updated: 2026-10-17T15:07:28.448Z
+updated: 2026-10-17T15:12:08.455Z
 ---
 
 ## Summary
@@ -60,3 +60,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full source clear at3964cc80, fixed42ebe8a0; Standards0/Spec0 findings. All18files reviewed. Optional Git/base and synchronous lock-process readers preserve native defaults, commands/cache/ownership checks; async locks unchanged. Explicit projectHub fake preset uses PID liveness+nullstart conservative across native/injected readers, with duplicate-root refusal. Lazy cleanup self identity removes eager ps but retains native group/ancestor/start protections. NO_PS moved verbatim; all eight existing native files independently non-import-byte-identical. Tier manifest only one sortedT2entry, durations unchanged. A-4548 final census5/5 zerochildren in imports/threeadapterlifecycles/configreload/teardown; independent recorder0children/0gaps/0truncation. Before directly2Git+3ps, baseline descendant gaps disclosed/no speedup ratio. Eleven supporting native/config/freshness files128/128green before fake-preset-only hardening; unchanged native/default paths retained. C2 verified. C1 awaits exact-head droplet evidence; normal mode-free verification may run at this head. No Reviewer execution or per-item QA.
 
 Criteria: C2 verified.
+
+### impl-719 · 2026-10-17T15:12:08.455Z
+
+Exact-head droplet run 122d1a12 (A-4563) is red solely on merge-policy.test.ts:105 with merge-changed gate inputs during lookup; Neovim was not reached. Owned census green in 0.948514552s, zero children, 5/5 load repeats; Linux timing supplement A-4568. Coordinator-requested whole-file comparison: task head 3964cc80 5/5 green, origin/dev a782a307 5/5 green, all receipts A-4569. No source changes or full rerun; gate disposition requested from lead T-719.
