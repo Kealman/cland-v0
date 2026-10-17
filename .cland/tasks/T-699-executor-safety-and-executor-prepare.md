@@ -2,8 +2,8 @@
 id: T-699
 kind: task
 title: "executor-safety and executor-prepare: barriers instead of 16 s negatives, one fixture for the refusal and retry tables"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-435
 branch: t/T-699-executor-safety-and-executor-prepare
 created: 2026-10-16T19:59:36.725Z
-updated: 2026-10-17T13:44:14.967Z
+updated: 2026-10-17T14:19:12.173Z
+closed: 2026-10-17T14:19:12.173Z
 ---
 
 ## Summary
@@ -168,3 +169,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Conflict-only delta clear under primary7b8e68e9, independently read. Parentsd7539519 and dev24fe3ddf match A-4525. Structured durations exactly incomingdev plus task8allow removals/2reductions; every unrelated entry/nonallow baseline preserved. Tiers exact incomingdev+same5sorted task additions. All12 other own file patches normalized-identical relative to old/new dev, including production timing seams, native/migrated assertions and M1/M2 cleanup; no extra authored file. C2–C4 refreshed. C1 retained only under exception119f9aa2: Mac119.037951755>110 accepted, no numerical-pass claim. Primary explicitly carries0734a342/A-4512 green evidence across this conflict-only merge with no rerun; C5 refreshed from audited prior-head2083tests/2078pass/0fail/5skip+Neovim12/12 and unchanged35Macwholefile logs. Linux131.337114318s disclosed; no fresh merge-head execution/timing claim. Next integrated cover owns combined-tree evidence. Implementer typecheck/tiers green27free/237machine. No findings; C1–C5 verified at6c41aa96 under carry-forward disposition.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T14:19:12.173Z
+
+Merged 45242cbc413f0269fc5624cfc7bbe8cffcdf74c2 onto dev.
