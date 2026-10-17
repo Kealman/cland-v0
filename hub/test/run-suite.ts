@@ -13,11 +13,12 @@ import { fileURLToPath } from 'node:url';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { processStarted } from '../src/hub/lock.ts';
 import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
-import { packageShards, type SuiteShard } from '../src/suite-shards.ts';
+import { packageShards, readTierAssignments, type SuiteShard } from '../src/suite-shards.ts';
 import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteLimits } from '../src/suite-limits.ts';
 import { describeSelection, selectPackageSuite, selectionFromEnv, type SuiteSelection, type SuiteRequest } from '../src/suite-selection.ts';
 import { checkDurations, durationRegressions, lintDurationManifest, readDurationManifest, type DurationManifest, type DurationRegression, type TestTiming } from '../src/suite-durations.ts';
+import { durationBudgetReport } from '../src/suite-duration-budget.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
 import { assertTestAdmission } from '../src/test-admission.ts';
@@ -231,6 +232,10 @@ process.chdir(cwd);`);
       for (const { signal, handler } of handlers) process.off(signal, handler);
       if (durationManifest) {
         const budgetStarted = performance.now();
+        try {
+          const tiers = await readTierAssignments(options.cwd ?? process.cwd());
+          if (tiers) for (const line of durationBudgetReport(durationManifest, Object.fromEntries(tiers), observed)) process.stderr.write(line + '\n');
+        } catch { process.stderr.write('budget (report only): unavailable (report read failed)\n'); }
         for (const line of durationRegressions(regressions)) process.stderr.write(line + '\n');
         budgetOverheadMs += performance.now() - budgetStarted;
         process.stderr.write(`suite budget overhead ${budgetOverheadMs.toFixed(2)} ms\n`);

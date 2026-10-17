@@ -1,4 +1,4 @@
-// Real Node reporter and runner boundary, with fixture-local admission leases.
+// T3: real Node reporter and runner boundary, with fixture-local admission leases.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -16,6 +16,8 @@ async function fixture(t: TestContext, packageRun = false) {
   const cwd = await mkdtemp(join(tmpdir(), 'cland-duration-runner-'));
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
   const file = join(cwd, 'hub/test/fixture.test.ts');
   await writeFile(file, `import test from 'node:test';
 test('parent', async t => { await t.test('child', () => new Promise(r => setTimeout(r, 100))); });
@@ -53,7 +55,7 @@ test('stable [new].*', () => appendFileSync(journal, 'stable\\n'));
 test('flaky', () => { const count = Number(readFileSync(journal, 'utf8').split('flaky').length); appendFileSync(journal, 'flaky\\n'); assert.notEqual(count % 3, 0); });
 test('known load', async () => { writeFileSync(journal + '.running', 'yes'); const deadline = Date.now() + 3000; while (readFileSync(journal, 'utf8').split('stable').length < 3 && Date.now() < deadline) await new Promise(r => setTimeout(r, 20)); appendFileSync(journal, 'load done\\n'); });`);
   // An allowance grants duration, not admission past the new-test load gate.
-  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 }, tests: { 'hub/test/fixture.test.ts::known load': 3 }, allow: { 'hub/test/fixture.test.ts::stable [new].*': { seconds: 0.01, reason: 'Fixture allowance is not a refreshed baseline.' } } }));
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60 }, tests: { 'hub/test/fixture.test.ts::known load': 3 }, allow: { 'hub/test/fixture.test.ts::stable [new].*': { seconds: 0.01, owner: 'E-677', legacy: true, reason: 'Fixture allowance is not a refreshed baseline.' } } }));
   const result = await run(true);
   assert.equal(result.code, 1, result.output);
   assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::stable \[new\]\.\* 5\/5 passed/);
@@ -134,7 +136,7 @@ for (let identity = 0; identity < 8; identity++) test('new ' + identity, async (
 
 test('task load gate honors a configured single lane', async t => {
   const { run, manifest, path, cwd, file } = await fixture(t);
-  await mkdir(join(cwd, '.cland'));
+  await mkdir(join(cwd, '.cland'), { recursive: true });
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\nload_gate_workers=1\n');
   await writeFile(file, `import test from 'node:test'; test('new', () => {});`);
   await writeFile(path, JSON.stringify(manifest));
@@ -273,7 +275,7 @@ test('runner emits top-level timings, fails test budgets, accepts reasons and di
   assert.equal(timings[0].file, 'hub/test/fixture.test.ts');
   assert.match(failed.output, /suite budget overhead [\d.]+ ms/);
   assert.doesNotMatch(failed.output, /MaxListenersExceededWarning/, 'the extra reporter does not produce a spurious listener warning');
-  const allowed = { ...withKnownFile, allow: { 'hub/test/fixture.test.ts::parent': { seconds: 0.1, reason: 'Real nested reporter fixture.' } } };
+  const allowed = { ...withKnownFile, allow: { 'hub/test/fixture.test.ts::parent': { seconds: 0.1, owner: 'E-677', legacy: true, reason: 'Real nested reporter fixture.' } } };
   await writeFile(path, JSON.stringify(allowed));
   const passed = await run();
   assert.equal(passed.code, 0, passed.output);
@@ -288,7 +290,7 @@ test('runner sums file test-time and requires a separate reasoned file allowance
   const fileFailed = await run();
   assert.equal(fileFailed.code, 1, fileFailed.output);
   assert.match(fileFailed.output, /duration budget: hub\/test\/fixture.test.ts [\d.]+ s > 0.05 s/);
-  await writeFile(path, JSON.stringify({ ...allowed, allow: { ...allowed.allow, 'hub/test/fixture.test.ts': { file: true, seconds: 0.1, reason: 'Real nested reporter fixture file.' } }, budget: { testSeconds: 5, fileSeconds: 0.05 } }));
+  await writeFile(path, JSON.stringify({ ...allowed, allow: { ...allowed.allow, 'hub/test/fixture.test.ts': { file: true, seconds: 0.1, owner: 'E-677', legacy: true, reason: 'Real nested reporter fixture file.' } }, budget: { testSeconds: 5, fileSeconds: 0.05 } }));
   const filePassed = await run();
   assert.equal(filePassed.code, 0, filePassed.output);
   assert.doesNotMatch(filePassed.output, /duration budget:/);
@@ -310,4 +312,16 @@ test('a known over-budget file reports without an allowance or failure', async t
   assert.equal(result.code, 0, result.output);
   assert.doesNotMatch(result.output, /duration budget:/);
   assert.match(result.output, /duration regression hub\/test\/fixture.test.ts [\d.]+ s → [\d.]+ s \(over budget: 0.05 s\)/);
+});
+
+test('tier overages only report while the existing runner gate remains authoritative', async t => {
+  const { run, manifest, path } = await fixture(t, true);
+  await writeFile(path, JSON.stringify({ ...manifest, budget: { testSeconds: 5, fileSeconds: 60, T3: { testSeconds: 0.001, fileSeconds: 0.001, wallSeconds: 900 } } }));
+  const result = await run();
+  assert.equal(result.code, 0, result.output);
+  assert.match(result.output, /budget \(report only\): would fail hub\/test\/fixture.test.ts::parent .* > 0.001 s \(T3\)/);
+  assert.match(result.output, /missing duration baseline hub\/test\/fixture.test.ts; observed/);
+  assert.doesNotMatch(result.output, /duration budget:/);
+  const { suiteSummary } = await import('../src/hub/suites.ts');
+  assert.match(suiteSummary(result.output), /budget \(report only\): would fail/);
 });

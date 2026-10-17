@@ -6,6 +6,8 @@ import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/prom
 import { join } from 'node:path';
 import { lintHubShards, lintHubShardTree, ShardManifestError, hubShards, balanceCloseShards } from '../suite-shards.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
+import { durationBudgetReport, durationBudgetSummary } from '../suite-duration-budget.ts';
+import { baselineTimings, durationBase, durationBudgetContext } from '../suite-duration-context.ts';
 import { readDurationManifest } from '../suite-durations.ts';
 import type { ProjectConfig } from '../init/config.ts';
 import { suiteLimits } from '../suite-limits.ts';
@@ -50,7 +52,7 @@ export type SuiteJob = {
   cacheBypass?: string;
   admittedAt?: string; completedAt?: string; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
-  tierPlan?: TierPlan; tierReported?: boolean;
+  tierPlan?: TierPlan; tierReported?: boolean; durationBase?: string; budgetReported?: boolean;
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
@@ -89,6 +91,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   const timings = merged
     ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard duration shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
     : text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
+  timings.push(...durationBudgetSummary(text.split('\n')));
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^typecheck: /.test(line)));
@@ -327,7 +330,10 @@ export class Suites {
       await lintHubShards(input.cwd);
     } catch (error) { throw new SuiteAdmissionError(error); }
     const tierPlan = await planTierReport(input.cwd, selection, workers);
+    const budgetBase = await durationBase(input.cwd, head, this.#env);
     if (input.dryRun) {
+      const context = await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
+      const budgetLines = context ? durationBudgetSummary(durationBudgetReport(context.manifest, context.tiers, baselineTimings(context, tierPlan.flatMap(row => row.files)), context.base)) : [];
       if (executor === 'droplet' && input.executor === 'droplet') {
         if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
         await this.#droplet.checkSpend(input.size, config);
@@ -335,7 +341,7 @@ export class Suites {
       if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during admission; try dry-run again');
       authorize();
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
-        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan)] };
+        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...budgetLines] };
     }
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
@@ -351,7 +357,7 @@ export class Suites {
     if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const workerPolicy = config && input.cwd === this.#root ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(input.cwd, 'local', this.#env)).workers, droplet: (await suiteLimits(input.cwd, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, tierPlan, limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: new Date().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -821,6 +827,16 @@ export class Suites {
         const lines = tierReport(tierPlanWorkers(job.tierPlan, job.workers ?? 4), timingReceipts(log));
         if (!log.includes('\n' + lines.join('\n') + '\n')) await appendFile(job.log, lines.join('\n') + '\n');
         job.tierReported = true; this.#save(job);
+      }
+      if (!job.budgetReported && !job.cached && !job.parentRun) {
+        try {
+          const context = await durationBudgetContext(job.cwd, { head: job.head, ...(job.durationBase ? { base: job.durationBase } : {}), env: this.#env });
+          if (context) {
+            const log = await readFile(job.log, 'utf8');
+            await appendFile(job.log, durationBudgetReport(context.manifest, context.tiers, timingReceipts(log), context.base).join('\n') + '\n');
+          }
+        } catch { await appendFile(job.log, 'budget (report only): unavailable (report read failed)\n'); }
+        job.budgetReported = true; this.#save(job);
       }
       this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : new Date().toISOString());
       if (job.integrated && !job.parentRun && !job.cover) {

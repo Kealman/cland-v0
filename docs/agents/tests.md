@@ -32,7 +32,7 @@ The target strategy is task verification at T0–T2, T3 once per merge batch and
 - Prove persistence by reopening the store or tracker in-process, not by stopping and restarting a hub.
 - Prove a hub rule once through one real frame per tool or refusal family. Its duplicates call the dispatcher or tracker directly. Don't repeat a hub-side rule through each harness's fake.
 - A test proves one behaviour. A title with "and" twice is a finding. Permutations over inputs are a table inside one fixture, not a fixture per cell.
-- A duration allowance carries a reason and lands with the test.
+- A new duration allowance carries a non-TODO reason, an open owner item, and UTC `added`/`expires` dates at most seven days apart; it lands with the test.
 - Before review, run typecheck and the touched files one at a time. Put each file's seconds into the review request.
 
 **When you review a test (Reviewer):**
@@ -335,6 +335,44 @@ cache hits and report retries add no green observations. Renewed entries start
 a new streak. The hub persists streaks and publishes their update atomically
 with the result, including after restart; it never edits the manifest itself.
 
+`hub/test/durations.json` also declares tier budgets in `budget.T1` through
+`budget.T4`:
+
+| Tier | Per test | Per file (top-level test-seconds) | Projected wall |
+| --- | --- | --- | --- |
+| T1 | 0.5 s | 10 s | 120 s |
+| T2 | 2 s | 30 s | 480 s |
+| T3 | 10 s | 120 s | 900 s |
+| T4 | none | none | none |
+
+Tier budgets check every observed identity, including known baselines and files
+missing from the duration manifest. Missing files are named with their observed
+seconds. Logs keep the complete `budget (report only): would fail …` list;
+results show the ten largest overages ranked by seconds over budget. An allowance
+covers its exact key up to its declared `seconds`; file allowances do not cover
+individual tests. Tier-wall projection uses the declared wall budget.
+
+The T3 ratchet pins the merge base with `origin/dev` at admission. It starts with
+that base manifest's T3 file seconds, subtracts removed files and tests or files
+moved out of T3, then adds observed seconds for new T3 identities (including
+promotions from other tiers). Unchanged tests retain their baseline seconds;
+smoke repeats count once. Changed literal/template titles are checked in the
+submitted source; unresolved dynamic titles conservatively retain their baseline.
+Whether a test is new comes from the pinned base source, independently of
+missing timing keys: unchanged T3 files and pre-existing literal/template titles
+never become growth just because they lack a timing baseline. Reports flag
+incomplete base timings separately; unresolved source identities are retained
+conservatively and flagged as uncertain.
+Growth needs an allowance keyed `T3`, whose `seconds` is the permitted projected
+total. The log and result show `T3 ratchet (report only): … s vs base … s` and
+`would refuse growth` when unallowed. Missing base data is reported as unavailable.
+T1 and T2 may grow within their wall budgets.
+
+D53's report-only period lasts one week after `tiers.json` lands. These tier
+and ratchet diagnostics cannot change an exit status. T-716 (C-07) switches on
+enforcement after that week. Until then, the existing new-identity gate below
+remains active unchanged.
+
 `hub/test/durations.json` sets a 5-second test budget and a 60-second file budget
 for hub and Neovim. Files sum top-level test-time; nested durations are included
 in their parent. Only a new over-budget test or file fails its run with a named
@@ -348,18 +386,34 @@ needs that time:
 ```json
 "hub/test/example.test.ts::real lifecycle": {
   "seconds": 6.1,
+  "owner": "T-123",
+  "added": "2026-10-17",
+  "expires": "2026-10-24",
   "reason": "Starts multiple real workers and proves their confirmed teardown."
 },
 "hub/test/example.test.ts": {
   "file": true,
   "seconds": 65.2,
+  "owner": "T-123",
+  "added": "2026-10-17",
+  "expires": "2026-10-24",
   "reason": "Aggregates independent end-to-end lifecycle and recovery cases."
 }
 ```
 
 These entries go in `allow`; a file exception does not exempt individual tests.
-Empty or `TODO` reasons fail the working-tree and immutable-candidate shard lint
-at verify/merge admission. Missing manifests disable the budget and its reporter.
+The working-tree and immutable-candidate manifest lint names missing or TODO
+reasons, missing or closed owner items, invalid dates, expiries more than seven
+days after `added`, and expired allowances (expiry is midnight UTC). Ownership
+is checked in the live authoritative tracker, including linked worktrees.
+
+By the Coordinator's D53 exception, pre-existing allowances retain every reason
+and second, carry `legacy: true` with owner `E-677`, and have no calendar dates.
+They expire when E-677 closes. New allowances must use the seven-day fields;
+`legacy` is reserved for that one migration. Reports show the legacy allowance
+count and sum of seconds separately, so E-677's progress is visible. Refresh
+preserves ownership, dates, legacy metadata and the T3 allowance without extending
+expiry. Missing manifests disable the budget and its reporter.
 Known entries never fail the duration budget. Those over budget always produce a
 `duration regression` notice annotated `over budget`, even when flat or faster.
 Those under budget report when at least 1 second and 50% slower than their

@@ -8,7 +8,23 @@
   },
   "budget": {
     "testSeconds": 5,
-    "fileSeconds": 60
+    "fileSeconds": 60,
+    "T1": {
+      "testSeconds": 0.5,
+      "fileSeconds": 10,
+      "wallSeconds": 120
+    },
+    "T2": {
+      "testSeconds": 2,
+      "fileSeconds": 30,
+      "wallSeconds": 480
+    },
+    "T3": {
+      "testSeconds": 10,
+      "fileSeconds": 120,
+      "wallSeconds": 900
+    },
+    "T4": null
   },
   "files": {
     "hub/test/clock.test.ts": {
@@ -2402,15 +2418,15 @@
     "hub/test/suite-selection-report.test.ts::a broad deciding-file list publishes once below the 768-byte cap and stays complete in the log": 2.239081,
     "hub/test/suite-selection-report.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": 4.446856,
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": 6.299755,
-    "hub/test/suite-selection.test.ts::.agents/skills/qa/SKILL.md selects hub-only by the non-nvim rule": 0.00005,
-    "hub/test/suite-selection.test.ts::.cland/crew.toml selects hub-only by the non-nvim rule": 0.000064,
-    "hub/test/suite-selection.test.ts::.cland/roles.toml selects hub-only by the non-nvim rule": 0.000079,
-    "hub/test/suite-selection.test.ts::.cland/tasks/T-214.md selects hub-only by the non-nvim rule": 0.000097,
+    "hub/test/suite-selection.test.ts::.agents/skills/qa/SKILL.md selects hub-only by the non-nvim rule": 5e-05,
+    "hub/test/suite-selection.test.ts::.cland/crew.toml selects hub-only by the non-nvim rule": 6.4e-05,
+    "hub/test/suite-selection.test.ts::.cland/roles.toml selects hub-only by the non-nvim rule": 7.9e-05,
+    "hub/test/suite-selection.test.ts::.cland/tasks/T-214.md selects hub-only by the non-nvim rule": 9.7e-05,
     "hub/test/suite-selection.test.ts::a missing map explicitly falls back to the package rule": 0.100501,
     "hub/test/suite-selection.test.ts::adapter event contract runs full": 0.0001,
     "hub/test/suite-selection.test.ts::adding a literal template hub import in a nested Neovim test widens selection at admission": 0.204378,
     "hub/test/suite-selection.test.ts::adding a static hub import in a nested Neovim test widens selection at admission": 0.216869,
-    "hub/test/suite-selection.test.ts::both packages runs full": 0.000071,
+    "hub/test/suite-selection.test.ts::both packages runs full": 7.1e-05,
     "hub/test/suite-selection.test.ts::coverage age configuration narrows the validity window": 0.133956,
     "hub/test/suite-selection.test.ts::coverage config parsing uses the owning environment without changing the host": 0.163979,
     "hub/test/suite-selection.test.ts::coverage falls back for contract changes and names the cause": 0.153195,
@@ -2429,9 +2445,9 @@
     "hub/test/suite-selection.test.ts::coverage widens for top-level edits, new top-level functions, untested functions and intervening edits": 0.320064,
     "hub/test/suite-selection.test.ts::crew CLI runs full": 0.000111,
     "hub/test/suite-selection.test.ts::dependency parser reads literal template imports and helper re-exports": 0.000723,
-    "hub/test/suite-selection.test.ts::docs/agents/tests.md selects hub-only by the non-nvim rule": 0.000039,
-    "hub/test/suite-selection.test.ts::dot segment runs full": 0.000044,
-    "hub/test/suite-selection.test.ts::empty diff runs full": 0.000081,
+    "hub/test/suite-selection.test.ts::docs/agents/tests.md selects hub-only by the non-nvim rule": 3.9e-05,
+    "hub/test/suite-selection.test.ts::dot segment runs full": 4.4e-05,
+    "hub/test/suite-selection.test.ts::empty diff runs full": 8.1e-05,
     "hub/test/suite-selection.test.ts::empty diffs and failed fetches run full with their reason, never using a stale dev ref": 0.101599,
     "hub/test/suite-selection.test.ts::fetched dev selects committed and working changes, all forces full, and integrated dev stays full": 0.228615,
     "hub/test/suite-selection.test.ts::future timestamp maps fall back conservatively": 0.146882,
@@ -2441,49 +2457,49 @@
     "hub/test/suite-selection.test.ts::hub implementation changes select hub plus Neovim smoke": 0.002507,
     "hub/test/suite-selection.test.ts::hub-only admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run": 3.21369,
     "hub/test/suite-selection.test.ts::hub-selected executes covering tests and both smoke baselines, omitting unrelated tests": 1.339866,
-    "hub/test/suite-selection.test.ts::hub/package.json is shared infrastructure and forces full": 0.000099,
-    "hub/test/suite-selection.test.ts::hub/src/cli/role.ts is shared infrastructure and forces full": 0.000049,
-    "hub/test/suite-selection.test.ts::hub/src/cli/roles.ts is shared infrastructure and forces full": 0.000052,
-    "hub/test/suite-selection.test.ts::hub/src/crew.ts selects hub-only by the non-nvim rule": 0.00006,
+    "hub/test/suite-selection.test.ts::hub/package.json is shared infrastructure and forces full": 9.9e-05,
+    "hub/test/suite-selection.test.ts::hub/src/cli/role.ts is shared infrastructure and forces full": 4.9e-05,
+    "hub/test/suite-selection.test.ts::hub/src/cli/roles.ts is shared infrastructure and forces full": 5.2e-05,
+    "hub/test/suite-selection.test.ts::hub/src/crew.ts selects hub-only by the non-nvim rule": 6e-05,
     "hub/test/suite-selection.test.ts::hub/src/hub/core.ts selects hub-only by the non-nvim rule": 0.002189,
     "hub/test/suite-selection.test.ts::hub/src/hub/dispatch.ts selects hub-only by the non-nvim rule": 0.000151,
     "hub/test/suite-selection.test.ts::hub/src/hub/server.ts selects hub-only by the non-nvim rule": 0.002993,
     "hub/test/suite-selection.test.ts::hub/src/hub/store.ts is shared infrastructure and forces full": 0.000104,
     "hub/test/suite-selection.test.ts::hub/src/hub/suites.ts selects hub-only by the non-nvim rule": 0.003231,
-    "hub/test/suite-selection.test.ts::hub/src/hub/visibility.ts is shared infrastructure and forces full": 0.000049,
-    "hub/test/suite-selection.test.ts::hub/src/new-event.ts selects hub-only by the non-nvim rule": 0.000041,
+    "hub/test/suite-selection.test.ts::hub/src/hub/visibility.ts is shared infrastructure and forces full": 4.9e-05,
+    "hub/test/suite-selection.test.ts::hub/src/new-event.ts selects hub-only by the non-nvim rule": 4.1e-05,
     "hub/test/suite-selection.test.ts::hub/src/protocol.ts is shared infrastructure and forces full": 0.000196,
-    "hub/test/suite-selection.test.ts::hub/src/roles.ts selects hub-only by the non-nvim rule": 0.000056,
-    "hub/test/suite-selection.test.ts::hub/src/spoke/server.ts selects hub-only by the non-nvim rule": 0.000046,
+    "hub/test/suite-selection.test.ts::hub/src/roles.ts selects hub-only by the non-nvim rule": 5.6e-05,
+    "hub/test/suite-selection.test.ts::hub/src/spoke/server.ts selects hub-only by the non-nvim rule": 4.6e-05,
     "hub/test/suite-selection.test.ts::hub/src/subscriptions.ts selects hub-only by the non-nvim rule": 0.000102,
     "hub/test/suite-selection.test.ts::hub/src/suite-selection.ts is shared infrastructure and forces full": 0.000217,
     "hub/test/suite-selection.test.ts::hub/src/suite-shards.ts is shared infrastructure and forces full": 0.000126,
-    "hub/test/suite-selection.test.ts::hub/src/tracker/tracker.ts is shared infrastructure and forces full": 0.000054,
+    "hub/test/suite-selection.test.ts::hub/src/tracker/tracker.ts is shared infrastructure and forces full": 5.4e-05,
     "hub/test/suite-selection.test.ts::hub/test/harness.ts is shared infrastructure and forces full": 0.000106,
     "hub/test/suite-selection.test.ts::hub/test/load-gate-reporter.ts is shared infrastructure and forces full": 0.000128,
     "hub/test/suite-selection.test.ts::hub/test/load-gate.ts is shared infrastructure and forces full": 0.000123,
     "hub/test/suite-selection.test.ts::hub/test/process-cleanup.ts is shared infrastructure and forces full": 0.000128,
     "hub/test/suite-selection.test.ts::hub/test/run-suite.ts is shared infrastructure and forces full": 0.000147,
     "hub/test/suite-selection.test.ts::hub/test/shards.json selects hub-only by the non-nvim rule": 0.000158,
-    "hub/test/suite-selection.test.ts::hub/tsconfig.json is shared infrastructure and forces full": 0.000089,
+    "hub/test/suite-selection.test.ts::hub/tsconfig.json is shared infrastructure and forces full": 8.9e-05,
     "hub/test/suite-selection.test.ts::import parser reads static, type, side-effect and literal dynamic imports, ignoring comments and strings": 0.001567,
     "hub/test/suite-selection.test.ts::interpolated dynamic imports fail closed to full admission": 0.170712,
     "hub/test/suite-selection.test.ts::invalid map maps fall back conservatively": 0.113563,
     "hub/test/suite-selection.test.ts::Neovim event state runs full": 0.000102,
     "hub/test/suite-selection.test.ts::Neovim implementation changes select Neovim plus hub smoke": 0.000245,
-    "hub/test/suite-selection.test.ts::Neovim transport runs full": 0.000054,
+    "hub/test/suite-selection.test.ts::Neovim transport runs full": 5.4e-05,
     "hub/test/suite-selection.test.ts::nvim and docs runs full": 0.0001,
     "hub/test/suite-selection.test.ts::nvim-only admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run": 3.164432,
-    "hub/test/suite-selection.test.ts::nvim/new-file selects nvim-only by the nvim rule": 0.000068,
-    "hub/test/suite-selection.test.ts::nvim/README.md selects nvim-only by the nvim rule": 0.000037,
-    "hub/test/suite-selection.test.ts::nvim/test/harness.ts selects nvim-only by the nvim rule": 0.000094,
-    "hub/test/suite-selection.test.ts::nvim/test/rpc.ts selects nvim-only by the nvim rule": 0.000039,
-    "hub/test/suite-selection.test.ts::nvim/test/stub-hub.ts selects nvim-only by the nvim rule": 0.000045,
-    "hub/test/suite-selection.test.ts::nvim/tsconfig.json is shared infrastructure and forces full": 0.000064,
-    "hub/test/suite-selection.test.ts::path traversal runs full": 0.000049,
-    "hub/test/suite-selection.test.ts::README.md selects hub-only by the non-nvim rule": 0.000039,
-    "hub/test/suite-selection.test.ts::root tooling runs full": 0.000067,
-    "hub/test/suite-selection.test.ts::scripts/check.sh selects hub-only by the non-nvim rule": 0.000043,
+    "hub/test/suite-selection.test.ts::nvim/new-file selects nvim-only by the nvim rule": 6.8e-05,
+    "hub/test/suite-selection.test.ts::nvim/README.md selects nvim-only by the nvim rule": 3.7e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/harness.ts selects nvim-only by the nvim rule": 9.4e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/rpc.ts selects nvim-only by the nvim rule": 3.9e-05,
+    "hub/test/suite-selection.test.ts::nvim/test/stub-hub.ts selects nvim-only by the nvim rule": 4.5e-05,
+    "hub/test/suite-selection.test.ts::nvim/tsconfig.json is shared infrastructure and forces full": 6.4e-05,
+    "hub/test/suite-selection.test.ts::path traversal runs full": 4.9e-05,
+    "hub/test/suite-selection.test.ts::README.md selects hub-only by the non-nvim rule": 3.9e-05,
+    "hub/test/suite-selection.test.ts::root tooling runs full": 6.7e-05,
+    "hub/test/suite-selection.test.ts::scripts/check.sh selects hub-only by the non-nvim rule": 4.3e-05,
     "hub/test/suite-selection.test.ts::skills/qa/SKILL.md selects hub-only by the non-nvim rule": 0.000103,
     "hub/test/suite-selection.test.ts::stale maps fall back conservatively": 0.161401,
     "hub/test/suite-selection.test.ts::unrelated head maps fall back conservatively": 0.12647,
@@ -3101,8 +3117,8 @@
     "nvim/test/qa.test.ts::THREAD-008 passes through the headless QA runner": 0.668027,
     "nvim/test/qa.test.ts::THREAD-009 passes through the headless QA runner": 0.877907,
     "nvim/test/qa.test.ts::THREAD-010 passes through the headless QA runner": 0.808395,
-    "nvim/test/qa.test.ts::with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why": 0.00006,
-    "nvim/test/qa.test.ts::with file writes also denied outside the temp dir, both cases pass and dump their evidence there": 0.000084,
+    "nvim/test/qa.test.ts::with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why": 6e-05,
+    "nvim/test/qa.test.ts::with file writes also denied outside the temp dir, both cases pass and dump their evidence there": 8.4e-05,
     "nvim/test/qa.test.ts::with the network denied (no socket to bind or reach), both cases pass": 0.000269,
     "nvim/test/rulebook.test.ts::a push during the initial snapshot stays current, and Enter on a rule event selects that rule": 0.389286,
     "nvim/test/rulebook.test.ts::Rulebook keys and palette show sorted rule rows, unfold origins and list help": 1.263707,
@@ -3255,1193 +3271,1779 @@
   "allow": {
     "hub/test/lead-launch.test.ts::an Implementer cannot launch Leads even with a session.launch grant": {
       "seconds": 5.372664,
-      "reason": "Proves the fixed Lead-launch boundary after granting an Implementer session.launch, including a real permitted fake-harness launch before explicit and preassigned Lead refusals."
+      "reason": "Proves the fixed Lead-launch boundary after granting an Implementer session.launch, including a real permitted fake-harness launch before explicit and preassigned Lead refusals.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
       "seconds": 10.418876,
-      "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity."
+      "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts": {
       "file": true,
       "seconds": 111.111273,
-      "reason": "File budget: Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "File budget: Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts::account.clear permits human and Coordinator shells only, with typed inline role refusals": {
       "seconds": 8.752617,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts::after-hit read waits for a recent failed poll backoff and duplicate hits share it": {
       "seconds": 18.097008,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts::after-hit read waits for a recent poll minimum and duplicate hits share it": {
       "seconds": 14.150784,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts::an expired full reading cannot lift a new hard hit while its after-hit poll is delayed": {
       "seconds": 10.527661,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
       "seconds": 7.041245,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limited.test.ts::mark survives restart; live re-find succeeds, reset lifts the mark, and the next launch succeeds": {
       "seconds": 32.907537,
-      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state."
+      "reason": "Runs real hub/account processes through limit-hit, poll exclusion, reset and restart transitions; the test must observe the timed recovery rather than infer it from state.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limits.test.ts::account protocol keeps newest readings, coalesces across sessions, skips equal windows and survives restart": {
       "seconds": 9.425342,
-      "reason": "Exercises account window publication and coalescing through live fake Codex processes and hub frames."
+      "reason": "Exercises account window publication and coalescing through live fake Codex processes and hub frames.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-limits.test.ts::fake Codex pushes account windows and sparse per-model updates while reads are held": {
       "seconds": 9.400987,
-      "reason": "Exercises account window publication and coalescing through live fake Codex processes and hub frames."
+      "reason": "Exercises account window publication and coalescing through live fake Codex processes and hub frames.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-poller.test.ts::failed polls back off across restart, timeouts kill the process group, signed-out views recover": {
       "seconds": 21.117856,
-      "reason": "Runs external account commands through refresh scheduling, backoff and process-group cancellation, including persisted recovery."
+      "reason": "Runs external account commands through refresh scheduling, backoff and process-group cancellation, including persisted recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/account-poller.test.ts::manual frame and CLI refresh poll after five-minute minimum even before the normal floor": {
       "seconds": 6.743981,
-      "reason": "Runs external account commands through refresh scheduling, backoff and process-group cancellation, including persisted recovery."
+      "reason": "Runs external account commands through refresh scheduling, backoff and process-group cancellation, including persisted recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/accounts.test.ts::OpenCode data_home and db reach serve and attach; another harness ignores the role account": {
       "seconds": 6.056287,
-      "reason": "Launches and attaches real fake-harness processes to prove account environment isolation across harnesses."
+      "reason": "Launches and attaches real fake-harness processes to prove account environment isolation across harnesses.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/accounts.test.ts::unassigned OpenCode launches retain the per-user database across restart (HOME fallback)": {
       "seconds": 4.610736,
-      "reason": "Measured on Linux c-8 with four workers in A-3703. Starts two real hubs and a fake OpenCode server, then relaunches after a changed data home to prove the saved HOME-fallback database and native conversation survive restart; preserves every bounded lifecycle and database assertion."
+      "reason": "Measured on Linux c-8 with four workers in A-3703. Starts two real hubs and a fake OpenCode server, then relaunches after a changed data home to prove the saved HOME-fallback database and native conversation survive restart; preserves every bounded lifecycle and database assertion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/accounts.test.ts::unassigned OpenCode launches retain the per-user database across restart (XDG data)": {
       "seconds": 4.616315,
-      "reason": "Measured on Linux c-8 with four workers in A-3703. Starts two real hubs and a fake OpenCode server, then relaunches under a changed XDG data home to prove the original database and native conversation are retained; preserves every bounded lifecycle and database assertion."
+      "reason": "Measured on Linux c-8 with four workers in A-3703. Starts two real hubs and a fake OpenCode server, then relaunches under a changed XDG data home to prove the original database and native conversation are retained; preserves every bounded lifecycle and database assertion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/ask-chain.test.ts::a question climbs an epic and release one level per forward, reaching each fake harness": {
       "seconds": 9.81682,
-      "reason": "Delivers a question across multiple claimed hierarchy levels and fake harnesses over live hub/spoke connections."
+      "reason": "Delivers a question across multiple claimed hierarchy levels and fake harnesses over live hub/spoke connections.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-accounts.test.ts::discovery, watch and restart share each live directory schedule; saved directories survive registry and hub environment edits": {
       "seconds": 25.316992,
-      "reason": "Watches multiple live account directories through discovery and hub restart, preserving separate schedules and saved configuration."
+      "reason": "Watches multiple live account directories through discovery and hub restart, preserving separate schedules and saved configuration.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-accounts.test.ts::logged-out turns fail authentication and a per-account latch survives the restart reconnect turn for three 30 s periods": {
       "seconds": 96.007549,
-      "reason": "Proves the signed-out latch holds across a hub restart for three real 30-second Claude discovery periods (T-437 C2); the period is the production schedule under test, so the wait cannot be shortened without weakening the proof."
+      "reason": "Proves the signed-out latch holds across a hub restart for three real 30-second Claude discovery periods (T-437 C2); the period is the production schedule under test, so the wait cannot be shortened without weakening the proof.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts": {
       "file": true,
       "seconds": 56.219873,
-      "reason": "File budget: Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
+      "reason": "File budget: Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::Claude pathless account launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
       "seconds": 5.627064,
-      "reason": "Proves a path-less account keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks failed-launch guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.627 s with all five load repetitions passing."
+      "reason": "Proves a path-less account keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks failed-launch guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.627 s with all five load repetitions passing.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::Claude inherited directory launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
       "seconds": 5.627064,
-      "reason": "Proves an inherited CLAUDE_CONFIG_DIR is kept through real fake-harness launch, stop and native-conversation relaunch, then checks the failed-launch guidance, like its pathless and unpinned siblings. T-603 merged it without an allowance. Droplet runs measured 4.728 s (A-4094) and 5.916 s (A-4092), over the 5 s budget in the latter. The baseline matches its siblings."
+      "reason": "Proves an inherited CLAUDE_CONFIG_DIR is kept through real fake-harness launch, stop and native-conversation relaunch, then checks the failed-launch guidance, like its pathless and unpinned siblings. T-603 merged it without an allowance. Droplet runs measured 4.728 s (A-4094) and 5.916 s (A-4092), over the 5 s budget in the latter. The baseline matches its siblings.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::Claude pinned account launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
       "seconds": 5.711633,
-      "reason": "Proves a pinned account keeps its CLAUDE_CONFIG_DIR through real fake-harness launch, stop and native-conversation relaunch, then checks the failed-launch guidance, like its pathless and unpinned siblings. T-603 merged it without an allowance. Droplet runs measured 5.082 s (A-4094) and 7.603 s (A-4092), and A-4094 failed the 5 s budget on it. The baseline matches its siblings."
+      "reason": "Proves a pinned account keeps its CLAUDE_CONFIG_DIR through real fake-harness launch, stop and native-conversation relaunch, then checks the failed-launch guidance, like its pathless and unpinned siblings. T-603 merged it without an allowance. Droplet runs measured 5.082 s (A-4094) and 7.603 s (A-4092), and A-4094 failed the 5 s budget on it. The baseline matches its siblings.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::Claude unpinned launch, resume and remedies preserve whether CLAUDE_CONFIG_DIR is set (T-603)": {
       "seconds": 5.711633,
-      "reason": "Proves an unpinned session keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks signed-out guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.712 s with all five load repetitions passing."
+      "reason": "Proves an unpinned session keeps the implicit Claude login through real fake-harness launch, stop and native-conversation relaunch, then checks signed-out guidance. These process boundaries are the regression seam; Linux run A-4017 measured 5.712 s with all five load repetitions passing.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::a launched Claude Code session: the spoke connects, a UI message goes queued → delivered → injected, the reply comes back, and the state follows the hooks and the mod": {
       "seconds": 11.564467,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
+      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::a signed-out Claude directory is reported once, remains quiet across restart, and recovers only on explicit success": {
       "seconds": 8.644136,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
+      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": {
       "seconds": 8.661203,
-      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389."
+      "reason": "Exercises real Claude fake-harness launch, discovery, hook delivery and restart; the baseline includes the production discovery schedule shortened by T-389.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-adapter.test.ts::Claude discovery and watch share the default 30-second schedule, and stop works before the next pid arrives": {
       "seconds": 7.395162,
-      "reason": "Exercises real Claude fake-harness launch, stop with an undiscovered PID, and persisted discovery across a projectHub reopen. T-585 controls Date at the production 30-second interval; only real child startup, frame delivery and negative liveness-poll windows consume wall time."
+      "reason": "Exercises real Claude fake-harness launch, stop with an undiscovered PID, and persisted discovery across a projectHub reopen. T-585 controls Date at the production 30-second interval; only real child startup, frame delivery and negative liveness-poll windows consume wall time.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": {
       "seconds": 5.775672,
-      "reason": "Waits for live injection confirmation and a later idle event to prove retry ordering at the adapter boundary."
+      "reason": "Waits for live injection confirmation and a later idle event to prove retry ordering at the adapter boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/cli-identity.test.ts::cland hub stop from a session's shell signals nothing when the hub does not answer: only a confirmed request, or the human, may fall back to the signal": {
       "seconds": 11.580439,
-      "reason": "Uses isolated real hubs and CLI shells to prove that an unanswered stop request never grants signal authority."
+      "reason": "Uses isolated real hubs and CLI shells to prove that an unanswered stop request never grants signal authority.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/codex-adapter.test.ts": {
       "file": true,
       "seconds": 79.959893,
-      "reason": "File budget: Aggregates real fake-Codex launch, delivery, resume and stop scenarios across the adapter contract."
+      "reason": "File budget: Aggregates real fake-Codex launch, delivery, resume and stop scenarios across the adapter contract.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/config-reload-remote.test.ts::reload preserves an active verification and lease, and new admissions use the new lifetime and spend cap": {
       "seconds": 11.097186,
-      "reason": "C3 crosses the real hub/CLI and fake-provider seam with two live droplet workers plus a queued cap refusal; waits separately for worker receipts and downstream reports."
+      "reason": "C3 crosses the real hub/CLI and fake-provider seam with two live droplet workers plus a queued cap refusal; waits separately for worker receipts and downstream reports.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/config-reload.test.ts::role auto-refresh applies the pair only when valid, and running launches retain their defaults": {
       "seconds": 6.168719,
-      "reason": "Measured on Linux in A-3651: crosses three real fake-Claude launches, a stop, invalid-pair retention, explicit reload and role-denied CLI reload, then observes timer-driven atomic refresh while retaining active launch defaults."
+      "reason": "Measured on Linux in A-3651: crosses three real fake-Claude launches, a stop, invalid-pair retention, explicit reload and role-denied CLI reload, then observes timer-driven atomic refresh while retaining active launch defaults.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/crew-launch.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=false)": {
       "seconds": 4.88978,
-      "reason": "Creates real task worktrees and launches a fresh fake Claude harness after a gated merge to prove a pool does not reuse stopped context."
+      "reason": "Creates real task worktrees and launches a fresh fake Claude harness after a gated merge to prove a pool does not reuse stopped context.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/crew-launch.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=true)": {
       "seconds": 5.865503,
-      "reason": "Uses real task worktrees and fake-harness lifecycles to prove pool reuse and merge-time stopping."
+      "reason": "Uses real task worktrees and fake-harness lifecycles to prove pool reuse and merge-time stopping.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/crew-launch.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=false)": {
       "seconds": 3.631141,
-      "reason": "Creates real task worktrees and launches a fresh fake OpenCode process after a gated merge to prove pool lifecycle and new context."
+      "reason": "Creates real task worktrees and launches a fresh fake OpenCode process after a gated merge to prove pool lifecycle and new context.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/crew-launch.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=true)": {
       "seconds": 3.392102,
-      "reason": "Drives real task merges and OpenCode fake-harness reconnects to prove pooled context follows the next task worktree."
+      "reason": "Drives real task merges and OpenCode fake-harness reconnects to prove pooled context follows the next task worktree.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/crew-launch.test.ts::merge stops per-item implementers before cleanup, while stop_after never and pools remain running": {
       "seconds": 4.132118,
-      "reason": "Uses real task worktrees and fake-harness lifecycles to prove pool reuse and merge-time stopping."
+      "reason": "Uses real task worktrees and fake-harness lifecycles to prove pool reuse and merge-time stopping.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/crew.test.ts::non-table crew values are refused and cannot replace the last good staffing": {
       "seconds": 6.782479,
-      "reason": "Tries multiple invalid crew configurations against a live hub and checks that the last valid staffing survives."
+      "reason": "Tries multiple invalid crew configurations against a live hub and checks that the last valid staffing survives.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/default-subscriptions.test.ts::terminal recovery routes an older pooled Reviewer death past its verified-stopped lead with pending cleanup": {
       "seconds": 7.879195,
-      "reason": "Stops real pooled Reviewer and Lead processes and waits for terminal recovery to route the pending cleanup past a stopped hierarchy owner."
+      "reason": "Stops real pooled Reviewer and Lead processes and waits for terminal recovery to route the pending cleanup past a stopped hierarchy owner.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts": {
       "file": true,
       "seconds": 44.906462,
-      "reason": "File budget: each case drives a real demo lease against the fake DigitalOcean provider through delete, the teardown window and the bounded reread or watchdog, so the file sums a dozen multi-second lifecycle cases."
+      "reason": "File budget: each case drives a real demo lease against the fake DigitalOcean provider through delete, the teardown window and the bounded reread or watchdog, so the file sums a dozen multi-second lifecycle cases.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo identity mismatch preserves the resource and exposes operator attention with an alert": {
       "seconds": 3.529847,
-      "reason": "Starts a real demo lease against the fake DigitalOcean provider, forces an identity mismatch, and waits for the refused deletion, the operator-attention state and the alert."
+      "reason": "Starts a real demo lease against the fake DigitalOcean provider, forces an identity mismatch, and waits for the refused deletion, the operator-attention state and the alert.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop confirms an earlier delete whose active droplet has lost its tags": {
       "seconds": 3.22285,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop confirms provider absence on retry after an accepted delete": {
       "seconds": 3.436419,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through an accepted delete and a retry that must observe provider absence before release."
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through an accepted delete and a retry that must observe provider absence before release.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop keeps an accepted active deletion pending beyond two seconds and confirms a later 404": {
       "seconds": 5.367672,
-      "reason": "Starts a real demo lease against the fake provider, deliberately holds accepted deletion active for more than 2.1 seconds, retries without attention, then confirms a later 404. Linux c-8 timing from T-583 A-3853; all five load repetitions passed."
+      "reason": "Starts a real demo lease against the fake provider, deliberately holds accepted deletion active for more than 2.1 seconds, retries without attention, then confirms a later 404. Linux c-8 timing from T-583 A-3853; all five load repetitions passed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop refuses a persistent id mismatch and clears attention after a later 404": {
       "seconds": 3.33751,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop refuses a persistent tags mismatch and clears attention after a later 404": {
       "seconds": 4.035934,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome."
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the delete and teardown window, waiting for the reread, absence or attention outcome.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop reports a deletion timeout when an accepted active deletion retains its tags past the bound": {
       "seconds": 4.096981,
-      "reason": "Starts a real demo lease against the fake provider, holds accepted deletion beyond its configured bound with tags retained, and checks timeout attention, demo alert, executor status and cleanup. Linux c-8 timing from T-583 A-3853; all five load repetitions passed."
+      "reason": "Starts a real demo lease against the fake provider, holds accepted deletion beyond its configured bound with tags retained, and checks timeout attention, demo alert, executor status and cleanup. Linux c-8 timing from T-583 A-3853; all five load repetitions passed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::demo stop waits for an archived droplet with stripped tags to become absent": {
       "seconds": 3.376352,
-      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the teardown window where tags read empty, then waits for absence within the bounded reread."
+      "reason": "Drives a real demo lease against the fake DigitalOcean provider through the teardown window where tags read empty, then waits for absence within the bounded reread.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo-release.test.ts::the detached demo watchdog confirms an active droplet losing tags during its delete": {
       "seconds": 4.10843,
-      "reason": "Runs the detached demo watchdog process against the fake provider through a delete whose droplet loses its tags before absence."
+      "reason": "Runs the detached demo watchdog process against the fake provider through a delete whose droplet loses its tags before absence.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::demo authorization, shared slot refusals and verdict cleanup use the same tagged lease": {
       "seconds": 5.392691,
-      "reason": "Starts real hub and QA spoke processes, exercises authorization and shared slot refusal through public frames, then waits for verdict-driven confirmed provider cleanup; observed in A-3054."
+      "reason": "Starts real hub and QA spoke processes, exercises authorization and shared slot refusal through public frames, then waits for verdict-driven confirmed provider cleanup; observed in A-3054.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::demo frames deliver a named dev commit, preserve command results and stop after restart": {
       "seconds": 5.717784,
-      "reason": "Starts a real fixture hub and fake SSH machine, delivers Git objects, executes commands, restarts the hub and confirms tagged resource teardown; observed on Linux c-8 in A-3054."
+      "reason": "Starts a real fixture hub and fake SSH machine, delivers Git objects, executes commands, restarts the hub and confirms tagged resource teardown; observed on Linux c-8 in A-3054.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::demo machine lifetime destroys the machine through the watchdog even with the hub gone": {
       "seconds": 5.96832,
-      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the lease-creation lifetime deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569."
+      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the lease-creation lifetime deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::demo recorder failures persist diagnostics and keep remote captures for recovery": {
       "seconds": 8.097793,
-      "reason": "Delivers a committed fixture through the demo lease and runs three real shell-recorder failures, checking persisted diagnostics and remote capture recovery after each. Measured on macOS in T-551."
+      "reason": "Delivers a committed fixture through the demo lease and runs three real shell-recorder failures, checking persisted diagnostics and remote capture recovery after each. Measured on macOS in T-551.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::demo run timeout destroys the machine through the watchdog even with the hub gone": {
       "seconds": 5.147761,
-      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the pre-acquire run-timeout deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569."
+      "reason": "Delivers a real bundled fixture under a separate setup budget, checks the pre-acquire run-timeout deadline, stops the hub, then accelerates the persisted deadline by 250 ms and waits for the detached watchdog deletion receipt. Real hub, SSH delivery and confirmed provider cleanup justify more than 5 s under load; T-569.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::successive demo leases select the newest lease and preserve exit 255 at an explicit commit": {
       "seconds": 6.809933,
-      "reason": "Acquires, delivers, executes and confirms release twice through real hub/SSH processes to guard repeated lease selection and command status 255; observed in A-3054."
+      "reason": "Acquires, delivers, executes and confirms release twice through real hub/SSH processes to guard repeated lease selection and command status 255; observed in A-3054.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/demo.test.ts::the demo recorder runs a headless case remotely and retains captures and executor accounting locally": {
       "seconds": 5.51158,
-      "reason": "Runs the shell recorder and CLI through a real hub and fake SSH machine, collects remote headless captures and confirms lease cleanup; observed on Linux c-8 in A-3054."
+      "reason": "Runs the shell recorder and CLI through a real hub and fake SSH machine, collects remote headless captures and confirms lease cleanup; observed on Linux c-8 in A-3054.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/doctor.test.ts::a healthy project on a healthy machine: every check ok, plain text, exit 0; then each failure faked names itself and its fix": {
       "seconds": 45.496028,
-      "reason": "Runs the complete doctor command repeatedly, introducing each failure at the real filesystem/process boundary and checking its repair advice."
+      "reason": "Runs the complete doctor command repeatedly, introducing each failure at the real filesystem/process boundary and checking its repair advice.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/doctor.test.ts::doctor warns about free OpenCode training and its missing OS sandbox without failing": {
       "seconds": 6.843811,
-      "reason": "Runs doctor four times with automatic free selection, a bare free model plus variant, paid and non-OpenCode roles, and launches a real projectHub/fake OpenCode server and spoke to prove the warnings do not refuse launch. Targeted macOS run measured 6.844s."
+      "reason": "Runs doctor four times with automatic free selection, a bare free model plus variant, paid and non-OpenCode roles, and launches a real projectHub/fake OpenCode server and spoke to prove the warnings do not refuse launch. Targeted macOS run measured 6.844s.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/durations-runner.test.ts::task load gate bounds eight new tests with parallel lanes and five sequential repetitions each": {
       "seconds": 10.617612,
-      "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs."
+      "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/durations-runner.test.ts::task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase": {
       "seconds": 3.217073,
-      "reason": "Runs the real package runner and ten fresh name-filtered Node processes alongside a held phase, proving stable 5/5 repetitions and deterministic flaky rejection. Linux c-8 task verify c96ff9f9 (A-3328), peak 1m load 12.19."
+      "reason": "Runs the real package runner and ten fresh name-filtered Node processes alongside a held phase, proving stable 5/5 repetitions and deterministic flaky rejection. Linux c-8 task verify c96ff9f9 (A-3328), peak 1m load 12.19.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts": {
       "file": true,
       "seconds": 75.573273,
-      "reason": "File budget: Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "File budget: Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts::a timed-out accepted retirement keeps the replacement while old is listed, then completes the late deletion": {
       "seconds": 8.00564,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts::acquire needs a prepared image, uses its regions without user data and refuses unready or mismatched machines": {
       "seconds": 5.544836,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts::failed replacement releases its builder, deletes a partial image and keeps the previous snapshot": {
       "seconds": 10.549028,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts::lost successful retirement and an unavailable catalogue preserve the replacement through restart": {
       "seconds": 6.736085,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts::prepare builds a reusable snapshot, reports its key and replaces it after the committed lock changes": {
       "seconds": 5.713427,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-prepare.test.ts::prepare keeps its snapshot when builder deletion is unconfirmed, then the hub confirms release and cost": {
       "seconds": 6.986509,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion."
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts": {
       "file": true,
       "seconds": 104.159276,
-      "reason": "File budget: Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "File budget: Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::a restored launching suite reuses only an existing ref at the same head": {
       "seconds": 13.324467,
-      "reason": "T-433 expands the prior allowed crash-after-acquire case into same-head and different-head restoration scenarios. Each uses an artificial 4000 ms bundling fault, hub death/restart and real fixture-provider cleanup to prove ref reuse/refusal. Its green gate A-2649 at 2c9f932 records 13.621351 s."
+      "reason": "T-433 expands the prior allowed crash-after-acquire case into same-head and different-head restoration scenarios. Each uses an artificial 4000 ms bundling fault, hub death/restart and real fixture-provider cleanup to prove ref reuse/refusal. Its green gate A-2649 at 2c9f932 records 13.621351 s.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::executor overrides bypass host locks and dirty explicit remote candidates refuse": {
       "seconds": 5.477345,
-      "reason": "Runs a real verification worker through fake provider/SSH processes beside a host compatibility lock, then proves dirty explicit-remote submission refuses without admitting a local job."
+      "reason": "Runs a real verification worker through fake provider/SSH processes beside a host compatibility lock, then proves dirty explicit-remote submission refuses without admitting a local job.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::explicit droplet reuses only droplet greens while omitted executor keeps cross-executor reuse": {
       "seconds": 8.372911,
-      "reason": "T-518 exercises three real verification executions (two local and one through fake provider/SSH), plus four public CLI cache-hit submissions, proving explicit-droplet filtering and omitted-flag cross-executor reuse."
+      "reason": "T-518 exercises three real verification executions (two local and one through fake provider/SSH), plus four public CLI cache-hit submissions, proving explicit-droplet filtering and omitted-flag cross-executor reuse.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
       "seconds": 10.315521,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::incremental byte logs survive SSH failure and hub restart and report once": {
       "seconds": 10.397692,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::provider loss and verify cancel each report once and release the machine and key": {
       "seconds": 10.94288,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::remote delivery bundles committed tracker state despite later tracker writes": {
       "seconds": 6.149043,
-      "reason": "Runs the complete fake-provider delivery and remote suite lifecycle, then checks the remote checkout contains only committed tracker bytes despite staged host writes."
+      "reason": "Runs the complete fake-provider delivery and remote suite lifecycle, then checks the remote checkout contains only committed tracker bytes despite staged host writes.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::remote delivery refuses and names source changes after submission": {
       "seconds": 2.980071,
-      "reason": "Acquires a real fixture lease through fake provider/SSH processes, injects a staged source edit after host typecheck, and waits for refusal and confirmed provider cleanup."
+      "reason": "Acquires a real fixture lease through fake provider/SSH processes, injects a staged source edit after host typecheck, and waits for refusal and confirmed provider cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::remote start reconciles executed-but-lost replies and marker-only interruptions": {
       "seconds": 10.541873,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors": {
       "seconds": 14.985957,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-run.test.ts::restart reloads the lease after admission and never redelivers or cleans the live checkout": {
       "seconds": 8.013809,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery."
+      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts": {
       "file": true,
       "seconds": 129.005906,
-      "reason": "File budget: Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "File budget: Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::a short-lived hub preserves a foreign live lease beyond its own lifetime threshold": {
       "seconds": 4.974887,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::all remote admission refusals persist a local job, one warn notice and one journal event": {
       "seconds": 21.078658,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel nowhere": {
       "seconds": 14.972302,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::provider list awaits cannot turn a concurrently acquired droplet or key into an orphan": {
       "seconds": 10.189569,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::remote admission survives executor lock contention beyond the old deadline": {
       "seconds": 22.054884,
-      "reason": "Holds the real executor admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776."
+      "reason": "Holds the real executor admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::remote admission survives spend lock contention beyond the old deadline": {
       "seconds": 22.330798,
-      "reason": "Holds the real spend admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776."
+      "reason": "Holds the real spend admission lock for 16s beyond its former 15s deadline, then observes a successful real-hub/fake-provider remote receipt; T-491 Mac A-3776.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::same-name hubs preserve each other’s in-flight keys and conservatively age legacy keys": {
       "seconds": 7.867065,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::the periodic sweep reaps strays, re-arms a killed watchdog and retries failed provider cleanup": {
       "seconds": 3.893186,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::the remote shell and the host deadline both end a timed-out run once and release": {
       "seconds": 11.646026,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/executor-safety.test.ts::two protocol projects reserve against one cap and confirmed release replaces the reservation": {
       "seconds": 8.314132,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive."
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/follows.test.ts::a clear hub demo verdict releases the merge hold": {
       "seconds": 0.918856,
-      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a clear hub demo verdict, then proves the follower can land; the sibling not-clear case is allowed at 5.297 s."
+      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a clear hub demo verdict, then proves the follower can land; the sibling not-clear case is allowed at 5.297 s.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": {
       "seconds": 1.062051,
-      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land."
+      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/follows.test.ts::closing the predecessor releases the merge hold and an empty closed epic is met": {
       "seconds": 1.213705,
-      "reason": "Closes an empty epic and exercises predecessor landing, overlap refusal, epic closure and follower landing through real tracker and Git lifecycle boundaries."
+      "reason": "Closes an empty epic and exercises predecessor landing, overlap refusal, epic closure and follower landing through real tracker and Git lifecycle boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/follows.test.ts::final surface lookup revalidates a concurrent follows change before publication": {
       "seconds": 1.708618,
-      "reason": "Lands two predecessor tasks with real Git, pauses the final follower surface read in an external Git process, links a new predecessor and proves refusal plus the retry hold."
+      "reason": "Lands two predecessor tasks with real Git, pauses the final follower surface read in an external Git process, links a new predecessor and proves refusal plus the retry hold.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/follows.test.ts::follow becomes met on the last merge and blocks only overlapping follower merges": {
       "seconds": 1.178353,
-      "reason": "Exercises two real Git squash landings plus two overlap refusals and proves dev stays unchanged while the demo is pending."
+      "reason": "Exercises two real Git squash landings plus two overlap refusals and proves dev stays unchanged while the demo is pending.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/follows.test.ts::plain task view shows follows met after the last merge across a hub restart": {
       "seconds": 2.149993,
-      "reason": "Lands a predecessor through real Git, restarts a real hub and checks the plain task view reports the follow as met; the merge and restart dominate. Linux c-8 run 5d2063ce (A-3210)."
+      "reason": "Lands a predecessor through real Git, restarts a real hub and checks the plain task view reports the follow as met; the merge and restart dominate. Linux c-8 run 5d2063ce (A-3210).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/handover.test.ts::revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it": {
       "seconds": 8.452588,
-      "reason": "Revokes a role during a live fake-harness turn and waits for the replacement role delivery and refusal."
+      "reason": "Revokes a role during a live fake-harness turn and waits for the replacement role delivery and refusal.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/heartbeat.test.ts::a missed heartbeat survives hub restart and fires once rather than replaying missed intervals": {
       "seconds": 0.577222,
-      "reason": "Restarts a real hub across a missed heartbeat interval and waits for exactly one fire; 4.89 s on Linux under load (A-3109), allowed ahead of the 5 s line. Its flaky timing assertion is T-514."
+      "reason": "Restarts a real hub across a missed heartbeat interval and waits for exactly one fire; 4.89 s on Linux under load (A-3109), allowed ahead of the 5 s line. Its flaky timing assertion is T-514.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/heartbeat.test.ts::an idle Coordinator wakes for a heartbeat with a digest, without adding a needs-you": {
       "seconds": 4.146173,
-      "reason": "Starts a real hub with a fake Coordinator, waits one full heartbeat interval for the idle session to wake, then checks the digest and that no needs-you was added. The interval wait dominates. Measured on Linux droplet run a3fe0258 (A-3001)."
+      "reason": "Starts a real hub with a fake Coordinator, waits one full heartbeat interval for the idle session to wake, then checks the digest and that no needs-you was added. The interval wait dominates. Measured on Linux droplet run a3fe0258 (A-3001).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/heartbeat.test.ts::busy and approval-waiting Coordinators coalesce heartbeats into the next turn without steering": {
       "seconds": 3.869961,
-      "reason": "Holds a busy and then an approval-waiting fake Coordinator across a full heartbeat interval through a real hub, and checks the heartbeat folds into the next turn without a steer. The interval wait dominates. Measured on Linux droplet run 44712045 (A-3109)."
+      "reason": "Holds a busy and then an approval-waiting fake Coordinator across a full heartbeat interval through a real hub, and checks the heartbeat folds into the next turn without a steer. The interval wait dominates. Measured on Linux droplet run 44712045 (A-3109).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/heartbeat.test.ts::live remote leases appear in the heartbeat beside their verification run": {
       "seconds": 5.75769,
-      "reason": "T-454 observes a live lease through a real hub and the fake DigitalOcean/SSH machine, then waits for the verification run to finish and the lease to be released. The end-to-end executor lifecycle exceeds five seconds."
+      "reason": "T-454 observes a live lease through a real hub and the fake DigitalOcean/SSH machine, then waits for the verification run to finish and the lease to be released. The end-to-end executor lifecycle exceeds five seconds.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/heartbeat.test.ts::the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions": {
       "seconds": 2.617116,
-      "reason": "Builds review, ready, ask and claim state through a real hub and waits for a heartbeat digest that ages and caps each section; 4.96 s on Linux under load (A-3101), allowed ahead of the 5 s line."
+      "reason": "Builds review, ready, ask and claim state through a real hub and waits for a heartbeat digest that ages and caps each section; 4.96 s on Linux under load (A-3101), allowed ahead of the 5 s line.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/heartbeat.test.ts::the digest includes running and queued runs and ages timeouts and ended runs without results": {
       "seconds": 3.315248,
-      "reason": "Drives running, queued, timed-out and ended verification runs through a real hub and waits for the heartbeat digests that age each of them. Measured on Linux droplet run a3fe0258 (A-3001)."
+      "reason": "Drives running, queued, timed-out and ended verification runs through a real hub and waits for the heartbeat digests that age each of them. Measured on Linux droplet run a3fe0258 (A-3001).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/hook-bridge-doctor.test.ts::doctor lists and ends only own bridges with missing hub files, preserving existing and ambiguous paths": {
       "seconds": 3.763581,
-      "reason": "Starts real hook bridges for several temporary projects, deletes some hub files, and runs doctor --fix to prove it ends only its own orphaned bridges while existing and ambiguous paths survive."
+      "reason": "Starts real hook bridges for several temporary projects, deletes some hub files, and runs doctor --fix to prove it ends only its own orphaned bridges while existing and ambiguous paths survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/hook-bridge.test.ts": {
       "file": true,
       "seconds": 64.157569,
-      "reason": "Real bridge lifecycle proof waits through the production 60-second reconnect grace."
+      "reason": "Real bridge lifecycle proof waits through the production 60-second reconnect grace.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/hook-bridge.test.ts::a bridge exits after its real hub stops even while its parent and stdout remain alive": {
       "seconds": 64.157569,
-      "reason": "Exercises the production 60-second reconnect grace against a real stopped hub; no shortened test timeout replaces the lifetime contract."
+      "reason": "Exercises the production 60-second reconnect grace against a real stopped hub; no shortened test timeout replaces the lifetime contract.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/inbox-workload.test.ts::archive startup batches hundreds of stops; item and stop bursts schedule one sweep per tick with thousands of retained items and messages": {
       "seconds": 27.216155,
-      "reason": "Creates thousands of retained items/messages and hundreds of stops to prove bounded inbox batching through the live dispatch seam."
+      "reason": "Creates thousands of retained items/messages and hundreds of stops to prove bounded inbox batching through the live dispatch seam.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/inbox-workload.test.ts::durable wait capture retains the original timestamp and archives a request resolved within its publication window": {
       "seconds": 0.944511,
-      "reason": "Checks original wait timestamps and single durable departures across coalesced publication on a real scratch project hub; measured 16.24 s including project setup and teardown on the Mac."
+      "reason": "Checks original wait timestamps and single durable departures across coalesced publication on a real scratch project hub; measured 16.24 s including project setup and teardown on the Mac.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/init.test.ts::a manifest that is not cland's, malformed, or names a path outside its skill is reported, and update deletes nothing": {
       "seconds": 5.335328,
-      "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests."
+      "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/init.test.ts::init writes tracker levels and update preserves a changed or empty ladder": {
       "seconds": 3.902886,
-      "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests."
+      "reason": "Invokes init/update over multiple filesystem configurations to prove preserved user edits and safe refusal of foreign manifests.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/launch-recovery.test.ts::a failed spawn keeps its files and launch fence across restart until its child is confirmed dead (unknown start identity)": {
       "seconds": 10.527046,
-      "reason": "Kills a real launch between reservation and publication, restarts the hub and proves unverified children remain protected."
+      "reason": "Kills a real launch between reservation and publication, restarts the hub and proves unverified children remain protected.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-handover.test.ts::a committed Lead handover recovers its node claim after a crash without touching another Lead": {
       "seconds": 15.737525,
-      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor."
+      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-handover.test.ts::lead-1 hands its node and question to lead-2; the next verdict reaches the new Lead through the fake harness": {
       "seconds": 15.960275,
-      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor."
+      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-handover.test.ts::the human hands a node to an offline successor, then launches it and the next verdict reaches it": {
       "seconds": 10.700349,
-      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor."
+      "reason": "Moves claims and questions between live Leads, including crash recovery and an initially offline successor.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-permissions.test.ts::a verifier spawned while its item leaves the Lead subtree is refused and cleaned up": {
       "seconds": 11.02178,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels."
+      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-permissions.test.ts::Lead launches and stops only sessions serving its live subtree": {
       "seconds": 18.614453,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels."
+      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-permissions.test.ts::lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse": {
       "seconds": 15.323038,
-      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels."
+      "reason": "Exercises Lead launch/stop/review/merge authority against real hubs, task branches and fake harnesses across hierarchy levels.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-routing.test.ts::an Implementer reports blocked up its item chain; unclaimed descendants use the nearest Lead": {
       "seconds": 8.502318,
-      "reason": "Routes reports and lifecycle events across multiple live hierarchy claims and verifies delivery to the surviving Lead."
+      "reason": "Routes reports and lifecycle events across multiple live hierarchy claims and verifies delivery to the surviving Lead.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/lead-routing.test.ts::long idle and death climb from item to epic to release; stopped Leads leave inherited routing": {
       "seconds": 9.895701,
-      "reason": "Routes reports and lifecycle events across multiple live hierarchy claims and verifies delivery to the surviving Lead."
+      "reason": "Routes reports and lifecycle events across multiple live hierarchy claims and verifies delivery to the surviving Lead.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-checkout.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": {
       "seconds": 7.021616,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-checkout.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": {
       "seconds": 5.918892,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-gate.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
       "seconds": 7.999885,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-gate.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
       "seconds": 10.114783,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-gate.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": {
       "seconds": 6.482557,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-recovery.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": {
       "seconds": 5.4989,
-      "reason": "Runs a real merge and deferred worktree cleanup, switches to an unrelated branch, then retries cleanup after restoration to prove unrelated work survives."
+      "reason": "Runs a real merge and deferred worktree cleanup, switches to an unrelated branch, then retries cleanup after restoration to prove unrelated work survives.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-recovery.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": {
       "seconds": 6.025436,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge-recovery.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": {
       "seconds": 4.067745,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge.test.ts": {
       "file": true,
       "seconds": 26.084068,
-      "reason": "File budget: Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "File budget: Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge.test.ts::a current hub review lands one squash commit in the root and territory, closes the item and topic, and removes its worktree and branch": {
       "seconds": 3.446898,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion."
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/merge.test.ts::discussion after a completed merge never blocks CLI push or recreates its worktree": {
       "seconds": 4.581661,
-      "reason": "Completes a real git merge, adds post-merge discussion and invokes CLI publication to prove discussion cannot revive the removed worktree or block push."
+      "reason": "Completes a real git merge, adds post-merge discussion and invokes CLI publication to prove discussion cannot revive the removed worktree or block push.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/opencode-adapter.test.ts": {
       "file": true,
       "seconds": 62.340098,
-      "reason": "File budget: Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs."
+      "reason": "File budget: Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/opencode-adapter.test.ts::OpenCode failure attribution follows delivered inbox items when two idle admissions queue separate turns": {
       "seconds": 7.131808,
-      "reason": "Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs."
+      "reason": "Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/opencode-adapter.test.ts::OpenCode forgets prior execution inputs when completion is missed during an SSE outage": {
       "seconds": 7.204996,
-      "reason": "Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs."
+      "reason": "Runs live OpenCode fake-harness/SSE delivery and reconnect scenarios to prove failure attribution and forgotten execution inputs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/orphan-servers.test.ts": {
       "file": true,
       "seconds": 111.506427,
-      "reason": "File budget: Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup."
+      "reason": "File budget: Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/orphan-servers.test.ts::doctor --fix preserves a live hub’s server while its launch has no process row yet": {
       "seconds": 10.513168,
-      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup."
+      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/orphan-servers.test.ts::hub start opens its socket promptly while sixteen TERM-resistant orphans are swept in parallel": {
       "seconds": 5.992128,
-      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup."
+      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/orphan-servers.test.ts::hub start preserves the server child of a verified running wrapper session": {
       "seconds": 9.702593,
-      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup."
+      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/pid-identity.test.ts::Codex: after a crash and a hub restart, neither resume, relaunch nor stop signals a pid that another process reuses": {
       "seconds": 7.03015,
-      "reason": "Crashes and restarts a real adapter fixture while simulating PID reuse to prove that unrelated processes are never signalled."
+      "reason": "Crashes and restarts a real adapter fixture while simulating PID reuse to prove that unrelated processes are never signalled.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/plan-approval.test.ts::draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives restart": {
       "seconds": 8.708918,
-      "reason": "Builds and approves a multi-lane plan through real hub/harness deliveries, then restarts to prove durable launch authority."
+      "reason": "Builds and approves a multi-lane plan through real hub/harness deliveries, then restarts to prove durable launch authority.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/planned-stage.test.ts::landing stage one advances stage two": {
       "seconds": 5.28815,
-      "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking."
+      "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA": {
       "seconds": 6.250502,
-      "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking."
+      "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA with platform receipts bound after startup checks": {
       "seconds": 3.832796,
-      "reason": "Real Git landing, reviewer/QA spokes, hub stop and late restored-receipt binding prove restart advancement after startup tree checks have settled. Quiet Mac focused measurement 3.200989 s; allowance ahead of the 5 s line for the same process/Git lifecycle under package load."
+      "reason": "Real Git landing, reviewer/QA spokes, hub stop and late restored-receipt binding prove restart advancement after startup tree checks have settled. Quiet Mac focused measurement 3.200989 s; allowance ahead of the 5 s line for the same process/Git lifecycle under package load.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/progress.test.ts::claude-code: three progress notes start no turn, one ordered digest reaches the next report, including across restart": {
       "seconds": 9.182081,
-      "reason": "Delivers ordered progress digests through live harness turns before and after hub restart."
+      "reason": "Delivers ordered progress digests through live harness turns before and after hub restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/progress.test.ts::codex: three progress notes start no turn, one ordered digest reaches the next report, including across restart": {
       "seconds": 5.901062,
-      "reason": "Delivers ordered progress digests through live harness turns before and after hub restart."
+      "reason": "Delivers ordered progress digests through live harness turns before and after hub restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/progress.test.ts::opencode: three progress notes start no turn, one ordered digest reaches the next report, including across restart": {
       "seconds": 8.366044,
-      "reason": "Delivers ordered progress digests through live harness turns before and after hub restart."
+      "reason": "Delivers ordered progress digests through live harness turns before and after hub restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/project-hub.test.ts::two project hubs keep their adapter timing environments independent": {
       "seconds": 5.525695,
-      "reason": "Launches two real fake-Claude harnesses in independently served project hubs and observes three additional fast polls while the slow instance retains its own schedule. Native process startup and independent polling make this a fixture integration proof; the serial targeted run under 28–30 one-minute load took 5.29 seconds."
+      "reason": "Launches two real fake-Claude harnesses in independently served project hubs and observes three additional fast polls while the slow instance retains its own schedule. Native process startup and independent polling make this a fixture integration proof; the serial targeted run under 28–30 one-minute load took 5.29 seconds.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release-item.test.ts::a published item release retries its pinned build after tracker closure fails and refuses a different or missing item": {
       "seconds": 4.904127,
-      "reason": "Publishes a fixture release and retries tracker failure using the pinned git build, proving changed/missing release items are refused."
+      "reason": "Publishes a fixture release and retries tracker failure using the pinned git build, proving changed/missing release items are refused.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts": {
       "file": true,
       "seconds": 44.690335,
-      "reason": "File budget: Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "File budget: Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts::a fully rolled-back merge preparation does not prevent sync or a later merge": {
       "seconds": 2.495801,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts::a release success-record failure retains its same-version recovery receipt": {
       "seconds": 2.576973,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": {
       "seconds": 3.449445,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts::release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits": {
       "seconds": 3.499092,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts::sync refuses a landed merge with pending tracker completion, preserving its retry identity": {
       "seconds": 2.418321,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/release.test.ts::sync success-record failure prevents a later merge until its same-replay retry completes": {
       "seconds": 4.429448,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs."
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts": {
       "file": true,
       "seconds": 52.328758,
-      "reason": "File budget: ten owner-lifecycle modes each start a real remote fixture in a subprocess and observe hub, detached watchdog/reaper exit and directory removal across the boundary."
+      "reason": "File budget: ten owner-lifecycle modes each start a real remote fixture in a subprocess and observe hub, detached watchdog/reaper exit and directory removal across the boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner exit": {
       "seconds": 3.145565,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner normal": {
       "seconds": 3.389088,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGINT": {
       "seconds": 3.245636,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGKILL": {
       "seconds": 3.216941,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner SIGTERM": {
       "seconds": 3.139103,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner timeout": {
       "seconds": 11.135876,
-      "reason": "Waits for an actual 10-second node:test timeout after starting a real subprocess fixture, then observes its teardown and guardian exit."
+      "reason": "Waits for an actual 10-second node:test timeout after starting a real subprocess fixture, then observes its teardown and guardian exit.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGINT": {
       "seconds": 5.633087,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGKILL": {
       "seconds": 5.176441,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-SIGTERM": {
       "seconds": 6.406999,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner watchdog-teardown": {
       "seconds": 5.498996,
-      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary."
+      "reason": "Starts a real remote fixture in a subprocess, then observes hub, detached watchdog/reaper exit and directory removal across the owner lifecycle boundary.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/role-integrity.test.ts::a hub that dies between a launch reserving the Coordinator and its spawn gives the role back at its next start": {
       "seconds": 8.256795,
-      "reason": "Kills a real hub between Coordinator reservation and process spawn, then restarts to prove the role becomes available."
+      "reason": "Kills a real hub between Coordinator reservation and process spawn, then restarts to prove the role becomes available.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-cli.test.ts::concurrent rule CLI writes serialize numbers without losing rules; invalid input leaves the file intact": {
       "seconds": 2.86506,
-      "reason": "Runs concurrent rule CLI processes against a real hub and checks numbering and file integrity; 4.73 s on Linux under load (A-3109), allowed ahead of the 5 s line."
+      "reason": "Runs concurrent rule CLI processes against a real hub and checks numbering and file integrity; 4.73 s on Linux under load (A-3109), allowed ahead of the 5 s line.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-cli.test.ts::rule shell writes use the held identity: only human and Aide write, with restricted origins": {
       "seconds": 4.835628,
-      "reason": "Runs a real hub and separate CLI processes for Aide origins, origin spoofing, and all three write refusals under three caller identities, preserving the full actor authorization matrix. Observed on the c-8 executor in A-2777 at a0ec44ea."
+      "reason": "Runs a real hub and separate CLI processes for Aide origins, origin spoofing, and all three write refusals under three caller identities, preserving the full actor authorization matrix. Observed on the c-8 executor in A-2777 at a0ec44ea.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-sessions.test.ts::a clause larger than the send cap reaches a session whole on assignment and reconnect": {
       "seconds": 2.509371,
-      "reason": "Assigns and reconnects a fake session whose clause exceeds the 8192-byte send cap through a real hub and checks it arrives whole both times; the two delivery round-trips dominate. Linux c-8 run 263c9910 (A-3259)."
+      "reason": "Assigns and reconnects a fake session whose clause exceeds the 8192-byte send cap through a real hub and checks it arrives whole both times; the two delivery round-trips dominate. Linux c-8 run 263c9910 (A-3259).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-sessions.test.ts::launch clause and brief end with the same ordered active rules": {
       "seconds": 3.602671,
-      "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139)."
+      "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-sessions.test.ts::role clauses use current scoped active rules, including rules added while disconnected": {
       "seconds": 2.987103,
-      "reason": "Disconnects and reconnects role spokes against a real hub while rules change, then checks each re-sent clause; 4.61 s on Linux under load (A-3210), allowed ahead of the 5 s line."
+      "reason": "Disconnects and reconnects role spokes against a real hub while rules change, then checks each re-sent clause; 4.61 s on Linux under load (A-3210), allowed ahead of the 5 s line.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-sessions.test.ts::scope edits retire rules for removed roles, directly include Aides, and hand edits use the same change path": {
       "seconds": 4.161057,
-      "reason": "Starts five role spokes against a real hub and waits for its rulebook file watcher to prove scope-removal retirement, Aide direct delivery and hand-edit propagation; Linux c-8 run 9d3032d2 (A-3050)."
+      "reason": "Starts five role spokes against a real hub and waits for its rulebook file watcher to prove scope-removal retirement, Aide direct delivery and hand-edit propagation; Linux c-8 run 9d3032d2 (A-3050).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-sessions.test.ts::shell rule changes reach fake Implementer turns, never steer, and show one event row without needs-you": {
       "seconds": 7.386517,
-      "reason": "Real hub plus fake Claude Coordinator and Codex Implementer exercise shell add/edit/retire across turn and approval boundaries, with process teardown; Linux c-8 run 9d3032d2 (A-3050)."
+      "reason": "Real hub plus fake Claude Coordinator and Codex Implementer exercise shell add/edit/retire across turn and approval boundaries, with process teardown; Linux c-8 run 9d3032d2 (A-3050).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/rule-sessions.test.ts::stopped processes receive no rule deliveries while live sessions still do": {
       "seconds": 3.550196,
-      "reason": "Stops one fake session and keeps another live against a real hub, then proves a rule change reaches only the live one; process stop and the delivery round-trip dominate. Linux c-8 run fb064818 (A-3184)."
+      "reason": "Stops one fake session and keeps another live against a real hub, then proves a rule change reaches only the live one; process stop and the delivery round-trip dominate. Linux c-8 run fb064818 (A-3184).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-archive.test.ts::a real task merge starts the stopped Implementer item window": {
       "seconds": 6.326515,
-      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning."
+      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-archive.test.ts::archive refuses live and unlaunched rows, hides stopped rows, retains their journal, and resume restores them": {
       "seconds": 9.407586,
-      "reason": "Exercises live, unlaunched, stopped, archived and resumed session transitions through a real hub and fake harness, verifying retained journal history."
+      "reason": "Exercises live, unlaunched, stopped, archived and resumed session transitions through a real hub and fake harness, verifying retained journal history.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-archive.test.ts::item windows follow launch items and the latest verifier work even after holds release; reopening cancels the item clock": {
       "seconds": 15.511269,
-      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning."
+      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-archive.test.ts::prune CLI and Coordinator tool delete only old archived records and retain the journal": {
       "seconds": 10.442106,
-      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning."
+      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-brief.test.ts::a brief cancellation error cannot skip the owned-process stop after a watch refusal": {
       "seconds": 5.107472,
-      "reason": "Exercises a failing cancellation after a brief/watch refusal while proving the owned real process is stopped."
+      "reason": "Exercises a failing cancellation after a brief/watch refusal while proving the owned real process is stopped.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-events.test.ts::process rows publish launch, model, role, rename, exit and stop; usage bursts publish latest totals per session": {
       "seconds": 9.832321,
-      "reason": "Launches, renames and stops real fake-harness processes while verifying ordered process/usage frame publication."
+      "reason": "Launches, renames and stops real fake-harness processes while verifying ordered process/usage frame publication.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-holds.test.ts::delivered verifier requests persist across restart and clear on hold, verdict, stop and death": {
       "seconds": 16.464733,
-      "reason": "Uses live Reviewer/QA deliveries and hub restart to prove hold persistence, release and session frame visibility."
+      "reason": "Uses live Reviewer/QA deliveries and hub restart to prove hold persistence, release and session frame visibility.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-holds.test.ts::session frames show review and QA holds as they are taken and released": {
       "seconds": 9.032906,
-      "reason": "Uses live Reviewer/QA deliveries and hub restart to prove hold persistence, release and session frame visibility."
+      "reason": "Uses live Reviewer/QA deliveries and hub restart to prove hold persistence, release and session frame visibility.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-model.test.ts::fresh resume journals its own launch model": {
       "seconds": 6.644138,
-      "reason": "Launches and resumes a real fake harness and proves each launch records its current model."
+      "reason": "Launches and resumes a real fake harness and proves each launch records its current model.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-stop-races.test.ts::claude-code: post-merge forced stop emits stopped without a death or warn notification": {
       "seconds": 3.483025,
-      "reason": "Performs a real task merge during a fake Claude harness lifecycle and observes forced-stop delivery to prove it cannot be misreported as death."
+      "reason": "Performs a real task merge during a fake Claude harness lifecycle and observes forced-stop delivery to prove it cannot be misreported as death.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-usage.test.ts::a harness exit and a relaunch stop each leave exactly one final record": {
       "seconds": 6.625851,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-usage.test.ts::claude-code journals totals and cost, and final records sum per launch item and current role": {
       "seconds": 8.638032,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-usage.test.ts::Codex coalesces a usage burst and journals a rate-limit-only change": {
       "seconds": 2.622204,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-usage.test.ts::Codex journals changed totals once, skips equal publications, and stops with final usage": {
       "seconds": 3.005883,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/session-usage.test.ts::opencode journals totals and cost, and final records sum per launch item and current role": {
       "seconds": 7.426911,
-      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records."
+      "reason": "Runs real fake-harness turns and relaunches to prove per-model usage coalescing, totals and exactly-once final records.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/shared-defects-report.test.ts::only distinct task branches raise one shared-defect notice with both logs and dev file history": {
       "seconds": 8.592481,
-      "reason": "Runs four real CLI/package verifications on three task branches and observes durable reports and Coordinator notice deduplication."
+      "reason": "Runs four real CLI/package verifications on three task branches and observes durable reports and Coordinator notice deduplication.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/skills-tracker.test.ts::every `cland task` command the template names parses and reaches its hub or offline preflight": {
       "seconds": 9.310565,
-      "reason": "Invokes every documented task CLI command against hub/offline preflight so generated skill instructions remain executable."
+      "reason": "Invokes every documented task CLI command against hub/offline preflight so generated skill instructions remain executable.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts": {
       "file": true,
       "seconds": 62.674307,
-      "reason": "File budget: Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "File budget: Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::a transient ancestry failure retries and recovers at the same dev SHA without erasing its verdict": {
       "seconds": 6.22134,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::changed stage plans, hand-reopened items and altered verdict headers cannot retain stage closure": {
       "seconds": 4.974619,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::publication rechecks dev changes during a queued stage verdict": {
       "seconds": 4.628358,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::publication rechecks item changes during a queued stage verdict": {
       "seconds": 4.484724,
-      "reason": "Queues a real stage verdict while mutating tracker items, then waits for publication revalidation to prove stale item state cannot close a stage."
+      "reason": "Queues a real stage verdict while mutating tracker items, then waits for publication revalidation to prove stale item state cannot close a stage.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::publication rechecks plan changes during a queued stage verdict": {
       "seconds": 4.285686,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks": {
       "seconds": 5.030925,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/stage-qa.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
       "seconds": 11.444077,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan."
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/startup-smoke.test.ts::a planted listening startup hang fails the smoke within its bound and names the last log event": {
       "seconds": 11.087885,
-      "reason": "Deliberately exhausts the real ten-second startup readiness deadline in a child test process, then confirms failure diagnostics and daemon teardown."
+      "reason": "Deliberately exhausts the real ten-second startup readiness deadline in a child test process, then confirms failure diagnostics and daemon teardown.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/startup-smoke.test.ts::a pre-discovery startup hang stops its daemon before removing the fixture": {
       "seconds": 11.435791,
-      "reason": "Holds the real detached daemon before discovery through the ten-second readiness deadline, then proves its PID exits before the fixture is removed."
+      "reason": "Holds the real detached daemon before discovery through the ten-second readiness deadline, then proves its PID exits before the fixture is removed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/subscription-hygiene.test.ts::claude-code: digest now steers through the existing queue or waits for the next turn": {
       "seconds": 8.728028,
-      "reason": "Exercises live harness steering and durable usage-threshold deliveries across restart."
+      "reason": "Exercises live harness steering and durable usage-threshold deliveries across restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/subscription-hygiene.test.ts::usage thresholds name cost or tokens, deduplicate overlapping subjects and survive restart": {
       "seconds": 10.337125,
-      "reason": "Exercises live harness steering and durable usage-threshold deliveries across restart."
+      "reason": "Exercises live harness steering and durable usage-threshold deliveries across restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/subscriptions.test.ts::claude-code: events and progress use one ordered next-turn digest, before and after restart": {
       "seconds": 5.869095,
-      "reason": "Delivers merged event/progress digests through real harness turns before and after restart."
+      "reason": "Delivers merged event/progress digests through real harness turns before and after restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/subscriptions.test.ts::opencode: events and progress use one ordered next-turn digest, before and after restart": {
       "seconds": 6.830554,
-      "reason": "Delivers merged event/progress digests through real harness turns before and after restart."
+      "reason": "Delivers merged event/progress digests through real harness turns before and after restart.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-admission.test.ts::verify card follows branch jobs through finish and cache, updates the UI silently and survives restart": {
       "seconds": 5.410918,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cache-recovery.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": {
       "seconds": 14.619487,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cache.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": {
       "seconds": 4.71894,
-      "reason": "Pre-existing cache regression test moved unchanged from suite.test.ts; starts, cancels and reports a fresh attempt before reusing the original green evidence."
+      "reason": "Pre-existing cache regression test moved unchanged from suite.test.ts; starts, cancels and reports a fresh attempt before reusing the original green evidence.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cache.test.ts::a fresh attempt cancelled by requester preserves the original green cache evidence": {
       "seconds": 3.085646,
-      "reason": "Pre-existing cache regression test moved unchanged from suite.test.ts; starts, cancels and reports a fresh attempt before reusing the original green evidence."
+      "reason": "Pre-existing cache regression test moved unchanged from suite.test.ts; starts, cancels and reports a fresh attempt before reusing the original green evidence.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cache.test.ts::dirty candidates bypass green cache and cannot seed a later clean result": {
       "seconds": 7.695464,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cache.test.ts::selected-run cache reuse requires the same covering test files": {
       "seconds": 4.511876,
-      "reason": "Runs and reports three real fixture verifications to prove an identical selection reuses green evidence and a changed coverage selection executes again."
+      "reason": "Runs and reports three real fixture verifications to prove an identical selection reuses green evidence and a changed coverage selection executes again.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cache.test.ts::verify --fresh runs despite a green cache and cache hits do not extend expiry": {
       "seconds": 12.43217,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close-recovery.test.ts::a failed shard fails one merged result with its label and no automatic rerun": {
       "seconds": 7.335014,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles cancel with one result and confirmed cleanup": {
       "seconds": 6.917696,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles lost with one result and confirmed cleanup": {
       "seconds": 5.835534,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles restart with one result and confirmed cleanup": {
       "seconds": 8.258691,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation."
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close-recovery.test.ts::cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend": {
       "seconds": 3.469539,
-      "reason": "Runs a real Git fixture and hub/CLI cancellation while the provider sizes response is held, waits 500 ms to prove no premature report, then waits for all-shard spend reservation settlement, zero reserved spend and one cancelled result. Measured on Linux droplet run e54c3004 (A-3003)."
+      "reason": "Runs a real Git fixture and hub/CLI cancellation while the provider sizes response is held, waits 500 ms to prove no premature report, then waits for all-shard spend reservation settlement, zero reserved spend and one cancelled result. Measured on Linux droplet run e54c3004 (A-3003).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by cap": {
       "seconds": 5.880489,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close.test.ts::close run falls back whole with one warning when limited by slots": {
       "seconds": 5.915253,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close.test.ts::integrated remote close collects each map before release and publishes their function union": {
       "seconds": 7.249233,
-      "reason": "Runs two fixture droplets through delivery, collection and confirmed release, then checks one artifact merges both function-to-test maps."
+      "reason": "Runs two fixture droplets through delivery, collection and confirmed release, then checks one artifact merges both function-to-test maps.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close.test.ts::occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result": {
       "seconds": 7.036327,
-      "reason": "Exercises real hub/CLI admission and concurrent fake-provider droplet lifecycles through confirmed deletion and one artifact-backed report."
+      "reason": "Exercises real hub/CLI admission and concurrent fake-provider droplet lifecycles through confirmed deletion and one artifact-backed report.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close.test.ts::ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit": {
       "seconds": 4.948041,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-close.test.ts::QA can request epic through MCP but stage, release, task heads and non-full occasions are refused": {
       "seconds": 5.897614,
-      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests."
+      "reason": "Runs real hub and CLI/MCP requests through fake-provider provisioning, detached package execution, artifact collection and confirmed cleanup; the batch/cache case verifies two requests.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-cover.test.ts::classification keeps derived evidence, requires Coordinator or human, and survives restart": {
       "seconds": 4.271441,
-      "reason": "T-479: runs real CLI classification under five refused roles, Coordinator and human, flushes both audit records, and restarts the hub to verify persisted cover evidence and unchanged outcome; Linux A-3845 at 843a4444 measured 6.851 s with all five load repetitions passing."
+      "reason": "T-479: runs real CLI classification under five refused roles, Coordinator and human, flushes both audit records, and restarts the hub to verify persisted cover evidence and unchanged outcome; Linux A-3845 at 843a4444 measured 6.851 s with all five load repetitions passing.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-coverage.test.ts::package capture retains real process coverage and a successful exit beside truncated JSON": {
       "seconds": 6.631,
-      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map beside a planted truncated coverage file (T-604); startup and coverage serialization dominate. Renamed by T-604 from \"package capture attributes real CLI, daemon, spoke and fake processes to their test file\". Measured 6.631 s on Linux c-8 in release run 7d9819c9 (A-3915)."
+      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map beside a planted truncated coverage file (T-604); startup and coverage serialization dominate. Renamed by T-604 from \"package capture attributes real CLI, daemon, spoke and fake processes to their test file\". Measured 6.631 s on Linux c-8 in release run 7d9819c9 (A-3915).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-human.test.ts::a human slot reserves admission briefly and releases a client that never takes its lease": {
       "seconds": 11.23529,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-queue.test.ts::verify records wait/run timings, zero-time cache hits, recent median/p90 and a mode-aware ETA": {
       "seconds": 14.590221,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-recovery.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": {
       "seconds": 7.208035,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts": {
       "file": true,
       "seconds": 143.909152,
-      "reason": "File budget: Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "File budget: Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::a full remote budget falls back once; a waiting request takes the first local slot to free": {
       "seconds": 14.923615,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::a full remote budget falls back once; a waiting request takes the first remote slot to free": {
       "seconds": 16.830815,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::a hand holder and an earlier local waiter do not block a remote caller": {
       "seconds": 8.435202,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::an unconfirmed acquire cleanup keeps its durable remote budget reservation": {
       "seconds": 7.770857,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::an unconfirmed release posts its receipt while the live lease still guards admission": {
       "seconds": 11.037177,
-      "reason": "Runs two real fake-remote candidates across refused provider deletion and confirmed sweep recovery to prove that reporting does not bypass the live lease budget."
+      "reason": "Runs two real fake-remote candidates across refused provider deletion and confirmed sweep recovery to prove that reporting does not bypass the live lease budget.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::explicit droplet refuses an uncovered reservation with remote budget 1": {
       "seconds": 6.044074,
-      "reason": "Holds a real fake-remote worker reservation while proving CLI cap refusal even with a full remote budget, then observes its receipt and confirmed cleanup."
+      "reason": "Holds a real fake-remote worker reservation while proving CLI cap refusal even with a full remote budget, then observes its receipt and confirmed cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::explicit droplet refuses an uncovered reservation with remote budget 2": {
       "seconds": 6.009271,
-      "reason": "Holds a real fake-remote worker reservation while proving CLI cap refusal despite a spare remote slot, then observes its receipt and confirmed cleanup."
+      "reason": "Holds a real fake-remote worker reservation while proving CLI cap refusal despite a spare remote slot, then observes its receipt and confirmed cleanup.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::explicit droplet waits for remote capacity while later local requests proceed": {
       "seconds": 11.71673,
-      "reason": "Runs two real candidate workers on fake remote machines and one local worker to prove remote-only admission, queue position and independent local progress."
+      "reason": "Runs two real candidate workers on fake remote machines and one local worker to prove remote-only admission, queue position and independent local progress.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::finished remote runs free both budget slots despite failed spend settlement": {
       "seconds": 9.599186,
-      "reason": "Runs real remote-budget and provider fixtures with a held acquisition, two queued callers, and a broken spend ledger until both receipts and admissions are observed."
+      "reason": "Runs real remote-budget and provider fixtures with a held acquisition, two queued callers, and a broken spend ledger until both receipts and admissions are observed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::local ETA uses local history while remote ETA includes its own acquisition time": {
       "seconds": 16.005993,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::local_fallback=false waits for remote capacity while later local requests proceed": {
       "seconds": 20.165,
-      "reason": "Runs two real candidate workers on fake remote slots and one explicit local worker to prove disabled fallback waits for remote admission with queue JSON and independent local progress."
+      "reason": "Runs two real candidate workers on fake remote slots and one explicit local worker to prove disabled fallback waits for remote admission with queue JSON and independent local progress.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::parallel acquires each reserve shared spend; cap refusals stay local without holding remote slots": {
       "seconds": 11.905654,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::startup posts the persisted remote receipt before admitting its waiter": {
       "seconds": 9.365296,
-      "reason": "Completes a real fake-remote run, restores its crash-window job checkpoint, and observes its durable receipt plus a real waiting run without duplicate execution."
+      "reason": "Completes a real fake-remote run, restores its crash-window job checkpoint, and observes its durable receipt plus a real waiting run without duplicate execution.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-remote-budget.test.ts::three remote callers run together beside the local slot, which a human takes next": {
       "seconds": 14.069477,
-      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting."
+      "reason": "Runs several nested fixture verification workers and fake remote acquisitions to prove shared spend reservations, slot arbitration and ETA accounting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-runner.test.ts": {
       "file": true,
       "seconds": 101.921043,
-      "reason": "File budget: Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation."
+      "reason": "File budget: Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-runner.test.ts::takeover reaps a child paused before its identity is published": {
       "seconds": 11.041373,
-      "reason": "Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation."
+      "reason": "Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-scheduling.test.ts::priority admits integrated dev first, then item rank, preserving the queue through restart": {
       "seconds": 8.908932,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-selection-report.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": {
       "seconds": 4.446856,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": {
       "seconds": 6.299755,
-      "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing."
+      "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-stage-cover.test.ts": {
       "file": true,
       "seconds": 47.322405,
-      "reason": "Three serial real-worker/fake-provider lifecycle cases cover platform pairing, report recovery, rollback and two cache-supersession histories. Measured test sum69.595432s (70.22s wall) on the Mac beside the implementer full suite under the permitted one-file/load guard; quiet Mac34.71s and Linux A-3351 about48s."
+      "reason": "Three serial real-worker/fake-provider lifecycle cases cover platform pairing, report recovery, rollback and two cache-supersession histories. Measured test sum69.595432s (70.22s wall) on the Mac beside the implementer full suite under the permitted one-file/load guard; quiet Mac34.71s and Linux A-3351 about48s.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-stage-cover.test.ts::a fresh failed stage attempt supersedes its older green cache": {
       "seconds": 15.971926,
-      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer failed receipt blocks stale-green cache reuse and all workers are collected."
+      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer failed receipt blocks stale-green cache reuse and all workers are collected.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-stage-cover.test.ts::a fresh unreported stage attempt supersedes its older green cache": {
       "seconds": 14.904869,
-      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer unreported receipt blocks stale-green cache reuse and all workers are collected."
+      "reason": "Quiet Mac whole-file measurement: three real sharded stage requests through the fake provider prove a newer unreported receipt blocks stale-green cache reuse and all workers are collected.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": {
       "seconds": 16.44561,
-      "reason": "Quiet Mac whole-file measurement: real local full workers, two fake-provider droplets, Git landing, cache separation, report-delivery recovery, QA and bounded rollback/restoration prove the two-platform stage gate end to end."
+      "reason": "Quiet Mac whole-file measurement: real local full workers, two fake-provider droplets, Git landing, cache separation, report-delivery recovery, QA and bounded rollback/restoration prove the two-platform stage gate end to end.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": {
       "seconds": 7.24005,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {
       "seconds": 10.309648,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-timeouts.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": {
       "seconds": 11.411224,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
       "seconds": 8.451857,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite.test.ts": {
       "file": true,
       "seconds": 37.571213,
-      "reason": "File budget: Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries."
+      "reason": "File budget: Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/task-migrate.test.ts::an older task branch lands after migration (container edit: false)": {
       "seconds": 5.366504,
-      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive."
+      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/task-migrate.test.ts::an older task branch lands after migration (container edit: true)": {
       "seconds": 5.630581,
-      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive."
+      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/task-migrate.test.ts::offline closed backfill previews receipt, journal and commit sources and changes only closed lines once": {
       "seconds": 9.041514,
-      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive."
+      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/termination-ownership.test.ts::doctors from different projects end one deleted hub and its fake harness tree once": {
       "seconds": 6.007477,
-      "reason": "Runs doctor concurrently across two fixture projects to prove that one deleted hub and its owned harness tree terminate exactly once."
+      "reason": "Runs doctor concurrently across two fixture projects to prove that one deleted hub and its owned harness tree terminate exactly once.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/territory-cli.test.ts::dirty roots and other branches stay in place, with a reason in the init report": {
       "seconds": 3.2443,
-      "reason": "Invokes territory initialization against dirty roots and alternate branches, checking that both filesystem and git state stay intact."
+      "reason": "Invokes territory initialization against dirty roots and alternate branches, checking that both filesystem and git state stay intact.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/territory-cli.test.ts::undo refuses unique work under every custom origin fetch destination before mutation": {
       "seconds": 3.042325,
-      "reason": "Creates fixture git remotes with several custom fetch destinations and invokes undo for each to prove unique work is protected before refs change."
+      "reason": "Creates fixture git remotes with several custom fetch destinations and invokes undo for each to prove unique work is protected before refs change.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
       "seconds": 7.308514,
-      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting."
+      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/tracker-load.test.ts::tracker requests stay within 5 s with 20 sessions and 200000 retained events": {
       "seconds": 2.558793,
-      "reason": "Seeds 200000 retained journal events and 20 live fixture sessions, then times concurrent tracker requests against their 5 s bound."
+      "reason": "Seeds 200000 retained journal events and 20 live fixture sessions, then times concurrent tracker requests against their 5 s bound.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/tracker-ready.test.ts::ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=false": {
       "seconds": 4.992593,
-      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree."
+      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/tracker-ready.test.ts::ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=true": {
       "seconds": 4.61114,
-      "reason": "Runs readiness and merge preparation against real git trees and verification evidence to prove stale patches and per-item QA defaults produce the same gate result."
+      "reason": "Runs readiness and merge preparation against real git trees and verification evidence to prove stale patches and per-item QA defaults produce the same gate result.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/tracker-ready.test.ts::ready retries invalidated preparations with bounded backoff": {
       "seconds": 8.168909,
-      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree."
+      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/tracker-ready.test.ts::restart reconciles a stop recorded before queued hold cleanup, preserving claims, status and direct holds": {
       "seconds": 9.870668,
-      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree."
+      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/typecheck.test.ts::typecheck resolves pinned compilers in roots and linked worktrees": {
       "seconds": 13.093691,
-      "reason": "Copies the complete hub/Neovim projects into a real Git worktree and runs three full root typechecks plus the pinned-compiler version and retained API checks across inherited and local dependency layouts."
+      "reason": "Copies the complete hub/Neovim projects into a real Git worktree and runs three full root typechecks plus the pinned-compiler version and retained API checks across inherited and local dependency layouts.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verdict-findings.test.ts::CLI and MCP verdicts expose all severities, clear lows and explicit empty findings in views and journal": {
       "seconds": 2.259889,
-      "reason": "Writes verdicts through both the real CLI and an MCP spoke against a live hub, then reads every severity back from task view and the journal."
+      "reason": "Writes verdicts through both the real CLI and an MCP spoke against a live hub, then reads every severity back from task view and the journal.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verification-workers.test.ts::remote completion waits for its timestamp before reporting, settling cost and caching": {
       "seconds": 6.505029,
-      "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing."
+      "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verification-workers.test.ts::requested size reserves its own price before create and fallback restores local configured workers": {
       "seconds": 3.65958,
-      "reason": "Drives a requested-size droplet reservation through a real hub and fake provider, then the cap-fallback path back to local configured workers; two executor round-trips dominate. Mac cover 38b71e4c at peak load 16.6."
+      "reason": "Drives a requested-size droplet reservation through a real hub and fake provider, then the cap-fallback path back to local configured workers; two executor round-trips dominate. Mac cover 38b71e4c at peak load 16.6.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verification-workers.test.ts::verify persists overrides, delivers remote workers, prices requested size and separates cached measurements": {
       "seconds": 15.184183,
-      "reason": "T-396: serial real CLI/frame runs cover remote and local worker delivery, c-16 pricing, cache separation and durable settings after hub restart; measured 12.034 s on the Mac at starting load 3.54."
+      "reason": "T-396: serial real CLI/frame runs cover remote and local worker delivery, c-16 pricing, cache separation and durable settings after hub restart; measured 12.034 s on the Mac at starting load 3.54.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verifier-routing.test.ts::QA affinity survives copied and reordered verdict headers, including stage requests": {
       "seconds": 7.169185,
-      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories."
+      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verifier-routing.test.ts::queued QA request starts an idle verifier with held progress after relaunch": {
       "seconds": 7.769881,
-      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories."
+      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/verifier-routing.test.ts::three live Reviewers receive one request, and a repeat returns to the same reviewer": {
       "seconds": 12.921266,
-      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories."
+      "reason": "Launches multiple live verifier fixtures and routes QA/review requests across holds, relaunch and copied verdict histories.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/worktree-cli.test.ts::CLI commands from linked worktrees find the main project hub and write only its tracker": {
       "seconds": 17.809066,
-      "reason": "Creates linked git worktrees and invokes the CLI from each, proving shared hub discovery and writes only to the authoritative tracker."
+      "reason": "Creates linked git worktrees and invokes the CLI from each, proving shared hub discovery and writes only to the authoritative tracker.",
+      "owner": "E-677",
+      "legacy": true
     },
     "nvim/test/inbox-sections.test.ts::waiting ages advance on the local clock with no inbox request or hub frame": {
       "seconds": 5.373435,
-      "reason": "Waits for multiple real local-clock updates in Neovim without any hub frame, proving displayed waiting ages advance independently."
+      "reason": "Waits for multiple real local-clock updates in Neovim without any hub frame, proving displayed waiting ages advance independently.",
+      "owner": "E-677",
+      "legacy": true
     },
     "nvim/test/shell.test.ts::the workbench reads sessions and presence once per connect; events update the panel without polling (T-71)": {
       "seconds": 6.660971,
-      "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling."
+      "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling.",
+      "owner": "E-677",
+      "legacy": true
     },
     "nvim/test/thread.test.ts::generated live appends, ask evictions and delivery changes equal a full render": {
       "seconds": 47.795502,
-      "reason": "Iterates generated live appends, ask evictions and delivery changes against a real Neovim buffer, comparing every incremental result to a complete render."
+      "reason": "Iterates generated live appends, ask evictions and delivery changes against a real Neovim buffer, comparing every incremental result to a complete render.",
+      "owner": "E-677",
+      "legacy": true
     },
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": {
       "seconds": 6.30693,
-      "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands."
+      "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/models.test.ts::models account probes use launch environments and have independent caches, also readable by sessions": {
       "seconds": 6.567,
-      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load."
+      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/models.test.ts::models failed refresh keeps the cached list and original age; no cache returns the native probe error": {
       "seconds": 7.627,
-      "reason": "Exercises successful native discovery, repeated failed refreshes with unchanged cached timestamps, and no-cache account errors through real CLI calls for both Codex and OpenCode. Multiple short-lived app/server processes retain cleanup and failure assertions under droplet load (A-4045)."
+      "reason": "Exercises successful native discovery, repeated failed refreshes with unchanged cached timestamps, and no-cache account errors through real CLI calls for both Codex and OpenCode. Multiple short-lived app/server processes retain cleanup and failure assertions under droplet load (A-4045).",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/models.test.ts::models CLI lists native catalogs, waits for OpenCode and caches each harness until refresh": {
       "seconds": 5.399,
-      "reason": "Runs initial, cached and refreshed model discovery through the real CLI for both native transports, including OpenCode empty-catalog retry and confirmed short-lived child teardown. Measured on the Linux droplet in A-4175; assertions and timeout bounds are retained."
+      "reason": "Runs initial, cached and refreshed model discovery through the real CLI for both native transports, including OpenCode empty-catalog retry and confirmed short-lived child teardown. Measured on the Linux droplet in A-4175; assertions and timeout bounds are retained.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/tasks/note.md": {
       "seconds": 5.713784751,
-      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits tracker state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 5.714s and all five load-gate repetitions passed."
+      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits tracker state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 5.714s and all five load-gate repetitions passed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/RULES.md": {
       "seconds": 6.789143906,
-      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits rulebook state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 6.789s and all five load-gate repetitions passed."
+      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits rulebook state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 6.789s and all five load-gate repetitions passed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-candidate.test.ts::integrated running run rejects a source commit after package completion": {
       "seconds": 5.021503454,
-      "reason": "Runs a real fixture hub, CLI and local worker; commits source after observed package entry, waits separately for completion and the downstream cancellation report, and retains the cancel-head assertion. Linux c-8 run e30632fd (A-4013) measured 5.022s and all five load-gate repetitions passed."
+      "reason": "Runs a real fixture hub, CLI and local worker; commits source after observed package entry, waits separately for completion and the downstream cancellation report, and retains the cancel-head assertion. Linux c-8 run e30632fd (A-4013) measured 5.022s and all five load-gate repetitions passed.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-candidate.test.ts::integrated queued run covers a new head after committing .cland/tasks/note.md": {
       "seconds": 7.459756291,
-      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a tracker commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379."
+      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a tracker commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-candidate.test.ts::integrated queued run covers a new head after committing .cland/RULES.md": {
       "seconds": 6.172859708,
-      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a rulebook commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379."
+      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a rulebook commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/suite-candidate-remote.test.ts::integrated remote delivery keeps the submitted bundle across tracker and rulebook commits": {
       "seconds": 8.023862041,
-      "reason": "Runs an integrated fixture through host typecheck, fake provider acquisition, real bundle/SSH delivery and shell execution, then confirms release and advanced-head cache reuse. The administrative commit occurs during acquisition; measured on macOS for T-379."
+      "reason": "Runs an integrated fixture through host typecheck, fake provider acquisition, real bundle/SSH delivery and shell execution, then confirms release and advanced-head cache reuse. The administrative commit occurs during acquisition; measured on macOS for T-379.",
+      "owner": "E-677",
+      "legacy": true
     },
     "hub/test/cover-quiet.test.ts::an integrated local worker protects its cover while admitting its own targeted harness": {
       "seconds": 15,
-      "reason": "Runs a fixture hub, git-backed integrated dev admission and real local worker; waits for its inherited harness entry, checks an unrelated subprocess refusal, then observes completion and the downstream report separately before proving admission reopens."
+      "reason": "Runs a fixture hub, git-backed integrated dev admission and real local worker; waits for its inherited harness entry, checks an unrelated subprocess refusal, then observes completion and the downstream report separately before proving admission reopens.",
+      "owner": "E-677",
+      "legacy": true
     }
   }
 }

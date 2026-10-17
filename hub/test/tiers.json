@@ -171,6 +171,7 @@
     "hub/test/suite-cover.test.ts": "T3",
     "hub/test/suite-coverage.test.ts": "T3",
     "hub/test/suite-dry-run.test.ts": "T2",
+    "hub/test/suite-duration-budget.test.ts": "T1",
     "hub/test/suite-human.test.ts": "T3",
     "hub/test/suite-queue.test.ts": "T3",
     "hub/test/suite-recovery.test.ts": "T3",

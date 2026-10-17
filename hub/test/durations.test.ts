@@ -1,3 +1,4 @@
+// T3: duration refresh CLI and immutable Git admission contracts.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -16,8 +17,8 @@ test('refresh takes per-test medians, sums file test-time, preserves reasons and
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   const manifest = join(cwd, 'hub/test/durations.json');
   await writeFile(manifest, JSON.stringify({ version: 1, source: { artifacts: [], commit: 'old' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
-    'hub/test/one.test.ts::slow': { seconds: 6, reason: 'Exercises remote teardown through real processes.' },
-    'hub/test/deleted.test.ts::gone': { seconds: 9, reason: 'Deleted.' },
+    'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: 'Exercises remote teardown through real processes.' },
+    'hub/test/deleted.test.ts::gone': { seconds: 9, owner: 'E-677', legacy: true, reason: 'Deleted.' },
   } }));
   const logs = [];
   for (const [index, seconds] of [6, 12, 9].entries()) {
@@ -36,7 +37,7 @@ test('refresh takes per-test medians, sums file test-time, preserves reasons and
   assert.equal(result.tests['hub/test/one.test.ts::slow'], 9);
   assert.deepEqual(result.allow, {
     'hub/test/one.test.ts::new': { seconds: 7, reason: 'TODO' },
-    'hub/test/one.test.ts::slow': { seconds: 9, reason: 'Exercises remote teardown through real processes.' },
+    'hub/test/one.test.ts::slow': { seconds: 9, owner: 'E-677', legacy: true, reason: 'Exercises remote teardown through real processes.' },
   });
 });
 
@@ -86,7 +87,7 @@ test('below-budget slowdown regressions require both thresholds and the report k
   assert.ok(summary.includes(lines.join('\n')));
   assert.match(summary, /suite budget overhead 1.20 ms/);
   const file = checkDurations([{ file: 'hub/test/large.test.ts', name: 'a', seconds: 31 }, { file: 'hub/test/large.test.ts', name: 'b', seconds: 31 }], { ...manifest, allow: {
-    'hub/test/large.test.ts::a': { seconds: 31, reason: 'Multi-process lifecycle.' }, 'hub/test/large.test.ts::b': { seconds: 31, reason: 'Restart lifecycle.' },
+    'hub/test/large.test.ts::a': { seconds: 31, owner: 'E-677', legacy: true, reason: 'Multi-process lifecycle.' }, 'hub/test/large.test.ts::b': { seconds: 31, owner: 'E-677', legacy: true, reason: 'Restart lifecycle.' },
   } });
   assert.deepEqual(file.failures, ['duration budget: hub/test/large.test.ts 62 s > 60 s (add to hub/test/durations.json with a reason)']);
 });
@@ -96,9 +97,11 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   const cwd = await mkdtemp(join(tmpdir(), 'cland-durations-'));
   ownDirectory(t, cwd);
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
   const path = join(cwd, 'hub/test/durations.json');
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
-    'hub/test/one.test.ts::slow': { seconds: 6, reason: 'TODO' },
+    'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: 'TODO' },
   } };
   await writeFile(path, JSON.stringify(manifest));
   await assert.rejects(lintHubShards(cwd), /duration.*TODO.*hub\/test\/one.test.ts::slow/);
@@ -113,6 +116,9 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /duration.*TODO/, 'working reasons cannot repair an immutable candidate');
   await git('add', '.'); await git('commit', '-m', 'reasoned allowance');
   await lintHubShardTree(cwd, 'HEAD');
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: closed\n---\n');
+  await assert.rejects(lintHubShards(cwd), /closed owner E-677.*slow/);
+  await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /closed owner E-677.*slow/);
 });
 
 test('immutable candidate admission uses the owning Git environment for tree and source reads', async t => {
@@ -121,8 +127,10 @@ test('immutable candidate admission uses the owning Git environment for tree and
     const cwd = await mkdtemp(join(tmpdir(), 'cland-admission-env-'));
     ownDirectory(t, cwd);
     await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
     await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
-      'hub/test/one.test.ts::slow': { seconds: 6, reason: i === 0 ? 'TODO' : 'Real process teardown.' },
+      'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: i === 0 ? 'TODO' : 'Real process teardown.' },
     } }));
     await exec('git', ['init', '-q'], { cwd });
     await exec('git', ['add', '.'], { cwd });
@@ -148,7 +156,7 @@ test('pre-start-reporter logs map literal and template titles from test sources 
   await assert.rejects(exec(process.execPath, [generator, 'refresh', log], { cwd }), /ambiguous legacy test/);
 });
 
-for (const path of ['hub/src/suite-durations.ts', 'hub/test/duration-reporter.ts']) {
+for (const path of ['hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts']) {
   test(`${path} changes require both package phases`, async () => {
     const { chooseSuiteMode } = await import('../src/suite-selection.ts');
     assert.equal(chooseSuiteMode([path]), 'full');
@@ -227,4 +235,63 @@ test('over-budget notices and below-budget slowdowns share five slots ranked by 
   assert.match(lines[0]!, /::k5 6 s → 11.1 s \(over budget: 5 s\)/);
   assert.match(lines[4]!, /::slow 2 s → 4 s$/);
   assert.equal(lines.some(line => line.includes('::k0 ') || line.includes('::k1 ')), false);
+});
+
+test('ratchet preserves pinned source identities when timing baselines are missing', async t => {
+  const { durationBudgetContext } = await import('../src/suite-duration-context.ts');
+  const { durationBudgetReport } = await import('../src/suite-duration-budget.ts');
+  const cwd = await mkdtemp(join(tmpdir(), 'cland-duration-context-'));
+  ownDirectory(t, cwd);
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  const git = async (...args: string[]) => (await exec('git', args, { cwd })).stdout.trim();
+  await git('init', '--initial-branch=dev');
+  await git('config', 'user.name', 'Duration test'); await git('config', 'user.email', 'duration@example.invalid');
+  const file = 'hub/test/ratchet.test.ts', moved = 'hub/test/moved.test.ts', unbaselined = 'hub/test/unbaselined.test.ts';
+  const manifest = { version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: { [file]: { seconds: 10, tests: 2 }, [moved]: { seconds: 4, tests: 1 } }, tests: { [`${file}::keep`]: 6, [`${file}::gone`]: 4, [`${moved}::moved`]: 4 }, allow: {} };
+  await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify(manifest));
+  await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T3', [moved]: 'T3', [unbaselined]: 'T3' } }));
+  await writeFile(join(cwd, file), "test('keep', () => {}); test('gone', () => {}); test('old literal', () => {}); test(`old ${kind}`, () => {});");
+  await writeFile(join(cwd, moved), "test('moved', () => {});");
+  await writeFile(join(cwd, unbaselined), "test('existing', () => {});");
+  await git('add', '.'); await git('commit', '-m', 'base');
+  const base = await git('rev-parse', 'HEAD');
+  const unchanged = await durationBudgetContext(cwd, { head: base, base });
+  assert.ok(unchanged?.base);
+  const unchangedReport = durationBudgetReport(unchanged.manifest, unchanged.tiers, [{ file: unbaselined, name: 'existing', seconds: 20 }], unchanged.base);
+  assert.ok(unchangedReport.some(line => line.startsWith('T3 ratchet (report only): 14 s vs base 14 s')), unchangedReport.join('\n'));
+  assert.ok(unchangedReport.some(line => line.includes('incomplete base timings')));
+  await writeFile(join(cwd, file), "test('keep', () => {}); test('new', () => {}); test('old literal', () => {}); test(`old ${kind}`, () => {});");
+  await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T3', [moved]: 'T2', [unbaselined]: 'T3' } }));
+  await git('add', '.'); await git('commit', '-m', 'remove and move');
+  const head = await git('rev-parse', 'HEAD');
+  // Uncommitted source cannot repair or inflate the submitted head.
+  await writeFile(join(cwd, file), "test('gone', () => {});");
+  const context = await durationBudgetContext(cwd, { head, base });
+  assert.ok(context?.base);
+  assert.deepEqual(context.base.retained, [`${file}::keep`]);
+  const report = durationBudgetReport(context.manifest, context.tiers, [{ file, name: 'keep', seconds: 99 }, { file, name: 'new', seconds: 3 }, { file, name: 'old literal', seconds: 15 }, { file, name: 'old alpha', seconds: 2 }, { file: unbaselined, name: 'existing', seconds: 20 }], context.base);
+  assert.ok(report.some(line => line.startsWith('T3 ratchet (report only): 9 s vs base 14 s')), report.join('\n'));
+  assert.ok(report.some(line => line.includes('missing duration baseline ' + unbaselined)));
+  assert.ok(report.some(line => line.includes('incomplete base timings (1 files, 3 observed existing tests)')));
+});
+
+test('new allowances cannot adopt the one-time legacy exception at either admission boundary', async t => {
+  const { lintHubShards, lintHubShardTree } = await import('../src/suite-shards.ts');
+  const cwd = await mkdtemp(join(tmpdir(), 'cland-duration-legacy-'));
+  ownDirectory(t, cwd);
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  const manifest = { version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60, T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 } }, files: {}, tests: {}, allow: {} as Record<string, unknown> };
+  const path = join(cwd, 'hub/test/durations.json');
+  await writeFile(path, JSON.stringify(manifest));
+  const git = async (...args: string[]) => exec('git', args, { cwd });
+  await git('init', '-qb', 'dev');
+  await git('config', 'user.name', 'Duration test'); await git('config', 'user.email', 'duration@example.invalid');
+  await git('add', '.'); await git('commit', '-qm', 'base'); await git('update-ref', 'refs/remotes/origin/dev', 'HEAD');
+  manifest.allow['hub/test/new.test.ts::new'] = { seconds: 6, owner: 'E-677', legacy: true, reason: 'Cannot claim an old exception.' };
+  await writeFile(path, JSON.stringify(manifest));
+  await assert.rejects(lintHubShards(cwd), /new duration allowance cannot be legacy: hub\/test\/new.test.ts::new/);
+  await git('add', '.'); await git('commit', '-qm', 'invalid new allowance');
+  await assert.rejects(lintHubShardTree(cwd, 'HEAD'), /new duration allowance cannot be legacy: hub\/test\/new.test.ts::new/);
 });

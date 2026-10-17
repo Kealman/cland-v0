@@ -6,7 +6,7 @@ import { join, matchesGlob } from 'node:path';
 import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
-import { DURATION_MANIFEST, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
+import { DURATION_MANIFEST, durationOwners, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 import { QUARANTINE_MANIFEST, lintQuarantineManifest, readQuarantineManifest } from './suite-quarantine.ts';
 
 export type Shard = 'free' | 'machine';
@@ -109,6 +109,19 @@ export async function lintHubShards(cwd: string): Promise<void> {
   if (await readManifest(cwd)) await hubShards(cwd);
 }
 
+/** Only allowances present before the migration may use the legacy exception. */
+async function legacyDurationKeys(git: (args: string[]) => Promise<string>): Promise<Set<string> | undefined> {
+  for (const ref of ['origin/dev', 'HEAD']) {
+    try {
+      const manifest = JSON.parse(await git(['show', `${ref}:${DURATION_MANIFEST}`])) as DurationManifest;
+      // The original schema predates the one-time migration. Thereafter only
+      // explicitly legacy keys survive; new expiring entries cannot convert.
+      return new Set(Object.entries(manifest.allow).filter(([, entry]) => !manifest.budget.T1 || entry.legacy).map(([key]) => key));
+    } catch { /* A new repository may not have a committed baseline yet. */ }
+  }
+  return undefined;
+}
+
 /** Inspect the immutable merge result, including dev-only files, without touching any checkout. */
 export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   const exec = promisify(execFile);
@@ -116,7 +129,13 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
   const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test', 'nvim/test'])).split('\0').filter(Boolean);
   const source = (path: string) => git(['show', `${tree}:${path}`]);
   if (paths.includes(DURATION_MANIFEST)) {
-    try { lintDurationManifest(JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest); }
+    try {
+      const manifest = JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest;
+      lintDurationManifest(manifest);
+      const ownerCwd = (await git(['rev-parse', '--show-toplevel'])).trim();
+      const legacyKeys = await legacyDurationKeys(git);
+      lintDurationManifest(manifest, { owners: await durationOwners(ownerCwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
+    }
     catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   }
   if (paths.includes(QUARANTINE_MANIFEST)) {
@@ -132,7 +151,12 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
 async function lintDurations(cwd: string): Promise<void> {
   try {
     const manifest = await readDurationManifest(cwd);
-    if (manifest) lintDurationManifest(manifest);
+    if (manifest) {
+      lintDurationManifest(manifest);
+      const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
+      const legacyKeys = await legacyDurationKeys(git);
+      lintDurationManifest(manifest, { owners: await durationOwners(cwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
+    }
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   try { await readQuarantineManifest(cwd); }
   catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }

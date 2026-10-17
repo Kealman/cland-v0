@@ -1,15 +1,18 @@
-import { readFile } from 'node:fs/promises';
+import { glob, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { projectRoot } from './project.ts';
+import { parseItem } from './tracker/item.ts';
 
 export const DURATION_MANIFEST = 'hub/test/durations.json';
+export type TierBudget = { testSeconds: number; fileSeconds: number; wallSeconds: number };
 export type TestTiming = { file: string; name: string; seconds: number };
 export type DurationManifest = {
   version: 1;
   source: { artifacts: string[]; commit: string };
-  budget: { testSeconds: number; fileSeconds: number };
+  budget: { testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null };
   files: Record<string, { seconds: number; tests: number }>;
   tests: Record<string, number>;
-  allow: Record<string, { file?: true; seconds: number; reason: string }>;
+  allow: Record<string, { file?: true; seconds: number; reason: string; owner?: string; added?: string; expires?: string; legacy?: true }>;
 };
 export const timingKey = (test: TestTiming): string => `${test.file}::${test.name}`;
 export type DurationRegression = { key: string; before: number; now: number; budget?: number };
@@ -54,13 +57,31 @@ export async function readDurationManifest(cwd: string): Promise<DurationManifes
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 }
 
-export function lintDurationManifest(manifest: DurationManifest): void {
+export function lintDurationManifest(manifest: DurationManifest, options: { now?: number; owners?: Record<string, string>; legacyKeys?: ReadonlySet<string> } = {}): void {
   const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
   const time = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   if (!object(manifest) || manifest.version !== 1 || !object(manifest.budget) || !time(manifest.budget.testSeconds) || manifest.budget.testSeconds <= 0 || !time(manifest.budget.fileSeconds) || manifest.budget.fileSeconds <= 0 || !object(manifest.files) || !object(manifest.tests) || !object(manifest.allow)) throw new Error(`invalid duration manifest: ${DURATION_MANIFEST}`);
+  for (const tier of ['T1', 'T2', 'T3'] as const) {
+    const budget = manifest.budget[tier];
+    if (budget !== undefined && (!object(budget) || ![budget.testSeconds, budget.fileSeconds, budget.wallSeconds].every(value => time(value) && value > 0))) throw new Error(`invalid duration tier budget: ${tier}`);
+  }
+  if (manifest.budget.T4 !== undefined && manifest.budget.T4 !== null) throw new Error('invalid duration tier budget: T4');
+  const now = options.now ?? Date.now();
+  const date = (value: unknown): number => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? Date.parse(value) : NaN;
   for (const [key, entry] of Object.entries(manifest.allow)) {
-    if (!object(entry) || !time(entry.seconds) || (key.includes('::') ? entry.file !== undefined : entry.file !== true)) throw new Error(`invalid duration allowance: ${key}`);
+    if (!object(entry) || !time(entry.seconds) || (key.includes('::') || key === 'T3' ? entry.file !== undefined : entry.file !== true)) throw new Error(`invalid duration allowance: ${key}`);
     if (typeof entry.reason !== 'string' || !entry.reason.trim() || /\bTODO\b/i.test(entry.reason)) throw new Error(`duration allowance needs a non-TODO reason: ${key}`);
+    if (typeof entry.owner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(entry.owner)) throw new Error(`duration allowance needs an open owner item: ${key}`);
+    if (options.owners && options.owners[entry.owner] !== 'open') throw new Error(`duration allowance has ${options.owners[entry.owner] === 'closed' ? 'closed' : 'unknown'} owner ${entry.owner}: ${key}`);
+    if (entry.legacy !== undefined && entry.legacy !== true) throw new Error(`invalid legacy duration allowance: ${key}`);
+    if (entry.legacy === true) {
+      if (options.legacyKeys && !options.legacyKeys.has(key)) throw new Error(`new duration allowance cannot be legacy: ${key}`);
+      if (entry.owner !== 'E-677' || entry.added !== undefined || entry.expires !== undefined) throw new Error(`legacy duration allowance needs owner E-677 and expires on owner closure: ${key}`);
+    } else {
+      const added = date(entry.added), expires = date(entry.expires);
+      if (!Number.isFinite(added) || !Number.isFinite(expires) || added > now || expires <= added || expires - added > 7 * 86_400_000) throw new Error(`duration allowance needs valid dates at most seven days apart: ${key}`);
+      if (now >= expires) throw new Error(`expired duration allowance: ${key}`);
+    }
   }
   for (const [key, value] of Object.entries(manifest.tests)) if (!time(value)) throw new Error(`invalid duration baseline: ${key}`);
   for (const [key, value] of Object.entries(manifest.files)) if (!object(value) || !time(value.seconds) || !Number.isInteger(value.tests) || value.tests < 0) throw new Error(`invalid duration file baseline: ${key}`);
@@ -73,4 +94,17 @@ export function fileTimings(tests: TestTiming[]): DurationManifest['files'] {
     file.seconds += test.seconds; file.tests++;
   }
   return files;
+}
+
+/** Admission checks ownership in the live authoritative tracker, including linked worktrees. */
+export async function durationOwners(cwd: string, manifest: DurationManifest): Promise<Record<string, string>> {
+  const owners: Record<string, string> = {};
+  for (const owner of new Set(Object.values(manifest.allow).map(entry => entry.owner))) {
+    if (!owner || !/^[A-Z]+-[1-9]\d*$/.test(owner)) continue;
+    for await (const path of glob(`.cland/tasks/${owner}-*.md`, { cwd: projectRoot(cwd) })) {
+      const item = parseItem(await readFile(join(projectRoot(cwd), path), 'utf8'));
+      if (item.fm.id === owner) owners[owner] = item.fm.state;
+    }
+  }
+  return owners;
 }

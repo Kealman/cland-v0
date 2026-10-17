@@ -4,7 +4,7 @@ import { packageShards, readTierAssignments, type Tier, type SuiteShard } from '
 import { readDurationManifest, type TestTiming } from './suite-durations.ts';
 import type { SuiteSelection } from './suite-selection.ts';
 
-export type TierPlan = Array<{ tier: Tier; files: string[]; tests: number; seconds: number; projectedWall: number; workers: number; missing: number; phases?: Array<{ weights: number[]; serial: boolean }> }>;
+export type TierPlan = Array<{ tier: Tier; files: string[]; tests: number; seconds: number; projectedWall: number; workers: number; missing: number; wallBudget?: number; phases?: Array<{ weights: number[]; serial: boolean }> }>;
 export type SuiteDryRun = { dryRun: true; head: string; executor: 'local' | 'droplet'; workers: number; selection: SuiteSelection; tiers: TierPlan; lines: string[] };
 const seconds = (n: number) => Number(n.toFixed(3)).toString();
 const budgets: Record<Tier, number | null> = { T1: 120, T2: 480, T3: 900, T4: null };
@@ -26,6 +26,8 @@ export async function planTierReport(cwd: string, selection: SuiteSelection, wor
       if (!files.length) continue;
       let row = result.find(row => row.tier === tier);
       if (!row) result.push(row = { tier, files: [], tests: 0, seconds: 0, projectedWall: 0, workers: phase.workers, missing: 0, phases: [] });
+      const wallBudget = manifest?.budget[tier]?.wallSeconds;
+      if (wallBudget !== undefined) row.wallBudget = wallBudget;
       row.files.push(...files);
       for (const file of files) {
         const baseline = manifest?.files[file];
@@ -73,7 +75,7 @@ export function tierReport(plan: TierPlan, observed?: TestTiming[]): string[] {
   if (!plan.length) return [];
   const lines = plan.map(row => {
     const receipts = observed?.filter(test => row.files.includes(test.file));
-    const budget = budgets[row.tier];
+    const budget = row.wallBudget ?? budgets[row.tier];
     return `tier ${row.tier}: files ${row.files.length}; tests ${receipts ? receipts.length : `${row.tests} planned`}; observed ${receipts?.length ? `${seconds(receipts.reduce((sum, t) => sum + t.seconds, 0))} s` : 'unavailable'}; projected wall ${seconds(row.projectedWall)} s at ${row.workers} workers; wall budget ${budget === null ? 'none' : `${budget} s`}${budget !== null && row.projectedWall > budget ? '; over wall (report only)' : ''}${row.missing ? `; ${row.missing} files missing duration baseline (median projection)` : ''}`;
   });
   const total = plan.reduce((sum, row) => sum + row.seconds, 0);

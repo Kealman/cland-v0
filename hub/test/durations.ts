@@ -101,11 +101,12 @@ export async function refreshDurations(cwd: string, logs: string[]): Promise<Dur
   const allow: DurationManifest['allow'] = {};
   for (const test of tests) {
     const key = timingKey(test);
-    if (previous?.allow[key] || (test.seconds > budget.testSeconds && previous?.tests[key] === undefined)) allow[key] = { seconds: test.seconds, reason: previous?.allow[key]?.reason ?? 'TODO' };
+    if (previous?.allow[key] || (test.seconds > budget.testSeconds && previous?.tests[key] === undefined)) allow[key] = { ...previous?.allow[key], seconds: test.seconds, reason: previous?.allow[key]?.reason ?? 'TODO' };
   }
   for (const [path, file] of Object.entries(files)) {
-    if (previous?.allow[path]?.file || (file.seconds > budget.fileSeconds && previous?.files[path] === undefined)) allow[path] = { file: true, seconds: file.seconds, reason: previous?.allow[path]?.reason ?? 'TODO' };
+    if (previous?.allow[path]?.file || (file.seconds > budget.fileSeconds && previous?.files[path] === undefined)) allow[path] = { ...previous?.allow[path], file: true, seconds: file.seconds, reason: previous?.allow[path]?.reason ?? 'TODO' };
   }
+  if (previous?.allow.T3) allow.T3 = previous.allow.T3;
   const manifest: DurationManifest = { version: 1, source: { artifacts: [...new Set(artifacts)], commit }, budget,
     files: sorted(Object.entries(files)), tests: sorted(tests.map(test => [timingKey(test), test.seconds])), allow: sorted(Object.entries(allow)) };
   await writeFile(join(cwd, DURATION_MANIFEST), JSON.stringify(manifest, null, 2) + '\n');
