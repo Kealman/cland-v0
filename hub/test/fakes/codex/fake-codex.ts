@@ -64,6 +64,8 @@
 // State lives under FAKE_CODEX_HOME: servers/<pid>.json (pid, socket, argv, its CLAND_* environment and PATH), threads/<id>.json (the "rollout"),
 // log/<pid>.log. FAKE_CODEX_TURN_MS is how long each answer "thinks" (default 300). FAKE_CODEX_TERM_DELAY_MS is how long the
 // app-server takes to exit after SIGTERM (default 0), its turn running on meanwhile.
+// FAKE_CODEX_RENAME_ON_TERM names a session rename performed through the spoke after the hub's
+// stop signal, awaiting its reply before closing MCP. This orders rename-during-stop without a timer.
 // Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
 // Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
 // fixture or set FAKE_CODEX_TURN_MS explicitly, with a comment naming the race/behaviour.
@@ -674,6 +676,8 @@ async function appServer(args: string[]): Promise<number> {
   });
   const shutdown = async () => {
     log('SIGTERM');
+    const rename = process.env.FAKE_CODEX_RENAME_ON_TERM;
+    if (rename) await callTool('rename', { name: rename });
     // FAKE_CODEX_TERM_DELAY_MS: how long the app-server takes to go once told to (its turn runs on meanwhile)
     await sleep(Number(process.env.FAKE_CODEX_TERM_DELAY_MS ?? 0));
     for (const client of mcp.values()) await client.close().catch(() => {});

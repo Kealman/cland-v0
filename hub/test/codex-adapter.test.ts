@@ -599,19 +599,21 @@ test('session resume --relaunch on a live session relaunches it: the app-server 
 test('session resume --relaunch on a live session that renames itself while it is being stopped relaunches it under its new name', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   const fake = await fakeCodex(t);
-  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_CODEX_TERM_DELAY_MS: '1200' });
+  const { discovery } = await projectHub(t, root, { ...fake.env, FAKE_CODEX_RENAME_ON_TERM: 'coord-2' });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const launched = await launch(ui, 'coord', { role: 'coordinator' });
   await presentAs(ui, 'coord', 'idle');
 
-  // its turn renames it 300 ms in; the relaunch's stop is under way by then, and takes 1200 ms
-  const id = await sendGeneral(ui, 'rename to coord-2');
+  // T3: the real app-server renames through its spoke on the hub's stop signal,
+  // awaiting the tool reply before exiting. No turn timer orders the rename.
+  const id = await sendGeneral(ui, 'ready for relaunch');
   await ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
   const r = await ui.request({ type: 'session.resume', session: 'coord', relaunch: true }, 30_000);
   assert.equal(r.ok, true, r.error);
   const again = (r.value as { found: boolean; process: Harness }).process;
   assert.match(await fake.log(launched.pid as number), /tool rename → \{"ok":true/, 'the rename landed while the app-server was going');
+  assert.match(await fake.log(launched.pid as number), /SIGTERM[\s\S]*tool rename → \{"ok":true/, 'the rename followed the hub stop signal');
   assert.equal(again.name, 'coord-2');
   assert.equal(again.status, 'running');
   assert.notEqual(again.pid, launched.pid);
