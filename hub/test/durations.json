@@ -4750,6 +4750,13 @@
       "expires": "2026-10-24",
       "reason": "T-706 retains startup sweeping plus doctor cleanup for three terminal states in one shared real-server lifecycle fixture."
     },
+    "hub/test/verifier-routing-process.test.ts::Codex relaunch injects an early accepted clause and frees the queued QA request without a nudge": {
+      "seconds": 7,
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24",
+      "reason": "Retains real Codex process launch and PID relaunch, early role-clause acknowledgement before native resume publication, and exactly-once queued QA delivery. Integrated Linux droplet runs measured 5.04–5.35 s (A-4467, A-4470, A-4472); allow startup and teardown headroom."
+    },
     "hub/test/orphan-servers.test.ts::stop and relaunch await server death across the harness adapters": {
       "seconds": 10.7,
       "owner": "E-677",
