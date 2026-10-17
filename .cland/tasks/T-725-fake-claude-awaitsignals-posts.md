@@ -2,8 +2,8 @@
 id: T-725
 kind: task
 title: fake-claude awaitSignals posts PermissionRequest before arming its approval resolver, so an immediate SIGUSR1 can be lost
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-425
 branch: t/T-725-fake-claude-awaitsignals-posts
 created: 2026-10-17T06:33:35.124Z
-updated: 2026-10-17T08:15:59.522Z
+updated: 2026-10-17T08:27:45.092Z
+closed: 2026-10-17T08:27:45.092Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ Criteria: C1 verified, C2 verified.
 ### impl-725 · 2026-10-17T08:15:59.522Z
 
 Exact reviewed head fbcb7a557203a764c130da194b7f10988c4d4fe8 passed droplet ebe47f79-c63b-4c49-bc97-b8b214645ca2 (A-4391): 2086 pass, 0 fail, 5 skips, Linux c-8 workers 2; lifetime 2313 s, $0.1606. E-677 exact-head timings: claude-code-adapter.test.ts 39.540170632 summed test-seconds across nine cases; changed binary-contract case 6.401496754 s. Local before/after 5/5 and C1 20/20 are A-4361; Linux summary A-4392. Final review clear rev-20261017-725-final (A-4393), C1/C2 verified, no findings. No head changes.
+
+### coord · 2026-10-17T08:27:45.092Z
+
+Merged 6fa4685c0e51d3329e7921143f1c5b5efd6f616b onto dev.
