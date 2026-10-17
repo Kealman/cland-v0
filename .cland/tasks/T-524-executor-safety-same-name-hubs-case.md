@@ -3,7 +3,7 @@ id: T-524
 kind: task
 title: "executor-safety same-name hubs case: remote result not seen within 20 s under load (Linux)"
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-430
 topic: null
 branch: null
 created: 2026-10-15T19:26:17.820Z
-updated: 2026-10-15T20:01:02.780Z
+updated: 2026-10-17T21:48:42.538Z
 ---
 
 ## Problem

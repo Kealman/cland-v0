@@ -3,7 +3,7 @@ id: T-751
 kind: task
 title: Remote, executor and doctor component fixtures inject machine and Git facts instead of bootstrapping native Git and doctor probes
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T18:44:08.662Z
-updated: 2026-10-17T18:44:08.662Z
+updated: 2026-10-17T21:48:43.219Z
 ---
 
 ## Summary

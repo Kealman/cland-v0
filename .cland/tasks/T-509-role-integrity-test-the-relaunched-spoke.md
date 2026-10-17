@@ -3,7 +3,7 @@ id: T-509
 kind: task
 title: "role-integrity test: the relaunched spoke's refusal after a rename isn't seen within 15 s (Linux, under load)"
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T15:39:05.347Z
-updated: 2026-10-15T15:39:05.347Z
+updated: 2026-10-17T21:48:42.499Z
 ---
 
 ## Problem

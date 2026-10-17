@@ -3,7 +3,7 @@ id: T-707
 kind: task
 title: "The T3 scenario set: ten named end-to-end flows, each one file with one real hub and at most 120 s"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -24,7 +24,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:37.743Z
-updated: 2026-10-16T20:00:22.840Z
+updated: 2026-10-17T21:48:43.044Z
 ---
 
 ## Summary

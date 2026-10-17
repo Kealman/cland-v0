@@ -3,7 +3,7 @@ id: T-625
 kind: task
 title: cland update removes a dropped skill left untouched and hands an edited one to the project
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:57:49.588Z
-updated: 2026-10-16T15:57:50.261Z
+updated: 2026-10-17T21:48:42.869Z
 ---
 
 ## Summary

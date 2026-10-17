@@ -3,7 +3,7 @@ id: T-626
 kind: task
 title: A manifest without hashes gets one last overwrite with a warning on the first cland update
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:57:49.714Z
-updated: 2026-10-16T15:57:50.470Z
+updated: 2026-10-17T21:48:42.897Z
 ---
 
 ## Summary

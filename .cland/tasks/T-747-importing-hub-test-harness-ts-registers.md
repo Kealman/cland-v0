@@ -3,7 +3,7 @@ id: T-747
 kind: task
 title: Importing hub/test/harness.ts registers ps and socket work at module load
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-17T17:24:17.537Z
-updated: 2026-10-17T17:24:17.537Z
+updated: 2026-10-17T21:48:42.926Z
 ---
 
 ## Summary

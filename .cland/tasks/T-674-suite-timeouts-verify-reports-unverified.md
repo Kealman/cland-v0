@@ -3,7 +3,7 @@ id: T-674
 kind: task
 title: suite-timeouts 'verify reports unverified fast-exit pipe cleanup once…' fails under load; fix it and lift its quarantine
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T19:04:11.816Z
-updated: 2026-10-17T01:50:58.943Z
+updated: 2026-10-17T21:48:42.581Z
 ---
 
 ## Summary

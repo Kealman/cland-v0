@@ -3,7 +3,7 @@ id: T-753
 kind: task
 title: Retag the three native-Git contract test files to T3 with lifecycle headers
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T18:44:08.907Z
-updated: 2026-10-17T18:44:08.907Z
+updated: 2026-10-17T21:48:43.276Z
 ---
 
 ## Summary

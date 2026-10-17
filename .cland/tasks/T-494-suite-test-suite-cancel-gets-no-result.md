@@ -3,7 +3,7 @@ id: T-494
 kind: task
 title: "suite test: suite.cancel gets no result within 500 ms while a live compatibility holder's ps probe is held (Linux, under load)"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T13:04:30.452Z
-updated: 2026-10-15T13:04:30.452Z
+updated: 2026-10-17T21:48:42.464Z
 ---
 
 ## Problem

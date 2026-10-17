@@ -3,7 +3,7 @@ id: T-752
 kind: task
 title: In-memory Suites policy fixtures inject the duration-budget context instead of reading native Git
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T18:44:08.769Z
-updated: 2026-10-17T18:44:08.769Z
+updated: 2026-10-17T21:48:43.246Z
 ---
 
 ## Summary

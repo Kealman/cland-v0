@@ -3,7 +3,7 @@ id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-16T20:00:07.324Z
+updated: 2026-10-17T21:48:42.953Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-724
 kind: task
 title: qa.test.ts SIGTERM case signals the QA run before its handler is installed and sees no BLOCKED line
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T05:55:15.692Z
-updated: 2026-10-17T05:55:15.692Z
+updated: 2026-10-17T21:48:42.655Z
 ---
 
 ## Summary

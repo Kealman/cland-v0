@@ -3,7 +3,7 @@ id: T-703
 kind: task
 title: Name reservation, tracker readiness, task migration, inbox load and the ask chain run in T1 and T2 with shared fixtures
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:37.302Z
-updated: 2026-10-16T20:00:22.656Z
+updated: 2026-10-17T21:48:43.015Z
 ---
 
 ## Summary

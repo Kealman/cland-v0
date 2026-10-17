@@ -3,7 +3,7 @@ id: T-754
 kind: task
 title: "Runtime tripwire: allow the documented headless Neovim spawn in Neovim T2 files, and remove the ps probe from their fixture"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T19:53:12.953Z
-updated: 2026-10-17T19:53:12.953Z
+updated: 2026-10-17T21:48:43.306Z
 ---
 
 ## Summary

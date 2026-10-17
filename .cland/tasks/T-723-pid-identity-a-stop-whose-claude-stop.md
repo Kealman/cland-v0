@@ -3,7 +3,7 @@ id: T-723
 kind: task
 title: pid-identity 'a stop whose claude stop fails never SIGTERMs a reused pid' fails with 'database is locked' under load
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T01:06:44.540Z
-updated: 2026-10-17T01:06:44.540Z
+updated: 2026-10-17T21:48:42.618Z
 ---
 
 ## Summary

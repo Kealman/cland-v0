@@ -3,7 +3,7 @@ id: T-623
 kind: task
 title: The skills manifest records the SHA-256 of each file as cland wrote it
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -14,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T15:57:48.998Z
-updated: 2026-10-16T15:57:48.998Z
+updated: 2026-10-17T21:48:42.814Z
 ---
 
 ## Summary

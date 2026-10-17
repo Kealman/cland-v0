@@ -3,7 +3,7 @@ id: T-702
 kind: task
 title: Subscriptions, digests and session archive move to T2 on the fake clock, with restarts as projectHub stop and serve
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -19,7 +19,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:37.198Z
-updated: 2026-10-16T20:00:22.325Z
+updated: 2026-10-17T21:48:42.985Z
 ---
 
 ## Summary

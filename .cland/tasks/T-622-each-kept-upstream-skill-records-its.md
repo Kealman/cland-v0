@@ -3,7 +3,7 @@ id: T-622
 kind: task
 title: Each kept upstream skill records its origin and changes in its header; skills-lock.json and PATCHES.md go
 state: open
-status: backlog
+status: planned
 size: S
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:57:48.844Z
-updated: 2026-10-16T16:00:48.514Z
+updated: 2026-10-17T21:48:42.698Z
 ---
 
 ## Summary

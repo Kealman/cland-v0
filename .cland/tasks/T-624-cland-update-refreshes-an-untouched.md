@@ -3,7 +3,7 @@ id: T-624
 kind: task
 title: cland update refreshes an untouched skill and keeps one edited in the project
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:57:49.170Z
-updated: 2026-10-16T15:57:50.130Z
+updated: 2026-10-17T21:48:42.841Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-745
 kind: task
 title: Tests retagged to T1/T2 that exceed their new tier budgets before the budgets turn hard
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T17:06:00.092Z
-updated: 2026-10-17T17:06:00.092Z
+updated: 2026-10-17T21:48:43.072Z
 ---
 
 ## Summary

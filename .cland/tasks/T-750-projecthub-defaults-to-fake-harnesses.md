@@ -3,7 +3,7 @@ id: T-750
 kind: task
 title: projectHub defaults to fake harnesses and fake probes; native probes become opt-in
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-17T18:44:08.555Z
+updated: 2026-10-17T21:48:43.188Z
 ---
 
 ## Summary
