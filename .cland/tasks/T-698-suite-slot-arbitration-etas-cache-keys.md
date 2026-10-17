@@ -3,7 +3,7 @@ id: T-698
 kind: task
 title: Suite slot arbitration, ETAs, cache keys and cover classification are tested on Suites directly, with two real-fixture proofs kept
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ assignee: null
 parent: E-677
 blocked_by:
   - T-697
-topic: null
-branch: null
+topic: topic-428
+branch: t/T-698-suite-slot-arbitration-etas-cache-keys
 created: 2026-10-16T19:59:36.616Z
-updated: 2026-10-17T06:43:05.504Z
+updated: 2026-10-17T08:44:37.053Z
 ---
 
 ## Summary

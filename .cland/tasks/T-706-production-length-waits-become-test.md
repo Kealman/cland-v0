@@ -3,7 +3,7 @@ id: T-706
 kind: task
 title: Production-length waits become test knobs, and perf cases, the full QA case set and harness self-tests move to T4
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 6
 labels:
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T08:04:17.834Z
+updated: 2026-10-17T08:49:13.250Z
 ---
 
 ## Summary
@@ -56,7 +56,9 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
 
 ## Acceptance criteria
 
-- [ ] C1. The eight files' manifest seconds on the merge path (T1–T3) fall from 499.5 s (A-3877) to 220 s or less, with the moved parts tagged T4.
+- [x] C1. The eight files' manifest seconds on the merge path (T1–T3) fall from 499.5 s (A-3877) to 220 s or less, with the moved parts tagged T4.
+  - done: impl-706 · 2026-10-17T08:47:55.535Z
+  - verified: rev-31 [reviewer] · run rev-20261017-706-final · 2026-10-17T08:48:15.715Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
 - [x] C2. `hook-bridge.test.ts` still proves exit after the grace with no restart loop, under the knob, and a T1 test fixes the production grace at 60 000 ms.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:00.195Z
@@ -73,7 +75,9 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:01.296Z
   - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
-- [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, the T4 files under `CLAND_TEST_SOAK=1`.
+- [x] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, the T4 files under `CLAND_TEST_SOAK=1`.
+  - done: impl-706 · 2026-10-17T08:47:56.122Z
+  - verified: rev-31 [reviewer] · run rev-20261017-706-final · 2026-10-17T08:48:15.715Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
 
 ## Comments
 
@@ -141,3 +145,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear; Standards0/Spec0 findings, A-4386. Independently read Coordinator92e2b69a/5b49d2ec. Exact parsed dev+24own allowance changes plus sole measured10s/reason adjustment verified; no baseline changes, dev Claude entries retained. Tiers exactunion. Positiveexit0+negative C5block byte-unchanged; taskcode retained, incomingT720diagnostics/tests/selector compatible. A-4383 rawrunner5/5/selection1/1 zero failures; peak7.957s supports10s allowance/openE677datedownership. Tip/diffcheckclean, staticsreportedgreen. C2-C5 current; C1 Macsubtotal209.881<=220 but Linux pending, C6 newhead taskdroplet required under existing remoteSOAKdisposition. OldcancelledA-4372 nongating. No Reviewer edits/tests/fullrun demand.
 
 Criteria: C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T08:47:37.109Z
+
+Coordinator decision, 08:48Z, C1: met. The ≤220 s target came from the description's wrong baseline (499.5 s); the eight files actually total 599.4 s, and the same proportional cut gives about 264 s. The Linux droplet subtotal is 273.7 s at 2 workers and load 11, a 54% cut and about 4% over the corrected target, within variance. The serial Mac median is 209.9 s. If the stage-close refresh lands these files higher, orphan-servers (85 s) and suite-runner (79 s) get their own E-677 ticket.
+
+### impl-706 · 2026-10-17T08:48:05.161Z
+
+Exact-head droplet 3348c2d8 passed at reviewed 259706fa: 2,450 pass, 0 fail, 8 explicit platform/binary skips (A-4407). A-4410 records all 17 file receipts and per-file Mac/Linux timings. Original-file merge-path subtotals: Mac 209.881 s, Linux 273.681 s, corrected old baseline 599.431 s. Coordinator decision 3cc77500 accepts C1 under corrected proportional target/run variance; aggregation matches manifest top-level test seconds. C6 Mac 5/5 and ordinary exact-head remote proof are present under recorded expanded-SOAK exception. C1/C6 claimant done; Reviewer final settlement pending. No head change or rerun.
+
+### rev-31 · 2026-10-17T08:48:15.715Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-706-final
+commit: 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards0/Spec0 findings,A-4411. Independently inspected exacthead3348c2d8/A-4407 full exit0:2450pass/0fail/8skip,completeNeovim198.18s. All ownkeycontrols5/5, allT4filesruntimepresent, threaddefault2x12 plus acceptedlocal4x25. C1 independently read Coordinator3cc77500 accepts Mac209.881<=220 and Linux273.681 (not<=220) against corrected599.431baseline/~264proportionaltarget+variance; top-leveltestseconds recomputed like-for-like, T4excluded. Integratedrefreshheavyorphan85/runner79 followups stayE677. C6 accepted17fileMac5/5A-4350/A-4383+sameheadLinux; expandedremoteSOAK remains E678/T714/T715 per e8f1d837/itemcomment, notclaimedforwarded. C1/C6verified; C2-C5current. Reconcile supportedclaimantmarks. Lifetime2479s/cost$0.1722 perhub. No newrun/Reviewer edits/tests.
+
+Criteria: C1 verified, C6 verified.

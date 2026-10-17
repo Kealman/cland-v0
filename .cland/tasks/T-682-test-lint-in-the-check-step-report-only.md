@@ -3,7 +3,7 @@ id: T-682
 kind: task
 title: "Test lint in the check step, report only: tier import rules, wall-clock waits and the T3 lifecycle header"
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-426
 branch: t/T-682-test-lint-in-the-check-step-report-only
 created: 2026-10-16T19:59:27.971Z
-updated: 2026-10-17T08:05:05.063Z
+updated: 2026-10-17T08:46:43.580Z
 ---
 
 ## Summary
@@ -50,8 +50,8 @@ Report mode: the result, the log and `cland verify --dry-run` (T-681) print `tes
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:55.162Z
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-4 · 2026-10-17T08:04:48.897Z · commit 292296cec13f3826a48e380f47c2cd7fd4053c97
-- [x] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
-  - done: impl-682 · 2026-10-17T08:03:55.549Z
+- [ ] C4. The lint runs once per run in the check step, its summary and per-file qualifying tier appear in the result and in the dry run, and no finding changes a run's exit, proved by a run-report test.
+  - failed: rev-31 [reviewer] · 2026-10-17T08:46:43.580Z · note New interrupted-check fixture fails ordinary phase and0/5Linux repetitions because SIGKILL cleanup does not guarantee a writer SIGTERM receipt.
 - [x] C5. The repository's finding counts per rule at the merge head are recorded on this item as the baseline T-684 freezes.
   - verified: rev-31 [reviewer] · run rev-20261017-682-source-3 · 2026-10-17T08:00:48.097Z · commit 1ad9664e9413e50961aa36a196efffff651dd567
   - done: impl-682 · 2026-10-17T08:03:48.291Z
@@ -154,3 +154,18 @@ Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
 ### impl-682 · 2026-10-17T08:05:05.063Z
 
 Fresh source clear rev-20261017-682-source-4 at 292296ce (A-4387). Authorized same-command verification retry passed admission: diff-selected droplet run 4c0d16e5-7c71-484b-b91b-aa0a69274efa submitted, queue position 1, report topic-426 to impl-682/coord/rev-31. Exact head unchanged. Idle pending result; C4/final verdict await this receipt.
+
+### rev-31 · 2026-10-17T08:46:43.580Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-682-evidence-1
+commit: 292296cec13f3826a48e380f47c2cd7fd4053c97
+scope: evidence
+findings: [{"severity":"medium","text":"stopped-file assertion assumes npm abort propagates SIGTERM before intentional SIGKILL cleanup; Linux consistently has PID gone but no handler file.","file":"hub/test/suite-check.test.ts","line":79}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence not clear; Standards0additional/Spec1medium own fixture regression, A-4408. Independently inspected exact-head4c0d16e5/A-4406 exit1:2086pass/1fail/5skip,noNeovim. Sole ordinary failure/newcontrol0/5 is ENOENTstopped afterPIDgone. ownProcess process-cleanup:373SIGKILLs, so descendantSIGTERMreceipt is not guaranteed. Implementer28152164 accepts deterministic bounded writer/cleanup receipt while retaining root-before-removal/PIDgone; no cleanupweakening/sleep/budgetretry. C4 failed; C1/C2/C3/C5 sourcecurrent. Fresh source review before replacementgate. Lifetime2424s/cost$0.1684 perhub. No Reviewer edits/tests.
+
+Criteria: C4 failed (New interrupted-check fixture fails ordinary phase and0/5Linux repetitions because SIGKILL cleanup does not guarantee a writer SIGTERM receipt.).
