@@ -2,8 +2,8 @@
 id: T-681
 kind: task
 title: Run results show one line per tier, and cland verify --dry-run prints the admission report without queueing
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-412
 branch: t/T-681-run-results-show-one-line-per-tier-and
 created: 2026-10-16T19:59:27.868Z
-updated: 2026-10-17T01:20:16.594Z
+updated: 2026-10-17T01:51:02.565Z
+closed: 2026-10-17T01:51:02.565Z
 ---
 
 ## Summary
@@ -200,3 +201,7 @@ All C1-C5 claimant done marks present; verify all. No remaining Standards/Spec f
 Review artifact A-4269.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T01:51:02.565Z
+
+Merged b73c1bdfc6dfba1ceefad357ff75c530faf93a74 onto dev.
