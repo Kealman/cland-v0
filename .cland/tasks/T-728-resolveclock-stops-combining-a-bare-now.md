@@ -3,7 +3,7 @@ id: T-728
 kind: task
 title: resolveClock stops combining a bare now callback with native timers; fixtures pass a complete Clock
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-17T07:54:46.590Z
-updated: 2026-10-17T07:54:46.590Z
+updated: 2026-10-17T07:54:54.192Z
 ---
 
 ## Summary

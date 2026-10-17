@@ -3,7 +3,7 @@ id: T-696
 kind: task
 title: AccountPoller takes the hub Clock, and the five account files stop sleeping through real poll windows
 state: open
-status: in progress
+status: review
 size: L
 criterion_seq: 6
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-423
 branch: t/T-696-accountpoller-takes-the-hub-clock-and
 created: 2026-10-16T19:59:36.370Z
-updated: 2026-10-17T07:52:50.920Z
+updated: 2026-10-17T08:06:02.450Z
 ---
 
 ## Summary
@@ -44,19 +44,23 @@ Size L because one seam, the clock in `hub/src/accounts/poller.ts`, and one fixt
 - [x] C1. `AccountPoller` takes the hub `Clock`, proved by a T1 test that advances a `FakeClock` through a floor, a backoff and a latch with no real wait.
   - done: impl-696 · 2026-10-17T07:08:51.656Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
+  - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
 - [ ] C2. The five files' manifest seconds fall from 378.7 s (A-3877) to 170 s or less.
   - verified: rev-30 [reviewer] · run rev-20261017-696-first-gate · 2026-10-17T07:52:50.417Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
 - [x] C3. The five files hold no numeric sleep and no elapsed-milliseconds assertion except the reasoned ones in the T3 process-group kill test, proved by the test lint.
   - done: impl-696 · 2026-10-17T06:58:15.551Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
+  - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
 - [x] C4. Their `startDaemon` call sites fall from 25 to 5 or less and fake-binary sites from 8 to 3 or less.
   - done: impl-696 · 2026-10-17T06:58:15.904Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
+  - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
 - [x] C5. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-696 · 2026-10-17T07:08:51.955Z
   - verified: rev-30 [reviewer] · run rev-20261017-696-cleanup-correction · 2026-10-17T07:09:43.331Z · commit 36a42528b870be68b5196b54eaca6005e1e1d4ed
+  - verified: rev-30 [reviewer] · run rev-20261017-696-native-ownership · 2026-10-17T08:06:02.450Z · commit 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
 - [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T07:52:50.920Z · note M4: Same-head task verification has an unresolved subscription-hygiene replacement-PID timeout; hub exits one before Neovim despite all touched account files passing.
+  - failed: rev-30 [reviewer] · 2026-10-17T08:01:56.091Z · note M5: New default-realClock delayed-PID proof has no failure-path owner of its hidden native worker; ownership and controlled pre-publication cleanup proof are required before verification.
 
 ## Blocked by
 
@@ -160,3 +164,65 @@ C6 final settlement is not clear because the task verification is red and Neovim
 Evidence verdict not clear due M4. Bugs/S compatibility candidate reported to lead T-696 for classification; no separate duplicate ticket is presumed. No unchanged retry or source edit is authorized by this verdict; any correction/head change needs source review first.
 
 Criteria: C6 failed (M4: Same-head task verification has an unresolved subscription-hygiene replacement-PID timeout; hub exits one before Neovim despite all touched account files passing.).
+
+### impl-696 · 2026-10-17T07:59:43.638Z
+
+Native Clock compatibility failure reproduced and corrected at f0545fa9b76cabc1152506eef11d29d38461b006, pushed origin. Before: focused subscription-hygiene replacement PID timeout46.298s; after complete offset real Clock:1.259s. Same+1000 lifecycle steps and all assertions retained. Added native default-realClock delayed-PID regression with public PID publication proof. Both changed files pass5/5 serially at load<15; A-4378 packages65 current-source Mac receipts for13 files. Original five medians86.439s; extracted seven0.279s; extra subscription-hygiene median40.134s outside target. Typecheck/test:tiers pass. Authorized dev merge4229a0c1 keeps dev allowance changes and16 own account removals; no baseline refresh. A-4376 documents first Linux timings148.232s and diagnosed failure. Broader bare-now deprecation filed T-728. Requesting delta source review before retry; C6 awaits new-head green receipt.
+
+### rev-30 · 2026-10-17T08:01:56.091Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-696-clock-boundary
+commit: f0545fa9b76cabc1152506eef11d29d38461b006
+scope: delta
+findings: [{"severity":"medium","text":"M5: New delayed-PID test starts a hidden native worker without a failure-path owner; stop runs only at successful completion. Generic fakeClaude cleanup queries another/default config directory and cannot discover this worker; projectHub close preserves native sessions and parsing the raw PID does not register it. An early failure can leave the writer alive while roots are deleted. Own it independently of public discovery, observe exact exit before removal, and prove cleanup on a controlled pre-publication assertion failure.","file":"hub/test/claude-code-accounts.test.ts","line":47}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Delta source review T-696 at f0545fa9b76cabc1152506eef11d29d38461b006, scope Clock-boundary correction plus primary Coordinator 4229a0c1-authorized merge of dev 010c9955e047b71b8145ff14152f9ff198c5ae83. Origin matches. Prior source head 36a42528, failed gate A-4365 and finding M4 in A-4368. Read-only review; no Reviewer execution.
+
+## Standards
+Medium M5 — hub/test/claude-code-accounts.test.ts:47–56: the newly added delayed-PID test starts a native worker while agents-omit hides it, but only stops it on the successful final line. If an assertion, raw-snapshot read, omission removal or discovery wait fails, there is no registered owner of that hidden worker. The generic fakeClaude after hook queries agents with the helper's default config directory; fake-claude.ts:149 filters by that directory and agents-omit. This test launches under a different root/claude directory, so that cleanup does not find it even after omission release. projectHub shutdown closes adapters and preserves native sessions, and raw JSON.parse at :51 does not register a process identity. A failure before public PID publication therefore leaves an unrecorded writer alive while fixture roots can be removed. Own the worker independently of public discovery, with cleanup registered before the failure boundary, bounded exact-identity exit observation before directory removal, and a controlled pre-publication failure proof. Preserve the null-before-release and exact-PID-after-release assertions. This is the new test's failure path, not a request to weaken delayed discovery.
+
+## Spec
+M4 is resolved in source. subscription-hygiene now uses a complete Clock with real timers and progressing realClock.now()+offset, retaining both +1000 steps and every original lifecycle/digest assertion. This precisely follows primary 22c527aa; the focused 46.298 s red-before/1.259 s green-after supports the diagnosed compatibility cause. The new default-realClock delayed-publication declaration otherwise tests the requested native boundary correctly. Production AccountPoller/Claude Clock source is byte-unchanged from the prior review; the broader legacy now-callback hazard is explicitly owned by T-728 under primary 9474e691, not silently claimed fixed here.
+
+Authorized manifest resolution checked independently: every non-allow field equals incoming dev, exactly sixteen obsolete account allowances are removed, none added or modified, and all retained Claude values match dev. No baseline refresh or global-budget change. Previous M1/M2/L1 corrections and assertion mapping A-4326 remain intact. This delta adds only the mapped native delayed-PID declaration and the timestamp-boundary correction beyond incoming dev.
+
+A-4378 independently audited: 65 indexed raw receipts match current committed file SHA-256 values, all exit zero/zero failures and load below 15, five per thirteen touched test files. Both changed whole files were rerun; eleven unchanged files reuse source-matched receipts. Their successful runs do not exercise M5's pre-publication failure cleanup. Mac five-original-file medians total 86.439 s; subscription-hygiene's additional 40.134 s is disclosed outside the original target. Old-head Linux 148.232 s remains diagnostic/previous-head C2 evidence, not a current green receipt; current C2/C6 final freshness still awaits the next qualifying gate after source correction.
+
+Source not clear due M5; M4 and original findings are resolved. Correct failure-path native ownership and request source review at the new head before verification. C6 fails current source proof safety; no unchanged retry.
+
+Criteria: C6 failed (M5: New default-realClock delayed-PID proof has no failure-path owner of its hidden native worker; ownership and controlled pre-publication cleanup proof are required before verification.).
+
+### impl-696 · 2026-10-17T08:05:17.234Z
+
+M5 corrected at3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b and pushed origin. Delayed-PID fixture owns cleanup before launch, captures native identity independently of public discovery, uses root-cwd fallback for partial paths and observes exact identity exit before directory removal. Added controlled pre-publication assertion-failure proof: native identity gone while omission marker/root still exist. Preserved null-before-release/exact-PID-after-release assertions. Current native file8 tests passes5/5 serially below load15; typecheck/test:tiers green. A-4388 contains65 source-matched Mac receipts for13 files plus audit addition. Original five medians86.889s; extracted seven0.279s. No dev merge after f0545fa9. C6 pending corrected-head review and green exact-head droplet retry.
+
+### rev-30 · 2026-10-17T08:06:02.450Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-696-native-ownership
+commit: 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Correction source review T-696 at 3ec2a6cf52a8a8af6117fa4444176ff68a3a0e7b, one-file delta from f0545fa9; origin matches and no further dev merge. Prior delta A-4382 accepted the Clock-boundary correction and authorized manifest resolution but found M5. Read-only review; no Reviewer execution.
+
+## Standards
+M5 resolved. delayedPidFixture registers its idempotent owner before the native launch. Cleanup closes its UI and hub, invokes the independently captured native process disposer, then uses verified fixture-root cwd ownership discovery to cover partial launch/raw-snapshot failures before a PID could be captured. It observes captured PID/start/group identity disappearance with a bounded condition and retains the final assertion before normal directory cleanup. ownProcess also registers the captured identity for existing context/signal cleanup; it does not depend on agents or public PID discovery. Repeated disposer calls share the same promise.
+
+The new headed T3 failure control asserts a live independently owned worker while launch still reports null, deliberately raises a pre-publication assertion failure, and runs that same owner in finally. Afterwards it asserts the exact native identity is gone while agents-omit and the project root still exist. This specifically closes the failure path from A-4382 without removing or pre-releasing the publication barrier. The successful native delayed-discovery case still asserts pid=null before release, exact native PID after the later real-clock snapshot, and successful stop. No added sleep or elapsed-time assertion.
+
+## Spec and criteria
+No remaining findings. M1/M2/L1/M4 remain resolved. The complete offset real Clock in subscription-hygiene, default-realClock native discovery regression, production construction audit and explicitly deferred T-728 legacy-callback hazard retain the Coordinator-approved scope. Production Clock/permission source and the previously checked dev-manifest resolution are unchanged. C1/C3/C4/C5 source evidence is refreshed at this head: Clock/lower-tier rules, removed numeric scheduling waits, shared native-binary census, original declaration map and added native ownership control are preserved. C2 current-head timing confirmation and C6 final runtime remain pending.
+
+A-4388 independently audited: all 65 indexed Mac logs match current committed test-file SHA-256 values, each exit zero/zero failures, five per thirteen files, all starting below load 15. The changed native account file has eight passing declarations in each run; a representative run has delayed discovery 1.084 s and pre-publication cleanup control 0.638 s. Other twelve files reuse source-identical receipts. Claimant records typecheck and tier lint green. Original five-file median sum is 86.889 s, extracted seven add 0.279 s; extra subscription-hygiene compatibility coverage remains disclosed. Prior Linux 148.232 s belongs to old 36a42528 and is not substituted for a new-head green.
+
+Source correction clear with no remaining findings. Normal mode-free exact-head droplet verification may proceed. C2/C6 final freshness awaits that receipt; all failed old-head evidence remains historical.
+
+Criteria: C1 verified, C3 verified, C4 verified, C5 verified.

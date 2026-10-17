@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-420
 branch: t/T-697-suites-and-the-droplet-executor-take-the
 created: 2026-10-16T19:59:36.515Z
-updated: 2026-10-17T07:21:24.688Z
+updated: 2026-10-17T07:56:04.670Z
 ---
 
 ## Summary
@@ -38,11 +38,13 @@ The executor and suite files are the heaviest class: `suite-remote-budget` 143.9
 - [x] C1. A T2 test drives a whole remote verify (acquire, deliver, start, collect, release) on the in-process provider and scripted machine, advancing a `FakeClock`, with no child process, proved by the test and the tier lint.
   - done: impl-697 · 2026-10-17T07:03:00.533Z
   - verified: rev-31 [reviewer] · run rev-20261017-697-source-2 · 2026-10-17T07:21:24.688Z · commit 87077ecbce2427a5b17a07705b3807362bfdaa9c
+  - verified: rev-31 [reviewer] · run rev-20261017-697-merge-delta · 2026-10-17T07:56:04.670Z · commit 989e5dc04ceda552e360241d7339cef1ac8ab957
 - [ ] C2. With the default clock and process machines, `executor-run.test.ts` and `suite-close-recovery.test.ts` pass unchanged, 5/5 serially as whole files on the Mac and once in the task's droplet verify.
 - [ ] C3. `demo-release.test.ts` falls from 44.9 s (A-3877) to 15 s or less, and `executor-droplet.test.ts` from 20.1 s to 14 s or less.
 - [x] C4. An audit of the two converted files maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-697 · 2026-10-17T07:20:34.371Z
   - verified: rev-31 [reviewer] · run rev-20261017-697-source-2 · 2026-10-17T07:21:24.688Z · commit 87077ecbce2427a5b17a07705b3807362bfdaa9c
+  - verified: rev-31 [reviewer] · run rev-20261017-697-merge-delta · 2026-10-17T07:56:04.670Z · commit 989e5dc04ceda552e360241d7339cef1ac8ab957
 
 ## Blocked by
 
@@ -89,5 +91,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; Standards0/Spec0 remaining findings, A-4354. M1 resolved via product-delay collaborator with unchanged pause(ms,clock) default; driver awaits delay admission, advances once and observes completion, otherwise keeps time frozen through pending I/O. All9delta paths inspected; no devmerge. Controlled held-key-list regression observes independent status/releasing/key-retained/identicalclock, releases hook and awaits completion then cleanup; previous assertions/bounds retained. A-4352 has35green whole-file receipts at correctedhead, including newcontrol5/5 and unchanged C2files5/5. C1 whole scripted orchestration/census/tier and C4 updated12demo/14executor assertion audit verified; restoreC4claimantdone. C2/C3 await exact-head diff-selected taskdroplet compatibility/timing; Macmedians8.722demo/10.242executor support targets. Coordinator22f800df readiness2000ms retained. Cumulativediffcheck clean, typecheck/tierlint reportedgreen. No Reviewer edits/tests.
+
+Criteria: C1 verified, C4 verified.
+
+### impl-697 · 2026-10-17T07:55:36.870Z
+
+Authorized rule11 dev merge at989e5dc04ceda552e360241d7339cef1ac8ab957 after exact Claude allowance lint rejection; Coordinator92e2b69a/739a7333. No conflicts. Tiers/typecheck/diff check pass, remote-scripted2/2 and suite-load-diagnostics4/4 green. A-4371 documents delta and allowance preservation. Fresh delta review requested. Old e92e9309 cancellation confirmed by A-4370; no gating claim from it. C2/C3 await new same-head droplet receipt after source clear.
+
+### rev-31 · 2026-10-17T07:56:04.670Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-697-merge-delta
+commit: 989e5dc04ceda552e360241d7339cef1ac8ab957
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear; Standards0/Spec0 findings, A-4373. Independently read Coordinator92e2b69a/739a7333; actual legacy allowance lint refusal documented A-4371, merge conflict-free. Parsed durations exactdev minus10own removals; tiers exactdev+3ownentries. All task code except suiteSummary unchanged; its incoming3line sanitized load-diagnostics append reviewed. C2 sources unchanged vsdev. Tip/diffcheck clean; typecheck/tierlint and scripted2/2/diagnostics4/4 reportedgreen. C1/C4 continuity verified; C2/C3 pending new exact-head diff-selected taskdroplet. Parent35Mac receipts A-4352 support unchanged controls but are not merge-head rerun; cancelled e92e/A-4370 is nongating. No final waiver or Reviewer edits/tests.
 
 Criteria: C1 verified, C4 verified.

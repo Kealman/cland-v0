@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-424
 branch: t/T-706-production-length-waits-become-test
 created: 2026-10-16T19:59:37.636Z
-updated: 2026-10-17T07:17:01.296Z
+updated: 2026-10-17T08:04:17.834Z
 ---
 
 ## Summary
@@ -60,15 +60,19 @@ T4 is the soak tier: it runs at occasions and nightly (E-678) and, until then, w
 - [x] C2. `hook-bridge.test.ts` still proves exit after the grace with no restart loop, under the knob, and a T1 test fixes the production grace at 60 000 ms.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:00.195Z
+  - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
 - [x] C3. With `CLAND_TEST_SOAK=1` the differential oracle runs 4 seeds × 25 renders, and without it 2 × 12, proved by a test of the seed plan.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:00.498Z
+  - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
 - [x] C4. A task diff touching `hub/test/remote-fixture.ts` selects the T4 harness self-tests, proved by a selection test.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:01.012Z
+  - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
 - [x] C5. An audit maps every moved or merged assertion to its new place and tier, with no behaviour claim dropped.
   - verified: rev-31 [reviewer] · run rev-20261017-706-source-2 · 2026-10-17T07:16:21.458Z · commit 9cf59d5930edc7e6d427d59719150a4e1161c993
   - done: impl-706 · 2026-10-17T07:17:01.296Z
+  - verified: rev-31 [reviewer] · run rev-20261017-706-merge-delta · 2026-10-17T08:04:17.834Z · commit 259706fa3e1e8bacc72ef5f7f540c1f56803670a
 - [ ] C6. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, the T4 files under `CLAND_TEST_SOAK=1`.
 
 ## Comments
@@ -116,5 +120,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; Standards0/Spec0 remaining findings, A-4351. M1 resolved: positive-only static/runtime skip run now requires exit0, exact5/5skip receipts/no passed classification/summary entries; seven-shape exit1 and every negative/counter assertion retained. Only other changes trim3EOFblanklines; cumulativediffcheck clean, typecheck/tierlint reportedgreen, no devmerge. A-4350 inspected85records allcode0/maxload12.1, correctedrunner5/5 median20.554s; unchanged expanded4x25oracle and original assertion mapping apply. C2/C3/C4/C5 verified, restore C5claimantdone. C1 localmedian196.794s supports<=220 but Linux timing pending; C6 exact-head no-mode taskdroplet pending under Coordinator8085e84c/e8f1d837 deferredbaseline/remote-soak dispositions. Source clear is not final execution clear. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-706 · 2026-10-17T08:03:34.401Z
+
+Coordinator-authorized dev merge after exact retired-Claude-allowance lint failure is pushed at 259706fa. Delta review requested from reviewer. Evidence A-4383 records semantic allowance preservation, merged duration-runner 5/5 (median 33.641 s), local subtotal 209.881 s, and unchanged C5 positive/rejection block. Old droplet run 376a6069 was cancelled as authorized (A-4372); fresh verification waits for corrected-head delta clearance.
+
+### rev-31 · 2026-10-17T08:04:17.834Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-706-merge-delta
+commit: 259706fa3e1e8bacc72ef5f7f540c1f56803670a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear; Standards0/Spec0 findings, A-4386. Independently read Coordinator92e2b69a/5b49d2ec. Exact parsed dev+24own allowance changes plus sole measured10s/reason adjustment verified; no baseline changes, dev Claude entries retained. Tiers exactunion. Positiveexit0+negative C5block byte-unchanged; taskcode retained, incomingT720diagnostics/tests/selector compatible. A-4383 rawrunner5/5/selection1/1 zero failures; peak7.957s supports10s allowance/openE677datedownership. Tip/diffcheckclean, staticsreportedgreen. C2-C5 current; C1 Macsubtotal209.881<=220 but Linux pending, C6 newhead taskdroplet required under existing remoteSOAKdisposition. OldcancelledA-4372 nongating. No Reviewer edits/tests/fullrun demand.
 
 Criteria: C2 verified, C3 verified, C4 verified, C5 verified.

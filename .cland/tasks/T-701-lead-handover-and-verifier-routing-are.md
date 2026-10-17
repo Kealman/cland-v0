@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-421
 branch: t/T-701-lead-handover-and-verifier-routing-are
 created: 2026-10-16T19:59:36.941Z
-updated: 2026-10-17T07:35:13.415Z
+updated: 2026-10-17T08:16:35.377Z
 ---
 
 ## Summary
@@ -53,17 +53,21 @@ Routing to a Lead or a verifier is a hub rule, but these files launch two to fiv
 - [ ] C1. The seven files' manifest seconds fall from 244.7 s (A-3877) to 115 s or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C2. Their fake-binary call sites fall from 18 to 5 or less, `spawnSpoke` sites from 57 to 10 or less, and `startDaemon` sites from 23 to 4 or less.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C3. Routing assertions read the hub's recorded messages, and no test outside the kept T3 proofs reads a fake harness log, proved by a source check.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-701-cleanup-correction · 2026-10-17T06:51:23.978Z · commit 14f2d8e4ec7b6640767f0f6a0627da24bbea2c95
   - verified: rev-30 [reviewer] · run rev-20261017-701-allowance-merge · 2026-10-17T07:35:13.415Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+  - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T07:33:15.292Z · note M3: Exact-head Linux exits one solely for the new lead-routing-process death case at 7.387 s exceeding its unallowed 5 s hard budget; Neovim smoke is not reached.
+  - verified: rev-30 [reviewer] · run rev-20261017-701-final · 2026-10-17T08:16:35.377Z · commit 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
 
 ## Blocked by
 
@@ -183,3 +187,32 @@ No findings. All thirteen T-701 test files are byte-identical to reviewed 14f2d8
 A-4357 remains failed historical gate evidence despite all thirteen files and 65/65 owned load repetitions being functionally green. Source correction clear with no remaining findings. C5 remains unverified pending the fresh normal mode-free exact-head droplet receipt, including the Neovim smoke not reached in A-4357. Verification may proceed at this head.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T08:16:35.377Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-701-final
+commit: 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-701 at 4cafa46bf0f96e88ff1f1de0c1499f6c992293fa, unchanged from A-4360 / rev-20261017-701-allowance-merge. Origin and hub verification record match. Mode-free droplet b700f058-09aa-48e2-884c-3407f620ecbf / A-4394 exits zero, hub-only plus completed Neovim smoke. Read-only receipt audit; no Reviewer execution.
+
+## Standards
+No remaining findings. Prior M1/M2 source corrections and M3's measured E-677/seven-day allowance remain current. The previously over-budget native routing/death case passes ordinary in 7.274584007 s and 5/5; its 8.5 s reasoned allowance covers the measured lifecycle work without changing its assertion or timing baseline. No hard duration-budget or failing load gate appears. Other tier/legacy duration notices are report-only.
+
+## Spec and criteria
+C5 verified. All thirteen touched test files pass in this exact-head Linux run: seven original routing files, five retained native lifecycle companions and the pure resolver file. All thirteen task-added identities pass 5/5 fresh load repetitions (65/65), including native mid-turn revocation, committed-handover crash recovery, live-subtree process permissions, SIGKILL/inherited routing, early accepted Codex clause/queued verifier release, resolver affinity/fallback, and the controlled pre-release held-work cleanup proof. That cleanup control passes ordinarily in 0.255 s, retaining live-root/resource-before-close assertions. The successful concurrency/authority/publication assertions remain those checked in source.
+
+Mac proof remains the accepted 5/5 serial whole-file set A-4324, updated permission-file receipts A-4331, and audit A-4332. The thirteen task files were independently confirmed byte-identical through the authorized dev/allowance merge, so those receipts retain scope. The explicitly preserved development-only diagnostic red was never counted among accepted green receipts. A-4357 remains failed parent-head evidence and the M3 measurement; it is not substituted for this new green.
+
+C1-C4 source verification stands and is refreshed with the final pass: complete migration manifest sum 43.486571 (<115), including companions; five fake-binary, seven spoke and two daemon sites, with native behavior isolated in headed T3 proofs; routing assertions use hub records outside those native contracts; declaration/assertion audit retains all behavior claims. Authorized dev allowance/tier union remains as reviewed.
+
+Totals independently sum to 2092 tests, 2087 pass, zero failures/cancellations, five skips: free 54/54; machine 2021 pass/5 skip; Neovim smoke 12/12. Host typecheck completes with candidate-tree receipt 343f1922208b3f2a6cd64def722ef38b61b7e4b3 reused remotely. Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; suite wall 2353.35 s, peak one-minute load 12.45, lifetime 2427 s, cost $0.1685.
+
+Final review clear, all C1-C5 verified at this exact head; no remaining findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

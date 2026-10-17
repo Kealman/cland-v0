@@ -3,7 +3,7 @@ id: T-725
 kind: task
 title: fake-claude awaitSignals posts PermissionRequest before arming its approval resolver, so an immediate SIGUSR1 can be lost
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-425
 branch: t/T-725-fake-claude-awaitsignals-posts
 created: 2026-10-17T06:33:35.124Z
-updated: 2026-10-17T07:36:33.045Z
+updated: 2026-10-17T08:15:59.522Z
 ---
 
 ## Summary
@@ -32,9 +32,11 @@ The fake installs its approval barrier (the signal handler and resolver) before 
 
 - [x] C1. With awaitSignals, an approval signal sent immediately after the waiting-for-approval frame is received, proved by a fake-harness test that signals with no delay, 20/20.
   - done: impl-725 · 2026-10-17T07:35:40.970Z
+  - verified: rev-30 [reviewer] · run rev-20261017-725-final · 2026-10-17T08:15:50.844Z · commit fbcb7a557203a764c130da194b7f10988c4d4fe8
 - [x] C2. The Claude Code permission contract case uses the barrier instead of its one-second turn, with its assertions unchanged in meaning.
   - done: impl-725 · 2026-10-17T07:35:41.320Z
   - verified: rev-30 [reviewer] · run rev-20261017-725-source · 2026-10-17T07:36:33.045Z · commit fbcb7a557203a764c130da194b7f10988c4d4fe8
+  - verified: rev-30 [reviewer] · run rev-20261017-725-final · 2026-10-17T08:15:50.844Z · commit fbcb7a557203a764c130da194b7f10988c4d4fe8
 
 ## Comments
 
@@ -72,3 +74,34 @@ C1 targeted proof audited in A-4361: twenty separate focused contract receipts, 
 Source clear with no remaining findings. C1 final runtime settlement remains pending the normal mode-free exact-head droplet task receipt; C2 is source-verified. Per-item QA policy is none/after-stage. Task verification may proceed at this head.
 
 Criteria: C2 verified.
+
+### rev-30 · 2026-10-17T08:15:50.844Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-725-final
+commit: fbcb7a557203a764c130da194b7f10988c4d4fe8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-725 at fbcb7a557203a764c130da194b7f10988c4d4fe8, unchanged from source-clear A-4362 / rev-20261017-725-source. Origin branch and hub record match. Mode-free droplet ebe47f79-c63b-4c49-bc97-b8b214645ca2 / A-4391 exits zero, hub-only plus completed Neovim smoke. Read-only audit; no Reviewer execution.
+
+## Standards
+No findings. The source retains the existing T3 native contract fixture, adds no process or wall-clock wait, and preserves ownership/teardown. No hard duration-budget or failed load gate appears. Tier/legacy duration notices remain report-only.
+
+## Spec
+C1 verified: A-4361's twenty independent serial focused contract executions each pass with synchronous SIGUSR1 immediately after the Edit waiting frame, with no intervening await/I/O/sleep. Its controlled old-order red timed out awaiting idle, and all five corrected whole-file Mac runs pass nine cases. Those raw logs and admission receipts were independently audited in the source review. Current Linux executes the same contract successfully in 6.401496754 s, and all nine cases in the full native contract file pass (39.540171 top-level test-seconds). This is one task Linux execution; no unreported 20-run Linux repetition claim is made.
+
+C2 verified: source-reviewed resolver installation precedes waiting status and PermissionRequest. awaitSignals replaces the artificial one-second turn and drains hook/mod posts, while all thirty-five contract assertions retain their meaning, including permission state/command, status exclusion, reply/sequence/clearing, Edit privacy, launch/attach/clause/delivery/usage and capability checks. All other eight declarations pass in the current Linux cover. No source/head change occurred after review.
+
+Phase counters independently total 2091 tests, 2086 pass, zero failures/cancellations, five skips: free 52/52; machine 2022 pass/5 skip; Neovim smoke 12/12. Host typecheck completes with candidate-tree receipt 2d1afc83a2a336ebfac2e1169564e75325ad7266 reused remotely. Linux x64 c-8 lon1, Node 24.21.0/Neovim 0.12.5, two workers; wall 2246.46 s, peak one-minute load 10.12, lifetime 2313 s, cost $0.1606.
+
+Final review clear; C1/C2 verified at the exact head, no remaining findings.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-725 · 2026-10-17T08:15:59.522Z
+
+Exact reviewed head fbcb7a557203a764c130da194b7f10988c4d4fe8 passed droplet ebe47f79-c63b-4c49-bc97-b8b214645ca2 (A-4391): 2086 pass, 0 fail, 5 skips, Linux c-8 workers 2; lifetime 2313 s, $0.1606. E-677 exact-head timings: claude-code-adapter.test.ts 39.540170632 summed test-seconds across nine cases; changed binary-contract case 6.401496754 s. Local before/after 5/5 and C1 20/20 are A-4361; Linux summary A-4392. Final review clear rev-20261017-725-final (A-4393), C1/C2 verified, no findings. No head changes.
