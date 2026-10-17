@@ -3,7 +3,7 @@ id: T-683
 kind: task
 title: Per-tier duration budgets apply to every test, with expiring allowances and a T3 ratchet, report only
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-416
 branch: t/T-683-per-tier-duration-budgets-apply-to-every
 created: 2026-10-16T19:59:28.090Z
-updated: 2026-10-17T02:52:15.133Z
+updated: 2026-10-17T03:35:46.202Z
 ---
 
 ## Summary
@@ -37,19 +37,25 @@ updated: 2026-10-17T02:52:15.133Z
 
 - [x] C1. Each known and new test and file is checked against its tier's budget, and the result lists the would-fail lines ranked by seconds over budget, proved by a durations test with a planted manifest.
   - done: impl-683 · 2026-10-17T02:02:52.761Z
+  - verified: rev-30 [reviewer] · run rev-20261017-683-final · 2026-10-17T03:35:44.813Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
 - [x] C2. An allowance without a non-TODO reason, an open owner item or an expiry at most seven days after `added` is refused by the manifest lint by name, proved by lint tests.
   - done: impl-683 · 2026-10-17T02:02:52.957Z
+  - verified: rev-30 [reviewer] · run rev-20261017-683-final · 2026-10-17T03:35:44.813Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
 - [x] C3. A head adding a 3 s T3 test without an allowance shows a would-refuse T3 ratchet line with the projected and base totals, and one moving a file from T3 to T2 lowers the projection, proved by a durations test.
   - done: impl-683 · 2026-10-17T02:52:15.133Z
+  - verified: rev-30 [reviewer] · run rev-20261017-683-final · 2026-10-17T03:35:44.813Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
 - [x] C4. A new test over 5 s without an allowance still fails exactly as before, and no report-only line changes a run's exit, proved by the existing durations-runner cases plus one new case.
   - done: impl-683 · 2026-10-17T02:02:53.423Z
+  - verified: rev-30 [reviewer] · run rev-20261017-683-final · 2026-10-17T03:35:44.813Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
 - [x] C5. A test file absent from `durations.json` is named and budgeted by its observed seconds, proved by a test.
   - done: impl-683 · 2026-10-17T02:02:53.629Z
+  - verified: rev-30 [reviewer] · run rev-20261017-683-final · 2026-10-17T03:35:44.813Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
 - [x] C6. `docs/agents/tests.md` describes the tier budgets, allowance fields, the ratchet and the report-only week.
   - verified: rev-30 [reviewer] · run rev-20261017-683-source · 2026-10-17T02:02:26.817Z · commit 767585e80a64d5eca010e5a91d23885bc57ff12c
   - done: impl-683 · 2026-10-17T02:02:54.009Z
   - verified: rev-30 [reviewer] · run rev-20261017-683-title-delta · 2026-10-17T02:03:11.435Z · commit 49bc933873d37aebd06d1b305821067df0fb1958
   - verified: rev-30 [reviewer] · run rev-20261017-683-ratchet-correction · 2026-10-17T02:52:09.309Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
+  - verified: rev-30 [reviewer] · run rev-20261017-683-final · 2026-10-17T03:35:44.813Z · commit c33ae5e0ddf1f0172f066992ba08cb54995011f2
 
 ## Comments
 
@@ -168,3 +174,35 @@ C6 documentation refreshed, now explicitly distinguishing source-new identities 
 Review artifact A-4288.
 
 Criteria: C6 verified.
+
+### rev-30 · 2026-10-17T03:35:44.813Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-683-final
+commit: c33ae5e0ddf1f0172f066992ba08cb54995011f2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review T-683 at c33ae5e0ddf1f0172f066992ba08cb54995011f2. Same-head source correction: A-4288 / rev-20261017-683-ratchet-correction. Completed mode-free droplet verification dc11e8f4-76d3-4c8d-8607-4cf9d66ebeed, A-4293. Remote branch still resolves to this exact head.
+
+## Standards
+No remaining findings. Read-only evidence audit; no Reviewer tests or edits. Source standards and C6 documentation clearance stand.
+
+## Spec
+C1: planted known/new test and file budget ranking, missing baseline and summary cap tests pass. The complete receipt prints twelve would-fail overages ranked by excess and seventeen named observed missing-file baselines; the summary cap regression passes.
+C2: allowance lint tests reject TODO reasons, missing/unknown/closed owners, invalid/expired/long dates by key. Both admission-boundary tests reject new entries adopting the one-time legacy exemption. Existing 293 legacy allowances remain reported as 3710.347 s under E-677.
+C3: pure projection tests prove a new 3 s T3 identity grows 14 to 17 s without allowance, promotion accounting, explicit allowance, removal and T3-to-T2 reduction. The corrected pinned-source regression passes (ordinary 0.664 s): unchanged unbaselined source retains 14 vs 14; a changed fixture retaining old unbaselined literal/template identities while adding a true new test, removing an identity and retagging a file yields 9 vs 14. Uncertain source identity is explicitly incomplete and adds no invented growth. This resolves M1 in A-4285.
+C4: the whole durations-runner file passes, including existing hard-budget failure cases and the new report-only case preserving exit zero despite planted tier overages.
+C5: planted absent-file observed-budget tests and the report-only runner test pass; actual missing files are named with observed seconds in the completed receipt.
+C6: source-current documentation verification remains established by A-4288.
+
+All ten task additions pass ordinarily and 5/5 load repetitions each (50/50). Both typechecks complete. Phase counts independently sum to 2463 total, 2455 passed, zero failed/cancelled, eight skips (hub free 49/49; hub machine 2015 pass/5 skip; Neovim 391 pass/3 skip). Exit zero, full hub and Neovim, two machine workers; suite wall 2474.75 s, peak one-minute load 10.21.
+
+Evidence limit: A-4293's outer ratchet line says unavailable (no base manifest), since the serving hub predates this code. C3 is established by the executed pinned-context/projection tests specified by the criterion; no live-host projected total is claimed. The production summary formatter is exercised by its passing test. A-4283/A-4284 are superseded old-head execution/derived preview and are not substituted for this corrected receipt.
+
+Final review clear; verify C1-C6 at this head.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

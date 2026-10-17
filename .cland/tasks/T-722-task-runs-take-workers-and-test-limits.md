@@ -3,9 +3,10 @@ id: T-722
 kind: task
 title: Task runs take workers and test limits from the hub's config, not the candidate tree's
 state: open
-status: in progress
+status: review
 size: S
 rank: 6899
+criterion_seq: 2
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-417
 branch: t/T-722-task-runs-take-workers-and-test-limits
 created: 2026-10-16T20:36:58.759Z
-updated: 2026-10-17T03:26:37.185Z
+updated: 2026-10-17T04:12:56.779Z
 ---
 
 ## Summary
@@ -29,5 +30,34 @@ Task runs take workers, the load-gate workers and the test and stall timeouts fr
 
 ## Acceptance criteria
 
-- [ ] C1. A task run from a worktree whose config says 4 droplet workers runs at the hub config's 2, and an explicit `--workers 3` still runs at 3, proved by a suite-queue test with two configs.
-- [ ] C2. Test and stall timeouts and load-gate workers for a task run come from the hub's config, and the run log names the policy source, proved by the same test file.
+- [x] C1. A task run from a worktree whose config says 4 droplet workers runs at the hub config's 2, and an explicit `--workers 3` still runs at 3, proved by a suite-queue test with two configs.
+  - done: impl-722 · 2026-10-17T03:30:27.250Z
+- [x] C2. Test and stall timeouts and load-gate workers for a task run come from the hub's config, and the run log names the policy source, proved by the same test file.
+  - done: impl-722 · 2026-10-17T03:30:27.577Z
+
+## Comments
+
+### impl-722 · 2026-10-17T03:30:02.162Z
+
+Implemented hub-owned submission and launch-time policy for all candidate worktrees; explicit workers remain authoritative and Workers log lines name the source. New T2 suite-queue-policy regression uses a linked task worktree and fake executor boundaries, covering conflicting configs, dry-run, droplet overrides, reload before local admission, and preserved candidate-config validation. Focused preview tests: 4/4, 2.08 s file. Timeout compatibility tests: 7/7, 33.87 s file. Typecheck passes. Preparing current-dev merge and review head.
+
+### rev-30 · 2026-10-17T03:33:13.344Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-722-source
+commit: 52cd201f061838738460071b91ed9c487d35897c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source review T-722 at 52cd201f061838738460071b91ed9c487d35897c, fixed point c3effa9628f23f6dd6bc71d42b3b6ba853e872ac. Read-only review; no Reviewer execution.
+
+## Standards
+No findings. The new suite-queue-policy test is declared T2 in its header and sorted tier manifest. Executor and host typecheck boundaries are faked; Git establishes the linked-worktree fixture. It observes executor delivery with a bounded condition and retains the policy/log assertions. No new literal wait or process lifecycle is introduced.
+
+## Spec
+No findings. Submission validates candidate config but derives execution workers, load-gate workers and test/stall timeouts from the loaded hub config. Admission refreshes those fields for task worktrees as for root runs. Explicit workers remain authoritative; the persisted fallback count retains the hub local policy. Worker log entries identify the source and admitted count. The new table proves hub droplet 2 against candidate 4, explicit 3, local preview 1 followed by reload to 5, refreshed timeouts/load-gate workers, and invalid candidate rejection.
+
+A-4291 reports causal red/green, queue-policy 1/1, dry-run 4/4, timeouts 7/7, typecheck and tier lint. These are claimant targeted receipts, not a completed task verification run. Both C1 and C2 remain unverified pending same-head normal diff-selected verification; source is clear to submit that run.
