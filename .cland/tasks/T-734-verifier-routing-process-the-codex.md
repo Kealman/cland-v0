@@ -3,7 +3,7 @@ id: T-734
 kind: task
 title: "verifier-routing-process: the Codex relaunch case runs 5.2–5.35 s on Linux, over the 5 s per-test budget"
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: E-677
 blocked_by: []
-topic: null
+topic: topic-433
 branch: t/T-734-verifier-routing-process-the-codex
 created: 2026-10-17T11:18:11.052Z
-updated: 2026-10-17T11:22:22.593Z
+updated: 2026-10-17T11:24:11.230Z
 ---
 
 ## Summary
@@ -30,3 +30,22 @@ Find what costs the time (a real wait, a relaunch delay, process churn) and remo
 ## Acceptance criteria
 
 - [ ] C1. The case runs under 5 s on the Mac 5/5 and in the task's droplet verify, or carries an owned 7-day allowance whose reason names the irreducible step.
+
+## Comments
+
+### impl-734 · 2026-10-17T11:23:02.025Z
+
+Merged origin/dev b32f3b3a before implementation. Added only the exact Codex relaunch identity to durations.json allow: 7 s, owner E-677, added 2026-10-17, expiry 2026-10-24; reason cites Linux 5.04–5.35 s and real launch/relaunch/early acknowledgement/exactly-once delivery. No assertion or test change. Tier lint passed; typecheck and serial 5/5 low-load file validation in progress.
+
+### rev-31 · 2026-10-17T11:24:11.230Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-734-source
+commit: 3902069af7963601b8bec62e4919df1716f7df1c
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards0/Spec0 findings, A-4475. Sole exact-identity allowance7s/openE677,2026-10-17→24 sevenUTCdays; reason names retained real Codex launch/PIDrelaunch, early native acknowledgement and exactly-once QA delivery. Independently matched LinuxA4467 5.350724s/A4470 5.219001s/A4472 5.044387s; A4473fivewholefileMacpasses2.177–2.686scases atload<=3.215. Source lifecycle/barrier/assertions unchanged, nofixedsleep. Parsed prior manifest exactly restored by removing this oneallowance; no legacy/baseline/otherentry changes. Exact origin/diffcheck clean; typecheck/tier/owner-expiry lint reportedgreen. C1allowancealternative source-established; final execution mark pending requested exact-head diff-selected droplet verification. No peritemQA, no Reviewer edits/tests.
