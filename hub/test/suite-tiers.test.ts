@@ -1,5 +1,4 @@
-// T2: in-process manifest/planner tests. Fixture source text includes Neovim paths,
-// so the conservative T1 source pattern rejects this file; no hub or process is started.
+// T2: in-process manifest/planner tests; no hub or process is started.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, readFile, rm, glob } from 'node:fs/promises';
@@ -80,6 +79,8 @@ test('T1 retains the hermetic source check in each package', async t => {
       await writeFile(join(root, path), source);
       await assert.rejects(lintHubShards(root), /T1 test touches machine resources/);
     }
+    await writeFile(join(root, path), path.startsWith('hub/') ? "import { FakeClock } from './fake-clock.ts'; import { fakeHarness } from './fakes/harness.ts'; const clock = new FakeClock(); clock.setTimeout(() => {}, 5);" : "import { FakeClock } from '../../hub/test/fake-clock.ts'; const clock = new FakeClock(); clock.setInterval(() => {}, 5);");
+    await lintHubShards(root);
     await writeFile(join(root, path), '');
   }
 });

@@ -12,10 +12,11 @@ import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import type { SuiteSelection } from '../suite-selection.ts';
+import { suiteCheckCommand } from '../suite-check.ts';
 import { suiteCommand } from '../suite-command.ts';
 
-export function suiteCommands(job: { mode: string; selection?: SuiteSelection }): string[][] {
-  return [['run', 'typecheck'], ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
+export function suiteCommands(job: { mode: string; selection?: SuiteSelection }, check = ['run', 'typecheck']): string[][] {
+  return [check, ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
 }
 
 export async function suiteWorker(input: string): Promise<void> {
@@ -59,7 +60,7 @@ export async function suiteWorker(input: string): Promise<void> {
     const nvim = await readFile(join(job.cwd, 'nvim', 'NVIM_VERSION'), 'utf8').then(text => text.trim(), () => 'none');
     platform = { os: osPlatform(), arch: arch(), release: release(), node, nvim };
     process.stdout.write(`platform ${platform.os} ${platform.arch} ${platform.release} · Node ${node} · Neovim ${nvim}\n`);
-    const commands = suiteCommands(job);
+    const commands = suiteCommands(job, await suiteCheckCommand(job.cwd));
     if (!admitted) code = 1;
     for (const [index, args] of (admitted ? commands : []).entries()) {
       if (index === 1 && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();

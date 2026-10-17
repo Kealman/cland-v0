@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { cland, connectUi, eventually, projectHub, tempProject } from './harness.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { planTierReport, tierPlanWorkers, tierReport, type SuiteDryRun } from '../src/suite-tier-report.ts';
+import { lintTests, testLintReport } from '../src/test-lint.ts';
 import { Store } from '../src/hub/store.ts';
 import { Suites, suiteSummary, type SuiteJob } from '../src/hub/suites.ts';
 import { onCleanup, beforeDirectories } from './process-cleanup.ts';
@@ -24,6 +25,7 @@ async function planted(t: TestContext) {
     await writeFile(join(root, path), '');
   }
   await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, 'hub/test/b.test.ts'), 'sleep(10);');
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'planted' }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, allow: {}, files: {
     'hub/test/a.test.ts': { seconds: 200, tests: 2 }, 'hub/test/b.test.ts': { seconds: 300, tests: 3 },
@@ -52,6 +54,8 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   const output = await cland(root, 'verify', '--dry-run', '--executor', 'droplet');
   assert.equal(output.code, 0, output.stderr);
   assert.match(output.stdout, /verification dry-run/);
+  assert.match(output.stdout, /test lint \(report only\): 2 findings in 2 files/);
+  assert.match(output.stdout, /test lint tier: hub\/test\/b.test.ts: T2; qualifies T2/);
   assert.match(output.stdout, /mode full; .*deciding files/s);
   assert.match(output.stdout, /planned tiers: T1, T2, T3, T4/);
   assert.match(output.stdout, /tier T1: files 1; tests 2 planned; observed unavailable; projected wall 200 s at 1 workers; wall budget 120 s; over wall \(report only\)/);
@@ -82,7 +86,8 @@ test('a task run report keeps its green exit when planted tiers exceed the wall 
   const plan = await planTierReport(root, { ...selection, files: [] }, 2);
   const store = new Store(join(root, 'hub.db'));
   const log = join(root, 'suite.log');
-  await writeFile(log, '# tests 2\n# pass 2\nsuite timing {"file":"hub/test/a.test.ts","name":"first","seconds":0.25}\nsuite timing {"file":"hub/test/b.test.ts","name":"second","seconds":0.5}\n');
+  const lint = testLintReport(await lintTests(root)).join('\n') + '\n';
+  await writeFile(log, lint + '# tests 2\n# pass 2\nsuite timing {"file":"hub/test/a.test.ts","name":"first","seconds":0.25}\nsuite timing {"file":"hub/test/b.test.ts","name":"second","seconds":0.5}\n');
   const job: SuiteJob = { id: 'tier-result', executor: 'droplet', mode: 'auto', cwd: root, topic: 'fixture', to: [], actor: null,
     head: 'head', branch: 'task', log, result: join(root, 'result.json'), gate: join(root, 'gate'), pid: null, started: null,
     outcome: { code: 0, cause: '' }, cleaned: true, artifact: null, reported: false, error: null, state: 'finished', workers: 2,
@@ -98,6 +103,10 @@ test('a task run report keeps its green exit when planted tiers exceed the wall 
   assert.match(result.text, /tier T2: files 1; tests 1; observed 0.5 s/);
   assert.match(result.text, /tier share: T1\+T2 50 % of 1000 s \(T3 400 s, T4 100 s\)$/);
   assert.equal(result.job.outcome?.code, 0);
+  assert.match(result.text, /test lint \(report only\): 2 findings in 2 files/);
+  assert.match(result.text, /b.test.ts:1 \[wall-clock-wait\]/);
+  assert.match(result.text, /test lint tier: hub\/test\/b.test.ts: T2; qualifies T2/);
+  assert.equal((await readFile(log, 'utf8')).split('test lint (report only):').length - 1, 1);
   assert.equal((await readFile(log, 'utf8')).split('tier T1:').length - 1, 1);
 });
 
@@ -144,7 +153,7 @@ test('legacy preview includes planned Neovim in T3 accounting without changing e
     { tier: 'T3', files: ['hub/test/b.test.ts', 'hub/test/c.test.ts', 'nvim/test/editor.test.ts'], tests: 8 },
   ]);
   assert.match(preview.lines.join('\n'), /tier T3: files 3; tests 8 planned; observed unavailable; projected wall 500 s at 2 workers/);
-  assert.equal(preview.lines.at(-1), 'tier share: T1+T2 20 % of 1000 s (T3 800 s, T4 0 s)');
+  assert.ok(preview.lines.includes('tier share: T1+T2 20 % of 1000 s (T3 800 s, T4 0 s)'));
   const report = suiteSummary(tierReport(preview.tiers, [{ file: 'nvim/test/editor.test.ts', name: 'editor', seconds: 1.5 }]).join('\n'));
   assert.match(report, /tier T3: files 3; tests 1; observed 1.5 s; projected wall 500 s/);
   assert.match(report, /tier share: T1\+T2 20 % of 1000 s \(T3 800 s, T4 0 s\)$/);

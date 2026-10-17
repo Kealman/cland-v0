@@ -41,6 +41,31 @@ The target strategy is task verification at T0–T2, T3 once per merge batch and
 - A new file that spawns a process with no lifecycle sentence in its header, or a new wall-clock wait, is a finding of at least medium severity.
 - Don't ask for a full run on a task head. A task verify plus the integrated cover (later, the merge-queue batch) is sufficient evidence.
 
+### Test lint reports
+
+`npm run check` runs typecheck, then `npm run test:lint` once. Verification uses
+this check for candidates declaring it and `test:lint`; older candidate packages
+keep their typecheck command. A matching host gate reuses the whole check on the
+droplet, including the lint, so the report is not repeated there.
+
+The lint currently reports only. The log, result and `cland verify --dry-run`
+include `test lint (report only): <n> findings in <m> files`, the first twelve
+findings with file, line and rule, and each file's lowest qualifying resource tier.
+It inspects the entire tier manifest, independently of the selected test phases.
+Import and call syntax distinguish the in-process fake harness and FakeClock
+from process helpers and real timers; comments and planted source strings do not
+count as resource use. The existing T1 hermetic admission still refuses real
+machine resources.
+
+Rules report disallowed tier imports/process helpers, numeric wall-clock waits,
+elapsed-clock assertions (including local timestamp/delta variables), and T3
+files without a lifecycle sentence in their first comment block. Contract and
+scenario manifest entries are exempt from the header rule. A wall-clock finding
+may be suppressed by a trailing `// lint-allow-wall-clock: <reason>` on the call's
+line. A blank reason does not suppress it. This is syntax analysis, not a proof
+of transitive module purity; the qualifying tier describes the resources visible
+in the file, and never automatically retags it.
+
 ### In-process harnesses
 
 Hub rules use `projectHub(t, root, env, { harnesses: 'fake', clock })` by default,

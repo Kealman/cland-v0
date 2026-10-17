@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { lintHubShards, lintHubShardTree, ShardManifestError, hubShards, balanceCloseShards } from '../suite-shards.ts';
+import { lintTests, testLintReport } from '../test-lint.ts';
+import { suiteCheckCommand } from '../suite-check.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary } from '../suite-duration-budget.ts';
 import { baselineTimings, durationBase, durationBudgetContext } from '../suite-duration-context.ts';
@@ -96,6 +98,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^typecheck: /.test(line)));
+  timings.push(...text.split('\n').filter(line => /^test lint (?:\(report only\):|finding:|tier:)/.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
   timings.push(...text.split('\n').filter(line => /^quarantine load gate: /.test(line)));
@@ -346,7 +349,7 @@ export class Suites {
       if (head !== 'unknown' && await git(['rev-parse', 'HEAD']) !== head) throw new Error('head changed during admission; try dry-run again');
       authorize();
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
-        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...budgetLines] };
+        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...budgetLines, ...testLintReport(await lintTests(input.cwd))] };
     }
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
@@ -646,8 +649,8 @@ export class Suites {
       return;
     }
     const tree = await candidateTree(job.cwd, job.integrated ? undefined : job.head, this.#env);
-    const command = ['run', 'typecheck'];
-    await appendFile(job.log, '\nHost gate: npm run typecheck\n');
+    const command = await suiteCheckCommand(job.cwd);
+    await appendFile(job.log, `\nHost gate: npm ${command.join(' ')}\n`);
     const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
     const fd = await open(job.log, 'a');
     try {

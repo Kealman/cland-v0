@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile, writeFile, rename } from 'node:fs/promises';
 import { parseConfig, defaultConfig } from '../../init/config.ts';
 import { basename } from 'node:path';
+import { suiteCheckCommand } from '../../suite-check.ts';
 import { suiteCommands } from '../../hub/suite-worker.ts';
 import type { RunRef, RunStatus } from '../executor.ts';
 import { Machine, machineEnv, shellQuote as quote } from './machine.ts';
@@ -59,7 +60,7 @@ export class DropletRun {
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
     const env = `${run.limits ? `export CLAND_SUITE_LIMITS=${quote(JSON.stringify(run.limits))}\nexport CLAND_SUITE_LIMITS_CWD="$(pwd -P)"\n` : ''}export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
-    const commands = suiteCommands(run).map((args, index) => {
+    const commands = suiteCommands(run, await suiteCheckCommand(run.cwd)).map((args, index) => {
       const command = `echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`;
       if (index !== 0) return `${index === 1 ? 'rmdir /tmp/cland-suite.lock; trap - EXIT\n' : ''}${command}`;
       const gate = run.hostGate;

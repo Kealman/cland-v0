@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { join, matchesGlob } from 'node:path';
+import { touchesMachineResources } from './test-lint.ts';
 import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
@@ -13,7 +14,6 @@ export type Shard = 'free' | 'machine';
 export type SuiteShard = { name: string; targets: string[]; resource: Shard; workers: number };
 // Process fixtures use real ports and clocks even when each project directory is private.
 // SQL .exec() and promise gates are hermetic; process launches and wall-clock waits are not.
-const MACHINE = /node:(?:child_process|net|http|https|dgram|timers)|(?:from\s*|import\s*\()['"][^'"]*(?:harness|process-cleanup)[^'"]*['"]|\b(?:setTimeout|setInterval|sleep|pause|delay)\s*\(|\.listen\s*\(|\/tmp\/cland-suite(?:-nvim)?\.lock\b|\bnvim\b/;
 
 const HUB_PATTERNS = ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'];
 const PATTERNS = [...HUB_PATTERNS, 'nvim/test/**/*.test.ts'];
@@ -67,7 +67,7 @@ async function classify(paths: string[], manifest: Manifest, source: (path: stri
   const groups: Record<Shard, string[]> = { free: [], machine: [] };
   for (const path of paths) {
     const resource = tiers.get(path) === 'T1' ? 'free' : 'machine';
-    if (resource === 'free' && MACHINE.test(await source(path))) throw new ShardManifestError(`${legacy ? 'free hub' : 'T1'} test touches machine resources: ${path}; classify it as ${legacy ? 'machine' : 'T3'}`, [path]);
+    if (resource === 'free' && touchesMachineResources(path, await source(path))) throw new ShardManifestError(`${legacy ? 'free hub' : 'T1'} test touches machine resources: ${path}; classify it as ${legacy ? 'machine' : 'T3'}`, [path]);
     // Neovim is validated in the same manifest, but retains its existing package phase.
     if (path.startsWith('hub/') && (!smoke || HUB_SMOKE.includes(path))) groups[resource].push(path);
   }
