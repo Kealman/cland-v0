@@ -1,3 +1,4 @@
+import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdir, unlink, readFile, writeFile } from 'node:fs/promises';
@@ -6,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { projectHub, withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, projectHub, withDiscoveredPid, cland, clandWithEnv, clauseAnswered, eventually, connectUi, connectWsUi, fakeCodex, fakeClaude, killDaemon, spawnSpoke, startDaemon, startHub, tempProject, sleep, TEST_SECRET } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
@@ -313,26 +314,27 @@ test('usage thresholds name cost or tokens, deduplicate overlapping subjects and
   assert.doesNotMatch(delivered.params.content, /×2/);
 });
 
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
 test('the default coalescing window includes 59999 ms and excludes 60000 ms', async t => {
   const root = await tempProject(t);
-  let now = Date.now();
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  const clock = new FakeClock();
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), now: () => clock.now() });
   onCleanup(t, () => tracker.stop());
-  const hub = await startHub({ tracker, roles: fixedRoles(), now: () => new Date(now) });
+  const hub = await startHub({ tracker, roles: fixedRoles(), clock });
   onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   assert.equal((await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' })).ok, true);
-  const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord']);
   const item = (await coord.call<{ item: { id: string } }>('task.create', { size: 'M', title: 'Default window' })).item.id;
   await coord.call('subscribe', { subject: { item }, events: ['task'] });
   await coord.call('task.claim', { id: item });
   await coord.call('task.claim', { id: item, release: true });
-  now += 59_999;
+  await clock.advance(59_999);
   await coord.call('task.claim', { id: item });
   await coord.call('task.claim', { id: item, release: true });
-  now += 1;
+  await clock.advance(1);
   await coord.call('task.claim', { id: item });
   await ui.request({ type: 'topic.send', topic: 'general', text: '@coord default boundary' });
   const delivered = await coord.waitForEvent(e => e.params.content.includes('default boundary'));

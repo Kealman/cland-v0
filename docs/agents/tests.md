@@ -28,7 +28,7 @@ The target strategy is task verification at T0–T2, T3 once per merge batch and
 **When you write or change a test (Implementer):**
 
 - Choose the lowest tier that can prove the behaviour, and state it in the file header or the test's comment. A new file is T1 or T2 unless its header names the process-lifecycle behaviour it proves.
-- Wait on an event, a frame or a journal record, never on elapsed time. Timer behaviour uses the fake clock. A new literal `sleep(n)`, a `setTimeout` used as a wait, or a `Date.now()` difference in an assertion is a finding.
+- Wait on an event, a frame or a journal record, never on elapsed time. Timer behaviour uses the fake clock. A test injects one complete Clock for timestamps and scheduling, never a bare `now` callback. A new literal `sleep(n)`, a `setTimeout` used as a wait, or a `Date.now()` difference in an assertion is a finding.
 - Prove persistence by reopening the store or tracker in-process, not by stopping and restarting a hub.
 - Prove a hub rule once through one real frame per tool or refusal family. Its duplicates call the dispatcher or tracker directly. Don't repeat a hub-side rule through each harness's fake.
 - A test proves one behaviour. A title with "and" twice is a finding. Permutations over inputs are a table inside one fixture, not a fixture per cell.
@@ -139,8 +139,9 @@ Hub scheduling tests pass one complete clock at the fixture boundary:
 real I/O between callbacks; then await the expected frame or journal record.
 The clock covers timestamps and hub schedules together, including heartbeat,
 inbox notifications, archive/usage windows and retention. Use the same clock
-for every time-dependent collaborator in a fixture. `clock` and the legacy
-`now` override are mutually exclusive.
+for every time-dependent collaborator in a fixture. Bare `now` overrides are
+refused; inject a complete Clock instead. A real-process fixture that needs
+progressing native schedules may explicitly supply an offset real clock.
 
 Do not mock global timers in a `projectHub` scheduling test: sockets, journal
 flush and I/O retries, native transport/reconnect deadlines, AccountPoller child-process deadlines and suite

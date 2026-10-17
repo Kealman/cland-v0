@@ -1,8 +1,10 @@
+import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { withDiscoveredPid, connectUi, eventually, fakeClaude, projectHub, startDaemon, tempProject } from './harness.ts';
+import { Store } from '../src/hub/store.ts';
 import type { Inbox, EventsPage } from '../src/protocol.ts';
 
 test('layout saves and human choices serialize through the shared UI lock', async t => {
@@ -265,16 +267,25 @@ test('the hub places messages, sessions, items and artifacts by the default tabl
 test('history reclassifies retained messages after seven days, with project age overrides', async t => {
   const { startHub, connectWsUi } = await import('./harness.ts');
   for (const override of [false, true]) {
-    let clock = Date.parse('2026-10-01T00:00:00Z');
-    const hub = await startHub({ now: () => new Date(clock), retentionMs: 30 * 86_400_000, visibility: override ? { messages: { old: 'watch' } } : {} });
+    const clock = new FakeClock(Date.parse('2026-10-01T00:00:00Z'));
+    const root = await tempProject(t);
+    const file = join(root, 'visibility.sqlite');
+    const open = () => startHub({ clock, store: new Store(file), retentionMs: 30 * 86_400_000, visibility: override ? { messages: { old: 'watch' } } : {} });
+    let hub = await open();
     t.after(() => hub.close());
-    const ui = await connectWsUi(t, hub);
+    let ui = await connectWsUi(t, hub);
     const sent = await ui.request({ type: 'topic.send', topic: 'general', text: 'Human notes' });
     assert.equal((sent.value as { message: { layer: string } }).message.layer, 'now');
-    clock += 7 * 86_400_000;
+    // T2: reopen the retained store in-process at the age boundary. No live timer owner
+    // needs seven days of unrelated heartbeat ticks; history still computes age on read.
+    ui.close();
+    await hub.close();
+    await clock.advance(7 * 86_400_000);
+    hub = await open();
+    ui = await connectWsUi(t, hub);
     const atBoundary = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ layer: string }> };
     assert.equal(atBoundary.messages.find(m => m.layer === 'now')?.layer, 'now');
-    clock += 1;
+    await clock.advance(1);
     const old = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: Array<{ text: string; layer: string }> };
     assert.equal(old.messages.find(m => m.text === 'Human notes')?.layer, override ? 'watch' : 'archive');
   }

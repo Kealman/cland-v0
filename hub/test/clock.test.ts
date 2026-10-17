@@ -35,9 +35,19 @@ test('clock boundaries reject mixed clocks and foreign timer handles', () => {
   a.clearTimeout(timer);
   a.clearTimeout(timer); // cancellation remains idempotent
   assert.throws(() => resolveClock({ clock: a, now: () => new Date(0) } as unknown as ClockOptions), /never both/);
-  // @ts-expect-error a complete clock cannot be combined with the legacy timestamp seam
+  // @ts-expect-error a complete clock cannot be combined with a timestamp-only override
   const mixed: ClockOptions = { clock: a, now: () => new Date(0) };
   void mixed;
+});
+
+test('resolveClock requires a complete clock instead of a bare timestamp callback', () => {
+  const clock = new FakeClock(0);
+  assert.equal(resolveClock({}), realClock);
+  assert.equal(resolveClock({ clock }), clock);
+  // @ts-expect-error timestamp-only injection cannot define a hub clock
+  const legacy: ClockOptions = { now: () => new Date(0) };
+  void legacy;
+  assert.throws(() => resolveClock({ now: () => new Date(0) } as unknown as ClockOptions), /complete Clock/);
 });
 
 test('realClock preserves cancellation with Node mocked timeout and interval timers', t => {

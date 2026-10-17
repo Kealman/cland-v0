@@ -46,7 +46,7 @@
     "hub/test/cli-identity.test.ts": "T3",
     "hub/test/cli-imports.test.ts": "T3",
     "hub/test/cli.test.ts": "T3",
-    "hub/test/clock.test.ts": "T2",
+    "hub/test/clock.test.ts": "T1",
     "hub/test/close-shards.test.ts": "T3",
     "hub/test/codex-adapter.test.ts": {
       "tier": "T3",

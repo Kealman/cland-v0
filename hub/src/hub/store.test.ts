@@ -1,3 +1,5 @@
+// T1: store persistence and hub rules in-process, with one complete clock for scheduling.
+import { FakeClock } from '../../test/fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -76,7 +78,7 @@ test('prune deletes messages older than the retention window with their deliveri
 });
 
 test('an ordinary topic can be renamed and deleted with its messages; a standing one cannot', () => {
-  const core = new HubCore({ now: () => new Date('2026-10-08T12:00:00.000Z') });
+  const core = new HubCore({ clock: new FakeClock(Date.parse('2026-10-08T12:00:00.000Z')) });
   core.store.ensureTopic('t-1', 'Login page', false, '2026-10-08T12:00:00.000Z');
   core.sendFromHuman('t-1', 'how is it going?');
   assert.deepEqual(core.topics().map((t) => t.id), ['general', 'agents', 't-1']);
@@ -144,23 +146,23 @@ for (const state of ['delivered', 'uncertain', 'injected'] as const) {
 }
 
 for (const state of ['queued', 'delivered', 'uncertain', 'injected', 'dropped'] as const) {
-  test(`deleting a trigger releases ${state} notes without replaying settled notes`, () => {
-    let now = 1000;
+  test(`deleting a trigger releases ${state} notes without replaying settled notes`, async () => {
+    const clock = new FakeClock(1000);
     const journal: Array<Record<string, unknown>> = [];
-    const core = new HubCore({ now: () => new Date(now), queueTtlMs: 1000, retentionMs: 100, log: e => { journal.push(e); } });
-    core.store.ensureTopic('notes', 'Notes', false, new Date(now).toISOString());
-    core.store.ensureTopic('reports', 'Reports', false, new Date(now).toISOString());
+    const core = new HubCore({ clock, queueTtlMs: 1000, retentionMs: 100, log: e => { journal.push(e); } });
+    core.store.ensureTopic('notes', 'Notes', false, clock.now().toISOString());
+    core.store.ensureTopic('reports', 'Reports', false, clock.now().toISOString());
     const got: Message[] = [];
     const receiver = core.hello({ type: 'hello', protocol: 2, sessionId: 'receiver', name: 'receiver', role: 'coordinator', cwd: '/' }, m => { got.push(m); return true; });
     assert.ok(receiver.ok);
     const note = core.sendFromSession('sender', ['receiver'], 'surviving note', undefined, 'notes', undefined, { role: 'implementer' }, undefined, 'progress').message;
-    now = 1200;
+    await clock.advance(200);
     const trigger = core.sendFromSession('sender', ['receiver'], 'deleted trigger', undefined, 'reports', undefined, { role: 'implementer' }).message;
     if (state === 'delivered' || state === 'uncertain' || state === 'injected') core.ack(receiver.connection, trigger.id);
     if (state === 'uncertain') core.markUncertain(trigger.id, 'receiver', 'no admission answer');
     if (state === 'injected') core.markInjected(trigger.id, 'receiver');
     if (state === 'dropped') core.store.expireQueued('receiver', 2201, 1000);
-    now = 1500;
+    await clock.advance(300);
     const pending = state === 'queued' || state === 'delivered' || state === 'uncertain';
     if (pending) {
       core.prune();
@@ -188,25 +190,25 @@ for (const state of ['queued', 'delivered', 'uncertain', 'injected', 'dropped'] 
 test('released progress survives restart and keeps its own original TTL', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'cland-released-progress-'));
   const file = join(dir, 'hub.sqlite');
-  let now = 1000;
-  let core = new HubCore({ store: new Store(file), now: () => new Date(now), queueTtlMs: 1000 });
+  const clock = new FakeClock(1000);
+  let core = new HubCore({ store: new Store(file), clock, queueTtlMs: 1000 });
   try {
-    core.store.ensureTopic('reports', 'Reports', false, new Date(now).toISOString());
+    core.store.ensureTopic('reports', 'Reports', false, clock.now().toISOString());
     for (const name of ['fresh', 'expired']) {
       const joined = core.hello({ type: 'hello', protocol: 2, sessionId: name, name, role: 'coordinator', cwd: '/' }, () => true);
       assert.ok(joined.ok);
       core.disconnect(joined.connection);
     }
     const note = core.sendFromSession('sender', ['fresh', 'expired'], 'released P', undefined, undefined, undefined, { role: 'implementer' }, undefined, 'progress').message;
-    now = 1900;
+    await clock.advance(900);
     core.sendFromSession('sender', ['fresh', 'expired'], 'deleted R', undefined, 'reports', undefined, { role: 'implementer' });
-    now = 1950;
+    await clock.advance(50);
     core.deleteTopic('reports');
     core.close(); core.store.close();
-    core = new HubCore({ store: new Store(file), now: () => new Date(now), queueTtlMs: 1000 });
+    core = new HubCore({ store: new Store(file), clock, queueTtlMs: 1000 });
     const fresh = core.sendFromSession('sender', ['fresh'], 'fresh next report', undefined, undefined, undefined, { role: 'implementer' }).message;
     assert.deepEqual(core.store.deliveryMessage(fresh.id, 'fresh')?.digest?.map(m => m.id), [note.id]);
-    now = 2001;
+    await clock.advance(51);
     const expired = core.sendFromSession('sender', ['expired'], 'expired next report', undefined, undefined, undefined, { role: 'implementer' }).message;
     assert.equal(core.store.deliveryMessage(expired.id, 'expired')?.digest, undefined, 'releasing never extends queued_at');
   } finally {
@@ -256,9 +258,9 @@ test("retention prunes a broadcast recipient's settled notes while another recip
   }
 });
 
-test('rename refuses a dropped duplicate and preserves the source pending digest', () => {
-  let now = 1000;
-  const core = new HubCore({ now: () => new Date(now), queueTtlMs: 1000 });
+test('rename refuses a dropped duplicate and preserves the source pending digest', async () => {
+  const clock = new FakeClock(1000);
+  const core = new HubCore({ clock, queueTtlMs: 1000 });
   const got: Message[] = [];
   const hello = (name: string) => {
     const result = core.hello({ type: 'hello', protocol: 2, sessionId: name, name, role: 'coordinator', cwd: '/' }, m => { got.push(m); return true; });
@@ -267,12 +269,12 @@ test('rename refuses a dropped duplicate and preserves the source pending digest
   };
   const a = hello('a'), b = hello('b');
   const note = core.sendFromSession('a', ['a', 'b'], 'P', undefined, undefined, undefined, undefined, undefined, 'progress').message;
-  now = 1100;
+  await clock.advance(100);
   const r2 = core.sendFromSession('a', ['b'], 'R2').message;
-  now = 1900;
+  await clock.advance(800);
   const r1 = core.sendFromSession('a', ['a'], 'R1').message;
-  now = 2201;
-  core.store.expireQueued('b', now, 1000);
+  await clock.advance(301);
+  core.store.expireQueued('b', clock.now().getTime(), 1000);
   core.disconnect(b);
   const source = core.store.deliveryMessage(r1.id, 'a');
   const target = core.store.deliveryMessage(r2.id, 'b');

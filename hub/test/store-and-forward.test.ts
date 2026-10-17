@@ -1,10 +1,11 @@
+import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
-import { startHub, spawnSpoke, sleep, waitForAbsence, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, startHub, spawnSpoke, sleep, waitForAbsence, TEST_SECRET } from './harness.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { createHub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
@@ -77,12 +78,13 @@ test('a queued message survives a hub restart on the same store and is delivered
   }
 });
 
-test('a queued message older than the TTL is dropped, and the session never sees it', async () => {
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
+test('a queued message older than the TTL is dropped, and the session never sees it', async t => {
   // The hub's clock is injected: with a wall-clock TTL the send could race the close under a loaded suite.
-  let now = Date.parse('2026-10-08T12:00:00Z');
-  const hub = await startHub({ queueTtlMs: 60_000, now: () => new Date(now) });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const clock = new FakeClock(Date.parse('2026-10-08T12:00:00Z'));
+  const hub = await startHub({ queueTtlMs: 60_000, clock });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  let beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
@@ -90,10 +92,10 @@ test('a queued message older than the TTL is dropped, and the session never sees
     await waitForAbsence(alpha, 'beta');
     const sent = await alpha.call<Send>('send', { to: ['beta'], text: 'stale' });
     assert.equal(sent.outcomes[0]?.outcome, 'queued', 'the message waited for beta');
-    now += 61_000; // past the TTL: the queued message is stale
-    beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+    await clock.advance(61_000); // past the TTL: the queued message is stale
+    beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
     await beta.waitForPresence(['beta']);
-    await sleep(100);
+    await beta.call('who'); // ordered round trip after hello's queued-delivery flush
     assert.equal(beta.events.length, 0);
     // the message itself is still on the record
     const history = await beta.call<{ messages: Array<{ text: string }> }>('history');

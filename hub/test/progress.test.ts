@@ -1,9 +1,10 @@
+import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { withDiscoveredPid, assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, projectHub, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
+import { inProcessSpoke, withDiscoveredPid, assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, projectHub, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
 import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
 import { WebSocket } from 'ws';
 
@@ -217,17 +218,18 @@ test('a report queued to a vacant role picks up its recipient\'s held progress w
   assert.match(delivery.params.content, /held before disconnect[\s\S]*human report for vacant role/);
 });
 
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
 test('expired held progress is dropped and journalled before a fresh report can bind it', async t => {
-  let now = 2000;
+  const clock = new FakeClock(2000);
   const log: Array<Record<string, unknown>> = [];
-  const hub = await startHub({ now: () => new Date(now), queueTtlMs: 1000, log: e => { log.push(e); } });
+  const hub = await startHub({ clock, queueTtlMs: 1000, log: e => { log.push(e); } });
   t.after(() => hub.close());
-  const sender = await spawnSpoke({ hub, name: 'sender', sessionId: 'sender' });
-  const receiver = await spawnSpoke({ hub, name: 'receiver', sessionId: 'receiver' });
-  t.after(async () => { await sender.close(); await receiver.close(); });
+  const sender = await inProcessSpoke(t, { hub, name: 'sender', sessionId: 'sender' });
+  const receiver = await inProcessSpoke(t, { hub, name: 'receiver', sessionId: 'receiver' });
+  t.after(async t => { await sender.close(); await receiver.close(); });
   await sender.waitForPresence(['sender', 'receiver']);
   await sender.call('send', { to: ['receiver'], text: 'expired note', kind: 'progress' });
-  now = 4000;
+  await clock.advance(2000);
   await sender.call('send', { to: ['receiver'], text: 'fresh report' });
   const report = await receiver.waitForEvent(e => e.params.content.includes('fresh report'));
   assert.equal(report.params.content, 'fresh report');
@@ -238,12 +240,13 @@ test('expired held progress is dropped and journalled before a fresh report can 
   assert.ok(log.some(e => e.event === 'dropped' && e.id === expired.id && e.reason === 'queue ttl'), 'the existing journalled dropped event records the expiry');
 });
 
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
 test('prune preserves every member of a pending digest, then expires the batch together at its trigger\'s TTL', async t => {
-  let now = 2000;
-  const hub = await startHub({ now: () => new Date(now), queueTtlMs: 1000, retentionMs: 100 });
+  const clock = new FakeClock(2000);
+  const hub = await startHub({ clock, queueTtlMs: 1000, retentionMs: 100 });
   t.after(() => hub.close());
-  const sender = await spawnSpoke({ hub, name: 'sender', sessionId: 'sender' });
-  const receiver = await spawnSpoke({ hub, name: 'receiver', sessionId: 'receiver' });
+  const sender = await inProcessSpoke(t, { hub, name: 'sender', sessionId: 'sender' });
+  const receiver = await inProcessSpoke(t, { hub, name: 'receiver', sessionId: 'receiver' });
   t.after(() => sender.close());
   await sender.waitForPresence(['sender', 'receiver']);
   await receiver.close();
@@ -253,31 +256,32 @@ test('prune preserves every member of a pending digest, then expires the batch t
     return r.sessions.some(s => s.name === 'receiver') ? undefined : true;
   });
   await sender.call('send', { to: ['receiver'], text: 'older batch note', kind: 'progress' });
-  now = 2200;
+  await clock.advance(200);
   await sender.call('send', { to: ['receiver'], text: 'newer trigger' });
-  now = 2400;
+  await clock.advance(200);
   assert.equal(hub.prune(), 0, 'retention cannot truncate a queued digest');
   let history = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.deepEqual((history.value as { messages: Message[] }).messages.map(m => m.text), ['older batch note', 'newer trigger']);
-  now = 3001; // the note's original TTL passed, but its trigger is still within TTL
+  await clock.advance(601); // the note's original TTL passed, but its trigger is still within TTL
   assert.equal(hub.prune(), 0, 'a bound note follows the trigger lifetime');
-  now = 3201;
+  await clock.advance(200);
   assert.equal(hub.prune(), 2, 'the whole expired batch is now eligible for retention');
   history = await ui.request({ type: 'topic.history', topic: 'agents' });
   assert.deepEqual((history.value as { messages: Message[] }).messages, []);
-  const reconnected = await spawnSpoke({ hub, name: 'receiver', sessionId: 'receiver' });
+  const reconnected = await inProcessSpoke(t, { hub, name: 'receiver', sessionId: 'receiver' });
   t.after(() => reconnected.close());
   await reconnected.waitForPresence(['sender', 'receiver']);
-  await sleep(100);
+  await reconnected.call('who'); // ordered round trip after hello's queued-delivery flush
   assert.equal(reconnected.events.length, 0, 'expiry never delivers a partial batch');
 });
 
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
 test('an old note bound near its TTL still delivers with a fresh trigger after the note\'s original expiry', async t => {
-  let now = 2000;
-  const hub = await startHub({ now: () => new Date(now), queueTtlMs: 1000, retentionMs: 100 });
+  const clock = new FakeClock(2000);
+  const hub = await startHub({ clock, queueTtlMs: 1000, retentionMs: 100 });
   t.after(() => hub.close());
-  const sender = await spawnSpoke({ hub, name: 'sender', sessionId: 'sender' });
-  const receiver = await spawnSpoke({ hub, name: 'receiver', sessionId: 'receiver' });
+  const sender = await inProcessSpoke(t, { hub, name: 'sender', sessionId: 'sender' });
+  const receiver = await inProcessSpoke(t, { hub, name: 'receiver', sessionId: 'receiver' });
   t.after(() => sender.close());
   await sender.waitForPresence(['sender', 'receiver']);
   await receiver.close();
@@ -286,11 +290,11 @@ test('an old note bound near its TTL still delivers with a fresh trigger after t
     return r.sessions.some(s => s.name === 'receiver') ? undefined : true;
   });
   await sender.call('send', { to: ['receiver'], text: 'near TTL note', kind: 'progress' });
-  now = 2900;
+  await clock.advance(900);
   await sender.call('send', { to: ['receiver'], text: 'fresh trigger' });
-  now = 3100;
+  await clock.advance(200);
   assert.equal(hub.prune(), 0);
-  const reconnected = await spawnSpoke({ hub, name: 'receiver', sessionId: 'receiver' });
+  const reconnected = await inProcessSpoke(t, { hub, name: 'receiver', sessionId: 'receiver' });
   t.after(() => reconnected.close());
   const batch = await reconnected.waitForEvent(e => e.params.content.includes('fresh trigger'));
   assert.match(batch.params.content, /near TTL note[\s\S]*fresh trigger/);

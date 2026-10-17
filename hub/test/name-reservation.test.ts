@@ -1,3 +1,4 @@
+import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,17 +15,17 @@ import { fixedRoles } from '../src/roles/config.ts';
 import type { Subscription } from '../src/protocol.ts';
 import type { LogFn } from '../src/log.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { connectSocket, connectUi, eventually, spawnSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, connectSocket, connectUi, eventually, spawnSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 const nativePrepare = DatabaseSync.prototype.prepare;
 
 async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const root = await tempProject(t);
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  const clock = new FakeClock();
+  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), now: () => clock.now() });
   tracker.start();
   onCleanup(t, () => tracker.stop());
-  let now = Date.now();
-  const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), now: () => new Date(now), retentionMs: 1, ...(log ? { log } : {}) });
+  const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), clock, retentionMs: 1, ...(log ? { log } : {}) });
   let hubClosed = false;
   const closeHub = async () => { if (hubClosed) return; hubClosed = true; await hub.close(); };
   onCleanup(t, closeHub);
@@ -40,12 +41,13 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
     if (faultAdoption && sql.startsWith('update tracker_written_verdicts set session_id')) throw new Error('adoption deliberately failed');
     return nativePrepare.call(this, sql);
   });
-  const owner = await spawnSpoke({ hub, name: 'session-1', sessionId: 'owner-id' });
+  // T2 clock-controlled alias retention; no native spoke process is needed.
+  const owner = await inProcessSpoke(t, { hub, name: 'session-1', sessionId: 'owner-id' });
   onCleanup(t, () => owner.close());
   await owner.waitForPresence(['session-1']);
   assert.equal((await ui.request({ type: 'role.set', session: 'session-1', role: 'coordinator' })).ok, true);
   assert.equal((await owner.call<{ ok: boolean }>('rename', { name: 'renamed' })).ok, true);
-  now += 10_000;
+  await clock.advance(10_000);
   hub.core.prune(); // The existing daily retention job: the alias outlives the old name's traffic.
   assert.equal(hub.core.store.sessionNames().includes('session-1'), false);
 
@@ -83,7 +85,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
     assert.deepEqual((sent.value as { message: { to: string[] } }).message.to, ['renamed']);
     await owner.waitForEvent(e => e.params.content.includes('Still for the original claimant'));
   };
-  return { closeHub, closeSessions, root, edge, tracker, table, watched, ui, owner, item, hub, sessions, hello, openHello, launch, remainsOwner, starts };
+  return { clock, closeHub, closeSessions, root, edge, tracker, table, watched, ui, owner, item, hub, sessions, hello, openHello, launch, remainsOwner, starts };
 }
 
 test('unnamed hellos keep a published launch identity and skip a pruned pending alias when allocating a name', async t => {
@@ -1158,10 +1160,10 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
   await f.closeHub();
   await f.tracker.stop();
   const db = join(f.root, '.cland', 'hub.db');
-  const tracker = new Tracker({ root: f.root, db });
+  const tracker = new Tracker({ root: f.root, db, now: () => f.clock.now() });
   tracker.start();
   onCleanup(t, () => tracker.stop());
-  const hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
+  const hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles(), clock: f.clock });
   onCleanup(t, () => hub.close());
   const socket = join(f.root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });

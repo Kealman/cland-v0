@@ -2,13 +2,14 @@
 // in the human's messages; the "no coordinator" warning; agent- and human-created topics, their binding to a unit
 // of work through the tracker; unread counts. A real hub (in-process, or the daemon where the tracker is needed),
 // scripted spokes over MCP and a UI client speaking the frames; nothing inside either side is reached into.
+import { FakeClock } from './fake-clock.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { fixedRoles } from '../src/roles/config.ts';
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { inProcessSpoke, cland, connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 import type { Hub } from '../src/hub/server.ts';
 
 type Topic = { id: string; title: string; status: string; standing: boolean; item: string | null; unread: number; lastMessageAt: string | null; warning?: string };
@@ -407,19 +408,21 @@ test('a hub.db written before the message sequence, its messages pruned: the mig
   assert.equal((await topicOf(ui, 't-old')).unread, 0);
 });
 
+// T2: retention uses the complete clock and an in-process protocol peer.
 test('the unread count survives retention emptying the messages table: a message after the prune is unread', async (t) => {
-  let clock = Date.parse('2026-10-01T00:00:00Z');
-  const hub = await startHub({ roles: fixedRoles(), now: () => new Date(clock), retentionMs: 60_000 });
+  const clock = new FakeClock(Date.parse('2026-10-01T00:00:00Z'));
+  const hub = await startHub({ roles: fixedRoles(), clock, retentionMs: 60_000 });
   t.after(() => hub.close());
-  const coord = await spoke(t, hub, 'coord', 'coordinator');
-  await coord.waitForPresence(['coord']);
   const ui = await connectWsUi(t, hub);
+  await ok(ui, { type: 'role.set', session: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  await coord.waitForPresence(['coord']);
   const topic = await create(ui, 'Kept a while');
   for (const text of ['one', 'two', 'three']) await coord.call('send', { topic: topic.id, text });
   await ok(ui, { type: 'topic.read', topic: topic.id });
   assert.equal((await topicOf(ui, topic.id)).unread, 0);
 
-  clock += 120_000;
+  await clock.advance(120_000);
   assert.ok(hub.prune() >= 3, 'the old messages went');
   assert.deepEqual((await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: topic.id })).messages, []);
   await coord.call('send', { topic: topic.id, text: 'after the prune' });

@@ -3,9 +3,10 @@
 // `resolve` withdraws, closing cancels; approvals follow the sessions' states; role changes reach events; "needs you" is asks + approvals + waiting topics. A real hub
 // (in-process, or the daemon where the tracker and the adapters are needed), scripted spokes over MCP, a UI client
 // speaking the frames; nothing inside either side is reached into.
+import { FakeClock } from './fake-clock.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { connectUi, connectWsUi, sleep, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { inProcessSpoke, connectUi, connectWsUi, sleep, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 import type { Hub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
 
@@ -324,9 +325,17 @@ test('a launched session that renamed itself is one approval, with its attach co
   const { attach, sessionId } = (launched.value as { process: { attach: string; sessionId: string } }).process;
   const present = (name: string) => eventually(`${name} idle`, async () => ((await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' })).sessions.find((s) => s.name === name && s.state === 'idle') ? true : undefined));
   await present('coord-1');
+  // A polled idle may predate native turn completion. The mod's usage report is
+  // emitted even when its final idle repeats the hook's state (which emits no frame).
+  // Observe completion before another turn or its idle can erase the permission.
+  const completed = (from = 0) => ui.waitFor(f => f.type === 'session.usage' && f.sessionId === sessionId
+    && ui.frames.indexOf(f) >= from);
+  await completed();
+  const renameMark = ui.frames.length;
   // the session renames itself in a turn (the fake does what the text says; only the Coordinator may rename)
   await ok(ui, { type: 'topic.send', topic: 'general', text: 'rename to lead-1', to: ['coord-1'] });
   await present('lead-1');
+  await completed(renameMark);
 
   const mark = ui.frames.length;
   // the hook still names the launch name, and carries the launch's session id, as a real hook does after a rename
@@ -337,10 +346,11 @@ test('a launched session that renamed itself is one approval, with its attach co
   assert.equal(listed.needsYou, 1);
 });
 
+// T2: retention uses the complete clock and an in-process protocol peer.
 test('retention keeps an unanswered ask and its message; an answered one goes with its message (review of #33)', async (t) => {
-  let clock = Date.parse('2026-10-01T00:00:00Z');
-  const hub = await hubFor(t, { now: () => new Date(clock), retentionMs: 60_000 });
-  const coord = await spoke(t, hub, 'coord', 'coordinator');
+  const clock = new FakeClock(Date.parse('2026-10-01T00:00:00Z'));
+  const hub = await hubFor(t, { clock, retentionMs: 60_000 });
+  const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   await coord.waitForPresence(['coord']);
   const ui = await connectWsUi(t, hub);
   await ok(ui, { type: 'subscribe' });
@@ -348,7 +358,7 @@ test('retention keeps an unanswered ask and its message; an answered one goes wi
   const done = await ask(coord, 'general', 'Answered soon?', ['yes']);
   await ok(ui, { type: 'topic.answer', ask: done.ask, option: 1 });
 
-  clock += 120_000;
+  await clock.advance(120_000);
   hub.prune();
   const after = await inbox(ui);
   assert.deepEqual(after.asks.map((a) => a.id), [open.ask], 'the open ask is still in the inbox');

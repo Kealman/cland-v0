@@ -32,9 +32,10 @@ export const realClock: Clock = {
   clearInterval: cancel,
 };
 
-/** The old timestamp-only seam remains for existing tests; never combine it with a Clock. */
-export type ClockOptions = { clock?: Clock; now?: never } | { clock?: never; now?: () => Date };
+/** Timestamps and scheduling enter together; legacy timestamp-only injection is refused. */
+export type ClockOptions = { clock?: Clock; now?: never };
 export function resolveClock(options: ClockOptions): Clock {
   if (options.clock && options.now) throw new Error('pass clock or now, never both');
-  return options.clock ?? (options.now ? { ...realClock, now: options.now } : realClock);
+  if (options.now !== undefined) throw new Error('pass a complete Clock, never a bare now callback');
+  return options.clock ?? realClock;
 }

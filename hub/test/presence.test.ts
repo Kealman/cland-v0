@@ -1,6 +1,7 @@
+import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startHub, spawnSpoke, sleep, waitForAbsence, type Session } from './harness.ts';
+import { inProcessSpoke, startHub, spawnSpoke, eventually, waitForAbsence, type Session } from './harness.ts';
 
 const statusIn = (viewer: Session) => async (name: string) => (await viewer.call<{ sessions: Array<{ name: string; status: string | null }> }>('who')).sessions.find((d) => d.name === name)?.status;
 
@@ -63,13 +64,14 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
   }
 });
 
-test('the status follows a rename, and a name unseen for longer than the queue TTL comes back with none', async () => {
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
+test('the status follows a rename, and a name unseen for longer than the queue TTL comes back with none', async t => {
   // A fake clock: "unseen for longer than the TTL" is the hub's clock moving past it once the hub has seen the
   // session leave, never a real-time sleep racing the hub's processing of the close on a loaded machine.
-  let now = Date.parse('2026-10-08T12:00:00Z');
-  const hub = await startHub({ queueTtlMs: 60_000, now: () => new Date(now) });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const clock = new FakeClock(Date.parse('2026-10-08T12:00:00Z'));
+  const hub = await startHub({ queueTtlMs: 60_000, clock });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  let beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.waitForPresence(['alpha', 'beta']);
@@ -82,13 +84,13 @@ test('the status follows a rename, and a name unseen for longer than the queue T
     // and a reconnect right after that finds nothing either (the stale line was dropped, not parked)
     await beta.close();
     await waitForAbsence(alpha, 'pool-7');
-    now += 61_000;
-    beta = await spawnSpoke({ hub, name: 'pool-7', sessionId: 'sess-b' });
+    await clock.advance(61_000);
+    beta = await inProcessSpoke(t, { hub, name: 'pool-7', sessionId: 'sess-b' });
     await alpha.waitForPresence(['pool-7']);
     assert.equal(await statusOf('pool-7'), null);
     await beta.close();
     await waitForAbsence(alpha, 'pool-7');
-    beta = await spawnSpoke({ hub, name: 'pool-7', sessionId: 'sess-b' });
+    beta = await inProcessSpoke(t, { hub, name: 'pool-7', sessionId: 'sess-b' });
     await alpha.waitForPresence(['pool-7']);
     assert.equal(await statusOf('pool-7'), null, 'the stale line does not resurrect on the next blip');
   } finally {
@@ -98,28 +100,33 @@ test('the status follows a rename, and a name unseen for longer than the queue T
   }
 });
 
-test('a heartbeat keeps a long-lived session inside the status window; a session that never pinged loses its line past the window', async () => {
+// T2: hub time is driven by FakeClock; protocol peers run in-process.
+test('a heartbeat keeps a long-lived session inside the status window; a session that never pinged loses its line past the window', async t => {
   // A fake clock: the window is measured against last_seen, which a heartbeat touches.
-  let now = Date.parse('2026-10-08T12:00:00Z');
-  const hub = await startHub({ queueTtlMs: 60_000, now: () => new Date(now) });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const clock = new FakeClock(Date.parse('2026-10-08T12:00:00Z'));
+  const hub = await startHub({ queueTtlMs: 60_000, clock });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
   const keepaliveMs = 50;
-  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', keepaliveMs }); // pings 20× a second
-  let quiet = await spawnSpoke({ hub, name: 'quiet', sessionId: 'sess-q' }); // the default 30 s heartbeat: no ping during this test
+  let beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b', keepaliveMs }); // pings 20× a second
+  let quiet = await inProcessSpoke(t, { hub, name: 'quiet', sessionId: 'sess-q' }); // the default 30 s heartbeat: no ping during this test
   try {
     await alpha.waitForPresence(['alpha', 'beta', 'quiet']);
     await beta.waitForPresence(['beta']);
     await quiet.waitForPresence(['quiet']);
     await beta.call('status', { text: 'still here' });
     await quiet.call('status', { text: 'went quiet' });
-    now += 61_000; // both hellos are now older than the window
-    await sleep(20 * keepaliveMs); // Twenty heartbeat opportunities at the advanced clock; quiet never pings.
+    await clock.advance(61_000); // both hellos are now older than the window
+    // Native spoke keepalives use real transport time; observe the ping receipt, not a delay.
+    await eventually('beta keepalive refreshed last_seen at the advanced clock', () =>
+      hub.core.store.knownSessions(clock.now().getTime()).some(s => s.name === 'beta') || undefined);
+    assert.equal(hub.core.store.knownSessions(clock.now().getTime()).some(s => s.name === 'quiet'), false,
+      'the control arm has not sent a keepalive');
     await beta.close();
     await quiet.close();
     await waitForAbsence(alpha, 'beta');
     await waitForAbsence(alpha, 'quiet');
-    beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
-    quiet = await spawnSpoke({ hub, name: 'quiet', sessionId: 'sess-q' });
+    beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
+    quiet = await inProcessSpoke(t, { hub, name: 'quiet', sessionId: 'sess-q' });
     await alpha.waitForPresence(['beta', 'quiet']);
     const statusOf = statusIn(alpha);
     assert.equal(await statusOf('beta'), 'still here', 'the heartbeat kept last_seen inside the window');
