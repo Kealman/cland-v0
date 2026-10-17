@@ -3,7 +3,7 @@ id: T-748
 kind: task
 title: "Runtime resource tripwire in the T1 and T2 phases: a test that really spawns, binds or opens a socket fails by name"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T19:52:34.139Z
+updated: 2026-10-17T19:54:34.572Z
 ---
 
 ## Summary
@@ -37,8 +37,10 @@ Tripped calls fail the test with file, test name, resource and stack, and the ru
   - verified: rev-30 [reviewer] · run rev-20261017-748-source-correction · 2026-10-17T18:02:21.251Z · commit 34ecdf01cfe76d020a85ee06e5ab3985c78f8f25
   - done: impl-748 · 2026-10-17T18:51:55.677Z
   - verified: rev-30 [reviewer] · run rev-20261017-748-runtime-fix-delta · 2026-10-17T18:53:26.376Z · commit 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
+  - verified: rev-30 [reviewer] · run rev-20261017-748-final · 2026-10-17T19:54:33.823Z · commit 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
 - [x] C2. An integrated cover at the merge head lists every current T1/T2 file that trips. The review request lists them, each routed to a fix or a retag.
-  - done: impl-748 · 2026-10-17T19:22:58.228Z
+  - done: impl-748 · 2026-10-17T19:53:42.778Z
+  - verified: rev-30 [reviewer] · run rev-20261017-748-final · 2026-10-17T19:54:33.823Z · commit 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
 
 ## Comments
 
@@ -271,3 +273,51 @@ Evidence not clear; failC2 pending exact failure disposition and complete accept
 Durable review A-4711.
 
 Criteria: C2 failed (A-4710 exits1 on suite-close shard-2 readiness and does not reach Neovim; await exact-case disposition and updated complete accepted trip list/routing, including four added hub files.).
+
+### rev-30 · 2026-10-17T19:54:33.823Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-748-final
+commit: 2ef020dc38bbf45b5b79b6ed5467e305209e4e87
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-748 final evidence — clear
+
+Exact reviewed head2ef020dc38bbf45b5b79b6ed5467e305209e4e87 remains unchanged branch tip. Current source rev-20261017-748-runtime-fix-delta/A-4708; earlier runtime failures remain historical, not relabeled green. Final evidence scope; no Reviewer execution, edits or delegation.
+
+## Standards and Spec
+No remaining task findings. C1/C2 verified across cleared source, accepted Mac regression evidence and the complete exact-head Linux receipt. The tripwire still installs before T1/T2 worker imports, preserves direct/custom-promisified child entry behavior in report-only mode, uses canonical file attribution and public-context/file-only fallback, retains the exact synchronous documented CLI exception and leaves T3/T4 native. Enforce receipts remain authoritative after assertion quarantine or caught/reset errors; each load repetition has a separate checked receipt forwarded into phase reporting.
+
+All owned source/runtime fixes are observed green: copied harness includes tier-cli; actual package/descendant coverage proof passes4.675281354s. Four independent mode/catch repetition proofs pass2.657988432/2.335471351/2.607721853/2.331137423s, all below the legacy5s gate. No allowance increase was used. All12runner+2context identities pass5/5,70/70 owned repetitions. Ordinary touched tests16cases (12runner,2context,2coverage) have positive timing receipts. Prior Mac correction log has337accepted passes; no assertion or lifecycle receipt boundary was dropped to obtain the green result.
+
+## Accepted full execution
+Authorized unchanged-head retry718eb39d-5af0-4e34-aa81-27133d8148e9/A-4716 exits0/full:2484total/2476pass/0fail/0cancelled/8prerequisite skips. All selected phases complete:190/190hermetic,1900machine/1895pass5skip,394Neovim/391pass3skip. Full Neovim actually executes, so no deferred-phase exception is needed.
+
+Five hub skips are macOS sandbox(2),macOS inhibitor(1; reporter has no reason),absent real OpenCode(2); three Neovim QA sandbox/network cases need macOS sandbox-exec. None is an owned runtime-contract skip. No hard duration-budget or load-gate failure. Report-only tier overages, missing baselines and T3 ratchet4077.687vs4053.811 remain disclosed, not asserted clean or refreshed.
+
+Linuxx64 6.8.0-142-generic,c-8lon1,Node24.21.0/Neovim0.12.5,2workers,lifetime1735s/cost0.1205. Suite1669.52s,peak1mload9.40,load-gate extra11.21s; phases36.55/1473.36/159.59s; host check reused canonical tree6b5097f19ba2ce335e2c451c520413e47634ff79.
+
+## Complete C2 inventory and routes
+A-4717's trips array independently equals every raw A-4716 top-level tier-mismatch row, in order:497 unique file/test/resource rows across61files, all report-only. Hub363rows/49files; Neovim134rows/12files. Tier totals42T1rows/455T2rows. Counts are diagnostic resource rows, not distinct test counts.
+
+Route map exactly equals the61-file set. Independently checked each route's row count, test-name/resource sets, action and nonempty owners:
+-37R1 fixture-fact files→T-750/T-751;
+-9R2 duration/history-context files→T-752;
+-3R3 native-Git files→T-753;
+-12R4Neovim files→T-754.
+A-4718 gives the complete per-file table. All four newly observed hub files are included:claude-code-schedule,config-set,inbox-workload,suite-wait-metrics. The old49hub-only inventory is not substituted for the61-file final inventory.
+
+All six R0 files executed asT3 with zero trips, independently confirmed from timings:lead-permissions2cases,release-item8,suite-check3,suite-dry-run4,territory-cli14,verify-all1. suite-queue-policy also no longer trips. Current hub population has one fewer doctor-spawn row than prior red A-4712 but the same49file set; this is an observed sample difference, not proof that route debt disappeared.
+
+Primary Coordinator0056b2a8 read directly assigns all12Neovim files to T-754(S,E-677stage2): do not retag; their documented stub-hub/headless-Neovim client launch stays allowedT2, add the documented client exception and inject/lazify process-list probing. Earlier retag proposal is superseded. This diagnostic follow-up needs no source change in T-748. Green report-only execution proves collection/reporting, not present T1/T2 resource purity or readiness to enable enforcement before routed fixes.
+
+Primaryedaa3224/d9106bc2 authorized the unchanged-head retry and classified prior sole readiness redT-746. New green receipt resolves failed execution without needing that red accepted as green. Primaryaf898d47 requests final same-head verdict and orders merge after the next hub restart together with T-744; review does not bypass that sequence.
+
+Standards0/Spec0 remaining task findings. Final clear; verify all C1/C2 at2ef020dc. No per-item QA or further task run required.
+Durable review A-4719.
+
+Criteria: C1 verified, C2 verified.
