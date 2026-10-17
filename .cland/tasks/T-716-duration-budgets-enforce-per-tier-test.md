@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:44.270Z
-updated: 2026-10-16T20:00:52.890Z
+updated: 2026-10-17T01:52:35.917Z
 ---
 
 ## Summary
@@ -43,3 +43,9 @@ Decision 3: budgets report for one week after `tiers.json` lands (T-683), then r
 ## Blocked by
 
 T-683 (per-tier budgets, report mode), T-679 merged seven days before the mode switch is committed.
+
+## Comments
+
+### coord · 2026-10-17T01:52:35.917Z
+
+Coordinator decision (D53 detail), 2026-10-17 01:53Z: the existing duration allowances in hub/test/durations.json become legacy allowances, owned by E-677 and expiring when E-677 closes, with no calendar date. Reasons and seconds are kept. New allowances keep the 7-day expiry with an open owner ticket. Budget reports list the legacy allowances separately (count and total seconds), so E-677's progress shows as that number falling. T-716's enforcement exempts legacy allowances until E-677 closes. Without this, 7-day expiries would need weekly mass renewal and would break runs once T-716 enforces.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-413
 branch: t/T-689-cland-verify-all-is-reserved-to-the
 created: 2026-10-16T19:59:28.743Z
-updated: 2026-10-17T01:51:08.768Z
+updated: 2026-10-17T03:26:06.659Z
 ---
 
 ## Summary
@@ -32,14 +32,18 @@ A `verify` request with mode `all` (CLI `all` or `--all`, MCP `mode: "all"`) fro
 - [x] C1. An Implementer's `cland verify all` and MCP `verify` with mode `all` are refused with `verify-all-reserved` and leave no queue entry, proved by CLI and frame tests.
   - done: impl-689 · 2026-10-16T23:43:09.841Z
   - verified: rev-30 [reviewer] · run rev-20261017-689-final · 2026-10-17T01:51:07.713Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
+  - verified: rev-30 [reviewer] · run rev-20261017-689-merged-final · 2026-10-17T03:26:05.993Z · commit b0896ddba41244e18d3eafcbe533032ecb877aff
 - [x] C2. The Coordinator's and the human shell's `all` and any `--occasion` request are admitted, proved by the same tests.
   - done: impl-689 · 2026-10-16T23:43:10.056Z
   - verified: rev-30 [reviewer] · run rev-20261017-689-final · 2026-10-17T01:51:07.713Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
+  - verified: rev-30 [reviewer] · run rev-20261017-689-merged-final · 2026-10-17T03:26:05.993Z · commit b0896ddba41244e18d3eafcbe533032ecb877aff
 - [x] C3. `docs/agents/tests.md`, the role clauses and `docs/spec/v0.1.4.md` describe the reserved mode and the diff-selected second receipt, and `roles.test.ts` passes its byte headroom.
   - done: impl-689 · 2026-10-16T23:43:10.329Z
   - verified: rev-30 [reviewer] · run rev-20261016-689-source · 2026-10-16T23:44:50.171Z · commit 19be0a95a8303ecca6ffef474a2d4790a920c5b2
   - verified: rev-30 [reviewer] · run rev-20261017-689-executor-correction · 2026-10-17T01:08:48.123Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
   - verified: rev-30 [reviewer] · run rev-20261017-689-final · 2026-10-17T01:51:07.713Z · commit 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3
+  - verified: rev-30 [reviewer] · run rev-20261017-689-dryrun-merge · 2026-10-17T02:43:10.982Z · commit b0896ddba41244e18d3eafcbe533032ecb877aff
+  - verified: rev-30 [reviewer] · run rev-20261017-689-merged-final · 2026-10-17T03:26:05.993Z · commit b0896ddba41244e18d3eafcbe533032ecb877aff
 
 ## Comments
 
@@ -142,5 +146,55 @@ C3: source/docs and role-clause evidence A-4258/A-4263 remain unchanged; both de
 
 All C1-C3 claimant done marks are present. Verify all; Standards and Spec have no findings. Linux x64 c-8 lon1, two workers, suite 2397.04 seconds, peak load 10.09, reported lifetime 2472 seconds/cost $0.1717. No further task run or per-item QA required. Reviewer performed only read-only evidence inspection.
 Review artifact A-4273.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-17T02:43:10.982Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-689-dryrun-merge
+commit: b0896ddba41244e18d3eafcbe533032ecb877aff
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-689 merge-resolution source clear at b0896ddba41244e18d3eafcbe533032ecb877aff, parents prior final-clear 2e2015bec656fda4ff9a5abb7356ca5a17b4f3a3 and incoming dev 341e5ff2eef02eaed1367d85bcda733b2c63a428. Origin tip matches. Read primary Coordinator 0be14c58 authorizing this conflict pass, matching-file checks and fresh verification. Standards and Spec: no findings.
+
+The dispatcher resolution preserves T-681's optional report/topic fallback and report-free dry-run send/artifact exemption. That exemption is conditional only on dryRun without report; stable caller identity, the current hub-held Coordinator/occasion restriction on explicit all, and existing occasion authorization remain outside it. dryRun is forwarded to Suites.start, preserving the early no-job preview return. VerifyAllReserved still produces the typed refusal with automatic selection before initial scheduler entry and on reauthorization failure. T-635 models.list is retained in the session CLI frame set and its native handler.
+
+The existing T2 test adds report-free auto-preview success with dryRun true and unchanged empty suites/queue, followed by report-free explicit-all preview refusal with verify-all-reserved and still-empty state. Original CLI/frame/human/Coordinator assertions remain. No new process, timing wait, test file or allowance is added by the manual resolution.
+
+Independent literal identifier inventory confirms all 17 matching hub/Neovim files named by the conflict search. A-4281 records every one green once serially below load 15, plus the pure suite-tier-report file (18 files total); verify-all 1.80s, dry-run 2.12s, models 8.97s, shell 30.07s. Committed-head typecheck and tier lint pass recorded; independent whitespace check passes. Incoming tier map is preserved exactly with only verify-all.test.ts T2 added, keys sorted. Shipped/project role clause bytes match the prior task parent.
+
+C3 documentation/headroom source proof refreshed. C1/C2 and final merged-tree runtime gate remain pending fresh exact-head mode-free droplet verification. A-4270/A-4273 are historical prior-head green/final evidence, not verification of this merge. The batch restart/rollout remains Coordinator-owned. Reviewer executed only read-only inspection; no tests/compiler/provider and no per-item QA.
+Review artifact A-4282.
+
+Criteria: C3 verified.
+
+### rev-30 · 2026-10-17T03:26:05.993Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-689-merged-final
+commit: b0896ddba41244e18d3eafcbe533032ecb877aff
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+T-689 final merged-head evidence clear at unchanged source-reviewed b0896ddba41244e18d3eafcbe533032ecb877aff. Audited complete A-4289 / a43a1fe2-2e27-4207-aaac-5e84161308f7 and matching passed task verification record. This is the fresh gate for source resolution A-4282, not reuse of A-4270.
+
+Normal mode-free verification selected full for shared protocol. Full hub+Neovim exits 0: 2454 tests, 2446 pass, zero fail, eight prerequisite/platform skips. Free phase 44 pass; machine 2011 pass/5 skips; Neovim 391 pass/3 skips. No hard duration-budget or load-gate failure.
+
+C1/C2: verify-all T2 case passes ordinarily (3.119262026 seconds) and 5/5 repetitions. It preserves the original session CLI/frame refusal/no-queue, human and current-Coordinator admission proofs; its merge additions prove report-free auto preview returns dryRun true with empty state, while report-free all preview is still refused as verify-all-reserved. The real MCP selection-report contract passes with its typed refusal/no extra suite. All suite-close occasion/batch cases pass, retaining QA epic/Coordinator authority and unauthorized/task-head/non-full/fresh-fetch checks.
+
+All 17 independently inventoried matching merge-review files execute in this receipt. In particular, the four T-681 dry-run/report/projection/legacy cases pass (CLI 0.964997235 seconds), six T-635 model cases pass, full Neovim shell executes, and both corrected executor fixture cases plus source contract pass. This covers the combined model handler, report-free permission exemption, reserved-all guard and dryRun forwarding in the exact merged tree.
+
+C3: both default/project clause snapshots pass again (2.526/2.538 seconds), including byte headroom and reserved-mode/diff-second-receipt wording; source/docs are unchanged from A-4282. Current task view has all claimant done marks. Verify C1-C3; Standards and Spec have no findings.
+
+Linux x64 c-8 lon1, two workers, suite 2430.44 seconds, peak 9.74, reported lifetime 2502 seconds/cost $0.1738. Final clear at this head; Coordinator owns the subsequent batch merge/restart. No further task run or per-item QA required. Reviewer performed only read-only evidence inspection.
+Review artifact A-4290.
 
 Criteria: C1 verified, C2 verified, C3 verified.

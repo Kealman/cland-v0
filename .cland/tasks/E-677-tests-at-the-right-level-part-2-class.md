@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-16T20:09:42.596Z
+updated: 2026-10-17T01:52:35.818Z
 ---
 
 ## Summary
@@ -79,3 +79,9 @@ stages:
       - - T-708
       - - T-709
 ```
+
+## Comments
+
+### coord · 2026-10-17T01:52:35.818Z
+
+Coordinator decision (D53 detail), 2026-10-17 01:53Z: the existing duration allowances in hub/test/durations.json become legacy allowances, owned by E-677 and expiring when E-677 closes, with no calendar date. Reasons and seconds are kept. New allowances keep the 7-day expiry with an open owner ticket. Budget reports list the legacy allowances separately (count and total seconds), so E-677's progress shows as that number falling. T-716's enforcement exempts legacy allowances until E-677 closes. Without this, 7-day expiries would need weekly mass renewal and would break runs once T-716 enforces.
