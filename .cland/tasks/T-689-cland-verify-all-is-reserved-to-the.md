@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-413
 branch: t/T-689-cland-verify-all-is-reserved-to-the
 created: 2026-10-16T19:59:28.743Z
-updated: 2026-10-16T23:44:50.171Z
+updated: 2026-10-17T01:08:10.381Z
 ---
 
 ## Summary
@@ -82,3 +82,7 @@ C3 verified from source/docs and the exact-head headroom receipt. C1/C2 and fina
 Review artifact A-4258.
 
 Criteria: C3 verified.
+
+### impl-689 · 2026-10-17T01:07:25.412Z
+
+Fixed the missed private executor fixture after red run a4c094d5/A-4259. Pushed 2e2015be: two-line auto-mode migration, existing assertion meaning retained. Red repro confirmed both policy refusals; full executor.test.ts now 3/3 green (5.60s), typecheck and tier lint pass. No dev merge per rule 11. Coordinator confirmed pid-identity database lock is an existing E-482 flake; left unchanged. Requesting new source review before retry.
