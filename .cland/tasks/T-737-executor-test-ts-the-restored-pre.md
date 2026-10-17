@@ -3,8 +3,9 @@ id: T-737
 kind: task
 title: "executor.test.ts: the restored pre-executor job case reads job.pid before the launched worker reports it (load)"
 state: open
-status: review
+status: ready
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by: []
 topic: topic-440
 branch: t/T-737-executor-test-ts-the-restored-pre
 created: 2026-10-17T14:18:58.698Z
-updated: 2026-10-17T14:22:22.534Z
+updated: 2026-10-17T14:25:52.027Z
 ---
 
 ## Summary
@@ -30,7 +31,9 @@ Make the fixture's launch wait for the hub's own "running with pid" receipt (sta
 
 ## Acceptance criteria
 
-- [ ] C1. The case passes 5/5 on the Mac and in the task's droplet verify, with no new real-time wait and its assertions unchanged.
+- [x] C1. The case passes 5/5 on the Mac and in the task's droplet verify, with no new real-time wait and its assertions unchanged.
+  - done: impl-737 · 2026-10-17T14:25:28.446Z
+  - verified: rev-31 [reviewer] · run rev-20261017-737-final · 2026-10-17T14:25:51.610Z · commit 76d33d442cccecec2478e1aa9648d260056dc773
 
 ## Comments
 
@@ -50,3 +53,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards 0 / Spec 0 findings, A-4533. Only executor.test.ts changes. Affected legacy restore case opts into bounded hub.status observation for exact run id, running state and PID before ownership/return; no fixed elapsed delay, new timing knob or allowance. Original PID/stop/DB rewrite/finish/restart/local platform/exactly-once assertions remain unchanged. Existing T3 lifecycle reason applies and is named in the case. A-4530 reports whole-file Mac 5/5, 3/3 per run, load 3.03–3.63, static checks green; raw transcripts not included in that summary. Origin tip matches requested commit. C1 execution verification remains pending exact-head droplet and supporting Mac receipt audit. No Reviewer edits/tests/delegation.
+
+### impl-737 · 2026-10-17T14:25:29.096Z
+
+Exact reviewed head 76d33d442cccecec2478e1aa9648d260056dc773 passed droplet verify d119d24e-8214-41db-bcbf-d5d70f2ff7e4 (A-4539): hub-selected, 37/37 pass, zero failures/cancelled/skipped/todo; linux x64, c-8 lon1, lifetime 123s, cost $0.0086, suite duration 52.67s, peak 1m load 2.63. Mac 5/5 whole-file transcripts A-4535 already audited by Reviewer. C1 marked done; head unchanged, ready for final evidence verdict.
+
+### rev-31 · 2026-10-17T14:25:51.610Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-737-final
+commit: 76d33d442cccecec2478e1aa9648d260056dc773
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; Standards 0 / Spec 0 findings, A-4540. A-4535 independently audited five complete Mac whole-file transcripts, each 3/3 with no failures/skips or asynchronous-activity diagnostics. Exact-head A-4539 / d119d24e finishes exit 0: selected hub 25/25 and Neovim smoke 12/12, total 37 passes, zero failures/skips. Affected legacy restore case runs and passes at 5.351512243 s; duration regression notice disclosed, no sub-five-second claim or C1 ceiling. Source A-4533 remains current at unchanged origin head: exact running+PID observation replaces admission timing inference, assertions preserved. C1 verified, no further run or per-item QA needed. No Reviewer edits/tests.
+
+Criteria: C1 verified.

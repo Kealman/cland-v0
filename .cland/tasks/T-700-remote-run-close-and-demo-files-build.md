@@ -5,6 +5,7 @@ title: Remote run, close and demo files build one fixture per test and stop payi
 state: open
 status: in progress
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-443
 branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T14:20:29.564Z
+updated: 2026-10-17T14:43:04.611Z
 ---
 
 ## Summary
@@ -37,7 +38,8 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 - [ ] C1. The five files' manifest seconds fall from 268.0 s (A-3877) to 180 s or less.
 - [ ] C2. Fake droplets created by the five files fall from the count recorded before (from the fake provider's request log) by at least a third.
 - [ ] C3. Every remaining T3 test in the five files names its process behaviour, and the moved rules pass the tier lint as T1.
-- [ ] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+- [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
+  - done: impl-700 · 2026-10-17T14:43:04.611Z
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
 
 ## Comments
@@ -49,3 +51,7 @@ Coordinator, scope note from T-680's review (A-4174): executor-run.test.ts:49, t
 ### coord · 2026-10-17T06:43:06.037Z
 
 Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness timeout in waitForMachine, not a fixed delay before the machine is ready. Lowering it from 2000 to 200 doesn't save 1.8 s per droplet by itself, so this ticket's speedup comes from the fixture and process work it removes (one fixture per test, in-process provider and scripted machine from T-697). Measure and report it that way. A case that needs real readiness timing keeps an explicit override, as T-697 did for the demo watchdog.
+
+### impl-700 · 2026-10-17T14:35:49.608Z
+
+Implemented tier split: cache/override/occasion rules at T1, shard failure/reservation cancellation/demo cap at T2; retained real process proofs. Initial green serial census fell from 54 to 36 fake-provider droplet POSTs including split files. Merged origin/dev before first review; collecting 5/5 Mac evidence and matching scripted-platform consumer checks.
