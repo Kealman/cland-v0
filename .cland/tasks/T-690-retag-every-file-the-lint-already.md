@@ -3,7 +3,7 @@ id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T16:09:47.954Z
+updated: 2026-10-17T16:13:19.159Z
 ---
 
 ## Summary
@@ -31,11 +31,13 @@ Retag every hub file T-682 reports as T1- or T2-qualifying, and every Neovim stu
 
 ## Acceptance criteria
 
-- [ ] C1. Every file the lint reports as qualifying for T1 or T2 is tagged so, and the lint reports zero findings for T1 and T2 files, proved by the lint run at the head.
-  - failed: rev-30 [reviewer] · 2026-10-17T16:09:47.954Z · note Sixteen proposed lower-tier entries still use forbidden real fixture resources, process lifecycles or timers through helpers; retain prior tiers and refresh eligibility/baseline before re-review.
+- [x] C1. Every file the lint reports as qualifying for T1 or T2 is tagged so, and the lint reports zero findings for T1 and T2 files, proved by the lint run at the head.
+  - done: impl-690 · 2026-10-17T16:11:10.130Z
+  - verified: rev-30 [reviewer] · run rev-20261017-690-source-correction · 2026-10-17T16:13:19.159Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
 - [ ] C2. A full droplet run at the head is green with the retagged T1 files in the hermetic phase.
 - [x] C3. The per-tier file counts, manifest seconds and T1+T2 share are recorded on this item and on the epic as the baseline.
-  - done: impl-690 · 2026-10-17T16:02:08.360Z
+  - done: impl-690 · 2026-10-17T16:11:10.736Z
+  - verified: rev-30 [reviewer] · run rev-20261017-690-source-correction · 2026-10-17T16:13:19.159Z · commit 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
 
 ## Comments
 
@@ -105,3 +107,36 @@ Standards:3 medium findings. Spec: lower-tier eligibility and final baseline nee
 Durable source review A-4609.
 
 Criteria: C1 failed (Sixteen proposed lower-tier entries still use forbidden real fixture resources, process lifecycles or timers through helpers; retain prior tiers and refresh eligibility/baseline before re-review.).
+
+### rev-30 · 2026-10-17T16:13:19.159Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-690-source-correction
+commit: 9ab2c07e6c3c0e3451f3014d422a13b35f79fb33
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-690 corrected source review — clear
+
+Head9ab2c07e6c3c0e3451f3014d422a13b35f79fb33; fixed incoming dev61d7d5711e6fb98142cec4a2ec078436bf6c93c5. Prior rejected headcd137387. Scope full (source correction); read-only review, no Reviewer test execution.
+
+## Standards
+No remaining findings. The entire correction is sixteen tier values restored exactly to incoming dev, independently compared with M1–M3 in A-4609. No later dev merge, test code, assertion, duration, entry population or other file changes. The final manifest has30 retags:10T1 and20T2. The new T1 set is close-shards, executor-admission, fake-harness-capabilities, journal-subagents, mod-bridge, roles-editor, rulebook, suite-tiers, thread-seed-plan and tracker-container-source. Source inspection distinguishes those pure/in-process/filesystem paths from the real sockets, native children/locks and timer paths now retained.
+
+All nine M1 resource cases, both M2 native lifecycle cases and five M3 timer cases retain their previous tiers. The explicit22 exceptions also include the original native T3 headers, purpose-based qa-shipped T4 and spoke-readiness/T-743. Other T4 entries remain untouched. T-744 tracks transitive fixture lint visibility; no missing scanner feature is silently treated as a resource exemption.
+
+## Spec/evidence
+C1 verified against Coordinator exception policy5681ace2 and wall-clock scope clarificationc71eed1a. A-4611 lint.json contains305 rows. Every candidate qualifying T1/T2 is either among the30 retags or22 documented exceptions. Changed entries have zero tier-resource findings;29 existing wall-clock findings remain (19 assertion,10 wait), explicitly excluded from this manifest-only criterion and listed in A-4608. Existing eight T-741 files are unchanged.
+
+A-4611's34 raw local logs independently show225 passes,zero failures/cancellations/skips: all30 changed whole files once, plus four additional suite-tiers runs (five total). The suite-tiers fixture includes frozen legacy/live plan assertions, and static typecheck/tier/report-lint receipts are supplied. Final report lint is329 findings in187 files, report-only. These local receipts do not establish C2 or a full hermetic phase.
+
+C3 verified: independently recomputed unchanged duration data exactly matches A-4608. Before T1/T2/T3/T4 counts31/46/222/6 and seconds19.180411/204.968503/4358.592670/83.888367. After41/61/197/6 and44.279993/350.370445/4188.091146/83.888367. Total4666.629951 seconds across305 files; suite-remote-log has no timing and is counted only as a file. Lower-tier manifest share4.803228804%→8.456861636%, lower seconds224.148914→394.650438. The item correction and Coordinator's E-676 comment at16:10:20.206Z both supersede the old46-retag baseline. This is manifest accounting, not observed full-run wall time.
+
+Source clear, C1/C3 verified; Standards0/Spec0 findings. C2 remains unchecked/unverified pending the normal mode-free exact-head droplet result, which must run full and show the retagged T1 entries in the hermetic phase. Source clearance does not lift the Coordinator's verification submission hold. No per-item QA requirement.
+
+Durable review A-4612.
+
+Criteria: C1 verified, C3 verified.

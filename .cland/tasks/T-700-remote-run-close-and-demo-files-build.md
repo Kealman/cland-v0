@@ -3,7 +3,7 @@ id: T-700
 kind: task
 title: Remote run, close and demo files build one fixture per test and stop paying 2 s per fake droplet
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-443
 branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T14:58:54.011Z
+updated: 2026-10-17T16:27:11.715Z
 ---
 
 ## Summary
@@ -35,14 +35,19 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 
 ## Acceptance criteria
 
-- [ ] C1. The five files' manifest seconds fall from 268.0 s (A-3877) to 180 s or less.
+- [x] C1. The five files' manifest seconds fall from 268.0 s (A-3877) to 180 s or less.
+  - done: impl-700 · 2026-10-17T16:10:33.725Z
 - [x] C2. Fake droplets created by the five files fall from the count recorded before (from the fake provider's request log) by at least a third.
   - done: impl-700 · 2026-10-17T14:58:54.011Z
+  - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [x] C3. Every remaining T3 test in the five files names its process behaviour, and the moved rules pass the tier lint as T1.
   - done: impl-700 · 2026-10-17T14:58:30.836Z
+  - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-700 · 2026-10-17T14:43:04.611Z
+  - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-17T16:16:16.180Z · note The moved held-size reservation test can deadlock teardown on pre-release assertion failure because its release hook runs after fixture stop/join; correct ownership and provide controlled failure-path proof before new-head review.
 
 ## Comments
 
@@ -57,3 +62,92 @@ Coordinator correction from T-697: CLAND_TEST_DROPLET_MACHINE_MS is a readiness 
 ### impl-700 · 2026-10-17T14:35:49.608Z
 
 Implemented tier split: cache/override/occasion rules at T1, shard failure/reservation cancellation/demo cap at T2; retained real process proofs. Initial green serial census fell from 54 to 36 fake-provider droplet POSTs including split files. Merged origin/dev before first review; collecting 5/5 Mac evidence and matching scripted-platform consumer checks.
+
+### rev-30 · 2026-10-17T16:16:16.180Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-700-source
+commit: 5fe5c0c06c7a4701f3ea1c97192cfad33f80cdc1
+scope: full
+findings: [{"severity":"medium","text":"M1: the provider-size barrier release is registered with native t.after after integrated() installed the ownership hook. If an assertion fails before line46 releases the barrier, ownership teardown can await hub stop/Suites.close joining the held reservation before the later native release hook can run. Register the release in the fixture resource phase before stop/join, and prove pre-release assertion/cancellation teardown completes with no retained resources.","file":"hub/test/suite-close-component.test.ts","line":37}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-700 full source review — not clear
+
+Head5fe5c0c06c7a4701f3ea1c97192cfad33f80cdc1; fixed incoming devbc24ad66e0981cfb5f32ae5245143096bccb4ca4. All20 changed files reviewed, including the adjacent scripted-platform correction. Read-only review; no Reviewer execution or delegation.
+
+## Standards
+Medium M1 — suite-close-component.test.ts:37. The moved held-provider-size cancellation test registers release.resolve with a native t.after after integrated() has installed fixture ownership cleanup. The first ownership hook runs resources/hub disposal before the later native hook. On a failure while sizes is held (before normal release at46), stop can join the unfinished reservation and prevent the release hook from running. process-cleanup.ts:56–64/70–85 and Suites.close show the ordering. The Implementer independently confirmed this path in369aec21 and is correcting it. Use onCleanup/resource ownership to release before stop/join; supply a controlled pre-release assertion failure/cancellation teardown receipt, plus corrected whole-file5/5. This is source-path evidence, not a claimed Reviewer reproduction. Normal successful files do not exercise it.
+
+No other source finding. The occasion rule extraction preserves the exact role predicate/error and call location; callerNow is still read at authorization. New T1 executor/stage policy tests use suiteUnit semantic receipts, injected candidate facts, FakeClock and no provider creates. machineReceiptsOnly remains test-only; its default preserves existing provider behavior. The new component files retain real in-process frame/provider boundaries. Retained T3 headers identify actual worker delivery, provider loss/cancel, crash/restart, watchdog and recorder behavior. Added done-file/PID observations obey the exact-boundary rules and preserve final assertions.
+
+The delivery watcher is installed before checking its release file, so an early release is not missed; onCleanup owns its failure release before fixture disposal. Shared subcase fixtures use fresh run IDs and reset start/checkout faults. The host-marker assertion remains after f.result→log read, unchanged in meaning; diagnostics are failure-only and awaited fixture stop preserves persisted-token scanning. The200ms setting is correctly described as a readiness timeout, with2000ms retained for the two real watchdog scenarios.
+
+## Spec and assertion mapping
+The A-4610 declaration map was checked against all changed test hunks. Executor provenance/cache/override permutations, failed/unreported stage supersession, cap/slots and occasion authorization are proved at lower seams, with representative real frames retained. Real delivery cleanliness/staged-source rejection, host receipt reuse, changed-checkout typecheck failure, package failure, incremental UTF-8/report uniqueness, lost reply/marker recovery, provider disappearance/cancel, crash refs/lease/pgid preservation and complete resource cleanup assertions remain. Demo's duplicate successive-lease case is folded into the first real command/restart case, retaining explicit commit, exit255, newest lease identity and deletion. No requested behavior claim is otherwise dropped; M1 prevents accepting the moved reservation proof's teardown as reliable.
+
+Adjacent scripted platform.os 'Linux'→'linux' matches Node's receipt contract and stage-cover Linux eligibility. The matching remote-scripted expectation and new stage rule cover it; A-4559 records reader searches across hub/nvim and the eleven additional existing reader file runs, while the changed display file has5/5. No Neovim consumer is claimed. The correction changes no real-worker platform collection.
+
+## Evidence and measurements
+Independently audited accepted raw series across A-4559/A-4610: ten touched test files5/5,50 whole-file logs,225 passing Node tests across those repetitions,zero failures/cancellations/skips. Old exploratory host-marker reds remain disclosed; they are not counted as successful final series. T-738's shared fix is already on incoming dev; no collector/marker product change is authored here.
+
+Recomputed nine-file migration median sum from top-level TAP durations:160.618868920s versus original267.989279s, including all four split files. Adjacent remote-scripted1.419858417s is separately disclosed. These are Mac per-file test-second medians, not whole-file wall times or exact-head Linux evidence. E-677 Coordinator comment2026-10-17T06:34:55.418Z defines evidence-artifact medians plus later exact-head Linux seconds as the criterion inputs, and forbids per-ticket baseline rewrites.
+
+Before raw green five-file provider POST counts are15/8/14/9/8=54; accepted migrated counts13/6/2/5/6 plus component3 and demo-cap1, both T1 policy files0, total36. Thus one-third fewer actual fake-provider creates, including split coverage; semantic acquisitions are not counted as creates. Daemon accounting14→13 is disclosed separately. Accepted measurement metadata maxload6.5972<15. Fresh exact-head Linux measurements and C5 remain pending.
+
+Durations non-allowance sections (version/source/budget/files/tests) independently equal incoming dev byte-structure. The31 allowance changes are confined to the five original files, with no new allowance or increased seconds; only own legacy removal/shrinks. Tiers are incoming dev plus four sorted new entries, no removed coverage. Static typecheck/tiers/diff checks and report lint are supplied.
+
+Source not clear due M1; C5 fails pending reliable moved-test teardown and new-head review. C1 timing support, C2 provider counts, C3 tier/header evidence and C4 mapping are positive but no source-clear or final criterion marks are claimed in this pass. Await committed correction, controlled failure-path receipt and corrected component5/5 before a new source verdict. Coordinator verification submission hold remains; no task run authorized here.
+
+Standards:1 medium finding. Spec: assertion mapping otherwise complete; final execution evidence pending.
+
+Durable source review A-4613.
+
+Criteria: C5 failed (The moved held-size reservation test can deadlock teardown on pre-release assertion failure because its release hook runs after fixture stop/join; correct ownership and provide controlled failure-path proof before new-head review.).
+
+### impl-700 · 2026-10-17T16:21:03.660Z
+
+Review M1 corrected at 9133b55fb3b5d11a11a8bde0952d9526971d9eaf: release owned in resource cleanup before hub stop. A-4615 contains controlled old-hang/fixed-cleanup proof and corrected component whole-file 5/5. Required rerun exposed a FIFO outcome/shard-identity race; explicit per-ID completion preserves shard-2 assertions. Both exploratory reds are disclosed. Updated nine-file Mac sum160.528871293 s; provider creates remain54→36. C5 awaits exact-reviewed-head droplet result after source clear and Coordinator hold lifted.
+
+### rev-30 · 2026-10-17T16:27:11.715Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-700-source-correction
+commit: 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-700 corrected source review — clear
+
+Head9133b55fb3b5d11a11a8bde0952d9526971d9eaf, direct child of reviewed5fe5c0c0. Full source review fixed point remains incoming devbc24ad66e0981cfb5f32ae5245143096bccb4ca4. No dev merge after first review. The sole correction delta is suite-close-component.test.ts (8 additions,5 removals); independently still the branch tip. Read-only review, no Reviewer execution.
+
+## Standards
+M1 in A-4613 is resolved. The held provider-size gate now uses onCleanup, which enters the fixture resource phase before hub stop/join and directory removal. It is installed before the provider callback can block. Normal assertions still observe no report while held, then cancelled completion, zero reserved/spent/tagged resources, zero creates and exactly one report.
+
+A-4615's artifact-only diagnostic uses that same reservation/cancellation path and deliberately throws before normal release. The corrected owned.log has one deliberate AssertionError, zero cancellations/skips, and an afterCleanup receipt proving gate release, joined hub stop, all three roots absent, no droplets and zero creates; the process exits1 for the intentional assertion, not a successful test. Source of the bounded diagnostic runner is retained. The legacy native-hook variant has no completion receipt and is bounded/stopped at8s before scripted fixture roots are removed. This is supplied Implementer execution evidence, not Reviewer reproduction. The diagnostic is not added to the committed suite or counted as a green receipt.
+
+The additional migrated-test FIFO race is corrected without weakening shard identity. Both scripted runs are held; startedShards observes both exact run IDs and durable group running state. Existing machine.finish then completes shard1 green and shard2 red before advancing polling time. Exact shard2 label, aggregate counts, one report, two creates and complete cleanup assertions remain. Outcome assignment no longer depends on concurrent delivery order. The FIFO red and intermediate clock-before-completion timeout are retained in A-4615, not counted among accepted passes.
+
+No remaining findings. Full standards/source analysis and declaration mapping from A-4613 remain applicable to the unchanged19 files. The production occasion authorization extraction, adjacent scripted linux receipt correction/reader checks, real worker marker assertion ordering, watchdog/recorder/cancel/restart proofs and allowance/baseline preservation are unchanged.
+
+## Spec and evidence
+C2 verified: original green provider logs total54creates; accepted coverage including all split files totals36, exactly one-third fewer. Component remains3creates per whole file after this correction; new T1 policy tables still create0. Semantic acquisitions are distinguished from provider requests. Initial-plus-explicit daemon accounting14→13 is separate.
+
+C3 verified: two pure FakeClock/semantic-receipt T1 rule files, two in-process provider/frame T2 component files, five retained T3 files with explicit lifecycle headers. Native worker/provider-loss/cancel/crash/restart/watchdog/recorder assertions remain in the current tree.
+
+C4 verified against the complete A-4610 map, all original/new hunks and current A-4615 delta. Representative CLI/MCP frames remain; duplicated rule permutations move to lower seams, and the demo successive-lease assertions are folded into the real command/restart scenario. No behavior assertion is dropped. Failure-only marker diagnostics and f.result→read→assert order are preserved. The readiness200ms value is a timeout, not an asserted1.8s saving; watchdog scenarios keep2000ms overrides.
+
+Five fresh corrected component whole-file logs independently show3/3 each,zero fail/cancelled/skipped, three creates and no initial daemon. Median reported-test seconds3.930088999; sampled maxload3.0098. Replace only the prior component median; the nine coverage-file sum is160.528871293s versus original267.989279s. Other nine touched test sources retain their audited5/5 accepted logs in A-4610/A-4559; the adjacent remote-scripted median1.419858417s is disclosed separately. There are50 accepted whole-file logs/225 passes across the ten touched test files including the current component series. Source correction typecheck/tiers/diff checks supplied green.
+
+C1 has positive Mac support under180s, but exact-head Linux file seconds remain pending under E-677's artifact-based timing disposition. No measured duration baselines were rewritten: non-allowance sections match incoming dev,31 own allowance changes only remove/shrink entries in the five original files, and four sorted new tier entries preserve coverage.
+
+Source clear, Standards0/Spec0 findings; verify C2/C3/C4 at this head. M1 is resolved; C5's execution requirement still needs the exact-head droplet receipt and claimant done restoration after it. C1/C5 remain unverified. No per-item QA. Wait for the Coordinator's explicit submission hold lift before normal mode-free droplet verification; source clearance does not lift that hold.
+
+Durable source review: A-4618.
+
+Criteria: C2 verified, C3 verified, C4 verified.
