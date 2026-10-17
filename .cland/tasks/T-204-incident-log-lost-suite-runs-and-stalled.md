@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-16T21:50:52.588Z
+updated: 2026-10-17T15:25:22.141Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -348,3 +348,7 @@ Follow-up 21:5xZ: the row re-attach was not enough; at 21:46:08Z the hub had rel
 ### coord · 2026-10-16T21:50:52.588Z
 
 Incident 2026-10-16 21:50Z. T-475 (fdadc69d) makes local test admission call a hub capability that only a hub with T-475 offers. Every branch carrying dev aa10d609 or later is refused local targeted runs until the next restart; impl-679 hit it first. The disposition was foreseen on T-475 (54b041c5), but its crew-wide impact wasn't. Remedy for now: droplet verifies as test evidence, and the restart right after the next green integrated cover. Rule proposal: a change that gates tests on a new hub capability merges in the same batch as the restart that loads it, or its client degrades to a warning against an older hub.
+
+### coord · 2026-10-17T15:25:22.141Z
+
+D55 (2026-10-17 15:24Z): ask 633a5073 option 1, answered by the stand-in under D39/D24. The daily droplet cap is $24 for 2026-10-17 (commit 2a50280b), up from $14. At that point $10.49 was spent, $1.50 reserved, burning about $1.5/h on the E-676/E-677 wave. Back to $14 for 2026-10-18.

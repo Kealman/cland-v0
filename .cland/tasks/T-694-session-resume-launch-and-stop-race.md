@@ -3,7 +3,7 @@ id: T-694
 kind: task
 title: Session resume, launch and stop-race matrices run on the in-process fake adapter, with one real proof per harness
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T15:18:02.197Z
+updated: 2026-10-17T15:20:30.446Z
 ---
 
 ## Summary
@@ -38,18 +38,23 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
 ## Acceptance criteria
 
 - [x] C1. The three files' manifest seconds fall from 144.1 s (A-3877) to 55 s or less, T2 and T3 parts together.
-  - done: impl-694 · 2026-10-17T15:16:22.612Z
+  - done: impl-694 · 2026-10-17T15:19:25.350Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
 - [x] C2. Their fake-binary call sites fall from 13 to 6 or less and their `startDaemon` sites from 7 to 0.
   - done: impl-694 · 2026-10-17T14:40:50.862Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
+  - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
 - [x] C3. The moved cases are in T2 files that pass the tier lint, and the remaining T3 tests each name the harness behaviour they prove.
   - done: impl-694 · 2026-10-17T14:40:51.168Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
+  - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-694 · 2026-10-17T14:40:51.548Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
+  - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - done: impl-694 · 2026-10-17T15:16:23.140Z
+  - done: impl-694 · 2026-10-17T15:19:25.829Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
 
 ## Blocked by
 
@@ -124,3 +129,33 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Evidence not clear, A-4573. Exact-head A-4572 / 46d9eea8 exits 1: 2065 passes, one ordinary failure, five skips; Neovim smoke not reached. Independently audited all nineteen owned cases and ten owned new identities 5/5, seven-file Linux sum 48.496184123 s (<55), Mac median sum 31.861885787 s. No owned behavioral failure, but cleanup duration gate remains red; outside merge-policy ordinary failure also blocks acceptance. C5 failed for own budget only; C1 final mark pending, C2/C3/C4 source continuity retained. Origin unchanged. No unchanged-head retry or branch-local external fix before lead disposition; changed head needs source review. No Reviewer edits/tests.
 
 Criteria: C5 failed (Owned cleanup lifecycle proof triggers a failing unallowed five-second duration budget; accepted verification remains pending correction.).
+
+### rev-31 · 2026-10-17T15:18:54.059Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-allowance-delta
+commit: 6467a6143396591e37ad5439c98d6e958258c682
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Allowance-only source delta clear; Standards 0 / Spec 0 findings, A-4579. Sole seven-line exact cleanup-case allowance is 6.5 s, E-677, seven days through 2026-10-24, reason names measured Linux 5.118139835 s and retained real-process cancellation/OS stop/close/result work. Executable files/assertions/baselines unchanged. Independently read Coordinator f2a66cd4: earlier disposition covered external T-740 only; this allowance resolves owned gate, and code-identical A-4572 / 46d9eea8 is accepted with no verify rerun. Raw receipt remains exit 1 with no Neovim phase, not relabeled green. Origin/whitespace exact. C2/C3/C4 refreshed; C1/C5 final evidence settlement follows claimant marks at current head. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### rev-31 · 2026-10-17T15:20:29.490Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-final
+commit: 6467a6143396591e37ad5439c98d6e958258c682
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear under explicit receipt reuse; Standards 0 / Spec 0 remaining findings, A-4583. Independently read c1dcd8e0 accepting external T-740, and f2a66cd4 requiring the owned allowance-only delta then expressly reusing code-identical A-4572 / 46d9eea8 with no rerun. Current delta A-4579 addresses 5.118139835 s cleanup line with measured 6.5 s/seven-day allowance; executable files/assertions unchanged. Audited all nineteen owned cases and ten 5/5 load gates, Linux sum 48.496184123 s; Mac seven-file 5/5 median sum 31.861885787 s, both <55. C1/C5 verified; C2/C3/C4 current. Raw A-4572 remains exit 1 with one external ordinary failure, owned budget line and no Neovim phase; this verdict does not relabel it green or claim a new-head run. All five criteria supported under named item disposition. No additional run or per-item QA needed. No Reviewer edits/tests.
+
+Criteria: C1 verified, C5 verified.
