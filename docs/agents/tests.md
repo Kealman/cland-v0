@@ -63,8 +63,23 @@ files without a lifecycle sentence in their first comment block. Contract and
 scenario manifest entries are exempt from the header rule. A wall-clock finding
 may be suppressed by a trailing `// lint-allow-wall-clock: <reason>` on the call's
 line. A blank reason does not suppress it. This is syntax analysis, not a proof
-of transitive module purity; the qualifying tier describes the resources visible
-in the file, and never automatically retags it.
+of runtime reachability. A separate **reachable** diagnostic follows repository-local literal runtime
+imports transitively (including helpers, fixtures and re-exports). Named imports
+follow the exported declaration and its local value dependencies; unused helper
+exports do not contribute resources. Module-level execution is always included.
+Namespace, dynamic/require and `export *` imports may charge the whole module and
+name that fallback in their diagnostics. The analysis does not evaluate branches,
+injected arguments or method overrides; selected class declarations include their
+members. Allowed seams and wait reasons do not suppress reachable resources.
+It caches module analysis, export slices and resolution for one lint run; cycles
+retain all resources. Declaration-only type imports/exports, external packages
+and data imports are not followed. Resource diagnostics name the import chain and
+location. `test:lint` lists every resource path; verification dry runs summarize
+resource kinds and show one highest-tier path per file to fit the protocol frame.
+They never
+change the direct-source `qualifies` value or policy findings used by admission
+and the tier lint gate. The qualifying tier never automatically retags a file.
+The legacy hermetic manifest admission still checks each test's own source only.
 
 ### In-process harnesses
 

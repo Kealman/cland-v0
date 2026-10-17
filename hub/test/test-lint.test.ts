@@ -1,14 +1,269 @@
 // T1: syntax policy uses planted source text and performs no test execution.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { lintTestSource, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { lintTests, lintTestSource, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
 
 // Shared planted source inputs are data, never executed by these tests.
 const sources = JSON.parse(await readFile(new URL('./fixtures/test-lint-sources.json', import.meta.url), 'utf8')) as Record<string, string>;
 const input = (name: string): string => { assert.equal(typeof sources[name], 'string', name); return sources[name]!; };
 
 const file = 'hub/test/planted.test.ts';
+
+async function lintFixture(t: import('node:test').TestContext, planted: Record<string, string>) {
+  const directory = await mkdtemp(join(tmpdir(), 'cland-lint-imports-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const root = join(directory, 'repo');
+  for (const [path, source] of Object.entries(planted)) {
+    await mkdir(join(root, path, '..'), { recursive: true });
+    await writeFile(join(root, path), source);
+  }
+  await writeFile(join(root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests:
+    Object.fromEntries(Object.keys(planted).filter(path => path.endsWith('.test.ts')).map(path => [path, 'T1'])),
+  }));
+  return root;
+}
+
+// T1: only source files are read; planted resource calls never execute.
+test('local helper resources are charged through their import path', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/socket.test.ts': "import { fixture } from './fixtures/socket.ts'; fixture();",
+    'hub/test/child.test.ts': "import { fixture } from './fixtures/child.ts'; fixture();",
+    'hub/test/pure.test.ts': "import { sum } from './fixtures/pure.ts'; sum(1, 2);",
+    'hub/test/fixtures/socket.ts': 'export const fixture = () => projectHub(t, root);',
+    'hub/test/fixtures/child.ts': "import { spawn } from 'node:child_process'; export const fixture = () => spawn('git');",
+    'hub/test/fixtures/pure.ts': 'export const sum = (a, b) => a + b; const data = "projectHub(); spawn()"; // startDaemon() ',
+  });
+  const results = await lintTests(root);
+  const socket = results.find(result => result.file.endsWith('/socket.test.ts'))!;
+  assert.equal(socket.reachable!.tier, 'T2');
+  assert.ok(socket.reachable!.resources.some(f => f.rule === 'tier-import' && /fixtures\/socket.ts.*projectHub requires T2/.test(f.message)));
+  assert.equal(socket.reachable!.resources[0]?.line, 1);
+  const child = results.find(result => result.file.endsWith('/child.test.ts'))!;
+  assert.equal(child.reachable!.tier, 'T3');
+  assert.ok(child.reachable!.resources.some(f => f.rule === 'tier-process' && /fixtures\/child.ts.*child process requires T3/.test(f.message)));
+  assert.deepEqual(results.find(result => result.file.endsWith('/pure.test.ts')), {
+    file: 'hub/test/pure.test.ts', tier: 'T1', qualifies: 'T1', findings: [], reachable: { tier: 'T1', resources: [] },
+  });
+});
+
+test('reachable diagnostics leave direct qualification and admission findings unchanged', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/component.test.ts': "projectHub(t, root); import { child } from './helper.ts'; child();",
+    'hub/test/helper.ts': "import { spawn } from 'node:child_process'; export const child = () => spawn('git');",
+  });
+  const [result] = await lintTests(root);
+  const source = await readFile(join(root, 'hub/test/component.test.ts'), 'utf8');
+  const direct = lintTestSource('hub/test/component.test.ts', source, 'T1');
+  assert.equal(result?.qualifies, 'T2');
+  assert.deepEqual(result?.findings, direct.findings);
+  assert.equal(result?.qualifies, direct.qualifies);
+  assert.equal(result?.reachable?.tier, 'T3');
+  const report = testLintReport([result!]);
+  assert.equal(report[0], 'test lint (report only): 1 findings in 1 files');
+  assert.ok(report.includes('test lint tier: hub/test/component.test.ts: T1; qualifies T2'));
+  assert.ok(report.some(line => /^test lint reachable: hub\/test\/component.test.ts: T3;/.test(line)));
+  assert.ok(report.some(line => /^test lint reachable resource: .*helper.ts.*child process requires T3/.test(line)));
+});
+
+test('named exports follow local calls without charging unused resource helpers', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/pure.test.ts': "import { pure as calculate } from './helper.ts'; calculate(2);",
+    'hub/test/required.test.ts': "const { pure: calculate } = require('./helper.ts'); calculate(2);",
+    'hub/test/dynamic.test.ts': "const { pure: calculate } = await import('./helper.ts'); calculate(2);",
+    'hub/test/socket.test.ts': "import { fixture } from './barrel.ts'; fixture();",
+    'hub/test/process.test.ts': "import run from './helper.ts'; run();",
+    'hub/test/namespace.test.ts': "import * as helper from './helper.ts'; helper.pure(2);",
+    'hub/test/barrel.ts': "export { component as fixture } from './helper.ts';",
+    'hub/test/helper.ts': `import { spawn } from 'node:child_process';
+export const pure = value => value * 2;
+const boot = () => projectHub(t, root);
+function component() { return boot(); }
+export { component };
+const child = () => spawn('git');
+export default function run() { return child(); }`,
+  });
+  const results = await lintTests(root);
+  const result = (name: string) => results.find(result => result.file.endsWith(`/${name}.test.ts`))!;
+  assert.equal(result('pure').reachable!.tier, 'T1');
+  assert.deepEqual(result('pure').reachable!.resources, []);
+  for (const name of ['required', 'dynamic']) {
+    assert.equal(result(name).reachable!.tier, 'T1');
+    assert.deepEqual(result(name).reachable!.resources, []);
+  }
+  assert.equal(result('socket').reachable!.tier, 'T2');
+  assert.ok(result('socket').reachable!.resources.some(f => /barrel.ts -> hub\/test\/helper.ts.*projectHub requires T2/.test(f.message)));
+  assert.ok(result('socket').reachable!.resources.every(f => !/child.process/.test(f.message)));
+  assert.equal(result('process').reachable!.tier, 'T3');
+  assert.ok(result('process').reachable!.resources.some(f => /child process requires T3/.test(f.message)));
+  assert.equal(result('namespace').reachable!.tier, 'T3');
+  assert.ok(result('namespace').reachable!.resources.some(f => /whole-module fallback: namespace import/.test(f.message)));
+});
+
+test('dynamic dependencies initialize only when their call is reachable', async t => {
+  const planted: Record<string, string> = {
+    'hub/test/native.ts': "import { spawn } from 'node:child_process'; spawn('git');",
+  };
+  for (const form of ['import', 'require']) {
+    const call = `${form}('./native.ts')`;
+    for (const mode of ['pure', 'called', 'guard', 'init']) {
+      const helper = mode === 'pure' || mode === 'called' ? 'held' : mode;
+      const name = mode === 'called' ? 'run' : 'pure';
+      planted[`hub/test/${mode}-${form}.test.ts`] = `import { ${name} } from './${helper}-${form}.ts'; ${name}();`;
+    }
+    planted[`hub/test/held-${form}.ts`] = `const held = () => ${call}; export const pure = () => 1; export const run = () => held();`;
+    planted[`hub/test/guard-${form}.ts`] = `import { fileURLToPath } from 'node:url'; export const pure = () => 1; if (process.argv[1] === fileURLToPath(import.meta.url)) ${call};`;
+    planted[`hub/test/init-${form}.ts`] = `${call}; export const pure = () => 1;`;
+  }
+  const root = await lintFixture(t, planted);
+  const results = await lintTests(root);
+  for (const form of ['import', 'require']) for (const mode of ['pure', 'called', 'guard', 'init']) {
+    const result = results.find(result => result.file.endsWith(`/${mode}-${form}.test.ts`))!;
+    const runs = mode === 'called' || mode === 'init';
+    assert.equal(result.reachable?.tier, runs ? 'T3' : 'T1', result.file);
+    assert.equal(result.reachable?.resources.some(resource => /native.ts.*child process requires T3/.test(resource.message)), runs, result.file);
+    assert.equal(result.qualifies, 'T1', result.file);
+    assert.deepEqual(result.findings, [], result.file);
+  }
+});
+
+test('module initialization charges registered callbacks without executing held function values', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/pure.test.ts': "import { pure } from './held.ts';",
+    'hub/test/init.test.ts': "import { pure } from './registered.ts';",
+    'hub/test/held.ts': `import { fileURLToPath } from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const exec = promisify(execFile);
+function worker() { projectHub(t, root); }
+const held = { worker };
+const bound = worker.bind(null);
+export const pure = value => value;
+if (process.argv[1] === fileURLToPath(import.meta.url)) worker();`,
+    'hub/test/registered.ts': `import { after } from 'node:test';
+import { spawn } from 'node:child_process';
+const cleanup = () => spawn('ps');
+after(cleanup);
+after(() => projectHub(t, root));
+export const pure = value => value;`,
+  });
+  const results = await lintTests(root);
+  const pure = results.find(result => result.file.endsWith('/pure.test.ts'))!;
+  assert.equal(pure.reachable!.tier, 'T1');
+  assert.deepEqual(pure.reachable!.resources, []);
+  const initialized = results.find(result => result.file.endsWith('/init.test.ts'))!;
+  assert.equal(initialized.reachable!.tier, 'T3');
+  assert.ok(initialized.reachable!.resources.some(f => /module initialization.*child process requires T3/.test(f.message)));
+  assert.ok(initialized.reachable!.resources.some(f => /module initialization.*projectHub requires T2/.test(f.message)));
+});
+
+test('importing a class executes its static socket initializer without running instance methods', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/static.test.ts': "import { pure } from './static.ts';",
+    'hub/test/static.ts': `import { WebSocketServer } from 'ws';
+export const pure = value => value;
+class Server {
+  static socket = new WebSocketServer({ port: 0 });
+  start() { startDaemon(t, root); }
+}`,
+  });
+  const [result] = await lintTests(root);
+  assert.equal(result?.reachable!.tier, 'T2');
+  assert.ok(result?.reachable?.resources.some(f => /module initialization.*socket server requires T2/.test(f.message)));
+  assert.ok(result?.reachable?.resources.every(f => f.rule === 'tier-import'));
+});
+
+test('module initialization follows constructors called after their declarations', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/constructor.test.ts': "import { pure } from './constructor.ts';",
+    'hub/test/constructor.ts': `import { spawn } from 'node:child_process';
+class Worker { constructor() { spawn('git'); } }
+new Worker();
+export const pure = value => value;`,
+  });
+  const [result] = await lintTests(root);
+  assert.equal(result?.reachable!.tier, 'T3');
+  assert.ok(result?.reachable?.resources.some(f => /module initialization.*child process requires T3/.test(f.message)));
+});
+
+test('transitive cycles retain resource evidence for each importing test', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/a.test.ts': "import './a.ts';",
+    'hub/test/b.test.ts': "import './b.ts';",
+    'hub/test/a.ts': "export * from './b.ts'; projectHub(t, root);",
+    'hub/test/b.ts': "export * from './a.ts'; import { spawn } from 'node:child_process'; spawn('git');",
+  });
+  const results = await lintTests(root);
+  for (const result of results) {
+    assert.equal(result.reachable!.tier, 'T3');
+    assert.equal(result.reachable!.resources.filter(f => /projectHub requires T2/.test(f.message)).length, 1);
+    assert.equal(result.reachable!.resources.filter(f => /child process requires T3/.test(f.message)).length, 1);
+  }
+  assert.ok(results[0]!.reachable!.resources.some(f => /a.test.ts -> hub\/test\/a.ts -> hub\/test\/b.ts/.test(f.message)));
+  // Results are cached only within a lint run; edits must be visible next time.
+  await writeFile(join(root, 'hub/test/b.ts'), "export * from './a.ts';");
+  assert.deepEqual((await lintTests(root)).map(result => result.reachable!.tier), ['T2', 'T2']);
+});
+
+test('runtime imports follow helpers while erased types and source data stay inert', async t => {
+  const forms = [
+    ["import './helper.mjs';", 'T1'], ["export * from './helper.mjs';", 'T2'],
+    ["export { fixture } from './helper.mjs';", 'T2'], ["await import('./helper.mjs');", 'T2'],
+    ["require('./helper.mjs');", 'T2'], ["import { type Fixture } from './helper.mjs';", 'T1'],
+    ["export { type Fixture } from './helper.mjs';", 'T1'],
+  ];
+  const root = await lintFixture(t, {
+    ...Object.fromEntries(forms.map(([source], i) => [`hub/test/form-${i}.test.ts`, source!])),
+    'hub/test/inert.test.ts': `import type { Fixture } from './helper.mjs';
+export type { Fixture } from './helper.mjs';
+const source = "import './helper.mjs';"; // require('./helper.mjs');
+function check(require) { require('./helper.mjs'); }`,
+    // JavaScript must be bound by the syntax host too, including callback scopes.
+    'hub/test/helper.mjs': 'export function fixture() { [1].map(value => value); projectHub(t, root); }',
+  });
+  const results = await lintTests(root);
+  for (const [i, [, tier]] of forms.entries()) {
+    const result = results.find(result => result.file.endsWith(`/form-${i}.test.ts`))!;
+    assert.equal(result.reachable!.tier, tier, result.file);
+    if (tier === 'T2') assert.ok(result.reachable!.resources.some(f => /helper.mjs.*projectHub requires T2/.test(f.message)), result.file);
+    else assert.deepEqual(result.reachable!.resources, []);
+  }
+  assert.deepEqual(results.find(result => result.file.endsWith('/inert.test.ts'))?.reachable?.resources, []);
+  assert.ok(results.find(result => result.file.endsWith('/form-1.test.ts'))?.reachable?.resources.some(f => /whole-module fallback: export \* re-export/.test(f.message)));
+});
+
+test('allowed wait reasons still charge imported real timers', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/timer.test.ts': "import { wait } from './timer.ts'; wait();",
+    'hub/test/timer.ts': 'export const wait = () => setTimeout(done, 5); // lint-allow-wall-clock: intentional deadline',
+  });
+  const [result] = await lintTests(root);
+  assert.equal(result?.reachable!.tier, 'T2');
+  assert.ok(result?.reachable?.resources.some(f => /timer.ts.*wall-clock timer requires T2/.test(f.message)));
+  assert.ok(result?.reachable?.resources.every(f => f.rule === 'tier-import'));
+});
+
+test('local resolution stays inside the repo and ignores data imports', async t => {
+  const root = await lintFixture(t, {
+    'hub/test/pure.test.ts': `import './fixtures/pure'; import './data.json';
+import './absent.ts'; import '../../outside.ts'; import './escape.ts';`,
+    'hub/test/fixtures/pure/index.ts': 'export const value = 1;',
+    'hub/test/data.json': '{ "source": "projectHub(); spawn()" }',
+    'outside.ts': 'projectHub(t, root);',
+  });
+  await writeFile(join(root, '../outside.ts'), 'projectHub(t, root);');
+  await symlink(join(root, '../outside.ts'), join(root, 'hub/test/escape.ts'));
+  const [result] = await lintTests(root);
+  // ../../outside.ts is still in the repo, unlike the escaping symlink.
+  assert.equal(result?.reachable!.tier, 'T2');
+  assert.equal(result?.reachable?.resources.length, 1);
+  assert.match(result!.reachable!.resources[0]!.message, /-> outside.ts:1 .*projectHub requires T2/);
+  await writeFile(join(root, 'outside.ts'), 'export const value = 1;');
+  assert.deepEqual((await lintTests(root))[0]?.reachable?.resources, []);
+});
+
 test('resource words in reporter data stay T1', () => {
   for (const source of [
     'const log = "nvim/test/x.test.ts harness startDaemon()";',

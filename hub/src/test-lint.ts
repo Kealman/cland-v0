@@ -1,8 +1,8 @@
 // Syntax-only test policy. Findings are data; reporting never changes admission.
 import type ts from 'typescript';
 import { createRequire } from 'node:module';
-import { readFile } from 'node:fs/promises';
-import { posix, join } from 'node:path';
+import { readFile, realpath } from 'node:fs/promises';
+import { posix, join, relative, resolve, extname } from 'node:path';
 import type { Tier, TierEntry, TierManifest } from './suite-shards.ts';
 
 // Most hub sessions never lint. Do not load the compiler into every daemon or CLI.
@@ -10,7 +10,7 @@ let parser: typeof ts | undefined;
 const syntax = (): typeof ts => parser ??= createRequire(import.meta.url)('typescript') as typeof ts;
 
 export type TestLintFinding = { file: string; line: number; rule: 'tier-import' | 'tier-process' | 'wall-clock-wait' | 'wall-clock-assertion' | 't3-lifecycle'; message: string };
-export type TestLintFile = { file: string; tier: Tier; qualifies: Tier; findings: TestLintFinding[] };
+export type TestLintFile = { file: string; tier: Tier; qualifies: Tier; findings: TestLintFinding[]; reachable?: { tier: Tier; resources: TestLintFinding[] } };
 const processHelpers = new Set(['startDaemon', 'killDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode']);
 const socketHelpers = new Set(['projectHub', 'startHub', 'cland', 'clandWithEnv', 'connectUi', 'connectSocket', 'connectWsUi', 'inProcessSpoke']);
 const machineModules = new Set(['child_process', 'net', 'http', 'https', 'dgram', 'timers', 'timers/promises']);
@@ -18,12 +18,22 @@ const modulePath = (file: string, path: string) => path.startsWith('.') ? posix.
 const nameOf = (node: ts.Node): string => syntax().isIdentifier(node) ? node.text : syntax().isPropertyAccessExpression(node) ? node.name.text : '';
 const numeric = (node: ts.Node | undefined): boolean => !!node && (syntax().isNumericLiteral(node) || syntax().isPrefixUnaryExpression(node) && syntax().isNumericLiteral(node.operand));
 
-export function lintTestSource(file: string, text: string, entry: TierEntry): TestLintFile {
+type Resource = { line: number; level: number; description: string };
+type LocalImport = { line: number; specifier: string; name: string; fallback?: string };
+type ModuleSlice = { resources: Resource[]; imports: LocalImport[] };
+type ModuleAnalysis = { result: TestLintFile; select: (name: string) => ModuleSlice };
+
+function analyzeTestSource(file: string, text: string, entry: TierEntry): ModuleAnalysis {
   const ts = syntax();
   const virtualFile = '/' + file;
   const source = ts.createSourceFile(virtualFile, text, ts.ScriptTarget.Latest, true);
   const tier = typeof entry === 'string' ? entry : entry.tier;
   const findings: TestLintFinding[] = [];
+  const resources: Array<Resource & { node: ts.Node }> = [];
+  const runtimeImports = new Map<ts.Node, LocalImport>();
+  const runtimeCalls = new Map<ts.Node, LocalImport[]>();
+  const imports: LocalImport[] = [];
+  const lineOf = (node: ts.Node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
   let minimum = 1;
   const bindings = new Map<ts.Node, { module: string; name: string }>();
   const nodes: ts.Node[] = [];
@@ -38,16 +48,17 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     readFile: path => path === virtualFile ? text : undefined,
     getCanonicalFileName: path => path, useCaseSensitiveFileNames: () => true, getNewLine: () => '\n',
   };
-  const checker = ts.createProgram([virtualFile], { noLib: true, noResolve: true, target: ts.ScriptTarget.Latest }, host).getTypeChecker();
-  const declarationOf = (name: ts.Identifier): ts.Identifier | undefined => {
-    const symbol = checker.getSymbolAtLocation(name);
+  const checker = ts.createProgram([virtualFile], { noLib: true, noResolve: true, allowJs: true, target: ts.ScriptTarget.Latest }, host).getTypeChecker();
+  const declarationOf = (name: ts.Identifier, valueReference = false): ts.Identifier | undefined => {
+    const symbol = valueReference && ts.isShorthandPropertyAssignment(name.parent)
+      ? checker.getShorthandAssignmentValueSymbol(name.parent) : checker.getSymbolAtLocation(name);
     const declaration = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
     const declared = (declaration as ts.NamedDeclaration | undefined)?.name;
     return declared && ts.isIdentifier(declared) ? declared : undefined;
   };
   const requireTier = (level: number) => { minimum = Math.max(minimum, level); };
   const add = (node: ts.Node, rule: TestLintFinding['rule'], message: string) => {
-    const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1;
+    const line = lineOf(node);
     if (rule.startsWith('wall-clock')) {
       const end = text.indexOf('\n', node.getEnd());
       const trailing = text.slice(node.getEnd(), end < 0 ? text.length : end);
@@ -60,15 +71,27 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
   };
   const resource = (node: ts.Node, level: number, description: string) => {
     requireTier(level);
+    resources.push({ node, line: lineOf(node), level, description });
     if (Number(tier[1]) < level) add(node, level === 3 ? 'tier-process' : 'tier-import', `${description} requires T${level}`);
   };
   for (const node of nodes) if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && !node.importClause?.isTypeOnly) {
     const module = modulePath(file, node.moduleSpecifier.text);
+    const specifier = node.moduleSpecifier.text;
     const clause = node.importClause;
     if (clause?.name) { bindings.set(clause.name, { module, name: 'default' }); }
     const named = clause?.namedBindings;
     if (named && ts.isNamespaceImport(named)) { bindings.set(named.name, { module, name: '*' }); }
     if (named && ts.isNamedImports(named)) for (const binding of named.elements) { bindings.set(binding.name, { module, name: binding.propertyName?.text ?? binding.name.text }); }
+    const edge = (name: string, binding?: ts.Node, fallback?: string) => {
+      const imported: LocalImport = { line: lineOf(node), specifier, name, ...(fallback ? { fallback } : {}) };
+      imports.push(imported);
+      if (binding) runtimeImports.set(binding, imported);
+    };
+    // Loading an imported module always executes its top-level statements.
+    edge('$init');
+    if (clause?.name) edge('default', clause.name);
+    if (named && ts.isNamespaceImport(named)) edge('*', named.name, 'namespace import');
+    if (named && ts.isNamedImports(named)) for (const binding of named.elements) if (!binding.isTypeOnly) edge(binding.propertyName?.text ?? binding.name.text, binding.name);
   }
   const bindingOf = (node: ts.Node, seen = new Set<ts.Node>()): { module: string; name: string } | undefined => {
     if (seen.has(node)) return;
@@ -110,6 +133,28 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     }
   };
   for (const node of nodes) {
+    // Declaration-only types disappear under Node's type stripping. Inline type
+    // specifiers still execute their module, as do side-effect imports/re-exports.
+    if (ts.isCallExpression(node) && (node.expression.kind === ts.SyntaxKind.ImportKeyword || ts.isIdentifier(node.expression) && node.expression.text === 'require' && !declarationOf(node.expression))) {
+      const specifier = node.arguments[0];
+      if (specifier && ts.isStringLiteralLike(specifier)) {
+        const base = { line: lineOf(node), specifier: specifier.text };
+        const edges: LocalImport[] = [{ ...base, name: '$init' }];
+        let expression: ts.Node = node;
+        if (ts.isAwaitExpression(expression.parent)) expression = expression.parent;
+        const declaration = expression.parent;
+        if (ts.isVariableDeclaration(declaration) && ts.isObjectBindingPattern(declaration.name)) {
+          for (const binding of declaration.name.elements) if (ts.isIdentifier(binding.name)) {
+            const imported: LocalImport = binding.dotDotDotToken
+              ? { ...base, name: '*', fallback: 'namespace rest import' }
+              : { ...base, name: nameOf(binding.propertyName ?? binding.name) };
+            edges.push(imported); runtimeImports.set(binding.name, imported);
+          }
+        } else edges.push({ ...base, name: '*', fallback: 'dynamic/require namespace import' });
+        // Unlike static imports, these edges execute only at the reached call.
+        runtimeCalls.set(node, edges);
+      }
+    }
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && !node.importClause?.isTypeOnly) {
       const named = node.importClause?.namedBindings;
       inspectModule(node, modulePath(file, node.moduleSpecifier.text), named && ts.isNamedImports(named) ? named.elements.map(n => n.propertyName?.text ?? n.name.text) : named ? ['*'] : []);
@@ -235,6 +280,8 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     }
     if (['sleep', 'pause', 'delay', 'setTimeout', 'setInterval'].includes(name) && !fakeTimer(node)) {
       requireTier(2);
+      // A reason suppresses the wait policy finding, never the resource tier.
+      resources.push({ node, line: lineOf(node), level: 2, description: 'wall-clock timer' });
       const duration = name.startsWith('set') && b?.module !== 'timers/promises' ? node.arguments[1] : node.arguments[0];
       if (numeric(duration) && name !== 'setInterval') add(node, 'wall-clock-wait', `${name} uses a numeric wall-clock wait`);
     }
@@ -252,7 +299,149 @@ export function lintTestSource(file: string, text: string, entry: TierEntry): Te
     const header = text.slice(leading[0]?.pos ?? 0, end);
     if (!/\bT3:\s*[^\s*/][^\n]*/.test(header)) add(source, 't3-lifecycle', 'first comment block must name the process behaviour: T3: <behaviour>');
   }
-  return { file, tier, qualifies: `T${minimum}` as Tier, findings: findings.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule)) };
+  const exported = new Map<string, ts.Node>();
+  const reexports = new Map<string, LocalImport>();
+  const stars: LocalImport[] = [];
+  for (const statement of source.statements) {
+    const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
+    if (modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword)) {
+      if (ts.isVariableStatement(statement)) for (const declaration of statement.declarationList.declarations) {
+        const names = (binding: ts.BindingName) => {
+          if (ts.isIdentifier(binding)) exported.set(binding.text, declaration);
+          else for (const element of binding.elements) if (ts.isBindingElement(element)) names(element.name);
+        };
+        names(declaration.name);
+      }
+      else {
+        const name = (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement)) ? statement.name : undefined;
+        if (name && ts.isIdentifier(name)) exported.set(name.text, statement);
+        if (modifiers.some(modifier => modifier.kind === ts.SyntaxKind.DefaultKeyword)) exported.set('default', statement);
+      }
+    }
+    if (ts.isExportAssignment(statement)) exported.set('default', statement.expression);
+    if (ts.isExportDeclaration(statement) && !statement.isTypeOnly) {
+      const specifier = statement.moduleSpecifier;
+      if (specifier && ts.isStringLiteralLike(specifier)) {
+        imports.push({ line: lineOf(statement), specifier: specifier.text, name: '$init' });
+        if (!statement.exportClause) stars.push({ line: lineOf(statement), specifier: specifier.text, name: '*', fallback: 'export * re-export' });
+        else if (ts.isNamedExports(statement.exportClause)) for (const binding of statement.exportClause.elements) {
+          if (!binding.isTypeOnly) reexports.set(binding.name.text, { line: lineOf(statement), specifier: specifier.text, name: binding.propertyName?.text ?? binding.name.text });
+        }
+        else reexports.set(statement.exportClause.name.text, { line: lineOf(statement), specifier: specifier.text, name: '*', fallback: 'namespace re-export' });
+      } else if (statement.exportClause && ts.isNamedExports(statement.exportClause)) for (const binding of statement.exportClause.elements) {
+        const symbol = checker.getExportSpecifierLocalTargetSymbol(binding);
+        const declaration = symbol?.valueDeclaration ?? symbol?.declarations?.[0];
+        if (!binding.isTypeOnly && declaration) exported.set(binding.name.text, declaration);
+      }
+    }
+  }
+  const slices = new Map<string, ModuleSlice>();
+  const select = (name: string): ModuleSlice => {
+    const cached = slices.get(name);
+    if (cached) return cached;
+    const reached = new Set<ts.Node>();
+    const initialized = new Set<ts.Node>();
+    const edges: LocalImport[] = [];
+    const walk = (node: ts.Node, executeOnly = false) => {
+      if (executeOnly && ts.isIfStatement(node) && ts.isBinaryExpression(node.expression)) {
+        const { left, right, operatorToken } = node.expression;
+        const mainPath = (value: ts.Node) => ts.isCallExpression(value) && bindingOf(value.expression)?.module === 'url'
+          && bindingOf(value.expression)?.name === 'fileURLToPath' && value.arguments[0]?.getText(source) === 'import.meta.url';
+        const argv = (value: ts.Node) => ts.isElementAccessExpression(value) && value.expression.getText(source) === 'process.argv' && value.argumentExpression.getText(source) === '1';
+        if ((argv(left) && mainPath(right) || argv(right) && mainPath(left)) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken].includes(operatorToken.kind)) {
+          if (node.elseStatement) walk(node.elseStatement, true);
+          return; // A module's CLI entry branch is not executed when imported.
+        }
+      }
+      if (ts.isExpressionWithTypeArguments(node) && ts.isHeritageClause(node.parent) && node.parent.token === ts.SyntaxKind.ExtendsKeyword) {
+        walk(node.expression, executeOnly); return;
+      }
+      const visited = executeOnly ? initialized : reached;
+      if (visited.has(node) || ts.isTypeNode(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
+      // Module loading creates functions without running their bodies. Classes
+      // do execute static initializers/blocks and computed member names.
+      if (executeOnly && ts.isFunctionLike(node)) {
+        let expression: ts.Node = node;
+        while (ts.isParenthesizedExpression(expression.parent) || ts.isAsExpression(expression.parent) || ts.isNonNullExpression(expression.parent)) expression = expression.parent;
+        const call = expression.parent;
+        if (ts.isCallExpression(call) || ts.isNewExpression(call)) {
+          const wrapper = bindingOf(call.expression);
+          if (wrapper?.module !== 'util' || wrapper.name !== 'promisify') walk(node);
+        }
+        return;
+      }
+      if (executeOnly && ts.isClassLike(node)) {
+        visited.add(node);
+        for (const clause of node.heritageClauses ?? []) if (clause.token === ts.SyntaxKind.ExtendsKeyword) for (const type of clause.types) walk(type.expression, true);
+        for (const member of node.members) {
+          if (member.name && ts.isComputedPropertyName(member.name)) walk(member.name.expression, true);
+          if (ts.isClassStaticBlockDeclaration(member)) walk(member.body, true);
+          if (ts.isPropertyDeclaration(member) && ts.getModifiers(member)?.some(modifier => modifier.kind === ts.SyntaxKind.StaticKeyword) && member.initializer) walk(member.initializer, true);
+        }
+        return;
+      }
+      visited.add(node);
+      const dynamic = runtimeCalls.get(node);
+      if (dynamic) edges.push(...dynamic.filter(edge => !executeOnly || edge.name === '$init'));
+      if (ts.isIdentifier(node)) {
+        // Property names and declaration names are not lexical value reads.
+        const parent = node.parent;
+        const property = ts.isPropertyAccessExpression(parent) && parent.name === node
+          || (ts.isPropertyAssignment(parent) || ts.isMethodDeclaration(parent) || ts.isPropertyDeclaration(parent)) && parent.name === node;
+        if (!property) {
+          const declaration = declarationOf(node, true);
+          const imported = declaration && runtimeImports.get(declaration);
+          let expression: ts.Node = node;
+          while (ts.isPropertyAccessExpression(expression.parent) && expression.parent.expression === expression) expression = expression.parent;
+          const bound = ts.isPropertyAccessExpression(expression) && expression.name.text === 'bind';
+          const parentCall = ts.isCallExpression(expression.parent) ? expression.parent : undefined;
+          const wrapper = parentCall && bindingOf(parentCall.expression);
+          const wrapped = wrapper?.module === 'util' && wrapper.name === 'promisify' && parentCall?.arguments.includes(expression as ts.Expression);
+          const invoked = !executeOnly || !bound && !wrapped && (parentCall !== undefined || ts.isNewExpression(expression.parent));
+          if (imported && invoked) edges.push(imported);
+          else if (declaration && declaration !== node) {
+            const owner = declaration.parent;
+            if (ts.isVariableDeclaration(owner) && owner.initializer) walk(owner.initializer, executeOnly && !invoked);
+            else if (invoked && (ts.isFunctionDeclaration(owner) || ts.isClassDeclaration(owner))) walk(owner);
+            else if (ts.isBindingElement(owner)) {
+              const binding = owner.parent.parent;
+              if (ts.isVariableDeclaration(binding) && binding.initializer) walk(binding.initializer, executeOnly && !invoked);
+            }
+          }
+        }
+      }
+      ts.forEachChild(node, child => walk(child, executeOnly));
+    };
+    if (name === '*') {
+      walk(source);
+      edges.push(...imports, ...reexports.values(), ...stars);
+    } else if (name === '$init') {
+      for (const statement of source.statements) walk(statement, true);
+      edges.push(...imports.filter(edge => edge.name === '$init'));
+    } else {
+      const declaration = exported.get(name);
+      if (declaration) walk(declaration);
+      const reexport = reexports.get(name);
+      if (reexport) edges.push(reexport);
+      if (!declaration && !reexport) edges.push(...stars);
+    }
+    const selected = name === '*' ? [...resources] : resources.filter(resource => reached.has(resource.node) || initialized.has(resource.node));
+    // A named external binding retains the existing import policy. A local
+    // binding is charged by its selected declaration in the dependency instead.
+    for (const edge of edges) if (edge.name !== '$init' && !edge.specifier.startsWith('.') && machineModules.has(edge.specifier.replace(/^node:/, ''))) {
+      selected.push({ node: source, line: edge.line, level: 2, description: edge.specifier.replace(/^node:/, '') });
+    }
+    const unique = new Map(selected.map(({ node: _node, ...resource }) => [`${resource.level}:${resource.description}`, resource]));
+    const result = { resources: [...unique.values()], imports: edges.filter(edge => edge.specifier.startsWith('.')) };
+    slices.set(name, result);
+    return result;
+  };
+  return { result: { file, tier, qualifies: `T${minimum}` as Tier, findings: findings.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule)) }, select };
+}
+
+/** Analyze one source without reading its imports; lintTests adds the local graph. */
+export function lintTestSource(file: string, text: string, entry: TierEntry): TestLintFile {
+  return analyzeTestSource(file, text, entry).result;
 }
 
 /** Hermetic admission uses the same import/call analysis as the tier report. */
@@ -264,12 +453,93 @@ export async function lintTests(cwd: string): Promise<TestLintFile[]> {
   let manifest: TierManifest;
   try { manifest = JSON.parse(await readFile(join(cwd, 'hub/test/tiers.json'), 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
-  return Promise.all(Object.entries(manifest.tests).sort(([a], [b]) => a.localeCompare(b)).map(async ([file, entry]) => lintTestSource(file, await readFile(join(cwd, file), 'utf8'), entry)));
+  const root = await realpath(cwd);
+  // Cache syntax/binding analysis per module and slices per requested export.
+  // Cache direct edges, not partial closures: cycles retain all resource evidence.
+  const modules = new Map<string, Promise<ModuleAnalysis>>();
+  const load = (file: string) => {
+    let pending = modules.get(file);
+    if (!pending) {
+      pending = readFile(join(root, file), 'utf8').then(text => {
+        try { return analyzeTestSource(file, text, manifest.tests[file] ?? 'T1'); }
+        catch (error) { throw new Error(`test lint could not analyze ${file}`, { cause: error }); }
+      });
+      modules.set(file, pending);
+    }
+    return pending;
+  };
+  const resolutions = new Map<string, Promise<string | undefined>>();
+  const localModule = (file: string, specifier: string) => {
+    const path = modulePath(file, specifier);
+    let pending = resolutions.get(path);
+    if (!pending) {
+      pending = (async () => {
+        const extensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
+        const candidates = extname(path) ? extensions.includes(extname(path)) ? [path] : []
+          : extensions.map(extension => path + extension).concat(extensions.map(extension => posix.join(path, 'index' + extension)));
+        for (const candidate of candidates) {
+          if (candidate === '..' || candidate.startsWith('../') || posix.isAbsolute(candidate)) continue;
+          try {
+            const canonical = relative(root, await realpath(resolve(root, candidate)));
+            if (canonical === '..' || canonical.startsWith('../') || canonical.startsWith('..\\')) continue;
+            return canonical.split('\\').join('/');
+          } catch (error) {
+            if (!['ENOENT', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+          }
+        }
+      })();
+      resolutions.set(path, pending);
+    }
+    return pending;
+  };
+  return Promise.all(Object.entries(manifest.tests).sort(([a], [b]) => a.localeCompare(b)).map(async ([file]) => {
+    const own = await load(file);
+    const reachable = { tier: own.result.qualifies, resources: [] as TestLintFinding[] };
+    const result: TestLintFile = { ...own.result, reachable };
+    const seen = new Set([`${file}:*:false`]);
+    const reported = new Set<string>();
+    const queue = [{ file, name: '*', chain: [file], line: 0, fallbacks: [] as string[], initialization: false }];
+    for (let i = 0; i < queue.length; i++) {
+      const current = queue[i]!;
+      const analysis = (await load(current.file)).select(current.name);
+      for (const resource of analysis.resources) {
+        if (Number(reachable.tier[1]) < resource.level) reachable.tier = `T${resource.level}` as Tier;
+        const key = `${current.file}:${resource.line}:${resource.level}:${resource.description}:${current.initialization}`;
+        if (!reported.has(key)) reachable.resources.push({
+          file, line: current.line || resource.line, rule: resource.level === 3 ? 'tier-process' : 'tier-import',
+          message: `via ${current.chain.join(' -> ')}:${resource.line} [${current.name}${current.initialization ? '; module initialization' : ''}${current.fallbacks.length ? `; whole-module fallback: ${current.fallbacks.join(', ')}` : ''}]: ${resource.description} requires T${resource.level}`,
+        });
+        reported.add(key);
+      }
+      for (const edge of analysis.imports) {
+        const dependency = await localModule(current.file, edge.specifier);
+        const initialization = current.initialization || edge.name === '$init';
+        const key = `${dependency}:${edge.name}:${initialization}`;
+        if (!dependency || seen.has(key)) continue;
+        seen.add(key);
+        queue.push({ file: dependency, name: edge.name, chain: [...current.chain, dependency], line: current.line || edge.line, fallbacks: edge.fallback ? [...current.fallbacks, edge.fallback] : current.fallbacks, initialization });
+      }
+    }
+    reachable.resources.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule));
+    return result;
+  }));
 }
 
-export function testLintReport(files: TestLintFile[]): string[] {
+export function testLintReport(files: TestLintFile[], options: { detailedReachable?: boolean } = {}): string[] {
   const findings = files.flatMap(file => file.findings);
   return [`test lint (report only): ${findings.length} findings in ${files.filter(f => f.findings.length).length} files`,
     ...findings.slice(0, 12).map(f => `test lint finding: ${f.file}:${f.line} [${f.rule}] ${f.message}`),
-    ...files.map(f => `test lint tier: ${f.file}: ${f.tier}; qualifies ${f.qualifies}`)];
+    ...files.map(f => `test lint tier: ${f.file}: ${f.tier}; qualifies ${f.qualifies}`),
+    ...files.flatMap(f => {
+      if (!f.reachable) return [];
+      // Dry-run replies share the protocol's bounded frame. Summarize resource
+      // kinds and retain one highest-tier path; the CLI report lists every path.
+      const kinds = [...new Set(f.reachable.resources.map(resource => resource.message.split(']: ').at(-1)))];
+      const representative = f.reachable.resources.find(resource => resource.message.endsWith(`requires ${f.reachable!.tier}`));
+      const resources = options.detailedReachable ? f.reachable.resources : representative ? [representative] : [];
+      return [
+        `test lint reachable: ${f.file}: ${f.reachable.tier}; ${f.reachable.resources.length} resources (diagnostic only)${kinds.length ? '; ' + kinds.join(', ') : ''}`,
+        ...resources.map(resource => `test lint reachable resource: ${f.file}:${resource.line} [${resource.rule}] ${resource.message}`),
+      ];
+    })];
 }
