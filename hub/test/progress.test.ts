@@ -1,27 +1,22 @@
+// T2: digest routing with fake time, in-process peers and one raw-frame acknowledgement proof.
+// Native restart persistence: session-native-lifecycle.test.ts; steer/next-turn: adapter contracts.
 import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { inProcessSpoke, withDiscoveredPid, assignRole, clandWithEnv, clauseAnswered, connectSocket, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, killDaemon, sleep, spawnSpoke, projectHub, startDaemon, startHub, tempProject, TEST_SECRET, type FrameClient } from './harness.ts';
-import { PROTOCOL_VERSION, type Message } from '../src/protocol.ts';
+import { inProcessSpoke, assignRole, connectSocket, connectUi, connectWsUi, eventually, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { FAKE_FLAVOURS } from './fakes/harness.ts';
+import { PROTOCOL_VERSION, type Message, type HarnessProcessView } from '../src/protocol.ts';
 import { WebSocket } from 'ws';
-
-const read = (path: string) => readFile(path, 'utf8').catch(() => '');
-type Process = { pid: number; sessionId: string; harnessId: string; harnessSessionId: string };
-const idle = (ui: FrameClient) => eventually('coord idle', async () => {
-  const r = await ui.request({ type: 'hub.status' });
-  return (r.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') ? true : undefined;
-});
 
 test('progress stays queued and reaches the spoke in one ordered digest with the next report', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
-  const receiver = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
+  const receiver = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });
   t.after(async () => { await sender.close(); await receiver.close(); });
   await sender.waitForPresence(['impl', 'coord']);
   await receiver.waitForPresence(['impl', 'coord']);
@@ -31,7 +26,7 @@ test('progress stays queued and reaches the spoke in one ordered digest with the
     assert.equal(sent.ok, true);
     assert.equal(sent.outcomes[0]?.outcome, 'queued');
   }
-  await sleep(150);
+  await receiver.call('who'); // ordered round trip after all progress sends
   assert.equal(receiver.events.slice(mark).length, 0, 'held progress emits no channel notification');
   assert.equal((await sender.call<{ ok: boolean }>('send', { to: ['coord'], text: 'bad kind', kind: 'typo' })).ok, false);
   await sender.call('send', { to: ['coord'], text: 'finished' });
@@ -51,81 +46,54 @@ test('progress stays queued and reaches the spoke in one ordered digest with the
   }
 });
 
-for (const harness of ['claude-code', 'codex', 'opencode']) {
-  test(`${harness}: three progress notes start no turn, one ordered digest reaches the next report, including across restart`, async (t) => {
-    const root = await tempProject(t);
-    // Suppress fallback polls so progress delivery follows the staged pushed state.
-    const fake = harness === 'claude-code' ? await fakeClaude(t, { pollMs: 10_000 }) : harness === 'codex' ? await fakeCodex(t, { pollMs: 10_000 }) : null;
-    const home = fake?.home ?? join(root, '.fake-opencode');
-    const env = fake?.env ?? {
-      PATH: `${fileURLToPath(new URL('./fakes/opencode', import.meta.url))}:${process.env.PATH ?? ''}`,
-      FAKE_OPENCODE_HOME: home, FAKE_OPENCODE_TURN_MS: '30', CLAND_ADAPTER_POLL_MS: '10000', CLAND_INJECT_TIMEOUT_MS: '5000',
-    };
-    const first = await startDaemon(t, root, env);
-    let ui = await connectUi(t, first.discovery);
-    await ui.request({ type: 'subscribe' });
-    const launch = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness }, 30_000);
-    assert.equal(launch.ok, true, launch.error);
-    const p = await withDiscoveredPid(ui, (launch.value as { process: Process }).process);
-    t.after(() => killDaemon(p.pid));
-    const inputLog = () => read(harness === 'claude-code' ? join(home, 'jobs', `${p.harnessId}.log`) : harness === 'codex' ? join(home, 'log', `${p.pid}.log`) : join(home, 'prompts', `${p.harnessSessionId}.log`));
-    if (harness !== 'codex') await clauseAnswered(ui, 'coord'); // Codex starts with a plain clause input, which the fake does not answer.
-    await idle(ui);
-    const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
-    t.after(() => sender.close());
-    await sender.waitForPresence(['impl', 'coord']);
-    for (const restart of [false, true]) {
-      const notes = [1, 2, 3].map(i => `${restart ? 'durable' : 'initial'} progress ${i}`);
-      for (const text of notes) await sender.call('send', { to: ['coord'], text, kind: 'progress' });
-      await sleep(400);
-      assert.equal((await inputLog()).includes(notes[0]!), false, 'no progress reaches the harness alone');
-      if (restart) {
-        ui.close();
-        assert.equal((await clandWithEnv(root, env, 'hub', 'stop')).code, 0);
-        const second = await startDaemon(t, root, env);
-        ui = await connectUi(t, second.discovery);
-        await ui.request({ type: 'subscribe' });
-        await sender.waitForPresence(['impl', 'coord']);
-        await eventually('session resumed', async () => (await read(join(root, '.cland', 'log', 'hub.log'))).includes('"event":"session-resumed","session":"coord"') ? true : undefined);
-        await idle(ui);
-        await sleep(400);
-        assert.equal((await inputLog()).includes(notes[0]!), false, 'reconnect and role clauses leave progress held');
-      }
-      const report = `${restart ? 'durable' : 'initial'} report finished`;
-      await sender.call('send', { to: ['coord'], text: report, kind: 'report' });
-      const batch = await eventually('digest admitted by the harness', async () => {
-        const log = await inputLog();
-        const at = log.indexOf(`Progress digest (3 notes, oldest first):\n`);
-        const start = restart ? log.indexOf(`Progress digest (3 notes, oldest first):\n`, at + 1) : at;
-        return start >= 0 && log.slice(start).includes(report) ? log.slice(start) : undefined;
-      });
-      assert.ok(batch.indexOf(notes[0]!) < batch.indexOf(notes[1]!) && batch.indexOf(notes[1]!) < batch.indexOf(notes[2]!) && batch.indexOf(notes[2]!) < batch.indexOf(report), 'digest preserves send order before the report');
-      const history = await eventually('all digest members injected', async () => {
-        const r = await ui.request({ type: 'topic.history', topic: 'agents' });
-        const messages = (r.value as { messages: Array<{ text: string; stage?: string }> }).messages;
-        return [...notes, report].every(text => messages.some(m => m.text === text && m.stage === 'injected')) ? messages : undefined;
-      });
-      assert.equal(history.filter(m => m.text === report).length, 1);
-      await idle(ui);
-      const log = await inputLog();
-      assert.equal(log.split('Progress digest (3 notes, oldest first):').length - 1, restart ? 2 : 1, 'one harness input per digest');
-    }
+test('progress holds until one ordered digest is injected across flavours', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock, harnesses: 'fake', probes: 'fake' });
+  const ui = await connectUi(t, discovery);
+  await ui.request({ type: 'subscribe' });
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
+  for (const harness of FAKE_FLAVOURS) {
+    const name = `target-${harness}`;
+    const launched = await ui.request({ type: 'session.launch', name, harness });
+    assert.equal(launched.ok, true, launched.error);
+    const p = (launched.value as { process: HarnessProcessView }).process;
+    const receiver = await inProcessSpoke(t, { cwd: root, discover: true, name, sessionId: p.sessionId });
+    await sender.waitForPresence(['impl', name]);
+    fakes[harness]!.idle(name);
+    const mark = fakes[harness]!.injections.length;
+    const notes = ['first note', 'second note', 'third note'].map(text => `${harness} ${text}`);
+    for (const text of notes) await sender.call('send', { to: [name], text, kind: 'progress' });
+    await sender.call('who');
+    assert.equal(fakes[harness]!.injections.length, mark, 'held progress starts no native input');
+    const text = `${harness} report finished`;
+    await sender.call('send', { to: [name], text });
+    await eventually('digest injection receipt', () => fakes[harness]!.injections.length === mark + 1 || undefined);
+    const batch = fakes[harness]!.injections[mark]!.message;
+    assert.equal(batch.text, text);
+    assert.deepEqual(batch.digest?.map(m => m.text), notes);
+    const history = await eventually('whole batch injected', async () => {
+      const r = await ui.request({ type: 'topic.history', topic: 'agents' });
+      const messages = (r.value as { messages: Array<Message & { stage: string }> }).messages;
+      return [...notes, text].every(text => messages.some(m => m.text === text && m.stage === 'injected')) ? messages : undefined;
+    });
+    assert.equal(history.filter(m => m.text === text).length, 1);
     for (const kind of ['question', 'decision']) {
-      const text = `${harness} ${kind} starts a turn`;
-      await sender.call('send', { to: ['coord'], text, kind });
-      await ui.waitFor(f => f.type === 'message' && (f.message as Message).text === `pong: ${text}`, 15_000);
-      await idle(ui);
+      await sender.call('send', { to: [name], text: `${harness} ${kind}`, kind });
+      await eventually('immediate input receipt', () => fakes[harness]!.injections.some(i => i.message.text === `${harness} ${kind}`) || undefined);
     }
-    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    const journal = await read(join(root, '.cland', 'journal.jsonl'));
-    assert.match(journal, /"event":"send"[^\n]*"kind":"progress"/);
-    assert.match(journal, /"event":"send"[^\n]*"kind":"report"/);
-  });
-}
+    await receiver.close();
+    assert.equal((await ui.request({ type: 'session.stop', session: name })).ok, true);
+  }
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
+  assert.match(journal, /"event":"send"[^\n]*"kind":"progress"/);
+  assert.match(journal, /"event":"send"[^\n]*"kind":"report"/);
+});
 
 test('an unacked digest keeps its membership across reconnect while newer progress waits for another report', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   await assignRole(root, 'coord', 'coordinator');
   const connect = async () => {
     const socket = await connectSocket(discovery.socket);
@@ -138,7 +106,7 @@ test('an unacked digest keeps its membership across reconnect while newer progre
     return socket;
   };
   const first = await connect();
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
   t.after(() => sender.close());
   await sender.waitForPresence(['coord', 'impl']);
   await sender.call('send', { to: ['coord'], text: 'earlier note', kind: 'progress' });
@@ -161,47 +129,50 @@ test('an unacked digest keeps its membership across reconnect while newer progre
   assert.deepEqual(next.digest?.map(m => m.text), ['later note']);
 });
 
-test('an uncertain harness admission holds the whole digest; a later report cannot take it, and retry uses the same batch', async t => {
+test('uncertain digest membership survives later reports until an explicit retry across flavours', async t => {
   const root = await tempProject(t);
-  const fake = await fakeCodex(t, { injectTimeoutMs: 1200 });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock, harnesses: 'fake', probes: 'fake' });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator', harness: 'codex' }, 30_000);
-  assert.equal(launched.ok, true);
-  const p = (launched.value as { process: Process }).process;
-  await idle(ui);
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
-  t.after(() => sender.close());
-  await sender.waitForPresence(['coord', 'impl']);
-  await sender.call('send', { to: ['coord'], text: 'please lose the answer', kind: 'progress' });
-  await sender.call('send', { to: ['coord'], text: 'uncertain report' });
-  await eventually('whole digest uncertain', async () => {
-    const log = await read(join(root, '.cland', 'log', 'hub.log'));
-    return log.split('"event":"inject-uncertain"').length - 1 === 2 ? true : undefined;
-  });
-  const r = await ui.request({ type: 'topic.history', topic: 'agents' });
-  const messages = (r.value as { messages: Message[] }).messages;
-  const report = messages.find(m => m.text === 'uncertain report')!;
-  const note = messages.find(m => m.text === 'please lose the answer')!;
-  await idle(ui);
-  await sender.call('send', { to: ['coord'], text: 'new progress', kind: 'progress' });
-  await sender.call('send', { to: ['coord'], text: 'new report' });
-  await eventually('second digest taken', async () => (await fake.log(p.pid)).includes('new report') ? true : undefined);
-  await idle(ui);
-  assert.equal((await fake.log(p.pid)).split('Progress digest (1 notes, oldest first):').length - 1, 2, 'uncertain digest was never automatically replayed or folded into another report');
-  const retried = await ui.request({ type: 'session.retry', session: 'coord', message: note.id });
-  assert.equal(retried.ok, true, retried.error);
-  for (const id of [note.id, report.id]) await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected', 15_000);
-  assert.equal((await fake.log(p.pid)).split('Progress digest (1 notes, oldest first):').length - 1, 3, 'manual retry admitted exactly the original batch once more');
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
+  for (const harness of FAKE_FLAVOURS) {
+    const name = `target-${harness}`;
+    const launch = await ui.request({ type: 'session.launch', name, harness });
+    const p = (launch.value as { process: HarnessProcessView }).process;
+    const receiver = await inProcessSpoke(t, { cwd: root, discover: true, name, sessionId: p.sessionId });
+    await sender.waitForPresence(['impl', name]);
+    const fake = fakes[harness]!;
+    fake.idle(name);
+    fake.scriptInject(name, 'uncertain');
+    const mark = fake.injections.length;
+    await sender.call('send', { to: [name], text: 'old progress', kind: 'progress' });
+    await sender.call('send', { to: [name], text: 'uncertain report' });
+    await ui.waitFor(f => f.type === 'event' && String((f.row as { text: string }).text).includes(`retry ${name}`));
+    const original = fake.injections[mark]!.message;
+    assert.deepEqual(original.digest?.map(m => m.text), ['old progress']);
+    fake.busy(name); fake.idle(name);
+    await sender.call('send', { to: [name], text: 'new progress', kind: 'progress' });
+    await sender.call('send', { to: [name], text: 'new report' });
+    await eventually('second digest receipt', () => fake.injections.length === mark + 2 || undefined);
+    assert.deepEqual(fake.injections[mark + 1]!.message.digest?.map(m => m.text), ['new progress']);
+    assert.equal(fake.injections.length - mark, 2, 'uncertain batch never replays on idle or joins the new report');
+    const retried = await ui.request({ type: 'session.retry', session: name, message: original.digest![0]!.id });
+    assert.equal(retried.ok, true, retried.error);
+    for (const id of [original.id, original.digest![0]!.id]) await ui.waitFor(f => f.type === 'delivery' && f.message === id && f.stage === 'injected');
+    assert.equal(fake.injections.length - mark, 3);
+    assert.deepEqual(fake.injections.at(-1)!.message, original);
+    await receiver.close();
+    assert.equal((await ui.request({ type: 'session.stop', session: name })).ok, true);
+  }
 });
 
 test('a report queued to a vacant role picks up its recipient\'s held progress when the recipient reconnects', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const ui = await connectUi(t, discovery);
-  const sender = await spawnSpoke({ cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
-  const receiver = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });
+  const sender = await inProcessSpoke(t, { cwd: root, discover: true, name: 'impl', sessionId: 'sender' });
+  const receiver = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });
   t.after(() => sender.close());
   await sender.waitForPresence(['impl', 'coord']);
   await sender.call('send', { to: ['coord'], text: 'held before disconnect', kind: 'progress' });
@@ -212,7 +183,7 @@ test('a report queued to a vacant role picks up its recipient\'s held progress w
   });
   const queued = await ui.request({ type: 'topic.send', topic: 'general', text: 'human report for vacant role', to: ['coordinator'] });
   assert.equal(queued.ok, true, queued.error);
-  const reconnected = await spawnSpoke({ cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });
+  const reconnected = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'receiver' });
   t.after(() => reconnected.close());
   const delivery = await reconnected.waitForEvent(e => e.params.content.includes('human report for vacant role'));
   assert.match(delivery.params.content, /held before disconnect[\s\S]*human report for vacant role/);
@@ -302,11 +273,11 @@ test('an old note bound near its TTL still delivers with a fresh trigger after t
 });
 
 test('rename refuses a target with queued deliveries and preserves two differently bound copies of the same progress', async t => {
-  const hub = await startHub();
+  const hub = await startHub({ clock: new FakeClock() });
   t.after(() => hub.close());
   const ui = await connectWsUi(t, hub);
-  const sender = await spawnSpoke({ hub, name: 'sender', sessionId: 'sender' });
-  const b = await spawnSpoke({ hub, name: 'b', sessionId: 'b' });
+  const sender = await inProcessSpoke(t, { hub, name: 'sender', sessionId: 'sender' });
+  const b = await inProcessSpoke(t, { hub, name: 'b', sessionId: 'b' });
   t.after(() => sender.close());
   await b.waitForPresence(['b']);
   await b.close();
@@ -329,7 +300,7 @@ test('rename refuses a target with queued deliveries and preserves two different
   assert.equal(refusal.ok, false);
   assert.match(String(refusal.error), /"b".*2 unacknowledged/);
   a.send(JSON.stringify({ type: 'ack', id: first.id }));
-  const restoredB = await spawnSpoke({ hub, name: 'b', sessionId: 'b' });
+  const restoredB = await inProcessSpoke(t, { hub, name: 'b', sessionId: 'b' });
   t.after(() => restoredB.close());
   const second = await restoredB.waitForEvent(e => e.params.content.includes('R2'));
   assert.match(second.params.content, /shared P[\s\S]*R2/);
