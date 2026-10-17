@@ -36,7 +36,7 @@ for (const phase of ['queued', 'running'] as const) {
       await writeFile(join(f.root, '.cland/finish'), '');
       if (phase === 'running') await eventually('worker completed package test', () => stat(join(f.root, '.cland/completed')).then(() => true, () => undefined));
       const result = await eventually('integrated result', async () => (await f.results()).find(m => m.id === `suite:${run.id}`));
-      assert.match(result.text, /all exit 0/, result.text);
+      assert.match(result.text, /auto exit 0/, result.text);
       const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
       const job = status.suites!.find(job => job.id === run.id)!;
       assert.equal(job.integrated, true);

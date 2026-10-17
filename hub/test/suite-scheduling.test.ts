@@ -29,7 +29,7 @@ for (const budget of [1, 2]) test(`verify queues a second requester without a wa
   await f.spoke.call('send', { to: ['other'], topic: f.topic, text: 'Verify this fixture' });
   await other.waitForEvent(e => e.params.content.includes('Verify this fixture'));
   // Human fixtures can address an existing topic; each request still has a distinct session identity.
-  const queued = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'other', CLAND_SESSION_ID: 'other-caller', CLAND_ROLE: 'implementer' }, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
+  const queued = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'other', CLAND_SESSION_ID: 'other-caller', CLAND_ROLE: 'implementer' }, 'verify', 'auto', '--report', f.topic, '--to', 'rev', '--json');
   assert.equal(queued.code, 0, queued.stderr);
   const second = JSON.parse(queued.stdout) as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };
   assert.equal(second.pid, null);
@@ -78,7 +78,7 @@ test('a dead queued requester is cancelled with one posted note even after its r
   assert.equal(launched.ok, true, launched.error);
   const actor = (launched.value as {process:{pid:number; sessionId:string}}).process;
   await mkdir(join(f.root, 'suite.lock'));
-  const submission = await clandWithEnv(f.root, {CLAND_SESSION_NAME:'doomed', CLAND_SESSION_ID:actor.sessionId, CLAND_ROLE:'implementer'}, 'verify', 'all', '--fresh', '--report', topic, '--to', 'rev', '--json');
+  const submission = await clandWithEnv(f.root, {CLAND_SESSION_NAME:'doomed', CLAND_SESSION_ID:actor.sessionId, CLAND_ROLE:'implementer'}, 'verify', 'auto', '--fresh', '--report', topic, '--to', 'rev', '--json');
   assert.equal(submission.code, 0, submission.stderr);
   assert.equal(JSON.parse(submission.stdout).pid, null);
   process.kill(actor.pid, 'SIGKILL');
@@ -121,7 +121,7 @@ test('priority admits integrated dev first, then item rank, preserving the queue
     assert.equal((await f.ui.request({type:'role.set', session:name, role})).ok, true);
     const spoke = await spawnSpoke({discover:true, cwd:f.root, name, sessionId:`${name}-identity`, role});
     t.after(() => spoke.close()); await spoke.waitForPresence([name]);
-    const r = await clandWithEnv(f.root, {CLAND_SESSION_NAME:name, CLAND_SESSION_ID:`${name}-identity`, CLAND_ROLE:role}, 'verify', 'all', '--report', topic, '--to', 'rev', '--json');
+    const r = await clandWithEnv(f.root, {CLAND_SESSION_NAME:name, CLAND_SESSION_ID:`${name}-identity`, CLAND_ROLE:role}, 'verify', 'auto', '--report', topic, '--to', 'rev', '--json');
     assert.equal(r.code, 0, r.stderr);
     return JSON.parse(r.stdout) as {id:string;pid:number|null};
   };
@@ -172,7 +172,7 @@ test('a hand-run package holding the old lock occupies admission until it exits'
   assert.doesNotMatch(log,/\$ npm/,'not even typecheck starts beside a hand run');
   await writeFile(join(f.root,'hand-finish'),''); assert.equal(await done,0);
   const result = await eventually('verify admitted after hand exit',async () => (await f.results())[0]);
-  assert.match(result.text,/all exit 0/);
+  assert.match(result.text,/auto exit 0/);
 });
 
 test('a worker lease retains phase place and publishes recovery metadata for both package phases', async t => {
@@ -192,7 +192,7 @@ test('a worker lease retains phase place and publishes recovery metadata for bot
   assert.equal(await stat(join(f.root,'hand-entered')).then(()=>true,()=>false),false);
   await writeFile(join(f.root,'nvim-finish'),'');
   const result=await eventually('both phases finished',async()=>(await f.results())[0]);
-  assert.equal(result.id,`suite:${job.id}`);assert.match(result.text,/all exit 0/);assert.match(result.text,/tests 2; pass 2/);
+  assert.equal(result.id,`suite:${job.id}`);assert.match(result.text,/auto exit 0/);assert.match(result.text,/tests 2; pass 2/);
   assert.equal(await done,0);
 });
 
@@ -203,7 +203,7 @@ test('pre-V1 package runners acquire their own compatibility locks without a sel
   await writeFile(join(f.root,'hub','test','run-suite.ts'),'// legacy package runner: no worker lease support');
   await writeFile(join(f.root,'legacy.mjs'),`import assert from 'node:assert/strict';import {runSuite} from ${JSON.stringify(runner)};assert.equal(process.env.CLAND_SUITE_LEASE,undefined);process.exitCode=await runSuite([['-e',"console.log('legacy package passed')"]],${JSON.stringify({cwd:f.root,lockDirs:[join(f.root,'suite.lock'),join(f.root,'suite.lock-nvim')]})});`);
   await f.launch();const result=await eventually('legacy result',async()=>(await f.results())[0]);
-  assert.match(result.text,/all exit 0/);assert.match(await readFile(result.artifacts[0]!.path,'utf8'),/legacy package passed/);
+  assert.match(result.text,/auto exit 0/);assert.match(await readFile(result.artifacts[0]!.path,'utf8'),/legacy package passed/);
 });
 
 test('a queued request cannot pass for a different head after its worktree advances', async t => {

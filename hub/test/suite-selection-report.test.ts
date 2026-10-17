@@ -39,6 +39,13 @@ test('auto suite reports the fetched diff decision and transports it to the pack
   assert.match(reduced.text, /mode hub-only; all paths outside nvim\/; coverage map missing; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
   const log = await readFile(reduced.artifacts[0]!.path, 'utf8');
   assert.match(log, /"mode":"hub-only","files":\["hub\/src\/tracker\/tracker.ts"\]/);
+  const reserved = await f.spoke.call<{ ok: boolean; code: string; error: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['rev'] });
+  assert.equal(reserved.ok, false);
+  assert.equal(reserved.code, 'verify-all-reserved');
+  assert.match(reserved.error, /mode hub-only/);
+  assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
+  assert.equal(((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.length, 1, 'MCP refusal creates no suite');
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   await f.launch('--all');
   const full = await eventually('forced full result', async () => (await f.results())[1]);
   assert.match(full.text, /mode full; --all \/ all forces full/);

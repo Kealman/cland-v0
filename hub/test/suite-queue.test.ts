@@ -94,7 +94,7 @@ test('verify queue shows a hand holder, ordered waiters and unknown ETA; survive
   const item = JSON.parse((await cland(f.root, 'task', 'create', '--size', 'M', 'other queue request', '--assignee', 'other', '--json')).stdout) as { item: { id: string } };
   const topic = await f.ui.request({ type: 'topic.create', title: 'Other queue request', item: item.item.id });
   const otherTopic = (topic.value as { topic: { id: string } }).topic.id;
-  const submitted = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'other', CLAND_SESSION_ID: 'queue-other' }, 'verify', 'all', '--report', otherTopic, '--to', 'rev', '--json');
+  const submitted = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'other', CLAND_SESSION_ID: 'queue-other' }, 'verify', 'auto', '--report', otherTopic, '--to', 'rev', '--json');
   assert.equal(submitted.code, 0, submitted.stderr);
   const second = JSON.parse(submitted.stdout) as { id: string };
   const check = async () => {
@@ -173,7 +173,7 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
     assert.deepEqual(entry?.platform, run.platform);
   }
   await writeFile(join(lock, 'holder.json'), JSON.stringify({ pid: process.pid, started: null, since: new Date().toISOString(), token: 'hand' }));
-  const fresh = await f.launch('all', '--fresh');
+  const fresh = await f.launch('auto', '--fresh');
   const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.equal(queue.waiters[0]!.id, fresh.id);
   assert.equal(queue.waiters[0]!.expectedRunMs, run.runMs, 'cache zeros do not shorten executed-run estimates');
@@ -183,7 +183,7 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
   t.after(() => nextSpoke.close()); await nextSpoke.waitForPresence(['next']);
   await f.spoke.call('send', {to:['next'], topic:f.topic, text:'Verify the metrics fixture'});
   await nextSpoke.waitForEvent(e => e.params.content.includes('Verify the metrics fixture'));
-  const nextRequest = await clandWithEnv(f.root, {CLAND_SESSION_NAME:'next', CLAND_SESSION_ID:'metrics-next'}, 'verify', 'all', '--fresh', '--report', f.topic, '--to','rev','--json');
+  const nextRequest = await clandWithEnv(f.root, {CLAND_SESSION_NAME:'next', CLAND_SESSION_ID:'metrics-next'}, 'verify', 'auto', '--fresh', '--report', f.topic, '--to','rev','--json');
   assert.equal(nextRequest.code, 0, nextRequest.stderr);
   const nextJob = JSON.parse(nextRequest.stdout) as {id:string};
   const ordered = (await f.ui.request({type:'suite.queue'})).value as VerificationQueue;
@@ -205,7 +205,7 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
     return true;
   });
   await rm(lock, {recursive:true});
-  const replacement = await f.launch('all', '--fresh');
+  const replacement = await f.launch('auto', '--fresh');
   await eventually('new green after fresh cancellation', async () => ((await ui.request({type:'hub.status'})).value as HubStatus).suites!.find(j => j.id === replacement.id && j.reported));
   await mkdir(lock);
   for (let n = 0; n < 20; n++) {

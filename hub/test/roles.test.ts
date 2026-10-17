@@ -90,6 +90,10 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
       `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);
     assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
     assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
+    if (role === 'implementer' || role === 'lead') {
+      assert.match(clause, /`all` is reserved to the Coordinator, the human and authorized occasions/);
+      assert.match(clause, /flaky-gate second receipt.*diff selection/);
+    }
     if (role === 'implementer' || role === 'qa') {
       assert.match(clause, /`cland verify` uses `\[verification\] executor`/);
       assert.match(clause, /`--executor local`.*macOS-only.*human's request/);

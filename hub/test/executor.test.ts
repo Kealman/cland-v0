@@ -51,7 +51,7 @@ async function fixture(t: import('node:test').TestContext, script: string, alter
   const made = await ui.request({ type: 'topic.create', title: 'Executor fixture', item });
   const topic = (made.value as { topic: { id: string } }).topic.id;
   const launch = async () => {
-    const response = await clandWithEnv(root, env, 'verify', 'all', '--report', topic, '--to', 'impl', '--json');
+    const response = await clandWithEnv(root, env, 'verify', 'auto', '--report', topic, '--to', 'impl', '--json');
     assert.equal(response.code, 0, response.stderr);
     const job = JSON.parse(response.stdout) as { id: string; pid: number | null };
     if (job.pid) ownProcess(t, job.pid);
@@ -111,7 +111,7 @@ test('a pre-executor running job restored from hub.db reports as local exactly o
   };
   const result = await eventually('legacy result', async () => { const messages = await read(); return messages.length ? messages : undefined; });
   assert.equal(result.length, 1);
-  assert.match(result[0]!.text, /all exit 0/);
+  assert.match(result[0]!.text, /auto exit 0/);
   assert.match(result[0]!.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
   assert.equal(status.suites![0]!.executor, 'local');

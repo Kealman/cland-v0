@@ -32,7 +32,7 @@ test('suite CLI exits before its worker, posts one artifact-backed result as cal
   assert.equal(result.id, `suite:${job.id}`);
   assert.equal(result.from, 'impl'); assert.equal(result.fromRole, 'implementer');
   assert.deepEqual(result.to.sort(), ['impl', 'rev']);
-  assert.match(result.text, /all exit 0/); assert.match(result.text, /tests 2; pass 2; fail 0/);
+  assert.match(result.text, /auto exit 0/); assert.match(result.text, /tests 2; pass 2; fail 0/);
   assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   const artifact = result.artifacts[0]!;
   assert.equal(artifact.creator, 'impl');
@@ -64,7 +64,7 @@ test('typecheck failure stops before tests and reports the failure', async t => 
   const f = await fixture(t, 'node -e "console.log(\'should not run\')"', 'node -e "console.error(\'typecheck failed\');process.exit(7)"');
   await f.launch();
   const result = await eventually('failure report', async () => (await f.results())[0]);
-  assert.match(result.text, /all exit 7/);
+  assert.match(result.text, /auto exit 7/);
   const log = await readFile(result.artifacts[0]!.path, 'utf8');
   assert.match(log, /typecheck failed/); assert.doesNotMatch(log, /\$ npm test/);
 });
@@ -90,7 +90,7 @@ test('hub restart recovers a worker that outlives it, without replaying the resu
     return (r.value as { messages: ResultMessage[] }).messages.filter(m => m.id === `suite:${job.id}`);
   };
   const results = await eventually('restart result', async () => { const r = await history(); return r.length ? r : undefined; });
-  assert.equal(results.length, 1); assert.match(results[0]!.text, /all exit 0/);
+  assert.equal(results.length, 1); assert.match(results[0]!.text, /auto exit 0/);
   assert.match(results[0]!.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
   const recoveredStatus = (await ui.request({ type: 'hub.status' })).value as HubStatus;
   assert.equal(recoveredStatus.suites!.find(run => run.id === job.id)!.executor, 'local');
@@ -172,7 +172,7 @@ test('a muted suite report follows its moved log after unmute and publishes once
   const result = await eventually('suite publication with moved log', async () => (await f.results())[0]);
   assert.equal(result.id, `suite:${job.id}`);
   assert.deepEqual(result.to.sort(), ['impl', 'rev']);
-  assert.match(result.text, /all exit 0/);
+  assert.match(result.text, /auto exit 0/);
   assert.match(result.text, /tests 1; pass 1; fail 0/);
   assert.ok(result.text.includes(`Log ${log.id}: ${path}`));
   assert.equal(result.artifacts.length, 1);

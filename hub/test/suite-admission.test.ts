@@ -94,7 +94,7 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   // A hand holder makes an incorrectly admitted request remain observable in the queue.
   await mkdir(join(f.root, 'suite.lock'));
   const before = await f.ui.request({ type: 'hub.status' });
-  const failed = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  const failed = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
   assert.equal(failed.ok, false, JSON.stringify(failed));
   assert.equal((failed as { code?: string }).code, 'verify-tiers');
   assert.deepEqual((failed as { files?: string[] }).files, ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
@@ -104,7 +104,7 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   assert.deepEqual((status.value as HubStatus).suites, (before.value as HubStatus).suites, 'refusal creates no durable suite');
   const queue = await f.ui.request({ type: 'suite.queue' });
   assert.deepEqual((queue.value as VerificationQueue).waiters, []);
-  const cli = await clandWithEnv(f.root, f.env, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
+  const cli = await clandWithEnv(f.root, f.env, 'verify', 'auto', '--report', f.topic, '--to', 'rev', '--json');
   assert.notEqual(cli.code, 0);
   assert.match(cli.stderr, /verify-tiers.*unclassified tests/s);
   assert.equal((await f.results()).length, 0, 'refusal publishes no suite result');
@@ -118,7 +118,7 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   ] as const) {
     // Deliberately bypass the sorted writer to plant malformed input.
     await writeFile(manifest, JSON.stringify({ version: 1, tests }));
-    const refusal = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+    const refusal = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
     assert.equal(refusal.ok, false);
     assert.equal((refusal as { code?: string }).code, 'verify-tiers');
     assert.match(refusal.error!, message);
@@ -129,7 +129,7 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
     'hub/src/new.test.ts': 'T1', 'hub/test/new.test.ts': 'T1',
   } }));
-  const resource = await f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  const resource = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
   assert.equal(resource.ok, false);
   assert.match(resource.error!, /T1 test touches machine resources/);
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
@@ -140,7 +140,7 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   assert.equal(job.position, 1, 'refused requests consume no queue position');
   await rm(join(f.root, 'suite.lock'), { recursive: true });
   const result = await eventually('classified suite passed', async () => (await f.results())[0]);
-  assert.match(result.text, /all exit 0/);
+  assert.match(result.text, /auto exit 0/);
   // Transition C4: an immutable pre-migration head, including an unsorted legacy map.
   // Neovim was not classified in that format and must remain admissible.
   await rm(manifest);
@@ -186,7 +186,7 @@ if (args.join(' ') === 'rev-parse HEAD' && existsSync('hold-head')) {
   await git('add', '.'); await git('commit', '-m', 'Classified baseline');
   await mkdir(join(f.root, 'suite.lock'));
   await writeFile(join(f.root, 'hold-head'), 'hold');
-  const pending = f.ui.request({ type: 'suite.start', mode: 'all', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  const pending = f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
   await eventually('head capture held', () => stat(join(f.root, 'head-held')).then(() => true, () => undefined));
   await writeFile(join(f.root, 'hub/test/advanced.test.ts'), '// unclassified new head\n');
   await git('add', 'hub'); await git('commit', '-m', 'Advance to unclassified head');

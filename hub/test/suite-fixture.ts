@@ -33,7 +33,7 @@ export async function fixture(t: import('node:test').TestContext, testScript: st
     assert.equal(history.ok, true, history.error);
     return (history.value as { messages: ResultMessage[] }).messages.filter(m => m.text.startsWith('suite result '));
   };
-  const launch = async (mode = 'all', ...options: string[]) => {
+  const launch = async (mode = 'auto', ...options: string[]) => {
     const r = await clandWithEnv(root, env, 'suite', mode, '--report', topic, '--to', 'rev', '--to', 'impl', '--json', ...options);
     assert.equal(r.code, 0, r.stderr);
     const job = JSON.parse(r.stdout) as { id: string; pid: number | null; position: number; cached?: { run: string; head: string; tree: string } };

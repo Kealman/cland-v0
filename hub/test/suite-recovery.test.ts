@@ -44,7 +44,7 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
   const created = await eventually('borrowed root creation crashed', async () => readFile(marker, 'utf8').then(text => JSON.parse(text) as { root: string; pid: number }, () => undefined));
   t.after(() => rm(created.root, { recursive: true, force: true }));
   const result = await eventually('worker reports package crash after cleanup', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
-  assert.doesNotMatch(result.text, /all exit 0/);
+  assert.doesNotMatch(result.text, /auto exit 0/);
   assert.equal(pidAlive(created.pid), false);
   await assert.rejects(stat(created.root), { code: 'ENOENT' });
   for (const lock of locks) {
@@ -54,7 +54,7 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
   assert.deepEqual(await readdir(`${locks[0]}.runs`), [], 'crashed package record is removed after cleanup');
   const next = await f.launch();
   const passed = await eventually('successor borrows a clean lease', async () => (await f.results()).find(m => m.id === `suite:${next.id}`));
-  assert.match(passed.text, /all exit 0/);
+  assert.match(passed.text, /auto exit 0/);
 });
 
 for (const holder of ['live', 'stale'] as const) test(`admission stays responsive and bounds a held ps probe for a ${holder} compatibility holder`, async t => {
@@ -124,10 +124,10 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
   const pid = await f.workerPid(job.id);
   process.kill(pid, 'SIGKILL');
   const failed = await eventually('worker crash reported', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
-  assert.doesNotMatch(failed.text, /all exit 0/);
+  assert.doesNotMatch(failed.text, /auto exit 0/);
   const next = await f.launch();
   const passed = await eventually('successor admitted after stale recovery', async () => (await f.results()).find(m => m.id === `suite:${next.id}`));
-  assert.match(passed.text, /all exit 0/);
+  assert.match(passed.text, /auto exit 0/);
   await assert.rejects(stat(root), { code: 'ENOENT' });
   for (const lock of locks) await assert.rejects(stat(`${lock}.owner`), { code: 'ENOENT' });
   assert.deepEqual(await readdir(`${locks[0]}.runs`), [], 'stale and successful records are removed');

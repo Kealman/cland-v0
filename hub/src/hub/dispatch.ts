@@ -20,7 +20,7 @@ import type { SubscriptionRequest } from '../protocol.ts';
 import { Suites, SuiteAdmissionError, suiteSummary, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
 import { reportSharedDefects } from './shared-defects.ts';
 import { quarantineResults, recordQuarantineResults, type QuarantineHistory } from '../suite-quarantine.ts';
-import { describeSelection } from '../suite-selection.ts';
+import { describeSelection, selectPackageSuite } from '../suite-selection.ts';
 import { isAbsolute, join } from 'node:path';
 import { readFile, stat, mkdir, writeFile, rename } from 'node:fs/promises';
 import { coveragePointers, parseCoverageMap } from '../suite-coverage.ts';
@@ -117,6 +117,7 @@ export type DispatcherOptions = {
 
 /** Who the UI's and the CLI's calls are audited as. */
 const HUMAN_SESSION = 'human';
+class VerifyAllReserved extends Error {}
 
 /**
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
@@ -1421,13 +1422,19 @@ export class Dispatcher {
         if (actor && callerNow()?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
         // A report-free preview has no artifact or send side effects to authorize.
         if (!request.dryRun || request.report) this.#suitePermissions(actor, topic, to);
+        if (request.mode === 'all' && actor && callerNow()?.role !== 'coordinator' && !request.occasion) throw new VerifyAllReserved();
         if (request.occasion) {
           const role = callerNow()?.role;
           if (role !== 'coordinator' && !(role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic)) throw new Error('occasion requires the Coordinator, or QA with occasion epic');
         }
       };
-      try { authorize(); } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
-      later('suite.start', this.#suites.start({ mode: request.mode, dryRun: request.dryRun ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
+      const failure = async (error: unknown): Promise<HubFrame> => {
+        if (!(error instanceof VerifyAllReserved)) return Dispatcher.#failure(request.id, error);
+        const selection = await selectPackageSuite(request.cwd, 'auto', this.#options.env);
+        return { type: 'result', id: request.id, ok: false, code: 'verify-all-reserved', error: `verify-all-reserved: all is reserved to the Coordinator, the human shell and authorized occasions; omit the mode for ${describeSelection(selection, 2048)}` };
+      };
+      try { authorize(); } catch (error) { return later('suite.start', failure(error)); }
+      later('suite.start', this.#suites.start({ mode: request.mode, dryRun: request.dryRun ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), failure));
     };
 
     /** A read repeated too fast reuses its last answer without another audit. */

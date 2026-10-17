@@ -20,6 +20,7 @@ import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
 test('cache survives hub restart, separates effective modes, and never reuses a failed run', async t => {
   const f = await fixture(t, `node -e "require('fs').appendFileSync('executions','run\\n');process.exit(require('fs').existsSync('.cland/fail')?1:0)"`, undefined, undefined, undefined, undefined, undefined, startDaemon);
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const pkg = JSON.parse(await readFile(join(f.root, 'package.json'), 'utf8'));
   pkg.workspaces = ['hub'];
   await writeFile(join(f.root, 'package.json'), JSON.stringify(pkg));
@@ -30,10 +31,10 @@ test('cache survives hub restart, separates effective modes, and never reuses a 
   await writeFile(join(f.root, 'hub', 'src', 'tracker', 'example.ts'), '// change');
   await git('add', 'hub'); await git('commit', '-m', 'hub-only change');
   await writeFile(join(f.root, '.cland', 'fail'), 'fail');
-  const failed = await f.launch();
+  const failed = await f.launch('all');
   assert.match((await eventually('failed run', async () => (await f.results())[0])).text, /exit 1/);
   await rm(join(f.root, '.cland', 'fail'));
-  const green = await f.launch();
+  const green = await f.launch('all');
   assert.equal(green.cached, undefined);
   assert.notEqual(green.id, failed.id);
   assert.match((await eventually('green run', async () => (await f.results())[1])).text, /exit 0/);
@@ -42,7 +43,7 @@ test('cache survives hub restart, separates effective modes, and never reuses a 
   assert.equal(freshFailure.cached, undefined);
   assert.match((await eventually('fresh failure', async () => (await f.results())[2])).text, /exit 1/);
   await rm(join(f.root, '.cland', 'fail'));
-  const recoveredGreen = await f.launch();
+  const recoveredGreen = await f.launch('all');
   assert.equal(recoveredGreen.cached, undefined, 'a fresh failure supersedes the old green');
   await eventually('recovered green', async () => (await f.results())[3]);
   const reduced = await f.launch('hub');
@@ -55,7 +56,7 @@ test('cache survives hub restart, separates effective modes, and never reuses a 
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery, 'cli');
   await f.spoke.waitForPresence(['impl']);
-  const recovered = await f.launch();
+  const recovered = await f.launch('all');
   assert.equal(recovered.cached?.run, recoveredGreen.id);
   const result = await eventually('recovered cache result', async () => {
     const history = await ui.request({ type: 'topic.history', topic: f.topic });
@@ -93,7 +94,7 @@ test('a package subdirectory cannot borrow root-tree cache evidence for differen
   await cacheRepository(f);
   await f.launch();
   assert.match((await eventually('root green', async () => (await f.results())[0])).text, /exit 0/);
-  const response = await clandWithEnv(join(f.root, 'other-package'), f.env, 'verify', 'all', '--report', f.topic, '--to', 'rev', '--json');
+  const response = await clandWithEnv(join(f.root, 'other-package'), f.env, 'verify', 'auto', '--report', f.topic, '--to', 'rev', '--json');
   assert.equal(response.code, 0, response.stderr);
   const subdirectory = JSON.parse(response.stdout) as { id: string; cached?: unknown; pid?: number };
   if (subdirectory.pid) ownProcess(t, subdirectory.pid);

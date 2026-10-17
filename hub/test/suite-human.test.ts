@@ -85,7 +85,7 @@ test('session-shell and inherited-worker package runners never request a human s
   await writeFile(join(f.root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: `${process.execPath} human-entry.mjs` } }));
   await f.launch();
   const result = await eventually('borrowed human entry finished', async () => (await f.results())[0]);
-  assert.match(result.text, /all exit 0/);
+  assert.match(result.text, /auto exit 0/);
   assert.equal((await f.journal()).some(e => e.event === 'verification-human-queued'), false);
 });
 
@@ -130,7 +130,7 @@ appendFileSync('admissions', n + '\\n'); while (!existsSync('finish-' + n)) awai
   await git('add', '.'); await git('commit', '-m', 'base');
   await mkdir(join(f.root, 'suite.lock'));
   const submit = async (name: string) => {
-    const r = await f.ui.request({ type: 'suite.start', as: { name }, mode: 'all', fresh: true, cwd: f.root, report: f.topic, to: ['rev'] });
+    const r = await f.ui.request({ type: 'suite.start', as: { name }, mode: 'auto', fresh: true, cwd: f.root, report: f.topic, to: ['rev'] });
     assert.equal(r.ok, true, JSON.stringify(r));
     const job = r.value as { id: string; pid: number | null };
     assert.equal(job.pid, null);

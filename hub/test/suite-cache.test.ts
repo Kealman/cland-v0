@@ -91,7 +91,7 @@ for (const cancellation of ['requester', 'head change'] as const) test(`a fresh 
   const original = await f.launch();
   assert.match((await eventually('original green', async () => (await f.results())[0])).text, /exit 0/);
   await mkdir(join(f.root, 'suite.lock'));
-  const fresh = await f.launch('all', '--fresh');
+  const fresh = await f.launch('auto', '--fresh');
   assert.equal(fresh.pid, null);
   assert.equal(fresh.cached, undefined);
   if (cancellation === 'requester') {
@@ -115,7 +115,7 @@ test('verify --fresh runs despite a green cache and cache hits do not extend exp
   await cacheRepository(f);
   const first = await f.launch();
   await eventually('first completion', async () => (await f.results())[0]);
-  const forced = await f.launch('all', '--fresh');
+  const forced = await f.launch('auto', '--fresh');
   assert.equal(forced.cached, undefined);
   assert.notEqual(forced.id, first.id);
   await eventually('fresh completion', async () => (await f.results())[1]);
