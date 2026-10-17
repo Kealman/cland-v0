@@ -2,8 +2,8 @@
 id: T-700
 kind: task
 title: Remote run, close and demo files build one fixture per test and stop paying 2 s per fake droplet
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-443
 branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T17:07:07.108Z
+updated: 2026-10-17T17:12:23.306Z
+closed: 2026-10-17T17:12:23.306Z
 ---
 
 ## Summary
@@ -191,3 +192,7 @@ Final evidence clear at this exact head, findings[], verify all criteria across 
 Durable review: A-4640.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-17T17:12:23.306Z
+
+Merged 137e33a525c33a64a118437d3c44e6e9b48a6058 onto dev.
