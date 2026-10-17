@@ -3,7 +3,7 @@ id: T-748
 kind: task
 title: "Runtime resource tripwire in the T1 and T2 phases: a test that really spawns, binds or opens a socket fails by name"
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-456
 branch: t/T-748-runtime-resource-tripwire-in-the-t1-and
 created: 2026-10-17T17:29:45.529Z
-updated: 2026-10-17T17:46:17.011Z
+updated: 2026-10-17T17:48:21.936Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-727
 kind: task
 title: claude-code-adapter scheduler and latch negatives move onto the adapter Clock
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-451
 branch: t/T-727-claude-code-adapter-scheduler-and-latch
 created: 2026-10-17T07:27:42.323Z
-updated: 2026-10-17T17:21:49.845Z
+updated: 2026-10-17T17:48:18.665Z
+closed: 2026-10-17T17:48:18.665Z
 ---
 
 ## Summary
@@ -143,3 +144,7 @@ Final evidence clear; findings[]; verify both C1/C2 at this exact head. No per-i
 Durable review: A-4656.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-17T17:48:18.665Z
+
+Merged c83ec32d0578f2a3170db86bbf9f70003eab285a onto dev.
