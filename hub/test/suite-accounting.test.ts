@@ -2,13 +2,14 @@
 // No hub, machine or worker process; pure scheduling rules stay in T1.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { machineAccounting, type SuiteJob } from '../src/hub/suites.ts';
+import { machineHealthSummary } from '../src/executor/droplet/health.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -17,6 +18,63 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+
+test('storage health survives remote collection and receipt recovery with its run attribution', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet' });
+  const health = { version: 1, temp: { root: '/tmp', kind: 'tmpfs', capBytes: 4294967296, fallback: null },
+    storage: { disk: { fsyncMs: 12, sqliteMs: 24 }, temp: { fsyncMs: 1, sqliteMs: 2 } },
+    cpu: { totalTicks: 1000, iowaitTicks: 100, stealTicks: 20, iowaitPct: 10, stealPct: 2 } };
+  const job = await remote(f); await running(f, job.id);
+  await f.finish(job.id, 0, `# tests 1\n# pass 1\nsuite machine health ${JSON.stringify(health)}\n`);
+  const receipt = JSON.parse(await readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8'));
+  assert.deepEqual(receipt.health, health);
+  assert.deepEqual(f.logs.find(entry => entry.event === 'verification-timing' && entry.id === job.id)!.health, health);
+  assert.match(machineHealthSummary(f.reports[0]!.health), /disk fsync 12 ms.*SQLite 24 ms.*tmpfs.*iowait 10%.*steal 2%/);
+  const jobs = await f.jobs(); delete jobs[0]!.health;
+  jobs[0]!.reported = false; jobs[0]!.outcome = null; jobs[0]!.artifact = null;
+  await f.reopen(jobs); await f.tick(); await f.machine.waits.run(f.result(job.id));
+  assert.deepEqual(f.reports.at(-1)!.health, health, 'durable receipt retains measurements after machine deletion');
+});
+
+test('distinct shard storage receipts retain their machine identities through aggregation, cache and recovery', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet' });
+  f.candidate.selection.mode = 'full';
+  const job = await remote(f); await running(f, job.id); await f.finish(job.id);
+  const parent = (await f.jobs())[0]!;
+  parent.reported = false; parent.outcome = null; parent.artifact = null;
+  delete parent.lease; delete parent.completedAt;
+  parent.shards = [];
+  const expected = [];
+  for (const n of [1, 2]) {
+    const id = `${job.id}-shard-${n}`, dir = join(f.root, '.cland/run/suites', id);
+    const health = { version: 1 as const, temp: { root: '/tmp', kind: 'tmpfs' as const, capBytes: 4294967296, fallback: null },
+      storage: { disk: { fsyncMs: n * 10, sqliteMs: n * 20 }, temp: { fsyncMs: n, sqliteMs: n * 2 } }, cpu: null };
+    const machine = { name: `machine-${n}`, size: 'c-8', region: 'lon1' };
+    const { shards: _shards, ...base } = parent;
+    parent.shards.push({ ...base, id, parentRun: job.id, shardName: `shard-${n}`, health, machine: { ...machine, lifetimeMs: 0, costUsd: 0 },
+      state: 'finished', outcome: { code: 0, cause: '' }, reported: true, log: join(dir, 'suite.log'), result: join(dir, 'result.json') });
+    expected.push({ run: id, shard: `shard-${n}`, machine, health });
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'suite.log'), `# tests 1\n# pass 1\nsuite machine health ${JSON.stringify(health)}\n`);
+  }
+  // The scripted workers have finished; emulate a crash before group collection.
+  await unlink(parent.result);
+  await f.reopen([parent]); await f.tick(); await f.machine.waits.run(f.result(job.id));
+  const receipt = JSON.parse(await readFile(parent.result, 'utf8'));
+  assert.equal(receipt.health, undefined, 'a group must not pretend to be its last machine');
+  assert.deepEqual(receipt.shardHealth, expected);
+  assert.deepEqual(f.logs.findLast(entry => entry.event === 'verification-timing' && entry.id === job.id)!.shardHealth, expected);
+  const cached = await f.launch({ executor: 'droplet' }); assert.equal(cached.cached?.run, job.id); await f.result(cached.id);
+  const cachedReport = f.reports.at(-1)!;
+  assert.deepEqual(cachedReport.shardHealth, expected, 'cache retains original child run identities');
+  for (const item of expected) assert.ok(machineHealthSummary(cachedReport.health, cachedReport.shardHealth).includes(`${item.shard} · ${item.run} · ${item.machine.name}: Machine health: disk fsync ${item.health.storage.disk.fsyncMs} ms`));
+  const jobs = await f.jobs(); const restoring = jobs.find(saved => saved.id === job.id)!;
+  delete restoring.shards; delete restoring.shardHealth;
+  restoring.reported = false; restoring.outcome = null; restoring.artifact = null;
+  await f.reopen(jobs); await f.tick(); await f.machine.waits.run(f.result(job.id));
+  assert.deepEqual(f.reports.at(-1)!.shardHealth, expected, 'receipt alone recovers every child machine');
+  assert.equal(machineHealthSummary(f.reports.at(-1)!.health, f.reports.at(-1)!.shardHealth), machineHealthSummary(cachedReport.health, cachedReport.shardHealth));
+});
 
 test('a finished run waits for confirmed lease accounting before publishing its receipt', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1 }, '', true);

@@ -82,7 +82,8 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     await writeFile(join(bin, 'timeout'), '#!/usr/bin/env python3\nimport subprocess,sys\na=sys.argv[1:]\na=a[1:] if a[0].startswith("--kill-after") else a\nseconds=float(a.pop(0).rstrip("s"))\np=subprocess.Popen(a)\ntry: sys.exit(p.wait(timeout=seconds))\nexcept subprocess.TimeoutExpired:\n p.terminate()\n try: p.wait(timeout=1)\n except subprocess.TimeoutExpired: p.kill();p.wait()\n sys.exit(124)\n');
     await writeFile(join(bin, 'sha256sum'), `#!${process.execPath}\nconst fs=require('fs'),crypto=require('crypto');console.log(crypto.createHash('sha256').update(fs.readFileSync(process.argv[2])).digest('hex')+'  '+process.argv[2]);\n`);
     await writeFile(join(bin, 'flock'), '#!/usr/bin/env python3\nimport fcntl,sys\ntry: fcntl.flock(int(sys.argv[-1]),fcntl.LOCK_EX|fcntl.LOCK_NB)\nexcept BlockingIOError: sys.exit(1)\n');
-    for (const file of ['setsid', 'timeout', 'sha256sum', 'flock']) await chmod(join(bin, file), 0o700);
+    await writeFile(join(bin, 'mount'), '#!/bin/sh\nexit 1\n'); // Fake machines must never mount the host filesystem.
+    for (const file of ['setsid', 'timeout', 'sha256sum', 'flock', 'mount']) await chmod(join(bin, file), 0o700);
   }
   const bin = join(api.stateRoot, 'bin');
   // Short deadlines belong to the fake clock. Real SSH subprocesses must survive

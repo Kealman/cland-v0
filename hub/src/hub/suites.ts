@@ -30,9 +30,12 @@ import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
 import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
+import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  health?: MachineHealth;
+  shardHealth?: ShardMachineHealth[];
   hostGate?: HostGate;
   cover?: import('../protocol.ts').CoverRecord;
   limits?: import('../suite-limits.ts').SuiteLimits;
@@ -264,7 +267,7 @@ export class Suites {
     const completed = Date.parse(completedAt);
     job.waitMs = job.cached ? 0 : job.pid && !job.admittedAt ? null : elapsed(job.queued, Date.parse(job.admittedAt ?? completedAt));
     job.runMs = job.cached || (!job.admittedAt && !job.pid) ? 0 : elapsed(job.admittedAt, completed);
-    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
+    this.#options.log?.({ event: 'verification-timing', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', branch: job.branch, head: job.head, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null, cached: Boolean(job.cached), queuedAt: job.queued ?? null, admittedAt: job.admittedAt ?? null, completedAt, waitMs: job.waitMs, runMs: job.runMs, estimated: job.timingEstimated ?? false });
   }
   async cancel(id: string | undefined, actor: SuiteActor | null, authorize: () => void): Promise<{ id: string; topic: string; cancelled: true }> {
     if (this.#closed) throw new Error('hub is closing');
@@ -366,6 +369,8 @@ export class Suites {
         job.executor = cached.executor;
         if (cached.platform) job.platform = { ...cached.platform };
         if (cached.machine) job.machine = { ...cached.machine };
+        if (cached.health) job.health = structuredClone(cached.health);
+        if (cached.shardHealth) job.shardHealth = structuredClone(cached.shardHealth);
         job.cached = { run: cached.id, head: cached.head, tree: tree! };
         job.finished = cached.finished!;
         job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
@@ -581,6 +586,12 @@ export class Suites {
     await this.#droplet.releaseShardReservations(shards.map(shard => shard.id));
     const failures = shards.filter(shard => shard.outcome?.code !== 0);
     job.accountingPending = shards.some(shard => shard.accountingPending);
+    // Different machines' repeated log receipts cannot share the single-machine
+    // last-valid-line reducer. Retain their original identities through caching.
+    job.shardHealth = shards.map(shard => ({ run: shard.id, shard: shard.shardName!, machine: shard.machine ? {
+      ...(shard.machine.name ? { name: shard.machine.name } : {}), ...(shard.machine.size ? { size: shard.machine.size } : {}), ...(shard.machine.region ? { region: shard.machine.region } : {}),
+    } : null, health: shard.health ?? null }));
+    delete job.health;
     job.outcome ??= { code: failures.length ? 1 : 0, cause: failures.map(shard => `${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('; ') };
     const platform = shards.find(shard => shard.platform)?.platform;
     if (platform) job.platform = platform;
@@ -752,13 +763,15 @@ export class Suites {
       throw error;
     });
     if (text === null) return false;
-    const result = JSON.parse(text) as { code: number; cause?: string; finished: string; platform?: Platform };
+    const result = JSON.parse(text) as { code: number; cause?: string; finished: string; platform?: Platform; health?: MachineHealth; shardHealth?: ShardMachineHealth[] };
     if (!Number.isInteger(result.code) || typeof result.finished !== 'string' || !Number.isFinite(Date.parse(result.finished)) || result.cause !== undefined && typeof result.cause !== 'string') throw new Error('invalid remote result receipt');
     // The receipt survives deletion of the machine and can predate the last job
     // checkpoint. Reconcile it before polling or relaunching a persisted holder.
     if (!job.outcome || !job.cancelled && !job.requesterDied && !job.timedOut) job.outcome = { code: result.code, cause: result.cause ?? '' };
     job.finished = result.finished;
     if (result.platform) job.platform = result.platform;
+    if (result.health) job.health = result.health;
+    if (result.shardHealth) { job.shardHealth = result.shardHealth; delete job.health; }
     job.state = 'finished'; this.#save(job);
     return true;
   }
@@ -815,7 +828,13 @@ export class Suites {
         if (receipt && ['pending', 'running', 'paused', 'unknown'].includes(receipt.state)) return;
         job.outcome = { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' };
       }
-      if (remote) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}) }));
+      if (remote) {
+        if (!job.shards && !job.shardHealth) {
+          const health = machineHealthFromLog(await readFile(job.log, 'utf8'));
+          if (health) job.health = health;
+        }
+        await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
+      }
       job.state = 'finished';
       this.#save(job);
       if (!job.cleaned) {

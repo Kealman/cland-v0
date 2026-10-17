@@ -21,6 +21,7 @@ import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
 import { Suites, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
+import { machineHealthSummary } from '../executor/droplet/health.ts';
 import { reportSharedDefects } from './shared-defects.ts';
 import { quarantineResults, recordQuarantineResults, type QuarantineHistory } from '../suite-quarantine.ts';
 import { describeSelection, selectPackageSuite } from '../suite-selection.ts';
@@ -625,7 +626,7 @@ export class Dispatcher {
     const messageId = `suite:${job.id}`;
     const platform = job.platform;
     const machine = job.machine;
-    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · ${machineAccounting(machine)}` : ''}${job.workers === undefined ? '' : ` · workers ${job.workers}`}${job.size ? ` · requested size ${job.size}` : ''}${job.cacheBypass ? `\nCache bypassed: ${job.cacheBypass}` : ''}`;
+    const execution = `Executor ${job.executor}${job.occasion ? ` · occasion ${job.occasion}` : ''}${job.shards ? ` · ${job.shards.length} shards` : ''}${machine ? ` · ${machine.size} ${machine.region} · ${machine.name}` : ''}${platform ? ` · ${platform.os} ${platform.arch}${job.executor === 'droplet' ? ` ${platform.release}` : ''} · Node ${platform.node} · Neovim ${platform.nvim}` : ' · platform unavailable'}${machine ? ` · ${machineAccounting(machine)}` : ''}${job.workers === undefined ? '' : ` · workers ${job.workers}`}${job.size ? ` · requested size ${job.size}` : ''}${job.cacheBypass ? `\nCache bypassed: ${job.cacheBypass}` : ''}${job.executor === 'droplet' ? '\n' + machineHealthSummary(job.health, job.shardHealth) : ''}`;
     if (job.requesterDied) {
       // A dead session's role/claim is vacated. This is a hub lifecycle note, not a tool call as that session.
       const key = `suite-death:${job.id}`;
@@ -635,7 +636,7 @@ export class Dispatcher {
         if (!id) throw new Error('cancelled suite topic is unavailable');
         core.store.setMeta(key, id);
       });
-      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, cover: job.cover ?? null, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null });
+      this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome: job.outcome, cover: job.cover ?? null, counts: 'counts unavailable (requester died)', mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
       return;
     }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
@@ -707,7 +708,7 @@ export class Dispatcher {
       return result;
     });
     if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
-    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null });
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
     this.#log({ event: 'audit', session: caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {

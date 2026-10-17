@@ -3841,6 +3841,20 @@
       "owner": "E-677",
       "legacy": true
     },
+    "hub/test/executor-health.test.ts::remote worker completes with a capped tmpfs temp root": {
+      "seconds": 10,
+      "reason": "T3 real-process contract: fake-provider SSH subprocesses execute the root mount shell and detached remote worker, then collect its temp-root, storage-health and journal receipts. A scripted clock cannot prove temp inheritance across that process boundary; observed 6.181 s in A-4743, within the 10 s T3 budget.",
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24"
+    },
+    "hub/test/executor-health.test.ts::remote worker completes with an explicit disk fallback": {
+      "seconds": 10,
+      "reason": "T3 real-process contract: fake-provider SSH subprocesses execute a failing root mount and a successful detached remote worker, then prove disk fallback, temp inheritance and health publication. This requires the real shell completion receipt; observed 5.215 s in A-4743, within the 10 s T3 budget.",
+      "owner": "E-677",
+      "added": "2026-10-17",
+      "expires": "2026-10-24"
+    },
     "hub/test/executor-prepare.test.ts::a timed-out accepted retirement keeps the replacement while old is listed, then completes the late deletion": {
       "seconds": 7.47458,
       "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",

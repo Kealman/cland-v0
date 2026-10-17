@@ -33,7 +33,7 @@ if (mode === 'scp') {
   if (!path.startsWith(`${home}/`)) process.exit(2);
   await mkdir(resolve(path, '..'), { recursive: true });
   await copyFile(paths[0] === target ? path : paths[0]!, paths[0] === target ? paths[1]! : path);
-  if (paths[0] !== target && path.endsWith('/run.sh')) await writeFile(path, (await readFile(path, 'utf8')).replaceAll('/tmp/cland-suite.lock', join(home, 'tmp/suite.lock')));
+  if (paths[0] !== target && (path.endsWith('/run.sh') || path.endsWith('/temp.sh'))) await writeFile(path, (await readFile(path, 'utf8')).replaceAll('/tmp', join(home, 'tmp')));
 } else {
   if (faults.ssh) process.exit(255);
   if (faults.sshFailures) { faults.sshFailures--; await writeFile(join(state, 'machine-faults.json'), JSON.stringify(faults)); process.exit(255); }

@@ -626,3 +626,33 @@ or acquires a lease; normal full-suite queueing stays in effect.
 An older hub that refuses or does not recognize the check fails startup with
 `test admission unavailable`, naming the missing read-only `suite.slot/check`
 capability and the required hub restart. Wait for that authorized restart.
+
+### Droplet storage health and fixture filesystem (T-755)
+
+Each dedicated run machine mounts `/tmp` as tmpfs before starting its worker.
+The cap is the smaller of 4 GiB and half the machine's RAM; the repo,
+`node_modules`, logs and coverage maps remain on disk. The existing suite and
+reaper continue to own their normal `/tmp/cland-suite-*` roots. A failed or
+unavailable mount keeps disk-backed `/tmp` and reports an explicit fallback.
+The mount lives until that run's machine is released.
+
+A startup probe measures four 1 KiB writes with fsync and eight SQLite WAL/FULL
+autocommit inserts (including database initialization/close), separately on disk
+and on the fixture filesystem. The entire probe has a ten-second bound plus a
+one-second kill grace; failure leaves unavailable measurements and preserves the
+suite outcome. A final three-second sample plus one-second kill grace reports
+aggregate `/proc/stat` iowait and steal tick deltas and percentages across the
+package run, excluding startup probes. Guest counters are not added twice.
+Missing or reset counters report unavailable rather than zero. These are machine
+CPU percentages, not per-process CPU use or a proof of device-level latency.
+
+The structured `suite machine health` lines stay in the log. The final complete
+receipt is copied into `result.json`, the result header and the `suite-result`
+and `verification-timing` journal records, retaining run attribution through
+recovery and cache reuse. Sharded results retain a `shardHealth` collection with
+original child run, shard label and machine identity in durable receipts, journal
+records and cached/recovered headers; they never treat concatenated child logs
+as one machine's sample.
+Only timing/counter/filesystem facts are captured; no environment dump or
+command line is collected. Compare completed phases when investigating timings:
+a failed hub phase can omit both Neovim and coverage reduction.
