@@ -94,6 +94,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   #readiness = new Set<ReadinessWaiter>();
   #attempt = 0;
   #stopped = false;
+  #closing: Promise<void> | undefined;
   #requestedName: string | undefined;
   /** The name the hub last welcomed us under: a reconnect asks for it, so a generated name stays ours even
    *  when the hub lost its memory. Dropped when the hub refuses it (someone claimed it by name meanwhile). */
@@ -149,13 +150,20 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     this.#connect();
   }
 
-  stop(): void {
+  /** Stop retries immediately; the receipt also waits for the owned socket to close. */
+  stop(): Promise<void> {
+    if (this.#closing) return this.#closing;
     this.#stopped = true;
     this.#failReadiness(new Error('the spoke stopped before the hub welcome'));
     if (this.#timer) clearTimeout(this.#timer);
     this.#stopKeepalive();
     this.#clearWelcomeTimer();
-    this.#ws?.close();
+    const ws = this.#ws;
+    this.#closing = !ws || ws.readyState === WebSocket.CLOSED ? Promise.resolve() : new Promise(resolve => {
+      ws.once('close', () => resolve());
+      ws.close();
+    });
+    return this.#closing;
   }
 
   /** While connecting, await the welcome with a separate bounded deadline. Outages/refusals fail at once;

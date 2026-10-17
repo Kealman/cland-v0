@@ -500,7 +500,7 @@
       "tests": 8
     },
     "hub/test/routing.test.ts": {
-      "seconds": 4.320149,
+      "seconds": 0.085622124,
       "tests": 3
     },
     "hub/test/rule-cli.test.ts": {
@@ -2059,9 +2059,9 @@
     "hub/test/roles.test.ts::roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults": 6.330647,
     "hub/test/roles.test.ts::roles.toml: approval, sandbox, writable_roots and network of a launch are parsed, defaulted and checked (T-48)": 0.002735,
     "hub/test/roles.test.ts::the holder leaving raises the vacancy; a launched Coordinator gets its clause as its first turn": 2.91061,
-    "hub/test/routing.test.ts::@all and a glob reach the connected and the known-offline sessions, never the sender": 1.695033,
-    "hub/test/routing.test.ts::@all reaches a session seen within the queue TTL and not one older": 0.925616,
-    "hub/test/routing.test.ts::a role is a tag: @reviewer reaches the sessions holding it, live or offline; an unheld role answers empty": 1.6995,
+    "hub/test/routing.test.ts::@all and a glob reach the connected and the known-offline sessions, never the sender": 0.0336,
+    "hub/test/routing.test.ts::@all reaches a session seen within the queue TTL and not one older": 0.014655291,
+    "hub/test/routing.test.ts::a role is a tag: @reviewer reaches the sessions holding it, live or offline; an unheld role answers empty": 0.037366833,
     "hub/test/rule-cli.test.ts::a hand edit of another rule during the native temporary write survives a refused stale write": 1.379768,
     "hub/test/rule-cli.test.ts::concurrent rule CLI writes serialize numbers without losing rules; invalid input leaves the file intact": 2.86506,
     "hub/test/rule-cli.test.ts::human rule CLI adds numbered rules, edits and retires without changing another entry": 3.244586,

@@ -1,15 +1,18 @@
+// T2: real hub routing over sockets, with every spoke running in this process.
+// This permissive hub fixture also proves that an unknown requested role is ignored.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { startHub, spawnSpoke, waitForAbsence } from './harness.ts';
+import { startHub, inProcessSpoke, waitForAbsence } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
 
 type Send = { ok: boolean; outcomes: Array<{ to: string; outcome: string; reason?: string }> };
 const summary = (s: Send) => s.outcomes.map((o) => `${o.to}:${o.outcome}`).sort();
 
-test('@all and a glob reach the connected and the known-offline sessions, never the sender', async () => {
+test('@all and a glob reach the connected and the known-offline sessions, never the sender', async t => {
   const hub = await startHub();
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const impl1 = await spawnSpoke({ hub, name: 'impl-1', sessionId: 'sess-1' });
-  const impl2 = await spawnSpoke({ hub, name: 'impl-2', sessionId: 'sess-2' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const impl1 = await inProcessSpoke(t, { hub, name: 'impl-1', sessionId: 'sess-1' });
+  const impl2 = await inProcessSpoke(t, { hub, name: 'impl-2', sessionId: 'sess-2' });
   try {
     await impl1.waitForPresence(['impl-1']);
     await alpha.waitForPresence(['alpha', 'impl-1', 'impl-2']);
@@ -31,19 +34,19 @@ test('@all and a glob reach the connected and the known-offline sessions, never 
   }
 });
 
-test('@all reaches a session seen within the queue TTL and not one older', async () => {
-  let now = Date.parse('2026-10-08T12:00:00Z');
-  const hub = await startHub({ queueTtlMs: 60_000, now: () => new Date(now) });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const old = await spawnSpoke({ hub, name: 'old-one', sessionId: 'sess-o' });
+test('@all reaches a session seen within the queue TTL and not one older', async t => {
+  const clock = new FakeClock(Date.parse('2026-10-08T12:00:00Z'));
+  const hub = await startHub({ queueTtlMs: 60_000, clock });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const old = await inProcessSpoke(t, { hub, name: 'old-one', sessionId: 'sess-o' });
   try {
     await alpha.waitForPresence(['alpha', 'old-one']);
     await old.close();
     await waitForAbsence(alpha, 'old-one');
-    now += 30_000; // still within the TTL: old-one is an addressee, queued
+    await clock.advance(30_000); // still within the TTL: old-one is an addressee, queued
     let sent = await alpha.call<Send>('send', { to: ['all'], text: 'first' });
     assert.equal(sent.outcomes[0]?.outcome, 'queued');
-    now += 31_000; // past the TTL: old-one is history
+    await clock.advance(31_000); // past the TTL: old-one is history
     sent = await alpha.call<Send>('send', { to: ['all', 'old-one'], text: 'second' });
     assert.deepEqual(summary(sent), ['all:unknown', 'old-one:unknown']);
   } finally {
@@ -52,11 +55,11 @@ test('@all reaches a session seen within the queue TTL and not one older', async
   }
 });
 
-test('a role is a tag: @reviewer reaches the sessions holding it, live or offline; an unheld role answers empty', async () => {
+test('a role is a tag: @reviewer reaches the sessions holding it, live or offline; an unheld role answers empty', async t => {
   const hub = await startHub();
-  const coord = await spawnSpoke({ hub, name: 'coord', role: 'coordinator', sessionId: 'sess-c' });
-  const rev = await spawnSpoke({ hub, name: 'rev', role: 'reviewer', sessionId: 'sess-r' });
-  const other = await spawnSpoke({ hub, name: 'other', role: 'no-such-role', sessionId: 'sess-o' });
+  const coord = await inProcessSpoke(t, { hub, name: 'coord', role: 'coordinator', sessionId: 'sess-c' });
+  const rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'sess-r' });
+  const other = await inProcessSpoke(t, { hub, name: 'other', role: 'no-such-role', sessionId: 'sess-o' });
   try {
     await coord.waitForPresence(['coord', 'rev', 'other']);
     const who = await coord.call<{ sessions: Array<{ name: string; role: string | null }> }>('who');

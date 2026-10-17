@@ -19,6 +19,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { CallToolRequestSchema, ListToolsRequestSchema, type Notification } from '@modelcontextprotocol/sdk/types.js';
 import { INSTRUCTIONS } from './instructions.ts';
 import { Forbidden, HubClient, Refused, REQUEST_TIMEOUT_MS, WELCOME_TIMEOUT_MS } from './hub-client.ts';
@@ -274,18 +275,29 @@ const deliverToSession = (server: SpokeServer, message: Message, topic?: TopicRe
 
 export type SpokeRuntime = { server: SpokeServer; hub: HubClient | null };
 
+export type SpokeOptions = {
+  transport?: Transport;
+  exit?: (code: number) => void;
+  /** Discovery and hello use this directory without changing the host process's cwd. */
+  cwd?: string;
+  log?: (line: string) => void;
+};
+
 const positive = (raw: string | undefined, fallback: number): number => {
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<SpokeRuntime> {
-  const log = (line: string) => process.stderr.write(`cland-spoke: ${line}\n`);
+export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: SpokeOptions = {}): Promise<SpokeRuntime> {
+  const log = options.log ?? ((line: string) => { process.stderr.write(`cland-spoke: ${line}\n`); });
+  const cwd = options.cwd ?? process.cwd();
+  const transport = options.transport ?? new StdioServerTransport();
+  const exit = options.exit ?? ((code: number) => process.exit(code));
   let url = env.CLAND_HUB_URL?.trim();
   let secret = env.CLAND_HUB_SECRET?.trim();
   // No hub in the environment: the project's discovery file, read again before every connect.
   let endpoint: (() => { url: string; secret: string } | null) | undefined;
-  const discoveryFile = !url && !secret ? env.CLAND_HUB_FILE?.trim() || findDiscovery(process.cwd()) : null;
+  const discoveryFile = !url && !secret ? env.CLAND_HUB_FILE?.trim() || findDiscovery(cwd) : null;
   if (discoveryFile) {
     endpoint = () => {
       const d = readDiscovery(discoveryFile);
@@ -495,22 +507,36 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
 
   // The harness closing our stdin is the session ending: an orphaned spoke must not outlive it
   // (the hub-outage rule is "never exit on a hub failure", not "never exit").
+  let ended = false;
+  const stdinEnded = () => exitWithSession("the session's stdin ended");
+  const stdinClosed = () => exitWithSession("the session's stdin closed");
+  const removeStdinListeners = () => {
+    process.stdin.removeListener('end', stdinEnded);
+    process.stdin.removeListener('close', stdinClosed);
+  };
   const exitWithSession = (why: string) => {
+    if (ended) return;
+    ended = true;
+    removeStdinListeners();
     log(`${why} — exiting`);
     hub?.stop();
-    process.exit(0);
+    exit(0);
   };
   server.onclose = () => exitWithSession('the session closed the channel');
   // The SDK's stdio transport listens for data and errors only: a parent that died leaves a spoke whose
   // stdin merely ended — an orphan holding a name on the hub. EOF on stdin is the session ending.
-  process.stdin.once('end', () => exitWithSession("the session's stdin ended"));
-  process.stdin.once('close', () => exitWithSession("the session's stdin closed"));
-  await server.connect(new StdioServerTransport());
+  if (transport instanceof StdioServerTransport) {
+    process.stdin.once('end', stdinEnded);
+    process.stdin.once('close', stdinClosed);
+  }
+  try { await server.connect(transport); }
+  catch (error) { removeStdinListeners(); throw error; }
+  if (ended) return { server, hub: null };
 
   if (skipped && clandDir) {
     log(skipped);
     const journal = new Journal(journalPath(clandDir));
-    journal.write({ event: 'spoke-connection-skipped', cwd: process.cwd(), reason: skipped });
+    journal.write({ event: 'spoke-connection-skipped', cwd, reason: skipped });
     try { await journal.close(); }
     catch (err) { log(`could not journal the skipped connection: ${err instanceof Error ? err.message : String(err)}`); }
     return { server, hub: null };
@@ -535,7 +561,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env): Promise<Sp
     hello: {
       // a session with no id gets a random one: two such spokes must never look like one session
       sessionId: sessionId || `anon-${randomUUID()}`,
-      cwd: process.cwd(),
+      cwd,
       ...(name ? { name } : {}),
       ...(launchToken ? { launchToken } : {}),
       ...(role ? { role } : {}),

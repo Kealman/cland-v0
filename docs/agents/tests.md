@@ -61,6 +61,16 @@ recovery. Inspect `injections`, `stops` and `resumes` for adapter receipts.
 The fake supplies the harness adapter only: connect the session's protocol peer
 in-process or over a test socket and acknowledge delivered frames as usual.
 
+For a role-bearing MCP caller, use `inProcessSpoke(t, { discover: true, cwd: root,
+name: 'impl', role: 'implementer', sessionId: 'impl-id' })` after `projectHub`.
+It accepts the same options and returns the same `Session` API as `spawnSpoke`:
+tool calls, channel events, presence waits and logs. The real spoke handlers run
+over an in-memory MCP transport; their `HubClient` uses the real WebSocket edge.
+Each spoke closes automatically before the hub's teardown and checks its owned
+resources. `close()` is idempotent and can be called early to test offline routing.
+Its `pid` is 0 because there is no child: use `spawnSpoke` in T3 for process signals
+or a real stdio binary contract.
+
 The fake harness **binaries** in `hub/test/fakes/{claude-code,codex,opencode}`
 are reserved for one real-binary adapter contract file per harness and T3
 scenarios. They are not the default for routing, roles, subscriptions or tracker

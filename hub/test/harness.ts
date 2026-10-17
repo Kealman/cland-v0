@@ -1,7 +1,7 @@
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import type { Clock } from '../src/hub/clock.ts';
 // The test harness for the two seams:
-//   1. the spoke's MCP stdio surface — the real spoke process, driven by the SDK's client
+//   1. the spoke's MCP surface — in-memory for T2, a real stdio process for binary contracts/lifecycle
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
@@ -18,6 +18,8 @@ import { fileURLToPath } from 'node:url';
 import type { TestContext } from 'node:test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { runSpoke } from '../src/spoke/spoke.ts';
 import { WebSocket } from 'ws';
 import { z } from 'zod';
 import type { Dispatcher } from '../src/hub/dispatch.ts';
@@ -94,7 +96,7 @@ export type Session = {
   call: <T = unknown>(name: string, args?: Record<string, unknown>) => Promise<T>;
   /** Everything this spoke has written to stderr, for a failing assertion to quote. */
   log: () => string;
-  /** The spoke's process id: a test may pause it (SIGSTOP) to make it fall silent on the wire. */
+  /** A spawned spoke's process id; 0 for an in-process spoke (never signal it). */
   pid: number;
   close: () => Promise<void>;
 };
@@ -102,7 +104,7 @@ export type Session = {
 /** A spoke's connect on a loaded machine: the loop returns the moment presence shows, so only a real defect pays this. */
 export const PRESENCE_DEADLINE_MS = 30_000;
 
-export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
+async function spokeEnvironment(options: SpokeOptions): Promise<Record<string, string>> {
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '',
     CLAND_SESSION_ID: options.sessionId ?? 'sess-test',
@@ -113,7 +115,7 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
   };
   if (options.discover && !options.cwd) throw new Error('a discovering spoke needs the cwd of a project');
   if (!options.unconfigured && !options.discover) {
-    if (!options.hub) throw new Error('spawnSpoke: pass `hub`, `discover` or `unconfigured`');
+    if (!options.hub) throw new Error('a spoke needs `hub`, `discover` or `unconfigured`');
     env.CLAND_HUB_URL = options.hub.url;
     env.CLAND_HUB_SECRET = options.secret ?? TEST_SECRET;
   }
@@ -123,21 +125,17 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
   if (options.launchToken) env.CLAND_LAUNCH_TOKEN = options.launchToken;
+  return env;
+}
+
+export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
+  const env = await spokeEnvironment(options);
   const workDir = await mkdtemp(join(tmpdir(), 'cland-spoke-'));
   const cleanup = ownDirectory(undefined, workDir);
   const transport = new StdioClientTransport({ command: process.execPath, args: [SPOKE_ENTRY], env, cwd: options.cwd ?? workDir, stderr: 'pipe' });
   const client = new Client({ name: 'harness', version: '0.0.0' }, { capabilities: {} });
-  const events: ChannelEvent[] = [];
-  const waiters: Array<{ predicate: (e: ChannelEvent) => boolean; resolve: (e: ChannelEvent) => void }> = [];
-  client.setNotificationHandler(ChannelEvent, async (event) => {
-    events.push(event);
-    for (const w of [...waiters]) {
-      if (w.predicate(event)) {
-        waiters.splice(waiters.indexOf(w), 1);
-        w.resolve(event);
-      }
-    }
-  });
+  let log = '';
+  const session = spokeSession(client, options.cwd ?? workDir, () => log);
   try { await client.connect(transport); }
   catch (error) {
     await client.close();
@@ -147,33 +145,103 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
   }
   const cleanupSpoke = ownProcess(undefined, transport.pid ?? undefined);
   // Always kept, printed only when asked: a failing case can quote what the spoke decided and why.
-  let log = '';
   transport.stderr?.on('data', (chunk: Buffer) => {
     log += String(chunk);
     if (process.env.CLAND_TEST_VERBOSE) process.stderr.write(`[spoke ${options.name ?? '?'}] ${chunk}`);
   });
 
+  return {
+    ...session,
+    log: () => log,
+    pid: transport.pid as number,
+    close: async () => {
+      await client.close();
+      await cleanupSpoke();
+      await cleanup();
+    },
+  };
+}
+
+/** T2 spoke: production MCP handlers and HubClient, with no child or process globals. */
+export async function inProcessSpoke(t: TestContext, options: SpokeOptions): Promise<Session> {
+  const env = await spokeEnvironment(options);
+  const workDir = options.cwd ?? await tempProject(t, 'cland-spoke-');
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: 'harness', version: '0.0.0' }, { capabilities: {} });
+  let log = '';
+  const session = spokeSession(client, workDir, () => log);
+  const resources = hubResources();
+  let runtime: Awaited<ReturnType<typeof runSpoke>> | undefined;
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    try { await client.close(); }
+    finally {
+      await runtime?.hub?.stop();
+      try { await runtime?.server.close(); }
+      finally { await resources.check(); }
+    }
+  })();
+  onCleanup(t, close);
+  try {
+    runtime = await resources.run(() => runSpoke(env, {
+      transport: serverTransport,
+      cwd: workDir,
+      exit: () => {},
+      log: line => { log += `cland-spoke: ${line}\n`; },
+    }));
+    await client.connect(clientTransport);
+  } catch (error) {
+    await close();
+    throw error;
+  }
+  return { ...session, pid: 0, close };
+}
+
+/** Shared Session surface: channel notifications are installed before either transport connects. */
+function spokeSession(client: Client, cwd: string, log: () => string = () => ''): Omit<Session, 'pid' | 'close'> {
+  const events: ChannelEvent[] = [];
+  let closed = false;
+  const waiters: Array<{ predicate: (e: ChannelEvent) => boolean; resolve: (e: ChannelEvent) => void; reject: (error: Error) => void }> = [];
+  client.onclose = () => {
+    closed = true;
+    for (const waiter of waiters.splice(0)) waiter.reject(new Error('the spoke closed before the channel event'));
+  };
+  client.setNotificationHandler(ChannelEvent, async (event) => {
+    events.push(event);
+    for (const w of [...waiters]) {
+      if (w.predicate(event)) {
+        waiters.splice(waiters.indexOf(w), 1);
+        w.resolve(event);
+      }
+    }
+  });
   const call = async <T = unknown>(name: string, args: Record<string, unknown> = {}): Promise<T> => {
     const result = await client.callTool({ name, arguments: args });
     const content = (result.content as Array<{ type: string; text?: string }>)[0];
     if (!content || content.type !== 'text' || content.text === undefined) throw new Error(`tool ${name}: no text content`);
     const parsed = JSON.parse(content.text) as T;
-    rememberResultProcesses(parsed, options.cwd ?? workDir);
+    rememberResultProcesses(parsed, cwd);
     return parsed;
   };
 
   const waitForEvent = (predicate: (e: ChannelEvent) => boolean, timeoutMs = 5000): Promise<ChannelEvent> => {
     const hit = events.find(predicate);
     if (hit) return Promise.resolve(hit);
+    if (closed) return Promise.reject(new Error('the spoke closed before the channel event'));
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`no channel event matched within ${timeoutMs}ms; saw ${JSON.stringify(events)}`)), timeoutMs);
-      waiters.push({
+      const timer = setTimeout(() => {
+        waiters.splice(waiters.indexOf(waiter), 1);
+        reject(new Error(`no channel event matched within ${timeoutMs}ms; saw ${JSON.stringify(events)}`));
+      }, timeoutMs);
+      const waiter = {
         predicate,
-        resolve: (e) => {
+        resolve: (e: ChannelEvent) => {
           clearTimeout(timer);
           resolve(e);
         },
-      });
+        reject: (error: Error) => { clearTimeout(timer); reject(error); },
+      };
+      waiters.push(waiter);
     });
   };
 
@@ -188,23 +256,10 @@ export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
       if (Array.isArray(sessions) && names.every((n) => sessions.some((d) => d.name === n))) return;
       await new Promise((r) => setTimeout(r, 25));
     }
-    throw new Error(`presence never showed ${names.join(',')}; last who(): ${JSON.stringify(last)}\n${log}`);
+    throw new Error(`presence never showed ${names.join(',')}; last who(): ${JSON.stringify(last)}\n${log()}`);
   };
 
-  return {
-    client,
-    events,
-    log: () => log,
-    pid: transport.pid as number,
-    waitForEvent,
-    waitForPresence,
-    call,
-    close: async () => {
-      await client.close();
-      await cleanupSpoke();
-      await cleanup();
-    },
-  };
+  return { client, events, log, waitForEvent, waitForPresence, call };
 }
 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));

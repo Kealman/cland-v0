@@ -1,14 +1,20 @@
+// T3: contract with the real stdio spoke binary, including parity with its in-process transport.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DOCUMENTED_TOOLS, startHub, spawnSpoke } from './harness.ts';
+import { DOCUMENTED_TOOLS, startHub, spawnSpoke, inProcessSpoke } from './harness.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { parseRoles } from '../src/roles/config.ts';
 
-test('the spoke declares the channel capability, the documented tools and its instructions', async () => {
+test('the spoke declares the channel capability, the documented tools and its instructions', async t => {
   const hub = await startHub();
   const spoke = await spawnSpoke({ hub, name: 'alpha' });
   try {
+    const inProcess = await inProcessSpoke(t, { hub, name: 'in-process', sessionId: 'sess-in-process' });
+    assert.deepEqual(await inProcess.client.listTools(), await spoke.client.listTools());
+    assert.equal(inProcess.client.getInstructions(), spoke.client.getInstructions());
+    assert.deepEqual(inProcess.client.getServerCapabilities(), spoke.client.getServerCapabilities());
+    await inProcess.close();
     const caps = spoke.client.getServerCapabilities();
     assert.deepEqual(caps?.experimental?.['claude/channel'], {});
     assert.ok(caps?.tools, 'tools capability');
