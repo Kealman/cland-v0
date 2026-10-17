@@ -2,8 +2,8 @@
 id: T-704
 kind: task
 title: Permission and validation tables run through the dispatcher, with one CLI proof per command family
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-436
 branch: t/T-704-permission-and-validation-tables-run
 created: 2026-10-16T19:59:37.407Z
-updated: 2026-10-17T14:23:17.826Z
+updated: 2026-10-17T14:23:37.496Z
+closed: 2026-10-17T14:23:37.496Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; Standards 0 / Spec 0 findings, A-4536. Independently audited exact-head A-4531 / afd920d9 final exit 0: full Linux run, 2486 tests / 2478 passes / 0 failures / 8 prerequisite skips, including 391-pass/3-skip full Neovim phase. All 61 owned cases across nine resulting files pass, twenty owned new identities pass 5/5, summed Linux test time 55.090634503 s. C1: current Mac median sum 65.332644 s and disclosed Linux sum both meet 85 s including all splits. C5: Mac whole-file 5/5 chain A-4485/A-4489, planner 5/5 A-4524, and current exact-head green Linux receipt. Planner incompatibility now ordinary/load green; --as case 3.951085672 s and 5/5. Current source delta A-4526 retains C2/C3/C4; all five criteria supported. Origin head unchanged. Earlier failed A-4514 is historical, no exception needed. No per-item QA or further run needed; no Reviewer edits/tests.
 
 Criteria: C1 verified, C5 verified.
+
+### coord · 2026-10-17T14:23:37.496Z
+
+Merged 800b7861b5c93f69a698c026664ad84d40c03d5e onto dev.
