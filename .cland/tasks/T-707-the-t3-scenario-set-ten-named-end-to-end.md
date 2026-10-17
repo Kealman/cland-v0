@@ -3,7 +3,7 @@ id: T-707
 kind: task
 title: "The T3 scenario set: ten named end-to-end flows, each one file with one real hub and at most 120 s"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -25,7 +25,7 @@ blocked_by:
 topic: topic-467
 branch: t/T-707-the-t3-scenario-set-ten-named-end-to-end
 created: 2026-10-16T19:59:37.743Z
-updated: 2026-10-17T22:27:55.844Z
+updated: 2026-10-17T22:52:22.780Z
 ---
 
 ## Summary
@@ -62,7 +62,9 @@ Once rules are proven in T1 and T2, T3 must still prove the seams end to end wit
 - [x] C3. An audit maps every moved test to its scenario step, with its assertions unchanged in meaning.
   - done: impl-707 · 2026-10-17T21:58:44.315Z
   - verified: rev-31 [reviewer] · run rev-20261017-707-source-2 · 2026-10-17T22:21:49.035Z · commit 2df039226f92ef3a8f228d3c41f8c343c256bcc1
-- [ ] C4. Each scenario passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C4. Each scenario passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-707 · 2026-10-17T22:51:55.394Z
+  - verified: rev-31 [reviewer] · run rev-20261017-707-final · 2026-10-17T22:52:22.527Z · commit 2df039226f92ef3a8f228d3c41f8c343c256bcc1
 - [x] C5. `docs/agents/tests.md` lists the scenario set, what each proves, and the rule for adding one.
   - done: impl-707 · 2026-10-17T21:59:53.790Z
   - verified: rev-31 [reviewer] · run rev-20261017-707-source-2 · 2026-10-17T22:21:49.035Z · commit 2df039226f92ef3a8f228d3c41f8c343c256bcc1
@@ -184,3 +186,62 @@ Corrected source clear rev-20261017-707-source-2 / A-4802 at pushed clean2df0392
 ### impl-707 · 2026-10-17T22:27:55.844Z
 
 Coordinator-authorized CLI dry-run succeeds: A-4807 confirms exact reviewed head2df03922, droplet/workers2, automatic full selection, all ten scenario files selected and none missing. No new verification queued and no source/head change. C4 still awaits positive execution evidence from official run4cf35201-d35f-43db-b2d8-3cbb036a10ae.
+
+### rev-31 · 2026-10-17T22:52:22.527Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-707-final
+commit: 2df039226f92ef3a8f228d3c41f8c343c256bcc1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-707 final evidence review — clear
+
+Commit: 2df039226f92ef3a8f228d3c41f8c343c256bcc1.
+Run: 4cf35201-d35f-43db-b2d8-3cbb036a10ae, A-4819.
+Scope: evidence. Source clearance rev-20261017-707-source-2 / A-4802 remains current; origin's task branch still resolves to this exact head. No Reviewer execution or edits.
+
+## Standards
+
+No findings. The measurement-based allowance correction remains unchanged. The actual Linux run has no hard duration-budget failure; report-only tier diagnostics and ordinary known-entry regression notices do not change its exit. The guarded missing health.ts diagnostics are the running-hub/on-disk T-755 skew explicitly identified by Coordinator b9d49bcf, not a task defect or an exception to an assertion failure.
+
+## Spec and completed execution
+
+A-4819 exits 0 in full mode, with completed hub and Neovim phases:
+- hub free: 203 passed, no skips or failures;
+- hub machine: 1900 passed, five prerequisite skips, no failures;
+- Neovim: 391 passed, three prerequisite skips, no failures.
+Total: 2502 tests, 2494 passed, zero failed/cancelled, eight prerequisite skips.
+
+Independently matched all 22 owned top-level timing records to positive pass lines. All ten scenario files execute, and none of their owned cases skip:
+| Scenario | Owned cases | Linux test seconds |
+| --- | ---: | ---: |
+| crew-launch | 1 | 9.431527 |
+| droplet-verify | 2 | 15.739902 |
+| hook-bridge | 1 | 4.197718 |
+| hub-lifecycle | 6 | 11.605843 |
+| message-tracer | 1 | 0.814929 |
+| release | 2 | 4.427373 |
+| stage-close | 1 | 5.812449 |
+| startup-smoke | 1 | 1.444035 |
+| ticket-flow | 2 | 11.998405 |
+| workbench | 5 | 3.005942 |
+
+Owned sum: 68.478122804 seconds. Every file remains below 120 seconds, and every owned over-five-second identity is within its current measured allowance. Neovim workbench has five positive pass lines, not merely selection/configuration evidence. Runtime trip reports from unrelated lower-tier files are report-only and do not invalidate these T3 contracts.
+
+C4's Mac half was independently audited in A-4802/A-4799: all 50 accepted raw whole-file TAP receipts are green with no skips, five per scenario, admitted below load 15; census is lifecycle 10, startup 1, other eight 0. Exact-precorrection-head post-dev-merge droplet runs in A-4793 also pass 5/5; subsequent changes affect only allowance values/reasons. The current Linux result completes C4. The lead has now marked C4 done from this receipt.
+
+C1/C2/C3/C5 source verification remains current. No known-red waiver or additional task run is needed. No per-item QA is required. Any later head change still requires its own source delta review; this verdict covers only the exact head above.
+
+## Receipt limits
+
+Linux x64 6.8.0-142-generic, c-8 lon1, Node v24.21.0, Neovim v0.12.5, two workers. Neovim phase 164.09 seconds; full suite 1655.36 seconds; peak one-minute load 6.45. Droplet lifetime 1740 seconds, cost $0.1208. The receipt reuses host typecheck gate 51b33225a315dbb585378816531666fd62ffe301.
+
+Final evidence clear; verify C4. Standards: 0 findings. Spec: 0 findings.
+
+Durable review: A-4820.
+
+Criteria: C4 verified.

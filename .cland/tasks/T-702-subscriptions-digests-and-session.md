@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-465
 branch: t/T-702-subscriptions-digests-and-session
 created: 2026-10-16T19:59:37.198Z
-updated: 2026-10-17T22:13:04.553Z
+updated: 2026-10-17T22:42:38.262Z
 ---
 
 ## Summary
@@ -48,16 +48,21 @@ These files prove hub rules (digest ordering, steering, usage thresholds, archiv
 - [x] C1. The five files' manifest seconds fall from 245.8 s (A-3877) to 130 s or less.
   - done: impl-702 · 2026-10-17T22:08:35.171Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
+  - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
 - [x] C2. Their fake-binary call sites fall from 22 to 5 or less, `startDaemon` sites from 37 to 6 or less, and numeric sleeps from 8 to 0.
   - done: impl-702 · 2026-10-17T22:08:35.721Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
+  - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
 - [x] C3. The moved rules pass the tier lint as T1 or T2, and the remaining T3 tests each name their process behaviour.
   - done: impl-702 · 2026-10-17T22:08:38.462Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
+  - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-702 · 2026-10-17T22:08:38.995Z
   - verified: rev-30 [reviewer] · run rev-20261017-702-source · 2026-10-17T22:13:04.553Z · commit c14def9938ad21371a98d15761ba430ed31391dd
+  - verified: rev-30 [reviewer] · run rev-20261017-702-allowance-delta · 2026-10-17T22:42:38.262Z · commit cee099e645c970aaaf4891531ab3a3a8c0c91f18
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-17T22:41:42.899Z · note Exact-head run28b82998/A-4813 exits1 on the owned pooled-Reviewer lifecycle case7.126130367s>5s without an allowance; passing final verification is absent.
 
 ## Blocked by
 
@@ -81,5 +86,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec clear, no findings. Assertion map matches525 original sites/53declarations+3helpers; in-process rule/replay/clock seams retain observations and four namedT3 carriers retain native boundaries. Census4binary/4daemon/0sleep. A-4779 raw50accepted runs310passes/0fail-cancel-skip;13source hashes match. Recomputed all-destination Mac median sum41.580233420s≤130 (rounded table41.581), primary efacfb05 metric. Four dated E-677 allowances supported; exploratory exact connected identity5.964867s is A-4783, used only for allowance. Baselines unchanged. Audit A-4785. C1–C4 verified; C5 awaits positive exact-head droplet receipts for every touched destination. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T22:41:42.899Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-702-runtime
+commit: c14def9938ad21371a98d15761ba430ed31391dd
+scope: evidence
+findings: [{"severity":"medium","text":"Moved pooled-Reviewer lifecycle identity takes7.126130367s on Linux and has no hard new-test duration allowance; A-4813 rejects7.126s>5s, so exact-head verification exits1 despite passing assertions.","file":"hub/test/default-subscriptions-lifecycle.test.ts","line":7}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear; A-4814. A-4813 exact-head run28b82998 exits1: moved pooled-Reviewer lifecycle identity7.126130367s exceeds hard new-test5s without allowance (line32689). All62 owned ordinary cases and13x5load repetitions pass; whole hub2094pass/0fail/5skip. No Neovim-smoke completion; raw health.ts MODULE_NOT_FOUND sampling errors separately disclosed to lead. C1–C4 source verification remains; C5 fails pending an accepted passing run. Existing primaryefacfb05 permits measured moved-native seven-day E-677 allowances without baseline refresh; any changed head requires source delta review before another verification.
+
+Criteria: C5 failed (Exact-head run28b82998/A-4813 exits1 on the owned pooled-Reviewer lifecycle case7.126130367s>5s without an allowance; passing final verification is absent.).
+
+### impl-702 · 2026-10-17T22:42:13.088Z
+
+28b82998 at c14def99: all62 owned Linux cases and65/65owned new-identity repetitions pass; suite exit1 on sole missing native duration allowance (7.126130367s), plus missing health.ts collector diagnostics and no Neovim-smoke completion reported to Coordinator. Correction cee099e6 is allowance-only (7 lines, E-677/7-day reasoned10s), delta review requested. Evidence A-4813 and owned receipt extract A-4815. C5 remains pending a complete green fresh exact-reviewed-head run.
+
+### rev-30 · 2026-10-17T22:42:38.262Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-702-allowance-delta
+commit: cee099e645c970aaaf4891531ab3a3a8c0c91f18
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-4816. Standards/Spec no findings. Sole seven-line change adds exact pooled-Reviewer lifecycle identity10s allowance, E-677,2026-10-17/24, reason cites actual7.126130367s Linux run28b82998/A-4813, per primary22497454. All other allowances/baselines/source/tests/helpers/tiers unchanged; no dev merge. Prior M1 corrected. Existing source audit/Mac evidence remains applicable; C1–C4 refreshed at this head. C5 remains failed/pending accepted current-head gate; previous exit1/missinghealth.ts/no-smoke receipt is not final green. Obtain any required Coordinator collection/retry direction and submit normal mode-free verify at this unchanged head. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

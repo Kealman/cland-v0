@@ -3,7 +3,7 @@ id: T-703
 kind: task
 title: Name reservation, tracker readiness, task migration, inbox load and the ask chain run in T1 and T2 with shared fixtures
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-466
 branch: t/T-703-name-reservation-tracker-readiness-task
 created: 2026-10-16T19:59:37.302Z
-updated: 2026-10-17T22:19:14.925Z
+updated: 2026-10-17T22:49:26.022Z
 ---
 
 ## Summary
@@ -59,6 +59,7 @@ Tracker and hub rules dominate these files, at the cost of fixture rebuilds, ove
   - done: impl-703 · 2026-10-17T22:04:51.834Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.925Z · commit 81d65861baa96fc019453da9a506184231310fb3
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-17T22:49:26.022Z · note Exact-head run83db1195/A-4817 exits1 with four assertions failing: three async-native guards from new existsSync and one owned offline migration lock-boundary failure.
 
 ## Blocked by
 
@@ -88,3 +89,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear at 81d65861. Standards: no findings. Spec: no findings. A-4798 records production-default/seam review and complete 884-assertion audit. Independently recomputed Mac merge-path sum 62.074011005 s (<120); large-seed carrier T4. Three startDaemon sites, zero spawnSpoke, no builtin prototype mocks; four component files qualify T2. A-4784 raw 35 accepted whole-file runs: 605 pass, no failures/cancellations/skips, hashes match head; post-merge seven further passes A-4791. C1–C4 verified. C5 remains unverified pending exact-head droplet evidence; normal mode-free verify may proceed without source changes. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-17T22:49:26.022Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-703-runtime
+commit: 81d65861baa96fc019453da9a506184231310fb3
+scope: evidence
+findings: [{"severity":"medium","text":"New existsSync fast path runs synchronously on async territory request paths; three tracker-native-boundary guard tests fail on worktree/merge/release. Use asynchronous absence observation while preserving guard assertions.","file":"hub/src/territory.ts","line":329},{"severity":"medium","text":"Owned old-branch landing container-edit=true fails migration-success assertion after killDaemon: authoritative hub/migration lock remains held. Diagnose and observe the exact offline lifecycle boundary; keep refusal and final success assertion.","file":"hub/test/task-migrate.test.ts","line":279}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Runtime not clear; A-4818. M1 new sync existsSync in async hasTerritory causes three tracker-native-boundary guard failures; prior source review missed this. M2 owned task-migrate container-edit=true fails at279 because offline hub lock remains held after killDaemon; exact cleanup/lock cause needs diagnosis and retained assertion proof. All seven owned files execute,26owned gates130/130pass,no hard budget errors. Whole hub2103pass/4fail/5skip,exit1; Neovim phase does not complete. Missinghealth.ts is harmless per primaryb9d49bcf, not a finding. C1–C4 source marks remain; C5 fails. Correct source, validate matching async-boundary readers/owned migration, and request fresh source review before another exact-head gate.
+
+Criteria: C5 failed (Exact-head run83db1195/A-4817 exits1 with four assertions failing: three async-native guards from new existsSync and one owned offline migration lock-boundary failure.).

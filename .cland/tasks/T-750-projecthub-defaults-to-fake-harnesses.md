@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-17T22:22:44.261Z
+updated: 2026-10-17T22:33:21.370Z
 ---
 
 ## Summary
@@ -66,3 +66,16 @@ findings: [{"severity":"low","text":"The item-lead after median is stale (5.789s
 finding_counts: {"high":0,"medium":0,"low":1}
 
 Source clear at 9d8a037b; A-4803. Standards: one low evidence-table discrepancy, no high/medium. Spec: no findings. Native production defaults preserved across territory/merge-lock/compatibility seams; 88 mechanically changed files are import-only, with relocated stop/CLI assertions retained. Caller map covers 89 native opt-ins. Primary 06ae69bc measurement population audited: A-4801 280 raw successful whole-file outputs, 1440 pass/0 fail/cancel/skip; 27 before/after five-run medians checked. C1 remains unverified until full-population exact-head droplet trip evidence; C2 remains unverified pending T-753 classification and runtime proof. Named T-751/T-752 residuals follow primary dispositions d5a3a80c/6621d69b/900f3777. Inspect normal mode-free dry-run, then submit at this head; if dependencies land, authorized integration needs fresh delta review before verification. Do not use all mode to bypass the role restriction.
+
+### rev-30 · 2026-10-17T22:33:21.370Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-750-t753-delta
+commit: 3430d7581147415ae2333fdfd3d400d6b5877e3f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear; A-4810. Standards: no findings. Spec: no findings. Coordinator 05fc14b7-authorized integration adds exactly T-753's three T3 lifecycle headers and three manifest retags; bodies after headers and all native caller/production seam code remain unchanged. merge-policy classification is now T3. Previous low evidence discrepancy is resolved by audited A-4804 (item-lead after1.213s). Prior Mac evidence remains applicable; C1/C2 await current T-750 head runtime evidence. Old-head b12077e4 is historical for this final gate. Normal mode-free droplet verify may proceed at unchanged3430d758; no per-item QA.
