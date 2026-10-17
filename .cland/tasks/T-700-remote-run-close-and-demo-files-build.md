@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-443
 branch: t/T-700-remote-run-close-and-demo-files-build
 created: 2026-10-16T19:59:36.836Z
-updated: 2026-10-17T16:27:11.715Z
+updated: 2026-10-17T17:04:25.414Z
 ---
 
 ## Summary
@@ -36,7 +36,7 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 ## Acceptance criteria
 
 - [x] C1. The five files' manifest seconds fall from 268.0 s (A-3877) to 180 s or less.
-  - done: impl-700 · 2026-10-17T16:10:33.725Z
+  - done: impl-700 · 2026-10-17T17:04:25.046Z
 - [x] C2. Fake droplets created by the five files fall from the count recorded before (from the fake provider's request log) by at least a third.
   - done: impl-700 · 2026-10-17T14:58:54.011Z
   - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
@@ -46,8 +46,8 @@ The fixture is built once per `test()`; sub-cases share it. The process machines
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-700 · 2026-10-17T14:43:04.611Z
   - verified: rev-30 [reviewer] · run rev-20261017-700-source-correction · 2026-10-17T16:27:11.715Z · commit 9133b55fb3b5d11a11a8bde0952d9526971d9eaf
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T16:16:16.180Z · note The moved held-size reservation test can deadlock teardown on pre-release assertion failure because its release hook runs after fixture stop/join; correct ownership and provide controlled failure-path proof before new-head review.
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-700 · 2026-10-17T17:04:25.414Z
 
 ## Comments
 

@@ -3,7 +3,7 @@ id: T-694
 kind: task
 title: Session resume, launch and stop-race matrices run on the in-process fake adapter, with one real proof per harness
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T16:00:30.786Z
+updated: 2026-10-17T16:44:08.632Z
 ---
 
 ## Summary
@@ -39,27 +39,28 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
 
 - [x] C1. The three files' manifest seconds fall from 144.1 s (A-3877) to 55 s or less, T2 and T3 parts together.
   - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
-  - done: impl-694 · 2026-10-17T15:59:34.538Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
+  - done: impl-694 · 2026-10-17T16:43:01.412Z
 - [x] C2. Their fake-binary call sites fall from 13 to 6 or less and their `startDaemon` sites from 7 to 0.
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
-  - done: impl-694 · 2026-10-17T15:59:34.964Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
+  - done: impl-694 · 2026-10-17T16:43:01.937Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-probe-delta-2 · 2026-10-17T16:43:28.034Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
 - [x] C3. The moved cases are in T2 files that pass the tier lint, and the remaining T3 tests each name the harness behaviour they prove.
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
-  - done: impl-694 · 2026-10-17T15:59:35.648Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
+  - done: impl-694 · 2026-10-17T16:43:02.856Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-probe-delta-2 · 2026-10-17T16:43:28.034Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
-  - done: impl-694 · 2026-10-17T15:59:36.089Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
-- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
-  - done: impl-694 · 2026-10-17T15:59:37.139Z
-  - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
+  - done: impl-694 · 2026-10-17T16:43:03.357Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-probe-delta-2 · 2026-10-17T16:43:28.034Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
+- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-31 [reviewer] · 2026-10-17T16:42:26.144Z · note Fresh Mac stop-component peak 5.712381750 s exceeds its 5.5405 s allowance; covering measured allowance and fresh current-head verification remain pending.
 
 ## Blocked by
 
@@ -179,3 +180,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Conflict-only integration clear; Standards 0 / Spec 0 findings, A-4605. Independently read Coordinator a3842524 authorizing exact-dev resolution and no rerun, expressly retaining A-4572/46d9eea8 with T-740 disposition. Independently reconstructed durations as exact b5cd8b4f plus exactly three own allowance changes and tiers as exact dev plus four own additions. All metadata/baselines/unrelated allowances equal dev; seven task tests byte-identical to prior final-clear 6467a614; diff from dev has only original nine task files, no manual production edit. Origin/whitespace exact; A-4604 static checks green. Previous source/audit/registered cleanup and final A-4583 evidence carried forward: Mac 31.861885787 s, Linux nineteen owned cases 48.496184123 s, ten 5/5 gates. C1–C5 refreshed under explicit no-rerun disposition. Raw receipt remains exit 1/no Neovim; no new-head green execution claimed. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-17T16:42:26.144Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-probe-delta-1
+commit: edfc8d4adbb1c380248a40d5d19401c482b3c257
+scope: delta
+findings: [{"severity":"medium","text":"Owned stop-component allowance remains 5.5405 s despite fresh measured Mac peak 5.712381750 s; cover the measured native/Git work before verification without changing assertions.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Delta not clear for measured budget only; Standards 1 medium / Spec 0 additional findings, A-4622. Implementer 6fd9be8f accepts allowance-only correction. Code merge itself checked: exact parents ba704356+0ffa17c3; sole task-file edit moves NO_PS import to native-process while preserving native prerequisite/declarations/assertions. Other six task tests/durations unchanged; inherited probe/lock/config/Tracker/harness source exactly dev with native defaults retained. Independently read Coordinator e5e72bef requiring this merge plus fresh exact-head droplet after clear (prior no-rerun superseded). Thirty-five raw Mac files pass without skips; seven-file median 36.931053875 s at loads 4.583–8.006, under55. C5 failed pending allowance adjustment/new source review/fresh gate; original audits unchanged. No Reviewer edits/tests.
+
+Criteria: C5 failed (Fresh Mac stop-component peak 5.712381750 s exceeds its 5.5405 s allowance; covering measured allowance and fresh current-head verification remain pending.).
+
+### rev-31 · 2026-10-17T16:43:28.034Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-probe-delta-2
+commit: c5b897226f20d75f18df82987a5f4135f0379d21
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected integration source clear; Standards 0 / Spec 0 findings, A-4625. Sole final delta changes allowance seconds/reason: stop component 6.5 s covers measured Mac peak 5.712381750 with explicit0.788s headroom and correctmedian4.380596; E-677/Oct17–24 unchanged. No executed source/assertion changes. Prior A-4622 import integration audit remains current: NO_PS native prerequisite preserved, all native assertions/declarations identical; six other task files unchanged; inherited probes/source exactdev with native defaults. A-4621 all seven files5/5 atmergedsource, median sum36.931053875s under55. Origin/whitespace exact. C2/C3/C4 refreshed. C1 final timing/C5 await Coordinator e5e72bef-required fresh exact-head diff-selected droplet; old no-rerun disposition superseded, A-4572 historical only. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified, C4 verified.
+
+### impl-694 · 2026-10-17T16:44:08.632Z
+
+Authorized T-719 dev merge resolved at edfc8d4a: NO_PS imports from native-process.ts; all native assertion bodies preserved. A-4621 contains exact-source seven-file Mac whole-file 5/5 proof (35 receipts), sum medians 36.931053875 s. New measured Mac peak 5.712381750 s prompted a metadata-only allowance update to 6.5 s; latest pushed head c5b89722. Source delta clear rev-20261017-694-probe-delta-2 / A-4625; C2/C3/C4 refreshed. Required fresh exact-head diff-selected droplet verify submitted: bf76cf3d-7c4b-439e-8a8e-943dd1b5c0db, reports topic-442 to Reviewer/Coordinator/Implementer. C1/C5 await its receipt. Holding head unchanged.
