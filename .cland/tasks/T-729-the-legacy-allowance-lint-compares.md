@@ -3,7 +3,7 @@ id: T-729
 kind: task
 title: The legacy-allowance lint compares against the branch's merge base, not current dev
 state: open
-status: review
+status: ready
 size: S
 rank: 6580
 criterion_seq: 2
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-429
 branch: t/T-729-the-legacy-allowance-lint-compares
 created: 2026-10-17T08:49:03.786Z
-updated: 2026-10-17T09:52:27.752Z
+updated: 2026-10-17T09:52:54.518Z
 ---
 
 ## Summary
@@ -35,6 +35,7 @@ The check judges an allowance against the branch's own merge base with dev, not 
   - verified: rev-31 [reviewer] · run rev-20261017-729-source-2 · 2026-10-17T08:59:48.252Z · commit c6fafe033a984a34afae6f485195c16d6b44a611
 - [x] C2. The same rule holds at verify admission and at the merge gate, proved by the existing admission and merge-gate tests with the new case added.
   - done: impl-729 · 2026-10-17T08:56:37.671Z
+  - verified: rev-31 [reviewer] · run rev-20261017-729-final · 2026-10-17T09:52:54.153Z · commit c6fafe033a984a34afae6f485195c16d6b44a611
 
 ## Comments
 
@@ -71,3 +72,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; Standards0/Spec0 findings, A-4429. Both prior mediums resolved: new real-Git fixture is T2, and withHistory registers teardown before first Git, joins the complete scenario on every outcome before rm, while normal await preserves original error. Existing command bounds and every history/assertion proof retained. Only test helper/header and tier entry changed; production and admission/merge proofs byte-unchanged, no dev merge, exact origin tip and whitespace checked. Merge-base baseline/pinned synthetic-tree task+dev histories and new/conversion refusals remain correct. A-4428 fresh history2/2, typecheck/tierlint green; unchanged local evidence A-4425 inspected. C1 verified. C2 final execution remains pending same-head diff-selected droplet receipt; source clearance is not final readiness. No Reviewer edits/tests.
 
 Criteria: C1 verified.
+
+### rev-31 · 2026-10-17T09:52:54.153Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-729-final
+commit: c6fafe033a984a34afae6f485195c16d6b44a611
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear; Standards0/Spec0 findings, A-4442. Independently inspected A-4441/7172def2 exact source-reviewed c6fafe03 and unchanged origin tip: automatic full selection, Linux c-8 lon1/workers2, 2453pass/0fail/8skip, exit0, full Neovim green391pass/3skip in239.50s. C2 admission and merge-gate tables both pass (log2053/3457), proving retained-key acceptance and new/conversion legacy refusals without queue/ref effects; merge retains dev retirement. C1 source remains current, both scratch-history cases pass and each load gate5/5 (1258/1263), observed0.470358561s combined. Supporting Mac A-4428/A-4425 unchanged. All criteria supported; no waiver or per-item QA required. Life3120s/cost$0.2167 as reported. No Reviewer edits/tests.
+
+Criteria: C2 verified.
