@@ -2,8 +2,8 @@
 id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T17:18:06.656Z
+updated: 2026-10-17T17:48:08.859Z
+closed: 2026-10-17T17:48:08.859Z
 ---
 
 ## Summary
@@ -237,3 +238,7 @@ Earlier final A-4641 and source A-4612 still support all unchanged behavior/reso
 Durable review: A-4653.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-17T17:48:08.859Z
+
+Merged a1fb7a242913baba0ba4db9105779570a96820e0 onto dev.
