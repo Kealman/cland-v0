@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-435
 branch: t/T-699-executor-safety-and-executor-prepare
 created: 2026-10-16T19:59:36.725Z
-updated: 2026-10-17T12:40:12.172Z
+updated: 2026-10-17T13:44:14.967Z
 ---
 
 ## Summary
@@ -39,21 +39,26 @@ updated: 2026-10-17T12:40:12.172Z
   - done: impl-699 · 2026-10-17T12:27:23.200Z
   - verified: rev-30 [reviewer] · run rev-20261017-699-c1-exception · 2026-10-17T12:29:48.619Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
   - verified: rev-30 [reviewer] · run rev-20261017-699-final · 2026-10-17T12:39:41.062Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
+  - verified: rev-30 [reviewer] · run rev-20261017-699-conflict-merge · 2026-10-17T13:44:13.476Z · commit 6c41aa96847cb9461ffda3b9b64bf85a479b4c5c
 - [x] C2. No `pause(16000)` or other numeric wait is left in `executor-safety.test.ts`, proved by the test lint.
   - done: impl-699 · 2026-10-17T11:46:41.094Z
   - verified: rev-30 [reviewer] · run rev-20261017-699-cleanup-correction · 2026-10-17T11:59:01.367Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
   - verified: rev-30 [reviewer] · run rev-20261017-699-final · 2026-10-17T12:39:41.062Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
+  - verified: rev-30 [reviewer] · run rev-20261017-699-conflict-merge · 2026-10-17T13:44:13.476Z · commit 6c41aa96847cb9461ffda3b9b64bf85a479b4c5c
 - [x] C3. Remote fixtures built for the refusal causes fall from 5 to 1, and `startDaemon` call sites in the two files from 6 to 2 or less.
   - done: impl-699 · 2026-10-17T11:46:41.588Z
   - verified: rev-30 [reviewer] · run rev-20261017-699-cleanup-correction · 2026-10-17T11:59:01.367Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
   - verified: rev-30 [reviewer] · run rev-20261017-699-final · 2026-10-17T12:39:41.062Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
+  - verified: rev-30 [reviewer] · run rev-20261017-699-conflict-merge · 2026-10-17T13:44:13.476Z · commit 6c41aa96847cb9461ffda3b9b64bf85a479b4c5c
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-699 · 2026-10-17T11:46:41.996Z
   - verified: rev-30 [reviewer] · run rev-20261017-699-cleanup-correction · 2026-10-17T11:59:01.367Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
   - verified: rev-30 [reviewer] · run rev-20261017-699-final · 2026-10-17T12:39:41.062Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
+  - verified: rev-30 [reviewer] · run rev-20261017-699-conflict-merge · 2026-10-17T13:44:13.476Z · commit 6c41aa96847cb9461ffda3b9b64bf85a479b4c5c
 - [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - verified: rev-30 [reviewer] · run rev-20261017-699-final · 2026-10-17T12:39:41.062Z · commit d7539519cf80aad6155f5341a5246dc42bf10181
   - done: impl-699 · 2026-10-17T12:40:11.804Z
+  - verified: rev-30 [reviewer] · run rev-20261017-699-conflict-merge · 2026-10-17T13:44:13.476Z · commit 6c41aa96847cb9461ffda3b9b64bf85a479b4c5c
 
 ## Comments
 
@@ -146,5 +151,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head clear on A-4512/0734a342; current origin/source head matchesd7539519. Exit0:2083tests/2078pass/0fail/cancel/5platform skips, Neovim smoke12/12 green21.49s. Allseven owned files pass ordinarily (30top-level declarations/34test receipts including nested subtests), all11new owned identities5/5 (55/55), including M1/M2 controlled pre-release assertion-failure cleanup. No hard budget/load failure. Prior Mac35whole-file5/5 logs170receipts remain audited in A-4484/A-4497. C5 verified, historical cleanup blocker resolved; C2–C4 source-current refreshed. C1 preserved solely under primary recorded exception119f9aa2 and correcting platform rulinge2104ead: Mac119.037951755>110s, accepted41.8% reduction from204.579; no target-met claim. Linux allseven independently summed131.337114318s disclosed beside Mac. Host typecheck reused at7a6fcc889f6de6ec3f2ebeb51483a90bc99ee11f. Linux2workers,c-8lon1,suite2293.94s,peak11.20,lifetime2366s,$0.1643. AllC1–C5 verified; no findings/new run/head change.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-17T13:44:13.476Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-699-conflict-merge
+commit: 6c41aa96847cb9461ffda3b9b64bf85a479b4c5c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Conflict-only delta clear under primary7b8e68e9, independently read. Parentsd7539519 and dev24fe3ddf match A-4525. Structured durations exactly incomingdev plus task8allow removals/2reductions; every unrelated entry/nonallow baseline preserved. Tiers exact incomingdev+same5sorted task additions. All12 other own file patches normalized-identical relative to old/new dev, including production timing seams, native/migrated assertions and M1/M2 cleanup; no extra authored file. C2–C4 refreshed. C1 retained only under exception119f9aa2: Mac119.037951755>110 accepted, no numerical-pass claim. Primary explicitly carries0734a342/A-4512 green evidence across this conflict-only merge with no rerun; C5 refreshed from audited prior-head2083tests/2078pass/0fail/5skip+Neovim12/12 and unchanged35Macwholefile logs. Linux131.337114318s disclosed; no fresh merge-head execution/timing claim. Next integrated cover owns combined-tree evidence. Implementer typecheck/tiers green27free/237machine. No findings; C1–C5 verified at6c41aa96 under carry-forward disposition.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

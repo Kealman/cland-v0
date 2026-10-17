@@ -3,7 +3,7 @@ id: T-704
 kind: task
 title: Permission and validation tables run through the dispatcher, with one CLI proof per command family
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-436
 branch: t/T-704-permission-and-validation-tables-run
 created: 2026-10-16T19:59:37.407Z
-updated: 2026-10-17T12:41:01.547Z
+updated: 2026-10-17T13:43:58.131Z
 ---
 
 ## Summary
@@ -48,12 +48,15 @@ updated: 2026-10-17T12:41:01.547Z
 - [x] C2. Their CLI call sites fall from 142 to 50 or less, and `startDaemon` sites from 18 to 3 or less.
   - done: impl-704 · 2026-10-17T11:46:58.792Z
   - verified: rev-31 [reviewer] · run rev-20261017-704-source-2 · 2026-10-17T11:51:36.795Z · commit 17ea9073f0f81e3b8f38be3481cd0dd057457f16
+  - verified: rev-31 [reviewer] · run rev-20261017-704-merge-delta · 2026-10-17T13:43:58.131Z · commit 4f2f5362f25de64a4761c215b843b45eda4dea6d
 - [x] C3. No table row reads `hub.log` as its only oracle, and each command family keeps exactly one CLI proof, named in an audit.
   - done: impl-704 · 2026-10-17T11:46:59.304Z
   - verified: rev-31 [reviewer] · run rev-20261017-704-source-2 · 2026-10-17T11:51:36.796Z · commit 17ea9073f0f81e3b8f38be3481cd0dd057457f16
+  - verified: rev-31 [reviewer] · run rev-20261017-704-merge-delta · 2026-10-17T13:43:58.131Z · commit 4f2f5362f25de64a4761c215b843b45eda4dea6d
 - [x] C4. The audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - done: impl-704 · 2026-10-17T11:50:50.299Z
   - verified: rev-31 [reviewer] · run rev-20261017-704-source-2 · 2026-10-17T11:51:36.796Z · commit 17ea9073f0f81e3b8f38be3481cd0dd057457f16
+  - verified: rev-31 [reviewer] · run rev-20261017-704-merge-delta · 2026-10-17T13:43:58.131Z · commit 4f2f5362f25de64a4761c215b843b45eda4dea6d
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - failed: rev-31 [reviewer] · 2026-10-17T12:41:01.547Z · note Task verification fails the deterministic frozen legacy-path comparison after retiring permission-integrity.test.ts, plus an owned CLI duration budget; Neovim is not reached.
 
@@ -111,3 +114,18 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Evidence not clear; Standards 1 medium / Spec 1 medium, A-4516. Exact-head A-4514 / 9012d29f exits 1 with 2073 passes, one failure, five skips; Neovim not reached. Missing baseline path is the file deliberately deleted by T-704, not an external flake. All 61 owned behavioral cases pass; their summed recorded Linux seconds are 81.518842465, versus established Mac median 65.332644. Twenty owned identities pass 5/5 load repetitions (corrects A-4516's count of twenty-one). External verifier-routing budget is separately addressed by T-734. C5 failed; C1 remains pending final evidence, C2/C3/C4 source continuity retained. Corrected head requires new source review before verification; no unchanged-head retry. No Reviewer edits/tests.
 
 Criteria: C5 failed (Task verification fails the deterministic frozen legacy-path comparison after retiring permission-integrity.test.ts, plus an owned CLI duration budget; Neovim is not reached.).
+
+### rev-31 · 2026-10-17T13:43:58.131Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-704-merge-delta
+commit: 4f2f5362f25de64a4761c215b843b45eda4dea6d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged source delta clear; Standards 0 / Spec 0 findings, A-4526. Independently read Coordinator 62381646 authorization and checked exact merge parents/tip. Sixteen own source paths/deletions unchanged; reconstructed durations as dev plus five own allowance changes and tiers as dev plus nine own changes, with other timing sections exactly dev. Shared T-698 planner fix separates frozen legacy compatibility from exact live manifest phase/worker/target assertions; five eight-test whole-file receipts pass. Inherited suite-candidate/suites/cover production matches dev, preserving native defaults and admission/freshness checks. New exact --as allowance 6.5 s, E-677, seven days through 2026-10-24, reason cites measured Linux native work; assertions unchanged. T-734 external allowance inherited. Prior audit/Mac/cleanup evidence remains applicable. C2/C3/C4 refreshed. C1 timing and C5 require new exact-head verification; historical A-4514 is not a green gate. No Reviewer edits/tests.
+
+Criteria: C2 verified, C3 verified, C4 verified.
