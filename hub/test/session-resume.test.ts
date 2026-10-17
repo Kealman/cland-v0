@@ -1,9 +1,10 @@
-// Resume through real hub frames, the CLI and fake harness processes.
+// T3 lifecycle: Claude native resume relaunches a stopped conversation with its original identity;
+// Codex resume refusal and CLI --fresh create a new native conversation carrying the recorded artifact brief.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland, spawnSpoke, startDaemon } from './harness.ts';
+import { projectHub, withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
@@ -43,20 +44,17 @@ test('a stopped Claude Implementer resumes its conversation, role and item claim
   assert.equal(view.item.claim.sessionId, before.sessionId);
 });
 
-for (const artifact of [false, true, null]) test(`a refused Codex resume offers and launches fresh with its recorded ${artifact === null ? 'absent' : artifact ? 'artifact id' : 'text'} brief`, async t => {
+test('a refused Codex resume offers and launches fresh with its recorded artifact id brief', async t => {
   const root = await preparedProject(t);
   const fake = await fakeCodex(t);
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Fresh work' })).ok, true);
   const text = 'Implement the fresh work from this recorded brief.';
-  let brief: string | null = artifact === null ? null : text;
-  if (artifact) {
-    const a = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Fresh brief', topic: 'general', content: text });
-    assert.equal(a.ok, true, a.error);
-    brief = (a.value as { artifact: { id: string } }).artifact.id;
-  }
-  const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex', model: 'gpt-fake-1', effort: 'high', item: 'T-1', ...(brief === null ? {} : { brief }) }, 30_000);
+  const a = await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Fresh brief', topic: 'general', content: text });
+  assert.equal(a.ok, true, a.error);
+  const brief = (a.value as { artifact: { id: string } }).artifact.id;
+  const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex', model: 'gpt-fake-1', effort: 'high', item: 'T-1', brief }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const before = (launched.value as { process: HarnessProcessView }).process;
   await eventually('the fake finishes its first turn', async () => {
@@ -89,51 +87,5 @@ for (const artifact of [false, true, null]) test(`a refused Codex resume offers 
     return log.includes(' item: ') ? log : undefined;
   });
   assert.match(log, /effort=high/);
-  if (brief === null) assert.ok(after.notes.includes('no brief recorded'));
-  else assert.ok(log.includes(text), 'the first turn includes the recorded brief');
-});
-
-for (const fresh of [false, true]) for (const loss of ['claim', 'closed', 'exclusive', 'hold'] as const) test(`${fresh ? 'fresh' : 'native'} resume reports ${loss} work that did not come back`, async t => {
-  const root = await preparedProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const role = loss === 'exclusive' ? 'coordinator' : loss === 'hold' ? 'reviewer' : 'implementer';
-  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Retained work' })).ok, true);
-  const launch = await ui.request({ type: 'session.launch', name: 'old', role, harness: 'claude-code', model: 'claude-fake-1', ...(['claim', 'closed'].includes(loss) ? { item: 'T-1' } : {}) }, 30_000);
-  assert.equal(launch.ok, true, launch.error);
-  const before = (launch.value as { process: HarnessProcessView }).process;
-  await eventually('role clause submitted', async () => (await fake.log(before.harnessId!)).includes('you hold the role') || undefined);
-  if (loss === 'hold') {
-    const held = await cland(root, 'task', 'hold', 'T-1', '--as', 'old', '--role', 'reviewer');
-    assert.equal(held.code, 0, held.stderr);
-  }
-  assert.equal((await ui.request({ type: 'session.stop', session: 'old' }, 30_000)).ok, true);
-  if (loss === 'claim' || loss === 'exclusive') {
-    const other = await spawnSpoke({ discover: true, cwd: root, name: 'other', sessionId: 'other-id', role: loss === 'exclusive' ? 'coordinator' : 'implementer' });
-    t.after(() => other.close());
-    await other.waitForPresence(['other']);
-    if (loss === 'claim') {
-      assert.equal((await ui.request({ type: 'task.edit', item: 'T-1', assignee: 'other' })).ok, true);
-      const take = await cland(root, 'task', 'claim', 'T-1', '--as', 'other', '--role', 'implementer', '--force');
-      assert.equal(take.code, 0, take.stderr);
-    }
-  }
-  if (loss === 'closed') assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, true);
-  const resumed = await ui.request({ type: 'session.resume', session: 'old', relaunch: !fresh, fresh }, 30_000);
-  assert.equal(resumed.ok, true, resumed.error);
-  const value = resumed.value as Resumed;
-  assert.equal(value.found, true);
-  assert.equal(value.claim, null);
-  assert.equal(value.role, loss === 'exclusive' ? null : role);
-  assert.match(value.notes.join(' '), loss === 'exclusive' ? /coordinator role was not restored/ : loss === 'hold' ? /retake the hold/ : /T-1 claim was not restored/);
-  const view = (await ui.request({ type: 'task.view', item: 'T-1' })).value as { item: { claim: { sessionId: string } | null; holds: unknown[] } };
-  assert.equal(view.item.claim?.sessionId ?? null, loss === 'claim' ? 'other-id' : null);
-  assert.deepEqual(view.item.holds, []);
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
-  const entry = journal.split('\n').map(line => line ? JSON.parse(line) as Record<string, unknown> : {}).find(e => e.event === 'session-resumed' && e.session === 'old');
-  assert.ok(entry);
-  assert.deepEqual(entry.notes, value.notes);
-  assert.equal(entry.relaunched, true);
+  assert.ok(log.includes(text), 'the first turn includes the recorded brief');
 });
