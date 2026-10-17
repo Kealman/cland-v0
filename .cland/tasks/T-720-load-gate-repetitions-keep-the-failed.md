@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-418
 branch: t/T-720-load-gate-repetitions-keep-the-failed
 created: 2026-10-16T20:17:40.486Z
-updated: 2026-10-17T04:21:29.525Z
+updated: 2026-10-17T05:12:34.399Z
 ---
 
 ## Summary
@@ -30,9 +30,9 @@ The load gate keeps, for each failed repetition, the test's assertion message, e
 ## Acceptance criteria
 
 - [x] C1. A planted test that fails one of five load-gate repetitions shows that repetition's assertion message and stack in the durable suite log and the result artifact, proved by a runner test.
-  - done: impl-720 · 2026-10-17T04:17:32.939Z
+  - done: impl-720 · 2026-10-17T05:12:13.077Z
 - [x] C2. Passing repetitions are still reported only as counts, and the reported diagnostics carry no environment value, proved by the same test file.
-  - done: impl-720 · 2026-10-17T04:21:09.416Z
+  - done: impl-720 · 2026-10-17T05:12:13.290Z
 
 ## Comments
 
@@ -103,3 +103,56 @@ New pure and reporter receipt tests assert multiline invocation continuation and
 Claimant correction evidence: typecheck/tier lint green; durations-runner 20/20 in 28.222 s; pure/reporter 4/4 in 0.070 s; focused final package diagnostic 1/1 in 1.384 s. Prior selection 86/86 applies to unchanged selection source.
 
 Source clear with no remaining findings. C1/C2 remain unverified pending normal mode-free same-head droplet verification; this is source clearance, not final runtime settlement.
+
+### rev-30 · 2026-10-17T05:10:42.175Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-first-gate
+commit: bcf2c655f86bf22aa7403608123e73facc4c53eb
+scope: evidence
+findings: [{"severity":"medium","text":"M2: Both owned runner regressions assume stack text keeps fixture.test.ts despite deliberate redaction of every environment value. A-4313 ordinary assertions at lines 99 and 137 instead receive fixture.[redacted].ts and both identities fail 0/5 repetitions. Make the fixture environment/assertions deterministic under required redaction, retaining real frame, sanitized-content, continuation and exact-worker checks; do not weaken redaction.","file":"hub/test/durations-runner.test.ts","line":99},{"severity":"medium","text":"M3: The new outer-deadline regression has no measured duration allowance and fails the existing hard 5 s gate at 6.977 s in A-4313. Add a reasoned allowance with open owner and required UTC dates, or remove the demonstrated overhead while preserving the lifecycle proof.","file":"hub/test/durations.json"}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Evidence review T-720 at unchanged source-cleared bcf2c655f86bf22aa7403608123e73facc4c53eb. Completed normal mode-free Linux droplet 2119172a-b7c8-415e-aaba-a9050b1dff33 / A-4313 exits 1: 2077 tests, 2070 passed, 2 failed, 5 skipped, no cancelled tests. Hub stops before Neovim.
+
+## Standards
+Medium M3 — hub/test/durations.json: the newly added outer-deadline lifecycle test takes 6.977197643 s and has no allowance, yielding the explicit hard duration-budget failure. Any new allowance needs the documented reason, open owner and UTC added/expires dates, rather than relaxing the global gate.
+
+## Spec
+Medium M2 — hub/test/durations-runner.test.ts:99 (also :137): both owned runner cases fail their literal fixture.test.ts stack regex because required environment redaction produces fixture.[redacted].ts in this environment. Ordinary failure details are at A-4313 lines 4939 onward. Each identity then fails all 5/5 load repetitions with the same assertion; this is not an unexplained timeout or shared defect. Retain redaction and make the regression setup/assertions account for the sanitized representation while proving real stack/frame retention. Preserve the secret/command absence, count, summary, completion and exact-worker assertions.
+
+The new diagnostic path supplies the failed assertions and nested stacks in the durable log. The timeout fixture also shows timed out (outer deadline), retained earlier assertion and successful remaining-count/following-identity checks before reaching its failing stack regex. Its later summary/attempt-count/PID-gone assertions were not reached, so this receipt does not establish those checks. Original M1 multiline/escaped redaction is not reopened by this evidence.
+
+C1 and C2 fail evidence settlement because their designated owned regression file is red; the added timeout scope also remains unverified. Source correction A-4306 remains the reviewed implementation, but a failed runtime receipt cannot be final clear. Fix M2/M3, request new-head source review, then verify only after that clearance. No Reviewer execution or edits.
+
+Criteria: C1 failed (M2: Both owned runner regressions fail literal stack-filename assertions ordinarily and 0/5 load gates; later summary/cleanup checks are not established.), C2 failed (M2/M3: Runner proof is red under required environment redaction and the new timeout case fails its hard 5 s duration budget at 6.977 s.).
+
+### impl-720 · 2026-10-17T05:12:13.579Z
+
+Pushed 92ab691b620d5e6d41457fab171b141621387b7f for M2/M3. Reproduced both A-4313 path assertions with a controlled harmless collision; retained that collision and corrected exact sanitized source-frame expectations. All diagnostic, summary, privacy, all-five, next-identity and exact-PID assertions remain. Added 8s dated lifecycle allowance based on Linux 6.977s, owned by open E-676 until stage-close duration refresh. Production code unchanged. Typecheck, tier lint, duration owner/date lint pass; runner 20/20 in 27.319s at load below 4. New-head review requested before retry.
+
+### rev-30 · 2026-10-17T05:12:34.399Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-720-frame-correction
+commit: 92ab691b620d5e6d41457fab171b141621387b7f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source correction review T-720 at 92ab691b620d5e6d41457fab171b141621387b7f, delta from bcf2c655f86bf22aa7403608123e73facc4c53eb. Two files only, one commit; no dev merge; origin branch matches. Read-only review.
+
+## Standards
+No findings. The measured allowance is 8 s, names the actual lifecycle work and A-4313's Linux 6.977 s observation, uses open parent E-676 and UTC 2026-10-17 / 2026-10-24 (seven days). No timing baseline, global gate or load-gate exemption changes.
+
+## Spec
+M2 resolved in source: the fixture now deliberately supplies the harmless env value test, reproducing the observed source-filename collision on every machine. Both frame assertions require the expected sanitized fixture.[redacted].ts path and an actual at frame. Redaction is not weakened. Nested assertion/error, private value/command absence, repetition identity/count, summary retention, all-five completion, following identity and exact worker PID-gone assertions remain.
+M3 resolved in source by the reasoned measured allowance. Production serializer, reporter, deadline, cleanup and continuation code is byte-unchanged from A-4306's source review; original M1 remains resolved.
+
+Claimant reports controlled red-before/green-after for the collision, whole runner 20/20 in 27.319 s, typecheck/tier lint and duration owner/date lint green. The failed old-head A-4313 is retained as failure/measurement evidence, not substituted for a new-head green.
+
+Source clear with no remaining findings. C1/C2 await normal mode-free same-head droplet verification and remain unverified.
