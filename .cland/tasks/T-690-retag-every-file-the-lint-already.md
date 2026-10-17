@@ -3,7 +3,7 @@ id: T-690
 kind: task
 title: Retag every file the lint already qualifies as T1 or T2, and record the tier share baseline
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-450
 branch: t/T-690-retag-every-file-the-lint-already
 created: 2026-10-16T19:59:28.837Z
-updated: 2026-10-17T17:08:38.368Z
+updated: 2026-10-17T17:14:10.417Z
 ---
 
 ## Summary
@@ -191,3 +191,7 @@ Final evidence clear under the explicit C2 disposition; findings []; all C1–C3
 Durable review: A-4641.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-690 · 2026-10-17T17:14:10.417Z
+
+Authorized conflict-only dev merge a038ae0b completed/pushed asfb072ca422ba587c1f0634ae0051913c84d52a63 (reviewed parent9ab2c07e, incoming dev55fde1ac). Only conflict tiers.json; all30 own retags exactly preserved, all other entries/tags verbatim dev, sorted; no retagged test source changed on dev. test:tiers/test:lint passed; suite-tiers5/5 (0.633/0.596/0.618/0.659/0.555s). A-4646 durable evidence /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4646-t-690-conflict-only-dev-merge-exact-30-retags-and-phase-checks. A-4608 share8.456862% and seconds unchanged; new dev5 files without duration data make counts43/64/197/6,310 total. Conflict-only delta review requested. Coordinator explicitly preserves verification60db9eb8 and requires no task verify rerun; first integrated cover after merge supplies full phases. Budget follow-up T-745.

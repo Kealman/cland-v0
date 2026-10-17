@@ -3,7 +3,7 @@ id: T-744
 kind: task
 title: Test lint judges a file's tier without following its fixture and helper imports
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,9 +14,9 @@ assignee: null
 parent: E-676
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-744-test-lint-judges-a-file-s-tier-without
 created: 2026-10-17T16:06:54.285Z
-updated: 2026-10-17T16:06:54.285Z
+updated: 2026-10-17T17:12:46.352Z
 ---
 
 ## Summary

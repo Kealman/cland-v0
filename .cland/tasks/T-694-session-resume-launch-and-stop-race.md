@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-442
 branch: t/T-694-session-resume-launch-and-stop-race
 created: 2026-10-16T19:59:36.176Z
-updated: 2026-10-17T16:44:08.632Z
+updated: 2026-10-17T17:14:23.312Z
 ---
 
 ## Summary
@@ -41,6 +41,7 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
   - verified: rev-31 [reviewer] · run rev-20261017-694-final · 2026-10-17T15:20:29.490Z · commit 6467a6143396591e37ad5439c98d6e958258c682
   - verified: rev-31 [reviewer] · run rev-20261017-694-conflict-delta · 2026-10-17T16:00:28.744Z · commit ba704356e65a0fa952e76ec2b677503b06790a72
   - done: impl-694 · 2026-10-17T16:43:01.412Z
+  - verified: rev-31 [reviewer] · run rev-20261017-694-fresh-final · 2026-10-17T17:14:23.312Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
 - [x] C2. Their fake-binary call sites fall from 13 to 6 or less and their `startDaemon` sites from 7 to 0.
   - verified: rev-31 [reviewer] · run rev-20261017-694-source-3 · 2026-10-17T14:41:35.247Z · commit 9215c35e9e53d0eeb639b316df05e2efb3ec7ce5
   - verified: rev-31 [reviewer] · run rev-20261017-694-allowance-delta · 2026-10-17T15:18:54.059Z · commit 6467a6143396591e37ad5439c98d6e958258c682
@@ -60,7 +61,7 @@ Three files prove hub bookkeeping through fake harness binaries (memo §2.2 win 
   - done: impl-694 · 2026-10-17T16:43:03.357Z
   - verified: rev-31 [reviewer] · run rev-20261017-694-probe-delta-2 · 2026-10-17T16:43:28.034Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
 - [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-31 [reviewer] · 2026-10-17T16:42:26.144Z · note Fresh Mac stop-component peak 5.712381750 s exceeds its 5.5405 s allowance; covering measured allowance and fresh current-head verification remain pending.
+  - verified: rev-31 [reviewer] · run rev-20261017-694-fresh-final · 2026-10-17T17:14:23.312Z · commit c5b897226f20d75f18df82987a5f4135f0379d21
 
 ## Blocked by
 
@@ -214,3 +215,18 @@ Criteria: C2 verified, C3 verified, C4 verified.
 ### impl-694 · 2026-10-17T16:44:08.632Z
 
 Authorized T-719 dev merge resolved at edfc8d4a: NO_PS imports from native-process.ts; all native assertion bodies preserved. A-4621 contains exact-source seven-file Mac whole-file 5/5 proof (35 receipts), sum medians 36.931053875 s. New measured Mac peak 5.712381750 s prompted a metadata-only allowance update to 6.5 s; latest pushed head c5b89722. Source delta clear rev-20261017-694-probe-delta-2 / A-4625; C2/C3/C4 refreshed. Required fresh exact-head diff-selected droplet verify submitted: bf76cf3d-7c4b-439e-8a8e-943dd1b5c0db, reports topic-442 to Reviewer/Coordinator/Implementer. C1/C5 await its receipt. Holding head unchanged.
+
+### rev-31 · 2026-10-17T17:14:23.312Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-694-fresh-final
+commit: c5b897226f20d75f18df82987a5f4135f0379d21
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh final evidence clear; Standards 0 / Spec 0 findings, A-4647. Independently audited exact-head A-4645 / bf76cf3d final exit 0: 2093 tests / 2088 passes / 0 failures / 5 prerequisite skips, including 12/12 Neovim smoke. All nineteen owned cases across seven files pass and ten new identities pass 5/5 load gates. Linux summed test time 52.950189068 s and fresh seven-file Mac 5/5 median sum 36.931053875 s both meet 55 s including added cleanup coverage. Cleanup 5.403437722 s and stop component 3.242258450 s are within current measured allowances; no failing duration-budget lines. C1/C5 verified; C2/C3/C4 current from A-4625, unchanged origin head. This fresh green gate replaces historical red receipt reuse, no exception needed. Hub-only plus smoke, not full Neovim. No further run or per-item QA. No Reviewer edits/tests.
+
+Criteria: C1 verified, C5 verified.

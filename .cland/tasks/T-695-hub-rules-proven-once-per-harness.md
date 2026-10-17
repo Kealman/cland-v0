@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-449
 branch: t/T-695-hub-rules-proven-once-per-harness
 created: 2026-10-16T19:59:36.269Z
-updated: 2026-10-17T16:23:49.658Z
+updated: 2026-10-17T17:13:17.697Z
 ---
 
 ## Summary
