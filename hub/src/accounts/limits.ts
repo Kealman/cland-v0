@@ -1,12 +1,13 @@
 // Source-shaped account windows. Sessions and harness polls supply readings; no provider calls here.
 import { isDeepStrictEqual } from 'node:util';
 import type { Account, Accounts } from './registry.ts';
+import { realClock, type Clock } from '../hub/clock.ts';
 
 export type LimitWindow = { id: string; label: string; usedPercent: number; resetsAt: string; windowMins?: number; severity?: string; scope?: string };
 export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' };
 export type AccountReading = { account: string; harness: string; windows: LimitWindow[]; at: string; source: LimitSource; signedOut?: boolean };
 export type AccountLimit = { since: string; reason: string; session: string; resetsAt: string | null };
-export const fullWindowReset = (windows: LimitWindow[]): string | null => windows.filter(w => w.usedPercent >= 100 && Date.parse(w.resetsAt) > Date.now()).map(w => w.resetsAt).sort().at(-1) ?? null;
+export const fullWindowReset = (windows: LimitWindow[], clock: Clock = realClock): string | null => windows.filter(w => w.usedPercent >= 100 && Date.parse(w.resetsAt) > clock.now().getTime()).map(w => w.resetsAt).sort().at(-1) ?? null;
 export const limitUntil = (resetsAt: string | null): string => resetsAt ? `${new Date(resetsAt).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })} (${resetsAt})` : 'cleared';
 
 export class AccountLimited extends Error {

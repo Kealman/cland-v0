@@ -5,10 +5,49 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
-import { AccountLimits, claudeWindows, codexWindows, mergeLimits, type AccountReading } from '../src/accounts/limits.ts';
+import { AccountLimits, AccountLimited, claudeWindows, codexWindows, fullWindowReset, mergeLimits, type AccountReading } from '../src/accounts/limits.ts';
+import { HubCore } from '../src/hub/core.ts';
+import { FakeClock } from './fake-clock.ts';
 const registry = { registry: '/scratch/accounts.toml', accounts: [{ name: 'oc', harness: 'opencode', path: null, variable: 'XDG_DATA_HOME' }, { name: 'unread', harness: 'codex', path: null, variable: 'CODEX_HOME' }] };
 const at = Date.parse('2026-10-16T12:00:00Z');
 const reading = (percent: number, offset: number, session: string): AccountReading => ({ account: 'default:claude-code', harness: 'claude-code', windows: claudeWindows([{ kind: 'five_hour', percentUsed: percent, resetsAt: '2026-10-15T04:03:00Z' }]), at: new Date(at + offset).toISOString(), source: { kind: 'session', session } });
+
+test('full windows expire at the injected clock boundary far from wall time', async () => {
+  for (const year of [2000, 2099]) {
+    const clock = new FakeClock(new Date(`${year}-01-01T00:00:00Z`));
+    const reset = `${year}-01-01T00:00:01.000Z`;
+    const windows = [{ id: 'primary', label: '5h', usedPercent: 100, resetsAt: reset }];
+    assert.equal(fullWindowReset(windows, clock), reset, 'full window is live before its reset');
+    await clock.advance(1000);
+    assert.equal(fullWindowReset(windows, clock), null, 'full window expires exactly at its reset');
+  }
+});
+
+for (const source of ['cached hit', 'updated reading'] as const) test(`account reset scheduler uses the ${source}'s clock`, async () => {
+  for (const year of [2000, 2099]) {
+    const clock = new FakeClock(new Date(`${year}-01-01T00:00:00Z`));
+    const store = new Store();
+    const core = new HubCore({ clock, store, env: { XDG_CONFIG_HOME: '/nonexistent/T-726' } });
+    const reset = `${year}-01-01T00:00:01.000Z`;
+    const reading: AccountReading = { account: 'cx', harness: 'codex', windows: [{ id: 'primary', label: '5h', usedPercent: 100, resetsAt: reset }], at: clock.now().toISOString(), source: { kind: 'poll' } };
+    try {
+      if (source === 'cached hit') {
+        await core.publishAccountLimits(reading);
+        core.limitAccount('cx', 'codex', 'live', { reason: 'usageLimitExceeded' });
+      } else {
+        core.limitAccount('cx', 'codex', 'live', { reason: 'usageLimitExceeded' });
+        await core.publishAccountLimits(reading);
+      }
+      assert.equal(core.accountLimits.limited('cx')?.resetsAt, reset);
+      await clock.advance(999);
+      assert.throws(() => core.checkAccountLimit('cx'), AccountLimited, 'launch stays blocked before reset');
+      await clock.advance(1);
+      // Inspect before checkAccountLimit: the scheduled reset itself must clear the mark.
+      assert.equal(core.accountLimits.limited('cx'), undefined, 'scheduler clears at the window reset');
+      assert.doesNotThrow(() => core.checkAccountLimit('cx'));
+    } finally { core.close(); store.close(); }
+  }
+});
 test('account protocol keeps newest readings and reopens equal-window age silently', async t => {
   const root = await mkdtemp(join(tmpdir(), 'account-limits-'));
   const path = join(root, 'hub.db');

@@ -907,7 +907,7 @@ export class HubCore {
     if (this.accountLimits.limited(name)) return;
     const reset = hit.resetsAt && Date.parse(hit.resetsAt) > this.#now().getTime() ? new Date(hit.resetsAt).toISOString() : null;
     const windows = this.accountLimits.view({ name, harness, path: null, variable: '' }).windows;
-    const mark = { since: this.#now().toISOString(), reason: hit.reason, session, resetsAt: harness === 'opencode' ? null : fullWindowReset(windows) ?? reset };
+    const mark = { since: this.#now().toISOString(), reason: hit.reason, session, resetsAt: harness === 'opencode' ? null : fullWindowReset(windows, this.clock) ?? reset };
     this.accountLimits.mark(name, mark);
     this.#log({ event: 'account-limited', account: name, ...mark });
     void this.#publishAccount(name, harness).catch(() => {});
@@ -918,7 +918,7 @@ export class HubCore {
   async publishAccountLimits(reading: AccountReading): Promise<void> {
     const changed = this.accountLimits.update(reading);
     const mark = this.accountLimits.limited(reading.account);
-    const reset = fullWindowReset(this.accountLimits.view({ name: reading.account, harness: reading.harness, path: null, variable: '' }).windows);
+    const reset = fullWindowReset(this.accountLimits.view({ name: reading.account, harness: reading.harness, path: null, variable: '' }).windows, this.clock);
     const resetChanged = !!mark && !!reset && reset !== mark.resetsAt;
     if (resetChanged) {
       this.accountLimits.mark(reading.account, { ...mark!, resetsAt: reset });
