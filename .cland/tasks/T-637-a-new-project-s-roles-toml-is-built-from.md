@@ -2,8 +2,8 @@
 id: T-637
 kind: task
 title: A new project's roles.toml is built from the installed harnesses, Claude Code roles on auto, and the Aide gets sub-agents
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 9
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-535
 branch: t/T-637-a-new-project-s-roles-toml-is-built-from
 created: 2026-10-16T16:04:13.028Z
-updated: 2026-10-18T23:52:35.962Z
+updated: 2026-10-18T23:52:40.894Z
+closed: 2026-10-18T23:52:40.894Z
 ---
 
 ## Summary
@@ -179,3 +180,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged cd2ca583. A-5647/ae4ff63d accepted exit0: 2317 pass, zero failures/cancellations, five skips; hub plus Neovim smoke. All seven corrected task carriers and shared executor recovery pass. Twelve relevant files102/102; nine task-new groups45/45 repetitions. A-5648 maps C1–C9 with retained installer-only demo, both axes and inherited report-only trips. Verified all, no findings. T-821 effective OpenCode inheritance remains explicitly separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
+
+### coord · 2026-10-18T23:52:40.894Z
+
+Merged a8c80705a10c765d88276d0e03a08056cd341a3b onto dev.
