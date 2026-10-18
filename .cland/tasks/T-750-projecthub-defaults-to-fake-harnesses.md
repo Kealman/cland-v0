@@ -3,7 +3,7 @@ id: T-750
 kind: task
 title: projectHub defaults to fake harnesses and fake probes; native probes become opt-in
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-18T01:35:45.294Z
+updated: 2026-10-18T02:04:07.583Z
 ---
 
 ## Summary
@@ -31,11 +31,13 @@ projectHub (and the fixtures built on it) default to `harnesses: 'fake'` and `pr
 ## Acceptance criteria
 
 - [x] C1. The runtime tripwire (T-748) reports no child_process trip in the R1 projectHub files listed in A-4703 (session-*, lead-*, heartbeat, handover, item-lead, permissions, rule-cli, project-clock, in-process-spoke, fake-harness, adapter-composition, codex-*/opencode-native, skills-tracker, suite-protocol, suite-close-component), proved by a full droplet run's trip report.
-  - done: impl-750 · 2026-10-17T23:43:59.643Z
   - verified: rev-30 [reviewer] · run rev-20261017-750-final · 2026-10-17T23:45:21.052Z · commit d3fda4f3c40dd3bc24776570a843a54a4844184c
+  - done: impl-750 · 2026-10-18T02:02:56.786Z
+  - verified: rev-30 [reviewer] · run rev-20261018-750-integrated-final · 2026-10-18T02:04:06.974Z · commit ddca08721218b9f2a4057079f8e10136382c0c78
 - [x] C2. Every test that relied on native defaults either opts in explicitly in a T3 file or is rewritten with injected facts; the review request maps each, with Mac 5/5 medians before and after.
-  - done: impl-750 · 2026-10-17T23:44:00.259Z
   - verified: rev-30 [reviewer] · run rev-20261017-750-final · 2026-10-17T23:45:21.052Z · commit d3fda4f3c40dd3bc24776570a843a54a4844184c
+  - done: impl-750 · 2026-10-18T02:02:57.077Z
+  - verified: rev-30 [reviewer] · run rev-20261018-750-integrated-final · 2026-10-18T02:04:06.974Z · commit ddca08721218b9f2a4057079f8e10136382c0c78
 
 ## Comments
 
@@ -150,3 +152,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec source clear, no findings; A-4885. Primary 58e623b2 authorizes single T-751/T-703 dev integration. Additive daemon/dispatch union preserves database/full Clock, Git/process/lock/candidate/duration seams plus compatibility/hasTerritory/territoryLock; native defaults and explicit null forwarding remain. Harness runtime fake/native behavior unchanged, option type gains opener. Incoming async territory and native PID-reaped migration sources are byte-identical; ask-chain exactly incoming T2 and attribution carrier deleted. All89 native imports mapped independently. Durations structurally equals dev minus only retired combined-stop allowance; no new allowance/baseline. Audited 61 raw local outputs: 541 passes, zero fail/cancel/skip; six enforced guards emit zero trips. Five-run medians agree; admission below15; own whitespace clean. C1/C2 final evidence remains pending required fresh normal mode-free droplet run at unchanged head; A-4876 is parent-only proof. No per-item QA.
+
+### rev-30 · 2026-10-18T02:04:06.974Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-750-integrated-final
+commit: ddca08721218b9f2a4057079f8e10136382c0c78
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integrated evidence clear; A-4892. Independently audited A-4889: exact original34 R1 files/175 cases positively execute,32files zero trips; every mapped native test file executes. Only four report-only execFile rows remain through legacyDurationKeys: suite-tiers repository planner (27323) and three suite-close-component identities (31881–31883), each named in A-4892. Prior T-751 fixture exception d5a3a80c and T-745 propagation ownership207c3db3/bac79924 establish residual scope; no zero-total-trip claim. T-751 probe/lock and T-752 duration-reader rows all clear. Full hub+Neovim exits zero:2,505passes,0fail/cancel,8 unrelated prerequisite skips; no hard budgets. Three moved/new load gates pass5/5. Current89-entry caller map, source A-4885 and independently audited local61outputs/541passes plus original paired Mac evidence remain applicable. Branch unchanged; C1/C2 done present. No findings; C1/C2 verified. No per-item QA.
+
+Criteria: C1 verified, C2 verified.

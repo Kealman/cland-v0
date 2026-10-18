@@ -3,8 +3,9 @@ id: T-766
 kind: task
 title: tracker-ready "ready retries invalidated preparations with bounded backoff" hangs 15 s when the fake clock's pending timer isn't the retry
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - verification
@@ -15,10 +16,10 @@ assignee: null
 parent: E-677
 blocked_by: []
 regression_of: T-703
-topic: null
+topic: topic-468
 branch: t/T-766-tracker-ready-ready-retries-invalidated
 created: 2026-10-18T01:59:29.077Z
-updated: 2026-10-18T01:59:54.754Z
+updated: 2026-10-18T02:02:47.631Z
 ---
 
 ## Summary
@@ -31,4 +32,11 @@ The retry loop drives the fake clock until each retry attempt is recorded: advan
 
 ## Acceptance criteria
 
-- [ ] C1. The case passes 50/50 serially on the Mac at a 1-minute load of 8–12 with the bounded-retry and backoff assertions unchanged, and a planted extra pending timer that reproduces the hang before the fix passes after it.
+- [x] C1. The case passes 50/50 serially on the Mac at a 1-minute load of 8–12 with the bounded-retry and backoff assertions unchanged, and a planted extra pending timer that reproduces the hang before the fix passes after it.
+  - done: impl-766 · 2026-10-18T02:02:47.401Z
+
+## Comments
+
+### impl-766 · 2026-10-18T02:01:17.194Z
+
+Merged origin/dev 43c00e1a. A-4888 captures deterministic red-before-green: an unrelated 100 ms FakeClock timer holds the first ready write, so the old single 50 ms advance cannot reach the retry timer and fails with the cover's exact 15 s timeout. The existing T2 test now drives time until each write attempt is observed; bounded-retry/backoff assertions remain unchanged. Initial green passes.
