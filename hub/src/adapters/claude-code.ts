@@ -91,6 +91,8 @@ type AgentEntry = { pid?: number; id?: string; sessionId?: string; status?: stri
 export type ClaudeCodeOptions = {
   /** Shared hub time for directory polling; native transport deadlines stay real. */
   clock?: Clock;
+  /** Process identity fact; production reads the native process start time. */
+  processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
   /** The `claude` executable: `CLAND_CLAUDE_BIN`, else `claude` on the PATH. */
   bin?: string;
   /** How often the processes' pids are checked (no CLI), ms. */
@@ -206,6 +208,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   readonly #stopGraceMs: number;
   readonly #env: NodeJS.ProcessEnv;
   readonly #processEnv: NodeJS.ProcessEnv;
+  readonly #processStarted: NonNullable<ClaudeCodeOptions['processStarted']>;
   /** Watched processes by session id. */
   readonly #watched = new Map<string, HarnessProcess>();
   /** The mod's bridge of each session: where inject frames go. */
@@ -222,6 +225,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#host = host;
     this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
+    this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#processEnv));
     this.#bin = options.bin ?? this.#processEnv.CLAND_CLAUDE_BIN ?? 'claude';
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
@@ -427,7 +431,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         if (found?.pid !== undefined) {
           launched.pid = found.pid;
           launched.harnessSessionId = found.sessionId ?? p.harnessSessionId;
-          launched.pidStarted = yield* wait(processStarted(found.pid, undefined, resumed, undefined, this.#processEnv));
+          launched.pidStarted = yield* wait(this.#processStarted(found.pid, resumed));
         }
         if (launched.pid === null) this.#host.log({ event: 'harness-pid-unknown', harness: this.harness, session: p.name, harnessId });
         return launched;
@@ -663,7 +667,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
       const entry = this.#find(entries, p);
       const pid = entry?.pid ?? p.pid;
       // the same session: listed under its own session id (or background id), with a live process
-      const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(processStarted(pid, undefined, resumed, undefined, this.#processEnv)) : null;
+      const identity = entry && pid !== null && pid !== undefined && p.pid === pid && p.pidStarted ? yield* wait(this.#processStarted(pid, resumed)) : null;
       if (entry && pid !== null && pid !== undefined && pidAlive(pid) && (!p.pidStarted || p.pid !== pid || identity === p.pidStarted)) {
         const process: HarnessProcess = { ...p, pid, harnessId: p.harnessId ?? entry.id ?? null, harnessSessionId: entry.sessionId ?? p.harnessSessionId, status: 'running' };
         return { found: true, process, state: stateOfAgent(entry) };

@@ -11,7 +11,12 @@ import { cland, connectUi, eventually, readDiscovery, inProcessSpoke, projectHub
 // Persistence proofs close and reopen the hub/store in this process.
 const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
 const openHub: typeof projectHub = async (...args) => {
-  const hub = await projectHub(...args);
+  // Tracker rules do not inspect machine admission. Invalid config can restore
+  // global lock paths, so keep these observations inside the component fixture.
+  const hub = await projectHub(args[0], args[1], args[2], {
+    compatibility: { holder: async () => null, occupied: async () => false },
+    ...args[3],
+  });
   hubs.set(args[1], hub);
   args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
   return hub;

@@ -21,7 +21,6 @@ function cli(t: TestContext) {
   let knownPid = false;
   const pending: Array<() => void> = [];
   t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
-    if (bin === 'ps') { queueMicrotask(() => callback(null, 'fixture-start\n', '')); return; }
     assert.equal(bin, 'fixture-claude', 'no native command escapes the scripted edge');
     calls.push({ args, configDir: options.env?.CLAUDE_CONFIG_DIR });
     const finish = () => {
@@ -57,7 +56,7 @@ function memoryHost(): AdapterHost {
   return { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {}, adapterState: { read: key => state.get(key) ?? null, write: (key, value) => { state.set(key, value); } } };
 }
 const request = (name: string) => ({ name, cwd: '/fixture', role: null, model: null });
-const options = (clock: FakeClock) => ({ clock, bin: 'fixture-claude', env: { HOME: '/fixture/home', CLAUDE_CONFIG_DIR: '/fixture/claude' } });
+const options = (clock: FakeClock) => ({ clock, processStarted: async () => 'fixture-start', bin: 'fixture-claude', env: { HOME: '/fixture/home', CLAUDE_CONFIG_DIR: '/fixture/claude' } });
 
 test('Claude discovery and watch share the default schedule across adapter restart; unknown-pid stop ends the watch', async t => {
   const native = cli(t);
