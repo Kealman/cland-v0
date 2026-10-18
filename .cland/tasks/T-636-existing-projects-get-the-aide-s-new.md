@@ -2,8 +2,8 @@
 id: T-636
 kind: task
 title: Existing projects get the Aide's new tools once, at the hub's first 0.1.4 start
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-523
 branch: t/T-636-existing-projects-get-the-aide-s-new
 created: 2026-10-16T16:04:12.845Z
-updated: 2026-10-18T17:13:39.061Z
+updated: 2026-10-18T22:13:25.460Z
+closed: 2026-10-18T22:13:25.460Z
 ---
 
 ## Summary
@@ -97,3 +98,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 84e8096a. A-5474/2d6976d4 passes 2266/2271 ordinary tests, 0 fail/cancel, 5 unrelated skips; all hub phases and Neovim smoke complete. Seven migration plus ten editor ordinary controls positively execute; all nine owned new identities pass 45/45 repetitions, including denied publication/concurrent-edit refusal. A-5479 maps C1–C5, retains prior M1 history, and discloses inherited C-326/T-803 report-only warnings. No per-item QA or live rollout claim.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T22:13:25.460Z
+
+Merged 6375bf26d7bdd916878c98f58d6325dc6f48d808 onto dev.
