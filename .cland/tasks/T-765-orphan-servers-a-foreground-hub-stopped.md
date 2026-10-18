@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-472
 branch: t/T-765-orphan-servers-a-foreground-hub-stopped
 created: 2026-10-18T00:55:58.384Z
-updated: 2026-10-18T03:24:10.665Z
+updated: 2026-10-18T03:43:16.936Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Find what escalates a doctor-repaired foreground hub's stop to SIGKILL: the stop
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named with evidence, and the case passes 50/50 serially under a load of 8–12, or under a scripted delay that reproduced the SIGKILL before the fix.
-  - failed: rev-30 [reviewer] · 2026-10-18T03:21:03.784Z · note Regression still has a cross-boundary stderr receipt race: child exit does not establish that the handler-delivery data has been observed.
+- [x] C1. The cause is named with evidence, and the case passes 50/50 serially under a load of 8–12, or under a scripted delay that reproduced the SIGKILL before the fix.
+  - done: impl-765 · 2026-10-18T03:42:52.564Z
 
 ## Comments
 
@@ -75,3 +75,7 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-4927: M1 resolved; no remaining Standards or Spec findings. Three test-only lines pre-register child close and separately bound stream closure after actual process exit and before final stderr assertions. Production and all original assertions are unchanged from 71f1b1b6. Primary Coordinator a3cde264 explicitly permits source review while local proof is pending: the interrupted A-4925 attempt is not green, affected-file exact-head 5/5 must follow the quiet-end notice, and droplet verification waits for BOTH that proof and source clear. C1 remains unverified pending the local proof and same-head task receipt; prior 50/50 A-4915 evidence remains historical support for the unchanged scripted fault and production correction.
+
+### impl-765 · 2026-10-18T03:43:16.936Z
+
+Fresh post-quiet proof at exact source-cleared a1e009c231b4ccf2d068a319ff1897bf4a17c33b is complete: orphan-servers.test.ts whole file 5/5, 90 passes with no failures/skips/cancellations, durations 67.503/64.632/64.376/73.865/72.308 s, peak 1-minute load 10.7212. A-4936 retains all logs and matching source hashes; original A-4915 controlled reproduction and 50/50 delayed cases remain separate historical proof. Both Coordinator prerequisites hold. Reviewer received the new evidence; mode-free exact-head droplet verification submitted with Reviewer, impl-765 and Coordinator as recipients. No further source changes or local tests; waiting for hub result.

@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-473
 branch: t/T-769-aide-test-ts-sessions-inject-queries-the
 created: 2026-10-18T03:35:21.412Z
-updated: 2026-10-18T03:36:43.536Z
+updated: 2026-10-18T03:39:46.052Z
 ---
 
 ## Summary
@@ -40,3 +40,7 @@ Hub close cancels or awaits pending Sessions injections before closing the store
 ### coord · 2026-10-18T03:36:22.324Z
 
 Reproduces alone on dev d392167a. coord ran `node --test hub/test/aide.test.ts` 5× serially on the Mac at load 4.6–5.2 and got 4 pass and 1 fail: run 1 had 7 pass, 1 fail. It isn't load-only. It blocks the E-677 stage-2 macOS stage cover, so it's urgent.
+
+### impl-769 · 2026-10-18T03:39:46.052Z
+
+Merged origin/dev at 37c4921c. Added two T2 component regressions in fake-harness.test.ts using projectHub/FakeClock and in-process adapters: (1) held injection with pending bridge retry at adapter close reproduces the exact ProcessTable.bySessionId → #inject database-is-not-open stack; (2) accept/reject/uncertain outcomes arriving after hub stop reproduce a closed Store.markUncertain rejection. Both observed red on unchanged production source, then green with existing Sessions.#closed guarding entry and all promise continuations. A-4933 preserves the first red. Host typecheck, tiers and lint passed; serial 5x touched-file and 20x aide validation now running below load 15.
