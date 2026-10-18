@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-505
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-18T20:05:43.456Z
+updated: 2026-10-18T20:10:59.388Z
 ---
 
 ## Summary
@@ -314,3 +314,11 @@ Full-suite receipts at S were collected in run 2: task 6e0beb15-c5ce-4b97-887d-7
 Published evidence: A-5409 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5409-e-676-run-3-evidence-at-e92fa663 (relative table links resolve there). Report: A-5410 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5410-e-676-run-3-qa-not-clear-l6-l7-admission-inconclusive.md.
 
 Criteria: C3 failed (L6/L7 verify dry-runs timed out after 15000 ms; admission refusal INCONCLUSIVE despite correct local lint refusals and unchanged queue.).
+
+### hub · 2026-10-18T20:07:39.139Z
+
+demo 8ea57fe6-89b9-47b5-b35b-859311cee20f created: droplet cland-v0-8ea57fe6, commit 0544169ac8d69b0827799e3584f1629940d9512a, deadline 2026-10-18T21:21:22.177Z.
+
+### hub · 2026-10-18T20:10:59.388Z
+
+demo 8ea57fe6-89b9-47b5-b35b-859311cee20f destroyed: lifetime 261200 ms; cost $0.0181.

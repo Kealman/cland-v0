@@ -3,8 +3,9 @@ id: T-650
 kind: task
 title: 'cland outside a project prints "not a cland project: run cland init" and starts no hub'
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 5
 labels:
   - v0.1.4
   - init
@@ -12,10 +13,10 @@ assignee: null
 parent: E-612
 blocked_by:
   - T-609
-topic: null
-branch: null
+topic: topic-533
+branch: t/T-650-cland-outside-a-project-prints-not-a
 created: 2026-10-16T16:24:00.374Z
-updated: 2026-10-18T20:04:46.053Z
+updated: 2026-10-18T20:14:44.705Z
 ---
 
 ## Summary
@@ -33,8 +34,51 @@ Today `cland` (and `cland open`) in any folder starts a hub there, which creates
 
 ## Acceptance criteria
 
-- [ ] C1. `cland open` in a plain scratch folder exits 1 with `not a cland project: run cland init` on stderr, and no launcher runs (open.test.ts with the stand-in launcher).
-- [ ] C2. After that run the folder holds no `.cland/`, no hub process exists for it, and ticket T-639's `snapshot` of the scratch HOME is unchanged.
-- [ ] C3. A folder inside a Git repository that has no `.cland/` gets the same line.
-- [ ] C4. A folder under a scratch HOME that still holds a legacy `~/.cland/` gets the line, and HOME is not opened as a project.
-- [ ] C5. `cland open` from a subfolder of an initialised project starts the hub and the launcher on the project root as before.
+- [x] C1. `cland open` in a plain scratch folder exits 1 with `not a cland project: run cland init` on stderr, and no launcher runs (open.test.ts with the stand-in launcher).
+  - done: impl-650 · 2026-10-18T20:11:00.794Z
+- [x] C2. After that run the folder holds no `.cland/`, no hub process exists for it, and ticket T-639's `snapshot` of the scratch HOME is unchanged.
+  - done: impl-650 · 2026-10-18T20:11:01.148Z
+- [x] C3. A folder inside a Git repository that has no `.cland/` gets the same line.
+  - done: impl-650 · 2026-10-18T20:11:01.571Z
+- [x] C4. A folder under a scratch HOME that still holds a legacy `~/.cland/` gets the line, and HOME is not opened as a project.
+  - done: impl-650 · 2026-10-18T20:11:01.977Z
+- [x] C5. `cland open` from a subfolder of an initialised project starts the hub and the launcher on the project root as before.
+  - done: impl-650 · 2026-10-18T20:14:02.163Z
+
+## Comments
+
+### impl-650 · 2026-10-18T20:07:42.254Z
+
+Using the requested CLI seam in open.test.ts: isolated scratchMachine HOME/Git/XDG, stand-in launcher, filesystem snapshot before/after refusal. Lowest tier: T2 for CLI refusals; existing successful open remains a T3 hub-start lifecycle scenario. C1–C4 refusal proof precedes the guard; C5 initializes its project before launch.
+
+### rev-30 · 2026-10-18T20:12:43.887Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-650-source
+commit: 2460d171811d69737ace30cc7e7fc4980ceb8d37
+scope: full
+findings: [{"severity":"medium","text":"M1: scratchMachine snapshots host env before isolateVerification clears provider/account defaults; initIn uses that stale copy to start a real hub, bypassing old clandWithEnv isolation and permitting credential-backed startup sweep/probes. Isolate before capture or supply equivalent isolated env, retaining startup/reuse assertions.","file":"hub/test/open.test.ts","line":61}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source not clear. M1: changed startup fixture captures machine.env before isolateVerification initializes account isolation; initIn later launches the hub using that pre-isolation copy, unlike old clandWithEnv. A present parent provider token/account directories survive and can reach startup sweep/probes. A-5559 records exact producer/consumer chain, both axes and host evidence limits. Production guard/spec otherwise matches request. Preserve scratch snapshots and startup/reuse assertions while restoring pre-capture isolation or equivalent isolated child env; use planted environment control. No verification before replacement source review.
+
+Criteria: C5 failed (The revised real-hub startup fixture passes a pre-isolation environment copy to initIn, allowing inherited provider/account configuration into startup.).
+
+### impl-650 · 2026-10-18T20:14:14.576Z
+
+Corrected source-review M1 at 9810ca43: ensureAccountFixture precedes environment capture for every open fixture. Planted provider/account boundary control failed before correction, then passed both helper and actual CLI child assertions. Host npm run check exit 0 and open.test.ts 4/4 (4.231 s), raw artifacts A-5560/A-5561. Fresh source review requested before verification.
+
+### rev-30 · 2026-10-18T20:14:44.705Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-650-source-correction
+commit: 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at 9810ca43. M1 resolved: every open fixture awaits account/provider isolation before scratch environment capture; planted boundary assertions and actual CLI help-process probe prove isolated child defaults. Production/refusal/README unchanged and all startup/reuse/snapshot assertions retained. A-5564 records both axes, correction chain and raw A-5561 host4/4 plus A-5560 check evidence. C1–C5 await accepted exact-head runtime. No findings or per-item QA; one normal mode-free verify may follow.
