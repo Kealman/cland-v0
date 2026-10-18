@@ -2,8 +2,8 @@
 id: T-765
 kind: task
 title: "orphan-servers: a foreground hub stopped after doctor --fix was SIGKILLed instead of exiting cleanly (1 in 35 Mac runs)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-472
 branch: t/T-765-orphan-servers-a-foreground-hub-stopped
 created: 2026-10-18T00:55:58.384Z
-updated: 2026-10-18T03:49:25.389Z
+updated: 2026-10-18T03:49:44.010Z
+closed: 2026-10-18T03:49:44.010Z
 ---
 
 ## Summary
@@ -99,3 +100,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4943: final clear, C1 verified, no remaining findings. A-4936 source hashes match both committed changed files and its five post-quiet whole-file logs pass 90/90 without failure/cancellation/skip, satisfying primary a3cde264's prerequisite after M1. A-4915 retains audited 50/50 delayed cases and traced pre-fix doctor TERM/STOP/KILL diagnosis; the production correction is unchanged. Exact-head A-4942 / 20ab679c exits 0: delayed case passes 3.140433468s, TERM-resistant deleted-hub tree passes 8.777008061s. Total 162 pass/0 fail or cancelled/1 optional real-OpenCode prerequisite skip, with 5/5 Neovim smoke. Existing report-only duration notices disclosed; no new allowance. Historical A-4878's precise internal scheduling operation remains unknown; the controlled grace-expiry mechanism and sender are evidenced.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T03:49:44.010Z
+
+Merged 95890140993474fe2fb6a62e54c5e5a24043fb11 onto dev.
