@@ -3,7 +3,7 @@ id: T-777
 kind: task
 title: selection-replay.ts ignores --count for package replay and iterates every landing
 state: open
-status: in progress
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-517
 branch: t/T-777-selection-replay-ts-ignores-count-for
 created: 2026-10-18T05:03:00.942Z
-updated: 2026-10-18T16:45:40.590Z
+updated: 2026-10-18T17:12:47.229Z
 ---
 
 ## Summary
@@ -31,6 +31,7 @@ Package replay slices to the last `--count` landings, the same way coverage repl
 
 - [x] C1. A T1 test runs package replay with `--count 3` over five recorded landings and gets exactly the last three, and fails before the fix.
   - done: impl-777 · 2026-10-18T16:45:40.590Z
+  - verified: rev-30 [reviewer] · run rev-20261018-777-final · 2026-10-18T17:12:46.744Z · commit 47d785f338e0f0809ff6314c5d44d57309cfaa9e
 
 ## Comments
 
@@ -69,3 +70,18 @@ Criteria: C1 failed (A-5428 gate exits1 on shared spend.json.lock deadline befor
 ### impl-777 · 2026-10-18T16:30:41.037Z
 
 Coordinator classification (topic-517, 2026-10-18T16:30:32Z): runtime evidence failure A-5430 / rev-20261018-777-runtime is deduplicated to existing shared defect T-813 (Bugs, S), serving hub holds spend ledger lock. It does not count against T-777; source-clear 47d785f3 remains unchanged. One replacement mode-free verify authorized only after Coordinator all-clear. Holding until then.
+
+### rev-30 · 2026-10-18T17:12:46.744Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-777-final
+commit: 47d785f338e0f0809ff6314c5d44d57309cfaa9e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 47d785f3. Authorized replacement A-5473/cc702109 passes 2259/2264 ordinary tests, 0 fail/cancel, 5 unrelated prerequisite skips; free/machine and Neovim smoke complete. Both replay controls positively execute and pass 10/10 owned repetitions. A-5475 retains the prior T-813 pre-execution failure and discloses C-326/T-803 report-only trips/budget warnings. C1 verified; no per-item QA.
+
+Criteria: C1 verified.

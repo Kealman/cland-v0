@@ -3,7 +3,7 @@ id: T-811
 kind: task
 title: Verify admission of a head with a new test-lint violation takes ~14.5 s on a quiet Mac, near the 15 s CLI deadline (T-788 covers only cached facts)
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-516
 branch: t/T-811-verify-admission-of-a-head-with-a-new
 created: 2026-10-18T16:16:11.463Z
-updated: 2026-10-18T16:32:53.594Z
+updated: 2026-10-18T17:15:23.907Z
 ---
 
 ## Summary
@@ -28,8 +28,10 @@ In E-676's demo re-check (qa-2026-10-18-4, L6), `cland verify --dry-run` on a th
 - [x] C1. A profile of one cold planted-violation admission names where the time goes, whether per-file fact parsing, the base snapshot or refusal composition.
   - done: impl-811 · 2026-10-18T16:27:03.817Z
   - verified: rev-30 [reviewer] · run rev-20261018-811-source · 2026-10-18T16:32:53.594Z · commit e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e
+  - verified: rev-30 [reviewer] · run rev-20261018-811-final · 2026-10-18T17:15:23.142Z · commit e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e
 - [x] C2. Admission of a head with one new violating test file finishes under 3 s on a quiet Mac, with the refusal unchanged. A T2 admission-cost test with a planted violation proves it.
   - done: impl-811 · 2026-10-18T16:27:04.589Z
+  - verified: rev-30 [reviewer] · run rev-20261018-811-final · 2026-10-18T17:15:23.142Z · commit e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e
 
 ## Comments
 
@@ -51,3 +53,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear against integrated0e7f8b6c. C1 verified: supplied profile identifies serial per-T1 Git show startup; raw modeled red4150ms/65 shows becomes1200ms/4. Native before3388.5ms/after816.6ms/final1442.0ms retain exact refusal; original14.5s QA state not reproduced and all-facts-cold under3s is not claimed. Extracted batch reader independently matches prior function byte-for-byte except export/location, preserving bounds/blob-byte checks/errors. Immutable tier callback batches all requested tests/manifests without changing classifier/parser/dispatch/refusal-policy logic. T2 frame regression fixes real tier distribution/names-only Git responses and asserts exact refusal, modeled<3s and no reservation. Raw targeted summaries6+13+30+7 all pass. Standards/spec:no findings. C2 awaits exact-head post-source droplet gate after T-813 Coordinator all-clear; submission hold remains. No Reviewer execution/per-item QA.
 
 Criteria: C1 verified.
+
+### impl-811 · 2026-10-18T17:14:42.200Z
+
+Same-head mode-free droplet run 0778348c-8c02-406e-81bf-9ae7a0353ba9 passed at reviewed e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e. Full admission-infrastructure selection: tests 2632, pass 2624, fail 0, skipped 8; load gate completed. Linux x64, Node v24.21.0, Neovim v0.12.5; droplet lifetime 1581 s, cost $0.1098. Log A-5481 is in topic-516. Reviewer received the result directly; final evidence verdict pending. No source changes or dev merges after source review.
+
+### rev-30 · 2026-10-18T17:15:23.142Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-811-final
+commit: e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged e0a38e7f. A-5481/0778348c full gate passes 2624/2632 ordinary tests, zero fail/cancel, eight unrelated prerequisite skips; full Neovim completes. Cold refusal parent passes 1.527539361s and 5/5 repetitions; all admission-cost nested, tier, lint and admission controls execute. A-5483 distinguishes modeled cost/native Mac profile/host body time and discloses inherited C-326/T-803 report-only warnings. C1/C2 verified; no per-item QA.
+
+Criteria: C1 verified, C2 verified.

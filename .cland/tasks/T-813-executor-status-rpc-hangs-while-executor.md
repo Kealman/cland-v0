@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-526
 branch: t/T-813-executor-status-rpc-hangs-while-executor
 created: 2026-10-18T16:28:28.718Z
-updated: 2026-10-18T16:46:05.401Z
+updated: 2026-10-18T18:12:07.989Z
 ---
 
 ## Summary
@@ -34,13 +34,13 @@ Since about 16:23Z on 2026-10-18, `cland executor status` on the serving hub (pi
 - [x] C1. `cland executor status` answers within 2 s while a reconcile, lease recovery or provider sweep is in progress or deferred, and reports that state.
   - done: impl-813 · 2026-10-18T16:45:05.454Z
 - [x] C2. Every provider call and lock wait in the executor reconcile, lease-recovery and sweep paths has a deadline; a regression test with a provider that never answers proves the status RPC and hub stop still finish within their bounds.
-  - done: impl-813 · 2026-10-18T16:45:06.265Z
+  - done: impl-813 · 2026-10-18T18:11:20.750Z
 - [x] C3. The inspect tick does no work for a finished job whose report already failed permanently (for example, a forbidden artifact.create for a role-less session): #restoreRemoteResult skips it or records a terminal state, and #save writes nothing when the jobs are unchanged; a regression test with 6 such jobs shows zero suite-jobs writes over several ticks.
   - done: impl-813 · 2026-10-18T16:45:07.358Z
 - [x] C4. Finished jobs stop growing the suite-jobs meta blob: they are kept out of the snapshot that #save rewrites (separate rows or a bounded tail), so one save stays under 1 MB with 930 jobs in history.
-  - done: impl-813 · 2026-10-18T16:45:08.224Z
+  - done: impl-813 · 2026-10-18T17:16:29.095Z
 - [x] C5. The spend-ledger lock is released on every exit path of reconcile, lease recovery and sweep (failure, deferral, timeout), and a holder never awaits work that needs the same lock; a regression test that fails reconcile mid-hold proves the next admission takes the lock within 1 s.
-  - done: impl-813 · 2026-10-18T16:45:09.185Z
+  - done: impl-813 · 2026-10-18T17:44:08.542Z
 
 ## Comments
 
@@ -69,3 +69,131 @@ Restart #12 (cland-impl, 16:41–16:44Z):
 - The ledger lock was released.
 - db7d5479 posted its result on recovery, code 0.
 - `executor status` answers again but took 26 s, close to the 30 s CLI limit, so something in that RPC is still slow. The C1 bound of 2 s must hold on a hub with 930 jobs in history; include start-to-serving time with the C4 history in the evidence.
+
+### rev-30 · 2026-10-18T16:49:12.915Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-source
+commit: d188b46584eea801b50be8914d2f9afdf51e6627
+scope: full
+findings: [{"severity":"medium","text":"Finished jobs now move to suite-job:<id> before cleanup, but the cleanup error proof still reads only suite-jobs; the completed report-gap reconstruction at lines 277–280 edits the now-empty active snapshot and silently loses its recovery control. Migrate both storage carriers and audit completed-job readers.","file":"hub/test/suite.test.ts","line":250}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source not clear at d188b465: M1 medium in suite.test.ts finished-job recovery carriers. A-5455 records both review axes and the scope of remaining combined-history evidence. Claimant has confirmed and is fixing M1; no other source finding in this pass. No verification at this head; replacement source must be reviewed first.
+
+Criteria: C4 failed (The finished-job storage migration leaves existing cleanup and report-gap recovery test carriers reading or mutating only the active snapshot.).
+
+### impl-813 · 2026-10-18T16:53:07.594Z
+
+Replacement addad230 fixes source finding M1, audits all suite-jobs carriers, adds combined 930-job startup/status proof, and preserves event-driven report recovery after a role grant. Final combined measurement: 8,876,189-byte legacy → 2-byte active; 930 history rows; serving 266.8ms; status 1.31ms during never-answering provider sweep. Host lint/typecheck and full touched test files pass. Fresh source review before verify.
+
+### rev-30 · 2026-10-18T16:55:04.212Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-source-correction
+commit: addad23099337f5b7f18b618ef95bb616dcc08c7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at addad230. M1 resolved: exact archived cleanup/report-gap rows with preconditions and original ownership/single-result assertions preserved; completed scenario diagnostic migrated. Combined 930-job startup/status proof and requester-scoped role-grant retry reviewed. A-5467 records both axes, initial mechanisms, carrier audit and evidence limits. C1–C5 remain unverified pending the accepted exact-head gate; Coordinator all-clear permits one normal mode-free droplet submission.
+
+### rev-30 · 2026-10-18T17:16:06.832Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-runtime
+commit: addad23099337f5b7f18b618ef95bb616dcc08c7
+scope: evidence
+findings: [{"severity":"medium","text":"M2: reopen(jobs) writes the replacement active snapshot but retains old suite-job history rows, so the constructor restores the original finished fixture run and corrupts exact historical-cover expectations. Replace both stores only when explicit jobs are supplied; preserve ordinary reopen history and all assertions.","file":"hub/test/suite-unit-fixture.ts","line":154}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear: A-5482/7001c1d1 exits1 at addad230. Sole ordinary failure is suite-cover exact last-ten ordering, caused by fixture reopen(jobs) retaining archived original run. A-5485 records M2 and distinguishes 290/291 ordinary from 630/631 repeated-body completions. Seven lock/persistence controls and 35 repetitions pass; T2 liveness and later phases not reached. Claimant reproduced and is correcting; new source review required before replacement verification.
+
+Criteria: C4 failed (Archived-history migration leaves explicit fixture job replacement incomplete; exact-head T1 gate fails suite-cover ordering before machine/Neovim.).
+
+### impl-813 · 2026-10-18T17:16:29.529Z
+
+Runtime M2 fixed in d3fde51a: explicit fixture history replacement now replaces archive + active snapshot in one transaction; normal reopen still preserves all rows. Red/green exact cover list reproduced, unchanged assertion now 9/9 green. Explicit seed and normal persistence callers audited; seven targeted files and host typecheck/lint pass. Fresh source review before another gate.
+
+### rev-30 · 2026-10-18T17:17:11.228Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-history-fixture-correction
+commit: d3fde51af8bfe04a5a0992d2cfc20dfc56f8040a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at d3fde51a. M2 resolved by transactionally replacing archive+active fixture history only for explicit reopen(jobs); ordinary reopen preserves both carriers. Production and all exact count/order/ownership assertions unchanged. A-5488 records both axes, seeding/restart caller checks and limits. A-5467 source audit/combined-history proof remains applicable; C1–C5 still await accepted replacement gate. No dev merge or new finding.
+
+### rev-30 · 2026-10-18T17:41:15.804Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-runtime-2
+commit: d3fde51af8bfe04a5a0992d2cfc20dfc56f8040a
+scope: evidence
+findings: [{"severity":"medium","text":"M3: shared acquireLockAsync.release now calls synchronous readFileSync/rmSync, breaking adapter/tracker async-native contracts and bypassing existing promise unlink fault/race controls; restore async release with safe owned-token/concurrent-release/retry semantics.","file":"hub/src/hub/lock.ts","line":370},{"severity":"medium","text":"M4: outer provider timeout now throws a plain deadline Error before the existing DigitalOcean time-bound diagnostic, so both late-create/key tests stop before proving durable ownership and cleanup. Retain compatible error semantics and all downstream resource assertions.","file":"hub/src/executor/droplet/deadline.ts","line":10}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Runtime not clear at d3fde51a: A-5501/77ed317e has 26 failures across six files; Neovim not reached. A-5502 groups M3 shared synchronous release (24 failures) and M4 provider timeout compatibility (2), preserving eleven passing owned controls/55 repetitions and the 930-job latency diagnostic. I missed M3's async contract in source review. Claimant confirmed both; new source review required before another gate, no same-head rerun.
+
+Criteria: C5 failed (Shared asynchronous release and fault/race integration regressions account for 24 ordinary failures.), C2 failed (Two ambiguous provider timeout tests fail their existing time-bound contract before cleanup assertions execute.).
+
+### impl-813 · 2026-10-18T17:44:08.884Z
+
+M3/M4 correction 479a7ada pushed: release uses serialized async own-token I/O with no new guard/deadline and retryable unlink failures; bounded providers retain DigitalOceanError transport/deadline semantics. All 26 runtime failures now pass in full local files; native guards, cleanup resource assertions and ownership controls retained. Added concurrent-release successor receipt proof + provider error contract tests. Host lint/typecheck green. Fresh source review before next gate.
+
+### rev-30 · 2026-10-18T17:45:23.235Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-async-release-correction
+commit: 479a7adac13b1c3bbe84081cca0707dd0ef1d9e6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at 479a7ada. M3 restored asynchronous own-token release with concurrent joining, settled success and retryable failed unlink; native/failure/race assertions retained. M4 restores DigitalOcean transport/time-bound versus explicit-deadline semantics with fake-time contract tests; ambiguous mutation cleanup tests unchanged. A-5504 records both axes, reported full local regression checks and limits. M1/M2 changes preserved; C1–C5 await accepted exact-head runtime. No dev merge, new allowance or disabled guards.
+
+### rev-30 · 2026-10-18T18:10:03.318Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-runtime-3
+commit: 479a7adac13b1c3bbe84081cca0707dd0ef1d9e6
+scope: evidence
+findings: [{"severity":"medium","text":"M4 remains: computed transport cap is forwarded as an explicit provider deadline; when inner API abort wins, api.ts emits deadline rather than transport/time-bound. Ambiguous-key test fails before ownership/cleanup assertions. Preserve error kind on both inner/outer paths and add an inner-provider-rejection control.","file":"hub/src/executor/droplet/deadline.ts","line":33}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear: A-5507/a08abb39 at unchanged 479a7ada has one ordinary failure, executor-droplet ambiguous-key time-bound expectation. A-5508 explains the synthetic-deadline/inner-API race, records 2264/2270 ordinary passes and 3059/3065 completed bodies, and retains all passing async native/fault controls plus 930-job metrics. Neovim not reached. Task-owned M4 needs correction/source re-review before another gate; no unchanged retry.
+
+Criteria: C2 failed (Ambiguous-key timeout contract still fails when the inner API wins; no green final gate or completed late-key cleanup proof.).
+
+### impl-813 · 2026-10-18T18:11:21.728Z
+
+805d888b fixes remaining M4 timer-race semantics: transport cap bounds only the outer wait; provider receives actual caller/phase deadline or undefined. Three deterministic inner rejection/provenance cases red before fix, green after; existing never-answering controls and unchanged full late-key/resource cleanup file pass. Host lint/typecheck green; fresh source review before gate.
+
+### rev-30 · 2026-10-18T18:12:07.989Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-inner-timeout-correction
+commit: 805d888b0765f7cfc6174058a1c4728496b5ba83
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at 805d888b: remaining M4 resolved by forwarding only real caller/phase deadlines and bounding transport wait separately. Three deterministic inner-rejection/provenance controls retain error identity/longer explicit deadlines; never-answering and unchanged late-key cleanup assertions remain. A-5510 records both axes and reported host checks. Async release/persistence changes unchanged; C1–C5 await accepted same-head gate. No dev merge or new finding.

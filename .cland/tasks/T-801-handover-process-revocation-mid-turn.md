@@ -3,7 +3,7 @@ id: T-801
 kind: task
 title: 'handover-process: "revocation mid-turn…" failed once on a droplet (7.5 s) in an unrelated task run'
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-518
 branch: t/T-801-handover-process-revocation-mid-turn
 created: 2026-10-18T12:59:15.093Z
-updated: 2026-10-18T16:27:05.569Z
+updated: 2026-10-18T17:18:43.552Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ hub/test/handover-process.test.ts, "revocation mid-turn: the human reassigns whi
 - [x] C1. The file passes 20/20 alone on Linux, or the cause is named from a reproduction.
   - done: impl-801 · 2026-10-18T16:23:51.005Z
   - verified: rev-30 [reviewer] · run rev-20261018-801-source · 2026-10-18T16:25:33.681Z · commit b8322a4c62f524fb7006b1d09ada01899d6700e2
+  - verified: rev-30 [reviewer] · run rev-20261018-801-final · 2026-10-18T17:18:42.127Z · commit b8322a4c62f524fb7006b1d09ada01899d6700e2
 - [x] C2. Any wall-clock wait in the case is replaced by an observed event or a FakeClock step, keeping every assertion.
   - done: impl-801 · 2026-10-18T16:23:53.505Z
+  - verified: rev-30 [reviewer] · run rev-20261018-801-final · 2026-10-18T17:18:42.127Z · commit b8322a4c62f524fb7006b1d09ada01899d6700e2
 
 ## Comments
 
@@ -57,3 +59,22 @@ Criteria: C1 verified.
 ### impl-801 · 2026-10-18T16:27:05.569Z
 
 Verification admission explicitly refused (hub message 8da722af, 2026-10-18T16:26:54Z): spend.json.lock acquisition deadline reached after 60001 ms. No run admitted. Stopped submission under rule 5 and reported blocker to lead T-801/Coordinator. Source clear b8322a4c remains unchanged; awaiting admission repair before gate evidence.
+
+### impl-801 · 2026-10-18T17:18:08.352Z
+
+Exact-head replacement verify 57be29a1-c9e1-490d-8aae-5cd8048a2b0e passed at unchanged b8322a4c62f524fb7006b1d09ada01899d6700e2: 2631 tests, 2623 pass, 0 fail, 8 skipped; log A-5489. Executor Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5; droplet lifetime 1775 s, cost $0.1233. Automatic selection fell back to full because remote git fetch/diff was unavailable; no explicit full mode requested. Reviewer has same-head result for final verdict.
+
+### rev-30 · 2026-10-18T17:18:42.127Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-801-final
+commit: b8322a4c62f524fb7006b1d09ada01899d6700e2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged b8322a4c. A-5489/57be29a1 is accepted exit0 with positive handover-process receipt 4.291883532s; full phases finish 2623/2631 pass, 0 fail/cancel, 8 unrelated skips. A-5490 retains primary a8e2b96e C1 disposition: reproduced ordering defect sufficient, most likely historical cause unproven, no 20x loop required. C2 observed barrier/reply-tied assertions pass on Linux. Prior shared refusal and inherited report-only C-326/T-803/budget warnings disclosed. No per-item QA.
+
+Criteria: C1 verified, C2 verified.
