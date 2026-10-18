@@ -57,6 +57,12 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
   t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
   t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
+  if (accounting) {
+    const acquire = DropletExecutor.prototype.acquire;
+    t.mock.method(DropletExecutor.prototype, 'acquire', function (this: DropletExecutor, ...args: Parameters<typeof acquire>) {
+      return machine.waits.track(() => acquire.apply(this, args));
+    });
+  }
   if (!accounting) {
     // Suites policy gets semantic executor receipts. OS lock/spend integration
     // uses the real backend only in suite-accounting.test.ts (T2).

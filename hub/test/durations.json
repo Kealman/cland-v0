@@ -3951,6 +3951,13 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.274252
   },
   "allow": {
+    "hub/test/suite-accounting.test.ts::50 parallel acquirers refuse the spend cap after a stalled budget publication": {
+      "seconds": 8,
+      "owner": "E-482",
+      "added": "2026-10-18",
+      "expires": "2026-10-25",
+      "reason": "T-802 C2 requires fifty parallel real executor acquires with injected budget-publication contention. Each contender durably writes and cleans up its lease; the green Mac case measured 4.75 s. Retains the exact executor refusal seam while the clock-driver regression remains a 2 ms T1 test."
+    },
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
       "seconds": 14.993009,
       "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity.",

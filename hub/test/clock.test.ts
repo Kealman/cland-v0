@@ -4,7 +4,26 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { FakeClock } from './fake-clock.ts';
 import { until } from './until.ts';
+import { remoteWaits } from './remote-clock.ts';
 import { realClock, resolveClock, type ClockOptions } from '../src/hub/clock.ts';
+
+test('remote clock waits for concurrent native work before spending a lock retry deadline', async t => {
+  const clock = new FakeClock(0), waits = remoteWaits(clock);
+  const advance = t.mock.method(clock, 'advance');
+  const publication = Promise.withResolvers<void>();
+  const writer = waits.track(() => publication.promise);
+  const contender = waits.track(() => waits.wait(60000));
+  const completion = waits.run(Promise.all([writer, contender]));
+  try {
+    // Another caller can finish while publication is in flight. Neither driver
+    // may consume the contender's entire deadline before the owner can release.
+    await waits.run(Promise.resolve());
+    assert.equal(advance.mock.callCount(), 0, 'no driver may start advancing over native publication');
+    assert.equal(clock.now().getTime(), 0);
+  } finally { publication.resolve(); await completion; }
+  assert.equal(clock.now().getTime(), 60000);
+  assert.equal(clock.pending, 0);
+});
 
 test('FakeClock runs nested timers in deadline order with microtasks between callbacks', async () => {
   const clock = new FakeClock(0);

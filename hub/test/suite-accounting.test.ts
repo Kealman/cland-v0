@@ -2,6 +2,8 @@
 // No hub, machine or worker process; pure scheduling rules stay in T1.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { suiteUnit } from './suite-unit-fixture.ts';
@@ -196,6 +198,46 @@ test('parallel acquires each reserve shared spend; cap refusals stay local witho
   const later = await f.launch({ fresh: true }); await running(f, later.id); await f.finish(later.id);
   for (const job of jobs) if (job.id !== active) { await f.suites.cancel(job.id, null, () => {}); await f.result(job.id); }
   assert.deepEqual(f.api.droplets, []);
+});
+
+test('50 parallel acquirers refuse the spend cap after a stalled budget publication', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 51 }, 'daily_spend_usd=0.1\nlifetime="15m"\nrun_timeout="5m"', true);
+  const first = await remote(f); await running(f, first.id);
+  const executor = new DropletExecutor(f.root, f.store, undefined, {
+    DIGITALOCEAN_TOKEN: 'suite-unit-token', CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state'),
+  }, () => f.config, { ...f.machine.dependencies, api: f.api.provider });
+  const publishing = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const rename = fs.rename;
+  let stalled = false;
+  const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+    if (!stalled && String(args[1]).endsWith('/lease.json')) {
+      stalled = true; publishing.resolve(); await release.promise;
+    }
+    return rename(...args);
+  });
+  syncBuiltinESMExports();
+  const before = f.clock.now().getTime();
+  const deadline = new Date(before + 300000).toISOString();
+  const attempts = Array.from({ length: 50 }, (_, n) => executor.acquire({ id: `cap-${n}` }, deadline));
+  const completed = f.machine.waits.run(Promise.allSettled(attempts));
+  try {
+    await publishing.promise; await f.machine.waits.waiting();
+    await f.machine.waits.run(Promise.resolve());
+    assert.equal(f.clock.now().getTime(), before, 'retry time cannot outrun the native lock holder');
+  } finally {
+    release.resolve();
+    try { await completed; }
+    finally { fault.mock.restore(); syncBuiltinESMExports(); }
+  }
+  const outcomes = await completed;
+  assert.equal(outcomes.length, 50);
+  for (const outcome of outcomes) {
+    assert.equal(outcome.status, 'rejected');
+    if (outcome.status === 'rejected') assert.equal(outcome.reason.message, 'daily spend cap $0.1 reached');
+  }
+  assert.equal(f.api.droplets.length, 1, 'cap refusals create no provider machines');
+  assert.equal((await readLeases(f.root)).filter(lease => lease.state !== 'released').length, 1);
+  await f.finish(first.id);
 });
 
 test('an unconfirmed acquire cleanup keeps its durable remote budget reservation', async t => {
