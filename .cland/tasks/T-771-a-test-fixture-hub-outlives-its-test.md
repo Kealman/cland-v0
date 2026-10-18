@@ -2,8 +2,8 @@
 id: T-771
 kind: task
 title: A test-fixture hub outlives its test worker when the worker is SIGTERMed mid-file
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-484
 branch: t/T-771-a-test-fixture-hub-outlives-its-test
 created: 2026-10-18T04:44:16.774Z
-updated: 2026-10-18T08:06:42.333Z
+updated: 2026-10-18T08:06:50.216Z
+closed: 2026-10-18T08:06:50.216Z
 ---
 
 ## Summary
@@ -219,3 +220,7 @@ Standards:0 findings. Spec:C1 fully established; final review clear, verify C1 a
 Durable review:A-5088.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T08:06:50.216Z
+
+Merged 983bf4210b14926fc71215cd412e91b570ce8cc1 onto dev.
