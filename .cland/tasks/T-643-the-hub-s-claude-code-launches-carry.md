@@ -2,8 +2,8 @@
 id: T-643
 kind: task
 title: The hub's Claude Code launches carry bgIsolation = "none" only where the project's settings files lack the key
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-502
 branch: t/T-643-the-hub-s-claude-code-launches-carry
 created: 2026-10-16T16:23:58.322Z
-updated: 2026-10-18T10:35:03.294Z
+updated: 2026-10-18T11:37:48.477Z
+closed: 2026-10-18T11:37:48.477Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5210: exact-head A-5209 passes hub plus Neovim smoke, 2160 pass/0 fail/5 outside-scope skips. All four environment cases pass, both new settings tests have10/10 load repetitions and no owned trips; retained permission, six native adapter and three schedule carriers pass. Conditional project/local/cwd/relaunch mapping satisfies all C1–C4. No hard budgets, source changes or findings.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T11:37:48.477Z
+
+Merged a13d34a6bcc7ea92ce5507a53d71588814e9a830 onto dev.
