@@ -143,6 +143,44 @@ probes. Stub-client teardown uses the owned child handle and observes its
 process group's exit before directory removal; a restarted server retains
 identity-based cleanup and belongs at T3.
 
+### Neovim recorded frames
+
+T2 client tests use `nvim/test/stub-client.ts` and `nvim/test/fixture.ts` for
+scratch projects, condition waits and client ownership. Native/T3 callers keep
+`nvim/test/harness.ts`. The hub's `tier-nvim.ts` compatibility export and the
+Neovim client share one exact synchronous launch marker.
+
+Both Neovim fixture entry points (`tempProject` and `createClient`) await the
+neutral `test-support/admission.ts` guard before allocating directories or
+starting the client. Its read-only discovery, transport and clock primitives
+live under `shared/`; hub compatibility exports preserve their identities and
+the typed `AdmissionTimeout`. Cached Neovim admission returns a fresh async
+promise for each caller, preserving node:test resource attribution. Changes to
+these shared paths keep full package selection, and the T2 import guard follows
+them transitively.
+
+`nvim/test/stub-hub.ts` replays committed JSON recordings for config, criteria,
+visibility counts and frame projections. It retains scripted actions and frame
+barriers, with no runtime hub import. A missing recording fails with the refresh
+command. The T1 boundary guard reads every current T2 import closure, including
+the stub; the workbench T3 recorder checks the catalog against hub-owned
+producers and real `projectHub` attach snapshots. Ordinary T2 tests never load
+those producers. The human QA CLI keeps its arbitrary/read-only scenario API
+through the explicit T3 `qa-stub-hub.ts` adapter; it is outside T2 client imports.
+
+Run `npm run test:nvim-fixtures` to capture existing stub consumers serially and
+rewrite the live attach baseline. This maintenance command requires one-minute
+load below 15. A trailing test file refreshes that file while retaining the
+catalog; `--from-recordings` regenerates existing inputs and the live baseline
+without replaying client assertions. Use the full command after adding scenarios.
+Review the generated JSON with the assertions that consume it. The catalog
+interns repeated JSON nodes, binds transient machine paths, UUIDs and timestamps,
+and retains the seven-day visibility age class and original wire values.
+
+`node hub/test/nvim-selection-replay.ts [dev-ref]` reports the latest 40 task
+landings against the current importer graph, failing an incomplete window or any
+T2 selection decided by a runtime hub import.
+
 ### Runtime tier resource report
 
 The suite runner preloads a resource tripwire in each manifest-declared T1/T2

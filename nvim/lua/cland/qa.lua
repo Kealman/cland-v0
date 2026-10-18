@@ -220,7 +220,7 @@ local function start_shell(case, root, project, hub)
     end
     -- the scenario goes inline: a read-only run has nowhere to write it
     vim.env.CLAND_STUB_SCENARIO_JSON = next(scenario) and vim.json.encode(scenario) or '{}'
-    cli = { vim.env.CLAND_NODE or 'node', nvim_dir() .. '/test/stub-hub.ts' }
+    cli = { vim.env.CLAND_NODE or 'node', nvim_dir() .. '/test/qa-stub-hub.ts' }
   else
     cli = cland_cli()
   end

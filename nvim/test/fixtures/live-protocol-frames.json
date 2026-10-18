@@ -1,0 +1,140 @@
+{
+  "status": {
+    "keys": {
+      "layouts": []
+    },
+    "tracker": {
+      "levels": [
+        "release",
+        "epic"
+      ],
+      "ladder": [
+        [
+          "release",
+          "category"
+        ],
+        [
+          "epic"
+        ]
+      ],
+      "prefixes": {
+        "release": "R",
+        "category": "C",
+        "epic": "E",
+        "task": "T",
+        "question": "Q",
+        "spec": "S",
+        "map": "M"
+      }
+    }
+  },
+  "items": {
+    "items": [
+      {
+        "id": "T-1",
+        "kind": "task",
+        "rank": 10,
+        "title": "Recorded task",
+        "state": "open",
+        "status": "backlog",
+        "size": "S",
+        "labels": [],
+        "assignee": null,
+        "parent": null,
+        "blocked_by": [],
+        "topic": null,
+        "branch": null,
+        "created": "2026-10-13T12:00:00.000Z",
+        "updated": "2026-10-13T12:00:00.000Z",
+        "file": "T-1-recorded-task.md",
+        "verify": null,
+        "criteria": {
+          "total": 1,
+          "done": 0,
+          "verified": 0,
+          "stale": 0,
+          "failed": 0
+        },
+        "claim": null,
+        "holds": [],
+        "verdictBase": null,
+        "verdicts": [],
+        "layer": "background"
+      }
+    ]
+  },
+  "view": {
+    "item": {
+      "id": "T-1",
+      "kind": "task",
+      "rank": 10,
+      "title": "Recorded task",
+      "state": "open",
+      "status": "backlog",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-13T12:00:00.000Z",
+      "updated": "2026-10-13T12:00:00.000Z",
+      "file": "T-1-recorded-task.md",
+      "verdictBase": null,
+      "size": "S",
+      "path": ".cland/tasks/T-1-recorded-task.md",
+      "ancestry": [
+        {
+          "id": "T-1",
+          "kind": "task",
+          "title": "Recorded task"
+        }
+      ],
+      "body": "## Acceptance criteria\n- [ ] C1. Recorded criterion",
+      "plan": null,
+      "criteria": [
+        {
+          "id": "C1",
+          "text": "Recorded criterion",
+          "checked": false,
+          "marks": [],
+          "malformedMarks": []
+        }
+      ],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 1,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    }
+  },
+  "inbox": {
+    "asks": [],
+    "approvals": [],
+    "plans": [],
+    "requests": [],
+    "messages": [],
+    "waiting": [],
+    "needsYou": 0,
+    "archiveToday": 0
+  }
+}

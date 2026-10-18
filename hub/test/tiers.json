@@ -152,6 +152,7 @@
     "hub/test/models.test.ts": "T3",
     "hub/test/name-reservation.test.ts": "T2",
     "hub/test/names.test.ts": "T2",
+    "hub/test/nvim-fixture-boundary.test.ts": "T1",
     "hub/test/open.test.ts": "T3",
     "hub/test/opencode-adapter.test.ts": {
       "tier": "T3",
@@ -412,6 +413,7 @@
     "nvim/test/session-resume.test.ts": "T2",
     "nvim/test/sessions.test.ts": "T3",
     "nvim/test/shell.test.ts": "T3",
+    "nvim/test/stub-control.test.ts": "T2",
     "nvim/test/thread.test.ts": "T3",
     "nvim/test/ui.test.ts": "T3",
     "nvim/test/vboard.test.ts": "T2",

@@ -25,11 +25,12 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
   }
   for (const path of ['hub/src/fixture.ts', 'nvim/bin/fixture.ts']) {
     await mkdir(dirname(join(root, path)), { recursive: true });
-    await writeFile(join(root, path), "import { basename } from 'node:path';\nexport const name: string = basename(import.meta.filename);\n");
+    await writeFile(join(root, path), "import { basename } from 'node:path';\nimport { assertTestAdmission } from '../../test-support/admission.ts';\nexport const name: string = basename(import.meta.filename);\nexport const admission: () => Promise<void> = assertTestAdmission;\n");
   }
+  for (const path of ['shared', 'test-support']) await cp(join(source, path), join(root, path), { recursive: true });
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 30_000 });
   git('init', '-q');
-  git('add', 'package.json', 'hub', 'nvim');
+  git('add', 'package.json', 'hub', 'nvim', 'shared', 'test-support');
   git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Typecheck fixture');
   await symlink(modules, join(root, 'node_modules'), 'dir');
   const worktree = join(root, '.cland', 'worktrees', 'T-1');

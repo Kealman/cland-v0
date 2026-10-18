@@ -61,6 +61,7 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
   const invalid = paths.find(path => path.split('/').some(part => part === '.' || part === '..'));
   if (invalid) return full(`ambiguous path ${invalid}`);
   for (const path of paths) {
+    if (/^(?:shared|test-support)\//.test(path)) return full(`suite infrastructure ${path}`);
     if (['hub/src/test-lint-policy.ts', 'hub/src/hub/suite-candidate.ts'].includes(path)) return full(`suite infrastructure ${path}`);
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
@@ -108,10 +109,10 @@ export function importSpecifiers(source: string): string[] {
 }
 
 /** Runtime hub dependencies, attributed to each Neovim test through its helpers. */
-export async function nvimHubImporters(cwd: string): Promise<Record<string, string[]>> {
+export async function nvimHubImporters(cwd: string, files?: readonly string[]): Promise<Record<string, string[]>> {
   const importers = new Map<string, Set<string>>();
   const dependencies = new Map<string, string[]>();
-  for await (const test of glob('nvim/test/**/*.test.ts', { cwd })) {
+  for await (const test of files ?? glob('nvim/test/**/*.test.ts', { cwd })) {
     const visited = new Set<string>();
     const pending = [test];
     while (pending.length) {
@@ -128,15 +129,15 @@ export async function nvimHubImporters(cwd: string): Promise<Record<string, stri
         if (path.startsWith('hub/')) {
           const tests = importers.get(path) ?? new Set<string>();
           tests.add(test); importers.set(path, tests);
-        } else if (path.startsWith('nvim/test/')) pending.push(path);
+        } else if (/^(?:nvim|shared|test-support)\//.test(path) && /\.ts$/.test(path)) pending.push(path);
       }
     }
   }
   return Object.fromEntries([...importers].sort(([a], [b]) => a.localeCompare(b)).map(([path, tests]) => [path, [...tests].sort()]));
 }
 
-export async function nvimHubImports(cwd: string): Promise<string[]> {
-  return Object.keys(await nvimHubImporters(cwd)).sort();
+export async function nvimHubImports(cwd: string, files?: readonly string[]): Promise<string[]> {
+  return Object.keys(await nvimHubImporters(cwd, files)).sort();
 }
 
 const exec = promisify(execFile);

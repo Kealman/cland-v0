@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createConnection } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient, type Client } from './harness.ts';
+import { tempProject } from './fixture.ts';
+import { nvimOrSkip, startClient, type Client } from './stub-client.ts';
 import { waitInitialSnapshots } from './readiness.ts';
+import { stubControl } from './stub-control.ts';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
 const bin = 'bin' in nvim ? nvim.bin : '';
@@ -15,13 +15,8 @@ async function select(c: Client, text: string) {
   await c.lua("local text=...; for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find(text,1,true) then vim.api.nvim_win_set_cursor(0,{i,0}); return end end; error('missing '..text)", text);
   await c.input('<Ignore>');
 }
-function control(path: string, command: Record<string, unknown>) {
-  return new Promise<void>((resolve, reject) => {
-    const socket = createConnection(path);
-    socket.on('error', reject);
-    socket.on('data', () => { socket.end(); resolve(); });
-    socket.write(JSON.stringify(command) + '\n');
-  });
+async function control(path: string, command: Record<string, unknown>): Promise<void> {
+  await stubControl(path, command);
 }
 for (const view of ['panel', 'full']) test(`${view} inbox shows four now sections, folds five rows and expands only the selected ask or command`, { skip }, async t => {
   const root = await tempProject(t), path = join(root, 'stub.sock');
@@ -81,8 +76,17 @@ test('waiting ages advance on the local clock with no inbox request or hub frame
   await waitInitialSnapshots(c); await c.input('<Esc> N');
   await c.waitScreen(s => /Aging row.*0 m/.test(s), 'initial age');
   await c.waitScreen(s => /Aging row.*1 m/.test(s), 'age reaches one minute', 10000);
-  const calls = await new Promise<Array<{ type: string }>>((resolve, reject) => {
-    const socket = createConnection(path); let data = ''; socket.on('error', reject); socket.on('data', b => { data += b; if (data.includes('\n')) { socket.end(); resolve(JSON.parse(data).requests); } }); socket.write('{"requests":true}\n');
-  });
+  const calls = (await stubControl(path, { requests: true })).requests as Array<{ type: string }>;
   assert.equal(calls.filter(f => f.type === 'inbox.list').length, 1, 'the local timer does not fetch snapshots');
+});
+
+test('a rejected control projection reports the operation and leaves the control peer usable', { skip }, async t => {
+  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path });
+  await waitInitialSnapshots(c);
+  // Invalid scripted configuration fails in both recorded replay and maintenance producers.
+  await control(path, { set: { tracker: { ladder: [[]] } } });
+  await assert.rejects(control(path, { emit: { type: 'inbox', inbox: {} } }), /stub control emit inbox:.*(?:unrecorded protocol frame.*operation=config|levels must)/);
+  const reply = await stubControl(path, { requests: true });
+  assert.ok(Array.isArray(reply.requests), 'a projection failure must not abandon the control connection or kill the peer');
 });

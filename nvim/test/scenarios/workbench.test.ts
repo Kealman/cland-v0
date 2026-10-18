@@ -151,3 +151,38 @@ test('gp shows stages, lanes, overrides, gates and scoped stage tags; a approves
     assert.ok(fits, `plan fits ${columns} columns`);
   }
 });
+
+// T3 recorder: real hub frames establish the attach snapshot contract, and the
+// hub-side producer checks every projection consumed by the stub T2 clients.
+test('recorded protocol fixtures match the live hub attach frames', async t => {
+  const { fixtureOutput } = await import('../../../hub/test/nvim-frame-source.ts');
+  const { checkRecordings, checkLiveFrames } = await import('../../../hub/test/nvim-fixture-check.ts');
+  const { FakeClock } = await import('../../../hub/test/fake-clock.ts');
+  const { STUB_NOW } = await import('../fixtures/clock.ts');
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(Date.parse(STUB_NOW)) });
+  const ui = await connectUi(t, discovery);
+  const request = async (frame: Record<string, unknown>) => {
+    const result = await ui.request(frame as { type: string });
+    assert.equal(result.ok, true, result.error);
+    return result.value as Record<string, unknown>;
+  };
+  const status = await request({ type: 'hub.status' });
+  const tracker = status.tracker as Record<string, unknown>;
+  const created = await request({ type: 'task.create', title: 'Recorded task', size: 'S', body: '## Acceptance criteria\n- [ ] C1. Recorded criterion\n' });
+  const item = created.item as { id: string };
+  const snapshots = {
+    status: { keys: status.keys, tracker: { levels: tracker.levels, ladder: tracker.ladder, prefixes: tracker.prefixes } },
+    items: await request({ type: 'task.list' }),
+    view: await request({ type: 'task.view', item: item.id }),
+    inbox: await request({ type: 'inbox.list' }),
+  };
+  const stable = JSON.parse(JSON.stringify(snapshots).replaceAll(root, '@root@'));
+  assert.deepEqual(fixtureOutput('config', { source: '' }), stable.status, 'stub config recordings use the real attach contract');
+  const liveItem = stable.view.item;
+  const details = fixtureOutput('criteria', { body: liveItem.body, criteria: liveItem.criteria }) as Record<string, unknown>;
+  assert.deepEqual(details.criteria, liveItem.criteria);
+  assert.deepEqual(details.criteriaCounts, liveItem.criteriaCounts);
+  await checkLiveFrames(stable);
+  await checkRecordings();
+});

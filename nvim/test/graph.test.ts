@@ -7,9 +7,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
 import { setTimeout as poll } from 'node:timers/promises';
-import { ownDirectory } from '../../hub/test/process-cleanup.ts';
-import { eventually } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
+import { ownDirectory } from './fixture.ts';
+import { eventually } from './fixture.ts';
+import { nvimOrSkip, startClient } from './stub-client.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
 

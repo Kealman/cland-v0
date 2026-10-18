@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import { prefixOf } from '../../hub/src/tracker/prefixes.ts';
-import { kindsFor, Ladder } from '../../hub/src/tracker/kinds.ts';
 // A stub hub for the shell's tests: it speaks the UI's frames (hub/README.md, "The UI's frames" and the
 // `session.*` frames) as JSON lines on stdin and stdout, the way `cland hub serve --stdio` does, from a
 // scripted scenario. The client spawns it through CLAND_COMMAND as `<stub> hub serve --stdio`.
@@ -27,15 +25,18 @@ import { createServer, type Socket } from 'node:net';
 import { readFileSync, rmSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { countCriteria, parseCriteria, summarizeCriteria, type Criterion } from '../../hub/src/tracker/criteria.ts';
-import { VisibilityPreferenceFile } from '../../hub/src/hub/visibility-preferences.ts';
-import { Visibility } from '../../hub/src/hub/visibility.ts';
-import { defaultConfig, readProjectConfig } from '../../hub/src/init/config.ts';
+import type { EventRow, VerificationQueue, EventsFilter } from '../../hub/src/protocol.ts';
+import type { Rule } from '../../hub/src/rules/rulebook.ts';
+import type { VisibilityOverrides } from '../../hub/src/hub/visibility.ts';
+import { replayFrame } from './frame-fixtures.ts';
+import { controlRequestName } from './stub-control.ts';
+import { parse as parseToml } from 'smol-toml';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { STUB_NOW } from './fixtures/clock.ts';
 
 export type Scenario = {
-  events?: import('../../hub/src/protocol.ts').EventRow[];
-  verification?: import('../../hub/src/protocol.ts').VerificationQueue;
+  events?: EventRow[];
+  verification?: VerificationQueue;
   crew?: { config: Record<string, unknown>; summary: string };
   topics?: Array<Record<string, unknown>>;
   messages?: Record<string, Array<Record<string, unknown>>>;
@@ -65,10 +66,10 @@ export type Scenario = {
   rankError?: string;
   /** Capture these snapshot answers now, but deliver them only after `releaseSnapshots` on the control socket. */
   holdSnapshots?: string[];
-  rules?: import('../../hub/src/rules/rulebook.ts').Rule[];
+  rules?: Rule[];
   /** The inbox (#33): `inbox.list` answers it, `topic.answer`, `inbox.decline` and `inbox.read` change it and push an `inbox` event.
    * `needsYou` overrides the stub's row aggregate; null omits the count to model a hub that has not said yet. */
-  visibility?: import('../../hub/src/hub/visibility.ts').VisibilityOverrides;
+  visibility?: VisibilityOverrides;
   inbox?: { asks?: Array<Record<string, unknown>>; approvals?: Array<Record<string, unknown>>; waiting?: Array<Record<string, unknown>>; plans?: Array<Record<string, unknown>>; requests?: Array<Record<string, unknown>>; messages?: Array<Record<string, unknown>>; needsYou?: number | null; archiveToday?: number; archive?: Array<Record<string, unknown>> };
 };
 
@@ -121,36 +122,23 @@ function launched(f: Frame): Record<string, unknown> {
 const requests: Frame[] = [];
 const held: Frame[] = [];
 
-const preferences = new VisibilityPreferenceFile(join(process.cwd(), '.cland/ui.json'));
-const visibility = () => new Visibility({
-  preferences,
-  overrides: scenario.visibility ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.visibility ?? {},
-  role: name => String([...(scenario.presence ?? []), ...(scenario.processes ?? [])].find(s => s.name === name)?.role ?? '') || null,
-  process: id => scenario.processes?.find(p => p.sessionId === id),
-  items: () => scenario.items ?? [], ladder: new Ladder(scenario.tracker?.ladder ?? scenario.tracker?.levels ?? readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd())?.tracker.levels),
-  // Age scenarios can pin the hub clock independently of message timestamps.
-  now: clock,
-});
-// Legacy fixtures carry full criteria beside their bodies. Put native counts on
-// summary frames while retaining full criteria for task.view; explicit counts win.
-const summary = (item: Record<string, unknown>) => {
-  if (item.criteria && !Array.isArray(item.criteria)) return item;
-  const criteria = (Array.isArray(item.criteria) ? item.criteria : parseCriteria(String(item.body ?? '')).criteria) as Criterion[];
-  const tip = 'stub-current-head';
-  const current = criteria.map(c => ({ ...c, marks: (c.marks ?? []).map(m => m.kind === 'verified'
-    ? { ...m, commit: m.current === false ? 'stub-old-head' : tip } : m) }));
-  return { ...item, criteria: countCriteria(summarizeCriteria(current), tip) };
-};
+const configPath = join(process.cwd(), '.cland/config.toml');
+const source = (() => { try { return readFileSync(configPath, 'utf8'); } catch { return ''; } })();
+const config = parseToml(source);
+const preferencesPath = join(process.cwd(), '.cland/ui.json');
+let preferences: Record<string, Record<string, string>> = (() => { try { return JSON.parse(readFileSync(preferencesPath, 'utf8')).visibility ?? {}; } catch { return {}; } })();
+const fixtureConfig = () => replayFrame<{ keys: unknown; tracker: { ladder: string[][] } }>('config', { source, tracker: scenario.tracker });
+const criteria = (item: Record<string, unknown>) => replayFrame<Record<string, unknown>>('criteria', { body: String(item.body ?? ''), criteria: item.criteria });
+const context = () => ({ preferences, visibility: scenario.visibility ?? config.visibility ?? {}, presence: scenario.presence ?? [], processes: scenario.processes ?? [], items: scenario.items ?? [], tracker: { ladder: fixtureConfig().tracker.ladder }, at: now() });
 const projected = (frame: unknown) => {
   const f = frame as Frame;
-  if (f.type === 'task' && f.item) return visibility().frame({ ...f, item: summary(f.item as Record<string, unknown>) });
-  if (f.type === 'result' && f.ok === true && requests.find(r => r.id === f.id)?.type === 'task.list') {
-    const value = f.value as { items: Array<Record<string, unknown>> };
-    return visibility().frame({ ...f, value: { ...value, items: value.items.map(summary) } });
-  }
-  return visibility().frame(f);
+  const requestType = requests.find(r => r.id === f.id)?.type;
+  const bound = f.type === 'result' ? { ...f, id: '@request@' } : f;
+  const output = replayFrame<Frame>('frame', { frame: bound, requestType, ...context() });
+  return f.type === 'result' ? { ...output, id: f.id } : output;
 };
-const write = (frame: unknown) => process.stdout.write(`${JSON.stringify(projected(frame))}\n`);
+const rawWrite = (frame: unknown) => process.stdout.write(`${JSON.stringify(frame)}\n`);
+const write = (frame: unknown) => rawWrite(projected(frame));
 const snapshots: Array<{ type: string; release: (error?: string) => void }> = [];
 const snapshotWaiters: Array<{ type: string; count: number; resolve: () => void }> = [];
 const initialReplay = new Set(['hub.status', 'task.list', 'role.list']);
@@ -210,11 +198,7 @@ function inboxValue(archive = false): Record<string, unknown> {
   const waiting = ib.waiting ?? [];
   const plans = ib.plans ?? [], requests = ib.requests ?? [];
   const messages = ib.messages ?? waiting; // Legacy scenarios model messages through their waiting topic.
-  const policy = visibility();
-  const count = asks.filter(r => policy.place('inbox', r, 'ask').layer === 'now').length
-    + approvals.filter(r => policy.place('inbox', r, 'approval').layer === 'now').length
-    + plans.length + requests.length
-    + messages.filter(r => (r.layer ?? policy.place('inbox', r, 'waiting').layer) === 'now').length;
+  const count = replayFrame<number>('inbox-count', { asks, approvals, plans, requests, messages, ...context() });
   return { asks, approvals, waiting, plans, requests, messages, archiveToday: ib.archiveToday ?? 0,
     ...(archive ? { archive: ib.archive ?? [] } : {}),
     ...(ib.needsYou === null ? {} : { needsYou: ib.needsYou ?? count }) };
@@ -267,11 +251,19 @@ function answer(f: Frame) {
     case 'hello':
       return write({ type: 'welcome', protocol: 2, client: 'nvim' });
     case 'visibility.set': {
-      void preferences.toggle(f.surface as 'topics' | 'sessions' | 'artifacts', String(f.target), f.mode as 'pin' | 'mute').then(value => {
+      try {
+        const surface = String(f.surface), target = String(f.target), mode = String(f.mode);
+        const next = structuredClone(preferences), choices = next[surface] ??= {};
+        if (choices[target] === mode) delete choices[target]; else choices[target] = mode;
+        let data: Record<string, unknown> = {};
+        try { data = JSON.parse(readFileSync(preferencesPath, 'utf8')); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        mkdirSync(join(process.cwd(), '.cland'), { recursive: true });
+        writeFileSync(preferencesPath, JSON.stringify({ ...data, visibility: next }));
+        preferences = next;
         write({ type: 'visibility' });
-        ok(f.id, { visibility: value });
-      }, err => fail(f.id, String(err)));
-      return;
+        return ok(f.id, { visibility: preferences });
+      } catch (error) { return fail(f.id, String(error)); }
     }
     case 'subscribe':
       return ok(f.id, { subscribed: true });
@@ -360,13 +352,12 @@ function answer(f: Frame) {
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status': {
-      const config = readProjectConfig(join(process.cwd(), '.cland/config.toml'), process.cwd()) ?? defaultConfig(process.cwd());
-      const ladder = new Ladder(scenario.tracker?.ladder ?? scenario.tracker?.levels ?? config.tracker.levels);
-      return ok(f.id, { keys: config.keys, tracker: { levels: ladder.flat, ladder: ladder.levels.map(level => [...level]), prefixes: scenario.tracker?.prefixes ?? Object.fromEntries([...kindsFor(ladder), 'category'].map(kind => [kind, prefixOf(kind)])) }, sessions: scenario.presence ?? [], ...(scenario.crew ? { crew: scenario.crew } : {}), ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
+      const recorded = fixtureConfig();
+      return ok(f.id, { ...recorded, sessions: scenario.presence ?? [], ...(scenario.crew ? { crew: scenario.crew } : {}), ...(scenario.verification ? { verification: scenario.verification } : {}), ...(scenario.coordinator !== undefined ? { coordinator: scenario.coordinator } : {}), ...(scenario.inbox ? { needsYou: inboxValue().needsYou } : {}) });
     }
     case 'events.list': {
       const start = Number(f.before ?? 0);
-      const filter = f.filter as import('../../hub/src/protocol.ts').EventsFilter | undefined;
+      const filter = f.filter as EventsFilter | undefined;
       const all = (scenario.events ?? []).filter(r => {
         if (filter?.kinds?.length && !filter.kinds.includes(r.kind) || filter?.warnings && !r.warning) return false;
         if (filter?.muted?.some(s => s.kind === r.subject.kind && s.id === r.subject.id)) return false;
@@ -434,7 +425,7 @@ function answer(f: Frame) {
       if (scenario.holdView) return;
       const item = scenario.items?.find((i) => i.id === f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
-      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...parseCriteria(String(item.body ?? '')), ...item, criteria: Array.isArray(item.criteria) ? item.criteria : parseCriteria(String(item.body ?? '')).criteria, criteriaCounts: summary(item).criteria, path: `.cland/tasks/${String(item.file)}` } });
+      return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...item, ...criteria(item), path: `.cland/tasks/${String(item.file)}` } });
     }
     default:
       return fail(f.id, `the stub hub does not answer ${String(f.type)}`);
@@ -450,10 +441,16 @@ process.stdin.on('data', (chunk: string) => {
     const line = buffer.slice(0, nl);
     buffer = buffer.slice(nl + 1);
     if (!line.trim()) continue;
+    let request: Frame | undefined;
     try {
-      answer(JSON.parse(line) as Frame);
+      request = JSON.parse(line) as Frame;
+      answer(request);
     } catch (err) {
-      process.stderr.write(`stub hub: ${String(err)}\n`);
+      const error = `stub hub request ${String(request?.type ?? 'invalid frame')}: ${String(err)}`;
+      process.stderr.write(`${error}\n`);
+      // Error replies bypass projection: an unmatched recording cannot require
+      // another recording to report its own failure.
+      rawWrite(request?.id !== undefined ? { type: 'result', id: request.id, ok: false, error } : { type: 'error', message: error });
     }
   }
 });
@@ -470,38 +467,47 @@ if (controlPath) {
       while ((nl = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, nl);
         buf = buf.slice(nl + 1);
-        const cmd = JSON.parse(line) as Record<string, unknown>;
-        if (cmd.emit) write(cmd.emit);
-        if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map((f) => `${JSON.stringify(projected(f))}\n`).join(''));
-        if (cmd.set) Object.assign(scenario, cmd.set);
-        if (Array.isArray(cmd.releaseSnapshots)) {
-          for (let i = snapshots.length - 1; i >= 0; i--) {
-            const snapshot = snapshots[i];
-            if (snapshot && cmd.releaseSnapshots.includes(snapshot.type)) {
-              snapshots.splice(i, 1);
-              snapshot.release(typeof cmd.snapshotError === 'string' ? cmd.snapshotError : undefined);
+        let command: Record<string, unknown> | undefined;
+        try {
+          const cmd = JSON.parse(line) as Record<string, unknown>;
+          command = cmd;
+          if (cmd.emit) write(cmd.emit);
+          if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map(frame => `${JSON.stringify(projected(frame))}\n`).join(''));
+          if (cmd.set) Object.assign(scenario, cmd.set);
+          if (Array.isArray(cmd.releaseSnapshots)) {
+            for (let i = snapshots.length - 1; i >= 0; i--) {
+              const snapshot = snapshots[i];
+              if (snapshot && cmd.releaseSnapshots.includes(snapshot.type)) {
+                snapshots.splice(i, 1);
+                snapshot.release(typeof cmd.snapshotError === 'string' ? cmd.snapshotError : undefined);
+              }
             }
           }
-        }
-        if (cmd.release) {
-          const error = (cmd.release as { error?: string }).error;
-          for (const f of held.splice(0)) {
-            if (error) fail(f.id, error);
-            else acceptSend(f);
+          if (cmd.release) {
+            const error = (cmd.release as { error?: string }).error;
+            for (const f of held.splice(0)) {
+              if (error) fail(f.id, error);
+              else acceptSend(f);
+            }
           }
-        }
-        const count = typeof cmd.snapshotCount === 'number' ? cmd.snapshotCount : 1;
-        if (typeof cmd.waitSnapshot === 'string' && snapshots.filter((s) => s.type === cmd.waitSnapshot).length < count) {
-          const deferred = Promise.withResolvers<void>();
-          snapshotWaiters.push({ type: cmd.waitSnapshot, count, resolve: deferred.resolve });
-          void deferred.promise.then(() => sock.write(`${JSON.stringify({ ok: true })}\n`));
-        } else {
-          sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}) })}\n`);
-        }
-        if (cmd.exit) {
-          server?.close();
-          if (controlPath) rmSync(controlPath, { force: true });
-          sock.end(() => process.exit(0));
+          const count = typeof cmd.snapshotCount === 'number' ? cmd.snapshotCount : 1;
+          if (typeof cmd.waitSnapshot === 'string' && snapshots.filter((s) => s.type === cmd.waitSnapshot).length < count) {
+            const deferred = Promise.withResolvers<void>();
+            snapshotWaiters.push({ type: cmd.waitSnapshot, count, resolve: deferred.resolve });
+            void deferred.promise.then(() => sock.write(`${JSON.stringify({ ok: true })}\n`));
+          } else {
+            sock.write(`${JSON.stringify({ ok: true, ...(cmd.requests ? { requests } : {}) })}\n`);
+          }
+          if (cmd.exit) {
+            server?.close();
+            if (controlPath) rmSync(controlPath, { force: true });
+            sock.end(() => process.exit(0));
+          }
+        } catch (error) {
+          const operation = controlRequestName(command ?? {});
+          process.stderr.write(`stub control ${operation}: ${String(error)}\n`);
+          sock.end(`${JSON.stringify({ ok: false, error: String(error), operation })}\n`);
+          return;
         }
       }
     });

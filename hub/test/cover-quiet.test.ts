@@ -30,6 +30,8 @@ async function cover(t: TestContext, integrated = true) {
 
 const harness = new URL('./harness.ts', import.meta.url).href;
 const nvimHarness = new URL('../../nvim/test/harness.ts', import.meta.url).href;
+const nvimFixture = new URL('../../nvim/test/fixture.ts', import.meta.url).href;
+const nvimStubClient = new URL('../../nvim/test/stub-client.ts', import.meta.url).href;
 const runner = new URL('./run-suite.ts', import.meta.url).href;
 async function target(t: TestContext, cwd: string, module: string, env: NodeJS.ProcessEnv = {}, code = "console.log('target reached')") {
   const tmp = await tempProject(t);
@@ -44,6 +46,18 @@ async function target(t: TestContext, cwd: string, module: string, env: NodeJS.P
   });
   return { ...result, tmp };
 }
+
+for (const entry of ['fixture', 'stub-client'] as const) test(`Neovim T2 ${entry} refuses cover-quiet at its actual entry before allocation or spawn`, async t => {
+  const { root } = await cover(t);
+  const module = entry === 'fixture' ? nvimFixture : nvimStubClient;
+  const stub = JSON.stringify([process.execPath, fileURLToPath(new URL('../../nvim/test/stub-hub.ts', import.meta.url))]);
+  const call = entry === 'fixture' ? 'await api.tempProject(t)' : `await api.startClient(t, '/must-not-launch-neovim', process.cwd(), ${JSON.stringify({ CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: stub })})`;
+  const result = await target(t, root, module, external(root), `const api = await import(${JSON.stringify(module)}); ${call}; console.log('target reached')`);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr + result.stdout, /cover-quiet.*cover-run/);
+  assert.doesNotMatch(result.stdout, /target reached/);
+  assert.deepEqual(await readdir(result.tmp), [], 'the actual entry refuses before creating a scratch directory');
+});
 
 const external = (root: string): NodeJS.ProcessEnv => ({ CLAND_HUB_FILE: join(root, '.cland', 'hub.json'), CLAND_SUITE_LEASE: '', CLAND_TEST_IGNORE_COVER: '' });
 

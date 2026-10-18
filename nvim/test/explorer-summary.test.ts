@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
+import { tempProject } from './fixture.ts';
+import { nvimOrSkip, startClient } from './stub-client.ts';
 import { fileURLToPath } from 'node:url';
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;

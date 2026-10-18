@@ -4,7 +4,7 @@
 import type { Layer } from './hub/visibility.ts';
 import type { ItemSummary } from './tracker/tracker.ts';
 
-export const PROTOCOL_VERSION = 2;
+export { PROTOCOL_VERSION, parseFrame } from '../../shared/protocol-frame.ts';
 
 /** The spoke's keepalive interval; the hub closes a socket silent for two of them. */
 export const KEEPALIVE_MS = 30_000;
@@ -391,16 +391,6 @@ export type HubFrame =
 export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refusal?: HygieneRefusal; resolvedTo?: string };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
-
-/** Parse one wire frame; `null` when it is not even a typed object (the sender is then refused). */
-export function parseFrame(raw: string): Record<string, unknown> | null {
-  try {
-    const v: unknown = JSON.parse(raw);
-    return isObject(v) && typeof v.type === 'string' ? v : null;
-  } catch {
-    return null;
-  }
-}
 
 export function isHello(f: Record<string, unknown>): f is Hello {
   return (

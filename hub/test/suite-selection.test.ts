@@ -24,6 +24,8 @@ for (const path of ['hub/src/protocol.ts', 'hub/src/hub/store.ts', 'hub/test/run
 }
 
 for (const [name, paths] of [
+  ['shared admission primitives', ['shared/socket-client.ts']],
+  ['neutral fixture admission', ['test-support/admission.ts']],
   ['empty diff', []],
   ['both packages', ['hub/src/tracker/tracker.ts', 'nvim/lua/cland/thread.lua']],
   ['nvim and docs', ['nvim/README.md', 'README.md']],
@@ -106,6 +108,17 @@ test('Neovim importer graph follows shared helpers through cycles', async t => {
   await writeFile(join(root, 'nvim/test/helper.ts'), "export * from './cycle.ts';");
   await writeFile(join(root, 'nvim/test/cycle.ts'), "import './helper.ts'; export { parse } from '../../hub/src/tracker/criteria.ts';");
   assert.deepEqual(await nvimHubImporters(root), { 'hub/src/tracker/criteria.ts': ['nvim/test/a.test.ts', 'nvim/test/nested/b.test.ts'] });
+});
+
+// T1 behavior: neutral helpers must not hide runtime hub dependencies.
+test('Neovim importer graph follows neutral admission helpers to the hub boundary', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-neutral-imports-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const dir of ['nvim/test', 'test-support', 'shared']) await mkdir(join(root, dir), { recursive: true });
+  await writeFile(join(root, 'nvim/test/client.test.ts'), "import '../../test-support/admission.ts';");
+  await writeFile(join(root, 'test-support/admission.ts'), "export * from '../shared/request.ts';");
+  await writeFile(join(root, 'shared/request.ts'), "import '../test-support/admission.ts'; import '../hub/src/protocol.ts';");
+  assert.deepEqual(await nvimHubImports(root), ['hub/src/protocol.ts']);
 });
 
 // T1 behavior: cached receipts must represent the same planned test sets.

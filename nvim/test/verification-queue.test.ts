@@ -5,8 +5,8 @@ import { mkdir } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
+import { tempProject } from './fixture.ts';
+import { nvimOrSkip, startClient } from './stub-client.ts';
 import type { VerificationQueue } from '../../hub/src/protocol.ts';
 
 const nvim = await nvimOrSkip();

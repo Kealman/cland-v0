@@ -455,3 +455,23 @@ test('a run reads no user configuration, leaves the live project it was started 
   const pid = await nv.pid();
   assert.equal(await groupGone(pid), true, `process group ${pid} still has a process`);
 });
+
+// T3 CLI contract: user-authored QA scenarios are not restricted to test recordings.
+// The CLI owns the Neovim process and its clean/read-only environment; no hub daemon starts.
+test('stub QA accepts user-authored frames absent from the T2 recording catalog', { skip }, async t => {
+  const { randomUUID } = await import('node:crypto');
+  const marker = `user-frame-${randomUUID()}`;
+  const path = join(await tempDir(t, 'cland-qa-user-'), 'USER-FRAME.lua');
+  await writeFile(path, `return {
+    hub = 'stub',
+    scenario = { messages = { general = {{ id = 'user-frame', from = 'human', fromKind = 'human', to = {}, topic = 'general', ts = '2026-10-13T12:00:00.000Z', text = '${marker}' }} } },
+    run = function(qa)
+      qa.wait_for(function() return qa.screen():find('${marker}', 1, true) end, 5000, 'user-authored frame')
+    end,
+  }`);
+  const run = await qa(t, [path]);
+  assert.equal(run.line.result, 'PASS');
+  assert.equal(run.code, 0);
+  assert.equal(run.line.hub, 'stub');
+  assert.ok((run.line.evidence as { screen: string }).screen.includes(marker));
+});
