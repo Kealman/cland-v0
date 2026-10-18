@@ -16,6 +16,7 @@ test('generic fixture daemon, in-process daemon and raw CLI cannot inherit a hos
   const config = join(root, 'host-config');
   const account = join(root, 'host-account');
   const bin = join(root, 'host-bin');
+  const executorState = join(root, 'host-executor-state');
   for (const dir of [join(config, 'cland'), account, bin]) await mkdir(dir, { recursive: true });
   await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.host]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(account)}\n`);
   const marker = join(root, 'host-invocations');
@@ -26,11 +27,16 @@ test('generic fixture daemon, in-process daemon and raw CLI cannot inherit a hos
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
+import { dirname, join } from 'node:path';
 import { startDaemon, tempProject, connectUi, cland, readDiscovery } from ${JSON.stringify(harness)};
 import { serveProject } from ${JSON.stringify(daemon)};
 import { onCleanup, ownProcess } from ${JSON.stringify(cleanup)};
 test('all startup paths are isolated', async t => {
   const roots = await Promise.all(Array.from({length: 3}, () => tempProject(t)));
+  assert.equal(process.env.DIGITALOCEAN_TOKEN, '', 'fixture startup must clear the inherited provider token');
+  assert.notEqual(process.env.CLAND_EXECUTOR_STATE, ${JSON.stringify(executorState)}, 'fixture startup must replace inherited executor state');
+  assert.equal(dirname(process.env.CLAND_EXECUTOR_STATE), dirname(process.env.XDG_CONFIG_HOME), 'executor state must belong to the worker fixture');
+  assert.equal(process.env.XDG_STATE_HOME, join(dirname(process.env.XDG_CONFIG_HOME), 'state'), 'fallback state must belong to the worker fixture');
   const external = await startDaemon(t, roots[0]);
   const direct = await serveProject(roots[1], { log: () => {} });
   onCleanup(t, () => direct.stop());
@@ -52,6 +58,7 @@ test('all startup paths are isolated', async t => {
   delete workerEnv.NODE_TEST_CONTEXT;
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     execFile(process.execPath, ['--test', scenario], { env: { ...workerEnv, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: account, CODEX_HOME: account,
+      DIGITALOCEAN_TOKEN: 'sentinel-host-token', CLAND_EXECUTOR_STATE: executorState, XDG_STATE_HOME: join(root, 'host-state'),
       CLAND_CLAUDE_BIN: join(bin, 'claude'), CLAND_CODEX_BIN: join(bin, 'codex'), PATH: `${bin}:${process.env.PATH ?? ''}`, HOST_ACCOUNT_MARKER: marker }, timeout: 30000 }, (error, stdout, stderr) => {
       if (error && typeof error.code !== 'number') reject(error);
       else resolve({ code: error ? error.code as number : 0, stdout, stderr });

@@ -40,6 +40,7 @@
     "hub/test/asks-cli.test.ts": "T2",
     "hub/test/asks.test.ts": "T2",
     "hub/test/bridge-grace.test.ts": "T1",
+    "hub/test/case-deadlines.test.ts": "T2",
     "hub/test/claude-code-accounts.test.ts": "T3",
     "hub/test/claude-code-adapter.test.ts": {
       "tier": "T3",

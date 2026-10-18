@@ -7,12 +7,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownDirectory } from './process-cleanup.ts';
+import { drainFixtureWork } from './case-deadlines.ts';
 
 let initialization: Promise<void> | undefined;
 let cleanup: (() => Promise<void>) | undefined;
 // Register at worker scope, not inside the first caller's test. A pure importer
 // owns no directory, so its callback has no resource work to perform.
-after(() => cleanup?.());
+after(async () => { await drainFixtureWork(); await cleanup?.(); });
 /** Admit and isolate the worker once, before its first fixture allocates resources.
  * Importing helpers performs no fixture or admission I/O. */
 export async function ensureAccountFixture(): Promise<void> {
@@ -30,7 +31,14 @@ async function initialize(): Promise<void> {
   const claude = join(root, 'claude');
   const codex = join(root, 'codex');
   const data = join(root, 'opencode');
-  for (const path of [join(config, 'cland'), claude, codex, data]) await mkdir(path, { recursive: true });
+  const state = join(root, 'state');
+  const executor = join(root, 'executor-state');
+  for (const path of [join(config, 'cland'), claude, codex, data, state, executor]) await mkdir(path, { recursive: true });
+  // Direct serveProject and raw CLI fixtures inherit this worker environment.
+  // Never let their startup sweep acquire the host ledger or use its provider token.
+  process.env.DIGITALOCEAN_TOKEN = '';
+  process.env.CLAND_EXECUTOR_STATE = executor;
+  process.env.XDG_STATE_HOME = state;
   process.env.XDG_CONFIG_HOME = config;
   process.env.CLAUDE_CONFIG_DIR = claude;
   process.env.CODEX_HOME = codex;

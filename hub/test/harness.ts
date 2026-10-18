@@ -317,6 +317,8 @@ export async function clandWithEnv(cwd: string, extra: Record<string, string>, .
   if (args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) await isolateVerification(cwd);
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  // CLAND_* stripping must not restore the host's default/legacy executor ledger.
+  env.CLAND_EXECUTOR_STATE = join(cwd, '.cland/executor-state');
   // Doctor normally discovers deleted-project hubs machine-wide. Tests only inspect their own fixture.
   if (args[0] === 'doctor') env.CLAND_TEST_ORPHAN_ROOT = cwd;
   Object.assign(env, extra);
