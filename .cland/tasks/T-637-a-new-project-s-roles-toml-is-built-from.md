@@ -3,7 +3,7 @@ id: T-637
 kind: task
 title: A new project's roles.toml is built from the installed harnesses, Claude Code roles on auto, and the Aide gets sub-agents
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 9
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-535
 branch: t/T-637-a-new-project-s-roles-toml-is-built-from
 created: 2026-10-16T16:04:13.028Z
-updated: 2026-10-18T23:27:01.018Z
+updated: 2026-10-18T23:52:35.962Z
 ---
 
 ## Summary
@@ -40,22 +40,31 @@ updated: 2026-10-18T23:27:01.018Z
 
 - [x] C1. `cland init` with only the fake Claude Code on the PATH writes a roles.toml whose six roles all launch on claude-code with `permissions = "auto"`, and the hub loads it without error (init test).
   - done: impl-637 · 2026-10-18T22:50:25.609Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C2. With only the fake Codex installed, every role launches on codex with `approval = "never"` and its role's sandbox (Reviewer read-only, Implementer workspace-write, QA danger-full-access, Aide workspace-write, Coordinator and Lead danger-full-access); roles moved to Codex get `model = ""` and an effort Codex takes, while the Reviewer and QA, already on Codex, keep their shipped model and effort.
   - done: impl-637 · 2026-10-18T22:50:25.956Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C3. With all three installed the roles keep their shipped harnesses and models with the Claude Code ones on auto, and with none installed init writes the shipped mapping and its report says no harness was found.
   - done: impl-637 · 2026-10-18T22:19:00.084Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C4. No template role carries `skip`, and no OpenCode role carries `permissions`, `approval` or `sandbox` (template test over every installed set).
   - done: impl-637 · 2026-10-18T22:19:00.419Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C5. A new project's crew.toml has `subagents = true` under `[crew.aide]`, and `cland crew show` reports it.
   - done: impl-637 · 2026-10-18T22:19:00.852Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C6. `cland update` on a project with an edited roles.toml and crew.toml leaves both byte-identical (update test).
   - done: impl-637 · 2026-10-18T22:19:01.201Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C7. A hub started without roles.toml writes the template from the harnesses installed then, while the built-in fallback for missing keys is the same on every machine (test with two PATHs).
   - done: impl-637 · 2026-10-18T22:50:26.375Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C8. The template's header records the harnesses it was built from, and a check reports whether a roles.toml is still exactly the template it records (unit test).
   - done: impl-637 · 2026-10-18T22:19:01.966Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 - [x] C9. Demo: in a scratch project with one installed fake harness, `cland init`, `cland role list` and an Aide launch show the valid template and, on Claude Code, a launch with `--permission-mode auto`.
   - done: impl-637 · 2026-10-18T22:19:02.396Z
+  - verified: rev-30 [reviewer] · run rev-20261018-637-final · 2026-10-18T23:52:32.887Z · commit cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
 
 ## Comments
 
@@ -151,3 +160,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Shared-fix delta source clear at cd2ca583. Exact f311335d patch authorized by primary112b27ed, no other change/dev merge. Bounded releasing observation retains fault barrier and all release recovery controls. A-5637 records both axes and raw14/14 host receipt. C1–C9 remain unverified pending accepted exact-head runtime; primary authorizes one mode-free replacement gate.
+
+### impl-637 · 2026-10-18T23:52:08.406Z
+
+Exact reviewed head cd2ca5830bac98ae29e9ba8d6acfea343d3378ae accepted runtime: mode-free droplet run ae4ff63d-2acb-40c2-9cbf-b9c417b3cf55 exit0, 2322 tests /2317 pass /0 fail /5 skip, Neovim smoke passed. Linux x64 c-8 lon1, Node24.21.0, Neovim0.12.5, lifetime1458s, cost$0.1013. Durable raw log A-5647. Host gate reported15bbaf327f67475a10f1278a6d67201b55b76e90. Prior failed receipts A-5624/A-5625 retained. No head changes; awaiting Reviewer final evidence verdict and hub readiness.
+
+### rev-30 · 2026-10-18T23:52:32.887Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-637-final
+commit: cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged cd2ca583. A-5647/ae4ff63d accepted exit0: 2317 pass, zero failures/cancellations, five skips; hub plus Neovim smoke. All seven corrected task carriers and shared executor recovery pass. Twelve relevant files102/102; nine task-new groups45/45 repetitions. A-5648 maps C1–C9 with retained installer-only demo, both axes and inherited report-only trips. Verified all, no findings. T-821 effective OpenCode inheritance remains explicitly separate.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified.
