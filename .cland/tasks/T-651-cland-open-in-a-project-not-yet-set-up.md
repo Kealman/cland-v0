@@ -3,7 +3,7 @@ id: T-651
 kind: task
 title: 'cland open in a project not yet set up prints "next: cland setup" and opens the workbench as usual'
 state: open
-status: in progress
+status: ready
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-536
 branch: t/T-651-cland-open-in-a-project-not-yet-set-up
 created: 2026-10-16T16:24:00.577Z
-updated: 2026-10-18T22:44:22.801Z
+updated: 2026-10-18T23:50:23.204Z
 ---
 
 ## Summary
@@ -32,12 +32,15 @@ A project initialised but not set up opens as usual, with one line before the wo
 
 ## Acceptance criteria
 
-- [ ] C1. `cland open` in a project fresh from `cland init` prints exactly one line, `next: cland setup`, then runs the stand-in launcher on the root with its exit code returned (open.test.ts).
-  - failed: rev-30 [reviewer] · 2026-10-18T22:44:22.801Z · note Accepted exact-head gate missing: A-5622 exits 1 at executor-droplet.test.ts:287 (creating vs releasing); owned hint and predicate checks passed.
+- [x] C1. `cland open` in a project fresh from `cland init` prints exactly one line, `next: cland setup`, then runs the stand-in launcher on the root with its exit code returned (open.test.ts).
+  - verified: rev-30 [reviewer] · run rev-20261018-651-final · 2026-10-18T23:50:17.036Z · commit 9f6d69a6481a05f3c6929b6217ac4eec3ecfd3bf
+  - done: impl-651 · 2026-10-18T23:50:22.796Z
 - [x] C2. With the mark on `[aide.launch] harness`, `cland open` prints no such line.
   - done: impl-651 · 2026-10-18T22:15:55.433Z
+  - verified: rev-30 [reviewer] · run rev-20261018-651-final · 2026-10-18T23:50:17.036Z · commit 9f6d69a6481a05f3c6929b6217ac4eec3ecfd3bf
 - [x] C3. `projectSetUp` returns false for a missing, an unmarked and a malformed `roles.toml`, and true for a marked one (unit test).
   - done: impl-651 · 2026-10-18T22:15:55.873Z
+  - verified: rev-30 [reviewer] · run rev-20261018-651-final · 2026-10-18T23:50:17.036Z · commit 9f6d69a6481a05f3c6929b6217ac4eec3ecfd3bf
 
 ## Comments
 
@@ -76,3 +79,31 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Runtime not clear at unchanged eee54107: A-5622 / 14efbf8b exits 1 on executor-droplet.test.ts:287 (creating vs releasing), matching T-711 A-5620. Owned open 5/5 and roles-editor 11/11 ordinary cases passed; both new groups 5/5. Four inherited report-only trips disclosed. No new source findings; no criteria verified in this failed pass. A-5623 records both axes, positive evidence and shared-defect candidate Bugs/S. Await primary classification/shared fix or explicit retry authorization; no rerun authorized here.
 
 Criteria: C1 failed (Accepted exact-head gate missing: A-5622 exits 1 at executor-droplet.test.ts:287 (creating vs releasing); owned hint and predicate checks passed.).
+
+### rev-30 · 2026-10-18T23:26:26.692Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-651-shared-fix-delta
+commit: 9f6d69a6481a05f3c6929b6217ac4eec3ecfd3bf
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear: exact Coordinator-authorized f311335d patch only, no dev merge. Bounded observation retains releasing condition, fault barrier and downstream complete release assertions; T-651 source/tests unchanged. A-5636 records both axes and primary112b27ed authorization. C1–C3 remain unverified until accepted exact-head runtime; one mode-free replacement gate is now authorized by that primary decision.
+
+### rev-30 · 2026-10-18T23:50:17.036Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-651-final
+commit: 9f6d69a6481a05f3c6929b6217ac4eec3ecfd3bf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 9f6d69a6. A-5645/caf18bde accepted exit0: 2310 pass, zero failures/cancellations, five skips; hub plus Neovim smoke. Hint/marked suppression and predicate checks pass ordinary plus10/10 task repetitions; whole open5/5 and roles-editor11/11. Shared executor recovery now passes. A-5646 maps C1–C3, both axes and inherited report-only trips. Verified all; no findings. Restore claimant C1 done against this replacement receipt; prior failed evidence remains history.
+
+Criteria: C1 verified, C2 verified, C3 verified.

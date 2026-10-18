@@ -3,7 +3,7 @@ id: T-711
 kind: task
 title: The hub builds a batch of up to three queued heads, runs T1 and T3 once on the batch tree, and lands them in order on green
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-521
 branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-18T22:39:56.029Z
+updated: 2026-10-18T23:27:01.123Z
 ---
 
 ## Summary
@@ -160,3 +160,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Runtime not clear: A-5620/85adbf86 exits1 at unchanged a589cc1e. Sole ordinary failure executor-droplet.test.ts:287 sees creating instead of releasing in interrupted-create/retry recovery; Neovim not reached. All ten batch/seven queue cases and85 repetitions pass, as do incoming liveness/persistence/soak controls. A-5621 distinguishes ordinary vs repeated counts and retains source proof. Failing file/critical executor files match incoming dev; shared-defect candidate Bugs/S needs Coordinator disposition, no causal finding or automatic retry. No new source findings.
 
 Criteria: C4 failed (Exact-head integration gate fails interrupted-create executor recovery before Neovim; positive batch restart proof remains, but final green recovery evidence is incomplete.).
+
+### rev-30 · 2026-10-18T23:27:01.123Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-711-shared-fix-delta
+commit: 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta source clear at 2c75c815. Exact f311335d patch authorized by primary112b27ed, no other change/dev merge. Bounded releasing observation retains fault barrier and all release recovery controls. A-5638 records both axes and raw14/14 host receipt. C1–C5 remain unverified pending accepted exact-head runtime; primary authorizes one mode-free replacement gate.

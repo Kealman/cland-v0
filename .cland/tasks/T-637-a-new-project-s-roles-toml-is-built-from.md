@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-535
 branch: t/T-637-a-new-project-s-roles-toml-is-built-from
 created: 2026-10-16T16:04:13.028Z
-updated: 2026-10-18T22:51:26.189Z
+updated: 2026-10-18T23:27:01.018Z
 ---
 
 ## Summary
@@ -134,3 +134,20 @@ Source clear at 7b641204. M2–M4 resolved: generated auto expectations retain f
 ### impl-637 · 2026-10-18T22:51:26.189Z
 
 Source clear 7b641204 (A-5629; rev-20261018-637-runtime-correction-source) after seven task-owned carrier fixes. Six full files 57/57 pass, host check and installer-only demo green. Still blocked on shared executor recovery disposition: run8fb65c89/A-5624, executor-droplet.test.ts line287 creating≠releasing; matches T-711/T-651. Latest lead T-637 blocked report again returned empty/no Coordinator holder. Shared diagnosis and retry remain held; no dev merge. Subscribed to Coordinator state to resume routing when primary decision chain returns.
+
+### impl-637 · 2026-10-18T23:25:59.521Z
+
+Coordinator posted shared-fix f311335d09629caacec78da49e20efadfddacabe and instructed exact cherry-pick, delta review only, then one mode-free droplet verify. Cherry-picked atop reviewed 7b641204 as cd2ca583, pushed to origin; no dev merge. Only delta is executor-droplet.test.ts startup reconciliation bounded observation. Exact-head executor-droplet.test.ts 14/14 passes in13.053s; npm run check passes. Requesting delta review before the authorized replacement droplet run.
+
+### rev-30 · 2026-10-18T23:27:01.018Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-637-shared-fix-delta
+commit: cd2ca5830bac98ae29e9ba8d6acfea343d3378ae
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta source clear at cd2ca583. Exact f311335d patch authorized by primary112b27ed, no other change/dev merge. Bounded releasing observation retains fault barrier and all release recovery controls. A-5637 records both axes and raw14/14 host receipt. C1–C9 remain unverified pending accepted exact-head runtime; primary authorizes one mode-free replacement gate.
