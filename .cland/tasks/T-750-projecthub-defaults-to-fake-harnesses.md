@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-18T00:04:29.021Z
+updated: 2026-10-18T01:35:45.294Z
 ---
 
 ## Summary
@@ -133,3 +133,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec source clear, no findings; A-4867. Primary ad4c4b1b authorizes integration and requires fresh mode-free gate. Independently verified all eleven conflicted tests match incoming dev after only native import alias normalization, all thirteen import-only proofs hold, and all 91 native import occurrences are mapped. T-702 component carriers retain fake facts; four native splits and T-707 scenario/shared setup explicitly retain native boundaries. Suites preserves durationContext plus compatibility; serveProject forwards explicit null while undefined keeps native Git, and protocol reopens all inject null. Raw A-4866 audit: 70 local outputs, 625 passes, zero fail/cancel/skip; protocol enforced eight-case run has zero trips. After-integration measurements remain distinct from original before/after data. No new allowance/timing baseline; incoming owners retained; own whitespace clean. C1/C2 final execution verification remains pending fresh exact-head droplet receipt; d3fda4f3 green evidence is historical. No per-item QA.
+
+### impl-750 · 2026-10-18T01:33:54.051Z
+
+Authorized single integration after T-703 landing pushed ddca0872 (dev parent90fad254). Six conflicts: daemon/dispatch/harness combine all process/Git/candidate/duration/openDatabase and compatibility/territory seams; incoming T2 ask-chain exact and old attribution carrier deleted; durations structurally equals dev minus only obsolete combined-stop allowance. A-4884:55 raw5/5 consumer passes across11 files, six additional enforce guards0trips, updated89-entry caller map. All load1<15; typecheck/tiers/lint pass (276 report-only findings157files). Fresh delta review before required exact-head normal droplet run.
+
+### rev-30 · 2026-10-18T01:35:45.294Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-750-owner-integration
+commit: ddca08721218b9f2a4057079f8e10136382c0c78
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear, no findings; A-4885. Primary 58e623b2 authorizes single T-751/T-703 dev integration. Additive daemon/dispatch union preserves database/full Clock, Git/process/lock/candidate/duration seams plus compatibility/hasTerritory/territoryLock; native defaults and explicit null forwarding remain. Harness runtime fake/native behavior unchanged, option type gains opener. Incoming async territory and native PID-reaped migration sources are byte-identical; ask-chain exactly incoming T2 and attribution carrier deleted. All89 native imports mapped independently. Durations structurally equals dev minus only retired combined-stop allowance; no new allowance/baseline. Audited 61 raw local outputs: 541 passes, zero fail/cancel/skip; six enforced guards emit zero trips. Five-run medians agree; admission below15; own whitespace clean. C1/C2 final evidence remains pending required fresh normal mode-free droplet run at unchanged head; A-4876 is parent-only proof. No per-item QA.
