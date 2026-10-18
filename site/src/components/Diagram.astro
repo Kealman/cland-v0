@@ -5,10 +5,13 @@ import { renderDiagram } from '../plugins/mermaid.mjs';
 
 interface Props {
   code: string;
+  /** Tighter spacing, for a diagram fitted into a small frame such as a carousel slide. */
+  compact?: boolean;
   class?: string;
 }
 
-const { code, class: className } = Astro.props;
+const { code, compact = false, class: className } = Astro.props;
+const layout = compact ? { padding: 4, nodeSpacing: 16, layerSpacing: 18 } : {};
 ---
 
-<div class:list={['cland-diagram-box', className]} set:html={renderDiagram(code)} />
+<div class:list={['cland-diagram-box', className]} set:html={renderDiagram(code, layout)} />

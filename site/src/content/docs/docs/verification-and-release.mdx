@@ -247,15 +247,40 @@ A release:
 No GitHub API is called and no version file in your project is changed. `cland release` is the only command that pushes to GitHub.
 
 ```mermaid
-%% What happens when a release is published, in order
+%% How a release comes together: from an idea through the plan and the build to the push
 flowchart TD
-  A["Every child of the release item is closed"] --> B["The Coordinator prepares it; you approve the version and the notes"]
-  B --> C["Notes: the release's Notes, each epic's goal, one line per merged task"]
+  I(["An idea"]) --> G["Grilling: the questions until the idea is clear"]
+  I --> W["Wayfinder map, when the way is foggy"]
+  W --> RS["Research"]
+  W --> PR["Prototype"]
+  RS --> S["Spec"]
+  PR --> S
+  G --> S
+  S --> R["Release item: its epics and tasks"]
+  R --> EA["Epic: a plan with stages and lanes, you approve it"]
+  R --> EB["Another epic"]
+  EA --> T1["Task in its own worktree"]
+  EA --> T2["Task in a parallel lane"]
+  EB --> T3["Task"]
+  T1 --> M["Review, verify, merge gate"]
+  T2 --> M
+  T3 --> M
+  M --> D["dev"]
+  D --> Q["QA runs each epic's demo"]
+  Q --> A["You accept the version and the notes"]
+  A --> P(["cland release: tag, notes, one atomic push to GitHub"])
+```
+
+Publishing itself is one atomic step:
+
+```mermaid
+%% What cland release does once you approve
+flowchart TD
+  A["Every child of the release item is closed"] --> C["Notes: the release's Notes, each epic's goal, one line per merged task"]
   C --> D["Annotated tag v-version at dev"]
   D --> E["One atomic push to GitHub: dev as main, and the tag"]
-  E -- GitHub accepts --> F["Local main and the territory move"]
-  F --> G["The tag is commented on the item and the item closes"]
-  G --> H["The next open release becomes current"]
+  E -- GitHub accepts --> F["Local main and the territory move, the item closes"]
+  F --> H["The next open release becomes current"]
 ```
 
 In practice the Coordinator prepares the release with the shipped `release` skill and asks you to approve the version and notes before it publishes. The version always comes from you.

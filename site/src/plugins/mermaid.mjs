@@ -26,14 +26,15 @@ const escapeAttr = (text) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<'
 /**
  * Renders one diagram to the figure the page shows.
  * @param {string} code
+ * @param {{ padding?: number, nodeSpacing?: number, layerSpacing?: number }} [layout] tighter spacing for small frames
  */
-export function renderDiagram(code) {
+export function renderDiagram(code, layout = {}) {
   const label = code
     .split('\n')
     .map((line) => line.trim())
     .find((line) => line.startsWith('%%'))
     ?.replace(/^%%\s*/, '');
-  let svg = renderMermaidSVG(code, { ...COLORS, font: 'IBM Plex Sans', padding: 24, transparent: true });
+  let svg = renderMermaidSVG(code, { ...COLORS, font: 'IBM Plex Sans', padding: 24, transparent: true, ...layout });
   // The renderer imports its font from Google Fonts; the site self-hosts its fonts.
   svg = svg.replace(/@import url\([^)]*\);?/g, '');
   const width = Number(/viewBox="[\d.]+ [\d.]+ ([\d.]+) /.exec(svg)?.[1] ?? 0);
