@@ -1,10 +1,10 @@
-// Agents history through real hub frames and the spoke's MCP surface (T-56).
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { test } from 'node:test';
 import type { TopicMessage } from '../src/protocol.ts';
-import { connectUi, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
 
 async function ok<T>(ui: FrameClient, frame: { type: string } & Record<string, unknown>): Promise<T> {
   const r = await ui.request(frame);
@@ -16,14 +16,14 @@ test('Agents item history searches before the latest window and includes claims,
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nrate_limit_max = 1000\nloop_breaker_max = 1000\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { size: 'M', type: 'task.create', title: 'First', assignee: 'alpha' });
   await ok(ui, { size: 'M', type: 'task.create', title: 'Second' });
   const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'First topic', item: 'T-1' })).topic;
-  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
+  const alpha = await inProcessSpoke(t, { discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
   t.after(() => alpha.close());
-  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
+  const beta = await inProcessSpoke(t, { discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
   t.after(() => beta.close());
   await beta.waitForPresence(['beta']);
   await alpha.waitForPresence(['alpha', 'beta']);
@@ -52,17 +52,17 @@ test('Agents item history searches before the latest window and includes claims,
 
 test('session filters match sender, addressees and notice facts exactly; spoke item/session filters intersect', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { size: 'M', type: 'task.create', title: 'First', assignee: 'alpha' });
   await ok(ui, { size: 'M', type: 'task.create', title: 'Second', assignee: 'alpha-2' });
   const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'First topic', item: 'T-1' })).topic;
-  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
+  const alpha = await inProcessSpoke(t, { discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
   t.after(() => alpha.close());
-  const other = await spawnSpoke({ discover: true, cwd: root, name: 'alpha-2', sessionId: 'sess-other', role: 'implementer' });
+  const other = await inProcessSpoke(t, { discover: true, cwd: root, name: 'alpha-2', sessionId: 'sess-other', role: 'implementer' });
   t.after(() => other.close());
   await other.waitForPresence(['alpha-2']);
-  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
+  const beta = await inProcessSpoke(t, { discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
   t.after(() => beta.close());
   await beta.waitForPresence(['beta']);
   await alpha.waitForPresence(['alpha', 'alpha-2', 'beta']);

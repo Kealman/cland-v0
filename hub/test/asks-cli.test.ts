@@ -1,17 +1,14 @@
-// The ask CLIs the item asks for: `cland inbox` and `cland topic answer` over the hub's UI frames (`inbox.list`,
-// `topic.answer`). A real daemon (`cland hub start` in a temporary project), a Coordinator spoke that asks, and
-// both commands run as child processes — the terminal without the workbench or the Neovim inbox (the open point of
-// #33).
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { cland, spawnSpoke, startDaemon, tempProject, type Session } from './harness.ts';
+import { test } from 'node:test';
+import { cland, inProcessSpoke, projectHub, tempProject, type Session } from './harness.ts';
 
 type InboxAsk = { id: string; topic: { id: string; title: string; item?: string | null }; question: string; options: string[]; free: boolean; from: string; label: string };
 type Inbox = { asks: InboxAsk[]; approvals: Array<{ session: string }>; waiting: Array<{ id: string; title: string }>; needsYou: number };
 type AskResult = { ok: boolean; ask: string; topic: { id: string }; error?: string };
 
 async function coordinator(t: import('node:test').TestContext, root: string): Promise<Session> {
-  const s = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const s = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => s.close());
   await s.waitForPresence(['coord']);
   return s;
@@ -22,7 +19,7 @@ const ask = (s: Session, topic: string, question: string, options: string[], fre
 
 test('cland inbox lists an open ask with its section, id, topic, asker, first line and age, and needs you; --json prints the hub\'s Inbox', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const coord = await coordinator(t, root);
   const asked = await ask(coord, 'general', 'Which port?', ['a fixed one', 'a free one, picked at start']);
   assert.equal(asked.ok, true, JSON.stringify(asked));
@@ -54,7 +51,7 @@ test('cland inbox lists an open ask with its section, id, topic, asker, first li
 
 test('cland topic answer <ask> 2 answers with option 2, prints the confirmation, the Coordinator\'s spoke receives answer_to, and the ask leaves the inbox', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const coord = await coordinator(t, root);
   const asked = await ask(coord, 'general', 'Which port?', ['a fixed one', 'a free one, picked at start']);
   assert.equal(asked.ok, true, JSON.stringify(asked));
@@ -72,7 +69,7 @@ test('cland topic answer <ask> 2 answers with option 2, prints the confirmation,
 
 test('cland topic answer --text sends a free answer; refused answers print cland: <error> and exit 1', async (t) => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   const coord = await coordinator(t, root);
   const free = await ask(coord, 'general', 'Second, in your words?', []);
   const strict = await ask(coord, 'general', 'Pick one', ['left', 'right'], false);

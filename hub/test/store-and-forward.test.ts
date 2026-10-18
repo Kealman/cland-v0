@@ -1,22 +1,23 @@
-import { FakeClock } from './fake-clock.ts';
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { test } from 'node:test';
 import WebSocket from 'ws';
-import { inProcessSpoke, startHub, spawnSpoke, sleep, waitForAbsence, TEST_SECRET } from './harness.ts';
-import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { createHub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
+import { PROTOCOL_VERSION } from '../src/protocol.ts';
+import { FakeClock } from './fake-clock.ts';
+import { eventually, inProcessSpoke, startHub, TEST_SECRET, waitForAbsence } from './harness.ts';
 
 type Send = { ok: boolean; outcomes: Array<{ to: string; outcome: string; reason?: string }> };
 
-test('a message to an offline session waits for it and arrives on its next hello, once and in order', async () => {
+test('a message to an offline session waits for it and arrives on its next hello, once and in order', async (t) => {
   const hub = await startHub();
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
-  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const gamma = await inProcessSpoke(t, { hub, name: 'gamma', sessionId: 'sess-g' });
+  let beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await gamma.waitForPresence(['gamma']);
     await beta.waitForPresence(['beta']);
@@ -30,7 +31,7 @@ test('a message to an offline session waits for it and arrives on its next hello
     const second = await gamma.call<Send>('send', { to: ['beta', 'alpha'], text: 'second, to both of you' });
     assert.deepEqual(second.outcomes.map((o) => `${o.to}:${o.outcome}`), ['beta:queued', 'alpha:delivered'], 'one addressee queued, the other delivered at once');
 
-    beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+    beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
     await beta.waitForPresence(['beta']);
     await beta.waitForEvent((e) => e.params.content === 'second, to both of you');
     assert.deepEqual(beta.events.map((e) => e.params.content), ['first while you were away', 'second, to both of you']);
@@ -38,9 +39,9 @@ test('a message to an offline session waits for it and arrives on its next hello
 
     // a restart delivers nothing twice
     await beta.close();
-    beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+    beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
     await beta.waitForPresence(['beta']);
-    await sleep(100);
+    await beta.call('who');
     assert.equal(beta.events.length, 0);
   } finally {
     await alpha.close();
@@ -50,13 +51,13 @@ test('a message to an offline session waits for it and arrives on its next hello
   }
 });
 
-test('a queued message survives a hub restart on the same store and is delivered by the new hub', async () => {
+test('a queued message survives a hub restart on the same store and is delivered by the new hub', async (t) => {
   const dir = await mkdtemp(join(tmpdir(), 'cland-hub-restart-'));
   const file = join(dir, 'hub.sqlite');
   const first = await createHub({ port: 0, host: '127.0.0.1', secret: 'test-secret', store: new Store(file) });
   const port = first.port;
-  const alpha = await spawnSpoke({ hub: first, name: 'alpha', sessionId: 'sess-a' });
-  let beta = await spawnSpoke({ hub: first, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub: first, name: 'alpha', sessionId: 'sess-a' });
+  let beta = await inProcessSpoke(t, { hub: first, name: 'beta', sessionId: 'sess-b' });
   let second: Awaited<ReturnType<typeof createHub>> | null = null;
   try {
     await beta.waitForPresence(['beta']);
@@ -66,7 +67,7 @@ test('a queued message survives a hub restart on the same store and is delivered
     assert.equal((await alpha.call<Send>('send', { to: ['beta'], text: 'kept across the restart' })).outcomes[0]?.outcome, 'queued');
     await first.close();
     second = await createHub({ port, host: '127.0.0.1', secret: 'test-secret', store: new Store(file) });
-    beta = await spawnSpoke({ hub: second, name: 'beta', sessionId: 'sess-b' });
+    beta = await inProcessSpoke(t, { hub: second, name: 'beta', sessionId: 'sess-b' });
     await beta.waitForPresence(['beta']);
     await beta.waitForEvent((e) => e.params.content === 'kept across the restart');
     assert.equal(beta.events.length, 1);
@@ -107,15 +108,16 @@ test('a queued message older than the TTL is dropped, and the session never sees
   }
 });
 
-test('messages older than the retention window are pruned', async () => {
-  const hub = await startHub({ retentionMs: 200 });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+test('messages older than the retention window are pruned', async (t) => {
+  const clock = new FakeClock();
+  const hub = await startHub({ retentionMs: 200, clock });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
     await alpha.call('send', { to: ['beta'], text: 'old news' });
-    await sleep(250);
+    await clock.advance(250);
     await alpha.call('send', { to: ['beta'], text: 'fresh' });
     assert.equal(hub.prune(), 1);
     const history = await beta.call<{ messages: Array<{ text: string }> }>('history');
@@ -127,11 +129,11 @@ test('messages older than the retention window are pruned', async () => {
   }
 });
 
-test("history returns a session's own traffic, newest last, filtered to one counterpart, capped by limit", async () => {
+test("history returns a session's own traffic, newest last, filtered to one counterpart, capped by limit", async (t) => {
   const hub = await startHub();
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
-  const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
+  const gamma = await inProcessSpoke(t, { hub, name: 'gamma', sessionId: 'sess-g' });
   try {
     await beta.waitForPresence(['beta']);
     await gamma.waitForPresence(['gamma']);
@@ -162,11 +164,11 @@ test("history returns a session's own traffic, newest last, filtered to one coun
   }
 });
 
-test('history filtered to one counterpart finds an older exchange behind a burst of traffic with others', async () => {
+test('history filtered to one counterpart finds an older exchange behind a burst of traffic with others', async (t) => {
   const hub = await startHub({ rateLimit: { max: 100, windowMs: 60_000 } });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
-  const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
+  const gamma = await inProcessSpoke(t, { hub, name: 'gamma', sessionId: 'sess-g' });
   try {
     await beta.waitForPresence(['beta']);
     await gamma.waitForPresence(['gamma']);
@@ -184,9 +186,9 @@ test('history filtered to one counterpart finds an older exchange behind a burst
   }
 });
 
-test('a delivery stays queued until the spoke acks it: an unacked message is sent again on the next connect, an acked one never', async () => {
+test('a delivery stays queued until the spoke acks it: an unacked message is sent again on the next connect, an acked one never', async (t) => {
   const hub = await startHub();
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
   /** beta as a raw session: hello, then collect delivers; acks only when told to. */
   const connectBeta = (ack: boolean): Promise<{ ws: WebSocket; delivers: Array<{ id: string; message: { id: string; text: string } }> }> =>
     new Promise((resolve, reject) => {
@@ -208,8 +210,7 @@ test('a delivery stays queued until the spoke acks it: an unacked message is sen
     ws.close();
   });
   const waitFor = async (cond: () => boolean) => {
-    const deadline = Date.now() + 5000;
-    while (!cond() && Date.now() < deadline) await sleep(20);
+    await eventually('raw spoke receipt', () => cond() || undefined);
     assert.ok(cond());
   };
   try {
@@ -226,13 +227,19 @@ test('a delivery stays queued until the spoke acks it: an unacked message is sen
     beta = await connectBeta(true);
     await waitFor(() => beta.delivers.length === 1);
     assert.equal(beta.delivers[0]?.message.text, 'please confirm');
-    await sleep(100); // the ack is on its way
+    await new Promise<void>(resolve => {
+      beta.ws.on('message', data => { if (JSON.parse(String(data)).id === 'ack-barrier') resolve(); });
+      beta.ws.send(JSON.stringify({ type: 'who', id: 'ack-barrier' }));
+    });
     await closeRaw(beta.ws);
     await waitForAbsence(alpha, 'beta');
 
     // acked: delivered, never sent again
     beta = await connectBeta(true);
-    await sleep(200);
+    await new Promise<void>(resolve => {
+      beta.ws.on('message', data => { if (JSON.parse(String(data)).id === 'hello-barrier') resolve(); });
+      beta.ws.send(JSON.stringify({ type: 'who', id: 'hello-barrier' }));
+    });
     assert.equal(beta.delivers.length, 0);
     await closeRaw(beta.ws);
   } finally {

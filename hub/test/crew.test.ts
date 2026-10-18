@@ -1,13 +1,14 @@
-import test from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
+import test from 'node:test';
 import { parseCrew, renderCrew, type CrewConfig } from '../src/crew.ts';
+import { clandWithEnv, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 type View = { config: CrewConfig; summary: string };
 
-test('crew idle_from defaults empty and round trips as a top-level canonical list', () => {
+test('crew idle_from defaults empty and round trips as a top-level canonical list', (t) => {
   assert.deepEqual(parseCrew('').idle_from, []);
   const config = parseCrew('idle_from = ["t-216", "R-217"]\n[crew.reviewer]\nsize = 3\n');
   assert.deepEqual(config.idle_from, ['C-216', 'C-217']);
@@ -23,7 +24,7 @@ test('idle categories are set through the CLI and delivered in order to the Coor
   await writeFile(join(root, '.cland/tasks/C-216-tech-debt.md'), '---\nid: C-216\nkind: category\ntitle: Tech debt\nstate: open\n---\n\nDebt.\n');
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
   t.after(() => coord.close());
   const initial = await coord.waitForEvent(e => e.params.meta?.kind === 'role');
   assert.match(initial.params.content, /idle_from is empty.*category work is never taken/);
@@ -209,7 +210,6 @@ test('non-table crew values are refused and cannot replace the last good staffin
     }
   }
 });
-
 
 test('role heartbeats default visibly, validate a one-minute floor and round trip through the CLI', async t => {
   const root = await tempProject(t);

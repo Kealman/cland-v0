@@ -376,6 +376,9 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Projection shutdown tests control all immediates; an extra journal sink would wait on their barrier. */
+  processLog?: false;
+  journalOpen?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['journalOpen']>;
   openDatabase?: (path: string) => import('node:sqlite').DatabaseSync;
   compatibility?: import('../src/executor/local.ts').LocalCompatibility;
   /** Fake unless a T3 native contract explicitly opts in. */
@@ -396,7 +399,7 @@ export type ProjectHubOptions = {
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   const env: NodeJS.ProcessEnv = {};
@@ -426,7 +429,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   } : {};
   let daemon;
   try {
-    daemon = await resources.run(() => serveProject(root, { ...probes, ...options, ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
+    daemon = await resources.run(() => serveProject(root, { ...probes, ...options, ...(adapters ? { adapters } : {}), env, log: entry => { options.log?.(entry); if (options.processLog !== false) processLog.write({ ...entry, event: String(entry.event) }); }, flushLog: () => processLog.flush() }));
     await processLog.flush();
   }
   catch (error) {
@@ -447,7 +450,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
       };
     }),
   };
-  return { fakes, discovery: daemon.discovery, dispatcher, stop: () => daemon.stop() };
+  return { fakes, discovery: daemon.discovery, dispatcher, stopped: daemon.stopped, stop: () => daemon.stop() };
 }
 
 /** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.

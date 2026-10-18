@@ -1,13 +1,14 @@
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { eventually, flushProjectLogs, DOCUMENTED_TOOLS, sleep, spawnSpoke, startDaemon, tempProject, waitForAbsence } from './harness.ts';
+import { test } from 'node:test';
+import { DOCUMENTED_TOOLS, eventually, flushProjectLogs, inProcessSpoke, projectHub, tempProject, waitForAbsence } from './harness.ts';
 
 test('a nameless spoke discovering a project hub skips connecting and journals the reason once', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
-  const spoke = await spawnSpoke({ discover: true, cwd: root });
+  await projectHub(t, root);
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root });
   t.after(() => spoke.close());
 
   const who = await spoke.call<{ ok: boolean; error?: string }>('who');
@@ -16,8 +17,8 @@ test('a nameless spoke discovering a project hub skips connecting and journals t
   assert.match(who.error ?? '', /start the session through cland/);
   const { tools } = await spoke.client.listTools();
   assert.deepEqual(tools.map(tool => tool.name).sort(), [...DOCUMENTED_TOOLS]);
-  // The test harness retries after 50 ms, then 100 ms. Leave both opportunities open.
-  await sleep(200);
+  // Repeated public calls cannot start a skipped connection.
+  await spoke.client.listTools();
   assert.deepEqual(await spoke.call('who'), who);
   assert.equal(spoke.events.length, 0);
   const readRecords = async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'))
@@ -29,7 +30,7 @@ test('a nameless spoke discovering a project hub skips connecting and journals t
   const skipped = records.filter(record => record.event === 'spoke-connection-skipped');
   assert.equal(skipped.length, 1);
   assert.match(skipped[0]?.reason ?? '', /no CLAND_SESSION_NAME/);
-  await sleep(100);
+  await spoke.call('who');
   assert.equal((await readRecords()).filter(record => record.event === 'spoke-connection-skipped').length, 1, 'still one skipped connection after settling');
   await flushProjectLogs(t, root);
   const hubLog = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
@@ -38,22 +39,22 @@ test('a nameless spoke discovering a project hub skips connecting and journals t
 
 test('a blank session name and a role request do not bind a spoke to the discovered hub', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: '   ', role: 'implementer', assignRole: false });
+  await projectHub(t, root);
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: '   ', role: 'implementer', assignRole: false });
   t.after(() => spoke.close());
   const who = await spoke.call<{ ok: boolean; error?: string }>('who');
   assert.equal(who.ok, false);
   assert.match(who.error ?? '', /connection skipped: no CLAND_SESSION_NAME/);
-  await sleep(200);
+  await spoke.call('who');
   await flushProjectLogs(t, root);
   assert.doesNotMatch(await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8'), /"event":"(?:hello|refused-role|replaced)"/);
 });
 
 test('a named spoke with a human-assigned role connects without requesting a role', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   // The harness assigns implementer with role.set, and leaves CLAND_ROLE absent.
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'mapped' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'mapped' });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['mapped']);
   const who = await spoke.call<{ ok: boolean; me: string; sessions: Array<{ name: string; role: string }> }>('who');
@@ -66,13 +67,13 @@ test('a named spoke with a human-assigned role connects without requesting a rol
 
 test('nameless spokes recover a mapped session id while live and after its last spoke leaves', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
-  const first = await spawnSpoke({ discover: true, cwd: root, name: 'mapped', sessionId: 'mapped-id' });
+  await projectHub(t, root);
+  const first = await inProcessSpoke(t, { discover: true, cwd: root, name: 'mapped', sessionId: 'mapped-id' });
   t.after(() => first.close());
   await first.waitForPresence(['mapped']);
-  const witness = await spawnSpoke({ discover: true, cwd: root, name: 'witness', sessionId: 'witness-id' });
+  const witness = await inProcessSpoke(t, { discover: true, cwd: root, name: 'witness', sessionId: 'witness-id' });
   t.after(() => witness.close());
-  const joined = await spawnSpoke({ discover: true, cwd: root, sessionId: 'mapped-id' });
+  const joined = await inProcessSpoke(t, { discover: true, cwd: root, sessionId: 'mapped-id' });
   t.after(() => joined.close());
   const live = await joined.call<{ ok: boolean; me?: string; error?: string }>('who');
   assert.equal(live.ok, true, live.error);
@@ -80,7 +81,7 @@ test('nameless spokes recover a mapped session id while live and after its last 
   await joined.close();
   await first.close();
   await waitForAbsence(witness, 'mapped');
-  const recovered = await spawnSpoke({ discover: true, cwd: root, sessionId: 'mapped-id' });
+  const recovered = await inProcessSpoke(t, { discover: true, cwd: root, sessionId: 'mapped-id' });
   t.after(() => recovered.close());
   const offline = await recovered.call<{ ok: boolean; me?: string; error?: string }>('who');
   assert.equal(offline.ok, true, offline.error);

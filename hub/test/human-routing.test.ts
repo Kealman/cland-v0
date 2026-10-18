@@ -1,10 +1,9 @@
-// The human's messages through the UI's frames (spec 4.2, 4.5): who a role address reaches, what waits for a
-// role nobody holds, and the delivery events the UI sees. An in-process hub, a UI client on its WebSocket
-// (a client hello works there), and real spokes over MCP.
-import { test, type TestContext } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
-import { connectWsUi, sleep, spawnSpoke, startHub, waitForAbsence, type FrameClient, type Session } from './harness.ts';
+import { test, type TestContext } from 'node:test';
 import type { Hub, HubOptions } from '../src/hub/server.ts';
+import { connectWsUi, inProcessSpoke, startHub, waitForAbsence, type FrameClient, type Session } from './harness.ts';
 
 type TopicMessage = { id: string; topic: string; from: string; to: string[]; text: string; stage?: string };
 type Sent = { message: TopicMessage; outcomes: Array<{ to: string; outcome: string; reason?: string }> };
@@ -16,7 +15,7 @@ async function hubFor(t: TestContext, options: Partial<HubOptions> = {}): Promis
 }
 
 async function spoke(t: TestContext, hub: Hub, name: string, sessionId: string, role?: string): Promise<Session> {
-  const s = await spawnSpoke({ hub, name, sessionId, ...(role ? { role } : {}) });
+  const s = await inProcessSpoke(t, { hub, name, sessionId, ...(role ? { role } : {}) });
   t.after(() => s.close());
   await s.waitForPresence([name]);
   return s;
@@ -91,7 +90,7 @@ test('a known roleless session addressed beside the vacant coordinator role, bac
   await deliveryOf(ui, message.id, 'delivered');
   const h = await ui.request({ type: 'topic.history', topic: 'general' });
   assert.equal((h.value as { messages: TopicMessage[] }).messages.find((m) => m.id === message.id)?.stage, 'delivered');
-  await sleep(200);
+  await back.call('who');
   assert.equal(back.events.filter((e) => e.params.content === 'to alpha and the coordinator').length, 1);
 });
 
@@ -119,7 +118,8 @@ test('the same role named twice is one addressee: the send succeeds, is publishe
 
 test('a delivery dropped past the TTL moves the stage, and the UI hears it', async (t) => {
   const queueTtlMs = 500;
-  const hub = await hubFor(t, { queueTtlMs });
+  const clock = new FakeClock();
+  const hub = await hubFor(t, { queueTtlMs, clock });
   const a = await spoke(t, hub, 'a', 'sess-a');
   const b = await spoke(t, hub, 'b', 'sess-b');
   await a.waitForPresence(['a', 'b']);
@@ -131,10 +131,10 @@ test('a delivery dropped past the TTL moves the stage, and the UI hears it', asy
   const both = await send(ui, { text: 'to a and b', to: ['a', 'b'] });
   const onlyB = await send(ui, { text: 'to b alone', to: ['b'] });
   await a.waitForEvent((e) => e.params.content === 'to a and b');
-  await sleep(300);
+  await a.call('who');
   assert.equal(ui.frames.some((f) => f.type === 'delivery'), false, 'b still waits: the stage stays queued');
 
-  await sleep(queueTtlMs); // Expiry: the offline delivery must age past the queue TTL.
+  await clock.advance(queueTtlMs + 1);
   const back = await spoke(t, hub, 'b', 'sess-b');
   await deliveryOf(ui, both.message.id, 'delivered');
   await deliveryOf(ui, onlyB.message.id, 'dropped');

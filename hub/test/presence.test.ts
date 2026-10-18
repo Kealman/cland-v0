@@ -1,14 +1,15 @@
-import { FakeClock } from './fake-clock.ts';
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { inProcessSpoke, startHub, spawnSpoke, eventually, waitForAbsence, type Session } from './harness.ts';
+import { test } from 'node:test';
+import { FakeClock } from './fake-clock.ts';
+import { eventually, inProcessSpoke, startHub, waitForAbsence, type Session } from './harness.ts';
 
 const statusIn = (viewer: Session) => async (name: string) => (await viewer.call<{ sessions: Array<{ name: string; status: string | null }> }>('who')).sessions.find((d) => d.name === name)?.status;
 
-test('status is one line others see; a reconnect of the same name keeps it, a fresh name starts with null', async () => {
+test('status is one line others see; a reconnect of the same name keeps it, a fresh name starts with null', async (t) => {
   const hub = await startHub();
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  let beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  let beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   let gamma: Session | null = null;
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
@@ -19,29 +20,29 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
     assert.equal(await statusOf('beta'), 'rate-cache: implement #334, tests running');
     // the spoke reconnects (a restart, a resume, a hub blip): the name is the same work, the line survives
     await beta.close();
-    beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+    beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
     await alpha.waitForPresence(['beta']);
     await beta.waitForPresence(['beta']);
     assert.equal(await statusOf('beta'), 'rate-cache: implement #334, tests running');
     // a name the hub has never seen starts with nothing
-    gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
+    gamma = await inProcessSpoke(t, { hub, name: 'gamma', sessionId: 'sess-g' });
     await alpha.waitForPresence(['gamma']);
     assert.equal(await statusOf('gamma'), null);
     // an emptied status stays empty across a reconnect
     await beta.call('status', { text: '   ' });
     await beta.close();
-    beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+    beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
     await alpha.waitForPresence(['beta']);
     assert.equal(await statusOf('beta'), null);
     // a generated name belongs to the session it was generated for: the next unnamed session gets a fresh
     // one and no line, and a session that asks for session-1 BY NAME inherits nobody else's line either
-    let anon = await spawnSpoke({ hub, sessionId: 'sess-anon-1' });
+    let anon = await inProcessSpoke(t, { hub, sessionId: 'sess-anon-1' });
     await alpha.waitForPresence(['session-1']);
     await anon.waitForPresence(['session-1']);
     await anon.call('status', { text: "somebody else's work" });
     await anon.close();
     await waitForAbsence(alpha, 'session-1');
-    anon = await spawnSpoke({ hub, sessionId: 'sess-anon-2' });
+    anon = await inProcessSpoke(t, { hub, sessionId: 'sess-anon-2' });
     try {
       await alpha.waitForPresence(['session-2']);
       assert.equal(await statusOf('session-2'), null);
@@ -49,7 +50,7 @@ test('status is one line others see; a reconnect of the same name keeps it, a fr
       await anon.close();
     }
     await waitForAbsence(alpha, 'session-2');
-    anon = await spawnSpoke({ hub, name: 'session-1', sessionId: 'sess-anon-3' });
+    anon = await inProcessSpoke(t, { hub, name: 'session-1', sessionId: 'sess-anon-3' });
     try {
       await alpha.waitForPresence(['session-1']);
       assert.equal(await statusOf('session-1'), null, "another session's line is not inherited with the name");

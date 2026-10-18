@@ -1,15 +1,16 @@
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { connectUi, eventually, pidAlive, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { test } from 'node:test';
 import { isClientRequest, isSpokeRequest, type Artifact, type TopicMessage } from '../src/protocol.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 test('only the human can delete artifact bytes; the index and topic chip retain the deletion', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({type:'subscribe'});
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const a = (await coord.call<{artifact: Artifact}>('artifact.create', {kind:'note', title:'Delete me', topic:'general', content:'original'})).artifact;
@@ -33,8 +34,14 @@ test('only the human can delete artifact bytes; the index and topic chip retain 
 });
 
 test('deleting an absorbed id removes only its moved file and preserves its deleted chip after restart', async t => {
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await serve(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({type:'subscribe'});
   const make = async (title: string, folder = false) => ((await ui.request({type:'artifact.create', kind:'note', title, topic:'general', content:title, folder})).value as {artifact:Artifact}).artifact;
@@ -50,9 +57,8 @@ test('deleting an absorbed id removes only its moved file and preserves its dele
   assert.deepEqual(listing.files, [folder.entry]);
   await ui.waitFor(f => f.type === 'artifact' && (f.artifact as Artifact).id === folder.id);
   assert.equal((await ui.request({type:'artifact.delete',artifact:source.id})).ok, false);
-  assert.equal((await ui.request({type:'hub.stop'})).ok, true);
-  await eventually('old hub terminated before restart', () => !pidAlive(discovery.pid) ? true : undefined);
-  const restarted = await startDaemon(t, root);
+  await stopHub();
+  const restarted = await serve(t, root);
   const reconnected = await connectUi(t, restarted.discovery);
   const replayed = (await reconnected.request({type:'topic.history',topic:'general'})).value as {messages:TopicMessage[]};
   assert.equal(replayed.messages.find(m => m.artifact?.id === source.id)?.artifact?.fileDeleted, true);
@@ -60,7 +66,7 @@ test('deleting an absorbed id removes only its moved file and preserves its dele
 
 test('deleting a folder notifies old-topic moved chips and leaves promoted project files alone', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({type:'subscribe'});
   const topic = ((await ui.request({type:'topic.create',title:'Folder topic'})).value as {topic:{id:string}}).topic.id;
@@ -77,8 +83,7 @@ test('deleting a folder notifies old-topic moved chips and leaves promoted proje
   assert.equal(history.messages.find(m => m.artifact?.id === source.id)?.artifact?.fileDeleted, true);
 });
 
-
-test('the delete frame is UI-only and its validation preserves create and list requests', () => {
+test('the delete frame is UI-only and its validation preserves create and list requests', (t) => {
   assert.equal(isClientRequest({type:'artifact.delete',id:'delete',artifact:'A-1'}), true);
   assert.equal(isSpokeRequest({type:'artifact.delete',id:'delete',artifact:'A-1'}), false);
   assert.equal(isClientRequest({type:'artifact.delete',id:'delete'}), false);

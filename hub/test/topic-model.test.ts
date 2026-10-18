@@ -1,16 +1,13 @@
-// The topic model (spec 4.5, #32): statuses that follow the direction of messages, `resolve` and `close`; mentions
-// in the human's messages; the "no coordinator" warning; agent- and human-created topics, their binding to a unit
-// of work through the tracker; unread counts. A real hub (in-process, or the daemon where the tracker is needed),
-// scripted spokes over MCP and a UI client speaking the frames; nothing inside either side is reached into.
-import { FakeClock } from './fake-clock.ts';
-import { test, type TestContext } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { fixedRoles } from '../src/roles/config.ts';
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
-import { DatabaseSync } from 'node:sqlite';
+import { mkdir,readdir,readFile,writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { inProcessSpoke, cland, connectUi, connectWsUi, sleep, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { DatabaseSync } from 'node:sqlite';
+import { test,type TestContext } from 'node:test';
 import type { Hub } from '../src/hub/server.ts';
+import { fixedRoles } from '../src/roles/config.ts';
+import { FakeClock } from './fake-clock.ts';
+import { connectUi,connectWsUi,inProcessSpoke,projectHub,startHub,tempProject,type FrameClient,type Session } from './harness.ts';
 
 type Topic = { id: string; title: string; status: string; standing: boolean; item: string | null; unread: number; lastMessageAt: string | null; warning?: string };
 type TopicMessage = { id: string; topic: string; from: string; to: string[]; text: string; stage?: string };
@@ -29,7 +26,7 @@ async function spoke(t: TestContext, hub: Hub, name: string, role: string): Prom
     const human = await connectWsUi(t, hub);
     await ok(human, { type: 'role.set', session: name, role });
   }
-  const s = await spawnSpoke({ hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
+  const s = await inProcessSpoke(t, { hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
   t.after(() => s.close());
   await s.waitForPresence([name]);
   return s;
@@ -163,7 +160,7 @@ test('@reviewer in the text reaches the Reviewer holder, whose reply lands in th
     ],
   );
   await coord.waitForEvent((e) => e.params.content === 'thanks both; ping me at @nobody-here later');
-  await sleep(200);
+  await coord.call('who');
   assert.equal(coord.events.filter((e) => String(e.params.content).includes('diff hold') || String(e.params.content).includes('rebase')).length, 0);
 });
 
@@ -182,9 +179,9 @@ test('a message to a vacant Coordinator is queued: the topic waits for an agent 
 
   // a session without a role stays off the hub: nothing changes; the human assigns it the Coordinator: it
   // connects on its next retry and takes the message
-  const coord = await spawnSpoke({ hub, name: 'coord', sessionId: 'sess-coord' });
+  const coord = await inProcessSpoke(t, { hub, name: 'coord', sessionId: 'sess-coord' });
   t.after(() => coord.close());
-  await sleep(300);
+  await coord.call('who');
   assert.equal((await topicOf(ui, topic.id)).warning, 'no coordinator');
   const mark = ui.frames.length;
   await ok(ui, { type: 'role.set', session: 'coord', role: 'coordinator' });
@@ -259,14 +256,14 @@ test('the human has unread counts per topic: messages from others since the last
 
 test("a topic bound to an item: the item's topic field is set, a second topic for it is refused, and closing the item closes the topic", async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const item = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Hub daemon and spoke hello' })).item.id;
   assert.equal(item, 'T-1');
 
   // an agent opens the task's topic
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const made = await coord.call<{ ok: boolean; topic: Topic }>('topic.create', { title: 'T-1: which port?', item: 't-1' });
@@ -306,7 +303,7 @@ test("a topic bound to an item: the item's topic field is set, a second topic fo
 
 test('task.link and task.create with a topic go through the binding: one topic per item and one item per topic, both sides agree, and closing the item closes it', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   for (const title of ['First', 'Second']) await ok(ui, { size: 'M', type: 'task.create', title });
@@ -358,22 +355,27 @@ test('task.link and task.create with a topic go through the binding: one topic p
 });
 
 test('an item closed while the hub was stopped closes its topic when the hub starts again', async (t) => {
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
   const root = await tempProject(t);
-  const first = await startDaemon(t, root);
+  const first = await serve(t, root);
   let ui = await connectUi(t, first.discovery);
   await ok(ui, { size: 'M', type: 'task.create', title: 'Close me offline' });
   const topic = await create(ui, 'About T-1', 'T-1');
   assert.equal(topic.item, 'T-1');
   ui.close();
-  const stopped = await cland(root, 'hub', 'stop');
-  assert.equal(stopped.code, 0, stopped.stderr);
+  await stopHub();
 
   // a hand edit while nothing watches
   const dir = join(root, '.cland', 'tasks');
   const file = (await readdir(dir)).find((n) => n.startsWith('T-1-')) as string;
   await writeFile(join(dir, file), (await readFile(join(dir, file), 'utf8')).replace(/^state: open$/m, 'state: closed'));
 
-  const again = await startDaemon(t, root);
+  const again = await serve(t, root);
   ui = await connectUi(t, again.discovery);
   assert.equal((await topicOf(ui, topic.id)).status, 'closed');
 });
@@ -396,8 +398,8 @@ test('a hub.db written before the message sequence, its messages pruned: the mig
   old.exec('delete from messages');
   old.close();
 
-  const { discovery } = await startDaemon(t, root);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
+  const { discovery } = await projectHub(t, root);
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'sess-coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const ui = await connectUi(t, discovery);

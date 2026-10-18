@@ -1,11 +1,11 @@
-import test, { type TestContext } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { serveProject } from '../src/hub/daemon.ts';
-import { connectUi, spawnSpoke, tempProject } from './harness.ts';
+import test, { type TestContext } from 'node:test';
 import type { EventRow, EventsPage } from '../src/protocol.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 const stamp = (seconds: number) => new Date(Date.parse('2026-10-12T10:00:00Z') + seconds * 1000).toISOString();
 test('real journal classes, interleaved bursts and filtered pages never split or repeat a group', async t => {
@@ -33,7 +33,7 @@ test('real journal classes, interleaved bursts and filtered pages never split or
     { event: 'event-announced', kind: 'session.state', subject: { session: 'waiting' }, lifecycle: 'waiting for approval', text: 'waiting for approval', ts: stamp(150) },
   ].sort((a, b) => a.ts.localeCompare(b.ts));
   await writeFile(join(root, '.cland/journal.jsonl'), records.map(r => JSON.stringify(r)).join('\n') + '\n');
-  const daemon = await serveProject(root, { log: () => {} });
+  const daemon = await projectHub(t, root, {}, { log: () => {} });
   stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
@@ -72,13 +72,13 @@ test('real announced rows merge on pushes and list, and subtree filters include 
   let stop = async () => {};
   t.after(() => stop());
   const root = await tempProject(t);
-  const daemon = await serveProject(root, { log: () => {} });
+  const daemon = await projectHub(t, root, {}, { log: () => {} });
   stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
   const parent = ((await ui.request({ type: 'task.create', kind: 'epic', title: 'Parent' })).value as { item: { id: string } }).item.id;
   const child = ((await ui.request({ size: 'M', type: 'task.create', parent, title: 'Child' })).value as { item: { id: string } }).item.id;
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['coord']);
   await ui.request({ type: 'subscribe' });
@@ -105,7 +105,7 @@ test('pending plan approvals, asks and waiting messages stay in the inbox; follo
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
-  const daemon = await serveProject(root, { log: () => {} });
+  const daemon = await projectHub(t, root, {}, { log: () => {} });
   stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
@@ -113,7 +113,7 @@ test('pending plan approvals, asks and waiting messages stay in the inbox; follo
   const parent = (await ok({ type: 'task.create', kind: 'epic', title: 'Waiting plan' }) as { item: { id: string } }).item.id;
   const child = (await ok({ size: 'M', type: 'task.create', title: 'Plan child', parent }) as { item: { id: string } }).item.id;
   await ok({ type: 'task.plan', item: parent, op: 'set', yaml: JSON.stringify({ stages: [{ name: 'Build', lanes: [[child]], qa: { scope: 'none', when: 'after-stage' } }] }) });
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   assert.equal((await coord.call<{ ok: boolean }>('ask', { topic: 'general', question: 'Waiting question', options: [] })).ok, true);
   const inbox = await ok({ type: 'inbox.list' }) as import('../src/protocol.ts').Inbox;
@@ -132,7 +132,7 @@ test('the first equal announcement after a real hub restart replaces the restore
   let stop = async () => {};
   t.after(() => stop());
   const root = await tempProject(t);
-  let daemon = await serveProject(root, { log: () => {} });
+  let daemon = await projectHub(t, root, {}, { log: () => {} });
   stop = () => daemon.stop();
   let ui = await connectUi(t, daemon.discovery!);
   stop = async () => { ui.close(); await daemon.stop(); };
@@ -150,7 +150,7 @@ test('the first equal announcement after a real hub restart replaces the restore
   // A recent group can sit beyond the newest page. Seed unrelated rows only while
   // the real daemon is stopped, then require startup to restore the entire minute.
   await appendFile(join(root, '.cland/journal.jsonl'), Array.from({ length: 205 }, (_, i) => JSON.stringify({ event: 'event-announced', ts: new Date().toISOString(), kind: 'topic', subject: { topic: `unrelated-${i}` }, text: `unrelated event ${i}` }) + '\n').join(''));
-  daemon = await serveProject(root, { log: () => {} });
+  daemon = await projectHub(t, root, {}, { log: () => {} });
   ui = await connectUi(t, daemon.discovery!);
   await ui.request({ type: 'subscribe' });
   const newest = (await ui.request({ type: 'events.list' })).value as EventsPage;
@@ -201,8 +201,8 @@ test('hub stop cancels deferred session work before closing its databases', asyn
   const root = await tempProject(t);
   let swept!: () => void;
   const sweepDone = new Promise<void>(resolve => { swept = resolve; });
-  const daemon = await serveProject(root, { log: entry => {
-    if (entry.event === 'orphan-sweep-completed' || entry.event === 'orphan-sweep-failed') swept();
+  const daemon = await projectHub(t, root, {}, { processLog: false, log: entry => {
+    if (entry.event === 'orphan-sweep-skipped') swept();
   } });
   stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
@@ -216,8 +216,8 @@ test('hub stop cancels deferred session work before closing its databases', asyn
   await Promise.race([stop(), callbacksFailed]);
   await daemon.stopped;
   assert.equal(pending.size, 0, 'shutdown cancels or drains every deferred callback');
+  t.mock.restoreAll(); // Resource cleanup uses real I/O turns after the asserted close boundary.
 });
-
 
 test('hub stop cancels deferred journal projections before closing the inbox process provider', async t => {
   let stop = async () => {};
@@ -225,8 +225,8 @@ test('hub stop cancels deferred journal projections before closing the inbox pro
   const root = await tempProject(t);
   let swept!: () => void;
   const sweepDone = new Promise<void>(resolve => { swept = resolve; });
-  const daemon = await serveProject(root, { log: entry => {
-    if (entry.event === 'orphan-sweep-completed' || entry.event === 'orphan-sweep-failed') swept();
+  const daemon = await projectHub(t, root, {}, { processLog: false, log: entry => {
+    if (entry.event === 'orphan-sweep-skipped') swept();
   } });
   stop = () => daemon.stop();
   const ui = await connectUi(t, daemon.discovery!);
@@ -241,4 +241,5 @@ test('hub stop cancels deferred journal projections before closing the inbox pro
   await Promise.race([stop(), callbacksFailed]);
   await daemon.stopped;
   assert.equal(pending.size, 0, 'shutdown cancels or drains every deferred callback');
+  t.mock.restoreAll(); // Resource cleanup uses real I/O turns after the asserted close boundary.
 });

@@ -1,16 +1,18 @@
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
-import { WebSocket } from 'ws';
 import type { Socket } from 'node:net';
-import { startHub, spawnSpoke, sleep, TEST_SECRET } from './harness.ts';
+import { test } from 'node:test';
+import { WebSocket } from 'ws';
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from '../src/protocol.ts';
+import { eventually, inProcessSpoke, sleep, startHub, TEST_SECRET } from './harness.ts';
 
 type Send = { ok: boolean; error?: string; outcomes?: Array<{ to: string; outcome: string; reason?: string }> };
 
-test('a chatty session is rate-limited: send refuses with the reason and when the window frees', async () => {
+test('a chatty session is rate-limited: send refuses with the reason and when the window frees', async (t) => {
   const hub = await startHub({ rateLimit: { max: 3, windowMs: 60_000 } });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
     // beta's own send below needs beta connected, not only listed by the hub
@@ -27,12 +29,13 @@ test('a chatty session is rate-limited: send refuses with the reason and when th
   }
 });
 
-test('two agents in a reply loop are muted for the mute time in both directions, and the count starts afresh after it', async () => {
+test('two agents in a reply loop are muted for the mute time in both directions, and the count starts afresh after it', async (t) => {
   const log: Array<Record<string, unknown>> = [];
-  const hub = await startHub({ loopBreaker: { max: 4, windowMs: 60_000, muteMs: 600 }, rateLimit: { max: 100, windowMs: 60_000 }, log: (e) => log.push(e) });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
-  const gamma = await spawnSpoke({ hub, name: 'gamma', sessionId: 'sess-g' });
+  const clock = new FakeClock();
+  const hub = await startHub({ clock, loopBreaker: { max: 4, windowMs: 60_000, muteMs: 600 }, rateLimit: { max: 100, windowMs: 60_000 }, log: (e) => log.push(e) });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
+  const gamma = await inProcessSpoke(t, { hub, name: 'gamma', sessionId: 'sess-g' });
   try {
     await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta', 'gamma']);
@@ -49,7 +52,7 @@ test('two agents in a reply loop are muted for the mute time in both directions,
     assert.ok(log.some((e) => e.event === 'loop-breaker' && e.pair === 'alpha|beta'), 'the mute is journalled');
     const third = await alpha.call<Send>('send', { to: ['beta', 'gamma'], text: 'gamma is fine' });
     assert.deepEqual(third.outcomes?.map((o) => `${o.to}:${o.outcome}`), ['beta:refused', 'gamma:delivered'], 'only the muted pair is refused');
-    await sleep(650); // Expiry: exceed the 600 ms loop-breaker mute before a fresh volley.
+    await clock.advance(650);
     for (let i = 0; i < 4; i += 1) {
       const r = await (i % 2 ? beta : alpha).call<Send>('send', { to: [i % 2 ? 'alpha' : 'beta'], text: `after the mute ${i}` });
       assert.equal(r.outcomes?.[0]?.outcome, 'delivered', `after the mute, message ${i}: the count started afresh`);
@@ -62,10 +65,10 @@ test('two agents in a reply loop are muted for the mute time in both directions,
   }
 });
 
-test('an oversized message is refused with the size, and nothing is delivered', async () => {
+test('an oversized message is refused with the size, and nothing is delivered', async (t) => {
   const hub = await startHub({ maxTextBytes: 1024 });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
@@ -82,13 +85,13 @@ test('an oversized message is refused with the size, and nothing is delivered', 
   }
 });
 
-test('a socket that misses two heartbeats is closed and the spoke reconnects with a fresh hello', async () => {
+test('a socket that misses two heartbeats is closed and the spoke reconnects with a fresh hello', async (t) => {
   // The windows are wide against a loaded machine: the hub cuts a socket silent for two of its 1 s intervals; beta
   // pings every 250 ms and gives the hub 250 ms per answer (two misses in a row before it leaves on its own), so only
   // a stall of seconds could cut it, while alpha, whose first ping is 10 s away, is cut within 3 s.
   const hub = await startHub({ keepaliveMs: 1000 });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 10_000 }); // never heartbeats in time
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', keepaliveMs: 250 });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 10_000 }); // never heartbeats in time
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b', keepaliveMs: 250 });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.waitForPresence(['alpha', 'beta']);
@@ -97,13 +100,10 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
     const betaBefore = await connectedAt('beta');
     assert.ok(before && betaBefore, 'both connected');
     // the hub closes alpha after two missed heartbeats (≤ 3 s); alpha reconnects with a fresh hello: poll, never sleep
-    const deadline = Date.now() + 15_000;
-    let after: string | undefined;
-    while (Date.now() < deadline) {
-      after = await connectedAt('alpha');
-      if (after !== undefined && after !== before) break;
-      await sleep(25);
-    }
+    const after = await eventually('spoke reconnects with a fresh hello', async () => {
+      const current = await connectedAt('alpha');
+      return current !== undefined && current !== before ? current : undefined;
+    }, 15_000);
     assert.ok(after !== undefined && after !== before, `a fresh hello after the close (before ${before}, after ${after})`);
     assert.equal(await connectedAt('beta'), betaBefore, 'the session that heartbeats was never cut off');
   } finally {
@@ -113,7 +113,7 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
   }
 });
 
-test('a peer whose bytes still arrive is alive: a socket in the middle of one large frame is not cut off; a silent one beside it is', async () => {
+test('a peer whose bytes still arrive is alive: a socket in the middle of one large frame is not cut off; a silent one beside it is', async (t) => {
   const log: Array<Record<string, unknown>> = [];
   const keepaliveMs = 100;
   const hub = await startHub({ keepaliveMs, log: (e) => log.push(e) });
@@ -169,7 +169,7 @@ test('a peer whose bytes still arrive is alive: a socket in the middle of one la
   }
 });
 
-test('a frame over the size limit closes the socket before it is parsed', async () => {
+test('a frame over the size limit closes the socket before it is parsed', async (t) => {
   const hub = await startHub();
   try {
     const ws = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
@@ -183,10 +183,10 @@ test('a frame over the size limit closes the socket before it is parsed', async 
   }
 });
 
-test('a rename does not reset the rate window: the limit follows the session, not its name', async () => {
+test('a rename does not reset the rate window: the limit follows the session, not its name', async (t) => {
   const hub = await startHub({ rateLimit: { max: 2, windowMs: 60_000 } });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);
@@ -202,10 +202,10 @@ test('a rename does not reset the rate window: the limit follows the session, no
   }
 });
 
-test('a rename does not lift a mute: the loop breaker follows the pair of sessions, and names them as they are now', async () => {
+test('a rename does not lift a mute: the loop breaker follows the pair of sessions, and names them as they are now', async (t) => {
   const hub = await startHub({ loopBreaker: { max: 2, windowMs: 60_000, muteMs: 60_000 }, rateLimit: { max: 100, windowMs: 60_000 } });
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await beta.waitForPresence(['beta']);
     await alpha.waitForPresence(['alpha', 'beta']);

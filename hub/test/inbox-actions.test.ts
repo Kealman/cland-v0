@@ -1,12 +1,13 @@
-import test from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
+import test from 'node:test';
 import { Store } from '../src/hub/store.ts';
-import { decide } from '../src/roles/permissions.ts';
 import { isClientRequest, type Inbox } from '../src/protocol.ts';
+import { decide } from '../src/roles/permissions.ts';
+import { cland, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 async function ok<T>(ui: Awaited<ReturnType<typeof connectUi>>, frame: Record<string, unknown> & { type: string }): Promise<T> {
   const result = await ui.request(frame);
@@ -18,7 +19,7 @@ test('declining a request tells its real spoke once, drops the chip and archives
   const root = await tempProject(t), { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
-  const sender = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
+  const sender = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
   t.after(() => sender.close()); await sender.waitForPresence(['impl']);
   const sent = await sender.call<{ ok: boolean }>('send', { kind: 'request', request: 'review', subject: 'impl', text: 'Review this build\nLong body' });
   assert.equal(sent.ok, true);
@@ -50,9 +51,15 @@ test('declining a request tells its real spoke once, drops the chip and archives
 });
 
 test('individual message read and queued offline decline survive a hub restart', async t => {
-  const root = await tempProject(t), { discovery } = await startDaemon(t, root);
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
+  const root = await tempProject(t), { discovery } = await serve(t, root);
   const ui = await connectUi(t, discovery);
-  const sender = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
+  const sender = await inProcessSpoke(t, { discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
   t.after(() => sender.close()); await sender.waitForPresence(['aide-1']);
   for (const text of ['First message', 'Second message', 'Third message']) assert.equal((await sender.call<{ ok: boolean }>('send', { text })).ok, true);
   const before = await ok<Inbox>(ui, { type: 'inbox.list' });
@@ -69,13 +76,13 @@ test('individual message read and queued offline decline survive a hub restart',
   await ok(ui, { type: 'inbox.decline', request: req.id });
   const archived = await ok<Inbox>(ui, { type: 'inbox.list', archive: true });
   assert.deepEqual(archived.archive?.map(r => r.reason), ['declined', 'read']);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const restarted = await startDaemon(t, root), again = await connectUi(t, restarted.discovery);
+  await stopHub();
+  const restarted = await serve(t, root), again = await connectUi(t, restarted.discovery);
   const persisted = await ok<Inbox>(again, { type: 'inbox.list', archive: true });
   assert.deepEqual(persisted.archive, archived.archive);
   assert.deepEqual(persisted.messages.map(r => r.text), ['Third message', 'First message']);
   assert.equal(persisted.requests.length, 0);
-  const reconnected = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
+  const reconnected = await inProcessSpoke(t, { discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
   t.after(() => reconnected.close()); await reconnected.waitForPresence(['aide-1']);
   const notice = await reconnected.waitForEvent(e => e.params.content.includes('The human declined request'));
   assert.ok(notice.params.content.includes(req.id));
@@ -89,7 +96,7 @@ test('individual message read and queued offline decline survive a hub restart',
 test('human-only row actions refuse session CLI frames and remain forbidden even with explicit role grants', async t => {
   const root = await tempProject(t), { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const sender = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const sender = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => sender.close()); await sender.waitForPresence(['coord']);
   for (const type of ['inbox.decline', 'inbox.read']) {
     const result = await ui.request({ type, request: 'r', message: 'm', as: { name: 'coord', sessionId: 'sess-coord' } });
@@ -128,7 +135,7 @@ test('archive time ranges use the timestamp index, retain first lines, and exclu
 
 test('a row reply reaches its original sender and archives request and message first lines', async t => {
   const root = await tempProject(t), { discovery } = await projectHub(t, root), ui = await connectUi(t, discovery);
-  const sender = await spawnSpoke({ discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
+  const sender = await inProcessSpoke(t, { discover: true, cwd: root, name: 'aide-1', role: 'aide', sessionId: 'sess-aide' });
   t.after(() => sender.close()); await sender.waitForPresence(['aide-1']);
   for (const kind of ['request', 'report']) {
     assert.equal((await sender.call<{ ok: boolean }>('send', { kind, text: `Reply to ${kind}\nSecond line`, ...(kind === 'request' ? { request: 'qa', subject: 'aide-1' } : {}) })).ok, true);

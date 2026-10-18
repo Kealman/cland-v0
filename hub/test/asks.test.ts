@@ -1,14 +1,10 @@
-// Asks and the inbox (spec 4.5 and 5, #33): only the Coordinator asks; an open ask keeps its topic waiting for the
-// human and is listed in the inbox; the human's answer carries `answer_to`, reaches the asker and clears the wait;
-// `resolve` withdraws, closing cancels; approvals follow the sessions' states; role changes reach events; "needs you" is asks + approvals + waiting topics. A real hub
-// (in-process, or the daemon where the tracker and the adapters are needed), scripted spokes over MCP, a UI client
-// speaking the frames; nothing inside either side is reached into.
-import { FakeClock } from './fake-clock.ts';
-import { test, type TestContext } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { inProcessSpoke, connectUi, connectWsUi, sleep, eventually, fakeClaude, spawnSpoke, startDaemon, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
+import { test, type TestContext } from 'node:test';
 import type { Hub } from '../src/hub/server.ts';
 import { Store } from '../src/hub/store.ts';
+import { FakeClock } from './fake-clock.ts';
+import { connectUi, connectWsUi, eventually, inProcessSpoke, projectHub, startHub, tempProject, type FrameClient, type Session } from './harness.ts';
 
 type Topic = { id: string; title: string; status: string; item: string | null };
 type Card = { question: string; options: string[]; free: boolean; state: string; answer?: string; option?: number };
@@ -25,7 +21,7 @@ async function hubFor(t: TestContext, options: Parameters<typeof startHub>[0] = 
 }
 
 async function spoke(t: TestContext, hub: Hub, name: string, role?: string): Promise<Session> {
-  const s = await spawnSpoke({ hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
+  const s = await inProcessSpoke(t, { hub, name, sessionId: `sess-${name}`, ...(role ? { role } : {}) });
   t.after(() => s.close());
   await s.waitForPresence([name]);
   return s;
@@ -238,10 +234,10 @@ test('closing the topic cancels its open asks; a topic left waiting without an a
 
 test('on a project: closing the item cancels the ask; verdicts and role changes reach events; retired dismissal frames leave asks waiting', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const item = (await ok<{ item: { id: string } }>(ui, { size: 'M', type: 'task.create', title: 'Hub daemon' })).item.id;
@@ -278,24 +274,28 @@ test('a session entering waiting for approval is an approval within one event, w
   const root = await tempProject(t);
   // pushed states only: the fallback poll would read the fake's own idle back
   // Keep pushed approval and idle states authoritative throughout the inbox assertions.
-  const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, { ...fake.env, CLAND_IDLE_NOTIFY_MS: '400' });
+  const clock = new FakeClock();
+  const { discovery, fakes } = await projectHub(t, root, { CLAND_IDLE_NOTIFY_MS: '400' }, { clock });
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', harness: 'claude-code' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const attach = (launched.value as { process: { attach: string } }).process.attach;
+  const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl-1', role: 'implementer', sessionId: (launched.value as { process: { sessionId: string } }).process.sessionId });
+  await peer.waitForPresence(['impl-1']);
+  fakes['claude-code']!.idle('impl-1');
   await eventually('impl-1 idle', async () => ((await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' })).sessions.find((s) => s.name === 'impl-1' && s.state === 'idle') ? true : undefined));
   // a Coordinator started by hand asks meanwhile
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   assert.equal((await ask(coord, 'general', 'Merge T-3 first?', ['yes', 'no'])).ok, true);
 
   // the hook path the harness's PermissionRequest takes
   let mark = ui.frames.length;
-  const signal = await ok<{ applied: boolean; state: string }>(ui, { type: 'session.signal', session: 'impl-1', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
+  const signal = await ok<{ applied: boolean; state: string }>(ui, { type: 'session.signal', session: 'impl-1', event: 'permission', at: clock.now().getTime(), payload: { tool_name: 'Bash' } });
   assert.equal(signal.state, 'waiting for approval');
+  await clock.advance(250);
   const listed = await inboxEvent(ui, (i) => i.approvals.length === 1, mark);
   assert.deepEqual(listed.approvals.map((a) => [a.session, a.label, a.harness, a.attach]), [['impl-1', 'impl-1 [Implementer]', 'claude-code', attach]]);
   assert.equal(listed.asks.length, 1);
@@ -304,11 +304,13 @@ test('a session entering waiting for approval is an approval within one event, w
   assert.match(String((await ui.request({ type: 'inbox.dismiss', notification: 'impl-1' })).error), /events view/);
 
   mark = ui.frames.length;
-  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'tool-done', at: Date.now(), payload: {} });
+  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'tool-done', at: clock.now().getTime(), payload: {} });
+  await clock.advance(250);
   const gone = await inboxEvent(ui, (i) => i.approvals.length === 0, mark);
   assert.equal(gone.needsYou, 1);
   // Long idle defaults to watch (CLAND_IDLE_NOTIFY_MS here; [inbox] idle_minutes in config).
-  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'turn-end', at: Date.now(), payload: {} });
+  await ok(ui, { type: 'session.signal', session: 'impl-1', event: 'turn-end', at: clock.now().getTime(), payload: {} });
+  await clock.advance(401);
   await eventually('long idle appears in events', async () => (await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.text.includes('idle 1 min')) ? true : undefined);
   assert.ok((await ok<import('../src/protocol.ts').EventsPage>(ui, { type: 'events.list' })).rows.some(r => r.text.includes('idle 1 min')));
 });
@@ -316,26 +318,20 @@ test('a session entering waiting for approval is an approval within one event, w
 test('a launched session that renamed itself is one approval, with its attach command (review of #33)', async (t) => {
   const root = await tempProject(t);
   // Keep pushed approval and idle states authoritative throughout the inbox assertions.
-  const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const { discovery, fakes } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   const launched = await ui.request({ type: 'session.launch', name: 'coord-1', role: 'coordinator', harness: 'claude-code' }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const { attach, sessionId } = (launched.value as { process: { attach: string; sessionId: string } }).process;
   const present = (name: string) => eventually(`${name} idle`, async () => ((await ok<{ sessions: Array<{ name: string; state: string }> }>(ui, { type: 'hub.status' })).sessions.find((s) => s.name === name && s.state === 'idle') ? true : undefined));
+  const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord-1', role: 'coordinator', sessionId });
+  await peer.waitForPresence(['coord-1']);
+  fakes['claude-code']!.idle('coord-1');
   await present('coord-1');
-  // A polled idle may predate native turn completion. The mod's usage report is
-  // emitted even when its final idle repeats the hook's state (which emits no frame).
-  // Observe completion before another turn or its idle can erase the permission.
-  const completed = (from = 0) => ui.waitFor(f => f.type === 'session.usage' && f.sessionId === sessionId
-    && ui.frames.indexOf(f) >= from);
-  await completed();
-  const renameMark = ui.frames.length;
-  // the session renames itself in a turn (the fake does what the text says; only the Coordinator may rename)
-  await ok(ui, { type: 'topic.send', topic: 'general', text: 'rename to lead-1', to: ['coord-1'] });
+  const renamed = await peer.call<{ ok: boolean }>('rename', { name: 'lead-1' });
+  assert.equal(renamed.ok, true);
   await present('lead-1');
-  await completed(renameMark);
 
   const mark = ui.frames.length;
   // the hook still names the launch name, and carries the launch's session id, as a real hook does after a rename
@@ -387,7 +383,7 @@ test('deleting a topic with an open ask refreshes the subscribed inbox (review o
 
 test('a verdict written as text appears in events without adding an inbox row', async (t) => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ok(ui, { type: 'subscribe' });
   await ok(ui, { size: 'M', type: 'task.create', title: 'Textual verdict' });

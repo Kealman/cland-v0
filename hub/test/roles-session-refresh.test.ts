@@ -1,11 +1,12 @@
-import test from 'node:test';
+// T2: deferred role-file reads and fake adapter boundaries prove caller revocation; native launch flow remains in scenarios/crew-launch.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { RolesFile } from '../src/roles/config.ts';
-import { createHubBase } from '../src/hub/server.ts';
+import test from 'node:test';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Sessions } from '../src/adapters/sessions.ts';
+import { createHubBase } from '../src/hub/server.ts';
+import { RolesFile } from '../src/roles/config.ts';
 import { fakeHarness } from './fakes/harness.ts';
 import { eventually, tempProject } from './harness.ts';
 

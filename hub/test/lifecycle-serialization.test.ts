@@ -1,14 +1,16 @@
-import test, { type TestContext } from 'node:test';
+// T1: fake adapters and deferred dispatcher operations prove serialization and rollback without child processes or sockets.
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Sessions } from '../src/adapters/sessions.ts';
-import { ProcessTable } from '../src/adapters/processes.ts';
+import test, { type TestContext } from 'node:test';
 import { LaunchFiles } from '../src/adapters/launch-files.ts';
-import { createHubBase } from '../src/hub/server.ts';
-import { eventually, tempProject } from './harness.ts';
-import { parseRoles } from '../src/roles/config.ts';
+import { ProcessTable } from '../src/adapters/processes.ts';
+import { Sessions } from '../src/adapters/sessions.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
+import { createHubBase } from '../src/hub/server.ts';
+import { parseRoles } from '../src/roles/config.ts';
+import { FakeClock } from './fake-clock.ts';
+import { tempProject } from './harness.ts';
 
 function deferred() {
   let resolve!: () => void;
@@ -19,8 +21,9 @@ function deferred() {
 async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) => void) {
   const root = await tempProject(t);
   let roles = parseRoles('[coordinator.launch]\nharness = "test"\n');
-  const hub = createHubBase({ secret: 'test', roles: { get: () => roles } });
-  const table = new ProcessTable();
+  const clock = new FakeClock();
+  const hub = createHubBase({ clock, secret: 'test', roles: { get: () => roles } });
+  const table = new ProcessTable(':memory:', clock);
   const sessions = new Sessions({ core: hub.core, table, root, ...(log ? { log } : {}) });
   t.after(() => { sessions.close(); table.close(); hub.close(); });
   const p = { name: 'impl', harness: 'test', role: null, model: null, cwd: root, pid: null, pidStarted: null, harnessId: null, sessionId: 'stable-id', harnessSessionId: 'conversation', startedAt: '', status: 'stopped' as const };
@@ -131,7 +134,8 @@ test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant bef
   f.hub.core.assignRole('coord', 'coordinator');
   f.hub.dispatcher.useSessions(f.sessions);
   const answers: Array<Record<string, unknown>> = [];
-  const cli = f.hub.dispatcher.open({ send: frame => answers.push(frame), close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
+  const completion = Promise.withResolvers<Record<string, unknown>>();
+  const cli = f.hub.dispatcher.open({ send: frame => { answers.push(frame); if ('id' in frame && frame.id === 'stop') completion.resolve(frame); }, close: () => {}, isOpen: () => true }, { authenticated: false, edge: 'stdio' });
   t.after(() => cli.closed());
   cli.receive(JSON.stringify({ type: 'hello', protocol: 2, secret: 'test', client: 'cli' }));
   const resume = f.sessions.resume('impl', true); await entered.promise;
@@ -140,7 +144,7 @@ test('a Coordinator CLI stop queued behind relaunch rechecks a revoked grant bef
   assert.equal(stops, 0);
   assert.equal(answers.some(frame => frame.id === 'stop'), false, 'the granted request waits in the lifecycle queue');
   f.revokeStop(); gate.resolve(); await resume;
-  const answer = await eventually('queued stop refused after revocation', () => answers.find(frame => frame.id === 'stop'));
+  const answer = await completion.promise;
   assert.equal(answer.code, 'forbidden', JSON.stringify(answer));
   assert.equal(stops, 0);
   assert.equal(f.table.get('impl')?.harnessSessionId, 'replacement');

@@ -3844,6 +3844,13 @@
     "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": 6.15855
   },
   "allow": {
+    "hub/test/visibility-volume.test.ts::hundreds of default verdict, death and idle events leave needsYou zero": {
+      "seconds": 6.263449173,
+      "owner": "E-677",
+      "added": "2026-10-18",
+      "expires": "2026-10-25",
+      "reason": "T4 retains the existing 200-verdict visibility volume claim through the same assertions as the representative T2 case. A-5000 observed 6.263449173 seconds for these assertions; Coordinator disposition 85d1b1c3-5f15-45b3-abad-5a1f091939f7 moves the volume out of T2. E-677 owns this temporary allowance."
+    },
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
       "seconds": 12.11812,
       "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity.",

@@ -1,16 +1,16 @@
-// Artifact workspace behavior through a real hub and spoke over their public frames.
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
+import { test } from 'node:test';
 import type { Artifact } from '../src/protocol.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 test('a folder has one id, a selected entry, on-demand files, and can be attached by a spoke', async t => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const source = join(root, 'notes');
@@ -39,14 +39,20 @@ test('a folder has one id, a selected entry, on-demand files, and can be attache
 });
 
 test('human and Aide artifacts live until deleted by hand, kept reports survive, and agents cannot change their artifacts', async t => {
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[artifacts]\nretention_days = 0\n');
-  let { discovery } = await startDaemon(t, root);
+  let { discovery } = await serve(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({ type: 'topic.create', title: 'Lifetime' })).value as { topic: { id: string } }).topic.id;
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  const aide = await spawnSpoke({ discover: true, cwd: root, name: 'notes-aide', role: 'aide' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const aide = await inProcessSpoke(t, { discover: true, cwd: root, name: 'notes-aide', role: 'aide' });
   t.after(() => coord.close()); t.after(() => aide.close());
   await coord.waitForPresence(['coord', 'notes-aide']);
   const request = { kind: 'note', title: 'Notes', topic, content: 'keep bytes' };
@@ -80,8 +86,8 @@ test('human and Aide artifacts live until deleted by hand, kept reports survive,
   // A changed current role cannot revoke historical Aide provenance.
   await ui.request({ type: 'role.clear', session: 'notes-aide' });
   const { cland, eventually } = await import('./harness.ts');
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await stopHub();
+  ({ discovery } = await serve(t, root));
   const restarted = await connectUi(t, discovery);
   await eventually('only the unkept report is swept', async () => {
     const entries = ((await restarted.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
@@ -98,7 +104,7 @@ test('moving absorbs a file, redirects its old chip, and follows the destination
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   const request = { kind: 'note', title: 'Notes', topic: 'general', content: 'source bytes' };
   const source = (await coord.call<{ artifact: Artifact }>('artifact.create', request)).artifact;
@@ -151,7 +157,7 @@ test('attaching a moved prompt preserves its redirect and agents attaching human
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'agents', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: Artifact }).artifact;
   const source = await make();
@@ -170,8 +176,8 @@ test('a queued attachment resolves its absorbed file when the recipient reconnec
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sender' });
-  const reader = await spawnSpoke({ discover: true, cwd: root, name: 'reader', role: 'implementer', sessionId: 'reader' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sender' });
+  const reader = await inProcessSpoke(t, { discover: true, cwd: root, name: 'reader', role: 'implementer', sessionId: 'reader' });
   t.after(() => coord.close()); t.after(() => reader.close());
   await coord.waitForPresence(['coord', 'reader']);
   await reader.close();
@@ -180,7 +186,7 @@ test('a queued attachment resolves its absorbed file when the recipient reconnec
   const sent = await coord.call<{ outcomes: { outcome: string }[] }>('send', { topic: 'agents', to: ['reader'], text: 'Queued notes', artifacts: [source.id] });
   assert.equal(sent.outcomes[0]?.outcome, 'queued');
   assert.equal((await coord.call<{ ok: boolean }>('artifact.move', { artifact: source.id, folder: folder.id, name: 'queued.md' })).ok, true);
-  const reconnect = await spawnSpoke({ discover: true, cwd: root, name: 'reader', role: 'implementer', sessionId: 'reader' });
+  const reconnect = await inProcessSpoke(t, { discover: true, cwd: root, name: 'reader', role: 'implementer', sessionId: 'reader' });
   t.after(() => reconnect.close());
   const event = await reconnect.waitForEvent(e => e.params.content === 'Queued notes');
   assert.equal(event.params.meta?.artifact_path, join(folder.path, 'queued.md'));
@@ -189,28 +195,34 @@ test('a queued attachment resolves its absorbed file when the recipient reconnec
 });
 
 test('an existing T-190 Aide draft retains protection after upgrade and author role clearing', async t => {
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[artifacts]\nretention_days = 0\n');
-  let { discovery } = await startDaemon(t, root);
+  let { discovery } = await serve(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({ type: 'topic.create', title: 'Upgrade' })).value as { topic: { id: string } }).topic.id;
-  const aide = await spawnSpoke({ discover: true, cwd: root, name: 'old-aide', role: 'aide' });
+  const aide = await inProcessSpoke(t, { discover: true, cwd: root, name: 'old-aide', role: 'aide' });
   t.after(() => aide.close());
   await aide.waitForPresence(['old-aide']);
   const draft = (await aide.call<{ artifact: Artifact }>('artifact.create', { kind: 'prompt', title: 'Existing draft', topic, status: 'draft', content: 'protected legacy bytes' })).artifact;
   await aide.close();
   await ui.request({ type: 'role.clear', session: 'old-aide' });
   const { cland, eventually } = await import('./harness.ts');
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await stopHub();
   // T-190's on-disk format records the publication role, but predates creatorKind.
   const { DatabaseSync } = await import('node:sqlite');
   const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
   try { db.prepare("update artifacts set value = json_remove(value, '$.creatorKind') where number = ?").run(Number(draft.id.slice(2))); }
   finally { db.close(); }
-  ({ discovery } = await startDaemon(t, root));
+  ({ discovery } = await serve(t, root));
   const upgraded = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   for (const tool of ['artifact.keep', 'artifact.archive']) {
     assert.equal((await coord.call<{ code: string }>(tool, { artifact: draft.id })).code, 'forbidden');
@@ -218,8 +230,8 @@ test('an existing T-190 Aide draft retains protection after upgrade and author r
   const report = (await coord.call<{ artifact: Artifact }>('artifact.create', { kind: 'note', title: 'Disposable report', topic, content: 'agent bytes' })).artifact;
   await upgraded.request({ type: 'topic.close', topic });
   await coord.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await stopHub();
+  ({ discovery } = await serve(t, root));
   const retained = await connectUi(t, discovery);
   await eventually('unprotected report swept after upgrade', async () => {
     const entries = ((await retained.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;

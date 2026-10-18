@@ -1,16 +1,16 @@
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { readFile, writeFile, rm, readdir, mkdir, symlink } from 'node:fs/promises';
+import { mkdir,readdir,readFile,rm,symlink,writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
-import { gitIn } from '../src/tracker/verdict-git.ts';
-import type { Artifact, TopicMessage } from '../src/protocol.ts';
+import { test } from 'node:test';
+import type { Artifact,TopicMessage } from '../src/protocol.ts';
+import { cland,connectUi,eventually,inProcessSpoke,projectHub,tempProject } from './harness.ts';
 
 test('a spoke creates a persistent diagram and publishes its structured chip in the topic', async (t) => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const result = await coord.call<{ ok: boolean; artifact: Artifact }>('artifact.create', { kind: 'diagram', title: 'Merge flow', content: 'graph TD\n A-->B', topic: 'general' });
@@ -27,10 +27,15 @@ test('a spoke creates a persistent diagram and publishes its structured chip in 
   assert.deepEqual((await ui.request({ type: 'artifact.list', topic: 'general' })).value, { artifacts: [a] });
 });
 
-
 test('CLI copies a file that survives source deletion and lists persistent artifacts after restart', async (t) => {
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await serve(t, root);
   const source = join(root, 'preview.html');
   await writeFile(source, '<h1>Preview</h1>');
   const result = await cland(root, 'artifact', 'create', '--kind', 'page', '--title', 'Preview', '--path', source, '--topic', 'general', '--json');
@@ -38,8 +43,8 @@ test('CLI copies a file that survives source deletion and lists persistent artif
   const a = (JSON.parse(result.stdout) as { artifact: Artifact }).artifact;
   await rm(source);
   assert.equal(await readFile(a.path, 'utf8'), '<h1>Preview</h1>');
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  await stopHub();
+  await serve(t, root);
   const list = await cland(root, 'artifact', 'list', '--topic', 'general', '--json');
   assert.equal(list.code, 0, list.stderr);
   assert.deepEqual(JSON.parse(list.stdout), { artifacts: [a] });
@@ -51,7 +56,7 @@ test('invalid artifacts are typed refusals and leave the index unchanged', async
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const valid = { kind: 'note', title: 'Note', content: 'hello', topic: 'general' };
@@ -77,12 +82,12 @@ test('all roles can share in a delivered request topic; other topics and CLI imp
   const created = await ui.request({ type: 'topic.create', title: 'Work' });
   const topic = (created.value as { topic: { id: string } }).topic.id;
   const other = (await ui.request({ type: 'topic.create', title: 'Elsewhere' })).value as { topic: { id: string } };
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   for (const role of ['implementer', 'reviewer', 'qa']) {
     const name = `role-${role}`;
-    const s = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId: `session-${role}` });
+    const s = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId: `session-${role}` });
     t.after(() => s.close());
     await s.waitForPresence([name, 'coord']);
     const request = { kind: 'note', title: role, content: 'result', topic };
@@ -109,7 +114,7 @@ test('an Implementer may share in its claimed item topic without a mention', asy
   const item = await cland(root, 'task', 'create', '--size', 'M', 'Own work', '--assignee', 'impl', '--json');
   const id = JSON.parse(item.stdout).item.id;
   const topic = (await ui.request({ type: 'topic.create', title: 'Own work', item: id })).value as { topic: { id: string } };
-  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer' });
   t.after(() => impl.close());
   await impl.waitForPresence(['impl']);
   await impl.call('task.claim', { id });
@@ -123,7 +128,7 @@ test('artifact publications use send size and rate limits, rolling back files an
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nrate_limit_max = 2\nrate_limit_window_minutes = 1\nmax_text_bytes = 64\n');
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const request = { kind: 'note', title: 'Result', content: 'x'.repeat(10000), topic: 'general' };
@@ -147,7 +152,7 @@ test('prompt drafts send text at the byte cap and attach above it, with persiste
   await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nmax_text_bytes = 64\n');
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   for (const [content, attached] of [['x'.repeat(64), false], ['x'.repeat(65), true], ['é'.repeat(32), false], ['é'.repeat(32) + 'x', true]] as const) {
@@ -170,8 +175,8 @@ test('spoke send attaches several artifacts and refuses unknown, foreign and mis
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer' });
   t.after(() => coord.close());
   t.after(() => impl.close());
   await coord.waitForPresence(['coord', 'impl']);
@@ -246,30 +251,6 @@ test('an attachment pointer also fits a cap smaller than its usual heading', asy
   assert.equal(message.text, 'P');
   assert.equal(message.artifacts?.[0]?.id, a.id, 'the attachment still identifies the prompt');
 });
-test('human promotes artifact bytes into the repo without changing Git and refuses confined or occupied paths', async (t) => {
-  const root = await tempProject(t);
-  const git = gitIn(root);
-  assert.equal(await git(['init', '-q', '-b', 'main']), '');
-  await git(['config', 'user.name', 'Test']);
-  await git(['config', 'user.email', 'test@example.com']);
-  await writeFile(join(root, 'base'), 'base');
-  await git(['add', 'base']);
-  await git(['commit', '-qm', 'base']);
-  const head = await git(['rev-parse', 'HEAD']);
-  const index = await git(['ls-files', '--stage']);
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  const made = await ui.request({ type: 'artifact.create', kind: 'note', title: 'Design', content: '# Design', topic: 'general' });
-  const a = (made.value as { artifact: Artifact }).artifact;
-  const result = await cland(root, 'artifact', 'promote', a.id, 'docs/design.md', '--json');
-  assert.equal(result.code, 0, result.stderr);
-  assert.equal(await readFile(join(root, 'docs/design.md'), 'utf8'), '# Design');
-  assert.equal(JSON.parse(result.stdout).artifact.promoted, 'docs/design.md');
-  assert.equal(await git(['rev-parse', 'HEAD']), head);
-  assert.equal(await git(['ls-files', '--stage']), index);
-  assert.match((await cland(root, 'artifact', 'list')).stdout, /promoted: docs\/design.md/);
-  assert.equal((await cland(root, 'artifact', 'promote', a.id, 'docs/again.md')).code, 1);
-});
 
 test('closing topics or bound items archives artifacts; reopening restores files and promotion exempts them', async (t) => {
   const root = await tempProject(t);
@@ -296,10 +277,16 @@ test('closing topics or bound items archives artifacts; reopening restores files
 });
 
 test('zero-day retention on restart removes only archived files and keeps deleted index entries', async (t) => {
+  let stopHub = async () => {};
+  const serve = async (...args: Parameters<typeof projectHub>) => {
+    const hub = await projectHub(...args);
+    stopHub = hub.stop;
+    return hub;
+  };
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[artifacts]\nretention_days = 0\n');
-  let { discovery } = await startDaemon(t, root);
+  let { discovery } = await serve(t, root);
   const ui = await connectUi(t, discovery);
   const topic = ((await ui.request({ type: 'topic.create', title: 'Archive' })).value as { topic: { id: string } }).topic.id;
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
@@ -313,8 +300,8 @@ test('zero-day retention on restart removes only archived files and keeps delete
   const open = await create('general');
   assert.equal((await cland(root, 'artifact', 'promote', promoted.id, 'docs/keep.md')).code, 0);
   await ui.request({ type: 'topic.close', topic });
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  ({ discovery } = await startDaemon(t, root));
+  await stopHub();
+  ({ discovery } = await serve(t, root));
   const restarted = await connectUi(t, discovery);
   await eventually('archived file deleted in background', async () => {
     const entries = ((await restarted.request({ type: 'artifact.list' })).value as { artifacts: Artifact[] }).artifacts;
@@ -360,7 +347,7 @@ test('promotion is granted to the Coordinator from its shell and refused to the 
   for (const role of ['implementer', 'reviewer', 'qa', 'coordinator']) {
     const name = `promoter-${role}`;
     const sessionId = `promote-${role}`;
-    const s = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId });
+    const s = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId });
     t.after(() => s.close());
     await s.waitForPresence([name]);
     const owned = role === 'coordinator' ? (await s.call<{ artifact: Artifact }>('artifact.create', { kind: 'note', title: 'Own note', topic: 'general', content: 'bytes' })).artifact : a;

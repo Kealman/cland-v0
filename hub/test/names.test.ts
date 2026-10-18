@@ -1,17 +1,18 @@
-import { test } from 'node:test';
+// T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
-import { startHub, spawnSpoke, sleep, waitForAbsence, type Session } from './harness.ts';
+import { test } from 'node:test';
 import type { Hub } from '../src/hub/server.ts';
+import { inProcessSpoke, startHub, waitForAbsence, type Session } from './harness.ts';
 
-test('a session with no requested name gets session-<n> with the lowest n no session has held, and a freed name stays with its session', async () => {
+test('a session with no requested name gets session-<n> with the lowest n no session has held, and a freed name stays with its session', async (t) => {
   const hub = await startHub();
-  const one = await spawnSpoke({ hub, sessionId: 'sess-1' });
-  const two = await spawnSpoke({ hub, sessionId: 'sess-2' });
+  const one = await inProcessSpoke(t, { hub, sessionId: 'sess-1' });
+  const two = await inProcessSpoke(t, { hub, sessionId: 'sess-2' });
   try {
     await one.waitForPresence(['session-1', 'session-2']);
     await one.close();
     await waitForAbsence(two, 'session-1');
-    const three = await spawnSpoke({ hub, sessionId: 'sess-3' });
+    const three = await inProcessSpoke(t, { hub, sessionId: 'sess-3' });
     await three.waitForPresence(['session-2', 'session-3']); // session-1 belongs to sess-1, offline or not
     assert.equal((await three.call<{ me: string }>('who')).me, 'session-3');
     await three.close();
@@ -21,11 +22,11 @@ test('a session with no requested name gets session-<n> with the lowest n no ses
   }
 });
 
-test('a requested name that is live in ANOTHER session is refused, and the second spoke takes a generated one after its retries', async () => {
+test('a requested name that is live in ANOTHER session is refused, and the second spoke takes a generated one after its retries', async (t) => {
   const hub = await startHub();
-  const first = await spawnSpoke({ hub, name: 'rate-cache', sessionId: 'sess-first' });
+  const first = await inProcessSpoke(t, { hub, name: 'rate-cache', sessionId: 'sess-first' });
   await first.waitForPresence(['rate-cache']); // the first is on the hub before the second asks for its name
-  const second = await spawnSpoke({ hub, name: 'rate-cache', sessionId: 'sess-second' });
+  const second = await inProcessSpoke(t, { hub, name: 'rate-cache', sessionId: 'sess-second' });
   try {
     await second.waitForPresence(['rate-cache', 'session-1'], 10_000);
     const who = await second.call<{ me: string; note?: string }>('who');
@@ -39,11 +40,11 @@ test('a requested name that is live in ANOTHER session is refused, and the secon
   }
 });
 
-test('a reserved or malformed requested name is refused with the reason, and the spoke falls back to a generated one', async () => {
+test('a reserved or malformed requested name is refused with the reason, and the spoke falls back to a generated one', async (t) => {
   const hub = await startHub({ reservedNames: ['human'] });
-  const reserved = await spawnSpoke({ hub, name: 'human', sessionId: 'sess-r' });
-  const role = await spawnSpoke({ hub, name: 'reviewer', sessionId: 'sess-role' });
-  const bad = await spawnSpoke({ hub, name: 'Not A Name!', sessionId: 'sess-bad' });
+  const reserved = await inProcessSpoke(t, { hub, name: 'human', sessionId: 'sess-r' });
+  const role = await inProcessSpoke(t, { hub, name: 'reviewer', sessionId: 'sess-role' });
+  const bad = await inProcessSpoke(t, { hub, name: 'Not A Name!', sessionId: 'sess-bad' });
   try {
     await reserved.waitForPresence(['session-1', 'session-2', 'session-3']);
     // each spoke's own calls once it is connected (the hub lists a session before its spoke read the welcome)
@@ -62,23 +63,23 @@ test('a reserved or malformed requested name is refused with the reason, and the
 // T-51: a harness may run more than one spoke for one session (Codex starts one per thread of its app-server; an
 // MCP reconnect leaves the old socket standing). Closing the older one left the harness calling tools on a spoke that
 // refused them for good.
-test('a second spoke of the same session joins it: both are answered as the session, deliveries go to the newest, and to the one that is left when it goes', async () => {
+test('a second spoke of the same session joins it: both are answered as the session, deliveries go to the newest, and to the one that is left when it goes', async (t) => {
   const hub = await startHub();
-  const first = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
+  const first = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const witness = await inProcessSpoke(t, { hub, name: 'witness', sessionId: 'sess-w' });
   let second: Session | null = null;
   try {
     await first.waitForPresence(['alpha']);
     await witness.waitForPresence(['alpha', 'witness']);
     await first.call('status', { text: 'mid-task' });
-    second = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
+    second = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
     await second.waitForPresence(['alpha', 'witness']);
     const who = await second.call<{ me: string; sessions: Array<{ name: string; status: string | null }> }>('who');
     assert.equal(who.me, 'alpha', 'the second spoke is the session: its name, not a generated one');
     assert.deepEqual(who.sessions.filter((d) => d.name === 'alpha').map((d) => d.status), ['mid-task'], 'one session, with the status it had');
 
     // the first spoke still stands and still is the session: its calls are answered, and what it sets is the session's
-    await sleep(300);
+
     const still = await first.call<{ ok: boolean; me?: string; error?: string }>('who');
     assert.equal(still.ok, true, still.error);
     assert.equal(still.me, 'alpha');
@@ -109,18 +110,18 @@ test('a second spoke of the same session joins it: both are answered as the sess
   }
 });
 
-test('a spoke refused name-in-use runs generated while the holder lives, and gets its name again once the holder is gone', async () => {
+test('a spoke refused name-in-use runs generated while the holder lives, and gets its name again once the holder is gone', async (t) => {
   const hub = await startHub();
-  const holder = await spawnSpoke({ hub, name: 'impl-1', sessionId: 'sess-other' });
+  const holder = await inProcessSpoke(t, { hub, name: 'impl-1', sessionId: 'sess-other' });
   await holder.waitForPresence(['impl-1']);
-  let mine = await spawnSpoke({ hub, name: 'impl-1', sessionId: 'sess-mine' });
+  let mine = await inProcessSpoke(t, { hub, name: 'impl-1', sessionId: 'sess-mine' });
   try {
     await mine.waitForPresence(['session-1'], 10_000); // after NAME_RETRIES refusals of the requested name
     assert.equal((await mine.call<{ me: string }>('who')).me, 'session-1');
     await mine.close();
     await holder.close();
     // the holder is gone (its close may still be in flight — the retries cover that): the next start is impl-1 again
-    mine = await spawnSpoke({ hub, name: 'impl-1', sessionId: 'sess-mine' });
+    mine = await inProcessSpoke(t, { hub, name: 'impl-1', sessionId: 'sess-mine' });
     await mine.waitForPresence(['impl-1'], 10_000);
     assert.equal((await mine.call<{ me: string }>('who')).me, 'impl-1');
   } finally {
@@ -130,10 +131,10 @@ test('a spoke refused name-in-use runs generated while the holder lives, and get
   }
 });
 
-test('rename claims a new name under the rules, and the old name stops resolving', async () => {
+test('rename claims a new name under the rules, and the old name stops resolving', async (t) => {
   const hub = await startHub();
-  const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a' });
-  const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b' });
+  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a' });
+  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b' });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.waitForPresence(['alpha', 'beta']);
@@ -161,10 +162,10 @@ test('rename claims a new name under the rules, and the old name stops resolving
   }
 });
 
-test("a new unnamed session never takes an offline session's generated name, and never sees what was queued for it", async () => {
+test("a new unnamed session never takes an offline session's generated name, and never sees what was queued for it", async (t) => {
   const hub = await startHub();
-  const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
-  let first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+  const witness = await inProcessSpoke(t, { hub, name: 'witness', sessionId: 'sess-w' });
+  let first = await inProcessSpoke(t, { hub, sessionId: 'sess-first' });
   let newcomer: Session | null = null;
   try {
     await first.waitForPresence(['session-1']);
@@ -174,16 +175,16 @@ test("a new unnamed session never takes an offline session's generated name, and
     const sent = await witness.call<{ outcomes: Array<{ outcome: string }> }>('send', { to: ['session-1'], text: 'for the first session only' });
     assert.equal(sent.outcomes[0]?.outcome, 'queued');
 
-    newcomer = await spawnSpoke({ hub, sessionId: 'sess-newcomer' });
+    newcomer = await inProcessSpoke(t, { hub, sessionId: 'sess-newcomer' });
     await newcomer.waitForPresence(['session-2']);
     assert.equal((await newcomer.call<{ me: string }>('who')).me, 'session-2', 'the offline name stays with its session');
     const history = await newcomer.call<{ messages: unknown[] }>('history');
     assert.deepEqual(history.messages, [], "no history of another session's name");
-    await sleep(100);
+    await newcomer.call('who');
     assert.equal(newcomer.events.length, 0, 'nothing queued for session-1 reached the newcomer');
 
     // the first session comes back with no name requested: the hub knows it by its session id
-    first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+    first = await inProcessSpoke(t, { hub, sessionId: 'sess-first' });
     await first.waitForPresence(['session-1']);
     await first.waitForEvent((e) => e.params.content === 'for the first session only');
     assert.equal((await first.call<{ me: string }>('who')).me, 'session-1');
@@ -195,10 +196,10 @@ test("a new unnamed session never takes an offline session's generated name, and
   }
 });
 
-test('a generated name a session renamed away from is never handed to a new session, which sees none of its history', async () => {
+test('a generated name a session renamed away from is never handed to a new session, which sees none of its history', async (t) => {
   const hub = await startHub();
-  const witness = await spawnSpoke({ hub, name: 'witness', sessionId: 'sess-w' });
-  const first = await spawnSpoke({ hub, sessionId: 'sess-first' });
+  const witness = await inProcessSpoke(t, { hub, name: 'witness', sessionId: 'sess-w' });
+  const first = await inProcessSpoke(t, { hub, sessionId: 'sess-first' });
   let newcomer: Session | null = null;
   try {
     await witness.waitForPresence(['witness', 'session-1']);
@@ -208,7 +209,7 @@ test('a generated name a session renamed away from is never handed to a new sess
     await first.call('send', { to: ['witness'], text: 'from the first session' });
     assert.deepEqual(await first.call('rename', { name: 'alpha' }), { ok: true, name: 'alpha' });
 
-    newcomer = await spawnSpoke({ hub, sessionId: 'sess-newcomer' });
+    newcomer = await inProcessSpoke(t, { hub, sessionId: 'sess-newcomer' });
     await newcomer.waitForPresence(['alpha', 'session-2']);
     assert.equal((await newcomer.call<{ me: string }>('who')).me, 'session-2', 'session-1 appears in the history: it is never reused');
     const history = await newcomer.call<{ messages: Array<{ text: string }> }>('history');
@@ -221,12 +222,12 @@ test('a generated name a session renamed away from is never handed to a new sess
   }
 });
 
-test('an unnamed spoke keeps its accepted name across reconnects, even to a hub that lost its memory', async () => {
+test('an unnamed spoke keeps its accepted name across reconnects, even to a hub that lost its memory', async (t) => {
   const hub = await startHub();
   const port = hub.port;
-  const other = await spawnSpoke({ hub, sessionId: 'sess-other' });
+  const other = await inProcessSpoke(t, { hub, sessionId: 'sess-other' });
   await other.waitForPresence(['session-1']);
-  const spoke = await spawnSpoke({ hub, sessionId: 'sess-mine' });
+  const spoke = await inProcessSpoke(t, { hub, sessionId: 'sess-mine' });
   let second: Hub | null = null;
   try {
     await spoke.waitForPresence(['session-1', 'session-2']);
