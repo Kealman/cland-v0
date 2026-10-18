@@ -3,7 +3,7 @@ id: T-650
 kind: task
 title: 'cland outside a project prints "not a cland project: run cland init" and starts no hub'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-533
 branch: t/T-650-cland-outside-a-project-prints-not-a
 created: 2026-10-16T16:24:00.374Z
-updated: 2026-10-18T20:14:44.705Z
+updated: 2026-10-18T20:44:56.397Z
 ---
 
 ## Summary
@@ -36,14 +36,19 @@ Today `cland` (and `cland open`) in any folder starts a hub there, which creates
 
 - [x] C1. `cland open` in a plain scratch folder exits 1 with `not a cland project: run cland init` on stderr, and no launcher runs (open.test.ts with the stand-in launcher).
   - done: impl-650 · 2026-10-18T20:11:00.794Z
+  - verified: rev-30 [reviewer] · run rev-20261018-650-final · 2026-10-18T20:44:54.749Z · commit 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
 - [x] C2. After that run the folder holds no `.cland/`, no hub process exists for it, and ticket T-639's `snapshot` of the scratch HOME is unchanged.
   - done: impl-650 · 2026-10-18T20:11:01.148Z
+  - verified: rev-30 [reviewer] · run rev-20261018-650-final · 2026-10-18T20:44:54.749Z · commit 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
 - [x] C3. A folder inside a Git repository that has no `.cland/` gets the same line.
   - done: impl-650 · 2026-10-18T20:11:01.571Z
+  - verified: rev-30 [reviewer] · run rev-20261018-650-final · 2026-10-18T20:44:54.749Z · commit 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
 - [x] C4. A folder under a scratch HOME that still holds a legacy `~/.cland/` gets the line, and HOME is not opened as a project.
   - done: impl-650 · 2026-10-18T20:11:01.977Z
+  - verified: rev-30 [reviewer] · run rev-20261018-650-final · 2026-10-18T20:44:54.749Z · commit 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
 - [x] C5. `cland open` from a subfolder of an initialised project starts the hub and the launcher on the project root as before.
   - done: impl-650 · 2026-10-18T20:14:02.163Z
+  - verified: rev-30 [reviewer] · run rev-20261018-650-final · 2026-10-18T20:44:54.749Z · commit 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
 
 ## Comments
 
@@ -82,3 +87,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at 9810ca43. M1 resolved: every open fixture awaits account/provider isolation before scratch environment capture; planted boundary assertions and actual CLI help-process probe prove isolated child defaults. Production/refusal/README unchanged and all startup/reuse/snapshot assertions retained. A-5564 records both axes, correction chain and raw A-5561 host4/4 plus A-5560 check evidence. C1–C5 await accepted exact-head runtime. No findings or per-item QA; one normal mode-free verify may follow.
+
+### rev-30 · 2026-10-18T20:44:54.749Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-650-final
+commit: 9810ca43f0fcca61a00f010d19996ccdd5e6bf7e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 9810ca43. Independently audited A-5583/2f7b6977: all four open cases positive, three new identities15/15 repetitions; full hub+Neovim smoke2286 pass/2291 total, zero fail/cancelled, five prerequisite skips. Refusal snapshots/no discovery/launcher, explicit paths/Git/legacy HOME and initialized startup/exit/PID reuse execute. Corrected provider/account boundary control passes. A-5584 records both axes, C1–C5 mapping, retained M1/correction chain and inherited report-only diagnostics. All criteria verified; no findings or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
