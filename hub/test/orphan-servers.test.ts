@@ -446,12 +446,31 @@ test('doctor --fix preserves a live hub’s server while its launch has no proce
 test('doctor --fix lets a foreground hub for a deleted project stop cleanly without recreating its directory', async t => {
   const scope = await tempProject(t, 'cland-doctor-scope-');
   const root = await tempProject(t, 'live-', scope), removed = await tempProject(t, 'removed-', scope);
+  // T3: the actual child's exit status distinguishes graceful shutdown from a
+  // doctor's forced reap. Delay signal dispatch beyond the old one-second grace
+  // to reproduce a hub that gets scheduling time only after that window.
+  const preload = join(scope, 'delayed-signal.mjs');
+  await writeFile(preload, `
+const on = process.on;
+process.on = function(signal, handler) {
+  if (signal === 'SIGTERM') return on.call(this, signal, (...args) => {
+    process.stderr.write('delayed SIGTERM received\\n');
+    setTimeout(() => { // Intentional scheduling fault, not an observation wait.
+      process.stderr.write('delayed SIGTERM delivered\\n');
+      handler(...args);
+    }, 1500);
+  });
+  return on.call(this, signal, handler);
+};
+`);
   const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
-  const child = spawn(process.execPath, [cli, 'hub', 'serve'], { cwd: removed, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--import', preload, cli, 'hub', 'serve'], { cwd: removed, stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   const exited = Promise.withResolvers<{ code: number | null; signal: NodeJS.Signals | null }>();
   child.once('error', exited.reject);
   child.once('exit', (code, signal) => exited.resolve({ code, signal }));
+  let stdioClosed = false;
+  child.once('close', () => { stdioClosed = true; });
   let stderr = '';
   child.stderr.setEncoding('utf8'); child.stderr.on('data', chunk => { stderr += chunk; });
   child.stdout.resume();
@@ -462,8 +481,11 @@ test('doctor --fix lets a foreground hub for a deleted project stop cleanly with
   await rm(removed, { recursive: true, maxRetries: 10, retryDelay: 50 });
   const fixed = await clandWithEnv(root, { CLAND_TEST_ORPHAN_ROOT: scope }, 'doctor', '--fix', '--json');
   assert.match(fixed.stdout, new RegExp(`ended pid ${child.pid}`));
+  await eventually('foreground hub exit receipt', () => child.exitCode !== null || child.signalCode !== null ? true : undefined);
   const result = await exited.promise;
+  await eventually('foreground hub stdio close receipt', () => stdioClosed ? true : undefined);
   assert.deepEqual(result, { code: 0, signal: null }, stderr);
+  assert.match(stderr, /delayed SIGTERM delivered/, 'the delayed handler ran before exit');
   assert.doesNotMatch(stderr, /ENOENT|unhandledRejection/);
   await assert.rejects(readFile(join(removed, '.cland', 'hub.lock')), { code: 'ENOENT' });
 });

@@ -250,7 +250,12 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
       return ![...tree].some(pid => protectedPids.has(pid));
     };
     let terminated = false;
-    if (await endProcess({ pid: candidate.process.pid, pidStarted: candidate.process.started }, entry => { if (entry.event === 'harness-ended') terminated = true; }, 1000, undefined, { deadline, canSignal, claim })) {
+    // Hubs drain tracker work (itself allowed two seconds), watchers and logs.
+    // Give them the normal termination grace rather than the short server sweep
+    // window: a delayed SIGTERM callback must not turn a clean stop into SIGKILL.
+    // The shared sweep deadline still bounds inspection and termination.
+    const graceMs = kind === 'hub' ? 5000 : 1000;
+    if (await endProcess({ pid: candidate.process.pid, pidStarted: candidate.process.started }, entry => { if (entry.event === 'harness-ended') terminated = true; }, graceMs, undefined, { deadline, canSignal, claim })) {
       if (!terminated) return; // another owner settled it; only that owner reports completion
       log({ event: 'orphan-ended', pid: candidate.process.pid, kind: candidate.kind, root: candidate.root, reason: candidate.reason });
       ended.push(candidate);
