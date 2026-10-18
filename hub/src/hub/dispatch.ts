@@ -728,7 +728,9 @@ export class Dispatcher {
     const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
     const outcome = job.outcome!;
     const interrupted = interruptionLines(log);
-    const progress = interrupted.length ? `\n${interrupted.join('\n')}` : '';
+    const selectionFallback = job.selection?.fallback ?? (job.selection?.reason.startsWith('fetch/diff unavailable:') ? `selection fallback: full; ${job.selection.reason}` : undefined);
+    const fallback = selectionFallback ? `\n${selectionFallback}` : '';
+    const progress = `${fallback}${interrupted.length ? `\n${interrupted.join('\n')}` : ''}`;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';

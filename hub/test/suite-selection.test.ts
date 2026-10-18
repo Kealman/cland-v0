@@ -19,7 +19,7 @@ test('Neovim implementation changes select Neovim plus hub smoke', () => {
   assert.equal(chooseSuiteMode(['nvim/lua/cland/thread.lua', 'nvim/test/thread.test.ts']), 'nvim-only');
 });
 
-for (const path of ['hub/src/protocol.ts', 'hub/src/hub/store.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json', 'hub/src/cli/role.ts', 'hub/src/cli/roles.ts', 'hub/src/tracker/tracker.ts', 'hub/src/hub/visibility.ts']) {
+for (const path of ['hub/src/protocol.ts', 'hub/src/hub/store.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-dev-fetch.ts', 'hub/src/suite-shards.ts', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json', 'hub/src/cli/role.ts', 'hub/src/cli/roles.ts', 'hub/src/tracker/tracker.ts', 'hub/src/hub/visibility.ts']) {
   test(`${path} is shared infrastructure and forces full`, () => assert.equal(chooseSuiteMode([path]), 'full'));
 }
 
@@ -309,13 +309,15 @@ test('interpolated dynamic imports fail closed to full admission', async t => {
   assert.match(selection.reason, /interpolated dynamic import cannot be resolved safely/);
 });
 
-test('empty diffs and failed fetches run full with their reason, never using a stale dev ref', async t => {
+test('empty diffs remain full while failed fetch reports use of last known dev', async t => {
   const { root, git } = await gitFixture(t);
   assert.match((await selectPackageSuite(root)).reason, /empty diff/);
   await git('remote', 'set-url', 'origin', join(root, 'missing.git'));
   const selected = await selectPackageSuite(root);
   assert.equal(selected.mode, 'full');
-  assert.match(selected.reason, /fetch\/diff unavailable/);
+  assert.match(selected.reason, /empty diff/);
+  assert.match(selected.fallback!, /last known origin\/dev.*fetch unavailable:/);
+  assert.equal(selected.fetchedDev, undefined);
   assert.equal(selected.loadGate, true, 'failed fetch does not bypass the task load gate');
 });
 

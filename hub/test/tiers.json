@@ -325,6 +325,7 @@
     "hub/test/suite-runner-contract.test.ts": "T3",
     "hub/test/suite-runner.test.ts": "T3",
     "hub/test/suite-scheduling.test.ts": "T1",
+    "hub/test/suite-selection-fetch.test.ts": "T3",
     "hub/test/suite-selection-report.test.ts": "T3",
     "hub/test/suite-selection.test.ts": "T3",
     "hub/test/suite-soak-component.test.ts": "T2",

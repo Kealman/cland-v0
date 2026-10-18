@@ -8,6 +8,22 @@ import { join } from 'node:path';
 import type { Message } from '../src/protocol.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 
+for (const cap of [12000, 768, 384]) test(`selection fallback is visible before summaries at the ${cap}-byte result cap`, async t => {
+  const f = await fixture(t, { machine: 'scripted', config: `[hygiene]\nmax_text_bytes = ${cap}\n` });
+  f.candidate.selection = { mode: 'full', files: [], reason: 'fetch unavailable', fallback: 'selection fallback: full; fetch unavailable: fatal: cannot lock ref' };
+  const submitted = await f.launch();
+  await f.machine.started(submitted.id);
+  await f.clock.advance(1000);
+  const report = await f.result(submitted.id);
+  assert.equal(report.text.split('\n')[2], f.candidate.selection.fallback);
+  assert.ok(Buffer.byteLength(report.text) <= cap);
+  const cached = await f.launch();
+  assert.equal(cached.cached?.run, submitted.id);
+  const reused = await f.result(cached.id);
+  assert.equal(reused.text.split('\n')[2], f.candidate.selection.fallback);
+  assert.ok(Buffer.byteLength(reused.text) <= cap);
+});
+
 test('scripted remote verification acquires, delivers, starts, collects and releases on the hub clock', async t => {
   const f = await fixture(t, { machine: 'scripted' });
   assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);

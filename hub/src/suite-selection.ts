@@ -5,9 +5,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, posix, relative, resolve } from 'node:path';
 import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
+import { fetchSuiteDev, selectionFailure } from './suite-dev-fetch.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -38,7 +39,7 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
     const omitted = items.length - shown.length;
     return `${JSON.stringify(shown)}${omitted ? `; ${omitted} more (${items.length} total; full list in log)` : ''}`;
   };
-  return `mode ${selection.mode}; ${selection.reason}; deciding files ${list(selection.files)}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.nvimTests ? `; Neovim tests ${list(selection.nvimTests)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
+  return `mode ${selection.mode}; ${selection.reason}${selection.fallback && selection.fallback !== selection.reason ? `; ${selection.fallback}` : ''}; deciding files ${list(selection.files)}${selection.functions ? `; deciding functions ${list(selection.functions)}` : ''}${selection.nvimTests ? `; Neovim tests ${list(selection.nvimTests)}` : ''}${selection.coverage ? `; coverage ${selection.coverage.artifact} at ${selection.coverage.head}` : ''}`;
 }
 
 /** Cache receipts are reusable only for identical effective package/test sets. */
@@ -67,7 +68,7 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
     if (['hub/src/test-lint-policy.ts', 'hub/src/hub/suite-candidate.ts'].includes(path)) return full(`suite infrastructure ${path}`);
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
-    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-load-diagnostics.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
+    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-load-diagnostics.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-dev-fetch.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
   }
   const nvim = paths.filter(path => path.startsWith('nvim/')).length;
   if (nvim && nvim !== paths.length) return full('mixed nvim and non-nvim paths');
@@ -145,21 +146,34 @@ export async function nvimHubImports(cwd: string, files?: readonly string[]): Pr
 const exec = promisify(execFile);
 export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 'auto', env: NodeJS.ProcessEnv = process.env): Promise<SuiteSelection> {
   let task = false;
+  let dev: string | undefined;
+  let fallback: string | undefined;
   const select = async (): Promise<SuiteSelection> => {
     let files: string[] = [];
     try {
-      const git = async (...args: string[]) => (await exec('git', args, { cwd, env, timeout: 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
+      const git = async (...args: string[]) => (await exec('git', args, { cwd, env: { ...env, GIT_TERMINAL_PROMPT: '0' }, timeout: args[0] === 'fetch' ? 5000 : 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
       const branch = (await git('branch', '--show-current')).trim();
       task = branch.startsWith('t/');
-      // Never select against a stale dev ref, even if an old origin/dev exists.
-      await git('fetch', 'origin', '+refs/heads/dev:refs/remotes/origin/dev');
+      try { dev = await fetchSuiteDev(cwd, git); }
+      catch (error) {
+        const cause = selectionFailure(error, env);
+        try {
+          const known = (await git('rev-parse', '--verify', 'refs/remotes/origin/dev^{commit}')).trim();
+          await git('merge-base', known, 'HEAD');
+          dev = known;
+          fallback = `selection fallback: last known origin/dev ${known}; fetch unavailable: ${cause}`;
+        } catch {
+          fallback = `selection fallback: full; fetch unavailable: ${cause}; no usable origin/dev merge base`;
+          return { mode: 'full', files, reason: fallback };
+        }
+      }
       const paths = await Promise.all([
-        git('diff', '--name-only', '-z', '--no-renames', 'origin/dev...HEAD'),
+        git('diff', '--name-only', '-z', '--no-renames', `${dev}...HEAD`),
         git('diff', '--name-only', '-z', '--no-renames', 'HEAD'),
         git('ls-files', '--others', '--exclude-standard', '-z'),
       ]);
       files = [...new Set(paths.flatMap(output => output.split('\0').filter(Boolean)))].sort();
-      if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full', fetchedDev: (await git('rev-parse', 'origin/dev')).trim() };
+      if (branch === 'dev') return { mode: 'full', files, reason: 'integrated dev always runs full' };
       if (requested === 'all') return { mode: 'full', files, reason: '--all / all forces full' };
       const importers = await nvimHubImporters(cwd);
       const { mode, reason } = chooseSuite(files, Object.keys(importers));
@@ -170,17 +184,20 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
         const nvimReason = nvimTests ? '; Neovim importers plus smoke' : '';
         const text = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
         const config = text === null ? defaultConfig('suite') : parseConfig(text, 'suite', env);
-        const selected = await coverageSelection(cwd, files, (await git('merge-base', 'origin/dev', 'HEAD')).trim(), git, config.verification.coverageMaxAgeMs);
+        const selected = await coverageSelection(cwd, files, (await git('merge-base', dev, 'HEAD')).trim(), git, config.verification.coverageMaxAgeMs);
         if ('fallback' in selected && selected.fallback.startsWith('coverage shared infrastructure')) return { mode, files, reason: `${reason}; ${selected.fallback}` };
         if ('fallback' in selected) return { mode, files, reason: `${reason}; ${selected.fallback}${nvimReason}`, ...(nvimTests ? { nvimTests } : {}) };
         return { mode: 'hub-selected', files, reason: `function coverage selects hub tests${selected.notes.length ? '; ' + selected.notes.join('; ') : ''}${nvimReason}`, tests: [...new Set([...selected.tests, ...HUB_SMOKE])].sort(), functions: selected.functions, coverage: selected.map, nvimFull: false, ...(nvimTests ? { nvimTests } : {}) };
       }
       return { mode, files, reason };
     } catch (error) {
-      return { mode: 'full', files, reason: `fetch/diff unavailable: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}` };
+      fallback = `selection fallback: full; fetch/diff unavailable: ${selectionFailure(error, env)}`;
+      return { mode: 'full', files, reason: fallback };
     }
   };
   const selection = await select();
+  if (dev && !fallback) selection.fetchedDev = dev;
+  if (fallback) selection.fallback = fallback;
   if (task) selection.loadGate = true;
   return selection;
 }
