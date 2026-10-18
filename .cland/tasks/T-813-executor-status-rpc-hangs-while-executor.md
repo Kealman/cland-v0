@@ -3,7 +3,7 @@ id: T-813
 kind: task
 title: executor status RPC hangs while executor reconcile or lease recovery is deferred
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-526
 branch: t/T-813-executor-status-rpc-hangs-while-executor
 created: 2026-10-18T16:28:28.718Z
-updated: 2026-10-18T18:12:07.989Z
+updated: 2026-10-18T18:45:17.609Z
 ---
 
 ## Summary
@@ -33,14 +33,19 @@ Since about 16:23Z on 2026-10-18, `cland executor status` on the serving hub (pi
 
 - [x] C1. `cland executor status` answers within 2 s while a reconcile, lease recovery or provider sweep is in progress or deferred, and reports that state.
   - done: impl-813 · 2026-10-18T16:45:05.454Z
+  - verified: rev-30 [reviewer] · run rev-20261018-813-final · 2026-10-18T18:45:15.811Z · commit 805d888b0765f7cfc6174058a1c4728496b5ba83
 - [x] C2. Every provider call and lock wait in the executor reconcile, lease-recovery and sweep paths has a deadline; a regression test with a provider that never answers proves the status RPC and hub stop still finish within their bounds.
   - done: impl-813 · 2026-10-18T18:11:20.750Z
+  - verified: rev-30 [reviewer] · run rev-20261018-813-final · 2026-10-18T18:45:15.811Z · commit 805d888b0765f7cfc6174058a1c4728496b5ba83
 - [x] C3. The inspect tick does no work for a finished job whose report already failed permanently (for example, a forbidden artifact.create for a role-less session): #restoreRemoteResult skips it or records a terminal state, and #save writes nothing when the jobs are unchanged; a regression test with 6 such jobs shows zero suite-jobs writes over several ticks.
   - done: impl-813 · 2026-10-18T16:45:07.358Z
+  - verified: rev-30 [reviewer] · run rev-20261018-813-final · 2026-10-18T18:45:15.811Z · commit 805d888b0765f7cfc6174058a1c4728496b5ba83
 - [x] C4. Finished jobs stop growing the suite-jobs meta blob: they are kept out of the snapshot that #save rewrites (separate rows or a bounded tail), so one save stays under 1 MB with 930 jobs in history.
   - done: impl-813 · 2026-10-18T17:16:29.095Z
+  - verified: rev-30 [reviewer] · run rev-20261018-813-final · 2026-10-18T18:45:15.811Z · commit 805d888b0765f7cfc6174058a1c4728496b5ba83
 - [x] C5. The spend-ledger lock is released on every exit path of reconcile, lease recovery and sweep (failure, deferral, timeout), and a holder never awaits work that needs the same lock; a regression test that fails reconcile mid-hold proves the next admission takes the lock within 1 s.
   - done: impl-813 · 2026-10-18T17:44:08.542Z
+  - verified: rev-30 [reviewer] · run rev-20261018-813-final · 2026-10-18T18:45:15.811Z · commit 805d888b0765f7cfc6174058a1c4728496b5ba83
 
 ## Comments
 
@@ -197,3 +202,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at 805d888b: remaining M4 resolved by forwarding only real caller/phase deadlines and bounding transport wait separately. Three deterministic inner-rejection/provenance controls retain error identity/longer explicit deadlines; never-answering and unchanged late-key cleanup assertions remain. A-5510 records both axes and reported host checks. Async release/persistence changes unchanged; C1–C5 await accepted same-head gate. No dev merge or new finding.
+
+### rev-30 · 2026-10-18T18:45:15.811Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-813-final
+commit: 805d888b0765f7cfc6174058a1c4728496b5ba83
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged 805d888b. Independently audited A-5517/1086fe94: full hub + Neovim, 2640 pass/2648 total, zero fail/cancelled, eight prerequisite skips; 17 owned ordinary controls and 85/85 repetitions pass. Previously failing native async-release, history/recovery and late-create/key cleanup controls all pass. Combined 930-job status is 2.593 ms, serving 341.710 ms, active snapshot two bytes with history retained. A-5523 records both axes, C1–C5 mapping, inherited report-only trips and all prior failures; no live-hub rollout claim. No outstanding findings; per-item QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
