@@ -1,3 +1,4 @@
+// T1: dispatcher/core/store assertions run in-process with deterministic time.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHubBase } from '../src/hub/server.ts';
@@ -6,8 +7,9 @@ test('a log drain barrier waits, drains again on repetition, and times out while
   let release!: () => void;
   let gate = new Promise<void>(resolve => { release = resolve; });
   let drains = 0;
+  // This dispatcher proof serves no project: a root would install executor sweep services.
   const hub = createHubBase({ secret: 'test', guard: { now: () => 0 }, control: {
-    status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root: '/', startedAt: '', uptimeMs: 0 }),
+    status: () => ({ pid: process.pid, port: 0, socket: '', version: 'test', root: '', startedAt: '', uptimeMs: 0 }),
     stop: () => {}, flushLogs: () => { drains++; return gate; },
   } });
   t.after(() => hub.close());

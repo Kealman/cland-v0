@@ -2,14 +2,18 @@
 // Candidate, snapshot and process facts are injected; no hub, spoke, SSH or watchdog child.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { tempProject, eventually, flushProjectLogs } from './harness.ts';
+import { projectHub, tempProject, eventually, flushProjectLogs } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { cancelAndDrain, type OwnedRemoteRun } from './remote-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { drive } from './remote-clock.ts';
+import { LocalExecutor } from '../src/executor/local.ts';
+import type { Lease, RunRef } from '../src/executor/executor.ts';
+import { warningSeverity } from '../src/hub/visibility.ts';
+import type { HubStatus } from '../src/protocol.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 
@@ -156,5 +160,84 @@ test('provider list awaits cannot turn a concurrently acquired droplet or key in
       await f.stop();
     }
   });
+});
+
+
+// Fallback policy consumes a completed local executor receipt; worker execution is T3.
+function localReceipts(t: TestContext) {
+  t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  const completed = new Set<string>();
+  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
+    await writeFile(run.result, JSON.stringify({ code: 0, finished: new Date('2026-10-16T12:00:00Z').toISOString() }));
+    completed.add(run.id);
+  });
+  return (id: string) => completed.has(id);
+}
+type Ledger = { entries: { run: string; reservation: number; cost: number | null }[] };
+const ledger = async (state: string): Promise<Ledger> => JSON.parse(await readFile(join(state, 'spend.json'), 'utf8'));
+
+test('invalid timeout margins refuse hub startup with both values', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime="15m"\nrun_timeout="6m"');
+  await assert.rejects(projectHub(t, root), /lifetime 15m.*run_timeout 6m/);
+});
+
+test('all remote admission refusals persist a local job, one warn notice and one journal event', async t => {
+  const localDone = localReceipts(t);
+  const f = await fixture(t, { machine: 'scripted' });
+  f.api.faults.create = 422; f.api.faults.echoToken = true;
+  const run = await f.launch();
+  await drive(f, eventually('fallback is durably local', async () => { const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(job => job.id === run.id)?.executor === 'local' ? true : undefined; }));
+  await f.clock.advance(1000);
+  await drive(f, eventually('local completion receipt', async () => { await f.ui.request({ type: 'suite.queue' }); return localDone(run.id) ? true : undefined; }));
+  await f.clock.advance(1000);
+  assert.match((await f.result(run.id)).text, /Executor local/);
+  const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
+  assert.equal(status.suites!.find(s => s.id === run.id)!.executor, 'local');
+  const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] }).messages;
+  const notices = history.filter(m => m.text.includes('droplet unavailable'));
+  assert.equal(notices.length, 1); assert.equal(notices[0]!.severity, 'warn');
+  assert.match(notices[0]!.text, /422/);
+  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.equal(journal.filter(r => r.event === 'verification-executor-fallback' && r.id === run.id).length, 1);
+  assert.equal(warningSeverity('inbox', { kind: 'executor-fallback' }), 'warn');
+  const events = JSON.stringify((await f.ui.request({ type: 'events.list' })).value);
+  assert.ok(events.includes('droplet unavailable')); assert.ok(events.includes('"warning":true'));
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+  assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
+});
+
+test('two protocol projects reserve against one cap and confirmed release replaces the reservation', async t => {
+  const localDone = localReceipts(t);
+  const state = await tempProject(t, 'shared-spend-');
+  const first = await fixture(t, { machine: 'scripted', script: { outcome: 'slow' }, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
+  const run = await first.launch(); await drive(first, first.machine.started(run.id));
+  assert.equal((await ledger(state)).entries[0]!.reservation, 0.0625);
+  assert.equal((await ledger(state)).entries[0]!.cost, null);
+  const second = await fixture(t, { machine: 'scripted', clock: first.clock, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
+  const refused = await second.launch();
+  await drive(second, eventually('fallback is durably local', async () => { const status = (await second.ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(job => job.id === refused.id)?.executor === 'local' ? true : undefined; }));
+  await second.clock.advance(1000);
+  await drive(second, eventually('refused project local completion receipt', async () => { await second.ui.request({ type: 'suite.queue' }); return localDone(refused.id) ? true : undefined; }));
+  await second.clock.advance(1000);
+  assert.match((await second.result(refused.id)).text, /Executor local/);
+  const history = JSON.stringify((await second.ui.request({ type: 'topic.history', topic: second.topic })).value);
+  assert.match(history, /daily spend cap \$0.063 reached/);
+  assert.equal(second.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+  first.api.faults.deleteError = 503;
+  first.machine.finish(run.id);
+  await first.clock.advance(1000);
+  await drive(first, eventually('release stays reserved', async () => (await lease(first.root)).value.state === 'releasing' ? true : undefined));
+  assert.equal((await ledger(state)).entries[0]!.cost, null);
+  first.api.faults.deleteError = 0;
+  await first.clock.advance(1000);
+  await drive(first, first.result(run.id));
+  const entry = (await ledger(state)).entries[0]!;
+  assert.ok(entry.cost! > 0 && entry.cost! < entry.reservation);
+  const status = (await second.ui.request({ type: 'executor.status' })).value as { spend: { path: string; spent: number; reserved: number; cap: number } };
+  assert.equal(status.spend.path, join(state, 'spend.json'));
+  assert.equal(status.spend.spent, entry.cost); assert.equal(status.spend.reserved, 0); assert.equal(status.spend.cap, 0.063);
 });
 

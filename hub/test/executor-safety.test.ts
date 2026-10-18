@@ -5,12 +5,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile, rm, readdir, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { nativeProjectHub as projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
+import { nativeProjectHub as projectHub, cland, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
-import { warningSeverity } from '../src/hub/visibility.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
@@ -24,14 +23,6 @@ async function lease(root: string): Promise<{ value: DropletLease; path: string 
   const records = await Promise.all(ids.map(async id => { const path = join(dir, id, 'lease.json'); return { path, value: JSON.parse(await readFile(path, 'utf8')) as DropletLease }; }));
   return records.sort((a, b) => a.value.created.localeCompare(b.value.created)).at(-1)!;
 }
-
-test('invalid timeout margins refuse hub startup with both values', async t => {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime="15m"\nrun_timeout="6m"');
-  const refused = await clandWithEnv(root, { DIGITALOCEAN_TOKEN: '' }, 'hub', 'start');
-  assert.equal(refused.code, 1); assert.match(refused.stderr, /lifetime 15m.*run_timeout 6m/);
-});
 
 test('concurrent host processes share one reservation lock and recover a dead holder', async t => {
   const state = await tempProject(t, 'spend-lock-');
@@ -48,51 +39,6 @@ test('concurrent host processes share one reservation lock and recover a dead ho
   assert.equal(results.filter(r => r.stdout.trim() === 'reserved').length, 1);
   assert.equal(results.filter(r => r.stdout.includes('daily spend cap $1.001 reached')).length, 5);
   assert.equal((await ledger(state)).entries.length, 1);
-});
-
-test('all remote admission refusals persist a local job, one warn notice and one journal event', async t => {
-  const f = await fixture(t, { hub: projectHub, env: {} });
-  f.api.faults.create = 422; f.api.faults.echoToken = true;
-  const run = await f.launch();
-  assert.match((await f.result(run.id)).text, /Executor local/);
-  const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
-  assert.equal(status.suites!.find(s => s.id === run.id)!.executor, 'local');
-  const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] }).messages;
-  const notices = history.filter(m => m.text.includes('droplet unavailable'));
-  assert.equal(notices.length, 1); assert.equal(notices[0]!.severity, 'warn');
-  assert.match(notices[0]!.text, /422/);
-  const journal = (await readFile(join(f.root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  assert.equal(journal.filter(r => r.event === 'verification-executor-fallback' && r.id === run.id).length, 1);
-  assert.equal(warningSeverity('inbox', { kind: 'executor-fallback' }), 'warn');
-  const events = JSON.stringify((await f.ui.request({ type: 'events.list' })).value);
-  assert.ok(events.includes('droplet unavailable')); assert.ok(events.includes('"warning":true'));
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
-  assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
-});
-
-test('two protocol projects reserve against one cap and confirmed release replaces the reservation', async t => {
-  const state = await tempProject(t, 'shared-spend-');
-  const first = await fixture(t, { hub: projectHub, test: longTest, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
-  const run = await first.launch(); const machine = await first.remote(run.id);
-  assert.equal((await ledger(state)).entries[0]!.reservation, 0.0625);
-  assert.equal((await ledger(state)).entries[0]!.cost, null);
-  const second = await fixture(t, { hub: projectHub, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
-  const refused = await second.launch();
-  assert.match((await second.result(refused.id)).text, /Executor local/);
-  const history = JSON.stringify((await second.ui.request({ type: 'topic.history', topic: second.topic })).value);
-  assert.match(history, /daily spend cap \$0.063 reached/);
-  assert.equal(second.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
-  first.api.faults.deleteError = 503;
-  await writeFile(join(machine.home, 'finish'), 'done');
-  await eventually('release stays reserved', async () => (await lease(first.root)).value.state === 'releasing' ? true : undefined);
-  assert.equal((await ledger(state)).entries[0]!.cost, null);
-  first.api.faults.deleteError = 0;
-  await first.result(run.id);
-  const entry = (await ledger(state)).entries[0]!;
-  assert.ok(entry.cost! > 0 && entry.cost! < entry.reservation);
-  const status = JSON.parse((await cland(second.root, 'executor', 'status', '--json')).stdout);
-  assert.equal(status.spend.path, join(state, 'spend.json'));
-  assert.equal(status.spend.spent, entry.cost); assert.equal(status.spend.reserved, 0); assert.equal(status.spend.cap, 0.063);
 });
 
 test('the remote shell and the host deadline both end a timed-out run once and release', async t => {

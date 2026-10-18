@@ -40,14 +40,14 @@ type History = Array<{ identity: string; runs: FailureRun[]; notifiedAt?: number
 
 /** Report candidates, never verdicts. State and notice commit together so parallel
  * completions and reporter retries cannot create duplicate notices. */
-export async function reportSharedDefects(core: HubCore, job: Readonly<SuiteJob>, log: string, artifact: { id: string; path: string }, authorize: () => unknown, now = Date.now()): Promise<void> {
+export async function reportSharedDefects(core: HubCore, job: Readonly<SuiteJob>, log: string, artifact: { id: string; path: string }, authorize: () => unknown, now = Date.now(), readGit = async (cwd: string, args: string[]): Promise<string> => (await exec('git', args, { cwd, timeout: 5000, maxBuffer: 64 * 1024 })).stdout.trim()): Promise<void> {
   const cutoff = now - RETENTION;
   const at = Date.parse(job.completedAt ?? job.finished ?? '') || now;
   const eligible = /^T-\d+$/.test(job.item ?? '') && job.branch && !['dev', 'unknown', 'HEAD'].includes(job.branch) && !job.integrated && !job.cached && !job.cancelled && !job.requesterDied && job.outcome && job.outcome.code !== 0 && at >= cutoff;
   const identities = eligible ? failingTests(log) : [];
   const provenance = new Map<string, { base: string | null; lastChanged: string | null }>();
   if (identities.length) {
-    const git = async (...args: string[]) => (await exec('git', args, { cwd: job.cwd, timeout: 5000, maxBuffer: 64 * 1024 })).stdout.trim();
+    const git = (...args: string[]) => readGit(job.cwd, args);
     const base = await git('merge-base', job.selection?.fetchedDev ?? 'origin/dev', job.head).catch(() => null);
     for (const identity of identities) {
       const file = identity.split('::')[0]!;
