@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-515
 branch: t/T-810-worktree-cli-test-ts-hangs
 created: 2026-10-18T16:14:16.762Z
-updated: 2026-10-18T16:15:55.614Z
+updated: 2026-10-18T16:18:19.711Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ Four full runs today ended in a machine-phase stall or a 75 min timeout with hub
 
 - [ ] C1. The hanging case and its cause are named, from a reproduction (loop the file 50× on macOS and Linux) or from T-799's hung-test receipt.
 - [ ] C2. Every wait in the file has a bounded deadline that fails naming the case, the cause is fixed with every assertion kept, and the file passes 50/50 serially on macOS plus a green droplet verify on Linux.
+
+## Comments
+
+### impl-810 · 2026-10-18T16:18:19.711Z
+
+Baseline reproduction underway: 16 serial macOS passes under an external 180 s hard watchdog. No confirmed hang. T-799 lead reports no historical active-case/await evidence; A-5411 has declaration-ordered starts too. Coordinator decision cad64964 accepts C1 as not reproduced in 50 macOS runs if all stay green, with original attribution explicitly open; C2 will deliver named case/operation deadlines plus 50/50 fixed runs and a green Linux droplet verify.
