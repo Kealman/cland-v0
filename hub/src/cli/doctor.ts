@@ -12,16 +12,24 @@ import { VERSION } from '../version.ts';
 
 export { DOCTOR_USAGE } from './usage.ts';
 
+export type DoctorReaders = {
+  project?: import('../doctor/project.ts').ProjectReaders;
+  findOrphans?: typeof import('../orphans.ts').findOrphans;
+  sweepOrphans?: typeof import('../orphans.ts').sweepOrphans;
+};
+
 /** Local output/probe boundaries let embedders inspect the same report without replacing process globals. */
-export async function runDoctor(args: string[], cwd: string = process.cwd(), env: NodeJS.ProcessEnv = process.env, write: (text: string) => void = text => { process.stdout.write(text); }, probe: typeof run = run): Promise<number> {
+export async function runDoctor(args: string[], cwd: string = process.cwd(), env: NodeJS.ProcessEnv = process.env, write: (text: string) => void = text => { process.stdout.write(text); }, probe: typeof run = run, readers: DoctorReaders = {}): Promise<number> {
   const json = args.includes('--json');
   const [dir, extra] = args.filter((a) => !a.startsWith('--'));
   if (extra !== undefined || args.some((a) => a.startsWith('--') && a !== '--json' && a !== '--fix')) throw new Error('usage: cland doctor [dir] [--json] [--fix]');
   const root = dir === undefined ? projectRoot(cwd) : resolve(cwd, dir);
   if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
-  const { findOrphans, sweepOrphans, SweepBusy } = await import('../orphans.ts');
+  const { findOrphans: nativeFindOrphans, sweepOrphans: nativeSweepOrphans, SweepBusy } = await import('../orphans.ts');
+  const findOrphans = readers.findOrphans ?? nativeFindOrphans;
+  const sweepOrphans = readers.sweepOrphans ?? nativeSweepOrphans;
   const { checkProject } = await import('../doctor/project.ts');
-  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe), checkProject(root), checkKeys(env, probe)]);
+  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe), checkProject(root, readers.project), checkKeys(env, probe)]);
   const orphanChecks: Check[] = [];
   // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.
   const hubScopeRoot = env.CLAND_TEST_ORPHAN_ROOT;

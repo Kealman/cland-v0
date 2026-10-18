@@ -25,6 +25,7 @@ export type HubBaseOptions = CoreOptions & {
   guard?: DispatcherOptions['guard'];
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
+  git?: DispatcherOptions['git'];
   droplet?: DropletDependencies;
   verification?: DispatcherOptions['verification'];
   projectConfig?: DispatcherOptions['projectConfig'];
@@ -100,6 +101,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.env ? { env: options.env } : {}),
     ...(options.journal ? { journal: options.journal } : {}),
     ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}),
+    ...(options.git ? { git: options.git } : {}),
     ...(options.droplet ? { droplet: options.droplet } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),

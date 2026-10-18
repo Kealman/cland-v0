@@ -1,4 +1,4 @@
-// Shared on-disk doctor fixture. Executable probes are the doctor toolchain contract.
+// Shared on-disk doctor fixture: injected machine facts; executable probes live in doctor-cli.
 import { ownDirectory } from './process-cleanup.ts';
 import { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +8,8 @@ import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tempProject, type CliResult } from './harness.ts';
 import { runDoctor } from '../src/cli/doctor.ts';
-import { runInit, runUpdate } from '../src/cli/init.ts';
+import { runUpdate } from '../src/cli/init.ts';
+import { provision } from '../src/init/provision.ts';
 import { captureCli } from './cli-in-process.ts';
 
 const FAKES = fileURLToPath(new URL('./fakes/', import.meta.url));
@@ -55,7 +56,7 @@ export async function toolchain(t: TestContext, real = false): Promise<{ env: Re
   return { env, path };
 }
 
-export const doctor = (root: string, env: Record<string, string>, ...args: string[]): Promise<CliResult> => captureCli(write => runDoctor(args, root, { CLAND_TEST_ORPHAN_ROOT: root, ...env }, write, probeTools));
+export const doctor = (root: string, env: Record<string, string>, ...args: string[]): Promise<CliResult> => captureCli(write => runDoctor(args, root, { CLAND_TEST_ORPHAN_ROOT: root, ...env }, write, probeTools, { project: { started: async () => null, territoryProblems: () => null }, findOrphans: async () => [] }));
 export const update = (root: string) => captureCli(write => runUpdate([], root, write));
 
 export async function report(root: string, env: Record<string, string>): Promise<{ code: number | null; report: Report }> {
@@ -77,7 +78,8 @@ export const notOk = (r: Report) => r.checks.filter((c) => c.verdict !== 'ok').m
 
 export async function initialised(t: TestContext, env: Record<string, string>, openCode = false): Promise<string> {
   const root = await tempProject(t, 'cland-doctor-proj-');
-  const init = await captureCli(write => runInit([], root, write));
+  // This fixture needs provisioned files, not the init command's native territory contract.
+  const init = await captureCli(() => { provision(root, { territory: false }); return Promise.resolve(0); });
   assert.equal(init.code, 0, init.stderr);
   // The healthy fixture uses Codex; OpenCode's safety warnings are exercised separately.
   if (!openCode) {

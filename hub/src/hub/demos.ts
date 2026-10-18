@@ -7,6 +7,7 @@ import { DropletExecutor } from '../executor/droplet/droplet.ts';
 import { leaseDir, readLeases, writeLease, type DropletLease } from '../executor/droplet/lease.ts';
 import { Machine, shellQuote } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
+import type { Git } from '../tracker/verdict-git.ts';
 import type { Tracker } from '../tracker/tracker.ts';
 
 const hub = { id: 'hub', name: 'hub', role: null, human: true };
@@ -18,8 +19,16 @@ export class Demos {
   readonly tracker: Tracker;
   readonly executor: DropletExecutor;
   readonly #env: NodeJS.ProcessEnv;
+  readonly #git: (args: string[]) => Promise<string>;
   readonly #alert: (lease: DropletLease, text: string) => void;
-  constructor(root: string, tracker: Tracker, executor: DropletExecutor, env: NodeJS.ProcessEnv = process.env, alert: (lease: DropletLease, text: string) => void = () => {}) { this.root = root; this.tracker = tracker; this.executor = executor; this.#env = env; this.#alert = alert; }
+  constructor(root: string, tracker: Tracker, executor: DropletExecutor, env: NodeJS.ProcessEnv = process.env, alert: (lease: DropletLease, text: string) => void = () => {}, git?: Git) {
+    this.root = root; this.tracker = tracker; this.executor = executor; this.#env = env; this.#alert = alert;
+    this.#git = git ? async args => {
+      const value = await git(args);
+      if (value === null) throw new Error('demo commit is unavailable or outside dev');
+      return value;
+    } : args => territoryGitAsync(root, args, undefined, undefined, env);
+  }
   #serial<T>(work: () => Promise<T>): Promise<T> {
     const next = this.#queue.then(work); this.#queue = next.catch(() => {}); return next;
   }
@@ -54,8 +63,8 @@ export class Demos {
       if (epic.state !== 'open') throw new Error('demo needs an open epic');
       if ((await this.#leases(epic.id)).some(l => l.state !== 'released')) throw new Error('epic already has a demo lease');
       if (commit !== undefined && !/^[a-f0-9]{4,64}$/i.test(commit)) throw new Error('demo commit must be a Git SHA');
-      const head = (await territoryGitAsync(this.root, ['rev-parse', '--verify', `${commit ?? 'dev'}^{commit}`], undefined, undefined, this.#env)).trim();
-      await territoryGitAsync(this.root, ['merge-base', '--is-ancestor', head, 'dev'], undefined, undefined, this.#env);
+      const head = (await this.#git(['rev-parse', '--verify', `${commit ?? 'dev'}^{commit}`])).trim();
+      await this.#git(['merge-base', '--is-ancestor', head, 'dev']);
       const config = this.executor.projectConfig?.() ?? await readFile(join(this.root, '.cland/config.toml'), 'utf8').then(s => parseConfig(s, basename(this.root), this.#env), e => { if (e.code === 'ENOENT') return defaultConfig(basename(this.root)); throw e; });
       const id = `demo-${randomUUID()}`;
       authorize();

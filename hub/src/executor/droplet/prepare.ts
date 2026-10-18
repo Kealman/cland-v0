@@ -36,6 +36,16 @@ export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.
   const lock = hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout);
   return { node, nvim: { tag, digest }, lock, base };
 }
+/** Build the native base archive separately from snapshot lifecycle policy. */
+export async function prepareBundle(root: string, dir: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
+  const origin = (await exec('git', ['remote', 'get-url', 'origin'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(origin)) throw new Error('prepare requires a local territory');
+  const territory = isAbsolute(origin) ? origin : resolve(root, origin);
+  const bundle = join(dir, 'base.bundle');
+  await exec('git', [`--git-dir=${territory}`, 'bundle', 'create', bundle, 'refs/heads/dev'], { env: machineEnv(env), timeout: 120000, maxBuffer: 1024 * 1024 });
+  return bundle;
+}
+
 export async function readSnapshot(root: string): Promise<Snapshot | null> {
   try {
     const snapshot = JSON.parse(await readFile(snapshotPath(root), 'utf8')) as Snapshot;
@@ -115,11 +125,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     const dir = leaseDir(root, builder);
     const timeout = () => Math.max(1, Math.min(1200000, Date.parse(builder!.deadline) - clock.now().getTime()));
     step('deliver');
-    const origin = (await exec('git', ['remote', 'get-url', 'origin'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
-    if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(origin)) throw new Error('prepare requires a local territory');
-    const territory = isAbsolute(origin) ? origin : resolve(root, origin);
-    const bundle = join(dir, 'base.bundle');
-    await exec('git', [`--git-dir=${territory}`, 'bundle', 'create', bundle, 'refs/heads/dev'], { env: machineEnv(env), timeout: 120000, maxBuffer: 1024 * 1024 });
+    const bundle = await (dependencies.prepareBundle ?? prepareBundle)(root, dir, env);
     await machine.put(builder, bundle, 'base.bundle', { timeoutMs: timeout(), signal: options.signal });
     await machine.exec(builder, `set -eu; git init --bare "$HOME/mirror.git"; git --git-dir="$HOME/mirror.git" fetch "$HOME/base.bundle" '+refs/heads/dev:refs/heads/dev'; git clone --no-hardlinks "$HOME/mirror.git" "$HOME/cland"; git -C "$HOME/cland" remote remove origin; git -C "$HOME/cland" checkout --detach ${shellQuote(key.base)}; rm "$HOME/base.bundle"`, { timeoutMs: timeout(), signal: options.signal });
     await rm(bundle, { force: true });

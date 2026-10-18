@@ -62,7 +62,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { candidate?: import('./suite-candidate.ts').SuiteCandidate; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -214,8 +214,9 @@ export async function serveProject(root: string, options: { git?: Git; readBase?
       rules,
       journal,
       projectConfig: roles.config,
+      ...(options.git ? { git: options.git } : {}),
       ...(options.droplet ? { droplet: options.droplet } : {}),
-      verification: { executor: config?.verification.executor ?? 'local', localFallback: config?.verification.localFallback ?? true, lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, waitP90TargetMs: config?.verification.waitP90TargetMs ?? 1200000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, shards: config?.verification.shards ?? 2, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
+      verification: { ...(options.candidate ? { candidate: options.candidate } : {}), ...(options.durationContext !== undefined ? { durationContext: options.durationContext } : {}), executor: config?.verification.executor ?? 'local', localFallback: config?.verification.localFallback ?? true, lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, waitP90TargetMs: config?.verification.waitP90TargetMs ?? 1200000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, shards: config?.verification.shards ?? 2, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
       store: new Store(l.db),
       log,
       requestGuard,

@@ -205,7 +205,7 @@ function recoverGuardSync(path: string, processes: LockProcessTable): void {
   }
   emptyGuardSync(path);
 }
-async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: number): Promise<void> {
+async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: number, processes?: LockProcessTable): Promise<void> {
   let names: string[];
   try {
     const stat = await fs.lstat(path);
@@ -220,8 +220,8 @@ async function recoverGuardAsync(path: string, resumed: Resumed, deadline?: numb
       if (!record.holder) throw new Error(`unreadable lock guard owner ${path}/${name}`);
       return record.holder;
     });
-    if (resumed(() => pidAlive(holder.pid))) {
-      const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed, holder.startedUtc === undefined ? undefined : 'UTC');
+    if (resumed(() => (processes?.alive ?? pidAlive)(holder.pid))) {
+      const now = holder.started === null ? null : processes ? processes.started(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC') : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed, holder.startedUtc === undefined ? undefined : 'UTC');
       if (resumed(() => sameProcess(holder, now))) return;
     }
     await fs.rm(`${path}/${name}`, { force: true });
@@ -240,7 +240,7 @@ function takeGuardSync(path: string, me: LockHolder, processes: LockProcessTable
     return () => { rmSync(`${path}/${name}`, { force: true }); emptyGuardSync(path); };
   }, () => rmSync(tmp, { recursive: true, force: true }));
 }
-async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed, deadline?: number): Promise<(() => Promise<void>) | null> {
+async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed, deadline?: number, processes?: LockProcessTable): Promise<(() => Promise<void>) | null> {
   const name = `${randomUUID()}.owner`;
   const tmp = `${path}.${name}.tmp`;
   await fs.mkdir(tmp, { mode: 0o700 });
@@ -249,7 +249,7 @@ async function takeGuardAsync(path: string, me: LockHolder, resumed: Resumed, de
     try { await fs.rename(tmp, path); }
     catch (err) {
       resumed(() => { if (!occupied(err)) throw err; });
-      await recoverGuardAsync(path, resumed, deadline);
+      await recoverGuardAsync(path, resumed, deadline, processes);
       return null;
     }
     return resumed(() => async () => { await fs.rm(`${path}/${name}`, { force: true }); await emptyGuardAsync(path, resumed); });
@@ -328,11 +328,11 @@ function lockTimeout(deadline?: number): number {
   return Math.min(PS_TIMEOUT_MS, ms);
 }
 
-export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number, timezone?: 'UTC'): Promise<AsyncHubLock> {
+export async function acquireLockAsync(path: string, resumed: Resumed = work => work(), deadline?: number, timezone?: 'UTC', processes?: LockProcessTable): Promise<AsyncHubLock> {
   lockTimeout(deadline);
-  ownStarted ??= processStartedAsync(process.pid, lockTimeout(deadline));
-  const started = await ownStarted;
-  const startedUtc = timezone ? await (ownUtcStarted ??= processStartedAsync(process.pid, lockTimeout(deadline), undefined, timezone)) : undefined;
+  // Injected identities never enter the native process cache.
+  const started = processes ? processes.started(process.pid) : await (ownStarted ??= processStartedAsync(process.pid, lockTimeout(deadline)));
+  const startedUtc = timezone ? processes ? processes.started(process.pid, timezone) : await (ownUtcStarted ??= processStartedAsync(process.pid, lockTimeout(deadline), undefined, timezone)) : undefined;
   const { me, text } = resumed(() => {
     const me = { pid: process.pid, started, ...(startedUtc !== undefined ? { startedUtc } : {}), token: randomUUID() };
     return { me, text: `${JSON.stringify(me)}\n` };
@@ -340,7 +340,7 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
   const guarded = async <T>(work: () => Promise<T>, limit?: number): Promise<T> => {
     for (let attempt = 0; attempt < 250; attempt++) {
       lockTimeout(limit);
-      const release = await takeGuardAsync(`${path}.break`, me, resumed, limit);
+      const release = await takeGuardAsync(`${path}.break`, me, resumed, limit, processes);
       if (!release) { await pauseAsync(); continue; }
       return withCleanupAsync(work, release, resumed);
     }
@@ -352,9 +352,9 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
       if (await createExclusiveAsync(path, text, resumed)) return true;
       const record = await recordAsync(path, resumed);
       if (!record.exists) return false;
-      if (record.holder && resumed(() => pidAlive(record.holder!.pid))) {
+      if (record.holder && resumed(() => (processes?.alive ?? pidAlive)(record.holder!.pid))) {
         const holder = record.holder;
-        const now = holder.started === null ? null : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed, holder.startedUtc === undefined ? undefined : 'UTC');
+        const now = holder.started === null ? null : processes ? processes.started(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC') : await processStartedAsync(holder.pid, lockTimeout(deadline), resumed, holder.startedUtc === undefined ? undefined : 'UTC');
         resumed(() => { if (sameProcess(holder, now)) throw new HubLocked(holder); });
       }
       await fs.rm(path, { force: true });
@@ -381,7 +381,7 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
 }
 
 /** Wait through transient executor contention, without changing the hub lock's fail-fast contract. */
-export type LockRetryTiming = { clock?: Clock; wait?: ((ms: number) => Promise<void>) | undefined };
+export type LockRetryTiming = { processes?: LockProcessTable; clock?: Clock; wait?: ((ms: number) => Promise<void>) | undefined };
 export async function acquireLockWithRetry(path: string, deadline?: number, timing: LockRetryTiming = {}): Promise<AsyncHubLock> {
   const clock = timing.clock ?? realClock;
   const started = clock.now().getTime();
@@ -391,7 +391,7 @@ export async function acquireLockWithRetry(path: string, deadline?: number, timi
   let last: unknown;
   while (clock.now().getTime() < limit) {
     // OS identity probes retain native deadlines; only contention/backoff uses hub time.
-    try { return await acquireLockAsync(path, undefined, Date.now() + Math.min(15000, limit - clock.now().getTime()), 'UTC'); }
+    try { return await acquireLockAsync(path, undefined, Date.now() + Math.min(15000, limit - clock.now().getTime()), 'UTC', timing.processes); }
     catch (error) {
       // Cleanup failures keep their primary error type; they are not safe contention.
       if (!(error instanceof HubLocked || error instanceof LockAcquisitionTimeout) || error.message.includes('; cleanup failed:')) throw error;

@@ -1,27 +1,29 @@
 // T2: admission crosses real lock files with a scripted provider and hub clock.
-// Git/ps fixture infrastructure remains until T-719; no hub, spoke or watchdog child.
+// Process identities are injected; real lock contention and retry policy stay under test.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { join } from 'node:path';
 import { fixture } from './remote-fixture.ts';
 import { eventually, tempProject } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
-import { acquireLockAsync, acquireLockWithRetry } from '../src/hub/lock.ts';
+import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable } from '../src/hub/lock.ts';
 import { drive, remoteWaits } from './remote-clock.ts';
 import { cancelAndDrain, type OwnedRemoteRun } from './remote-cleanup.ts';
 import type { TestContext } from 'node:test';
 import { FakeClock } from './fake-clock.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
+const processes: LockProcessTable = { alive: pid => pid === process.pid, started: () => null };
+
 test('lock contention expires at the admission deadline or the sixty-second cap', async t => {
   const root = await tempProject(t, 'retry-deadline-');
   const path = join(root, 'held.lock');
-  const lock = await acquireLockAsync(path, undefined, undefined, 'UTC');
+  const lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
   onCleanup(t, () => lock.release());
   for (const [budget, elapsed] of [[40000, 40000], [90000, 60000]]) {
     const clock = new FakeClock();
     const waits = remoteWaits(clock);
-    await waits.run(assert.rejects(acquireLockWithRetry(path, clock.now().getTime() + budget!, { clock, wait: waits.wait }), new RegExp(`after waiting ${elapsed} ms`)));
+    await waits.run(assert.rejects(acquireLockWithRetry(path, clock.now().getTime() + budget!, { clock, wait: waits.wait, processes }), new RegExp(`after waiting ${elapsed} ms`)));
   }
 });
 
@@ -32,7 +34,7 @@ async function admissionCase(t: TestContext, kind: 'spend' | 'executor', failBef
   // are outside this admission proof and must not race its fixture setup.
   assert.equal((await f.ui.request({ type: 'executor.status' })).ok, true);
   const path = kind === 'spend' ? join(state, 'spend.json.lock') : join(f.root, '.cland/run/executor/budget.lock');
-  const lock = await acquireLockAsync(path, undefined, undefined, 'UTC');
+  const lock = await acquireLockAsync(path, undefined, undefined, 'UTC', processes);
   let held = true;
   const runs: OwnedRemoteRun[] = [];
   let cleanupWork: ReturnType<typeof cancelAndDrain> | undefined;

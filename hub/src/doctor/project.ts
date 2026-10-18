@@ -30,16 +30,22 @@ const tomlError = (err: unknown): string => {
   return `${first} (line ${line}${typeof column === 'number' ? `, column ${column}` : ''})`;
 };
 
+/** Native facts are separate from project-file parsing and the hub socket proof. */
+export type ProjectReaders = {
+  started?: Parameters<typeof liveHolderAsync>[1];
+  territoryProblems?: typeof territoryProblems;
+};
+
 /** `hub`, `hub.json` and `secret`. */
-async function checkHub(l: Layout): Promise<Check[]> {
+async function checkHub(l: Layout, readers: ProjectReaders): Promise<Check[]> {
   const rel = (p: string) => relative(l.root, p);
   const text = readText(l.discovery);
   const d = text === null ? null : readDiscovery(l.discovery);
   // the lock's holder, its start time asked of `ps` with a deadline: a hung `ps` cannot hold the doctor up
-  const holder = await liveHolderAsync(l.lock, async (pid, timezone) => {
+  const holder = await liveHolderAsync(l.lock, readers.started ?? (async (pid, timezone) => {
     const r = await run('ps', ['-o', 'lstart=', '-p', String(pid)], timezone ? { ...process.env, TZ: timezone, LC_ALL: 'C' } : process.env, probeTimeout(process.env, 3000));
     return r.code === 0 && r.error === undefined ? parseStarted(r.stdout) : null;
-  });
+  }));
   const out: Check[] = [];
   let running = false;
 
@@ -288,10 +294,10 @@ function checkInstructions(root: string): Check[] {
 }
 
 /** Every project check; a folder `cland init` never ran in is one failure. */
-export async function checkProject(root: string): Promise<Check[]> {
+export async function checkProject(root: string, readers: ProjectReaders = {}): Promise<Check[]> {
   const l = layout(root);
   if (!existsSync(l.dir)) return [fail('project', `${root} has no ${CLAND_DIR}/: not a cland project`, `cland init ${root}`)];
-  const problems = territoryProblems(root);
+  const problems = (readers.territoryProblems ?? territoryProblems)(root);
   const territory = problems === null ? ok('territory', 'not a git repository: no territory needed') : problems.length ? fail('territory', problems.join('; '), 'cland init (restore origin to .cland/territory.git if it was changed)') : ok('territory', 'origin is the local bare repository; main and dev protected; HEAD on dev');
-  return [...(await checkHub(l)), territory, ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
+  return [...(await checkHub(l, readers)), territory, ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
 }

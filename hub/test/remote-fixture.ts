@@ -1,3 +1,5 @@
+import type { SuiteCandidate } from '../src/hub/suite-candidate.ts';
+import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { FakeClock } from './fake-clock.ts';
 import { scriptedMachine, type MachineScript } from './fakes/digitalocean/scripted-machine.ts';
@@ -28,6 +30,7 @@ export function remoteEventually<T>(what: string, check: () => Promise<T | undef
 }
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
 export async function fixture(t: TestContext, options: { machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+  const embedded = options.hub !== undefined && options.hub !== startDaemon;
   const scripted = options.machine === 'scripted';
   const root = await tempProject(t, 'remote-run-');
   // Scripted fixtures own no detached writers and need no reaper process.
@@ -40,7 +43,7 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   let stopHub = async () => {};
   beforeDirectories(t, async () => {
     await stopHub();
-    if (process.env.CLAND_TEST_REMOTE_CENSUS) t.diagnostic(`remote census: ${api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length} droplets; ${scripted || options.hub === projectHub ? 0 : 1} initial daemon starts`);
+    if (process.env.CLAND_TEST_REMOTE_CENSUS) t.diagnostic(`remote census: ${api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length} droplets; ${scripted || embedded ? 0 : 1} initial daemon starts`);
     // Stop and observe detached watchdogs too, before deleting their lease files.
     if (!scripted) await cleanupProcesses(root, [], undefined, undefined, []);
     if (!options.api) {
@@ -49,9 +52,14 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     }
   });
   if (!options.api) await guard.register(api.stateRoot);
-  const git = async (...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
-  await git('init', '-q', '-b', 'dev');
-  await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com'); await git('config', 'commit.gpgsign', 'false');
+  const git = async (...args: string[]) => {
+    assert.ok(!scripted, 'scripted fixtures inject candidate facts instead of running Git');
+    return (await exec('git', args, { cwd: root })).stdout.trim();
+  };
+  if (!scripted) {
+    await git('init', '-q', '-b', 'dev');
+    await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com'); await git('config', 'commit.gpgsign', 'false');
+  }
   await mkdir(join(root, 'nvim')); await mkdir(join(root, 'hub/src/tracker'), { recursive: true });
   await writeFile(join(root, '.gitignore'), '.cland/\nnode_modules/\n');
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
@@ -61,10 +69,12 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   await writeFile(join(root, 'package.json'), JSON.stringify({ private: true, workspaces: ['hub'], scripts: { typecheck, test: script } }));
   await writeFile(join(root, 'hub/package.json'), JSON.stringify({ name: 'fixture-hub', scripts: { test: script } }));
   await writeFile(join(root, 'package-lock.json'), JSON.stringify({ name: 'remote-fixture', lockfileVersion: 3, packages: { '': { name: 'remote-fixture', workspaces: ['hub'] }, hub: { name: 'fixture-hub' }, 'node_modules/fixture-hub': { resolved: 'hub', link: true } } }));
-  await git('add', '.'); await git('commit', '-qm', 'Base');
-  await exec('git', ['init', '--bare', '-q', territory]);
-  await git('remote', 'add', 'origin', territory); await git('push', '-qu', 'origin', 'dev');
-  const key = scripted ? { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: createHash('sha256').update(await readFile(join(root, 'package-lock.json'))).digest('hex'), base: await git('rev-parse', 'origin/dev') } : await prepareKey(root);
+  if (!scripted) {
+    await git('add', '.'); await git('commit', '-qm', 'Base');
+    await exec('git', ['init', '--bare', '-q', territory]);
+    await git('remote', 'add', 'origin', territory); await git('push', '-qu', 'origin', 'dev');
+  }
+  const key = scripted ? { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: createHash('sha256').update(await readFile(join(root, 'package-lock.json'))).digest('hex'), base: 'c'.repeat(40) } : await prepareKey(root);
   const image = { id: 900 + api.images.length, name: 'suite-snapshot', regions: ['lon1'], size_gigabytes: 1, min_disk_size: 10, created_at: (scripted ? clock.now() : new Date()).toISOString() };
   await api.seedSnapshot(image, key);
   if (!scripted) {
@@ -92,18 +102,48 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   const cleanupMs = scripted ? 500 : remoteWaitMs(10_000);
   const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: String(machineMs), CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: String(cleanupMs), CLAND_TEST_DROPLET_RELEASE_MS: String(cleanupMs), CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
   if (options.territory) {
+    assert.ok(!scripted, 'territory provisioning is a native Git contract');
     const initialized = await cland(root, 'init');
     assert.equal(initialized.code, 0, initialized.stderr);
   }
-  await git('checkout', '-qb', 'task-candidate');
-  await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n'); await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change');
+  if (!scripted) await git('checkout', '-qb', 'task-candidate');
+  await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n');
+  if (!scripted) { await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change'); }
   const machine = scriptedMachine(root, clock, key, options.script);
   const dependencies: DropletDependencies = { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: ['run', 'typecheck'], code: 0 }) };
-  const daemon = scripted ? await projectHub(t, root, env, { clock, droplet: dependencies, harnesses: 'fake' }) : await (options.hub ?? startDaemon)(t, root, env);
+  // Mutable facts let integrated-close fixtures describe dev without creating a repository.
+  // Native Git/immutable-tree transport remains in the process executor contracts.
+  const candidate: Awaited<ReturnType<SuiteCandidate['inspect']>> = { head: 'a'.repeat(40), branch: 'task-candidate', tree: 'd'.repeat(40),
+    selection: { mode: 'hub-only', files: ['hub/src/tracker/change.ts'], reason: 'scripted hub change' }, tierPlan: [], budgetBase: key.base };
+  const manifest = { version: 1 as const, source: { artifacts: [], commit: candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
+  const durationContext: DurationBudgetContext = { manifest, tiers: {}, base: { manifest: structuredClone(manifest), tiers: {}, retained: [], sources: {} } };
+  const facts: SuiteCandidate = {
+    head: async () => candidate.head,
+    tree: async () => candidate.tree,
+    inspect: async (_cwd, mode) => {
+      const captured = structuredClone(candidate);
+      captured.selection.mode = mode === 'all' ? 'full' : mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : captured.selection.mode;
+      return captured;
+    },
+  };
+  const probes = {
+    clock, droplet: dependencies, harnesses: 'fake' as const, probes: 'fake' as const, candidate: facts, durationContext,
+    // Freshness and demo ancestry consume the same branch facts as admission.
+    git: async (args: string[]) => {
+      if (args[0] === 'for-each-ref') return `${key.base} refs/heads/dev\n${candidate.head} refs/heads/${candidate.branch}`;
+      if (args[0] === 'log') return key.base;
+      if (args[0] === 'rev-parse') return key.base;
+      if (args[0] === 'merge-base' && args[1] === '--is-ancestor') return '';
+      if (args[0] === 'diff') return '';
+      assert.fail(`scripted fixture needs an explicit Git fact for ${args[0]}`);
+    },
+    readBase: async () => 'dev',
+  };
+  const daemon = scripted ? await projectHub(t, root, env, probes) : await (options.hub ?? startDaemon)(t, root, env);
   if ('stop' in daemon) stopHub = daemon.stop;
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
-  const spoke = scripted || options.hub === projectHub ? await inProcessSpoke(t, { discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' }) : await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
+  const spoke = scripted || embedded ? await inProcessSpoke(t, { discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' }) : await spawnSpoke({ discover: true, assignRole: false, cwd: root, name: 'impl', sessionId: 'remote-impl', role: 'implementer' });
   onCleanup(t, () => spoke.close()); await spoke.waitForPresence(['impl']);
   const actor = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'remote-impl', CLAND_ROLE: 'implementer' };
   const item = scripted ? ((await ui.request({ type: 'task.create', size: 'M', title: 'Remote fixture', assignee: 'impl' })).value as { item: { id: string } }).item.id : JSON.parse((await cland(root, 'task', 'create', '--size', 'M', 'Remote fixture', '--assignee', 'impl', '--json')).stdout).item.id as string;
@@ -132,5 +172,5 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text);
     return;
   });
-  return { clock, waits: machine.waits, machine, dependencies, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
+  return { candidate, durationContext, clock, waits: machine.waits, machine, dependencies, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }

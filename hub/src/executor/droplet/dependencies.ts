@@ -2,13 +2,14 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chmod } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { LockProcessTable } from '../../hub/lock.ts';
 import type { Clock } from '../../hub/clock.ts';
 import type { DigitalOceanApi } from './api.ts';
 import { machineEnv, type Machine } from './machine.ts';
 import type { DropletRun } from './run.ts';
 import { armWatchdog, stopWatchdog, watchdogAlive } from './watchdog.ts';
 import type { HostGate, RunRef } from '../executor.ts';
-import type { prepareKey } from './prepare.ts';
+import type { prepareBundle, prepareKey } from './prepare.ts';
 
 export type Provider = Pick<DigitalOceanApi, keyof DigitalOceanApi>;
 export type MachineTransport = Pick<Machine, keyof Machine>;
@@ -22,6 +23,8 @@ export const processHost = {
   armWatchdog, stopWatchdog, watchdogAlive,
 };
 export type DropletDependencies = {
+  /** Host identities for durable executor and spend locks; file locking remains native. */
+  processes?: LockProcessTable;
   clock?: Clock;
   /** Executor delays, separate from transport deadlines and native I/O. */
   wait?: (ms: number) => Promise<void>;
@@ -31,4 +34,5 @@ export type DropletDependencies = {
   run?: RemoteRun;
   host?: typeof processHost;
   prepareKey?: typeof prepareKey;
+  prepareBundle?: typeof prepareBundle;
 };

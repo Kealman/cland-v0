@@ -94,5 +94,7 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
     execution.script = { outcome: code ? 'red' : 'green', afterMs: 0, ...(log === undefined ? {} : { log }) };
     execution.finished = clock.now().getTime();
   }
-  return { calls, waits, finish, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { clock, wait: waits.wait, run, host, machine, prepareKey: async () => key } satisfies DropletDependencies };
+  return { calls, waits, finish, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { processes: { alive: pid => pid === process.pid, started: () => null }, clock, wait: waits.wait, run, host, machine, prepareKey: async () => key,
+    prepareBundle: async (_root, dir) => { const bundle = join(dir, 'base.bundle'); await writeFile(bundle, 'scripted base bundle'); return bundle; },
+  } satisfies DropletDependencies };
 }

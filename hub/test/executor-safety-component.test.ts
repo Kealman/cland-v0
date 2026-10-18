@@ -1,5 +1,5 @@
 // T2: provider-list races and foreign lease/key ownership use scripted machines.
-// Git/ps fixture infrastructure remains until T-719; no hub, spoke, SSH or watchdog child.
+// Candidate, snapshot and process facts are injected; no hub, spoke, SSH or watchdog child.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
@@ -44,7 +44,9 @@ async function sameNameCase(t: TestContext, failBeforeRelease = false) {
   try {
     const a = await first.launch(); runs.push({ fixture: first, id: a.id });
     const b = await second.launch(); runs.push({ fixture: second, id: b.id });
-    await eventually('both creates blocked with durable key identities', () => creates === 2 ? true : undefined);
+    // Both acquisitions can admit a shared-spend-lock retry. Drive only those
+    // product-requested delays while observing both pre-release create receipts.
+    await drive(first, drive(second, eventually('both creates blocked with durable key identities', () => creates === 2 ? true : undefined)));
     const left = await lease(first.root); const right = await lease(second.root);
     const tagA = projectTag(first.root, 'same'), tagB = projectTag(second.root, 'same');
     assert.ok(left.value.keyName.startsWith(`${tagA}-`)); assert.ok(right.value.keyName.startsWith(`${tagB}-`));

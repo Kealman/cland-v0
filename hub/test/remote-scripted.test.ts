@@ -1,5 +1,5 @@
 // T2: remote verification orchestration uses an in-process provider and scripted machine.
-// Git/ps fixture infrastructure remains until T-719; no hub, spoke, watchdog, ssh/scp or suite worker child.
+// Candidate, snapshot and process facts are injected; no hub, spoke, watchdog, ssh/scp or suite worker child.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fixture } from './remote-fixture.ts';

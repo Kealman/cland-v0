@@ -99,6 +99,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  git?: import('../tracker/verdict-git.ts').Git;
   env?: NodeJS.ProcessEnv;
   journal?: import('./journal.ts').Journal;
   droplet?: DropletDependencies;
@@ -182,7 +183,7 @@ export class Dispatcher {
       if (options.core.store.message(id)) return;
       const item = options.tracker!.view(lease.demo!.epic);
       options.core.noticeTo(item.topic ?? AGENTS.id, { id, kind: 'report', to: ['coordinator'], text: options.core.boundedText(text), detail: { event: 'executor-release-unconfirmed', lease: lease.lease, item: item.id } });
-    }) : null;
+    }, options.git) : null;
     this.#dropletReady = this.#droplets?.sweep(true).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
     const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
     this.#dropletTimer = this.#droplets ? options.core.clock.setInterval(() => {

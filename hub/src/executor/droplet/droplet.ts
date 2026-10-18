@@ -55,7 +55,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
   // durable leases left by preparation, restarts or unconfirmed acquire cleanup.
   async #reserve(lease: DropletLease, budget: number, deadline: number): Promise<void> {
     const path = join(this.root, '.cland/run/executor/budget.lock');
-    const lock = await acquireLockWithRetry(path, deadline, { clock: this.clock, wait: this.dependencies.wait });
+    const lock = await acquireLockWithRetry(path, deadline, { clock: this.clock, wait: this.dependencies.wait, ...(this.dependencies.processes ? { processes: this.dependencies.processes } : {}) });
     try {
       if ((await readLeases(this.root)).filter(l => l.state !== 'released').length >= budget) throw new RemoteBudgetFull();
       await this.#save(lease);
@@ -100,9 +100,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const size = overrideSize ?? config.verification.droplet.size;
     const selected = (await (this.dependencies.api ?? new DigitalOceanApi(this.#env, this.clock)).sizes()).find(s => s.slug === size && s.available);
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
-    await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env, this.clock);
+    await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
   }
-  async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env, this.clock); }
+  async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env, this.clock, this.dependencies.processes); }
 
   /** Submission check only; acquire still reserves atomically against other hubs. */
   async checkSpend(overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
@@ -150,7 +150,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     try {
       await (this.dependencies.host ?? processHost).createKey(dir, name, this.#env);
       await this.#reserve(lease, config.verification.remoteBudget, runDeadline);
-      await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.wait);
+      await reserveSpend(this.root, lease, config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.wait, this.dependencies.processes);
       lease.watchdog = await (this.dependencies.host ?? processHost).armWatchdog(dir, this.#env);
       await this.#save(lease);
       const publicKey = await readFile(join(dir, 'key.pub'), 'utf8');
@@ -254,7 +254,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       lease.state = 'releasing';
       await this.#save(lease);
     });
-    if (lease.state === 'released') { await settleSpend(lease, this.#env); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
+    if (lease.state === 'released') { await settleSpend(lease, this.#env, this.dependencies.processes); return { lifetimeMs: lease.lifetimeMs ?? 0, costUsd: lease.costUsd ?? 0 }; }
     const limit = Math.min(deadline, this.clock.now().getTime() + testTiming('CLAND_TEST_DROPLET_RELEASE_MS', 15000, this.#env));
     if (limit <= this.clock.now().getTime()) return { lifetimeMs: null, costUsd: null };
     let cause: { status?: number; id?: string; message: string } | undefined;
@@ -267,7 +267,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         if (result.confirmed) {
           accountRelease(lease, lease.deleteStarted ?? this.clock.now().toISOString(), this.clock);
           await this.#save(lease);
-          await settleSpend(lease, this.#env);
+          await settleSpend(lease, this.#env, this.dependencies.processes);
           await (this.dependencies.host ?? processHost).stopWatchdog(lease, this.#env);
           await rm(join(leaseDir(this.root, lease), 'key'), { force: true });
           await rm(join(leaseDir(this.root, lease), 'key.pub'), { force: true });
@@ -318,7 +318,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
 
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
   async reconcile(restart = true): Promise<void> {
-    if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env);
+    if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env, this.dependencies.processes);
     type OwnedJob = { id: string; reported: boolean; state?: string; outcome: unknown; shards?: OwnedJob[] };
     const jobs = JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as OwnedJob[];
     const owned = new Set(jobs.filter(job => !job.reported && !job.outcome && job.state !== 'queued').flatMap(job => [job.id, ...(job.shards ?? []).filter(shard => !shard.reported && !shard.outcome).map(shard => shard.id)]));
@@ -336,7 +336,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         lease.watchdogFired = receipt.fired; await this.#save(lease);
       }
       if (lease.state === 'released') {
-        await settleSpend(lease, this.#env);
+        await settleSpend(lease, this.#env, this.dependencies.processes);
         await rm(join(dir, 'key'), { force: true }); await rm(join(dir, 'key.pub'), { force: true });
         continue;
       }

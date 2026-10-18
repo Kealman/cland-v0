@@ -7,7 +7,7 @@ import { FakeClock } from './fake-clock.ts';
 
 test('executor CLI controls respect each caller role', async t => {
   const root = await tempProject(t);
-  const hub = await projectHub(t, root, { DIGITALOCEAN_TOKEN: '' }, { clock: new FakeClock(), harnesses: 'fake' });
+  const hub = await projectHub(t, root, { DIGITALOCEAN_TOKEN: '' }, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const ui = await dispatcherUi(t, hub.dispatcher, root);
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer'], ['rev', 'reviewer'], ['qa-one', 'qa']] as const) {
     assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);

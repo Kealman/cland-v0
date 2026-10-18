@@ -11,7 +11,7 @@ import { doctor, report, update, initialised, toolchain, check, notOk, HARNESS_D
 test('key warnings name the Ghostty LF binding and tty erase collision, with fixes', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const fixture = join(root, 'keys-fixtures');
   await mkdir(join(fixture, 'ghostty'), { recursive: true });
   const config = join(fixture, 'ghostty', 'config');
@@ -63,7 +63,7 @@ test('key warnings name the Ghostty LF binding and tty erase collision, with fix
 test('a harness version outside the tested range is a warning, not a failure', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const { code, report: r } = await report(root, { ...tools.env, FAKE_CLAUDE_VERSION: '2.3.0' });
   const c = check(r, 'claude-code');
   assert.equal(c.verdict, 'warn');
@@ -79,7 +79,7 @@ test('a harness version outside the tested range is a warning, not a failure', a
 test('a harness missing from the PATH fails with the fix', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const { code, report: r } = await report(root, { ...tools.env, PATH: tools.path('codex') });
   const c = check(r, 'codex');
   assert.equal(c.verdict, 'fail');
@@ -95,7 +95,7 @@ test('a harness missing from the PATH fails with the fix', async t => {
 test('OpenCode 1.x needs the major upgrade and 3.x refuses compatibility with the tested range', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const old = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '1.19.0' });
   assert.equal(old.code, 1);
   assert.match(old.stdout, /fail\s+opencode\s+1\.19\.0 .*OpenCode v2 is required.*opencode upgrade --major/);
@@ -107,7 +107,7 @@ test('OpenCode 1.x needs the major upgrade and 3.x refuses compatibility with th
 test('OpenCode follows a newer 2.x with a newer-than-tested warning', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const next = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '2.99.0' });
   assert.equal(next.code, 0);
   assert.match(next.stdout, /warn\s+opencode\s+2\.99\.0 .*newer than tested.*cland follows OpenCode 2\.x/);
@@ -116,7 +116,7 @@ test('OpenCode follows a newer 2.x with a newer-than-tested warning', async t =>
 test('a missing OpenCode binary points to the v2 installer', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const missing = await doctor(root, { ...tools.env, PATH: tools.path('opencode') });
   assert.equal(missing.code, 1);
   assert.match(missing.stdout, /fail\s+opencode\s+not installed:.*https:\/\/opencode\.ai\/v2\/install/);
@@ -125,7 +125,7 @@ test('a missing OpenCode binary points to the v2 installer', async t => {
 test('a harness that is not signed in fails with its login command; OpenCode without credentials warns', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const { code, report: r } = await report(root, { ...tools.env, FAKE_CLAUDE_LOGGED_OUT: '1', FAKE_CODEX_LOGGED_OUT: '1', FAKE_OPENCODE_NO_AUTH: '1', FAKE_GH_LOGGED_OUT: '1' });
   assert.deepEqual(
     ['claude-code auth', 'codex auth', 'opencode auth', 'gh auth'].map((n) => [n, check(r, n).verdict, check(r, n).fix]),
@@ -142,7 +142,7 @@ test('a harness that is not signed in fails with its login command; OpenCode wit
 test('Neovim not at the pinned version, or missing', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const other = join(root, 'old-nvim');
   await writeFile(other, '#!/bin/sh\necho "NVIM v0.10.0"\n');
   await chmod(other, 0o755);
@@ -157,7 +157,7 @@ test('Neovim not at the pinned version, or missing', async t => {
 test('roles.toml that does not parse fails, naming the TOML error', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const path = join(root, '.cland', 'roles.toml');
   const good = await readFile(path, 'utf8');
   await writeFile(path, `${good}\n[reviewer\nharness = "codex"\n`);
@@ -176,7 +176,7 @@ test('roles.toml that does not parse fails, naming the TOML error', async t => {
 test('config.toml that does not parse fails, naming the TOML error', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const path = join(root, '.cland', 'config.toml');
   const good = await readFile(path, 'utf8');
   await writeFile(path, `${good}\nmax_text_bytes = = 3\n`);
@@ -192,7 +192,7 @@ test('config.toml that does not parse fails, naming the TOML error', async t => 
 test('a broken skills symlink fails with the fix', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const link = join(root, '.claude', 'skills');
   await unlink(link);
   await symlink('../.agents/nowhere', link);
@@ -221,7 +221,7 @@ test('a broken skills symlink fails with the fix', async t => {
 test('the managed hooks or AGENTS.md block removed: named failures, fixed by cland update', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const settings = join(root, '.claude', 'settings.json');
   await writeFile(settings, '{}\n');
   const agents = join(root, 'AGENTS.md');
@@ -238,7 +238,7 @@ test('the managed hooks or AGENTS.md block removed: named failures, fixed by cla
 test("the hub's discovery file removed: a named failure with the fix", async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   await unlink(join(root, '.cland', 'hub.json'));
   const { code, report: r } = await report(root, tools.env);
   const hub = check(r, 'hub');
@@ -255,7 +255,7 @@ test('doctor refuses a readable secret and an uninitialised folder', async (t) =
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
   // a secret others can read
-  const started = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  const started = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   await chmod(join(root, '.cland', 'secret'), 0o644);
   const loose = await report(root, tools.env);
   assert.equal(check(loose.report, 'secret').verdict, 'fail');
@@ -272,7 +272,7 @@ test('doctor refuses a readable secret and an uninitialised folder', async (t) =
 test('a stale hub.json naming a dead pid while a live hub holds the lock is a failure naming the holder', async (t) => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
-  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const dead = 2_147_483_647;
   const path = join(root, '.cland', 'hub.json');
   await writeFile(path, JSON.stringify({ ...JSON.parse(await readFile(path, 'utf8')), pid: dead }));
@@ -340,7 +340,7 @@ test('doctor warns about free OpenCode training and its missing OS sandbox witho
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env, true);
   const clock = new FakeClock();
-  const { discovery } = await projectHub(t, root, tools.env, { clock, harnesses: 'fake' });
+  const { discovery } = await projectHub(t, root, tools.env, { clock, harnesses: 'fake', probes: 'fake' });
   const free = await report(root, tools.env);
   assert.equal(free.code, 0);
   const ui = await connectUi(t, discovery);
