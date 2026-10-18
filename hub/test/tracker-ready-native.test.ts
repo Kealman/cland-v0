@@ -478,6 +478,8 @@ test('failed SQLite identity adoption fences verifier work and a retry adopts cl
   onCleanup(t, () => rev.close());
   await rev.waitForPresence(['rev']);
   const read = async () => ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
+  // T3: presence precedes the queued adoption transaction; observe its attempt first.
+  await eventually('failed identity adoption attempted', () => failures >= 1 ? true : undefined);
   assert.ok(failures >= 1);
   assert.equal((await read()).claim?.sessionId, 'name:rev', 'the failed transaction rolled back');
   const evidence = tracker.mergeView(item.id);
