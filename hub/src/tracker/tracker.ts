@@ -123,6 +123,7 @@ export type ItemView = IndexedItem & {
   qaSatisfied?: boolean;
   /** A closed task with a durable landing receipt on dev, as required by stage closure. */
   merged?: boolean;
+  mergeQueue?: { position: number; enqueued: string };
   warnings?: string[];
   planError?: string;
   stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; cover?: { tree: string | null; missing: StagePlatform[]; linux?: string; macos?: string } }>;
@@ -280,6 +281,8 @@ export class Tracker {
   readonly #writeGate: (() => Promise<void>) | undefined;
   /** Told when an item closes (the hub's close, an edit to `closed`, a hand edit): its topic closes too (spec 4.5). */
   readonly #closedListeners = new Set<(id: string) => void>();
+  /** A branch tip moved, before patch-id comparisons settle. */
+  readonly #tipListeners = new Set<() => void>();
   /** Told after every index change (a write, a hand edit, a removal, a claim): the `task` event. */
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
@@ -402,6 +405,12 @@ export class Tracker {
     return () => this.#closedListeners.delete(listener);
   }
 
+  /** A successful branch-tip read changed, before verdict patch comparisons settle. */
+  onTipsChanged(listener: () => void): () => void {
+    this.#tipListeners.add(listener);
+    return () => this.#tipListeners.delete(listener);
+  }
+
   /** Listen to index changes; returns the unsubscribe. */
   onChange(listener: (change: ItemChange) => void): () => void {
     this.#changeListeners.add(listener);
@@ -490,6 +499,9 @@ export class Tracker {
 
   /** Every item's freshness may have moved with a branch tip: announce the ones whose known answers changed. */
   #tipsMoved(): void {
+    for (const listener of this.#tipListeners) {
+      try { listener(); } catch (error) { this.#log({ event: 'task-tip-listener-failed', error: String(error) }); }
+    }
     for (const item of this.list()) if (item.branch || isPlanningContainer(item.kind, this.ladder) || item.verdicts.length || item.status === 'ready') { this.#announce(item.id, true); this.#scheduleReady(item.id); }
   }
 
@@ -1522,6 +1534,8 @@ export class Tracker {
       try { view.qaSatisfied = qaSatisfied(this.#mergeViewOf(view)); }
       catch (err) { if (!(err instanceof MergeError)) throw err; view.qaSatisfied = false; }
     }
+    const mergeQueue = this.#mergeQueue(id);
+    if (mergeQueue) view.mergeQueue = mergeQueue;
     return view;
   }
 
@@ -1809,6 +1823,9 @@ export class Tracker {
       holds: this.#index.holdsOf(item.id), verdictBase: this.#fresh.base(),
       verdicts: this.#annotateVerdicts(item.id, item.kind, item.branch, this.#index.verdicts(item.id).get(item.id) ?? []) } : null;
   }
+
+  #mergeQueue: (id: string) => ItemView['mergeQueue'] = () => undefined;
+  useMergeQueue(lookup: (id: string) => ItemView['mergeQueue']): void { this.#mergeQueue = lookup; }
 
   useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null, stageCovers: () => StageCover[] = () => []): void {
     this.#verify = lookup; this.#stageCovers = stageCovers;

@@ -11,8 +11,12 @@ import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { value, call } from './validation-support.ts';
 import { git, ok, json, review, refused, observableProject } from './merge-support.ts';
 
-async function project(t: TestContext, ..._unused: unknown[]) {
+async function project(t: TestContext, queue = false) {
   const root = await preparedProject(t, 'territory', 'cland-merge-policy-');
+  if (queue) {
+    const config = join(root, '.cland/config.toml');
+    await writeFile(config, (await readFile(config, 'utf8')).replace('queue = false', 'queue = true'));
+  }
   const { discovery, dispatcher } = await projectHub(t, root);
   const ui = await dispatcherUi(t, dispatcher, root);
   const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'reviewer-id', role: 'reviewer' });
@@ -116,7 +120,7 @@ test('task view reports QA satisfaction from the same durable evidence as the me
 });
 
 test('the permission table refuses Implementer, Reviewer and QA on spoke and CLI; only the human shell overrides verdicts', async (t) => {
-  const { root, ui, rev } = await project(t);
+  const { root, ui, rev } = await project(t, true);
   const work = await task(ui, 'Ship the parser', 'README.md');
   const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
   onCleanup(t, () => coord.close());
@@ -204,8 +208,8 @@ for (const [scope, files] of [
   ['documentation', ['docs/guide.txt', 'GLOSSARY.md', 'hub/README.md', 'qa/briefs/example.txt']],
   ['tracker', ['.cland/tasks/archive/note.txt', '.cland/RULES.md']],
 ] as const) {
-  test(`human override merges ${scope}-only changes without verdicts`, async t => {
-    const { root, ui } = await project(t);
+  test(`queue-enabled human override merges ${scope}-only changes without verdicts`, async t => {
+    const { root, ui } = await project(t, true);
     git(root, 'add', '.cland/RULES.md'); git(root, 'commit', '-qm', 'Track rulebook');
     await value(ui, { type: 'push' });
     const work = await task(ui, 'Document the parser', 'README.md');
@@ -310,4 +314,16 @@ test('freshness uses configured main after an unchanged task is rebased while de
     return undefined;
   });
   assert.equal(merged.base, 'main');
+});
+
+test('queue-enabled reviewed documentation lands immediately with its review receipt', async t => {
+  const { root, ui, rev } = await project(t, true);
+  const work = await task(ui, 'Parser documentation', 'README.md');
+  await review(rev, work.id);
+  const result = await value<{ commit: string; base: string; queued?: number }>(ui, { type: 'merge', item: work.id });
+  assert.equal(result.queued, undefined);
+  assert.equal(git(root, 'rev-parse', 'dev'), result.commit);
+  assert.match(git(root, 'show', '-s', '--format=%B', result.commit), /Reviewed-by: rev \(rev-1\)/);
+  assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, []);
+  assert.equal((await value<{ item: { state: string } }>(ui, { type: 'task.view', item: work.id })).item.state, 'closed');
 });

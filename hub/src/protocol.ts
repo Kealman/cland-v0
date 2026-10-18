@@ -329,13 +329,16 @@ export type Hello = {
 
 export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
 
-export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string };
+export type MergeQueueEntry = { item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
+export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string; cancel?: boolean };
+export type MergeQueueRequest = { type: 'merge.queue'; id: string };
 
 export type SpokeRequest =
   | RuleRequest
   | SuiteStart
   | SubscriptionRequest
   | MergeRequest
+  | MergeQueueRequest
   | ArtifactCreate
   | ArtifactList
   | ArtifactKeep
@@ -422,8 +425,10 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
     case 'event.unsubscribe':
     case 'event.subscriptions':
       return true;
+    case 'merge.queue':
+      return true;
     case 'merge':
-      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
+      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string') && (f.cancel === undefined || typeof f.cancel === 'boolean');
     case 'artifact.create':
     case 'artifact.list':
     case 'artifact.keep':
@@ -548,6 +553,7 @@ export type ClientRequest =
   | { type: 'sync'; id: string }
   | { type: 'push'; id: string }
   | MergeRequest
+  | MergeQueueRequest
   | ArtifactCreate
   | ArtifactList
   | ArtifactKeep
@@ -684,6 +690,7 @@ export type VerificationQueue = {
 };
 
 export type HubStatus = {
+  mergeQueue?: MergeQueueEntry[];
   covers?: CoverStatus[];
   verification?: VerificationQueue;
   suites?: SuiteStatus[];
@@ -819,8 +826,10 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return true;
     case 'release':
       return (f.version === undefined || typeof f.version === 'string') && (f.item === undefined || typeof f.item === 'string') && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
+    case 'merge.queue':
+      return true;
     case 'merge':
-      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string');
+      return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string') && (f.cancel === undefined || typeof f.cancel === 'boolean');
     case 'artifact.delete':
       return typeof f.artifact === 'string' && /^A-[1-9][0-9]*$/.test(f.artifact);
     case 'artifact.create':

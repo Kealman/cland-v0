@@ -289,3 +289,25 @@ test('rename refuses a dropped duplicate and preserves the source pending digest
   assert.equal(got.filter(m => m.id === r1.id).length, 1);
   core.close(); core.store.close();
 });
+
+test('merge queue preserves FIFO, pinned evidence and positions when the store reopens', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'cland-merge-queue-store-'));
+  const file = join(dir, 'hub.sqlite');
+  let store = new Store(file);
+  const entry = { item: 'T-1', branch: 't/parser', head: 'b'.repeat(40), verdictBase: 'dev', enqueued: '2026-10-18T09:00:00Z', by: { id: 'coord-id', name: 'coord', role: 'coordinator' } };
+  const second = { ...entry, item: 'T-2', branch: 't/lexer' };
+  try {
+    assert.equal(store.enqueueMerge(entry), 1);
+    assert.equal(store.enqueueMerge(second), 2);
+    assert.equal(store.enqueueMerge({ ...entry, enqueued: 'later' }), 1, 'a duplicate request retains its order and original evidence');
+    store.close();
+    store = new Store(file);
+    assert.deepEqual(store.mergeQueue(), [entry, second]);
+    store.dropMerge('1');
+    assert.deepEqual(store.mergeQueue(), [second]);
+    assert.equal(store.enqueueMerge(entry), 2, 'a new request follows the surviving request');
+  } finally {
+    store.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});

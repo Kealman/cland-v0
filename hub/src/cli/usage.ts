@@ -110,7 +110,9 @@ export const WORKTREE_USAGE = `  worktree list   the task worktrees (.cland/work
                   its branch after a y (--yes: all); refused from a session's shell
 `;
 
-export const MERGE_USAGE = `  merge <T-id> [--json]   land one task as a squash commit on its task base (dev); Coordinator or human
+export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when [merge] queue=true, otherwise land on dev; Coordinator or supervising Lead
+  merge queue [--json]  list queued heads in FIFO order
+    --cancel              drop a queued request; supervising Lead, Coordinator or human
     --override <reason>   the human's shell only: skip verdicts and criteria for tracker/docs only; record why and unmet criteria
                           allowed: .cland/tasks/**, .cland/RULES.md, docs/**, GLOSSARY.md, README.md files, qa/briefs/**
                           other paths require review; conflicts still refuse

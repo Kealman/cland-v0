@@ -202,6 +202,7 @@ function viewText(i: ItemView): string {
     `  branch    ${i.branch ?? '-'}`,
     ...(i.answers ?? []).map(a => `  ask ${a.ask} · answered_as ${a.answered_as}${a.answered_by ? ` (${a.answered_by})` : ''}${a.relayed_by ? ` · relayed_by ${a.relayed_by}` : ''}`),
     ...i.holds.map(h => `  hold ${h.session} (${h.role}) since ${h.heldAt}`),
+    ...(i.mergeQueue ? [`  merge queue ${i.mergeQueue.position} since ${i.mergeQueue.enqueued}`] : []),
     `  verdict base ${i.verdictBase ?? '-'}`,
     `  created   ${i.created}`,
     `  updated   ${i.updated}`,

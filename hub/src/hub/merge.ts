@@ -10,9 +10,12 @@ import { gateVerdicts, incompleteCriteria } from '../tracker/gate-verdicts.ts';
 import type { Actor, ItemView, Tracker } from '../tracker/tracker.ts';
 import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, territoryGitAsync, territoryPath, withTerritoryLockAsync } from '../territory.ts';
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
+import type { MergeQueue } from './merge-queue.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
-type MergeResult = { item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
+type LandedResult = { item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
+
+type MergeResult = LandedResult | { item: string; queued: number };
 
 export class TaskMerges {
   readonly #env: NodeJS.ProcessEnv;
@@ -26,11 +29,13 @@ export class TaskMerges {
   }
 
   readonly tracker: Tracker;
+  readonly queue: MergeQueue | undefined;
   readonly worktrees: TaskWorktrees;
   readonly log: LogFn;
   readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync) {
+  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue) {
+    this.queue = queue;
     this.#env = env;
     this.#territoryLock = territoryLock;
     this.tracker = tracker;
@@ -83,7 +88,7 @@ export class TaskMerges {
     return `${view.title} (${view.id})\n\nItem: ${view.id}${review ? `\nReviewed-by: ${review.author} (${review.run})` : ''}${qa ? `\nQA-by: ${qa.author} (${qa.run})` : ''}`;
   }
 
-  #incomplete(result: MergeResult, step: string, error: string, resumed: Resumed): MergeResult {
+  #incomplete(result: LandedResult, step: string, error: string, resumed: Resumed): LandedResult {
     const followUp = { step, error: `merged, follow-up failed: ${step}: ${error}` };
     // A failed record sink cannot erase the successful landing from the wire result.
     try { resumed(() => this.log({ event: 'merge-follow-up-failed', id: result.item, commit: result.commit, base: result.base, ...followUp })); } catch { /* reported in the returned follow-up */ }
@@ -94,6 +99,7 @@ export class TaskMerges {
     id = this.tracker.resolveId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
       const state: { landed: { commit: string; base: string; budgetLines?: string[] } | null } = { landed: null };
+      let queued: { item: string; queued: number } | undefined;
       let reason = override;
       let recovered = false;
       let step = 'territory lock';
@@ -156,9 +162,27 @@ export class TaskMerges {
           await this.tracker.refreshFreshness(resumed);
           const checked = await this.#view(id, resumed, override === undefined);
           resumed(() => this.#message(checked, override));
+          if (this.queue?.enabled() && override === undefined) {
+            const candidate = await this.queue.candidate(checked, resumed);
+            if (refusedOverridePaths(candidate.files).length) {
+              const validateLane = await this.#laneHold(checked, candidate.files, candidate.baseTip, resumed);
+              await this.tracker.refreshFreshness(resumed);
+              const finalView = await this.#view(id, resumed);
+              resumed(() => {
+                validateLane();
+                authorize();
+                this.#message(finalView);
+                if (!this.queue?.enabled()) throw new MergeError('merge-changed', 'merge queue setting changed during enqueue; try again');
+                if (finalView.branch !== checked.branch || this.tracker.freshnessTip(finalView.branch) !== candidate.head || this.tracker.freshnessTip(candidate.base) !== candidate.baseTip || finalView.verdictBase !== candidate.base) throw new MergeError('merge-changed', `${id}: task branch changed during enqueue; try again`);
+                queued = this.queue!.enqueue(finalView, candidate.head, candidate.base, actor);
+              });
+              return;
+            }
+          }
           try {
             const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
               resumed(() => {
+                if (override === undefined && this.queue?.enabled() && refusedOverridePaths(files).length) throw new MergeError('merge-changed', 'task requires the merge queue; try again');
                 if (override === undefined) return;
                 const refused = refusedOverridePaths(files);
                 if (refused.length) throw new MergeError('merge-override-scope', `override is limited to tracker and documentation changes; review required for: ${refused.join(', ')}`, refused);
@@ -203,7 +227,8 @@ export class TaskMerges {
           throw err;
         });
       }
-      const result: MergeResult = { item: id, ...state.landed!, cleanup: 'pending' };
+      if (queued) return queued;
+      const result: LandedResult = { item: id, ...state.landed!, cleanup: 'pending' };
       try {
         resumed(() => this.log({ event: recovered ? 'merge-resumed' : 'task-merged', id, session: actor.name, ...state.landed!, ...(reason === undefined ? {} : { override: reason }) }));
       } catch (err) { return this.#incomplete(result, 'record', err instanceof Error ? err.message : String(err), resumed); }
@@ -211,7 +236,7 @@ export class TaskMerges {
       const failure = await resumed(() => this.tracker.finishMerge(actor, id, `Merged ${result.commit} onto ${result.base}.${reason === undefined ? '' : `\nHuman override: ${reason}`}`, resumed, authorize));
       return resumed(() => failure ? this.#incomplete(result, failure.step, failure.error, resumed) : result);
     }).then(async result => {
-      if (result.followUp) return result;
+      if ('queued' in result || result.followUp) return result;
       try {
         await resumed(() => this.afterMerge(id, resumed));
       } catch (err) { return this.#incomplete(result, 'stop sessions', err instanceof Error ? err.message : String(err), resumed); }

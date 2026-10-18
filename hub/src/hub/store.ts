@@ -8,6 +8,7 @@ import { openDatabase } from '../database.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
 import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { MergeQueueEntry } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
 export type InboxWait = { kind: InboxRowKind; id: string; subject: string; since: string; text?: string };
@@ -21,6 +22,9 @@ export type ReleasedDigest = { trigger: string; session: string; notes: string[]
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+create table if not exists merge_queue (
+  number integer primary key autoincrement, item text not null unique, value text not null
+);
 create table if not exists heartbeats (
   session_id text primary key, role text not null, interval_ms integer not null,
   last_at integer not null, next_at integer not null
@@ -404,6 +408,19 @@ export class Store implements HygieneMemory {
         have.add(column);
       }
     }
+  }
+
+  mergeQueue(): MergeQueueEntry[] {
+    return (this.#db.prepare('select value from merge_queue order by number').all() as Array<{ value: string }>).map(row => JSON.parse(row.value) as MergeQueueEntry);
+  }
+
+  enqueueMerge(entry: MergeQueueEntry): number {
+    this.#db.prepare('insert into merge_queue (item, value) values (?, ?) on conflict(item) do nothing').run(itemKey(entry.item), JSON.stringify(entry));
+    return this.mergeQueue().findIndex(row => itemKey(row.item) === itemKey(entry.item)) + 1;
+  }
+
+  dropMerge(item: string): void {
+    this.#db.prepare('delete from merge_queue where item = ?').run(itemKey(item));
   }
 
   close(): void {

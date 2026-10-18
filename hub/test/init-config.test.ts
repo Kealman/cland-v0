@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
-import { parseConfig } from '../src/init/config.ts';
+import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 
 test('tracker config accepts peer levels and rejects malformed, duplicate and colliding kind names', () => {
   for (const levels of [['release', 'epic'], [['release', 'category'], 'epic']]) {
@@ -16,4 +16,15 @@ test('tracker config accepts peer levels and rejects malformed, duplicate and co
   }
   assert.throws(() => configuredLevels([['release', 'roadmap'], 'epic']), /release and roadmap both use R/);
   assert.throws(() => configuredLevels(['release', ['epic', 'effort']]), /epic and effort both use E/);
+});
+
+test('merge queue defaults off and round-trips an explicitly enabled boolean', () => {
+  assert.deepEqual(defaultConfig('scratch').merge, { queue: false });
+  assert.deepEqual(parseConfig('', 'scratch').merge, { queue: false });
+  const configured = parseConfig('[merge]\nqueue = true\n', 'scratch');
+  assert.deepEqual(configured.merge, { queue: true });
+  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { queue: true });
+  for (const invalid of ['"true"', '1', '[]']) {
+    assert.throws(() => parseConfig(`[merge]\nqueue = ${invalid}`, 'scratch', {}, { strict: true }), /merge.queue must be a boolean/);
+  }
 });

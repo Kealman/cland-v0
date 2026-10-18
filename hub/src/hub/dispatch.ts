@@ -63,6 +63,7 @@ import { ArtifactLifecycle, type ArtifactFiles } from './artifact-lifecycle.ts';
 import { artifactEntry, folderFiles } from './artifact-folder.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList, ArtifactPromote, ArtifactKeep, ArtifactArchive, ArtifactMove } from '../protocol.ts';
+import { MergeQueue } from './merge-queue.ts';
 import { TaskMerges } from './merge.ts';
 import { Releases } from './releases.ts';
 import { PushError } from '../territory-push.ts';
@@ -134,7 +135,7 @@ class VerifyAllReserved extends Error {}
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -155,6 +156,8 @@ export class Dispatcher {
   /** The task worktrees (T-58): made at a task's claim and by a launch with an item; a hub with a tracker only. */
   readonly #worktrees: TaskWorktrees | null;
   readonly #merges: TaskMerges | null;
+  readonly #mergeQueue: MergeQueue | null;
+  readonly #mergeQueueReady: Promise<unknown>;
   readonly #releases: Releases | null;
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
@@ -174,11 +177,21 @@ export class Dispatcher {
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
+    this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#worktrees = options.tracker ? new TaskWorktrees({ ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}), ...(options.env ? { env: options.env } : {}), tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
-    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock) : null;
+    this.#mergeQueue = options.tracker ? new MergeQueue(options.core.store, options.tracker, options.core.clock, () => options.projectConfig?.().merge.queue ?? false, options.git, options.env, (entry, reason) => {
+      const item = options.tracker?.summary(entry.item);
+      const requester = options.core.store.nameOfSession(options.core.sessionIdentity(entry.by.id)) ?? entry.by.name;
+      const lead = item?.state === 'open' ? `lead ${entry.item}` : 'coordinator';
+      options.core.noticeTo(item?.topic ?? AGENTS.id, { kind: 'merge-queue-dropped', to: [...new Set([requester, lead])], text: `merge-queue-dropped ${entry.item}: ${reason}`, detail: { event: 'merge-queue-dropped', item: entry.item, head: entry.head, reason } });
+      this.#guard.changed();
+      this.#log({ event: 'merge-queue-dropped', item: entry.item, head: entry.head, reason });
+    }) : null;
+    this.#mergeQueueReady = this.#mergeQueue?.refresh().catch(error => this.#log({ event: 'merge-queue-reconcile-failed', error: String(error) })) ?? Promise.resolve();
+    options.tracker?.useMergeQueue(id => this.#mergeQueue?.position(id));
+    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock, this.#mergeQueue ?? undefined) : null;
     this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles, options.core.clock);
-    this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
     this.#models = root ? new HarnessModels(options.core.store, root, options.env) : null;
@@ -251,6 +264,8 @@ export class Dispatcher {
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
     this.#merges?.stop();
+    this.#mergeQueue?.stop();
+    await this.#mergeQueueReady;
     await this.#models?.close();
     await this.#suites?.close();
   }
@@ -518,7 +533,7 @@ export class Dispatcher {
   #toolCall(connection: Caller, frame: Record<string, unknown>): ToolCall | null {
     const type = String(frame.type);
     // listing the launched sessions goes with launching them
-    const tool = type.startsWith('event.') ? type.slice(6) : type === 'session.list' ? 'session.launch' : type === 'artifact.list' ? 'history' : type;
+    const tool = type.startsWith('event.') ? type.slice(6) : type === 'session.list' ? 'session.launch' : type === 'artifact.list' || type === 'merge.queue' ? 'history' : type;
     if (!KNOWN_TOOLS.includes(tool) && !(connection.role === 'aide' && (tool === 'role.state' || tool.startsWith('session.')))) return null;
     const item = typeof frame.item === 'string' ? frame.item.trim() || null : null;
     const tracker = this.#options.tracker;
@@ -930,8 +945,15 @@ export class Dispatcher {
           throw new ToolForbidden(now.role, decision.permission, decision.reason);
         }
       };
+      if (frame.cancel) {
+        if (frame.override !== undefined) return peer.send(Dispatcher.#failure(frame.id, new MergeError('merge-item', 'cancel cannot be combined with override')));
+        return later('merge', this.#worktrees!.serial(async () => resumed(() => {
+          authorize();
+          return { type: 'result', id: frame.id, ok: true, value: this.#mergeQueue!.cancel(frame.item) } as HubFrame;
+        })).catch((err: unknown) => Dispatcher.#failure(frame.id, err)));
+      }
       later('merge', this.#merges.merge(frame.item, actor, resumed, frame.override, authorize).then(
-        (value): HubFrame => ({ type: 'result', id: frame.id, ok: true, value }),
+        (value): HubFrame => resumed(() => { this.#guard.changed(); return { type: 'result', id: frame.id, ok: true, value }; }),
         (err: unknown) => Dispatcher.#failure(frame.id, err),
       ));
     };
@@ -1133,6 +1155,8 @@ export class Dispatcher {
             }), error => resumed(() => Dispatcher.#failure(frame.id, error))));
           }
           case 'rule.show': throw new Error('use rule.list to read rules');
+          case 'merge.queue':
+            return later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries } })));
           case 'merge':
             return merge(frame, connection);
           case 'artifact.promote':
@@ -1399,12 +1423,15 @@ export class Dispatcher {
         case 'hub.subscriptions':
           peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
           break;
+        case 'merge.queue':
+          later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries } })));
+          break;
         case 'hub.status': {
           const status = (): HubFrame => {
             const verification = this.#suites?.snapshot();
             const base = control.status();
             const tracker = this.#options.tracker;
-            return { type: 'result', id: frame.id, ok: true, value: { ...base, ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], covers: this.#suites?.covers() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+            return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], covers: this.#suites?.covers() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
           };
           if (frame.flushLogs === true && control.flushLogs) {
             const resumed = this.#guard.resumer(frame.type, client);
