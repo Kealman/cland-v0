@@ -2,8 +2,8 @@
 id: T-787
 kind: task
 title: "merge-recovery test: the task worktree still exists after the retried rejected-push merge (Linux, line 325)"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-503
 topic: topic-486
 branch: t/T-787-merge-recovery-test-the-task-worktree
 created: 2026-10-18T08:30:15.199Z
-updated: 2026-10-18T09:08:00.143Z
+updated: 2026-10-18T09:08:33.689Z
+closed: 2026-10-18T09:08:33.689Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, A-5101. A-5100 accepted auto/hub-selected exit0,32/32 passes, no failure/cancellation/skip, Neovim smoke complete. All11 top-level merge-recovery identities have positive timing/reporter receipts, including all three corrected retries; no scoped trips. Source A-5099 preserves every assertion and records the deferred-cleanup race. C1 verified, C2 remains current; claimant done marks restored. Report-only duration diagnostic disclosed, no reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T09:08:33.689Z
+
+Merged 958efae59cf38937cd5803318b7ecc149e1ff4d5 onto dev.
