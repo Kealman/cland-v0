@@ -3,7 +3,7 @@ id: T-708
 kind: task
 title: Retire integration tests covered by a scenario plus a T2 equivalent, and close the process-helper baseline outside contract, scenario and lifecycle files
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -29,7 +29,7 @@ blocked_by:
 topic: topic-476
 branch: t/T-708-retire-integration-tests-covered-by-a
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-18T06:23:34.050Z
+updated: 2026-10-18T06:24:12.448Z
 ---
 
 ## Summary
@@ -57,6 +57,7 @@ After the class moves (T-691 to T-706) and the scenario set (T-707), many T3 tes
   - verified: rev-30 [reviewer] · run rev-20261018-708-volume-delta · 2026-10-18T05:52:50.458Z · commit 927ce1cfbacd8258c000881071c30b43bc978194
 - [x] C5. Each touched file in the sessions-and-leads group (A-4961) passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, with every moved test keeping its title and assertion meaning.
   - done: impl-708 · 2026-10-18T06:23:34.050Z
+  - verified: rev-30 [reviewer] · run rev-20261018-708-final · 2026-10-18T06:24:12.063Z · commit 927ce1cfbacd8258c000881071c30b43bc978194
 
 ## Comments
 
@@ -139,3 +140,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5003: source delta clear, no Standards/Spec findings. Coordinator 85d1b1c3 authorizes representative T2 plus exact-title 200-verdict T4 volume. Extracted assertion/setup body independently matches the reviewed original except its count parameter; T2 uses four alternating verdicts plus idle/death, T4 retains 200. The sole allowance uses observed A-5000 6.263449173s, open E-677 owner, reason and seven-day dates; all baseline/other duration fields unchanged. C1 refreshed for the explicit 188 T1/T2 + one T4 mapping. A-5002 has all 52 matching source hashes and ten fresh whole-file logs/45 passes with no failures/cancellations/skips, peak load 3.84. Failed parent A-5000 remains disclosed. C5 remains unverified pending a passing exact-head task receipt; normal verification may proceed.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-18T06:24:12.063Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-708-final
+commit: 927ce1cfbacd8258c000881071c30b43bc978194
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear. A-5017 independently audits A-5013 full exit-zero run 36e6f6ae: 2514 pass, zero failures/cancellations, eight prerequisite skips, full Neovim complete. All 48 scoped files/232 ordinary timing identities have positive reporter lines and match Mac titles; 61 scoped gates pass 5/5 (305 repetitions), no scoped tier trips. A-5002 supplies matching-source 48-file/240-run Mac whole-file evidence. Reviewed representative T2 and retained exact-title T4 volume cases both pass; earlier A-5000 red remains disclosed. C5 verified; C1 remains current from A-5003. Integrated performance/final baseline targets remain T-775/E-677.
+
+Criteria: C5 verified.
