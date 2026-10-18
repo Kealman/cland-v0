@@ -3,7 +3,7 @@ id: T-788
 kind: task
 title: verify admission runs T-684's test-lint policy before replying and overruns the CLI's 15 s deadline
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-684
-topic: null
-branch: null
+topic: topic-487
+branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T09:09:07.078Z
+updated: 2026-10-18T09:10:16.545Z
 ---
 
 ## Summary
@@ -26,3 +26,9 @@ Since the 08:58Z hub restart (pid 18334) put T-684's admission lint live, both m
 - [ ] C1. A T2 test measures `suite.start` admission against a manifest the size of the repository's and shows the reply arriving inside the CLI deadline with margin. It fails before the fix.
 - [ ] C2. The lint verdict still refuses a violating head before any queue slot or droplet is reserved, and the refusal still reaches the submitter with the same findings.
 - [ ] C3. `cland verify --dry-run` on this repository answers within the deadline.
+
+## Comments
+
+### impl-788 · 2026-10-18T09:10:16.545Z
+
+Initial git fetch origin, npm run test:lint and npm run typecheck passed. C1 first at specified T2 suite.start seam using projectHub, repository-sized manifest and deterministic Git call cost; retain C2 pre-reservation refusal.
