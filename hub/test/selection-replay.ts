@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { findPackageJSON } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { chooseSuiteMode, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, type SuiteMode } from '../src/suite-selection.ts';
+import { chooseSuiteMode, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE } from '../src/suite-selection.ts';
+import { replayCount, replayPackage } from './selection-replay-package.ts';
 
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 import { readDurationManifest } from '../src/suite-durations.ts';
@@ -14,17 +15,17 @@ import { readFile } from 'node:fs/promises';
 import { projectRoot } from '../src/project.ts';
 
 const options = process.argv.slice(2);
+const replayOptions = [...options];
 const coverage = options.includes('--coverage');
 const nearest = options.includes('--nearest');
 const countAt = options.indexOf('--count');
-const count = countAt < 0 ? 40 : Number(options[countAt + 1]);
-if (!Number.isSafeInteger(count) || count < 1) throw new Error('--count must be a positive integer');
+const count = replayCount(options);
 if (countAt >= 0) options.splice(countAt, 2);
 const failedAt = options.indexOf('--failures');
 const failedPath = failedAt < 0 ? undefined : options[failedAt + 1];
 if (failedAt >= 0) options.splice(failedAt, 2);
 const [range, selectorRef] = options.filter(arg => !['--coverage', '--nearest'].includes(arg));
-if (!range) throw new Error('usage: selection-replay.ts <first-parent-range> [selector-ref] [--coverage [--nearest] [--count 40] [--failures json]]');
+if (!range) throw new Error('usage: selection-replay.ts <first-parent-range> [selector-ref] [--count 40] [--coverage [--nearest] [--failures json]]');
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
 let scratch: string | undefined;
 let choose = chooseSuiteMode;
@@ -47,27 +48,10 @@ try {
     selectCoverage = (await import(pathToFileURL(join(scratch, 'hub/src/suite-coverage.ts')).href)).coverageSelection;
   }
   const imports = await readImports(process.cwd());
-  const counts: Record<SuiteMode, number> = { full: 0, 'hub-only': 0, 'hub-selected': 0, 'nvim-only': 0 };
   const commits = git('log', '--first-parent', '--format=%H%x09%s', range).trim().split('\n')
     .filter(line => /\(T-\d+\)$/.test(line) && !line.includes('\tTracker:'));
   if (coverage) await replayCoverage(commits, range);
-  else {
-    console.log(`Selector: ${selectorRef ?? 'working source'}; range: ${range}; ${commits.length} task landings`);
-    console.log('| Commit | Item | Mode | Deciding file or rule |');
-    console.log('| --- | --- | --- | --- |');
-    for (const line of commits) {
-      const [sha, subject] = line.split('\t');
-      if (!sha || !subject) throw new Error(`invalid git log row: ${line}`);
-      const paths = git('diff', '--name-only', '-z', '--no-renames', `${sha}^1`, sha).split('\0').filter(Boolean);
-      const mode = choose(paths, imports);
-      counts[mode]++;
-      const deciding = mode === 'full'
-        ? paths.find(path => choose([path], imports) === 'full') ?? 'mixed nvim and non-nvim paths'
-        : mode === 'nvim-only' ? 'all paths under nvim/' : 'all paths outside nvim/';
-      console.log(`| ${sha.slice(0, 8)} | ${subject.match(/\((T-\d+)\)$/)?.[1]} | ${mode} | ${deciding} |`);
-    }
-    console.log(`Split: full ${counts.full} / hub-only ${counts['hub-only']} / nvim-only ${counts['nvim-only']}`);
-  }
+  else replayPackage(replayOptions, commits, { range, selectorRef, imports, git, choose, log: console.log });
 } finally {
   if (scratch) await rm(scratch, { recursive: true, force: true });
 }

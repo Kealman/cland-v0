@@ -251,6 +251,7 @@
       "tier": "T3",
       "scenario": "ticket-flow"
     },
+    "hub/test/selection-replay-package.test.ts": "T1",
     "hub/test/session-archive-merge.test.ts": "T3",
     "hub/test/session-archive.test.ts": "T2",
     "hub/test/session-async-processes.test.ts": "T3",
