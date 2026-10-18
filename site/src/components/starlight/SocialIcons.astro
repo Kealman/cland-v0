@@ -1,0 +1,21 @@
+---
+// Starlight override: a "Log" link to the build log beside the docs' social icons,
+// in the header on wide screens and in the mobile menu footer.
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+---
+
+<a href="/log/" class="log-link">Log</a>
+<Default />
+
+<style>
+  .log-link {
+    font-family: var(--cland-font-heading);
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-text-accent);
+    text-decoration: none;
+    margin-inline-end: 0.5rem;
+  }
+  .log-link:hover {
+    color: var(--sl-color-white);
+  }
+</style>

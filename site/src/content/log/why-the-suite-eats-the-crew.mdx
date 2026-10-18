@@ -1,0 +1,133 @@
+---
+title: 'Why the test suite ate the crew: 97% of its time boots real processes'
+description: 'We read all 237 test files and 557 run receipts to find out why verification set the crew''s pace. The suite is not too big. It runs at the wrong level, and the fix is test tiers enforced by the hub plus a merge queue.'
+date: 2026-10-16
+tags: [verification, testing, study]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+Two releases in a row told us the same thing: the crew can merge faster than we can prove its merges are safe. By mid-October a ticket spent between 1.3 and 1.8 hours of its life waiting for verification, while the droplet time it used cost $0.11. So we stopped and studied the suite itself.
+
+Five read-only agents read every one of the 237 test files, classified the level each one really runs at, and measured the verification pipeline against 557 retained run logs. Nothing was executed. Their answer surprised us: the suite is not too big. It is at the wrong level.
+
+## What we set out to answer
+
+Why did the test suite become the crew's bottleneck, and what strategy keeps working as the product grows? The study covered task runs from 12 to 16 October: the end of v0.1.2 and all of v0.1.3.
+
+## The numbers
+
+<Stats
+  items={[
+    { value: '97%', label: 'of test time boots real processes' },
+    { value: '2.5', label: 'full runs per merged ticket (475 runs, 202 merges)' },
+    { value: '55%', label: 'of task runs red (228 of 417 with an exit)' },
+    { value: '9%', label: 'of a droplet run is infrastructure, so droplets are not the lever' },
+    { value: '2.7%', label: 'of task runs selected by coverage (13 runs)' },
+    { value: '35–37%', label: 'of test seconds removable by fixing levels alone' },
+  ]}
+/>
+
+<BarChart
+  title="Where the test seconds go, by the level a file really runs at"
+  rows={[
+    { label: 'Integration · 81%', bars: [{ value: 4290, text: '4,290 s', color: 'pink' }] },
+    { label: 'Component · 9%', bars: [{ value: 486, text: '486 s', color: 'amber' }] },
+    { label: 'End-to-end-like · 8%', bars: [{ value: 394, text: '394 s', color: 'violet' }] },
+    { label: 'Unit · 1%', bars: [{ value: 64, text: '64 s', color: 'green' }] },
+  ]}
+  caption="Manifest seconds, out of 5,281 in all. Unit and component tests together are a tenth of the time."
+/>
+
+Most of that integration time proves tracker and hub rules. Those rules can run in-process in milliseconds. Instead, the tests prove them by starting daemons, spokes, CLI processes and fake harness binaries.
+
+## What broke or hurt
+
+### Load, not races, turns runs red
+
+One full run makes 481 daemon starts, 614 spokes and 1,206 CLI calls, with 944 wall-clock polls and 158 literal sleeps. Four test files at once can mean 15 to 30 processes on 8 vCPUs. At four workers, a quiet c-8 droplet reaches a load average of 16.
+
+The red rate follows the load. Below a load of 6, no run went red. Between 10 and 15, 62% did. Most of our "flaky tests" were never races in the product. They were tests that fail when the machine is busy, and the tests themselves keep it busy.
+
+### The protocol multiplies every flake
+
+A task verifies at its exact head. If it goes red, the Implementer fixes it, the fix is re-reviewed and the task re-verified. On top of that come covers on `dev`, stage, epic and release runs, and a second receipt for anything that looks flaky. That adds up to 2.5 full runs per merged ticket, with a median queue of 10 minutes in front of each.
+
+### Selection could not help
+
+The one optimisation that worked was coverage selection, with a median run of 59 seconds. It decided 13 runs. The rest ran in full: 142 because the run was submitted as "all", mostly the flaky-test gate's second receipt, and 66 because Neovim tests import hub modules, so any change to the harness, protocol, tracker, config or store forced a full run. Running only the hub tests saves just the Neovim phase, about 200 seconds, because the hub is 92% of the time.
+
+### Fourteen anti-patterns, found independently
+
+Four auditors read different slices of the suite and found the same habits:
+
+- A daemon to prove a rule. `startDaemon` appears in 136 files, but only about 25 tests assert anything about a process.
+- A restart as proof of persistence, in about 40 files, where reopening the store in-process proves the same.
+- Sleeping to prove a negative. One test sleeps three times 30 seconds; another waits out a 60-second production grace period.
+- Elapsed-millisecond assertions on a shared four-worker box, in about 20 files.
+- Permutation loops that boot the whole world for each of 12 cells.
+- The CLI as a transport (1,206 calls) and spokes as observers (614).
+- Timing knobs tuned per test, in 23 files: a race asserted rather than a behaviour.
+
+### Why it is structural, not sloppy
+
+- **The real-process harness is the default idiom.** The guideline to prefer an in-process hub is recent; most of the suite is older. Even the in-process hub binds real sockets, and even a spoke is a child process.
+- **The file is the unit of everything.** Node's test runner isolates by file, and scheduling, timing, selection and the five-times load gate all work per file. A one-test file of 64 seconds and a 63-test file of 54 seconds are both one job.
+- **Budgets ratchet the wrong way.** 300 tests over 5 seconds are grandfathered and hold 51% of the time. The 5-second cliff only bites new tests, baselines are recorded under load, and the load gate adds load to the runs it protects.
+- **It grows.** 290 new tests arrive per release, all written at the same level.
+
+The patches already in flight, quarantine for flaky tests, no fallback to the Mac and two workers per droplet, may cut red runs and wall time by about 20%. They are necessary. They do not change the chance that a given run fails, or the growth.
+
+## What we propose to change in cland
+
+The proposal is five tiers that the hub enforces, and a merge queue.
+
+- **T0, static.** Typecheck, manifest lint and a test lint: no literal sleeps, no clock deltas, tier import rules. Budget: 60 seconds of wall time. Runs on every verify and merge.
+- **T1, unit.** Pure modules, and an in-process hub with a fake clock, in-memory transports and an in-process fake adapter. Budget: 0.5 s per test, 10 s per file, 120 s wall. Runs on every task verify, and locally on every push.
+- **T2, component.** An in-process hub with real socket edges; the CLI only where the CLI is the subject. Budget: 2 s, 30 s, 480 s. Runs on every task verify, selected by coverage.
+- **T3, integration.** Eight to twelve named scenarios: hub lifecycle, crew launch per harness, claim to merge, stage close, release, Neovim attach, a droplet run. Budget: 10 s, 120 s, 900 s. Runs once per merge-queue batch of up to three, and at stage, epic and release.
+- **T4, soak.** The five-times load gate, long waits, macOS-only tests. Runs nightly, and at stage, epic and release.
+
+**The merge queue.** `cland merge` enqueues instead of landing. The hub runs T3 once on a tree that holds up to three reviewed heads, lands them on green, and on red bisects by the failing file and evicts the culprit with a named refusal. Two reds of one file with no culprit produce a quarantine proposal. Kubernetes, Chromium and bors-style rollups work this way.
+
+**The hub enforces the tiers.** A file's tier is declared, and its imports must match: no child processes, sockets or sleeps in T1, no daemons, spokes, fake binaries or Neovim in T2. Every test gets a budget with no grandfathering, and a tier's total may not grow in a merge without an allowance that expires.
+
+<BarChart
+  title="Per merged ticket: today against the target"
+  legend={[
+    { name: 'today', color: 'pink' },
+    { name: 'target', color: 'green' },
+  ]}
+  perRow
+  rows={[
+    { label: 'Full runs per merge', bars: [{ value: 2.5, text: '2.5', color: 'pink' }, { value: 1.5, text: '~1.5', color: 'green' }] },
+    { label: 'Task gate', bars: [{ value: 30, text: '30 min', color: 'pink' }, { value: 8, text: '≤8 min', color: 'green' }] },
+    { label: "Ticket's wait for verification", bars: [{ value: 95, text: '1.3–1.8 h', color: 'pink' }, { value: 15, text: '~15 min', color: 'green' }] },
+    { label: 'Droplet minutes', bars: [{ value: 31, text: '31', color: 'pink' }, { value: 10, text: '10', color: 'green' }] },
+    { label: 'Droplet cost', bars: [{ value: 11, text: '$0.11', color: 'pink' }, { value: 7, text: '$0.07', color: 'green' }] },
+  ]}
+  caption="Targets are the study's estimates. Per merge: one T2 run on a droplet, about 8 minutes and $0.04, plus a third of a T3 batch of about 15 minutes. The Mac keeps hosting the crew and runs only T0 and T1."
+/>
+
+The target for the red rate of T1 and T2 is under 5%, because nothing at those tiers waits on the operating system's scheduler.
+
+**The patterns already exist in the repo.** One test file checks 22 launch-admission cases in 1 second on an in-process hub. Another covers 32 artifact fault cases in 5.5 seconds, and an adapter boundary file runs 65 cases in 14 seconds. The largest single wins in the audit save from about 30 to about 90 seconds per file, and several are trivial: putting one 60-second grace period behind a test knob saves about 58 seconds. A mechanical switch to the in-process hub in about 45 files, where no process is asserted, saves about 100 more.
+
+**Rules a Reviewer can check.** An Implementer declares the tier in the same commit and waits on an event, never on elapsed time. A Reviewer counts the CLI calls, spokes, daemons and sleeps in each new test, and never asks for a full run on a task head.
+
+**It becomes a product rule.** The same rules, stack-neutral, go into a project's verification config as per-tier commands and budgets, so any project on cland gets them. For the web workbench that means jsdom components and stores in T1 and T2, a handful of Playwright scenarios in T3, and visual and cross-browser checks nightly. Hundreds of web tests would then not add a minute to the task gate.
+
+## What is next
+
+The migration plan takes four weeks without stopping the crew:
+
+1. **Now, report only.** Tag every file T3, run the tier lint in report mode, and switch droplets to two workers: green at a load of 9 instead of 16, for 20% more wall time and far fewer red runs.
+2. **Week 1, stop the growth.** New files must be T1 or T2 unless they name a lifecycle behaviour, and the T3 total may not grow. Land the fake clock and the in-process fake adapter.
+3. **Weeks 2 to 4, move the bulk by class.** 41 files hold half the time, in three classes: adapters, executor and suite, and roles, subscriptions, inbox and tracker. One task per class, each with its before and after seconds. Exit: 60% of test time in T1 and T2.
+4. **Week 3, the scenario set,** and retire the integration files it covers.
+5. **Week 4, switch the protocol.** A task verifies T0, T1 and selected T2; `cland merge` enqueues; T3 runs per batch.
+
+Eight decisions belong to the maintainer, and at the time of writing all were open: a merge queue or Coordinator covers, and batches of three or a time window; how long a process-level regression may sit on a branch; budgets that refuse merges at once or two weeks of reporting first; two droplet workers now or after the trials; how faithful the fakes must be; whether Neovim tests move before v0.2; a nightly soak at about $0.15 to $0.25 a day; and whether this runs beside v0.1.4 or pauses feature work for two weeks.
+
+One honest limit: the levels and the savings come from reading the code, not running it, and the saved seconds are estimates recorded under four-worker load. We will report what the migration actually saves.
