@@ -44,3 +44,18 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Tells IndexNow engines (Bing, which feeds Copilot and ChatGPT search, Yandex and
+  # others) about every page after a deploy. The key file lives in site/public/.
+  indexnow:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping IndexNow
+        run: |
+          KEY=6110d1e563bf6b6bf9d9599630a15f52
+          URLS=$(curl -fsSL https://cland.app/sitemap-0.xml | grep -o '<loc>[^<]*' | sed 's/<loc>//' | jq -R . | jq -sc .)
+          BODY=$(jq -nc --arg key "$KEY" --argjson urls "$URLS" \
+            '{host: "cland.app", key: $key, keyLocation: ("https://cland.app/" + $key + ".txt"), urlList: $urls}')
+          curl -sS -o /dev/null -w 'IndexNow: HTTP %{http_code}\n' -X POST https://api.indexnow.org/indexnow \
+            -H 'Content-Type: application/json; charset=utf-8' -d "$BODY"
