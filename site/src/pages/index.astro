@@ -14,7 +14,7 @@ const site = Astro.site ?? new URL('https://cland.app');
 const canonical = new URL(Astro.url.pathname, site).href;
 const ogImage = new URL('/og.png', site).href;
 
-const GITHUB = 'https://github.com/[owner]/cland';
+const GITHUB = 'https://github.com/Kealman/cland-v0';
 const DOCS = '/docs/';
 
 const ROLE = { coord: '#35c4a0', impl: '#b392f0', rev: '#f778ba', qa: '#79c0ff' };
@@ -65,7 +65,7 @@ const presets = [
 const installs = [
   { id: 'mac', label: 'macOS · Homebrew', lines: ['brew install cland'] },
   { id: 'linux', label: 'Linux · script', lines: ['curl -fsSL https://cland.app/install.sh | sh'] },
-  { id: 'source', label: 'From source', lines: ['git clone https://github.com/[owner]/cland', 'cd cland && npm ci && npm link'] },
+  { id: 'source', label: 'From source', lines: ['git clone https://github.com/Kealman/cland-v0 cland', 'cd cland && npm ci && npm link'] },
 ];
 const installTail = ['cd my-project', 'cland init && cland setup'];
 
