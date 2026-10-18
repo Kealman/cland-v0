@@ -3,7 +3,7 @@ id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-477
 branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-18T06:34:57.180Z
+updated: 2026-10-18T07:07:11.675Z
 ---
 
 ## Summary
@@ -36,18 +36,23 @@ Week 1 stops the growth (memo §5.5 step 1): a new test must be T1 or T2 unless 
 - [x] C1. A new T3 test file without a lifecycle header is refused at verify and merge with the rule named, and the same file with the header is admitted, proved by admission and merge-gate tests.
   - done: impl-684 · 2026-10-18T04:57:01.679Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
+  - verified: rev-30 [reviewer] · run rev-20261018-684-integrated-final · 2026-10-18T07:07:09.759Z · commit 405bbe90de50e99a27017ab49d2120f6ff459c44
 - [x] C2. A new numeric sleep wait in an existing file is refused unless it carries the reasoned marker, and removing one then running the shrink tool lowers the file's baseline count, proved by lint tests.
   - done: impl-684 · 2026-10-18T04:57:02.078Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
+  - verified: rev-30 [reviewer] · run rev-20261018-684-integrated-final · 2026-10-18T07:07:09.759Z · commit 405bbe90de50e99a27017ab49d2120f6ff459c44
 - [x] C3. A new `startDaemon` call site in a file without a T3 header is refused, and one in a file with the header is admitted, proved by lint tests.
   - done: impl-684 · 2026-10-18T04:57:02.814Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
+  - verified: rev-30 [reviewer] · run rev-20261018-684-integrated-final · 2026-10-18T07:07:09.759Z · commit 405bbe90de50e99a27017ab49d2120f6ff459c44
 - [x] C4. A baseline file whose counts grew is refused by name, proved by a lint test.
   - done: impl-684 · 2026-10-18T04:57:04.458Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
+  - verified: rev-30 [reviewer] · run rev-20261018-684-integrated-final · 2026-10-18T07:07:09.759Z · commit 405bbe90de50e99a27017ab49d2120f6ff459c44
 - [x] C5. `until` fails with its `what` text after the load-scaled deadline, proved by a harness unit test, and one existing flaky test file uses it in place of its fixed sleeps with its assertions unchanged in meaning.
   - done: impl-684 · 2026-10-18T04:57:05.627Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
+  - verified: rev-30 [reviewer] · run rev-20261018-684-integrated-final · 2026-10-18T07:07:09.759Z · commit 405bbe90de50e99a27017ab49d2120f6ff459c44
 - [x] C6. `docs/agents/tests.md` documents the refusal rules, the T3 header, the baseline, the shrink tool and `until`.
   - done: impl-684 · 2026-10-18T04:57:07.252Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-source · 2026-10-18T05:05:41.542Z · commit ab93275fc79203cdf2926027f92a6c2752daa509
@@ -139,3 +144,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source delta clear, A-5037. Authorized integrations retain both clock regression groups, lazy fixture admission, T-708 hygiene peers and until reconnect assertions. Native watcher exact title/assertion body restored to T3; only fixture setup changes. First-publication fix validates original freeze before retaining it through dev movement; new Git regression covers inflated seeds, immutable history and later growth. Independently checked no per-file/category baseline increases (363 current paths). A-5030: eleven files whole-file 5/5, 420 aggregate passes, zero failures/cancellations/skips. C6 verified; C1–C5 await fresh exact-head droplet evidence. Prior A-5007 green belongs to old head only; A-4990 red retained.
 
 Criteria: C6 verified.
+
+### rev-30 · 2026-10-18T07:07:09.759Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-684-integrated-final
+commit: 405bbe90de50e99a27017ab49d2120f6ff459c44
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-5051. A-5049 full exit-zero run 900b652c has 2527 passes, zero failures/cancellations, eight prerequisite skips and full Neovim completion. Eleven focused files have 82 ordinary timing identities/positive reporter lines; all Mac top-level positive titles match Linux identities. Twenty-one focused gates pass 5/5 (105 repetitions), including until/lint and baseline-history tests; restored watcher also passes. A-5030 supplies 55 raw Mac whole-file runs/420 aggregate passes; A-5037 source/assertion review current. C1–C5 verified, C6 remains current. Unrelated report-only T-759 probes and duration diagnostics disclosed; prior failures preserved.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T06:18:03.502Z
+updated: 2026-10-18T06:50:38.279Z
 ---
 
 ## Summary
@@ -41,12 +41,15 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
 - [x] C1. No T2 Neovim file or helper it imports reaches a `hub/src` runtime module, proved by `nvimHubImports` over the T2 files returning an empty list.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.183Z
+  - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.284Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
 - [x] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.811Z
+  - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
 - [x] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:41.523Z
+  - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
 - [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - failed: rev-30 [reviewer] · 2026-10-18T06:13:00.293Z · note Neutral extraction introduces shared/test-support imports missing from coverage, root/worktree typecheck and archived-selector source carriers; repair those sets and refresh evidence before task verification.
 
@@ -120,3 +123,26 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-709 · 2026-10-18T06:18:03.502Z
 
 Source clear rev-20261018-709-carrier-correction / A-5012 at7d8025aef34e8b43b44ecf721b404a7ebbe3ad63; C1–C3 claimant done marks restored with corresponding evidence. Read verify queue (local none, remote2/6) and submitted mode-free droplet1e629b10-ad08-4c50-8f61-050db567eea4 at this exact unchanged clean head, reporttopic-475 to Reviewer,self,Coordinator. C4 awaits its required droplet receipt before claimant done. Idle awaiting hub result.
+
+### impl-709 · 2026-10-18T06:49:12.559Z
+
+Prior exact-head full droplet1e629b10 is green at7d8025ae (A-5045,2530pass/2538,8skip,0fail,Linux x64,lifetime1544s,cost$0.1072). Coordinator fe50a48b authorized one dev merge for T-708/T-767 conflicts. Merged at5cfc492a; pushed clean72570ce02e551afdad7af00cbbdb4cb9a6fa3316 with evidence docs. Tiers keeps both entries; T-767 minimal compiler fixture copies/Git-seeds neutral roots and tiny sources bind real admission API. T0pass; typecheck+five Neovim boundary whole files each5/5,235pass,0fail/skip,peak1m3.283. Compiler1.410–1.440s. Refreshed exact40 replay at5f8d274a:11T2,hubclosure[],0import-decidedT2. Durable A-5046 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5046-t-709-t-708-t-767-integration-compiler-and-neovim-boundary-5-5. Requesting delta source review, then required fresh mode-free droplet. T-684 not in dev parent, no shrink capability yet; subscribed to landing.
+
+### rev-30 · 2026-10-18T06:50:11.285Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-integration-delta
+commit: 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear, A-5047. Authorized dev integration preserves all dev tier entries plus boundary T1; compiler conflict retains T-767 minimal real configs/launcher and imports actual neutral admission API from both tiny sources, copying/Git-seeding neutral roots for linked-worktree checks. Compiler assertions unchanged. Admission/Neovim/recording/selector code unchanged from prior source clear. A-5046 raw 30 whole-file runs: 235 passes, zero failures/cancellations/skips. Exact updated 40-landing Git window matches replay. C1/C2/C3 verified; C4 awaits fresh exact-head droplet per Coordinator fe50a48b. A-5045 green is prior-head history only.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-709 · 2026-10-18T06:50:38.279Z
+
+Delta source clear rev-20261018-709-integration-delta / A-5047 at72570ce02e551afdad7af00cbbdb4cb9a6fa3316. Queue read localnone/remote4of6; fresh mode-free droplet322abcc1-48fb-4c5f-a4d0-aa63f56dfb27 submitted at unchanged clean exact reviewed head, reporttopic-475 to Reviewer,self,Coordinator. C4 remains pending its current-head receipt; idle awaiting hub result.
