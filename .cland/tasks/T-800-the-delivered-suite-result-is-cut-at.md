@@ -2,8 +2,8 @@
 id: T-800
 kind: task
 title: The delivered suite result is cut at about 8 KiB by per-file test-lint tier lines, so the per-tier and tier-share lines never reach the reader
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-684
 topic: topic-506
 branch: t/T-800-the-delivered-suite-result-is-cut-at
 created: 2026-10-18T12:11:23.483Z
-updated: 2026-10-18T14:44:16.800Z
+updated: 2026-10-18T14:55:27.817Z
+closed: 2026-10-18T14:55:27.817Z
 ---
 
 ## Summary
@@ -311,3 +312,7 @@ Standards: zero findings. Spec: zero findings.
 Artifact A-5361.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T14:55:27.817Z
+
+Merged 6327e551c4be11feadc982381b1b0095446e795b onto dev.
