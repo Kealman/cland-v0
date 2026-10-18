@@ -159,8 +159,13 @@ export class TestLintWarmer {
 export async function testLintPolicy(cwd: string, options: { tree?: string; head?: string; base?: string; env?: NodeJS.ProcessEnv } = {}): Promise<LintRefusal[]> {
   const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, env: options.env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout.trimEnd();
   let baseRef: string | undefined;
-  try { baseRef = await git(['merge-base', options.base ?? 'origin/dev', options.head ?? 'HEAD']); }
-  catch { try { baseRef = await git(['rev-parse', options.head ?? 'HEAD']); } catch { /* standalone fixture */ } }
+  // The hub advances the shared local dev branch; origin/dev can be stale or
+  // absent until a fetch. Keep the remote fallback for clones without local dev.
+  for (const ref of options.base ? [options.base] : ['refs/heads/dev', 'origin/dev']) {
+    try { baseRef = await git(['merge-base', ref, options.head ?? 'HEAD']); break; }
+    catch { /* try the next available integration ref */ }
+  }
+  if (!baseRef) try { baseRef = await git(['rev-parse', options.head ?? 'HEAD']); } catch { /* standalone fixture */ }
   try {
     const [current, base] = await Promise.all([
       options.tree ? treeSnapshot(cwd, options.tree, options.env) : snapshot(file => readFile(join(cwd, file), 'utf8')),
