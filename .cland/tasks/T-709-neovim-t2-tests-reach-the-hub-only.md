@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T10:52:16.697Z
+updated: 2026-10-18T11:04:05.358Z
 ---
 
 ## Summary
@@ -59,8 +59,8 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
   - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
-- [x] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - done: impl-709 · 2026-10-18T09:29:27.754Z
+- [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - failed: rev-30 [reviewer] · 2026-10-18T10:52:55.288Z · note Exact-head gate timed out with unfinished hub machine phase and no Neovim timings; required touched-file droplet passes are missing.
 
 ## Blocked by
 
@@ -235,3 +235,26 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-709 · 2026-10-18T09:36:20.520Z
 
 Transport delta source clear rev-20261018-709-transport-delta/A-5139 at5f552d2c5731a2a6ff5dcdf19020f01143d30847. Fresh fetch+gated lint passes (A-5142); tree unchanged/clean. Submitted one mode-free droplet verify via CLI to Reviewer,self,Coordinator. CLI exit75 sent-unconfirmed; after required60s wait, queue+task receipt confirm2119e998-6b74-4d7e-bda8-7bb896bc5a73 launching at exact reviewed head. No retry submitted. C4/current final evidence awaits that result; idle under load rule.
+
+### rev-30 · 2026-10-18T10:52:55.288Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-transport-runtime
+commit: 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5222: A-5221 exits124 after4498s; only hub free phase finalizes (51files/229timings), hub machine lacks completion and Neovim has zero timing receipts. This does not satisfy C4 exact-head touched-file passes. Machine startup/load events are not completion evidence; cause unclassified, no speculative source finding. Preserve receipt/head and obtain lead diagnosis/disposition before any retry. Earlier Mac and prior-head green evidence stay disclosed.
+
+Criteria: C4 failed (Exact-head gate timed out with unfinished hub machine phase and no Neovim timings; required touched-file droplet passes are missing.).
+
+### impl-709 · 2026-10-18T11:01:27.665Z
+
+A-5221 fresh5f552d2c droplet exits124 after4498s; only hub free finalizes229/229, machine incomplete and no Neovim timings. A-5222 runtime not-clear/C4failed retained. Per Coordinator9e400b4f, completed bounded Mac differential controls against devb405a7e0 in under9min:16files×2refs=32serial whole-file runs,375passes,0fail/cancel/skip/timeout,hard180s caps never fired,max23.101s,peak1m5.191. Includes verify-submission,cli,suite-runner-contract plus13recorded CLI/transport/admission/lifecycle consumers; full list/rawlogs/comparisons in A-5223. HubTimeout and askHubFrame match current dev (only erased hello type annotation differs). No local head-only hang, no speculative source edit, no retry; head remains clean5f552d2c. Reported negative reproduction result and requested Coordinator disposition. This does not replace required exact-head green evidence.
+
+### impl-709 · 2026-10-18T11:04:05.358Z
+
+Coordinator23e48fc8 authorized exactly one same-head retry after A-5223 found no local head-only hang. Fresh fetch+gated lint passed(A-5224), source unchanged/clean5f552d2c. Submitted once mode-free via CLI to Reviewer,self,Coordinator; on exit75 waited60s then queue+task receipt confirm a621ea5f-ad95-4366-b579-23a10acb7127 launching at exact head. No extra submission. Review status restored for unchanged source awaiting corrected evidence; C4 remains unfulfilled by A-5221. If this run times out again Coordinator directs droplet half-shard bisection, not another blind retry. Idle awaiting result.
