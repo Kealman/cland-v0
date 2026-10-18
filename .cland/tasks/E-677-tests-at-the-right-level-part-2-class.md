@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-18T01:59:46.143Z
+updated: 2026-10-18T04:49:46.968Z
 ---
 
 ## Summary
@@ -90,7 +90,16 @@ stages:
       when: after-stage
     lanes:
       - - T-708
+      - - T-772
+      - - T-773
       - - T-709
+        - T-774
+  - name: stage-3 close
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-775
 ```
 
 ## Comments

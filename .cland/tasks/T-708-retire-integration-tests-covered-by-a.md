@@ -3,8 +3,9 @@ id: T-708
 kind: task
 title: Retire integration tests covered by a scenario plus a T2 equivalent, and close the process-helper baseline outside contract, scenario and lifecycle files
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -25,10 +26,10 @@ blocked_by:
   - T-704
   - T-705
   - T-707
-topic: null
-branch: null
+topic: topic-476
+branch: t/T-708-retire-integration-tests-covered-by-a
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-18T04:40:38.851Z
+updated: 2026-10-18T04:49:15.068Z
 ---
 
 ## Summary
@@ -51,10 +52,7 @@ After the class moves (T-691 to T-706) and the scenario set (T-707), many T3 tes
 ## Acceptance criteria
 
 - [ ] C1. The inventory is posted as an artifact on this item, mapping every retired or moved test to the scenario step and T1/T2 test that prove its behaviour.
-- [ ] C2. The process-helper counts in the lint baseline are zero outside contract, scenario and T3-header files, and a planted `spawnSpoke` in a T2 file is refused, proved by the lint run and a lint test.
-- [ ] C3. A durations refresh from a green integrated run after the merge shows T3 manifest seconds of 1800 s or less, recorded on this item with the per-tier totals.
-- [ ] C4. A spawn census of a full run after the merge shows 150 hub process starts or fewer, with the per-file table recorded on this item.
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [ ] C5. Each touched file in the sessions-and-leads group (A-4961) passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, with every moved test keeping its title and assertion meaning.
 
 ## Comments
 
@@ -65,3 +63,7 @@ Coordinator input from T-696: the account files hold native-contract assertions 
 ### coord · 2026-10-17T12:27:15.613Z
 
 Candidates from T-699's C1 exception (A-4508): executor sentinel lifecycle/redaction (15.1 s Mac), remote shell/host deadline (12.3 s) and failed replacement table (12.0 s). Retire or shrink each once a T-707 scenario plus a T2 equivalent covers it.
+
+### impl-708 · 2026-10-18T04:48:50.704Z
+
+C1 inventory posted as A-4961 in topic-476: all 213 T3 files grouped, current manifest 2709.371429 s, 511 exact same-title migration mappings, conservative removed weight 600.099163 s and residual target gap 309.272266 s. Native claims retained; no test/source changes. Awaiting lead scope confirmation and parallel ticket split per Coordinator instruction.

@@ -1,0 +1,35 @@
+---
+id: T-774
+kind: task
+title: Neovim T3 files move screen permutations to committed-frame T2 tests (A-4961 group, ~150 s)
+state: open
+status: backlog
+size: M
+labels:
+  - v0.1.4
+  - verification
+  - nvim
+  - tests
+  - ready-for-agent
+assignee: null
+parent: E-677
+blocked_by:
+  - T-709
+topic: null
+branch: null
+created: 2026-10-18T04:49:28.746Z
+updated: 2026-10-18T04:49:28.746Z
+---
+
+## Summary
+
+This is a split of T-708, from its C1 inventory A-4961. It covers the 27 Neovim T3 files (232.7 s): their screen permutations move to T2 tests that replay committed hub frames, under the same titles. The real-hub workbench proofs stay in the workbench scenario. It builds on T-709's frame recorder. The proposed removal is 150.0 s.
+
+## What to build
+
+Apply the "Neovim" rows of A-4961 using T-709's recorder and fixtures. Keep the screen assertions' meaning.
+
+## Acceptance criteria
+
+- [ ] C1. Every "Neovim" row in A-4961 is applied or explicitly kept, with each moved test's title and assertion meaning unchanged, recorded as an audit artifact.
+- [ ] C2. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, including the Neovim shard.

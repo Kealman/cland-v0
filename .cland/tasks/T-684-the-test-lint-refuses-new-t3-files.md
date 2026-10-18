@@ -3,7 +3,7 @@ id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ assignee: null
 parent: E-676
 blocked_by:
   - T-682
-topic: null
-branch: null
+topic: topic-477
+branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-17T21:48:42.953Z
+updated: 2026-10-18T04:49:22.472Z
 ---
 
 ## Summary
@@ -38,3 +38,9 @@ Week 1 stops the growth (memo §5.5 step 1): a new test must be T1 or T2 unless 
 - [ ] C4. A baseline file whose counts grew is refused by name, proved by a lint test.
 - [ ] C5. `until` fails with its `what` text after the load-scaled deadline, proved by a harness unit test, and one existing flaky test file uses it in place of its fixed sleeps with its assertions unchanged in meaning.
 - [ ] C6. `docs/agents/tests.md` documents the refusal rules, the T3 header, the baseline, the shrink tool and `until`.
+
+## Comments
+
+### impl-684 · 2026-10-18T04:49:22.472Z
+
+Implemented shared lint admission policy, per-file/category frozen baseline and --shrink, lifecycle/helper/wait regressions, load-scaled until helper, and hygiene reconnect worked example. Initial typecheck/test:tiers/test:lint and targeted checks green. Completing whole-file 5/5 serial checks at one-minute load <15 before committing and requesting review.

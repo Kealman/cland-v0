@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -19,10 +19,10 @@ blocked_by:
   - T-707
   - T-688
   - T-690
-topic: null
-branch: null
+topic: topic-475
+branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T04:40:38.884Z
+updated: 2026-10-18T04:41:49.350Z
 ---
 
 ## Summary
