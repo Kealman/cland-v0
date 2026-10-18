@@ -3,7 +3,7 @@ id: T-758
 kind: task
 title: Local test runs fail in cover-quiet suite.slot admission when the busy hub answers after 3000 ms
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-470
 branch: t/T-758-local-test-runs-fail-in-cover-quiet
 created: 2026-10-17T22:04:51.687Z
-updated: 2026-10-18T03:38:10.384Z
+updated: 2026-10-18T04:07:18.251Z
 ---
 
 ## Summary
@@ -34,8 +34,9 @@ A busy hub must not turn a local test into a failure. Admission either waits wit
 - [x] C1. A profile of the hub under a nine-session burst names the dominant CPU consumer, recorded here with the artifact id.
   - done: impl-758 · 2026-10-18T03:15:33.766Z
   - verified: rev-31 [reviewer] · run rev-20261018-758-source-4 · 2026-10-18T03:25:02.654Z · commit c30540acacccd9280b663d3869d9438d0ea89ceb
-- [ ] C2. A T2 test with a hub that delays its suite.slot answer beyond 3000 ms shows the local run either admitted after the delay or ending with a distinct admission-timeout outcome, never as a test failure. The test fails before the fix.
-  - failed: rev-31 [reviewer] · 2026-10-18T03:24:23.061Z · note Mixed repetition admission reporting suppresses genuine assertion identities and diagnostics; keep ordinary failures independent of admission counts.
+- [x] C2. A T2 test with a hub that delays its suite.slot answer beyond 3000 ms shows the local run either admitted after the delay or ending with a distinct admission-timeout outcome, never as a test failure. The test fails before the fix.
+  - done: impl-758 · 2026-10-18T04:07:10.167Z
+  - verified: rev-31 [reviewer] · run rev-20261018-758-final · 2026-10-18T04:07:17.952Z · commit c30540acacccd9280b663d3869d9438d0ea89ceb
 
 ## Comments
 
@@ -230,3 +231,44 @@ Criteria: C1 verified.
 ### impl-758 · 2026-10-18T03:38:10.384Z
 
 Post-cover exact-head local proof A-4932 at c30540ac: all four touched files 5/5 serial, peak sampled load1 6.652 (<15). Mixed load-repetition regression green; all prior admission and same-file reporter controls green. Head unchanged and clean since source clear A-4928. Submitting mode-free droplet verification after this proof, as Coordinator directed.
+
+### impl-758 · 2026-10-18T04:07:10.500Z
+
+Same-head droplet verify 777bc3f4-a29d-4c0a-9b0c-796b10131e1f passed at c30540ac; log A-4949. Full mode: 2511 passed / 2519 tests, fail 0, cancelled 0, skipped 8. All eight task-added admission/reporting/mixed-repetition identities have remote load-gate 5/5 receipts; none skipped. Linux x64, c-8 lon1, 1678 s lifetime, $0.1166. Source remains unchanged/clean. Final criterion/verdict settlement belongs to Reviewer; no new run or dev merge needed.
+
+### rev-31 · 2026-10-18T04:07:17.952Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-758-final
+commit: c30540acacccd9280b663d3869d9438d0ea89ceb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-758 final evidence review — clear
+
+Commit: c30540acacccd9280b663d3869d9438d0ea89ceb.
+Scope: evidence. Source continuity: rev-20261018-758-source-4 / A-4928. No Reviewer execution or edits.
+
+## Standards
+
+No remaining findings. Prior M1 and M2 source corrections are unchanged. Independently audited A-4932's raw post-cover transcript: twenty serial invocations, five for each of the four touched files, 125 passing cases total, zero failures/skips/cancellations; all five mixed repetition controls pass. Peak admitted load6.65234375, no late asynchronous diagnostic. This satisfies the pending local proof condition in Coordinator65e353fa.
+
+## Spec and execution
+
+Exact-head run777bc3f4-a29d-4c0a-9b0c-796b10131e1f / A-4949 is recorded passed by the hub, auto/full, exit0. Independently inspected raw positive results and timings: all25 cases across test-admission(2), test-admission-outcome(2), cover-quiet(11) and quarantine-runner(10) pass; none is skipped. The delayed real-socket/FakeClock case passes in15.985374ms, silent typed timeout/bounds in15.474265ms, and the mixed repetition-only control in2.502641682s. These elapsed times are real test execution; simulated admission deadlines remain15–60seconds.
+
+All8 new owned identities pass5/5 load repetitions (40/40), including delayed admission, typed timeout, root-hook/no-fabricated-identities, flat/nested same-worker preservation, and mixed load-repetition reporting. The deterministic original and correction red proofs remain in A-4908/A-4916/A-4919/A-4926, paired with current green controls.
+
+Full receipt:2519 tests,2511 pass,0 fail,0 cancelled,8 prerequisite skips. Raw phase summaries independently reconcile as hub-free205/205, hub-machine1915pass+5skip, Neovim391pass+3skip. The full Neovim phase completed in165.14s. No known-failure exception is needed. Report-only budgets, missing baselines and T3 ratchet diagnostics remain report-only and do not change this passed gate.
+
+Linux x64, Node24.21.0, Neovim0.12.5, c-8 lon1,2workers; suite1597.30s, peak load8.37, droplet lifetime1678s, cost$0.1166. The receipt and current origin branch both name the exact source-clear commit.
+
+C2 is established by the red-before real-socket proof, current tests, post-cover Mac5/5 and exact-head green Linux/full verification. Verify C2; C1 remains current from source-4 with the accepted synthetic-profile/live-size limitation. No per-item QA required. Final review clear; no further run requested.
+Standards:0 findings. Spec:0 remaining gaps.
+
+Durable review: A-4950.
+
+Criteria: C2 verified.
