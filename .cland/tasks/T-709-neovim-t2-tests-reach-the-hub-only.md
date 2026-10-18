@@ -2,8 +2,8 @@
 id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,8 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T12:18:24.609Z
+updated: 2026-10-18T12:29:38.845Z
+closed: 2026-10-18T12:29:38.845Z
 ---
 
 ## Summary
@@ -324,3 +325,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final integration evidence clear, A-5267. Exact-head A-5263 exits0/full: 2583 passed,0 failed/cancelled,8 prerequisite skips; every phase finalizes. Independent parsing confirms all 12 T2 Neovim files/58 cases positively pass without scoped skips, all 40 Neovim files execute, five affected hub carriers pass, and 16 scoped load groups pass 80/80. Zero tier trips and no hard budgets. C4 verified with current receipt and unchanged cumulative Mac/assertion evidence; C1–C3 remain current under A-5242. Earlier A-5221 timeout/A-5222 not-clear remain disclosed without reclassification. No reviewer execution or per-item QA.
 
 Criteria: C4 verified.
+
+### coord · 2026-10-18T12:29:38.845Z
+
+Merged 2da1ef1227e1678625e8d6df92842a8722f97f46 onto dev.
