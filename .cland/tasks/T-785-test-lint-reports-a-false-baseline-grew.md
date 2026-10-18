@@ -2,8 +2,8 @@
 id: T-785
 kind: task
 title: test:lint reports a false "baseline grew" when the local origin/dev ref is stale or missing
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-529
 branch: t/T-785-test-lint-reports-a-false-baseline-grew
 created: 2026-10-18T07:09:21.826Z
-updated: 2026-10-18T19:08:17.800Z
+updated: 2026-10-18T19:11:05.030Z
+closed: 2026-10-18T19:11:05.030Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 9deac1c3. Independently audited A-5534/9956bbc5 full gate: 2631 pass/2639 total, zero fail/cancelled, eight prerequisite skips, all phases complete. Owned stale/missing-origin/dev regression executes positively in0.350584s with five separate repetitions/5-of-5 gate; existing30 lint cases and first-freeze history control also pass. Source/red-green chain A-5514/A-5513 retained. A-5535 records both axes, C1 mapping and inherited report-only diagnostics. No outstanding findings or per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T19:11:05.030Z
+
+Merged 379572fa067a0d5526e1b3b0848f641512c7efe0 onto dev.
