@@ -2,8 +2,8 @@
 id: T-777
 kind: task
 title: selection-replay.ts ignores --count for package replay and iterates every landing
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-517
 branch: t/T-777-selection-replay-ts-ignores-count-for
 created: 2026-10-18T05:03:00.942Z
-updated: 2026-10-18T17:12:47.229Z
+updated: 2026-10-18T18:33:45.966Z
+closed: 2026-10-18T18:33:45.966Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 47d785f3. Authorized replacement A-5473/cc702109 passes 2259/2264 ordinary tests, 0 fail/cancel, 5 unrelated prerequisite skips; free/machine and Neovim smoke complete. Both replay controls positively execute and pass 10/10 owned repetitions. A-5475 retains the prior T-813 pre-execution failure and discloses C-326/T-803 report-only trips/budget warnings. C1 verified; no per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T18:33:45.966Z
+
+Merged 28fdf61b2c01379c0f73e0a53ecf6ac23f1049ae onto dev.
