@@ -1,8 +1,9 @@
-import { ownDirectory } from '../../hub/test/process-cleanup.ts';
+import { ownDirectory, ownProcess } from '../../hub/test/process-cleanup.ts';
 // `cland --headless --qa <case.lua>` as a process (#57): the exit code, the one JSON line and the dump
 // files, against the stdio hub and the stub hub, also under sandbox-exec profiles.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { on } from 'node:events';
 import { spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -51,6 +52,17 @@ async function groupGone(pgid: number): Promise<boolean> {
     }
   }
   return false;
+}
+
+/** The child PID alone precedes handler installation; wait for the CLI's readiness receipt. */
+async function qaReady(child: ChildProcess): Promise<void> {
+  assert.ok(child.stderr);
+  let stderr = '';
+  for await (const [chunk] of on(child.stderr, 'data', { signal: AbortSignal.timeout(10_000), close: ['close'] })) {
+    stderr += String(chunk);
+    if (stderr.includes('cland: QA run started\n')) return;
+  }
+  throw new Error('the QA run closed stderr before its readiness receipt');
 }
 
 async function tempDir(t: TestContext, prefix: string): Promise<string> {
@@ -288,11 +300,23 @@ test('a case that never returns is ended by --timeout: BLOCKED, exit 2, and no N
 });
 
 test('a run that is interrupted (SIGTERM) takes its Neovim with it and still says BLOCKED', { skip }, async (t) => {
+  // T3: SIGTERM must reap the real Neovim process group and preserve the CLI's BLOCKED result.
   const nv = await pidWrapper(await tempDir(t, 'cland-qa-term-'));
-  let runner: ChildProcess | undefined;
-  const done = qa(t, [`${CASES}HANG-001.lua`], { env: { CLAND_NVIM: nv.wrapper }, started: (child) => (runner = child) });
-  const pid = await nv.pid();
-  runner?.kill('SIGTERM');
+  let runner!: ChildProcess;
+  let ready!: Promise<void>;
+  const done = qa(t, [`${CASES}HANG-001.lua`], { env: { CLAND_NVIM: nv.wrapper }, started: (child) => {
+    runner = child;
+    ready = qaReady(child);
+  } });
+  const [pid] = await Promise.race([
+    Promise.all([nv.pid().then((pid) => {
+      // Also own the detached group if readiness fails before the CLI can handle SIGTERM.
+      ownProcess(t, pid);
+      return pid;
+    }), ready]),
+    done.then(() => { throw new Error('the QA run finished before SIGTERM'); }),
+  ]);
+  assert.equal(runner.kill('SIGTERM'), true);
   const run = await done;
   assert.equal(run.line.result, 'BLOCKED', JSON.stringify(run.line));
   assert.equal(run.code, 2);

@@ -188,6 +188,7 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
   const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
   const onSignal = (signal: NodeJS.Signals) => end(`interrupted by ${signal}`);
   for (const signal of signals) process.on(signal, onSignal);
+  process.stderr.write('cland: QA run started\n');
   const exit = await new Promise<string>((done) => {
     child.on('error', (err) => done(`cannot start ${nvim}: ${err.message}`));
     // whatever Neovim left holds its pipes open: it goes first
