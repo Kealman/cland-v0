@@ -8,7 +8,8 @@ name = "v0"
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = 1
 # D27 set 2 for the v0.1.2 build; the human raised it to 4 on 2026-10-15 (ask 35ca68c2), within the same $3 daily cap.
-remote_budget = 6
+# D58 (2026-10-18 09:33Z): raised to 10 for the D57 parallel lanes.
+remote_budget = 10
 lock_path = "/tmp/cland-suite.lock"
 # Reuse green candidate trees for this many minutes; 0 disables caching.
 cache_max_age_minutes = 1440
@@ -21,8 +22,8 @@ executor = "droplet"
 # D53 (2026-10-16): droplet runs at 2 workers take 40–50 min of suite wall (T-686 run 16016692: 3025 s lifetime), so the bounds keep a margin.
 lifetime = "90m"
 run_timeout = "75m"
-# D41 cap; D55 raised it to $24 for 2026-10-17 only, restored 2026-10-18.
-daily_spend_usd = 14
+# D41 cap $14; D58 raised it to $30 for 2026-10-18 only (restore to 14 at 00Z 2026-10-19).
+daily_spend_usd = 30
 
 [verification.droplet]
 # D53 (2026-10-16): 2 workers per c-8 (T-655: green at peak load 9; 4 workers peaked at 16 and went red).
