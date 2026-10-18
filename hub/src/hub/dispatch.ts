@@ -120,6 +120,8 @@ export type DispatcherOptions = {
   requestGuard?: RequestGuard;
   /** Artifact file read port; defaults to async filesystem I/O. */
   readArtifact?: (path: string) => Promise<Buffer>;
+  /** Package selection port for reserved-mode refusal guidance. */
+  selectSuite?: typeof selectPackageSuite;
   artifactFiles?: ArtifactFiles;
 };
 
@@ -1434,22 +1436,42 @@ export class Dispatcher {
       if (!topic) return peer.send(Dispatcher.#failure(request.id, new Error('a session report needs your claimed item topic; use --report <topic>')));
       const to = core.store.topic(request.report ?? '') ? request.to ?? [] : request.to ?? (request.report ? [request.report] : []);
       const actor = caller ? { name: caller.name, sessionId: caller.sessionId, shell: true as const } : null;
+      let reportAuthorized = false;
       const authorize = () => {
-        if (actor && callerNow()?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
+        // The submission survives its transport. Resolve the captured identity against current
+        // roles and claims, rather than requiring its original spoke to remain connected.
+        const current = actor ? this.#asSession({ as: actor }) : null;
+        if (actor && current?.sessionId !== actor.sessionId) throw new Error('suite caller identity is unavailable');
         // A report-free preview has no artifact or send side effects to authorize.
-        if (!request.dryRun || request.report) this.#suitePermissions(actor, topic, to);
-        if (request.mode === 'all' && actor && callerNow()?.role !== 'coordinator' && !request.occasion) throw new VerifyAllReserved();
+        if (!request.dryRun || request.report) {
+          this.#suitePermissions(actor, topic, to);
+          reportAuthorized = true;
+        }
+        if (request.mode === 'all' && actor && current?.role !== 'coordinator' && !request.occasion) throw new VerifyAllReserved();
         if (request.occasion) {
-          authorizeVerifyOccasion(callerNow()?.role, request.occasion);
+          authorizeVerifyOccasion(current?.role, request.occasion);
         }
       };
       const failure = async (error: unknown): Promise<HubFrame> => {
         if (!(error instanceof VerifyAllReserved)) return Dispatcher.#failure(request.id, error);
-        const selection = await selectPackageSuite(request.cwd, 'auto', this.#options.env);
+        const selection = await (this.#options.selectSuite ?? selectPackageSuite)(request.cwd, 'auto', this.#options.env);
         return { type: 'result', id: request.id, ok: false, code: 'verify-all-reserved', error: `verify-all-reserved: all is reserved to the Coordinator, the human shell and authorized occasions; omit the mode for ${describeSelection(selection, 2048)}` };
       };
-      try { authorize(); } catch (error) { return later('suite.start', failure(error)); }
-      later('suite.start', this.#suites.start({ mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result', id: request.id, ok: true, value }), failure));
+      const submission = randomUUID();
+      const record = (frame: HubFrame): HubFrame => {
+        if (frame.type !== 'result') return frame;
+        const value = frame.ok ? frame.value as { id?: string; dryRun?: boolean; reused?: boolean } : undefined;
+        const outcome = frame.ok ? value?.dryRun ? 'preview' : 'admitted' : 'refused';
+        const detail = { event: 'verification-submission', submission, request: request.id, session: actor?.name ?? 'human', sessionId: actor?.sessionId ?? null, topic, cwd: request.cwd, outcome,
+          ...(value?.id ? { run: value.id, reused: value.reused ?? false } : {}), ...(!frame.ok ? { code: frame.code, error: frame.error } : {}) };
+        // This hub-owned receipt remains publishable even if admission revoked the caller's authority.
+        if (reportAuthorized) core.noticeTo(topic, { kind: 'report', to,
+          text: core.boundedText(`verify submission ${outcome}${value?.id ? ` · run ${value.id}${value.reused ? ' (reused)' : ''}` : ''}${!frame.ok ? `: ${frame.error}` : ''}`), detail });
+        log(detail);
+        return frame;
+      };
+      try { authorize(); } catch (error) { return later('suite.start', failure(error).then(record)); }
+      later('suite.start', this.#suites.start({ mode: request.mode, dryRun: request.dryRun ?? false, diagnostics: request.diagnostics ?? false, ...(request.workers !== undefined ? { workers: request.workers } : {}), ...(request.size ? { size: request.size } : {}), ...(request.occasion ? { occasion: request.occasion } : {}), ...(request.executor ? { executor: request.executor } : {}), fresh: request.fresh ?? false, cwd: request.cwd, topic, to, actor, item: core.store.topic(topic)?.item ?? null, integrated: (caller?.role === 'coordinator' || caller?.role === 'qa' && request.occasion === VERIFY_OCCASIONS.epic) && request.cwd === this.#options.control?.status().root, priority: this.#suiteRank(core.store.topic(topic)?.item ?? null) }, authorize).then(value => ({ type: 'result' as const, id: request.id, ok: true as const, value }), failure).then(record));
     };
 
     /** A read repeated too fast reuses its last answer without another audit. */

@@ -44,6 +44,7 @@ export const JOURNALLED: ReadonlySet<string> = new Set([
   'verification-wait',
   'verification-cover-classified',
   'verification-admitted',
+  'verification-submission',
   'verification-human-queued',
   'verification-human-admitted',
   'verification-human-left',

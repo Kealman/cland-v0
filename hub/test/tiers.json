@@ -276,6 +276,7 @@
     "hub/test/subscription-hygiene.test.ts": "T2",
     "hub/test/subscriptions.test.ts": "T2",
     "hub/test/suite-accounting.test.ts": "T2",
+    "hub/test/suite-admission-close.test.ts": "T2",
     "hub/test/suite-admission-cost.test.ts": "T2",
     "hub/test/suite-admission.test.ts": "T3",
     "hub/test/suite-cache-recovery.test.ts": "T3",

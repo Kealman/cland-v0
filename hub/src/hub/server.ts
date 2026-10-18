@@ -25,6 +25,7 @@ export type HubBaseOptions = CoreOptions & {
   guard?: DispatcherOptions['guard'];
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
+  selectSuite?: DispatcherOptions['selectSuite'];
   git?: DispatcherOptions['git'];
   droplet?: DropletDependencies;
   verification?: DispatcherOptions['verification'];
@@ -115,6 +116,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.tracker ? { tracker: options.tracker } : {}),
     ...(options.helloTimeoutMs !== undefined ? { helloTimeoutMs: options.helloTimeoutMs } : {}),
     ...(options.readArtifact ? { readArtifact: options.readArtifact } : {}),
+    ...(options.selectSuite ? { selectSuite: options.selectSuite } : {}),
     ...(options.guard ? { guard: options.guard } : {}),
     ...(options.requestGuard ? { requestGuard: options.requestGuard } : {}),
   });

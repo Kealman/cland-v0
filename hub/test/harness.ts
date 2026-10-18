@@ -396,6 +396,7 @@ export type ProjectHubOptions = {
   readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
   processes?: import('../src/hub/lock.ts').LockProcessTable;
   candidate?: import('../src/hub/suite-candidate.ts').SuiteCandidate;
+  selectSuite?: import('../src/hub/dispatch.ts').DispatcherOptions['selectSuite'];
   durationContext?: import('../src/suite-duration-budget.ts').DurationBudgetContext | null;
   log?: (entry: Record<string, unknown>) => void;
   droplet?: DropletDependencies;
