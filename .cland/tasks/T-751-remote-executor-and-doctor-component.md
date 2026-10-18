@@ -3,7 +3,7 @@ id: T-751
 kind: task
 title: Remote, executor and doctor component fixtures inject machine and Git facts instead of bootstrapping native Git and doctor probes
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-460
 branch: t/T-751-remote-executor-and-doctor-component
 created: 2026-10-17T18:44:08.662Z
-updated: 2026-10-17T23:48:41.234Z
+updated: 2026-10-18T00:18:07.621Z
 ---
 
 ## Summary
@@ -30,7 +30,9 @@ Inject the Git, snapshot and doctor facts these fixtures need at their seams (T-
 
 ## Acceptance criteria
 
-- [ ] C1. The runtime tripwire reports no child_process trip in these files, proved by a full droplet run's trip report.
+- [x] C1. The runtime tripwire reports no child_process trip in these files, proved by a full droplet run's trip report.
+  - verified: rev-31 [reviewer] · run rev-20261018-751-final · 2026-10-18T00:17:54.827Z · commit 8a2b593bc66d491fea5ec0731149b9a28cb89447
+  - done: impl-751 · 2026-10-18T00:18:07.065Z
 - [x] C2. The review request maps every changed fixture call with Mac 5/5 medians before and after.
   - verified: rev-31 [reviewer] · run rev-20261017-751-source · 2026-10-17T22:07:59.308Z · commit 9dc81db646d4f027a3b400e3840674f716e2ee69
   - done: impl-751 · 2026-10-17T23:46:48.155Z
@@ -167,3 +169,62 @@ Criteria: C2 verified.
 ### impl-751 · 2026-10-17T23:48:41.234Z
 
 Delta source clear rev-20261017-751-merge-delta at 8a2b593b / A-4860; C2 reverified. Mode-free droplet dry-run A-4863 and all12-file proof A-4864 establish complete C1 selection (hub-only,2 workers). Accepted mode-free droplet run 0ade3bc3-efdc-4833-ae97-438caf22c150 at exact clean reviewed 8a2b593bc66d491fea5ec0731149b9a28cb89447. No head changes planned; awaiting runtime/trip receipt before marking C1 done and final evidence verdict. T-745 legacyDurationKeys residual explicitly excluded per Coordinator scope.
+
+### rev-31 · 2026-10-18T00:17:54.827Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-751-final
+commit: 8a2b593bc66d491fea5ec0731149b9a28cb89447
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-751 final runtime evidence review — clear
+
+Commit: 8a2b593bc66d491fea5ec0731149b9a28cb89447.
+Run: 0ade3bc3-efdc-4833-ae97-438caf22c150 / A-4871.
+Scope: evidence. Current source delta: rev-20261017-751-merge-delta / A-4860. The remote task branch still resolves to the reviewed head. Read-only review; no Reviewer edits or test execution.
+
+## Standards
+
+No findings. Actual run exit is 0, with no hard duration-budget failure. Tier budget/ratchet, lint and known-duration regression diagnostics remain report-only. No assertion-failure waiver is needed.
+
+## Spec and C1
+
+Independently matched all 57 top-level completed timing records from the twelve C1 files to positive pass lines:
+| File | Cases | Linux test seconds |
+| --- | ---: | ---: |
+| demo-cap | 2 | 0.758391 |
+| demo-release-component | 8 | 3.581699 |
+| executor-admission | 1 | 0.097942 |
+| executor-admission-lock | 4 | 1.966359 |
+| executor-droplet-component | 1 | 0.199384 |
+| executor-prepare-retry | 1 | 0.535598 |
+| executor-safety-component | 4 | 1.875917 |
+| remote-scripted | 2 | 0.458551 |
+| doctor | 18 | 2.379574 |
+| suite-close-component | 3 | 1.449035 |
+| suite-accounting | 9 | 1.018030 |
+| suite-stage-rules | 4 | 0.214221 |
+
+Sum: 14.534700055 seconds. No owned case skipped. The actual executions establish coverage beyond the dry-run selection proof A-4863/A-4864.
+
+Trip audit: exactly three rows name these twelve files. All three are suite-close-component child_process.execFile with the same stack: suite-shards.ts git → legacyDurationKeys → lintDurations → hubShards → Suites.#planShards. Those are the exact T-745-owned residual excluded by Coordinator cf3ae51e, independently read during source review. No other trip names these twelve files; all nine originally assigned files plus suite-accounting and suite-stage-rules are clean. In particular, the earlier droplet/spend-lock ps rows are absent. This is not a claim that suite-close-component has zero resource trips: the three history lookups remain for T-745's final integrated proof.
+
+The submitted mode is hub-only under the Coordinator's corrected mode-free selection path, which requires inclusion of all twelve C1 files. The full hub phase executes and Neovim smoke completes; no full Neovim package completion is claimed. This meets the scoped C1 requirement and preserves the separately assigned residual, rather than inferring an all-mode run from configuration.
+
+C2 remains current under A-4860: call-site mapping A-4772 and refreshed 50 measurement records A-4857/A-4858 reconciled at source delta review. No further implementation, manifest or assertion change occurred.
+
+## Receipt and limits
+
+2117 tests total, 2112 passed, zero failures/cancellations, five prerequisite skips outside the owned cases. Hub free 206/206; hub machine 1901 passed/five skipped; Neovim smoke 5/5.
+
+Linux x64 6.8.0-142-generic, c-8 lon1, Node24.21.0, Neovim0.12.5, two workers. Suite1614.53s, Neovim smoke3.48s, peak1mload9.87; lifetime1700s, cost$0.1180. Host typecheck gate d8f9926ed27ab1863caf48523310020c3d6a2774 reused. Storage health/tmpfs receipts are present in this run but are not a performance claim for T-751.
+
+Final evidence clear; verify C1 with the explicit T-745 scope qualification above. C2 remains current. No per-item QA required. Standards: 0 findings. Spec: 0 findings.
+
+Durable review: A-4872.
+
+Criteria: C1 verified.
