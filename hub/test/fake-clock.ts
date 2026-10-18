@@ -35,6 +35,12 @@ export class FakeClock implements Clock {
     return timer;
   }
 
+  /** Simulate synchronous CPU work without running timer callbacks during that work. */
+  block(ms: number): void {
+    if (!Number.isFinite(ms) || ms < 0) throw new Error('block needs a finite non-negative duration');
+    this.#time += ms;
+  }
+
   /** Run each due callback at its deadline, including work it schedules. Callers still await their
    * expected frame/record: yielding allows I/O to progress, it is not an I/O completion barrier. */
   async advance(ms: number): Promise<void> {
@@ -45,15 +51,15 @@ export class FakeClock implements Clock {
     try {
       await yieldIO();
       for (;;) {
-        const timer = [...this.#timers].filter(t => t.due <= target).sort((a, b) => a.due - b.due || a.order - b.order)[0];
+        const timer = [...this.#timers].filter(t => t.due <= Math.max(target, this.#time)).sort((a, b) => a.due - b.due || a.order - b.order)[0];
         if (!timer) break;
-        this.#time = timer.due;
+        this.#time = Math.max(this.#time, timer.due);
         if (timer.interval === null) this.#timers.delete(timer);
         else { timer.due += timer.interval; timer.order = this.#order++; }
         timer.callback();
         await yieldIO();
       }
-      this.#time = target;
+      this.#time = Math.max(this.#time, target);
       await yieldIO();
     } finally { this.#advancing = false; }
   }

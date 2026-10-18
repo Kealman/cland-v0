@@ -1,10 +1,11 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import { cland, connectUi, flushProjectLogs, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { cland, connectUi, flushProjectLogs, projectHub, inProcessSpoke, tempProject } from './harness.ts';
 
 const findings = [
   { severity: 'high', text: 'Drops a verdict', file: 'hub/src/tracker/tracker.ts', line: 42 },
@@ -32,7 +33,7 @@ test('verdict headers preserve findings, derive counts and leave legacy counts u
 test('CLI and MCP verdicts expose all severities, clear lows and explicit empty findings in views and journal', async t => {
   const root = await tempProject(t);
   await projectHub(t, root);
-  const reviewer = await spawnSpoke({ discover: true, cwd: root, name: 'rev-findings', role: 'reviewer' });
+  const reviewer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev-findings', role: 'reviewer' });
   t.after(() => reviewer.close());
   await reviewer.waitForPresence(['rev-findings']);
   const created = await cland(root, 'task', 'create', 'Findings', '--size', 'S', '--json');

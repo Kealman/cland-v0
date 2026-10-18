@@ -1,6 +1,17 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+
+// Persistence proofs close and reopen the hub/store in this process.
+const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
+const openHub: typeof projectHub = async (...args) => {
+  const hub = await projectHub(...args);
+  hubs.set(args[1], hub);
+  args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
+  return hub;
+};
+const stopHub = async (root: string) => { await hubs.get(root)!.stop(); };
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { taskWriteGate } from './tracker-write-gate.ts';
@@ -8,11 +19,11 @@ import type { ItemView } from '../src/tracker/tracker.ts';
 
 test('a clear MCP verdict verifies selected legacy criteria with its run and reports the marks', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Verdict criteria', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second\n- [ ] Third\n\n## Notes\nKeep this.' })).value as { item: ItemView }).item;
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   t.after(() => rev.close());
   await rev.call('subscribe', { subject: { item: item.id }, events: ['task'] });
   const result = await rev.call<{ ok: boolean; item: ItemView }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'rev-1', verified: 'C1,C3', text: 'Checked first and third.' });
@@ -42,12 +53,12 @@ test('a clear MCP verdict verifies selected legacy criteria with its run and rep
 
 test('not-clear QA verdicts fail criteria with notes, reopen and persist the report in the item topic', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'QA failures', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second' })).value as { item: ItemView }).item;
   const topic = ((await ui.request({ type: 'topic.create', item: item.id, title: 'QA criteria' })).value as { topic: { id: string } }).topic;
-  const qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-1', role: 'qa' });
+  const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-1', role: 'qa' });
   t.after(() => qa.close());
   for (const criterion of ['C1', 'C2']) await ui.request({ type: 'task.criterion', item: item.id, op: 'done', criterion });
   await qa.call('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'qa-pass', verified: 'all' });
@@ -69,8 +80,8 @@ test('not-clear QA verdicts fail criteria with notes, reopen and persist the rep
   const read = async () => ((await ui.request({ type: 'topic.history', topic: topic.id })).value as { messages: { criteria?: unknown; text: string }[] }).messages;
   assert.deepEqual((await read()).find(m => m.text.includes('qa-fail'))?.criteria, message.criteria);
   await qa.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const restarted = await startDaemon(t, root);
+  await stopHub(root);
+  const restarted = await openHub(t, root);
   const nextUi = await connectUi(t, restarted.discovery);
   const history = ((await nextUi.request({ type: 'topic.history', topic: topic.id })).value as { messages: { criteria?: unknown; text: string }[] }).messages;
   assert.deepEqual(history.find(m => m.text.includes('qa-fail'))?.criteria, message.criteria);
@@ -78,11 +89,11 @@ test('not-clear QA verdicts fail criteria with notes, reopen and persist the rep
 
 test('invalid or unauthorized criterion selections refuse the whole verdict without changing its source', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Refused verdict', body: '## Acceptance criteria\n- [ ] First\n- [ ] Second' })).value as { item: ItemView }).item;
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', role: 'reviewer' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => rev.close()); t.after(() => coord.close());
   const source = await readFile(join(root, item.path), 'utf8');
   for (const [extra, error] of [
@@ -116,10 +127,10 @@ test('invalid or unauthorized criterion selections refuse the whole verdict with
 test('a hand save or revoked criterion grant refuses verdict and marks together', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  const { discovery } = await startDaemon(t, root, gate.env);
+  const { discovery } = await openHub(t, root, gate.env);
   const ui = await connectUi(t, discovery);
   const item = ((await ui.request({ size: 'M', type: 'task.create', title: 'Concurrent verdict', body: '## Acceptance criteria\n- [ ] First\n\n## Notes\nOriginal.' })).value as { item: ItemView }).item;
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' });
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', role: 'reviewer' });
   t.after(() => rev.close());
   const path = join(root, item.path);
   await gate.arm();

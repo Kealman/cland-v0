@@ -90,7 +90,7 @@ export type TrackerStorageStatus = {
   queued: number;
   abandoned: StorageOperation[];
 };
-type StorageWork = StorageOperation & { started: number | null; stalled: boolean; timer?: NodeJS.Timeout; fatalTimer?: NodeJS.Timeout; abandon: () => void };
+type StorageWork = StorageOperation & { started: number | null; stalled: boolean; timer?: ClockTimer; fatalTimer?: ClockTimer; abandon: () => void };
 
 /**
  * Who asks: a session or a person at the CLI. `id` is the identity a claim is held by — a session's id,
@@ -749,11 +749,11 @@ export class Tracker {
     this.#plannedChecks.clear();
     this.#stopping = (async () => {
       if (!this.#storageAbandoned) {
-        let timer: NodeJS.Timeout | undefined;
+        let timer: ClockTimer | undefined;
         const drained = Promise.allSettled([...this.#background, this.#queue, freshnessStopped]).then(() => true);
-        const deadline = new Promise<false>(resolve => { timer = setTimeout(() => resolve(false), this.#stopTimeoutMs); });
+        const deadline = new Promise<false>(resolve => { timer = this.#clock.setTimeout(() => resolve(false), this.#stopTimeoutMs); });
         const complete = await Promise.race([drained, deadline]);
-        clearTimeout(timer);
+        this.#clock.clearTimeout(timer);
         if (!complete) this.#abandonStorage();
       }
       this.#index.close();
@@ -766,7 +766,7 @@ export class Tracker {
     this.#storageAbandoned = true;
     if (stalled) this.#storageError = `tracker storage abandoned after stall: ${stalled.operation} on ${stalled.item ?? 'tracker-wide work'}`;
     this.#abandonedOperations = [...this.#storageWork].map(({ operation, item, startedAt }) => ({ operation, item, startedAt }));
-    for (const work of this.#storageWork) { clearTimeout(work.timer); clearTimeout(work.fatalTimer); work.abandon(); }
+    for (const work of this.#storageWork) { this.#clock.clearTimeout(work.timer); this.#clock.clearTimeout(work.fatalTimer); work.abandon(); }
     this.#log({ event: 'tracker-storage-abandoned', timeoutMs: this.#stopTimeoutMs, operations: this.#abandonedOperations });
   }
 
@@ -1895,21 +1895,21 @@ export class Tracker {
     const guarded = this.#guardStorage(resumed);
     const admitted = () => guarded(() => {
       entry.started = performance.now();
-      entry.startedAt = new Date().toISOString();
-      entry.timer = setTimeout(() => {
+      entry.startedAt = this.#clock.now().toISOString();
+      entry.timer = this.#clock.setTimeout(() => {
         entry.stalled = true;
         this.#log({ event: 'tracker-storage-stalled', operation: entry.operation, item: entry.item, startedAt: entry.startedAt, thresholdMs: this.#storageStallMs });
       }, this.#storageStallMs);
       entry.timer.unref();
-      entry.fatalTimer = setTimeout(() => {
+      entry.fatalTimer = this.#clock.setTimeout(() => {
         this.#onStorageFatal?.({ operation: entry.operation, item: entry.item, startedAt: entry.startedAt });
       }, this.#storageFatalMs);
       entry.fatalTimer.unref();
       return work(guarded);
     });
     const run = this.#queue.then(admitted, admitted).finally(() => {
-      clearTimeout(entry.timer);
-      clearTimeout(entry.fatalTimer);
+      this.#clock.clearTimeout(entry.timer);
+      this.#clock.clearTimeout(entry.fatalTimer);
       this.#storageWork.delete(entry);
     });
     // Never advance the actual queue tail on a detection timer or a caller rejection.

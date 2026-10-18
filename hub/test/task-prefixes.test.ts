@@ -1,10 +1,21 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile, readdir, rm, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectUi, connectWsUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, startHub, tempProject, type Session } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, inProcessSpoke, projectHub, startHub, tempProject, type Session } from './harness.ts';
+
+// Persistence proofs close and reopen the hub/store in this process.
+const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
+const openHub: typeof projectHub = async (...args) => {
+  const hub = await projectHub(...args);
+  hubs.set(args[1], hub);
+  args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
+  return hub;
+};
+const stopHub = async (root: string) => { await hubs.get(root)!.stop(); };
 
 const legacy = (id: string, kind: string, extra = '') => `---\nid: ${id}\nkind: ${kind}\ntitle: Legacy ${kind}\nstate: open\n${extra}---\n`;
 
@@ -17,9 +28,9 @@ test('kind prefixes resolve the same numeric identity through real hub, spoke an
   for (const [n, kind] of [[229, 'task'], [230, 'question'], [231, 'map'], [232, 'spec']] as const) {
     await writeFile(join(dir, `T-${n}-${kind}.md`), legacy(`T-${n}`, kind, kind === 'task' ? 'status: backlog\n' : ''));
   }
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['coord']);
   for (const id of ['E-107', 'R-107', 'T-107', 'e-107', '107']) {
@@ -45,7 +56,7 @@ test('creation and kind edits retain a shared number and duplicate files prefer 
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'E-500-epic.md'), legacy('E-500', 'epic'));
   await writeFile(join(dir, 'T-500-stale.md'), legacy('T-500', 'epic'));
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'task.create', title: 'New question', kind: 'question', parent: 'T-500' });
   assert.equal(created.ok, true, JSON.stringify(created));
@@ -73,12 +84,12 @@ test('legacy claims, topics, subscriptions and approved plans survive restart an
   await writeFile(join(root, '.cland/roles.toml'), DEFAULT_ROLES_TOML.replace('[lead.permissions]\ntools = [', '[lead.permissions]\ntools = ["task.claim", '));
   await writeFile(join(dir, 'T-10-legacy-epic.md'), legacy('T-10', 'epic'));
   await writeFile(join(dir, 'T-11-child.md'), legacy('T-11', 'task', 'parent: T-10\nstatus: backlog\n'));
-  let { discovery } = await startDaemon(t, root);
+  let { discovery } = await openHub(t, root);
   let ui = await connectUi(t, discovery);
-  const lead = await spawnSpoke({ discover: true, cwd: root, name: 'lead-one', role: 'lead', sessionId: 'sess-lead' });
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
-  const nextLead = await spawnSpoke({ discover: true, cwd: root, name: 'lead-two', role: 'implementer', sessionId: 'sess-next-lead' });
-  const reviewer = await spawnSpoke({ discover: true, cwd: root, name: 'reviewer-one', role: 'reviewer', sessionId: 'sess-reviewer' });
+  const lead = await inProcessSpoke(t, { discover: true, cwd: root, name: 'lead-one', role: 'lead', sessionId: 'sess-lead' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const nextLead = await inProcessSpoke(t, { discover: true, cwd: root, name: 'lead-two', role: 'implementer', sessionId: 'sess-next-lead' });
+  const reviewer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'reviewer-one', role: 'reviewer', sessionId: 'sess-reviewer' });
   t.after(() => Promise.all([lead.close(), nextLead.close(), coord.close(), reviewer.close()]));
   await coord.waitForPresence(['lead-two', 'coord', 'reviewer-one']);
   assert.equal((await lead.call<{ ok: boolean }>('task.claim', { id: 'T-10' })).ok, true);
@@ -92,9 +103,8 @@ test('legacy claims, topics, subscriptions and approved plans survive restart an
   const planned = await ui.request({ type: 'task.plan', item: 'T-10', op: 'set', yaml });
   assert.equal(planned.ok, true, JSON.stringify(planned));
   assert.equal((await ui.request({ type: 'task.plan', item: 'R-10', op: 'approve' })).ok, true);
-  const stopped = await cland(root, 'hub', 'stop');
-  assert.equal(stopped.code, 0, stopped.stderr);
-  ({ discovery } = await startDaemon(t, root));
+  await stopHub(root);
+  ({ discovery } = await openHub(t, root));
   ui = await connectUi(t, discovery);
   await coord.waitForPresence(['lead-two', 'coord', 'reviewer-one']);
   const view = await ui.request({ type: 'task.view', item: 'E-10' });
@@ -127,7 +137,7 @@ test('legacy claims, topics, subscriptions and approved plans survive restart an
 
 test('mixed lane and override prefixes retain after-stage QA policy', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'task.create', title: 'Epic', kind: 'epic' })).ok, true);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
@@ -145,7 +155,7 @@ test('mixed lane and override prefixes retain after-stage QA policy', async t =>
 
 test('non-task review requests keep verifier affinity across alternate prefixes', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'task.create', title: 'Epic', kind: 'epic' })).ok, true);
   const topicResult = await ui.request({ type: 'topic.create', title: 'Epic work', item: 'T-1' });
@@ -162,8 +172,8 @@ test('non-task review requests keep verifier affinity across alternate prefixes'
       return entries.some(e => e.event === 'acked' && e.id === id) || undefined;
     });
   };
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
-  const first = await spawnSpoke({ discover: true, cwd: root, name: 'reviewer-z', role: 'reviewer', sessionId: 'sess-z' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const first = await inProcessSpoke(t, { discover: true, cwd: root, name: 'reviewer-z', role: 'reviewer', sessionId: 'sess-z' });
   t.after(() => Promise.all([coord.close(), first.close()]));
   await coord.waitForPresence(['coord', 'reviewer-z']);
   await readyReviewer(first, 'reviewer-z');
@@ -171,7 +181,7 @@ test('non-task review requests keep verifier affinity across alternate prefixes'
   const initial = await request('T-1');
   assert.equal(initial.ok, true);
   assert.ok(initial.outcomes.some(outcome => outcome.resolvedTo === 'reviewer-z'));
-  const newer = await spawnSpoke({ discover: true, cwd: root, name: 'reviewer-a', role: 'reviewer', sessionId: 'sess-a' });
+  const newer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'reviewer-a', role: 'reviewer', sessionId: 'sess-a' });
   t.after(() => newer.close());
   await coord.waitForPresence(['reviewer-a']);
   await readyReviewer(newer, 'reviewer-a');
@@ -186,7 +196,7 @@ test('removing a planned legacy epic drops its candidate; prefix renames preserv
   const plan = '## Plan\n\n```yaml\nstages:\n  - name: build\n    qa: {scope: none, when: after-stage}\n    lanes: [[T-2]]\n```\n';
   await writeFile(join(dir, 'T-1-epic.md'), legacy('T-1', 'epic') + plan);
   await writeFile(join(dir, 'T-2-child.md'), legacy('T-2', 'task', 'parent: T-1\nstatus: backlog\n'));
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const view = async () => (await ui.request({ type: 'task.view', item: '1' })).value as { item: { plan: unknown; file: string; planError?: string } };
   assert.ok((await view()).item.plan);
@@ -209,7 +219,7 @@ test('task publication lookup work stays bounded with two thousand unrelated ite
   const root = await tempProject(t), dir = join(root, '.cland/tasks');
   await mkdir(dir, { recursive: true });
   await Promise.all(Array.from({ length: 2000 }, (_, i) => writeFile(join(dir, `T-${i + 1}-item.md`), legacy(`T-${i + 1}`, 'task', 'status: backlog\n'))));
-  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db') });
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland/hub.db') });
   tracker.start();
   t.after(() => tracker.stop());
   const hub = await startHub({ tracker });
@@ -228,10 +238,10 @@ test('removing an unclaimed child sends its terminal event to the surviving pare
   await writeFile(join(root, '.cland/roles.toml'), DEFAULT_ROLES_TOML.replace('[lead.permissions]\ntools = [', '[lead.permissions]\ntools = ["task.claim", '));
   await writeFile(join(dir, 'T-1-epic.md'), legacy('T-1', 'epic'));
   await writeFile(join(dir, 'T-2-child.md'), legacy('T-2', 'task', 'parent: T-1\nstatus: backlog\n'));
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
-  const lead = await spawnSpoke({ discover: true, cwd: root, name: 'parent-lead', role: 'lead', sessionId: 'sess-lead' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'sess-coord' });
+  const lead = await inProcessSpoke(t, { discover: true, cwd: root, name: 'parent-lead', role: 'lead', sessionId: 'sess-lead' });
   t.after(() => Promise.all([coord.close(), lead.close()]));
   await coord.waitForPresence(['coord', 'parent-lead']);
   assert.equal((await lead.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);

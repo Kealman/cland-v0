@@ -1,3 +1,4 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Configured hierarchy through the real hub, CLI and MCP boundaries.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,13 +6,23 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseItem } from '../src/tracker/item.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
-import { cland, connectUi, eventually, readDiscovery, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, readDiscovery, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+
+// Persistence proofs close and reopen the hub/store in this process.
+const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
+const openHub: typeof projectHub = async (...args) => {
+  const hub = await projectHub(...args);
+  hubs.set(args[1], hub);
+  args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
+  return hub;
+};
+const stopHub = async (root: string) => { await hubs.get(root)!.stop(); };
 
 test('configured containers work through CLI, MCP and the hub and enforce adjacent levels', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic", "feature"]\n');
-  await projectHub(t, root);
+  await openHub(t, root);
   for (const [title, kind, parent] of [['Release', 'release', undefined], ['Epic', 'epic', 'T-1'], ['Feature', 'feature', 'T-2']]) {
     const made = await cland(root, 'task', 'create', ...((kind!) === 'task' ? ['--size', 'M'] : []), title!, '--kind', kind!, ...(parent ? ['--parent', parent] : []), '--json');
     assert.equal(made.code, 0, made.stderr);
@@ -20,7 +31,7 @@ test('configured containers work through CLI, MCP and the hub and enforce adjace
   const bad = await ui.request({ type: 'task.create', title: 'Skipped level', kind: 'feature', parent: 'T-1' });
   assert.equal(bad.ok, false);
   assert.match(bad.error ?? '', /parenting rule.*feature.*release/);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   const made = await spoke.call<{ ok: boolean; item: { id: string; kind: string; path: string } }>('task.create', { title: 'MCP feature', kind: 'feature', parent: 'T-2' });
   assert.equal(made.ok, true);
@@ -46,7 +57,7 @@ test('configured containers work through CLI, MCP and the hub and enforce adjace
 test('queued close sees the child committed while it waited for the tracker write queue', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  await projectHub(t, root, gate.env);
+  await openHub(t, root, gate.env);
   const ui = await connectUi(t, await readDiscovery(root));
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'epic' })).ok, true);
   await gate.arm();
@@ -65,7 +76,7 @@ test('queued close sees the child committed while it waited for the tracker writ
 test('close rechecks a child reopened during the parent temporary write before rename', async t => {
   const root = await tempProject(t);
   const gate = await taskWriteGate(t, root);
-  await projectHub(t, root, gate.env);
+  await openHub(t, root, gate.env);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Container', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
     assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
@@ -95,7 +106,7 @@ test('close and every kind-change path discover an unindexed disk reparent', asy
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["feature"]\n');
     const gate = await taskWriteGate(t, root);
-    await projectHub(t, root, gate.env);
+    await openHub(t, root, gate.env);
     const ui = await connectUi(t, await readDiscovery(root));
     const issue = { number: 1, url: 'https://example.com/1', title: 'Container', body: '', labels: ['feature'], state: 'open', assignee: null, parent: null, blocked_by: [], comments: [], created: '2026-01-01T00:00:00.000Z' };
     assert.equal((await ui.request({ type: 'task.import', repo: 'test/project', issues: [issue] })).ok, true);
@@ -122,7 +133,7 @@ test('close and every kind-change path discover an unindexed disk reparent', asy
 
 test('an unreadable task file outside the indexed children blocks container close by filename', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'epic' })).ok, true);
   await writeFile(join(root, '.cland/tasks/T-99-unindexed.md'), '---\nid: T-99\ntitle: [\n---\n');
@@ -135,7 +146,7 @@ test('re-import cannot close an existing configured container over open children
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["feature"]\n');
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   const issue = { number: 1, url: 'https://example.com/1', title: 'Imported feature', body: '', labels: ['feature'], state: 'open', assignee: null, parent: null, blocked_by: [], comments: [], created: '2026-01-01T00:00:00.000Z' };
   assert.equal((await ui.request({ type: 'task.import', repo: 'test/project', issues: [issue] })).ok, true);
@@ -161,7 +172,7 @@ test('renamed top-level metadata survives restart; an empty ladder refuses forme
   await mkdir(join(root, '.cland'), { recursive: true });
   const config = join(root, '.cland/config.toml');
   await writeFile(config, '[tracker]\nlevels = ["initiative", "feature"]\n');
-  await startDaemon(t, root);
+  await openHub(t, root);
   const top = await cland(root, 'task', 'create', 'Plan', '--kind', 'initiative', '--version', '1.0.0', '--json');
   assert.equal(top.code, 0, top.stderr);
   assert.match(top.stdout, /## Notes/);
@@ -170,12 +181,12 @@ test('renamed top-level metadata survives restart; an empty ladder refuses forme
   const wrongVersion = await cland(root, 'task', 'edit', 'T-2', '--version', '1.0.0');
   assert.equal(wrongVersion.code, 1);
   assert.match(wrongVersion.stderr, /version belongs only to an initiative item/);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  await stopHub(root);
+  await openHub(t, root);
   assert.match((await cland(root, 'task', 'view', 'T-1', '--json')).stdout, /"version":"1.0.0"/);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await stopHub(root);
   await writeFile(config, '[tracker]\nlevels = []\n');
-  await startDaemon(t, root);
+  await openHub(t, root);
   assert.deepEqual(JSON.parse((await cland(root, 'task', 'list', '--json')).stdout).items, [], 'unchanged file hashes do not retain kinds removed from config');
   const ui = await connectUi(t, await readDiscovery(root));
   await eventually('removed container notices', async () => {
@@ -194,7 +205,7 @@ test('reserved or malformed configured levels produce a notice and keep the defa
     const root = await tempProject(t);
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), `[tracker]\nlevels = ${levels}\n`);
-    await projectHub(t, root);
+    await openHub(t, root);
     assert.equal((await cland(root, 'task', 'create', 'Default', '--kind', 'epic')).code, 0);
     const ui = await connectUi(t, await readDiscovery(root));
     await eventually('invalid levels notice', async () => {
@@ -211,7 +222,7 @@ test('unknown kinds at startup and on hand edit produce Agents notices while oth
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'T-1-unknown.md'), '---\nid: T-1\nkind: mystery\ntitle: Unknown\n---\n');
   await writeFile(join(dir, 'T-2-known.md'), '---\nid: T-2\nkind: task\ntitle: Known\n---\n');
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   const listed = await ui.request({ type: 'task.list' });
   assert.deepEqual((listed.value as { items: Array<{ id: string }> }).items.map(it => it.id), ['T-2']);
@@ -240,7 +251,7 @@ test('kind changes with children are refused by edit and reported for hand edits
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["feature"]\n');
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'feature' })).ok, true);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Child', parent: 'T-1' })).ok, true);
@@ -263,7 +274,7 @@ test('kind changes with children are refused by edit and reported for hand edits
 
 test('a malformed indexed child stays visible and prevents close with its file named', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Epic', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
     assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
@@ -294,7 +305,7 @@ test('a malformed indexed child stays visible and prevents close with its file n
 
 test('close validates a previously closed child file without waiting for the watcher', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [{ title: 'Epic', kind: 'epic' }, { title: 'Child', parent: 'T-1' }]) {
     assert.equal((await ui.request({ ...((!('kind' in frame) || frame.kind === 'task') ? { size: 'M' } : {}), type: 'task.create', ...frame })).ok, true);
@@ -315,7 +326,7 @@ test('close validates a previously closed child file without waiting for the wat
 
 test('containers refuse close and closed-state edits naming open children, then close after children close or move', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   for (const frame of [
     { title: 'Release', kind: 'release' },
@@ -337,7 +348,7 @@ test('containers refuse close and closed-state edits naming open children, then 
   assert.match(edit.error ?? '', /T-3 Parser/);
   assert.match(edit.error ?? '', /Q-4 Schema/);
   assert.equal(await readFile(epicFile, 'utf8'), before);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   const release = await spoke.client.callTool({ name: 'task.close', arguments: { id: 'R-1' } });
   assert.equal(release.isError, true);
@@ -353,7 +364,7 @@ test('configured containers refuse status while task closes and kind changes ret
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["feature"]\n');
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   const read = async (file: string) => parseItem(await readFile(join(root, '.cland/tasks', file), 'utf8'), file, ['feature']).fm;
   assert.equal((await ui.request({ type: 'task.create', title: 'Container', kind: 'feature' })).ok, true);
@@ -382,7 +393,7 @@ test('configured containers refuse status while task closes and kind changes ret
 
 test('category roots work through CLI, spoke and frames without release metadata or QA', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   const ui = await connectUi(t, await readDiscovery(root));
   const status = (await ui.request({ type: 'hub.status' })).value as { tracker: { levels: string[]; ladder: string[][] } };
   assert.deepEqual(status.tracker.levels, ['release', 'epic']);
@@ -402,7 +413,7 @@ test('category roots work through CLI, spoke and frames without release metadata
   const categories = await cland(root, 'task', 'list', '--kind', 'category', '--json');
   assert.equal(categories.code, 0, categories.stderr);
   assert.deepEqual(JSON.parse(categories.stdout).items.map((item: { id: string }) => item.id), [docs.id]);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   const epic = await spoke.call<{ ok: boolean; item: { id: string } }>('task.create', { title: 'Docs plan', kind: 'epic', parent: docs.id });
   assert.equal(epic.ok, true);

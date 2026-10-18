@@ -1,15 +1,26 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Acceptance criteria through the frame protocol, real MCP spoke and CLI; files stay the truth.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+
+// Persistence proofs close and reopen the hub/store in this process.
+const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
+const openHub: typeof projectHub = async (...args) => {
+  const hub = await projectHub(...args);
+  hubs.set(args[1], hub);
+  args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
+  return hub;
+};
+const stopHub = async (root: string) => { await hubs.get(root)!.stop(); };
 
 type View = { id: string; path: string; body: string; criteria: unknown[]; criteriaWarnings: unknown[] };
 
 test('CLI and MCP views expose structured criteria and marks without writing the section', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = `## Acceptance criteria
 
@@ -37,7 +48,7 @@ test('CLI and MCP views expose structured criteria and marks without writing the
   const cli = await cland(root, 'task', 'view', item.id, '--json');
   assert.equal(cli.code, 0, cli.stderr);
   assert.deepEqual((JSON.parse(cli.stdout) as { item: View }).item.criteria, expected);
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   assert.deepEqual((await spoke.call<{ item: View }>('task.view', { id: item.id })).item.criteria, expected);
   assert.equal(await readFile(join(root, item.path), 'utf8'), before);
@@ -45,7 +56,7 @@ test('CLI and MCP views expose structured criteria and marks without writing the
 
 test('orphan and wrongly indented mark lines are reported verbatim without inventing criteria', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = `## Acceptance criteria
   - verified: qa-2 [QA] · run q-1 · 2026-10-09T11:00Z
@@ -69,7 +80,7 @@ test('orphan and wrongly indented mark lines are reported verbatim without inven
 
 test('every criterion list sub-item is parsed or reported, including bullet whitespace and tab indentation', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = [
     '## Acceptance criteria',
@@ -121,7 +132,7 @@ test('every criterion list sub-item is parsed or reported, including bullet whit
 
 test('hand edits re-index reworded and reordered criteria, preserve marks, and report malformed source', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const body = `## Acceptance criteria
@@ -164,8 +175,8 @@ test('hand edits re-index reworded and reordered criteria, preserve marks, and r
   assert.equal((view.value as { item: View }).item.body, editedBody);
   assert.equal(await readFile(file, 'utf8'), edited);
   // Rebuilding the index after restart still reads exactly the file's ids and marks.
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  await stopHub(root);
+  await openHub(t, root);
   const cli = await cland(root, 'task', 'view', item.id, '--json');
   assert.equal(cli.code, 0, cli.stderr);
   assert.deepEqual((JSON.parse(cli.stdout) as { item: View }).item.criteria, (view.value as { item: View }).item.criteria);
@@ -173,7 +184,7 @@ test('hand edits re-index reworded and reordered criteria, preserve marks, and r
 
 test('legacy criteria keep checkbox state but have no ids or inferred marks; absent sections return no criteria', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const [body, expected] of [
     ['## Acceptance criteria\n- [ ] Open legacy criterion\n- [X] Checked legacy criterion', [
@@ -197,7 +208,7 @@ test('legacy criteria keep checkbox state but have no ids or inferred marks; abs
 
 test('criteria parsing respects Markdown fences, section boundaries and wrapped criterion text', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const body = [
     '```markdown', '## Acceptance criteria', '- [x] C99. Example outside the section', '```',

@@ -1,3 +1,4 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -5,11 +6,11 @@ import { join } from 'node:path';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import { cland, connectUi, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
 test('CLI tasks require a size while other kinds refuse it', async t => {
   const root = await tempProject(t);
-  await startDaemon(t, root);
+  await projectHub(t, root);
   for (const args of [[], ['--kind', 'task']]) {
     const result = await cland(root, 'task', 'create', 'Missing size', ...args);
     assert.equal(result.code, 1);
@@ -60,10 +61,10 @@ test('real spoke and CLI validate regression targets and publish indexed task fi
   const index = new TrackerIndex(join(root, '.cland/hub.db'));
   index.recordMerge('T-321', { branch: 't/landed', tip: 'a'.repeat(40), commit: 'b'.repeat(40), base: 'dev' });
   index.close();
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => spoke.close());
   await spoke.waitForPresence(['coord']);
   const tools = await spoke.client.listTools();

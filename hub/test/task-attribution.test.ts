@@ -1,3 +1,4 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -5,7 +6,7 @@ import { join } from 'node:path';
 import { FOUND_BY, parseItem, serializeItem } from '../src/tracker/item.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import { cland, connectUi, flushProjectLogs, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { cland, connectUi, flushProjectLogs, projectHub, inProcessSpoke, tempProject } from './harness.ts';
 
 test('found_by round-trips the discovery vocabulary and refuses orphan attribution', () => {
   const legacy = '---\nid: T-1\nkind: task\ntitle: Rework\nstate: open\nregression_of: T-2\n---\n';
@@ -29,7 +30,7 @@ test('CLI and tools persist, index, edit and journal regression discovery', asyn
   index.close();
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   await coord.waitForPresence(['coord']);
   const created = await cland(root, 'task', 'create', 'Rework', '--size', 'S', '--regression-of', 'T-321', '--found-by', 'cover', '--json');

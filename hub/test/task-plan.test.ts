@@ -1,4 +1,5 @@
-// Epic plans through the real project hub, socket frames, CLI and MCP process boundary.
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
+// Epic plans through the project hub, socket frames, CLI and in-process MCP handlers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -6,17 +7,27 @@ import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { withPlan, type EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+
+// Persistence proofs close and reopen the hub/store in this process.
+const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
+const openHub: typeof projectHub = async (...args) => {
+  const hub = await projectHub(...args);
+  hubs.set(args[1], hub);
+  args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
+  return hub;
+};
+const stopHub = async (root: string) => { await hubs.get(root)!.stop(); };
 
 type Result = { ok: boolean; error?: string; id: string; plan: EpicPlan | null; planError?: string };
 
-async function setup(t: test.TestContext, levels?: string[], spawned = false) {
+async function setup(t: test.TestContext, levels?: string[]) {
   const root = await tempProject(t);
   if (levels) {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), `[tracker]\nlevels = ${JSON.stringify(levels)}\n`);
   }
-  const { discovery } = await (spawned ? startDaemon : projectHub)(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
     const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works\n\n## Notes\nKeep this prose.' });
@@ -37,7 +48,7 @@ async function setup(t: test.TestContext, levels?: string[], spawned = false) {
 }
 
 test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed and journalled', async t => {
-  const { root, ui, epic, a, b, c, plan } = await setup(t, undefined, true);
+  const { root, ui, epic, a, b, c, plan } = await setup(t);
   const planFile = join(root, 'plan.yaml');
   await writeFile(planFile, stringify(plan));
   assert.equal((await ui.request({ type: 'task.comment', item: epic.id, text: 'Keep this comment.' })).ok, true);
@@ -68,7 +79,7 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   const viewed = await cland(root, 'task', 'view', epic.id, '--json');
   assert.equal(viewed.code, 0, viewed.stderr);
   assert.deepEqual(JSON.parse(viewed.stdout).item.plan, plan);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   const shown = await coord.call<Result>('task.plan', { id: epic.id, op: 'show' });
   assert.equal(shown.ok, true, shown.error);
@@ -110,8 +121,8 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   });
 const beforeRestart = await coord.call<{ history: Array<{ id: string; reason?: string }> }>('task.plan', { id: epic.id, op: 'show' });
   assert.match(beforeRestart.history.at(-1)?.reason ?? '', /^Split work for parallel lanes\n/);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  await stopHub(root);
+  await openHub(t, root);
   const restored = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(restored.code, 0, restored.stderr);
   assert.deepEqual(JSON.parse(restored.stdout).history, beforeRestart.history);
@@ -186,7 +197,7 @@ test('invalid schema and references are refused without changing the previous ep
 });
 
 test('invalid hand edits keep the accepted plan across restart, and valid hand edits replace it', async t => {
-  const { root, epic, ui, plan, set } = await setup(t, undefined, true);
+  const { root, epic, ui, plan, set } = await setup(t);
   assert.equal((await set(stringify(plan))).ok, true);
   const file = join(root, epic.path);
   const original = await readFile(file, 'utf8');
@@ -201,8 +212,8 @@ test('invalid hand edits keep the accepted plan across restart, and valid hand e
   assert.deepEqual(view.item.plan, plan);
   assert.match(view.item.planError ?? '', /scope must/);
   assert.equal(await readFile(file, 'utf8'), broken);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const restart = await startDaemon(t, root);
+  await stopHub(root);
+  const restart = await openHub(t, root);
   const restartedUi = await connectUi(t, restart.discovery);
   const restarted = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(restarted.code, 0, restarted.stderr);
@@ -284,7 +295,7 @@ test('body edits cannot bypass plan validation and section replacement preserves
 test('plan reads are available to sessions but writes require a set grant', async t => {
   const { root, epic, plan, set } = await setup(t);
   assert.equal((await set(stringify(plan))).ok, true);
-  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl-1', role: 'implementer' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl-1', role: 'implementer' });
   t.after(() => impl.close());
   const read = await impl.call<Result>('task.plan', { id: epic.id, op: 'show' });
   assert.equal(read.ok, true, read.error);
@@ -297,16 +308,16 @@ test('plan reads are available to sessions but writes require a set grant', asyn
 });
 
 test('a new project indexes file plans after all their lane items, and absent plans show null', async t => {
-  const { root, epic, ui, plan, set } = await setup(t, undefined, true);
+  const { root, epic, ui, plan, set } = await setup(t);
   const empty = await ui.request({ type: 'task.plan', item: epic.id, op: 'show' });
   assert.equal(empty.ok, true);
   assert.equal((empty.value as Result).plan, null);
   assert.equal((await set(stringify(plan))).ok, true);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await stopHub(root);
   // Rebuild from files with no retained database snapshot; epic filenames sort before lane items.
   const { rm } = await import('node:fs/promises');
   await rm(join(root, '.cland/hub.db'));
-  await startDaemon(t, root);
+  await openHub(t, root);
   const shown = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(shown.code, 0, shown.stderr);
   assert.deepEqual(JSON.parse(shown.stdout).plan, plan);

@@ -1,12 +1,12 @@
+// T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Sibling rank through the agreed hub frame, CLI and MCP seams (T-122).
 import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import { performance } from 'node:perf_hooks';
 import { compareRank, rankChanges } from '../src/tracker/rank.ts';
+import { FakeClock } from './fake-clock.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
+import { migrateHighRank } from '../src/tracker/migrate-high-rank.ts';
 import assert from 'node:assert/strict';
 import nativeFiles from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
@@ -15,16 +15,26 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, connectUi, connectWsUi, inProcessSpoke, projectHub, startHub, tempProject, TEST_SECRET } from './harness.ts';
+
+// Persistence proofs close and reopen the hub/store in this process.
+const hubs = new Map<string, Awaited<ReturnType<typeof projectHub>>>();
+const openHub: typeof projectHub = async (...args) => {
+  const hub = await projectHub(...args);
+  hubs.set(args[1], hub);
+  args[0].after(() => { if (hubs.get(args[1]) === hub) hubs.delete(args[1]); });
+  return hub;
+};
+const stopHub = async (root: string) => { await hubs.get(root)!.stop(); };
 
 type Item = { id: string; rank?: number; rank_set?: true; path: string; file: string; parent: string | null };
 
 test('lists and views distinguish default ranks from explicit ranks, including zero and the default value', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1' }, { id: 'T-2', rank: 20 }, { id: 'T-3', rank: 0 }]);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   const listed = await ui.request({ type: 'task.list' });
   assert.equal(listed.ok, true);
@@ -50,7 +60,7 @@ test('lists and views distinguish default ranks from explicit ranks, including z
 test('CLI views label the effective rank as default or set', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1' }, { id: 'T-2', rank: 0 }]);
-  await projectHub(t, root);
+  await openHub(t, root);
   const implicit = await cland(root, 'task', 'view', 'T-1');
   assert.equal(implicit.code, 0, implicit.stderr);
   assert.match(implicit.stdout, /^\s+rank\s+10 \(default\)$/m);
@@ -69,7 +79,7 @@ test('views keep rank and rank_set consistent with a hand save before watcher re
   syncBuiltinESMExports();
   onCleanup(t, () => t.mock.restoreAll());
   onCleanup(t, () => syncBuiltinESMExports());
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db') });
   tracker.start();
   onCleanup(t, () => tracker.stop());
   const hub = await startHub({ tracker, roles: fixedRoles() });
@@ -97,10 +107,10 @@ test('views keep rank and rank_set consistent with a hand save before watcher re
 
 test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then id order', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   const items: Item[] = [];
   for (const title of ['A', 'B', 'C', 'D']) {
@@ -127,8 +137,8 @@ test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then
   assert.equal((event.item as Item).rank, mcp.items[3]!.rank);
   const ordered = await ui.waitFor(f => f.type === 'task' && Array.isArray(f.siblings) && (f.siblings as string[]).at(-1) === 'T-1');
   assert.deepEqual(ordered.siblings, ['T-3', 'T-4', 'T-2', 'T-1']);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  await stopHub(root);
+  await openHub(t, root);
   const restart = await cland(root, 'task', 'list', '--json');
   assert.deepEqual((JSON.parse(restart.stdout) as { items: Item[] }).items.map(i => i.id), ['T-3', 'T-4', 'T-2', 'T-1']);
 });
@@ -136,7 +146,7 @@ test('sparse rank moves persist, are idempotent, and CLI and MCP share rank then
 test('a dense move marks every written sibling and its task event as explicitly ranked', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1' }, { id: 'T-2' }, { id: 'T-3', rank: 9 }, { id: 'T-4', rank: 11 }, { id: 'T-5' }]);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const moved = await cland(root, 'task', 'rank', 'T-2', '--before', 'T-1', '--json');
@@ -161,7 +171,7 @@ test('a dense move marks every written sibling and its task event as explicitly 
 test('removing a frontmatter rank clears rank_set in the re-index event, list and view', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1', rank: 0 }]);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const before = await ui.request({ type: 'task.view', item: 'T-1' });
@@ -194,16 +204,16 @@ for (const stage of ['planning', 'next write'] as const) {
   test(`rank measures the continuous ${stage} stretch across adjacent 150 ms operations`, async t => {
     const root = await tempProject(t);
     await fixture(root, [{ id: 'T-1', rank: 11, status: 'planned' }, { id: 'T-2', rank: 60, status: 'planned' }, { id: 'T-3', rank: 10, status: 'planned' }, { id: 'T-4', rank: 12, status: 'planned' }]);
-    let clock = 0;
+    const clock = new FakeClock(0);
     let slowArithmetic = stage === 'planning';
     let slowSerialization = false;
     let slowOpen = false;
     let armClose = stage === 'next write';
     const records: Array<Record<string, unknown>> = [];
-    const guard = new RequestGuard({ now: () => clock, log: entry => records.push(entry) });
-    const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
+    const guard = new RequestGuard({ now: () => clock.now().getTime(), log: entry => records.push(entry) });
+    const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db'), files: { ...files,
       open: async (...args) => {
-        if (slowOpen) { slowOpen = false; clock += 150; }
+        if (slowOpen) { slowOpen = false; clock.block(150); }
         const fd = await files.open(...args);
         if (armClose) {
           armClose = false;
@@ -222,12 +232,12 @@ for (const stage of ['planning', 'next write'] as const) {
     // file waits are excluded. No tracker collaborators or diagnostic logs are replaced.
     const integer = BigInt;
     t.mock.method(globalThis, 'BigInt', (...args: Parameters<typeof BigInt>) => {
-      if (slowArithmetic) { slowArithmetic = false; slowOpen = true; clock += 150; }
+      if (slowArithmetic) { slowArithmetic = false; slowOpen = true; clock.block(150); }
       return integer(...args);
     });
     const stringify = JSON.stringify;
     t.mock.method(JSON, 'stringify', (...args: Parameters<typeof stringify>) => {
-      if (slowSerialization) { slowSerialization = false; slowOpen = true; clock += 150; }
+      if (slowSerialization) { slowSerialization = false; slowOpen = true; clock.block(150); }
       return stringify(...args);
     });
     const result = await ui.request({ type: 'task.rank', item: 'T-2', before: 'T-1' });
@@ -243,7 +253,7 @@ test('a dense interval changes only the moved item and one neighbor, preserving 
     { id: 'T-1', rank: 11 }, { id: 'T-2', rank: 50 }, { id: 'T-3', rank: 60 },
     { id: 'T-4', rank: 10 }, { id: 'T-5', rank: 12 }, { id: 'T-6', rank: -20 },
   ]);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const before = await ui.request({ type: 'task.list' });
@@ -274,7 +284,7 @@ test('ranking refuses different parents, self references, wrong kinds and ambigu
     { id: 'T-3', kind: 'area', parent: 'T-1' }, { id: 'T-4', parent: 'T-2' }, { id: 'T-5', parent: 'T-3' },
     { id: 'T-6', kind: 'group', parent: 'T-2' },
   ]);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   const before = await readFile(join(root, '.cland', 'tasks', 'T-4-fixture.md'), 'utf8');
   for (const frame of [
@@ -296,7 +306,7 @@ async function pausedWriteHub(t: TestContext) {
   const released = new Promise<void>(done => { release = done; });
   let hold = false;
   onCleanup(t, () => release());
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     writeFile: async (...args) => {
     await files.writeFile(...args);
     if (hold) { hold = false; enter(); await released; }
@@ -353,7 +363,7 @@ test('the shared client ordering fixture matches hub lists and resolved event ra
   const root = await tempProject(t);
   const example = JSON.parse(await readFile(new URL('./fixtures/rank-order.json', import.meta.url), 'utf8')) as { items: Array<{ id: string; rank?: number }>; order: string[] };
   await fixture(root, example.items);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const list = await ui.request({ type: 'task.list' });
@@ -364,20 +374,22 @@ test('the shared client ordering fixture matches hub lists and resolved event ra
 });
 
 async function migration(root: string): Promise<{ code: number; stdout: string; stderr: string }> {
+  let stdout = '';
   try {
-    const result = await promisify(execFile)(process.execPath, [fileURLToPath(new URL('../bin/migrate-high-rank.ts', import.meta.url))], {
-      cwd: root, env: Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))), timeout: 30_000,
-    });
-    return { code: 0, ...result };
+    await migrateHighRank(async <T>(...args: string[]) => {
+      const result = await cland(root, 'task', ...args, '--json');
+      if (result.code) throw new Error(result.stderr.trim());
+      return JSON.parse(result.stdout) as T;
+    }, json => { stdout += json; });
+    return { code: 0, stdout, stderr: '' };
   } catch (error) {
-    const failed = error as { code: number; stdout: string; stderr: string };
-    return { code: failed.code, stdout: failed.stdout, stderr: failed.stderr };
+    return { code: 1, stdout, stderr: `rank migration stopped: ${error instanceof Error ? error.message : String(error)}\n` };
   }
 }
 
 test('the high migration ranks singleton groups, including closed items, and a rerun writes nothing', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', title, '--kind', 'epic')).code, 0);
   for (const parent of ['T-1', 'T-2']) {
     assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Ordinary', '--parent', parent)).code, 0);
@@ -402,7 +414,7 @@ test('the high migration ranks singleton groups, including closed items, and a r
 
 test('the high migration refuses multiple labelled siblings before any writes, counting closed items', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await openHub(t, root);
   for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', '--size', 'M', title, '--label', 'high')).code, 0);
   assert.equal((await cland(root, 'task', 'close', 'T-2')).code, 0);
   const listed = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Item[] };
@@ -418,7 +430,7 @@ test('a failed high label removal retries without another rank write or a migrat
   let fail = false;
   let target = '';
   let targetRenames = 0;
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files, rename: async (from, to) => {
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db'), files: { ...files, rename: async (from, to) => {
     if (String(to) === target) targetRenames++;
     if (fail && String(to) === target && (await readFile(from, 'utf8')).includes('labels: []')) {
       fail = false;
@@ -462,7 +474,7 @@ test('dense equal ranks make room with the fewest neighbors while preserving an 
     { id: 'T-6', kind: 'question' }, { id: 'T-1', rank: 61 }, { id: 'T-2', rank: 61 },
     { id: 'T-5', rank: 62 }, { id: 'T-3', rank: 80 },
   ]);
-  await projectHub(t, root);
+  await openHub(t, root);
   const result = await cland(root, 'task', 'rank', 'T-3', '--before', 'T-1', '--json');
   assert.equal(result.code, 0, result.stderr);
   const moved = JSON.parse(result.stdout) as { changed: string[]; siblings: string[] };
@@ -479,7 +491,7 @@ test('rank handles safe integer endpoints without overflow and refuses a fractio
     { id: 'T-1', rank: Number.MIN_SAFE_INTEGER }, { id: 'T-2', rank: Number.MAX_SAFE_INTEGER },
     { id: 'T-3', rank: 0 },
   ]);
-  await projectHub(t, root);
+  await openHub(t, root);
   for (const args of [['T-3', '--top'], ['T-1', '--after', 'T-2']]) {
     const result = await cland(root, 'task', 'rank', ...args, '--json');
     assert.equal(result.code, 0, result.stderr);
@@ -499,7 +511,7 @@ test('a failed dense batch reports its committed neighbor and a retry completes 
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-4', rank: 10 }, { id: 'T-1', rank: 11 }, { id: 'T-5', rank: 12 }, { id: 'T-3', rank: 60 }]);
   let fail = false;
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db'), files: { ...files,
     rename: async (from, to) => {
       if (fail && String(to).endsWith('T-3-fixture.md')) { fail = false; throw new Error('injected rename failure'); }
       await files.rename(from, to);
@@ -527,7 +539,7 @@ test('a failed dense batch reports its committed neighbor and a retry completes 
 test('a moved item keeps its rank when changing one neighbor alone can place it', async t => {
   const root = await tempProject(t);
   await fixture(root, [{ id: 'T-1', rank: 7 }, { id: 'T-2', rank: 7 }, { id: 'T-5', rank: 7 }]);
-  await projectHub(t, root);
+  await openHub(t, root);
   const before = await readFile(join(root, '.cland', 'tasks', 'T-5-fixture.md'), 'utf8');
   const result = await cland(root, 'task', 'rank', 'T-5', '--before', 'T-2', '--json');
   assert.equal(result.code, 0, result.stderr);

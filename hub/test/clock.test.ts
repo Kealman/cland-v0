@@ -92,3 +92,26 @@ test('hub time owners call only their clock except documented real I/O timers', 
     assert.doesNotMatch(source, /(?<![\w.])(?:setTimeout|setInterval|clearTimeout|clearInterval)\s*\(|\bDate\s*\.\s*now\s*\(/, file);
   }
 });
+
+test('FakeClock blocking work delays due callbacks without moving time backwards', async () => {
+  const clock = new FakeClock(0);
+  const observed: number[] = [];
+  const record = () => { observed.push(clock.now().getTime()); };
+  clock.setTimeout(record, 5);
+  clock.block(20);
+  assert.deepEqual(observed, [], 'synchronous work cannot run timer callbacks');
+  await clock.advance(0);
+  assert.deepEqual(observed, [20]);
+  assert.equal(clock.now().getTime(), 20);
+  clock.setTimeout(() => clock.block(10), 5);
+  clock.setTimeout(record, 10);
+  clock.setTimeout(record, 16);
+  await clock.advance(5);
+  assert.deepEqual(observed, [20, 35], 'blocking drains the second elapsed deadline while a future timer stays pending');
+  assert.equal(clock.pending, 1);
+  assert.equal(clock.now().getTime(), 35, 'blocking inside a callback also preserves monotonic time');
+  await clock.advance(1);
+  assert.deepEqual(observed, [20, 35, 36]);
+  assert.equal(clock.pending, 0);
+  for (const ms of [-1, NaN, Infinity]) assert.throws(() => clock.block(ms), /finite non-negative/);
+});
