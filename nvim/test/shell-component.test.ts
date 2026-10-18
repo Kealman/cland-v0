@@ -924,7 +924,9 @@ test('the items panel: vertical sections, hub glyphs, right-aligned claims and c
   const c = await startShell(t, withItems);
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  let s = await c.waitScreen(x=>x.includes('board · 5 in work · 1 done') && x.includes('backlog (1)'), 'vertical board');
+  // The header can render before the resized rows and inbox badges do.
+  let s = await c.waitScreen(x => x.includes('board · 5 in work · 1 done') && x.includes('backlog (1)')
+    && /^ ◐ T-2 T-1 › Items panel +impl-2 \?2$/m.test(leftOf(x)), 'vertical board with claim and both asks');
   let panel = leftOf(s);
   assert.match(panel, /epic all/);
   assert.match(panel, /^ T-1 Workbench shell +1\/7\s*$/m, 'scope keeps child progress');
