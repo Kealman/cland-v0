@@ -23,10 +23,16 @@ import { reduceCoverage } from '../src/suite-coverage.ts';
 import { loadGateReporter, runLoadGate } from './load-gate.ts';
 import { assertTestAdmission } from '../src/test-admission.ts';
 import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
+import { AdmissionTimeout } from '../src/test-admission-outcome.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan } = {}): Promise<number> {
-  await assertTestAdmission(options.cwd);
+  try { await assertTestAdmission(options.cwd); }
+  catch (error) {
+    if (!(error instanceof AdmissionTimeout)) throw error;
+    process.stderr.write(`${error.message}\nsuite admission timeouts ${JSON.stringify([{ message: error.message }])}\nsuite test failures []\n`);
+    return 75;
+  }
   const interruption = options.interruption ?? { signal: null };
   let active: ReturnType<typeof spawn> | undefined;
   let runId = options.token ?? randomBytes(10).toString('base64url');
@@ -164,9 +170,10 @@ process.chdir(cwd);`);
       const loadGate = options.selection?.loadGate === true && durationManifest && args.includes('--test');
       if (loadGate) reporters.push(`--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${loadDiscovery}`);
       const quarantinePath = join(root, `quarantine-${index}.json`);
-      const checkQuarantine = quarantine && Object.keys(quarantine.tests).length > 0 && args.includes('--test');
+      // Always collect assertion/admission identities, even with no quarantine.
+      const checkQuarantine = args.includes('--test');
       if (checkQuarantine) {
-        env.CLAND_TEST_QUARANTINE = JSON.stringify(quarantine);
+        env.CLAND_TEST_QUARANTINE = JSON.stringify(quarantine ?? { version: 1, tests: {} });
         reporters.push(`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`);
       }
       active = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), ...(capture ? ['--import', fileURLToPath(new URL('./coverage-bootstrap.mjs', import.meta.url))] : []), ...reporters, ...absoluteArgs], { cwd: root, env, detached: true, stdio: 'inherit' });
@@ -204,7 +211,8 @@ process.chdir(cwd);`);
         const receipt = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
         for (const result of receipt.results) process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
         process.stdout.write(`suite test failures ${JSON.stringify(receipt.failures)}\n`);
-        if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && receipt.excused > 0) code = 0;
+        if (receipt.admissionTimeouts?.length) process.stdout.write(`suite admission timeouts ${JSON.stringify(receipt.admissionTimeouts)}\n`);
+        if (code === 1 && receipt.complete && receipt.cancelled === 0 && receipt.failures.length === 0 && !receipt.admissionTimeouts?.length && receipt.excused > 0) code = 0;
       }
       // Resource policy is independent of assertion quarantine or caught errors.
       if (tierFailed) code = 1;

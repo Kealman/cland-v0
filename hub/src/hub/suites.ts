@@ -30,6 +30,7 @@ import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
 import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
+import { suiteAdmissionTimeouts } from '../test-admission-outcome.ts';
 import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
@@ -95,6 +96,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
   const structured = suiteTestFailures(text);
+  const admissions = suiteAdmissionTimeouts(text);
   const failures = (structured === null ? text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: |shard failure )/.test(line))
     : [...structured.map(f => `${f.file}::${f.name}`), ...text.split('\n').filter(line => /^(?:✖ load gate: |duration budget: |shard failure )/.test(line))]).slice(0, 12).map(line => line.slice(0, 200));
   const merged = text.includes('\n--- close shards ---\n');
@@ -108,6 +110,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   timings.push(...text.split('\n').filter(line => /^test lint (?:\(report only\):|finding:|tier:)/.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
+  timings.push(...text.split('\n').filter(line => /^load gate admission blocked:/.test(line)));
   timings.push(...text.split('\n').filter(line => /^quarantine load gate: /.test(line)));
   // Keep every failed repetition's full error/stack next to the count summary.
   const loadDiagnostics = text.split('\n').filter(line => line.startsWith('load gate failure '));
@@ -116,7 +119,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   const lastTiers = new Map<string, string>();
   for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
   const quarantined = quarantineStatus ?? quarantineSummary(quarantineResults(text));
-  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}${lastTiers.size ? `\n${['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []).join('\n')}` : ''}`;
+  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${admissions.length ? `\nadmission timeouts ${admissions.length}\n${admissions.map(a => `${a.file ? a.file + ': ' : ''}${a.message}`).join('\n')}` : ''}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}${lastTiers.size ? `\n${['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []).join('\n')}` : ''}`;
 }
 
 export { SuiteAdmissionError } from './suite-candidate.ts';

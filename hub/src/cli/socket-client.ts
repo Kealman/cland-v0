@@ -4,6 +4,9 @@ import { createConnection } from 'node:net';
 import { PROTOCOL_VERSION, parseFrame, type ClientHello, type ClientRequest, type HubStatus } from '../protocol.ts';
 import type { Discovery } from '../project.ts';
 import { sessionOf } from './actor.ts';
+import { realClock, type Clock } from '../hub/clock.ts';
+
+export class HubTimeout extends Error {}
 
 /** One request over the socket; rejects on a refusal, an error result, a closed socket or the timeout. */
 export function askHub(d: Pick<Discovery, 'socket' | 'secret'>, type: ClientRequest['type'], timeoutMs = 3000): Promise<unknown> {
@@ -17,7 +20,7 @@ const PLUMBING: ReadonlySet<string> = new Set(['session.signal', 'session.bridge
  * One request frame of any type (its `id` is added here) over the socket. In a launched session's shell the frame
  * says whose it is (`as`, from `sessionOf`), unless the caller already named an actor.
  */
-export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env): Promise<unknown> {
+export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<unknown> {
   const session = frame.as === undefined && !PLUMBING.has(frame.type) ? sessionOf(env) : undefined;
   const request = session ? { ...frame, as: session } : frame;
   return new Promise((resolve, reject) => {
@@ -28,12 +31,12 @@ export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { ty
     const done = (err: Error | null, value?: unknown) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      clock.clearTimeout(timer);
       socket.destroy();
       if (err) reject(err);
       else resolve(value);
     };
-    const timer = setTimeout(() => done(new Error(`the hub did not answer on ${d.socket} within ${timeoutMs} ms`)), timeoutMs);
+    const timer = clock.setTimeout(() => done(new HubTimeout(`the hub did not answer on ${d.socket} within ${timeoutMs} ms`)), timeoutMs);
     socket.setEncoding('utf8');
     socket.on('connect', () => {
       const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, secret: d.secret, client: 'cli' };

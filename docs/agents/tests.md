@@ -656,8 +656,17 @@ a read-only `suite.slot` check. When an integrated cover holds the local
 compatibility slot, an unrelated test exits with `cover-quiet` and the run id.
 Wait for that cover to release the slot. Its own workers pass with the matching
 inherited lease; remote covers do not occupy this machine's local slot. Without
-a project hub there is no refusal. A connected hub must answer: a timeout or
-disconnect fails startup before fixtures. Discovery follows `CLAND_HUB_FILE`
+a project hub there is no refusal. A connected hub must answer. Admission waits
+at least 15 seconds, scaling with one-minute load per available CPU to a maximum
+of 60 seconds. A timeout is a typed `AdmissionTimeout`, with the nonzero outcome
+`admission timed out after N s: project hub busy; not a test result`. Package
+reports count admission timeouts separately and omit affected assertion ids from
+test failures and shared-defect candidates, including load-gate repetitions.
+The package entry returns 75 when its own admission times out; Node's worker
+still exits nonzero when its admission hook fails. The harness registers that
+hook before account fixtures, so test registration completes before admission
+waits, and neither test bodies nor fixture hooks run after a refusal or timeout.
+A disconnect also fails admission before fixtures. Discovery follows `CLAND_HUB_FILE`
 and linked worktrees, as the CLI does. Only the human may set
 `CLAND_TEST_IGNORE_COVER=1` to bypass this check. The check never joins the queue
 or acquires a lease; normal full-suite queueing stays in effect.

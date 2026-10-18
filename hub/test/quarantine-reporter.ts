@@ -4,11 +4,13 @@ import type { TestEvent } from 'node:test/reporters';
 import { relative } from 'node:path';
 import { Transform, type TransformCallback } from 'node:stream';
 import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
+import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
 
 export default class QuarantineReporter extends Transform {
   #manifest: QuarantineManifest = JSON.parse(process.env.CLAND_TEST_QUARANTINE ?? '{"version":1,"tests":{}}');
   #receipt: QuarantineReceipt = { complete: false, cancelled: 0, failures: [], results: [], excused: 0 };
   #children = new Map<string, Array<{ file: string; name: string; safe: boolean }>>();
+  #admissions = new Map<string, string>();
   constructor() {
     super({ writableObjectMode: true });
     this.on('pipe', source => { if (source.getMaxListeners() > 0) source.setMaxListeners(Math.max(source.getMaxListeners(), 20)); });
@@ -21,6 +23,19 @@ export default class QuarantineReporter extends Transform {
     if ((event.type === 'test:pass' || event.type === 'test:fail') && event.data.file) {
       const data = event.data;
       const file = relative(process.env.TEST_SUITE_CWD ?? process.cwd(), data.file!);
+      const admission = event.type === 'test:fail' ? admissionTimeoutMessage(event.data.details.error) : null;
+      // Classify only this event: an explicit admission call or a nested hook
+      // must never suppress an ordinary assertion elsewhere in the same file.
+      if (admission) {
+        this.#admissions.set(file, admission);
+        if (data.nesting === 0) {
+          // This top-level envelope owns its already observed ordinary children.
+          // They cannot be consumed by a subsequent quarantined test in the file.
+          this.#receipt.failures.push(...(this.#children.get(file) ?? []).map(({ file, name }) => ({ file, name })));
+          this.#children.delete(file);
+        }
+        callback(); return;
+      }
       const pending = this.#children.get(file) ?? [];
       const failed = event.type === 'test:fail' && !data.todo && !data.skip;
       if (event.type === 'test:fail' && failed) {
@@ -38,6 +53,7 @@ export default class QuarantineReporter extends Transform {
     callback();
   }
   override _flush(callback: TransformCallback): void {
+    if (this.#admissions.size) this.#receipt.admissionTimeouts = [...this.#admissions].map(([file, message]) => ({ file, message }));
     for (const pending of this.#children.values()) this.#receipt.failures.push(...pending.map(({ file, name }) => ({ file, name })));
     callback(null, JSON.stringify(this.#receipt));
   }

@@ -34,7 +34,7 @@ async function target(t: TestContext, cwd: string, module: string, env: NodeJS.P
   const tmp = await tempProject(t);
   const childEnv = { ...process.env, NODE_TEST_CONTEXT: '', TMPDIR: tmp, TMP: tmp, TEMP: tmp, ...env };
   const result = await new Promise<{ code: number; stdout: string; stderr: string }>(resolve => {
-    const child = execFile(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(module)}); ${code}`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
+    const child = execFile(process.execPath, ['--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async () => { ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
     ownProcess(t, child.pid);
   });
   return { ...result, tmp };
@@ -59,7 +59,7 @@ for (const [name, module] of [['hub', harness], ['Neovim', nvimHarness]]) test(`
   const { root } = await cover(t);
   const result = await target(t, root, module!, external(root));
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /cover-quiet.*cover-run/);
+  assert.match(result.stderr + result.stdout, /cover-quiet.*cover-run/);
   assert.doesNotMatch(result.stdout, /target reached/);
   assert.deepEqual(await readdir(result.tmp), [], 'even account fixture setup waits for admission');
 });
@@ -68,7 +68,7 @@ test('Neovim package entry refuses cover-quiet before creating a runner root or 
   const { root, lock } = await cover(t);
   const result = await target(t, root, runner, external(root), `const {runSuite} = await import(${JSON.stringify(runner)}); await runSuite([['-e', "console.log('target reached')"]], {cwd: ${JSON.stringify(root)}, lockDir: ${JSON.stringify(lock)}});`);
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, /cover-quiet.*cover-run/);
+  assert.match(result.stderr + result.stdout, /cover-quiet.*cover-run/);
   assert.doesNotMatch(result.stdout, /target reached/);
   assert.deepEqual(await readdir(result.tmp), []);
 });
@@ -95,7 +95,8 @@ test('targeted startup passes without a project hub or with an ordinary local ho
   assert.equal(result.code, 0, result.stderr);
 });
 
-for (const behavior of ['unanswered', 'closed', 'legacy-refusal', 'unsupported'] as const) test(`a connected ${behavior} project hub keeps targeted fixtures unstarted`, async t => {
+// The silent-hub deadline is covered with a fake clock at T2 in test-admission.test.ts.
+for (const behavior of ['closed', 'legacy-refusal', 'unsupported'] as const) test(`a connected ${behavior} project hub keeps targeted fixtures unstarted`, async t => {
   const root = await tempProject(t);
   const socketPath = join(root, 'admission.sock');
   const server = createServer(socket => {
@@ -120,7 +121,7 @@ for (const behavior of ['unanswered', 'closed', 'legacy-refusal', 'unsupported']
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: socketPath, secret: 'fixture', port: 1, pid: process.pid, version: 'fixture' }));
   const result = await target(t, root, harness, external(root));
   assert.notEqual(result.code, 0);
-  assert.match(result.stderr, behavior === 'unanswered' ? /hub did not answer/ : behavior === 'closed' ? /hub closed/ : /lacks the read-only suite.slot\/check capability; restart the hub with T-475/);
+  assert.match(result.stderr + result.stdout, behavior === 'closed' ? /hub closed/ : /lacks the read-only suite.slot\/check capability; restart the hub with T-475/);
   assert.doesNotMatch(result.stdout, /target reached/);
   assert.deepEqual(await readdir(result.tmp), []);
 });
@@ -138,10 +139,13 @@ test('an integrated local worker protects its cover while admitting its own targ
   const f = await fixture(t, `${process.execPath} cover.mjs`);
   // This tiny package borrows the worker lease but does not publish coverage maps.
   await writeFile(join(f.root, 'cover.mjs'), `import {existsSync, writeFileSync} from 'node:fs';
+import {test} from 'node:test';
 await import(${JSON.stringify(harness)});
+test('cover worker', async () => {
 writeFileSync('.cland/worker-entered', 'yes');
 while (!existsSync('.cland/worker-finish')) await new Promise(r => setTimeout(r, 25));
-writeFileSync('.cland/worker-completed', 'yes');`);
+writeFileSync('.cland/worker-completed', 'yes');
+});`);
   const git = await cacheRepository(f);
   await git('checkout', 'dev');
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
@@ -149,7 +153,7 @@ writeFileSync('.cland/worker-completed', 'yes');`);
   await eventually('integrated worker admitted its own harness', async () => readFile(join(f.root, '.cland', 'worker-entered'), 'utf8').catch(() => undefined));
   const unrelated = await target(t, f.root, harness, external(f.root));
   assert.notEqual(unrelated.code, 0);
-  assert.ok(unrelated.stderr.includes(`cover-quiet: integrated run ${run.id}`), unrelated.stderr);
+  assert.ok((unrelated.stderr + unrelated.stdout).includes(`cover-quiet: integrated run ${run.id}`), unrelated.stderr + unrelated.stdout);
   await writeFile(join(f.root, '.cland', 'worker-finish'), 'yes');
   await eventually('integrated worker completion receipt', async () => readFile(join(f.root, '.cland', 'worker-completed'), 'utf8').catch(() => undefined));
   const receipt = await eventually('integrated worker durable result receipt', async () => readFile(join(f.root, '.cland', 'run', 'suites', run.id, 'result.json'), 'utf8').then(text => JSON.parse(text) as { code: number }, () => undefined));

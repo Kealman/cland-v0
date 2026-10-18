@@ -1,12 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import type { AdmissionTimeoutReceipt } from './test-admission-outcome.ts';
 
 export const QUARANTINE_MANIFEST = 'hub/test/quarantine.json';
 export type QuarantineEntry = { owner: string; reason: string; added: string; expires: string };
 export type QuarantineManifest = { version: 1; tests: Record<string, QuarantineEntry> };
 export type QuarantineResult = { file: string; name: string; outcome: 'pass' | 'fail' | 'skip'; entry: QuarantineEntry };
 export type TestFailure = { file: string; name: string };
-export type QuarantineReceipt = { complete: boolean; cancelled: number; failures: TestFailure[]; results: QuarantineResult[]; excused: number };
+export type QuarantineReceipt = { complete: boolean; cancelled: number; failures: TestFailure[]; results: QuarantineResult[]; excused: number; admissionTimeouts?: AdmissionTimeoutReceipt[] };
 
 /** Structured runner records take precedence over Node's raw diagnostic rendering. */
 export function suiteTestFailures(log: string): TestFailure[] | null {

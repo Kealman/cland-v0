@@ -8,6 +8,7 @@ import { timingKey, type DurationManifest } from '../src/suite-durations.ts';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import type { LoadGateEvent } from './load-gate-reporter.ts';
 import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
+import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
 
 export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts', import.meta.url));
 
@@ -61,6 +62,8 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
     let passed = 0;
     let skipped = 0;
     let excused = 0;
+    let admissions = 0;
+    let ordinaryFailure = false;
     const quarantine = options.quarantine?.tests[key];
     const skipReasons = new Set<string>();
     const pattern = `^${event.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
@@ -110,21 +113,31 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         if (tierText && options.env.CLAND_TEST_TIER_REPORT) await appendFile(options.env.CLAND_TEST_TIER_REPORT, tierText);
         const records = await readFile(receipt, 'utf8').then(text => text.split('\n').slice(0, -1).filter(Boolean).map(line => JSON.parse(line) as LoadGateEvent), error => { if (error.code === 'ENOENT') return []; throw error; });
         const results = records.filter(record => record.file === event.file && record.name === event.name && record.passed !== undefined);
-        if (!tierFailed && !timedOut && code === 0 && results.length === 1) {
+        const diagnostics = records.filter(record => record.diagnostic).map(record => ({ name: record.name, error: record.diagnostic! }));
+        const admission = records.map(record => admissionTimeoutMessage(record.diagnostic)).find(message => message !== null);
+        if (admission) {
+          admissions++;
+          process.stdout.write(`suite admission timeouts ${JSON.stringify([{ file: event.file, message: admission }])}\n`);
+          const ordinary = diagnostics.some(record => !admissionTimeoutMessage(record.error) && record.error.failureType !== 'subtestsFailed');
+          if (!ordinary && !tierFailed && !timedOut && code === 1) continue;
+        }
+        if (!admission && !tierFailed && !timedOut && code === 0 && results.length === 1) {
           const result = results[0]!;
           if (result.passed) passed++;
           else if (result.skipReason) { skipped++; skipReasons.add(result.skipReason); }
         }
-        if (!tierFailed && !timedOut && code === 1 && quarantine && results.length === 1) {
+        let quarantined = false;
+        if (!admission && !tierFailed && !timedOut && code === 1 && quarantine && results.length === 1) {
           const checked = JSON.parse(await readFile(quarantinePath, 'utf8')) as QuarantineReceipt;
           if (checked.complete && checked.cancelled === 0 && !checked.failures.length && checked.excused > 0) {
             excused++;
+            quarantined = true;
             for (const result of checked.results) if (result.outcome === 'fail') process.stdout.write(`suite quarantine ${JSON.stringify(result)}\n`);
           }
         }
-        const success = !tierFailed && !timedOut && code === 0 && results.length === 1 && (results[0]!.passed || results[0]!.skipReason);
+        const success = !admission && !tierFailed && !timedOut && code === 0 && results.length === 1 && (results[0]!.passed || results[0]!.skipReason);
         if (!success) {
-          const diagnostics = records.filter(record => record.diagnostic).map(record => ({ name: record.name, error: record.diagnostic }));
+          ordinaryFailure ||= !quarantined;
           const failure = redactLoadDiagnostic({ file: event.file, name: event.name, repetition: repetition + 1,
             status: timedOut ? 'timed out (outer deadline)' : 'failed',
             ...(timedOut ? { timeoutMs: options.timeoutMs, graceMs: 250 } : {}),
@@ -139,6 +152,8 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       }
     }
     failed ||= passed + excused !== 5 && skipped !== 5;
+    if (admissions) process.stderr.write(`load gate admission blocked: ${event.file}; ${admissions} admission timeouts; not test results\n`);
+    if (admissions && !ordinaryFailure) return;
     if (skipped === 5) process.stderr.write(`load gate: ${key} skipped, not load-gated; 5/5 skipped; reasons: ${JSON.stringify([...skipReasons])}\n`);
     else if (excused && passed + excused === 5) process.stderr.write(`quarantine load gate: ${key} ${passed}/5 passed; ${excused}/5 quarantined failures\n`);
     else process.stderr.write(`${passed === 5 ? '' : '✖ '}load gate: ${key} ${passed}/5 passed\n`);
