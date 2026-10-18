@@ -146,13 +146,22 @@ flowchart TD
   {
     id: 'release',
     h: 'Releases from the item',
-    p: 'When the release is done, you approve the version and the notes. cland tags it, writes the notes and pushes to GitHub in one atomic push.',
+    p: 'From an idea to GitHub: grill it or chart it with a wayfinder map, write the spec, plan the epics, build the tasks in parallel lanes through the merge gate, demo each epic, and publish with one atomic push once you approve.',
     href: '/docs/verification-and-release/#releases',
-    diagram: `%% A release: your approval, the tag, one atomic push, the next release
+    diagram: `%% A release: an idea pinned down, planned into epics, built in parallel, accepted and pushed
 flowchart TD
-  A["You approve the version and the notes"] --> B["Tag v-version at dev"]
-  B --> C["One atomic push to GitHub"]
-  C --> D["Item closed, next release current"]`,
+  I(["Idea"]) --> G["Grilling"]
+  I --> W["Wayfinder map"]
+  G --> S["Spec"]
+  W --> S
+  S --> E1["Epic"]
+  S --> E2["Epic"]
+  E1 --> T1["Task"]
+  E1 --> T2["Task"]
+  E2 --> T3["Task"]
+  T1 --> R(["Merge gate, QA, your OK, one push"])
+  T2 --> R
+  T3 --> R`,
   },
 ];
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -330,7 +339,7 @@ const crewRows = [
                 <a href={s.href} class="amber-link slide-link">Learn more →</a>
               </div>
               {s.diagram ? (
-                <Diagram code={s.diagram} class="slide-shot slide-diagram" />
+                <Diagram code={s.diagram} compact class="slide-shot slide-diagram" />
               ) : (
                 <Screenshot n={s.shot} frame class="slide-shot" sizes="(min-width: 1200px) 660px, calc(100vw - 72px)" />
               )}
@@ -1067,34 +1076,32 @@ const crewRows = [
   }
   /* A diagram slide: the same 16:10 frame as a screenshot, the diagram fitted inside. */
   .slide :global(.slide-diagram) {
+    position: relative;
     aspect-ratio: 16 / 10;
-    display: grid;
-    place-items: center;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--ground);
     overflow: hidden;
   }
   .slide :global(.slide-diagram .cland-diagram) {
+    position: absolute;
+    inset: 12px;
     margin: 0;
-    width: 100%;
-    height: 100%;
-    display: grid;
-    place-items: center;
     border: 0;
     background: transparent;
   }
   .slide :global(.slide-diagram .cland-diagram-scroll) {
-    overflow: visible;
     width: 100%;
     height: 100%;
-    display: grid;
-    place-items: center;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .slide :global(.slide-diagram svg) {
     display: block;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
     min-width: 0;
