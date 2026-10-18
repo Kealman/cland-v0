@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T09:34:31.500Z
+updated: 2026-10-18T09:35:01.605Z
 ---
 
 ## Summary
@@ -73,3 +73,29 @@ Standards: 0 findings. Spec: 1 medium finding.
 Artifact A-5131.
 
 Criteria: C3 failed (An older held reconnect snapshot can overwrite a newer child permission event and falsely unblock the parent.).
+
+### rev-31 · 2026-10-18T09:35:01.605Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-535-source-2
+commit: 71bef41d2809d7e5abc91c71922b98fd990367eb
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source review at 71bef41d2809d7e5abc91c71922b98fd990367eb, fixed base 226bd904a90b269e80b3faa5b514a0ea2f367fff; correction diff against 5ba696ca independently inspected. No dev merge and no Reviewer test execution.
+
+## Standards
+No findings. The correction stays at the existing T2 scripted transport boundary with a bounded 2s test. It observes captured/held snapshot admission, releases the response, joins its completion, then separately waits for family reconciliation. No native process or wall-clock wait added.
+
+## Spec
+Prior M1/C3 resolved. Events received while the family snapshots are pending continue through live handling and are retained. After atomic family reset, tracker state alone is replayed before publishing aggregate state; usage, launch and turn-completion effects are not republished. Ended-stream snapshots are fenced with streamCurrent plus current-watch/abort checks. Permission descriptions use the reconciled pending requests, not the stale snapshot list.
+
+The held-response regression covers both empty snapshot → newer approval and pending snapshot → newer reply. A-5138 records the exact pre-fix red (parent busy instead of waiting) and corrected 14/14 whole-file pass in 3.126s, new case 0.455s, with typecheck/lint/diff checks green. C1 stable per-message/per-recipient admission IDs and C2 separate child model plus additive parent usage remain unchanged from the first source review. No remaining findings.
+
+All C1–C3 execution criteria remain pending exact-head post-source-clear mode-free task verification; this is a source clearance only. No per-item QA required.
+
+Standards: 0 findings. Spec: 0 findings.
+Artifact A-5143.

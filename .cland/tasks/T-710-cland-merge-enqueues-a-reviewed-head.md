@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T09:32:04.406Z
+updated: 2026-10-18T09:36:40.986Z
 ---
 
 ## Summary

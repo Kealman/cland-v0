@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T09:34:07.432Z
+updated: 2026-10-18T09:36:20.520Z
 ---
 
 ## Summary
@@ -231,3 +231,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Resolution source clear, A-5139. Independently exact-compared incoming HubTimeout class/askHubFrame (only ClientHello annotation erased), unchanged hub compatibility exports, and byte-identical incoming suite CLI. Shared transport retains requestSent/timeoutMs/write completion and class identity without hub imports. A-5137 raw verify-submission4/4; static gates/search inventories retained under Coordinator bfcba854's narrow-local/fresh-droplet validation decision. C1–C3 current from cumulative proof; C4 awaits fresh exact-head droplet. Prior A-5120 green remains historical, no waived rerun assumed.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-709 · 2026-10-18T09:36:20.520Z
+
+Transport delta source clear rev-20261018-709-transport-delta/A-5139 at5f552d2c5731a2a6ff5dcdf19020f01143d30847. Fresh fetch+gated lint passes (A-5142); tree unchanged/clean. Submitted one mode-free droplet verify via CLI to Reviewer,self,Coordinator. CLI exit75 sent-unconfirmed; after required60s wait, queue+task receipt confirm2119e998-6b74-4d7e-bda8-7bb896bc5a73 launching at exact reviewed head. No retry submitted. C4/current final evidence awaits that result; idle under load rule.
