@@ -3,7 +3,7 @@ id: T-703
 kind: task
 title: Name reservation, tracker readiness, task migration, inbox load and the ask chain run in T1 and T2 with shared fixtures
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-466
 branch: t/T-703-name-reservation-tracker-readiness-task
 created: 2026-10-16T19:59:37.302Z
-updated: 2026-10-17T23:36:07.365Z
+updated: 2026-10-18T01:25:42.977Z
 ---
 
 ## Summary
@@ -49,25 +49,39 @@ Tracker and hub rules dominate these files, at the cost of fixture rebuilds, ove
 - [x] C1. The six files' manifest seconds fall from 234.7 s (A-3877) to 120 s or less on the merge path (T1–T3), with the large-seed run in T4.
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.924Z · commit 81d65861baa96fc019453da9a506184231310fb3
   - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
-  - done: impl-703 · 2026-10-17T23:35:13.196Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - verified: rev-30 [reviewer] · run rev-20261018-703-final · 2026-10-18T00:20:57.728Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - done: impl-703 · 2026-10-18T00:56:35.214Z
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merge-delta · 2026-10-18T00:58:27.390Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merged-final · 2026-10-18T01:25:41.695Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
 - [x] C2. Their `startDaemon` call sites fall from 19 to 3 or less and `spawnSpoke` sites from 61 to 12 or less.
   - done: impl-703 · 2026-10-17T22:05:21.412Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.924Z · commit 81d65861baa96fc019453da9a506184231310fb3
   - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
   - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - verified: rev-30 [reviewer] · run rev-20261018-703-final · 2026-10-18T00:20:57.728Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merge-delta · 2026-10-18T00:58:27.390Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merged-final · 2026-10-18T01:25:41.695Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
 - [x] C3. No test in the six files mocks a builtin prototype, proved by a source check, and the moved rules pass the tier lint as T1 or T2.
   - done: impl-703 · 2026-10-17T22:05:23.051Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.924Z · commit 81d65861baa96fc019453da9a506184231310fb3
   - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
   - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - verified: rev-30 [reviewer] · run rev-20261018-703-final · 2026-10-18T00:20:57.728Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merge-delta · 2026-10-18T00:58:27.390Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merged-final · 2026-10-18T01:25:41.695Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
 - [x] C4. An audit maps every moved or rewritten assertion to its new place, with no behaviour claim dropped.
   - verified: rev-30 [reviewer] · run rev-20261017-703-source · 2026-10-17T22:19:14.925Z · commit 81d65861baa96fc019453da9a506184231310fb3
   - verified: rev-30 [reviewer] · run rev-20261017-703-runtime-correction · 2026-10-17T22:56:32.497Z · commit 7479109815247dfd587dafb1be7dba6654363ef7
-  - done: impl-703 · 2026-10-17T23:35:13.497Z
   - verified: rev-30 [reviewer] · run rev-20261017-703-workload-delta · 2026-10-17T23:36:07.365Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
-- [ ] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-17T23:32:48.425Z · note Exact-head run 2c0e0ead/A-4846 exits one on two owned inbox-workload hard budgets (8.922707492s and 5.165830640s >5s); Neovim completion is absent.
+  - verified: rev-30 [reviewer] · run rev-20261018-703-final · 2026-10-18T00:20:57.728Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - done: impl-703 · 2026-10-18T00:56:35.467Z
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merge-delta · 2026-10-18T00:58:27.390Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merged-final · 2026-10-18T01:25:41.695Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
+- [x] C5. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - verified: rev-30 [reviewer] · run rev-20261018-703-final · 2026-10-18T00:20:57.728Z · commit 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+  - done: impl-703 · 2026-10-18T01:25:09.954Z
+  - verified: rev-30 [reviewer] · run rev-20261018-703-merged-final · 2026-10-18T01:25:41.695Z · commit 671d8e9d6182b39762b6d5378346b95eb5a0be94
 
 ## Blocked by
 
@@ -165,3 +179,56 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards/Spec source clear, no findings; A-4851. Primary b0ee48e7/aa6416b1 authorize representative T2 seeds with shared T4 carriers. All batching, query-count/plan, reply completion and coalescing assertions are retained in shared functions; T4 keeps original startup volumes and broader 2000/3000 archive volumes. No production change/dev merge, new processes/sleeps or T2 allowance. Both T4 allowances are measured, E-677-owned and expire 2026-10-24; only affected file timings/counts change. Independently audited ten raw A-4848 logs: 50 passes, zero fail/cancel/skip, committed test hashes match; T2 median 1.367368791s, T4 4.885388041s, all T2 cases <2s. Original 884 assertion mappings remain, prior native guard/PID fixes unchanged. Merge-path manifest total 59.308244s meets C1. C1–C4 refreshed. C5 remains failed/pending accepted exact-head Linux gate; source correction does not replace prior exit-one receipt. Submission hold remains until Coordinator says hub restarted. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-18T00:20:57.728Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-703-final
+commit: 229bdf2b09432807cf7aff54b4be6cbe7f42914e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; A-4875. Independently audited A-4874 run 41b3844b at unchanged reviewed head: all seven owned files/110 top-level cases have completed timings and positive ordinary pass lines, all 27 owned load gates pass 5/5 (135/135), zero scoped trips or hard duration failures. Revised T2 archive/startup pass at 0.355438555s/0.131182645s; retained T4 scale proofs pass within E-677 allowances. Linux T1–T3 sum 65.149513683s versus accepted Mac/manifest 59.308244s, both below 120s. Source/Mac assertion-map evidence remains applicable, including native guard and bounded PID fixes. Full hub+Neovim run exits zero: 2,499 passes, zero fail/cancel, eight unrelated prerequisite skips. Unchanged delivered-verifier query case 2.769227394s is explicitly disclosed as report-only T2 budget debt for T-745 audit; no zero-warning claim. C5 claimant done restored in cbfcdc8b. No findings; C1–C5 verified. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-703 · 2026-10-18T00:23:18.945Z
+
+Coordinator-authorized conflict merge committed as 671d8e9d6182b39762b6d5378346b95eb5a0be94 with dev fc183873. daemon preserves openDatabase, candidate/durationContext, Git forwarding and process seams. durations files/tests maps exactly equal refreshed dev; only seven E-677-owned allowances appended. Per f2a64db9 C1 keeps previous measured59.3Mac/65.1Linux proof until integrated refresh. Typecheck/tiers/lint green; confirmed18-file scope5/5 serial now running per13babedd. Prior229bdf2b Linux receipt is not claimed for this merged head; delta review and new mode-free droplet gate will follow.
+
+### impl-703 · 2026-10-18T00:56:36.059Z
+
+Authorized merge671d8e9d pushed. A-4879: typecheck/tiers/lint pass, initial18-file cohort17files5/5+orphan4/5; retained single SIGKILL failure A-4878. Requested comparison clean dev10/10, task isolated10/10, task whole10/10, all serial peakload7.38. Coordinator ce468d59 assigns unresolved case T-765/E-482, stops diagnosis, directs delta review then new mode-free droplet gate. A-4880 records disposition; recurrence becomes T-703's before merge. No source changes after merge, no erased failure/weakened assertion. C1 measured proof retained by Coordinator while manifest files/tests remain exact dev baseline+7 E-677 allowances. C4map884 intact. Fresh merged-head Linux still pending.
+
+### rev-30 · 2026-10-18T00:58:27.390Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-703-merge-delta
+commit: 671d8e9d6182b39762b6d5378346b95eb5a0be94
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear; A-4881, no findings. Authorized ac9ae4be merge preserves opener/full Clock plus incoming candidate/durationContext/Git/process seams. Offline migration still uses native lock liveness; bounded PID-reaped precondition/final assertion remains unchanged. All other task source/test/helper blobs retain prior reviewed bodies and 884 assertion mapping. Independently confirmed dev source/files/tests/budget baselines verbatim, exactly seven unchanged E-677 task allowances appended, unrelated allowances untouched. C1 refreshed using existing measured 59.308244s Mac/65.149513683s Linux per primary f2a64db9, not pre-migration dev timings. A-4879 raw cohort is 89/90 successful attempts: 17 files 5/5, orphan 4/5 with original SIGKILL clean-exit failure at466 retained in A-4878. Comparison dev whole10/10, task isolated10/10 and task whole10/10 all pass; dev did not reproduce. Primary ce468d59 assigns unresolved event T-765 and permits review/fresh gate; same SIGKILL recurrence becomes T-703's to fix before merge. C1–C4 refreshed; C5 awaits fresh normal mode-free merge-head gate. Parent green A-4874 is historical. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-18T01:25:41.695Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-703-merged-final
+commit: 671d8e9d6182b39762b6d5378346b95eb5a0be94
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-4883. Independently audited A-4882 run b888f346: all seven owned files/110 cases pass with ordinary lines and timing receipts, all 27 owned gates pass 5/5 (135/135), zero scoped trips or hard budgets. All16 native-boundary cases pass. All18 orphan cases pass, specifically deleted-project clean exit at 1.818797555s (ordinary line29567/timing32860), so T-765 SIGKILL does not recur. Original A-4878 failure and primary ce468d59 conditional ownership remain disclosed; no claim its cause is resolved. Full hub+Neovim exits zero: 2,504 passes, zero fail/cancel, eight unrelated prerequisite skips. Current Linux T1–T3 sum49.622350215s, T4 excluded; measured Mac59.308244s remains C1 proof under f2a64db9, dev baselines untouched. Source A-4881, complete884 assertion map and matched local file evidence remain applicable. C5 done restored in a8bdd8c2. No findings; C1–C5 verified. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
