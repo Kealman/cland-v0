@@ -3,7 +3,7 @@ id: T-711
 kind: task
 title: The hub builds a batch of up to three queued heads, runs T1 and T3 once on the batch tree, and lands them in order on green
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-521
 branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-18T22:09:33.223Z
+updated: 2026-10-18T22:39:56.029Z
 ---
 
 ## Summary
@@ -46,9 +46,8 @@ With entries queued (T-710), the hub needs to turn them into landings: one integ
 - [x] C3. A conflicting entry is dropped with `merge-conflict` and the other two land after one run, proved by a test.
   - done: impl-711 · 2026-10-18T16:38:54.097Z
   - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
-- [x] C4. A hub restart during the batch run resumes it and lands each entry once, proved by a restart test.
-  - done: impl-711 · 2026-10-18T16:38:55.456Z
-  - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
+- [ ] C4. A hub restart during the batch run resumes it and lands each entry once, proved by a restart test.
+  - failed: rev-30 [reviewer] · 2026-10-18T22:39:56.029Z · note Exact-head integration gate fails interrupted-create executor recovery before Neovim; positive batch restart proof remains, but final green recovery evidence is incomplete.
 - [x] C5. The batch run's result names its members, tree, tiers and wall, and `cland verify queue` lists the batch while it runs, proved by a report test.
   - done: impl-711 · 2026-10-18T16:38:56.256Z
   - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
@@ -146,3 +145,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source delta clear at a589cc1e after explicitly authorized one dev merge. Seven conflict compositions preserve batch/soak admission, baseline separation, one-slot policy, member reports/queue state, T-813 archive/sequence/terminal-report/shutdown behavior and T-815 fallback headers. A-5597 records both axes, both-parent trace, unchanged critical incoming modules and independently parsed56 raw files/426 passes/zero fail-cancel-skip. Prior final gate is stale. C1–C5 await the Coordinator-required fresh exact-head mode-free droplet run; no waiver, findings or per-item QA.
+
+### rev-30 · 2026-10-18T22:39:56.029Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-711-integration-runtime
+commit: a589cc1e070d36c0b73ac697af32e82afff1c40d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Runtime not clear: A-5620/85adbf86 exits1 at unchanged a589cc1e. Sole ordinary failure executor-droplet.test.ts:287 sees creating instead of releasing in interrupted-create/retry recovery; Neovim not reached. All ten batch/seven queue cases and85 repetitions pass, as do incoming liveness/persistence/soak controls. A-5621 distinguishes ordinary vs repeated counts and retains source proof. Failing file/critical executor files match incoming dev; shared-defect candidate Bugs/S needs Coordinator disposition, no causal finding or automatic retry. No new source findings.
+
+Criteria: C4 failed (Exact-head integration gate fails interrupted-create executor recovery before Neovim; positive batch restart proof remains, but final green recovery evidence is incomplete.).

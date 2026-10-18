@@ -3,7 +3,7 @@ id: T-651
 kind: task
 title: 'cland open in a project not yet set up prints "next: cland setup" and opens the workbench as usual'
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-536
 branch: t/T-651-cland-open-in-a-project-not-yet-set-up
 created: 2026-10-16T16:24:00.577Z
-updated: 2026-10-18T22:17:05.397Z
+updated: 2026-10-18T22:44:22.801Z
 ---
 
 ## Summary
@@ -32,8 +32,8 @@ A project initialised but not set up opens as usual, with one line before the wo
 
 ## Acceptance criteria
 
-- [x] C1. `cland open` in a project fresh from `cland init` prints exactly one line, `next: cland setup`, then runs the stand-in launcher on the root with its exit code returned (open.test.ts).
-  - done: impl-651 · 2026-10-18T22:15:55.024Z
+- [ ] C1. `cland open` in a project fresh from `cland init` prints exactly one line, `next: cland setup`, then runs the stand-in launcher on the root with its exit code returned (open.test.ts).
+  - failed: rev-30 [reviewer] · 2026-10-18T22:44:22.801Z · note Accepted exact-head gate missing: A-5622 exits 1 at executor-droplet.test.ts:287 (creating vs releasing); owned hint and predicate checks passed.
 - [x] C2. With the mark on `[aide.launch] harness`, `cland open` prints no such line.
   - done: impl-651 · 2026-10-18T22:15:55.433Z
 - [x] C3. `projectSetUp` returns false for a missing, an unmarked and a malformed `roles.toml`, and true for a marked one (unit test).
@@ -57,3 +57,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at eee54107. Shared projectSetUp/CHOSEN uses validated logical TOML and exact trailing aide.launch harness mark; malformed/missing/unmarked files return false without writes. Hint follows T-650 guard and precedes startup, preserving launch behavior. T1 table, T2 exact hint/marker suppression and existing malformed real-startup case retain coverage/isolation. A-5603 records both axes and claimant-reported host checks with limits. C1–C3 await accepted exact-head runtime; no findings or per-item QA.
+
+### impl-651 · 2026-10-18T22:43:55.417Z
+
+Exact reviewed-head mode-free droplet run 14efbf8b-3c14-448a-9c3a-0f1044552180 failed in executor-droplet.test.ts::restart discovers an interrupted create by name and retries an unconfirmed release (A-5622). Reviewer reported same identity in T-711 A-5620. Shared-defect candidate reported to lead T-651; no Coordinator holder at delivery. Holding diagnosis/retry and unchanged head pending Coordinator disposition/shared fix. Source is clear; runtime readiness remains blocked.
+
+### rev-30 · 2026-10-18T22:44:22.801Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-651-runtime
+commit: eee54107a578e065aec9f8d80d581f5444becb74
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Runtime not clear at unchanged eee54107: A-5622 / 14efbf8b exits 1 on executor-droplet.test.ts:287 (creating vs releasing), matching T-711 A-5620. Owned open 5/5 and roles-editor 11/11 ordinary cases passed; both new groups 5/5. Four inherited report-only trips disclosed. No new source findings; no criteria verified in this failed pass. A-5623 records both axes, positive evidence and shared-defect candidate Bugs/S. Await primary classification/shared fix or explicit retry authorization; no rerun authorized here.
+
+Criteria: C1 failed (Accepted exact-head gate missing: A-5622 exits 1 at executor-droplet.test.ts:287 (creating vs releasing); owned hint and predicate checks passed.).

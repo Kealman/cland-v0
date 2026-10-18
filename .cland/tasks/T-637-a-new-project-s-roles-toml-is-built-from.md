@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-535
 branch: t/T-637-a-new-project-s-roles-toml-is-built-from
 created: 2026-10-16T16:04:13.028Z
-updated: 2026-10-18T22:23:35.561Z
+updated: 2026-10-18T22:51:26.189Z
 ---
 
 ## Summary
@@ -39,9 +39,9 @@ updated: 2026-10-18T22:23:35.561Z
 ## Acceptance criteria
 
 - [x] C1. `cland init` with only the fake Claude Code on the PATH writes a roles.toml whose six roles all launch on claude-code with `permissions = "auto"`, and the hub loads it without error (init test).
-  - done: impl-637 · 2026-10-18T22:18:59.306Z
+  - done: impl-637 · 2026-10-18T22:50:25.609Z
 - [x] C2. With only the fake Codex installed, every role launches on codex with `approval = "never"` and its role's sandbox (Reviewer read-only, Implementer workspace-write, QA danger-full-access, Aide workspace-write, Coordinator and Lead danger-full-access); roles moved to Codex get `model = ""` and an effort Codex takes, while the Reviewer and QA, already on Codex, keep their shipped model and effort.
-  - done: impl-637 · 2026-10-18T22:18:59.647Z
+  - done: impl-637 · 2026-10-18T22:50:25.956Z
 - [x] C3. With all three installed the roles keep their shipped harnesses and models with the Claude Code ones on auto, and with none installed init writes the shipped mapping and its report says no harness was found.
   - done: impl-637 · 2026-10-18T22:19:00.084Z
 - [x] C4. No template role carries `skip`, and no OpenCode role carries `permissions`, `approval` or `sandbox` (template test over every installed set).
@@ -51,7 +51,7 @@ updated: 2026-10-18T22:23:35.561Z
 - [x] C6. `cland update` on a project with an edited roles.toml and crew.toml leaves both byte-identical (update test).
   - done: impl-637 · 2026-10-18T22:19:01.201Z
 - [x] C7. A hub started without roles.toml writes the template from the harnesses installed then, while the built-in fallback for missing keys is the same on every machine (test with two PATHs).
-  - done: impl-637 · 2026-10-18T22:22:37.901Z
+  - done: impl-637 · 2026-10-18T22:50:26.375Z
 - [x] C8. The template's header records the harnesses it was built from, and a check reports whether a roles.toml is still exactly the template it records (unit test).
   - done: impl-637 · 2026-10-18T22:19:01.966Z
 - [x] C9. Demo: in a scratch project with one installed fake harness, `cland init`, `cland role list` and an Aide launch show the valid template and, on Claude Code, a launch with `--permission-mode auto`.
@@ -94,3 +94,43 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at c2809796. M1 resolved: shared executable resolver now feeds all native adapter defaults, preserving explicit bin/override precedence and missing-command behavior. Installer-only command-boundary test and scratch CLI demo exclude PATH/Claude override rescue; raw five focused files30/30 pass. A-5611 retains both axes, initial template audit/M1 history, demo environment and explicit T-821 deferral. C1–C9 await accepted exact-head runtime; no findings or per-item QA.
+
+### rev-30 · 2026-10-18T22:47:58.287Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-637-runtime
+commit: c280979658f0ad2182c2c07aeb23fc9e8f5a572c
+scope: evidence
+findings: [{"severity":"medium","text":"M2: refresh generated-policy carriers in aide/roles-component and explicitly edit the intended QA launch stanza in codex-adapter:484–494. The old default equality/output and suffix-based policy edit cause three failures; retain complete policy/profile/reload assertions.","file":"hub/test/aide.test.ts","line":72},{"severity":"medium","text":"M3: resolved PATH executable formatting breaks exact attach contracts here, codex-adapter:313 and opencode-adapter:224. Reconcile intended command formatting/expectations while preserving installer-only support, escaping, no-config controls and executed fake TUI checks.","file":"hub/test/claude-code-adapter.test.ts","line":116},{"severity":"medium","text":"M4: exact missing-harness expectation omits newly supported installer folders. Refresh the diagnostic expectation and retain failure/fix/auth/override/exit controls.","file":"hub/test/doctor.test.ts","line":86}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Runtime not clear: A-5624 / 8fb65c89 exits 1 with seven task-related carrier failures (M2–M4) and separate matching executor recovery candidate. A-5625 details all eight failures, exact lines, intended preserved controls and positive owned/repetition receipts. No criteria verified. Fresh source review required after corrections; shared executor classification remains upstream, no retry authorized here.
+
+Criteria: C1 failed (Generated auto policy leaves Aide/default and Coordinator role-list carriers failing; A-5624.), C2 failed (Codex native policy fixture misses intended QA edit; QA remains never/danger-full-access instead of on-request/custom profile.), C7 failed (Native executable-resolution attach contracts and doctor diagnostic carrier fail; accepted startup/launch gate remains absent.).
+
+### impl-637 · 2026-10-18T22:48:47.186Z
+
+Gate 8fb65c89 at c2809796 failed (A-5624), seven task-owned carriers plus executor recovery candidate. Reviewer runtime verdict A-5625, M2–M4. Correcting PATH attach spelling while retaining installer-only binary resolution; updating generated auto and doctor wording assertions; pinning native Codex policy contract to shipped fallback definitions and using exact role-key edits to preserve QA/relaunch profile assertions. Shared candidate: hub/test/executor-droplet.test.ts::restart discovers an interrupted create by name and retries an unconfirmed release, line287 creating≠releasing, same identity as T-711/T-651 per Reviewer. Report to lead T-637 returned empty because coordinator has no holder; holding executor diagnosis/retry pending primary disposition. No dev merge or verify retry.
+
+### impl-637 · 2026-10-18T22:50:25.588Z
+
+M2–M4 corrected at 7b641204 (pushed origin; no dev merge). harnessBinary preserves bare executable when found on PATH, resolves absolute installer-only fallback, keeps overrides authoritative. Updated full Aide generated-auto and exact role-list/doctor text assertions. Native Codex policy contract now pins shipped fallback definitions independently of installed-harness template tests, edits explicit Implementer/QA keys with setRoleKey (no suffix edits), retaining full profile, local network, roots, stop and relaunch assertions. Claude permission edit also uses setRoleKey to avoid duplicate auto key. Raw receipts A-5626: aide3/3 7.875s, Claude6/6 13.535s, Codex12/12 16.235s, OpenCode14/14 27.677s, doctor18/18 1.237s, roles-component4/4 0.932s. Host check A-5627 passed; installer-only native demo rerun A-5628 passed. Unit mapping and native in-memory installer control also green. Shared executor recovery candidate remains held pending primary disposition; lead report returned empty/no Coordinator holder.
+
+### rev-30 · 2026-10-18T22:51:06.388Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-637-runtime-correction-source
+commit: 7b6412041a7b926c5fd4222f4c0374f9fb475621
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at 7b641204. M2–M4 resolved: generated auto expectations retain full checks; Codex policy contract pins shipped definitions and edits exact keys; PATH commands stay bare with installer-only absolute fallback; doctor exact diagnostic refreshed. All native attach/profile/relaunch controls retained. A-5629 records both axes and raw six-file57/57 plus installer-only demo. C1–C9 remain unverified awaiting accepted exact-head gate. Shared executor recovery disposition/diagnosis/retry hold persists; source clearance is not permission to bypass it. T-821 remains explicitly deferred.
+
+### impl-637 · 2026-10-18T22:51:26.189Z
+
+Source clear 7b641204 (A-5629; rev-20261018-637-runtime-correction-source) after seven task-owned carrier fixes. Six full files 57/57 pass, host check and installer-only demo green. Still blocked on shared executor recovery disposition: run8fb65c89/A-5624, executor-droplet.test.ts line287 creating≠releasing; matches T-711/T-651. Latest lead T-637 blocked report again returned empty/no Coordinator holder. Shared diagnosis and retry remain held; no dev merge. Subscribed to Coordinator state to resume routing when primary decision chain returns.

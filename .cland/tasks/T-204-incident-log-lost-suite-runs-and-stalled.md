@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-18T18:33:28.605Z
+updated: 2026-10-18T23:24:29.694Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -356,3 +356,7 @@ D55 (2026-10-17 15:24Z): ask 633a5073 option 1, answered by the stand-in under D
 ### human · 2026-10-18T18:33:28.605Z
 
 Incident 2026-10-18 17:48Z: the Coordinator's harness (pid 99977) exited ('bye' then harness-exited, pid gone) and nothing reconnected; the hub released the role at 17:48:11Z. Found at the 18:23Z check (35 min vacant; impl-813's 18:11Z report to 'lead T-813' was refused coordinator:empty). 'cland session resume coord' re-find failed (not listed by claude agents), '--relaunch' failed with 'claude --bg failed (exit 1): Workspace not trusted': coord's harness_processes row still carried account_env {CLAUDE_CONFIG_DIR: ~/.claude} recorded before T-603, which T-603 deliberately did not migrate, so the relaunch ran claude on the empty profile. Stand-in under D24 set that row's account_env to null (one sqlite update on the exited row), then 'session resume coord --relaunch' started pid 12929 (harness 8fb7be60) at 18:32:05Z on the recorded conversation and 'cland role set coord coordinator' restored the role (coordinator-filled 18:32:05Z). Follow-up for coord: a ticket for migrating or ignoring pre-T-603 explicit default directories on relaunch, and a check why the harness exits unnoticed (T-372 class, 4th time).
+
+### human · 2026-10-18T23:24:29.694Z
+
+Incident 2026-10-18 22:33Z: the Coordinator's harness pid 12929 exited ('pid 12929 is gone'), the hub revoked the role at 22:33:24Z; Claude Code reconnected the conversation at 22:33:22Z (per coord) but the row stayed exited and nothing re-registered. Found at the 23:23Z check: 50 min vacant, three 'lead' reports refused coordinator:empty (impl-651, impl-637 ×2), three red droplet verifies unread (T-711, T-651, T-637). Stand-in under D24: 'cland session resume coord' (re-find) attached pid 46036 at 23:23:50Z, 'cland role set coord coordinator' refilled the role at 23:23:52Z. 5th T-372-class exit (4th and 5th today); T-816 covers the General notice; the re-find should run on the hub's side after a harness-exited whose conversation reconnects.
