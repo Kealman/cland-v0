@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-513
 branch: t/T-797-executor-safety-component-two-protocol
 created: 2026-10-18T10:16:24.882Z
-updated: 2026-10-18T14:54:27.429Z
+updated: 2026-10-18T14:55:41.625Z
 ---
 
 ## Summary
@@ -25,6 +25,7 @@ hub/test/executor-safety-component.test.ts, "two protocol projects reserve again
 
 - [x] C1. The root cause is named. The Node 25.6.1 reproduction is the first lead: run the file under Node 25 to get a deterministic repro if possible.
   - done: impl-797 · 2026-10-18T14:45:37.617Z
+  - verified: rev-31 [reviewer] · run rev-20261018-797-source-2 · 2026-10-18T14:55:41.625Z · commit d2c62d803b01a6151acd1d71929cd05e502b02b6
 - [x] C2. The test waits on an observed event or FakeClock step instead of a 30 s wall-clock deadline, keeping every assertion, and passes 20/20 under both Node 24 and 25.
   - done: impl-797 · 2026-10-18T14:54:17.849Z
 
@@ -80,3 +81,44 @@ Criteria: C2 failed (Result polling advances shared FakeClock without observing 
 ### impl-797 · 2026-10-18T14:54:17.833Z
 
 Source M1 addressed at d2c62d803b01a6151acd1d71929cd05e502b02b6: helper drains scheduler + executor sweep completion on both shared hubs before/after each tick; repeats completion pass if a product delay advanced their shared clock. Observation-only Dispatcher.verificationSettled is exposed through projectHub/remote fixture. New held-worker-receipt T2 control proves pending I/O freezes time, no premature report, and completion/report after release; removing joins fails deterministically (A-5373), restored green A-5374. Final whole-file serial20/20 each Node24.21.0/25.6.1 A-5376/A-5377; target40/40 at0.436–0.750s, held control40/40 at0.120–0.184s. Lint/typecheck green A-5378/A-5379. All original11 assertions retained. No dev merge since first review; no verify at rejected head. Revision reasoning A-5375.
+
+### rev-31 · 2026-10-18T14:55:41.625Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-797-source-2
+commit: d2c62d803b01a6151acd1d71929cd05e502b02b6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-797 corrected source review
+
+Commit: d2c62d803b01a6151acd1d71929cd05e502b02b6
+Fixed base: 2a3aa788d8fa47f2c6c4f688e9e822f84dcfd1b9
+Run: rev-20261018-797-source-2
+Scope: full
+Result: clear
+
+Reviewed the correction against 37907453, four-file task scope, Dispatcher sweep/startup ownership, Suites.settled, fixture exposure, shared-clock result driver and failure cleanup. Origin matches this head; its parent is the rejected task head, with no intervening dev merge. No Reviewer tests or edits.
+
+## Standards
+No findings. verificationSettled is observation-only: it waits for initial droplet reconciliation, admitted sweep work and existing Suites.settled work, rejoining a sweep admitted during the drain. It neither advances time nor schedules a tick and is exposed directly through in-process fixtures, without a new protocol frame or change to scheduling policy.
+
+The helper drains both hubs before/after each admitted scheduler step. If driving an executor-requested delay moves the shared clock while draining a later hub, it repeats the completion pass for earlier-peer work. Native I/O alone cannot authorize another time advance. The held-worker control registers release cleanup before launch and releases/joins both submission/report work in finally before fixture disposal. T2 remains in-process, with no new child, literal wall-clock sleep, tier exemption or allowance.
+
+A-5373 records the deterministic control failure when completion joins are removed. A-5374 passes the held control and full file after restoration. Independently audited A-5376: forty whole-file blocks, each ten tests/ten passes/zero failures, forty target-case and forty held-control passes, no runtime resource mismatch. A-5377 separates twenty runs each on Node 24.21.0 and 25.6.1, all exit 0. Whole-file ranges are 3.139–4.319 s and 3.240–3.627 s respectively. Host lint/typecheck evidence is A-5378/A-5379.
+
+## Spec
+Prior M1/C2 resolved. Topic reads are now checked only after admitted scheduler/executor completion; polling cannot consume the first project's timeout while the second project's report persistence is held. The control observes barrier admission, then a pending completion and unchanged clock through a real socket round trip, and checks no premature result before release. All eleven original cap/reservation/accounting assertions remain.
+
+C1 verified: source/controlled receipts establish the frozen scheduler cause. A-5352 retains the exact forced ordering: clock 4.500 s, released lease, suite finished/unreported with awaiting-confirmed-accounting error, and a 30-second result timeout after no executor wait remains. A-5354 supplies the held unconfirmed-release ordering and A-5355 its successful clock-step execution. Original Node25 reproduction and assertion audit remain A-5349/A-5359.
+
+C2's source and dual-version repetition evidence is positive, but its final verification awaits a fresh exact-head post-source-clear mode-free task result. No remaining findings; no per-item QA. This is source clearance, not final task readiness.
+
+Standards: zero findings. Spec: zero findings.
+
+Artifact A-5384.
+
+Criteria: C1 verified.

@@ -2,8 +2,8 @@
 id: T-805
 kind: task
 title: 'tracker-ready-native: "failed SQLite identity adoption…" asserts the injected failure right after presence, before adoption has run (macOS under load)'
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-511
 branch: t/T-805-tracker-ready-native-failed-sqlite
 created: 2026-10-18T13:55:15.045Z
-updated: 2026-10-18T14:47:00.848Z
+updated: 2026-10-18T14:55:46.071Z
+closed: 2026-10-18T14:55:46.071Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear. A-5369/f8e7c249 passes at unchanged source-reviewed head: selected hub 23/23 plus Neovim smoke 6/6, total 29 pass, zero fail/cancelled/skips. Independent raw timing and positive reporters confirm all fifteen tracker-ready-native cases execute; affected adoption identity passes 0.296302062s. Correct tier-mismatch parsing finds zero rows; no hard budget failure. C1 verified with source A-5356, preserved assertion diff, documented red A-5346 and independently parsed twenty delayed passes A-5348. Existing identity receives no new-name repetitions; only reported inherited workbench group is 5/5. No full-suite claim, source change, allowance, Reviewer execution or per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T14:55:46.071Z
+
+Merged 59337a6e6e3bbcd8971b33a3aa7b3080958583a4 onto dev.
