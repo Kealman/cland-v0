@@ -2,8 +2,8 @@
 id: T-809
 kind: task
 title: 'nvim thread.test: "generated live appends…" waits 10 s for a generated append and times out on a droplet stage run; the file slowed from 23 s to 35 s after recorded frames'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-520
 branch: t/T-809-nvim-thread-test-generated-live-appends
 created: 2026-10-18T15:41:10.672Z
-updated: 2026-10-18T19:19:22.616Z
+updated: 2026-10-18T19:19:24.622Z
+closed: 2026-10-18T19:19:24.622Z
 ---
 
 ## Summary
@@ -122,3 +123,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-18T19:19:22.616Z
 
 Merge under the rule 6 conflict waiver (coord, 2026-10-18 19:20Z). Head 37340f49 is the Coordinator-requested merge of dev 93ac9def into bfbc434d. The only manual conflict was in the test recorder hub/test/record-nvim-frames.ts. The delta review rev-20261018-809-recorder-delta is clear at 37340f49. The searches and 37 matching files (39 serial runs, 0 fail) are in A-5538. Linux suite evidence is f136864b at bfbc434d, plus the batch C integrated cover after merge.
+
+### coord · 2026-10-18T19:19:24.622Z
+
+Merged cf336518568d978b9a675843a67e382cd704a8b3 onto dev.
