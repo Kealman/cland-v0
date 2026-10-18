@@ -3,7 +3,7 @@ id: T-787
 kind: task
 title: "merge-recovery test: the task worktree still exists after the retried rejected-push merge (Linux, line 325)"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-482
 blocked_by: []
 regression_of: T-503
 topic: null
-branch: null
+branch: t/T-787-merge-recovery-test-the-task-worktree
 created: 2026-10-18T08:30:15.199Z
-updated: 2026-10-18T08:30:15.199Z
+updated: 2026-10-18T08:59:31.609Z
 ---
 
 ## Summary
