@@ -6,12 +6,17 @@ import { resolve } from 'node:path';
 import type { Change } from '../init/files.ts';
 import { CLAND_DIR, projectRoot } from '../project.ts';
 import { VERSION } from '../version.ts';
-import { territoryPath, undoTerritory } from '../territory.ts';
+import { territoryGit, territoryPath, undoTerritory } from '../territory.ts';
 import { provisionAgentsMd } from '../init/instructions.ts';
 
 export { INIT_USAGE } from './usage.ts';
 
 const NEXT = 'cland setup';
+
+function isShallowRepository(root: string): boolean {
+  if (!existsSync(resolve(root, '.git'))) return false;
+  return territoryGit(root, ['rev-parse', '--is-shallow-repository']) === 'true';
+}
 
 function describe(changes: Change[], root: string, command: string): string {
   const lines = [`cland ${command} ${VERSION} in ${root}`];
@@ -40,7 +45,7 @@ function describe(changes: Change[], root: string, command: string): string {
   return lines.join('\n');
 }
 
-async function run(command: 'init' | 'update', args: string[], cwd: string, write: (text: string) => void): Promise<number> {
+async function run(command: 'init' | 'update', args: string[], cwd: string, write: (text: string) => void, isShallow: (root: string) => boolean): Promise<number> {
   const json = args.includes('--json');
   const undo = args.includes('--undo');
   const force = args.includes('--force');
@@ -54,13 +59,15 @@ async function run(command: 'init' | 'update', args: string[], cwd: string, writ
   if (discovered !== root) throw new Error(`cland ${command} refuses target ${target}: discovered project root ${discovered}; run it in that root explicitly`);
   if (root === realpathSync(homedir())) throw new Error(`cland ${command} refuses HOME as a project root: ${target}`);
   if (command === 'update' && !existsSync(resolve(root, CLAND_DIR))) throw new Error(`${root} has no ${CLAND_DIR}/: run \`cland init\` first`);
+  const territory = command === 'init' || existsSync(territoryPath(root));
+  if (!undo && territory && isShallow(root)) throw new Error(`cland ${command}: the territory needs the full history: run git fetch --unshallow, then cland ${command} again`);
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
-  const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory: command === 'init' || existsSync(territoryPath(root)) });
+  const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory });
   const next = command === 'init' && !undo ? NEXT : undefined;
   write(json ? `${JSON.stringify({ root, version: VERSION, changes, next })}\n` : `${describe(changes, root, command)}${next ? `\nnext: ${next}` : ''}\n`);
   return 0;
 }
 
-export const runInit = (args: string[], cwd: string = process.cwd(), write: (text: string) => void = text => { process.stdout.write(text); }): Promise<number> => run('init', args, cwd, write);
-export const runUpdate = (args: string[], cwd: string = process.cwd(), write: (text: string) => void = text => { process.stdout.write(text); }): Promise<number> => run('update', args, cwd, write);
+export const runInit = (args: string[], cwd: string = process.cwd(), write: (text: string) => void = text => { process.stdout.write(text); }, isShallow = isShallowRepository): Promise<number> => run('init', args, cwd, write, isShallow);
+export const runUpdate = (args: string[], cwd: string = process.cwd(), write: (text: string) => void = text => { process.stdout.write(text); }, isShallow = isShallowRepository): Promise<number> => run('update', args, cwd, write, isShallow);

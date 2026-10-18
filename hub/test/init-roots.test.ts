@@ -1,4 +1,4 @@
-// T1: init/update root refusals and non-territory update/undo reports use scratch filesystem markers.
+// T1: init/update root and shallow refusals use scratch filesystem markers and an injected shallow fact.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
@@ -6,6 +6,22 @@ import { join, relative } from 'node:path';
 import { runInit, runUpdate } from '../src/cli/init.ts';
 import { scratchMachine, filesFolder, snapshot } from './init-machine.ts';
 import { captureCli } from './cli-in-process.ts';
+
+test('init/update refuse shallow territory projects before writing anything', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  for (const [command, name] of [[runInit, 'init'], [runUpdate, 'update']] as const) {
+    const root = await filesFolder(machine);
+    if (name === 'update') await mkdir(join(root, '.cland', 'territory.git'), { recursive: true });
+    const before = await snapshot(machine.root);
+    for (const args of [[], ['--json']]) {
+      const result = await captureCli(write => command(args, root, write, () => true));
+      assert.equal(result.code, 1);
+      assert.equal(result.stdout, '');
+      assert.equal(result.stderr, `cland ${name}: the territory needs the full history: run git fetch --unshallow, then cland ${name} again`);
+      assert.deepEqual(await snapshot(machine.root), before, 'shallow refusal writes nothing, including outside the target');
+    }
+  }
+});
 
 test('init/update refuse an ancestor root without changing the scratch machine', { timeout: 5000 }, async t => {
   const machine = await scratchMachine(t, { identity: false });
@@ -72,14 +88,14 @@ test('init/update reject repository subfolders and linked worktrees', { timeout:
   }
 });
 
-test('update accepts an explicit project root through an alias from a subfolder', { timeout: 5000 }, async t => {
+test('update accepts a shallow project without a territory through an explicit root alias', { timeout: 5000 }, async t => {
   const machine = await scratchMachine(t, { identity: false });
   const root = await filesFolder(machine);
   await mkdir(join(root, '.cland'));
   const alias = join(machine.root, 'project-alias');
   await symlink(root, alias);
   const before = await snapshot(machine.root, { except: root });
-  const result = await captureCli(write => runUpdate([alias, '--json'], join(root, 'src'), write));
+  const result = await captureCli(write => runUpdate([alias, '--json'], join(root, 'src'), write, () => true));
   assert.equal(result.code, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).root, root);
   assert.deepEqual(await snapshot(machine.root, { except: root }), before);
@@ -92,7 +108,7 @@ test('update and init undo omit the next step from their reports', async t => {
   // No territory: update and undo exercise report output without running Git.
   for (const [command, args] of [[runUpdate, []], [runInit, ['--undo']]] as const) {
     for (const format of [[], ['--json']]) {
-      const result = await captureCli(write => command([...args, ...format], root, write));
+      const result = await captureCli(write => command([...args, ...format], root, write, () => true));
       assert.equal(result.code, 0, result.stderr);
       if (format.includes('--json')) assert.equal(Object.hasOwn(JSON.parse(result.stdout), 'next'), false);
       else assert.doesNotMatch(result.stdout, /^next:/m);

@@ -1,3 +1,5 @@
+// T3: isolated CLI/Git processes prove init's shallow-clone refusal and fetch --unshallow recovery.
+// Fixture self-tests run in a poisoned-HOME child to prove they cannot modify host state.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -86,6 +88,30 @@ if (process.env.CLAND_INIT_MACHINE_SELFTEST !== '1') {
     assert.equal((await gitIn(machine, subfolder, 'rev-parse', '--show-toplevel')).stdout.trim(), root);
     assert.ok((await readFile(join(root, '.cland', 'config.toml'), 'utf8')).includes('[tracker]'));
     assert.ok((await readFile(join(root, 'AGENTS.md'), 'utf8')).includes('managed by cland'));
+  });
+
+  test('shallow init recovers after fetching the full history', { timeout: 5000 }, async t => {
+    const machine = await scratchMachine(t, { identity: false });
+    const { clone } = await shallowClone(machine);
+    // Isolate shallow recovery; arbitrary default branches belong to T-650/T-651.
+    const renamed = await gitIn(machine, clone, 'branch', '-m', 'main');
+    assert.equal(renamed.code, 0, renamed.stderr);
+    const before = await snapshot(machine.root);
+    const outside = await snapshot(machine.root, { except: clone });
+    const refused = await initIn(machine, clone, 'init');
+    assert.equal(refused.code, 1);
+    assert.equal(refused.stdout, '');
+    assert.match(refused.stderr, /cland init: the territory needs the full history: run git fetch --unshallow, then cland init again/);
+    assert.deepEqual(await snapshot(machine.root), before, 'refusal preserves files and Git metadata across the scratch machine');
+
+    const fetched = await gitIn(machine, clone, 'fetch', '--unshallow');
+    assert.equal(fetched.code, 0, fetched.stderr);
+    const initialized = await initIn(machine, clone, 'init');
+    assert.equal(initialized.code, 0, initialized.stderr);
+    const dev = await gitIn(machine, join(clone, '.cland', 'territory.git'), 'rev-parse', '--verify', 'refs/heads/dev');
+    assert.equal(dev.code, 0, dev.stderr);
+    assert.equal(dev.stdout, (await gitIn(machine, clone, 'rev-parse', 'refs/heads/dev')).stdout);
+    assert.deepEqual(await snapshot(machine.root, { except: clone }), outside, 'successful init stays inside its target');
   });
 
   test('snapshot catches outside changes and link targets without following links or the excepted subtree', async t => {
