@@ -2,8 +2,8 @@
 id: T-799
 kind: task
 title: A droplet run that hits its run timeout loses the machine shard's results, so the hung test can't be named
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-508
 branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T15:17:41.724Z
+updated: 2026-10-18T16:17:40.362Z
+closed: 2026-10-18T16:17:40.362Z
 ---
 
 ## Summary
@@ -154,3 +155,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Composition-only delta clear. Primary 56019bd9 authorizes this merge and explicitly permits prior gate reuse when composition-only; condition met. Dispatch retains T-800 summary-first/bounded priority/cache delivery and T-799 interruption lines immediately after exit in all headers. Receipt producers, persistence/cutoffs, executor and runners are unchanged; core task reporter/parser files match prior parent byte-for-byte. Strengthened existing T2 timeout forces bounded delivery; red 0/2 before header composition, green 2/2 after. A-5396 raw summaries and positive lines confirm all forty serial regression cases pass, zero skips/failures. C1–C3 refreshed with prior full green A-5387/A-5389 under explicit exception; no new droplet needed. Coordinator merge/restart and submission holds remain in force. No findings, Reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T16:17:40.362Z
+
+Merged 36fa156d738d9ce6e4b1a559be38cdc0d27c0a57 onto dev.
