@@ -273,6 +273,16 @@ test('ratchet preserves pinned source identities when timing baselines are missi
   assert.ok(report.some(line => line.startsWith('T3 ratchet (report only): 9 s vs base 14 s')), report.join('\n'));
   assert.ok(report.some(line => line.includes('missing duration baseline ' + unbaselined)));
   assert.ok(report.some(line => line.includes('incomplete base timings (1 files, 3 observed existing tests)')));
+  await writeFile(join(cwd, file), "test('keep', () => {}); test('new', () => { test('nested', () => {}); }); test('old literal', () => {}); test(`old ${kind}`, () => {});");
+  await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ ...manifest, budget: { ...manifest.budget, mode: 'enforce' } }));
+  await git('add', '.'); await git('commit', '-m', 'Enforce with unmeasured new identity');
+  const enforcedHead = await git('rev-parse', 'HEAD');
+  await writeFile(join(cwd, file), "test('checkout cannot repair', () => {});");
+  const enforced = await durationBudgetContext(cwd, { head: enforcedHead, base });
+  assert.ok(enforced?.candidateSources);
+  assert.deepEqual(enforced.candidateSources[file]!.patterns, ['^keep$', '^new$', '^old literal$', '^old .*?$']);
+  const { checkMergeBudgets } = await import('../src/suite-duration-budget.ts');
+  assert.deepEqual(checkMergeBudgets(enforced, 4).failures, ['merge-budget: T3 growth 16 s > base 14 s (needs T3 allowance); 10 s estimated (no receipt)']);
 });
 
 test('new allowances cannot adopt the one-time legacy exception at either admission boundary', async t => {

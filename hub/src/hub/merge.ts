@@ -12,7 +12,7 @@ import { landedTask, reconcileTaskCheckout, restoreTaskCheckout, squashTask, ter
 import type { Resumed, TaskWorktrees } from './worktrees.ts';
 import { ToolForbidden } from '../roles/permissions.ts';
 
-type MergeResult = { item: string; commit: string; base: string; cleanup: string; followUp?: { step: string; error: string } };
+type MergeResult = { item: string; commit: string; base: string; cleanup: string; budgetLines?: string[]; followUp?: { step: string; error: string } };
 
 export class TaskMerges {
   readonly #env: NodeJS.ProcessEnv;
@@ -93,7 +93,7 @@ export class TaskMerges {
   merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}): Promise<MergeResult> {
     id = this.tracker.resolveId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
-      const state: { landed: { commit: string; base: string } | null } = { landed: null };
+      const state: { landed: { commit: string; base: string; budgetLines?: string[] } | null } = { landed: null };
       let reason = override;
       let recovered = false;
       let step = 'territory lock';

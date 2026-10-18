@@ -45,7 +45,7 @@ export async function planTierReport(cwd: string, selection: SuiteSelection, wor
   return result.sort((a, b) => a.tier.localeCompare(b.tier));
 }
 
-function projectedWall(weights: number[], workers: number): number {
+export function projectedWall(weights: number[], workers: number): number {
   const lanes = Array.from({ length: workers }, () => 0);
   for (const weight of [...weights].sort((a, b) => b - a)) {
     const lane = lanes.indexOf(Math.min(...lanes));

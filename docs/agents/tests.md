@@ -574,7 +574,7 @@ with the result, including after restart; it never edits the manifest itself.
 
 Tier budgets check every observed identity, including known baselines and files
 missing from the duration manifest. Missing files are named with their observed
-seconds. Logs keep the complete `budget (report only): would fail …` list;
+seconds. In report mode, logs keep the complete `budget (report only): would fail …` list;
 results show the ten largest overages ranked by seconds over budget. An allowance
 covers its exact key up to its declared `seconds`; file allowances do not cover
 individual tests. Tier-wall projection uses the declared wall budget.
@@ -595,10 +595,41 @@ total. The log and result show `T3 ratchet (report only): … s vs base … s` a
 `would refuse growth` when unallowed. Missing base data is reported as unavailable.
 T1 and T2 may grow within their wall budgets.
 
-D53's report-only period lasts one week after `tiers.json` lands. These tier
-and ratchet diagnostics cannot change an exit status. T-716 (C-07) switches on
-enforcement after that week. Until then, the existing new-identity gate below
-remains active unchanged.
+`budget.mode` selects `report` or `enforce`; omission keeps report mode for
+older manifests. D53's report-only period lasts one week after `tiers.json`
+lands. The Coordinator alone commits `enforce`, no earlier than seven days
+after T-679 merges, and seeds remaining exceptions with their open E-677 owner
+tickets and dates expiring within seven days. This implementation leaves the
+live manifest in report mode.
+
+In enforce mode, every observed test and file must fit its tier's budget or an
+exact allowance covering the measured seconds. A known baseline does not exempt
+it. The runner fails with `duration budget`, independently of assertion
+quarantine; T4 stays unbounded. Existing allowance validation and live owner
+checks still apply, including the legacy exception below.
+
+Before changing refs or the checkout, merge admission checks the immutable
+merged candidate against the current integration base. Unallowed T3 growth or
+a projected T2 wall above 480 seconds refuses with `merge-budget`. Projection
+uses the complete manifests at configured `[verification].workers`, placing
+whole files on workers and summing the sequential hub and Neovim phases.
+Required immutable inspection failures refuse with `merge-budget`, rather than
+disabling the ratchet or accepting partial source estimates. A successful tree
+listing may confirm genuinely absent historical manifests; those retain the
+unavailable-base diagnostic. Missing file timings use the known-file median.
+A new T3 source identity with
+no timing receipt is projected at its per-test tier budget (normally 10 seconds)
+and labeled `estimated (no receipt)` in the merge-budget line. The estimate
+must fit the ratchet or a `T3` allowance; the batch run then measures the test
+and enforces its real duration. Existing unmeasured source identities stay old.
+
+The T3 wall refuses above 900 seconds only when the base manifest's own T3 wall
+projection at the same workers is strictly below 900 seconds. While the base is
+900 seconds or more, merge diagnostics say
+`T3 wall 900 s not yet enforced: base <s> s`; the T3 ratchet still applies.
+
+In report mode, tier and ratchet diagnostics cannot change an exit status, and
+the existing new-identity gate below remains active unchanged.
 
 `hub/test/durations.json` sets a 5-second test budget and a 60-second file budget
 for hub and Neovim. Files sum top-level test-time; nested durations are included
@@ -641,7 +672,7 @@ They expire when E-677 closes. New allowances must use the seven-day fields;
 count and sum of seconds separately, so E-677's progress is visible. Refresh
 preserves ownership, dates, legacy metadata and the T3 allowance without extending
 expiry. Missing manifests disable the budget and its reporter.
-Known entries never fail the duration budget. Those over budget always produce a
+In report mode, known entries never fail the duration budget. Those over budget always produce a
 `duration regression` notice annotated `over budget`, even when flat or faster.
 Those under budget report when at least 1 second and 50% slower than their
 baseline. Both kinds share a five-line cap, ranked by seconds over baseline.

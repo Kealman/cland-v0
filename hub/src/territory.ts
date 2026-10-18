@@ -7,6 +7,9 @@ import { access, lstat, mkdir, realpath, stat } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MergeError } from './merge.ts';
 import { lintHubShardTree, ShardManifestError } from './suite-shards.ts';
+import { durationBudgetContext, DurationInspectionError } from './suite-duration-context.ts';
+import { checkMergeBudgets } from './suite-duration-budget.ts';
+import { suiteLimits } from './suite-limits.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
 import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
 import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts';
@@ -612,7 +615,7 @@ export async function squashTask(
   resumed: <T>(work: () => T) => T = (work) => work(),
   prepared: (landing: { commit: string; base: string; tip: string; checkout?: { before: string; after: string } }) => void = () => {},
   authorize: () => void = () => {},env: NodeJS.ProcessEnv = process.env,
-): Promise<{ commit: string; base: string }> {
+): Promise<{ commit: string; base: string; budgetLines?: string[] }> {
   const managed = await hasTerritory(root, env);
   resumed(() => { if (!managed) throw new MergeError('merge-territory', 'the project has no managed territory'); });
   const foundBase = await taskBase(root, undefined, env);
@@ -654,6 +657,14 @@ export async function squashTask(
     const findings = await testLintPolicy(root, { tree, head: tip, base: before, env });
     if (findings.length) throw new TestLintError(findings);
   } catch (err) { resumed(() => { throw new MergeError('merge-test-lint', err instanceof Error ? err.message : String(err), err instanceof TestLintError ? err.files : undefined); }); }
+  const durationContext = await durationBudgetContext(root, { head: tree, base: before, env }).catch(error => resumed(() => {
+    if (error instanceof DurationInspectionError) throw new MergeError('merge-budget', error.message);
+    throw error;
+  }));
+  const budget = durationContext ? checkMergeBudgets(durationContext, (await suiteLimits(root, 'local', env)).workers) : { failures: [], lines: [] };
+  resumed(() => {
+    if (budget.failures.length) throw new MergeError('merge-budget', [...budget.failures.map(line => line.replace(/^merge-budget: /, '')), ...budget.lines].join('\n'));
+  });
   // Include deleted rename sources as well as destinations for path-based merge gates and checkout safety.
   const touched = await territoryGitAsync(root, ['diff', '--no-renames', '--name-only', '-z', before, tree, '--'], undefined, undefined, env);
   const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--'], undefined, undefined, env);
@@ -712,7 +723,7 @@ export async function squashTask(
     }
     resumed(() => { if (err === admissionError) throw err; throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
   }
-  return { commit, base };
+  return { commit, base, ...(budget.lines.length ? { budgetLines: budget.lines } : {}) };
 }
 
 /** Restore an unlanded preparation, or roll back a failed landing, only from its recorded index states. */

@@ -226,7 +226,7 @@ process.chdir(cwd);`);
             if ('overheadMs' in record) budgetOverheadMs += record.overheadMs;
             else { tests.push(record); observed.push(record); process.stdout.write(`suite timing ${JSON.stringify(record)}\n`); }
           }
-          const checked = checkDurations(tests, durationManifest);
+          const checked = checkDurations(tests, durationManifest, tiers ? Object.fromEntries(tiers) : {});
           regressions.push(...checked.regressions);
           for (const failure of checked.failures) process.stderr.write(failure + '\n');
           budgetFailed = checked.failures.length > 0;

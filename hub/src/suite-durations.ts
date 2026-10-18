@@ -2,14 +2,21 @@ import { glob, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectRoot } from './project.ts';
 import { parseItem } from './tracker/item.ts';
+import type { Tier } from './suite-shards.ts';
 
 export const DURATION_MANIFEST = 'hub/test/durations.json';
 export type TierBudget = { testSeconds: number; fileSeconds: number; wallSeconds: number };
 export type TestTiming = { file: string; name: string; seconds: number };
+export const TIER_BUDGETS = {
+  T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 },
+  T2: { testSeconds: 2, fileSeconds: 30, wallSeconds: 480 },
+  T3: { testSeconds: 10, fileSeconds: 120, wallSeconds: 900 },
+  T4: null,
+};
 export type DurationManifest = {
   version: 1;
   source: { artifacts: string[]; commit: string };
-  budget: { testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null };
+  budget: { mode?: 'report' | 'enforce'; testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null };
   files: Record<string, { seconds: number; tests: number }>;
   tests: Record<string, number>;
   allow: Record<string, { file?: true; seconds: number; reason: string; owner?: string; added?: string; expires?: string; legacy?: true }>;
@@ -18,7 +25,7 @@ export const timingKey = (test: TestTiming): string => `${test.file}::${test.nam
 export type DurationRegression = { key: string; before: number; now: number; budget?: number };
 const seconds = (value: number) => Number(value.toFixed(3)).toString();
 
-export function checkDurations(tests: TestTiming[], manifest: DurationManifest): { failures: string[]; regressions: DurationRegression[] } {
+export function checkDurations(tests: TestTiming[], manifest: DurationManifest, tiers: Record<string, Tier> = {}): { failures: string[]; regressions: DurationRegression[] } {
   const failures: string[] = [];
   const regressions: DurationRegression[] = [];
   const over = (key: string, now: number, budget: number) => failures.push(`duration budget: ${key} ${seconds(now)} s > ${seconds(budget)} s (add to ${DURATION_MANIFEST} with a reason)`);
@@ -28,12 +35,21 @@ export function checkDurations(tests: TestTiming[], manifest: DurationManifest):
       else regressions.push({ key, before, now, budget });
     } else if (before !== undefined && now - before >= 1 && now >= before * 1.5) regressions.push({ key, before, now });
   };
+  const enforce = (key: string, file: string, now: number, kind: 'testSeconds' | 'fileSeconds') => {
+    const tier = tiers[file];
+    if (!tier) { failures.push(`duration budget: missing tier for ${file}`); return; }
+    const budget = (manifest.budget[tier] ?? TIER_BUDGETS[tier])?.[kind];
+    if (budget === undefined || now <= budget || now <= (manifest.allow[key]?.seconds ?? -1)) return;
+    failures.push(`duration budget: ${key} ${seconds(now)} s > ${seconds(budget)} s (${tier}) (add to ${DURATION_MANIFEST} with a reason)`);
+  };
   for (const test of tests) {
     const key = timingKey(test);
-    compare(key, test.seconds, manifest.tests[key] ?? manifest.allow[key]?.seconds, manifest.budget.testSeconds);
+    if (manifest.budget.mode === 'enforce') enforce(key, test.file, test.seconds, 'testSeconds');
+    else compare(key, test.seconds, manifest.tests[key] ?? manifest.allow[key]?.seconds, manifest.budget.testSeconds);
   }
   for (const [path, file] of Object.entries(fileTimings(tests))) {
-    compare(path, file.seconds, manifest.files[path]?.seconds ?? manifest.allow[path]?.seconds, manifest.budget.fileSeconds);
+    if (manifest.budget.mode === 'enforce') enforce(path, path, file.seconds, 'fileSeconds');
+    else compare(path, file.seconds, manifest.files[path]?.seconds ?? manifest.allow[path]?.seconds, manifest.budget.fileSeconds);
   }
   return { failures, regressions };
 }
@@ -61,6 +77,7 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
   const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
   const time = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   if (!object(manifest) || manifest.version !== 1 || !object(manifest.budget) || !time(manifest.budget.testSeconds) || manifest.budget.testSeconds <= 0 || !time(manifest.budget.fileSeconds) || manifest.budget.fileSeconds <= 0 || !object(manifest.files) || !object(manifest.tests) || !object(manifest.allow)) throw new Error(`invalid duration manifest: ${DURATION_MANIFEST}`);
+  if (manifest.budget.mode !== undefined && manifest.budget.mode !== 'report' && manifest.budget.mode !== 'enforce') throw new Error('invalid duration budget mode: expected report or enforce');
   for (const tier of ['T1', 'T2', 'T3'] as const) {
     const budget = manifest.budget[tier];
     if (budget !== undefined && (!object(budget) || ![budget.testSeconds, budget.fileSeconds, budget.wallSeconds].every(value => time(value) && value > 0))) throw new Error(`invalid duration tier budget: ${tier}`);

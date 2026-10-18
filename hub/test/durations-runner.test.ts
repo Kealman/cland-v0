@@ -392,3 +392,22 @@ test('tier overages only report while the existing runner gate remains authorita
   const { suiteSummary } = await import('../src/hub/suites.ts');
   assert.match(suiteSummary(result.output), /budget \(report only\): would fail/);
 });
+
+test('runner enforces tier budgets through real reporter receipts', async t => {
+  const { run, manifest, path, cwd } = await fixture(t);
+  await writeFile(join(cwd, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/fixture.test.ts': 'T2' } }));
+  const head = { ...manifest, budget: { mode: 'enforce', testSeconds: 5, fileSeconds: 60, T2: { testSeconds: 0.05, fileSeconds: 30, wallSeconds: 480 } },
+    tests: { 'hub/test/fixture.test.ts::parent': 0.1 } };
+  await writeFile(path, JSON.stringify(head));
+  const failed = await run();
+  assert.equal(failed.code, 1, failed.output);
+  assert.match(failed.output, /duration budget: hub\/test\/fixture.test.ts::parent .* > 0.05 s \(T2\)/);
+  const today = new Date(), expires = new Date(today);
+  expires.setUTCDate(expires.getUTCDate() + 6);
+  await writeFile(path, JSON.stringify({ ...head, allow: { 'hub/test/fixture.test.ts::parent': {
+    seconds: 2, owner: 'E-677', added: today.toISOString().slice(0, 10), expires: expires.toISOString().slice(0, 10), reason: 'Existing reporter fixture.' },
+  } }));
+  const passed = await run();
+  assert.equal(passed.code, 0, passed.output);
+  assert.doesNotMatch(passed.output, /duration budget:/);
+});
