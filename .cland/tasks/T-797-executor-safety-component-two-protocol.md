@@ -2,8 +2,8 @@
 id: T-797
 kind: task
 title: 'executor-safety-component: "two protocol projects reserve against one cap…" times out waiting for the remote result (30 s) on a droplet'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-513
 branch: t/T-797-executor-safety-component-two-protocol
 created: 2026-10-18T10:16:24.882Z
-updated: 2026-10-18T15:24:27.861Z
+updated: 2026-10-18T16:17:10.731Z
+closed: 2026-10-18T16:17:10.731Z
 ---
 
 ## Summary
@@ -164,3 +165,7 @@ Evidence A-5399: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5399-
 Artifact A-5400.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T16:17:10.731Z
+
+Merged 38c3d8bab7792f7e257ca66a698fef5d6ea8b88a onto dev.

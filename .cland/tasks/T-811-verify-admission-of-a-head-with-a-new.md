@@ -12,10 +12,10 @@ parent: E-482
 blocked_by: []
 regression_of: T-788
 found_by: qa
-topic: null
+topic: topic-516
 branch: t/T-811-verify-admission-of-a-head-with-a-new
 created: 2026-10-18T16:16:11.463Z
-updated: 2026-10-18T16:16:50.768Z
+updated: 2026-10-18T16:17:19.427Z
 ---
 
 ## Summary
