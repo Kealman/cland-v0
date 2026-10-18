@@ -3,8 +3,9 @@ id: T-769
 kind: task
 title: 'aide.test.ts: Sessions.#inject queries the process table after the hub closed its store ("database is not open")'
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by: []
 topic: topic-473
 branch: t/T-769-aide-test-ts-sessions-inject-queries-the
 created: 2026-10-18T03:35:21.412Z
-updated: 2026-10-18T03:39:46.052Z
+updated: 2026-10-18T03:44:50.485Z
 ---
 
 ## Summary
@@ -33,7 +34,8 @@ Hub close cancels or awaits pending Sessions injections before closing the store
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test closes the hub while an injection continuation is pending, records no "database is not open" rejection, and fails before the fix. aide.test.ts then passes 20/20 serially.
+- [x] C1. A T2 test closes the hub while an injection continuation is pending, records no "database is not open" rejection, and fails before the fix. aide.test.ts then passes 20/20 serially.
+  - done: impl-769 · 2026-10-18T03:44:50.187Z
 
 ## Comments
 

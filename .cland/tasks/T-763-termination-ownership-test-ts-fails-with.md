@@ -2,8 +2,8 @@
 id: T-763
 kind: task
 title: termination-ownership.test.ts fails with "database is locked" on a slow droplet
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-469
 branch: t/T-763-termination-ownership-test-ts-fails-with
 created: 2026-10-17T22:57:38.301Z
-updated: 2026-10-18T03:44:37.076Z
+updated: 2026-10-18T03:44:43.466Z
+closed: 2026-10-18T03:44:43.466Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4938: final same-head evidence clear; C1 verified, no Standards or Spec findings. A-4937 / fa087ac2 exits 0 at source-reviewed 503b2a28: all six owned declarations have ordinary pass lines and timing receipts; new real-contention case 0.106272418s plus load gate 5/5. Source BUSY barrier/exact snapshot and A-4909 reported red-before/green-after, with A-4910 15/15 serial Mac files, establish C1. Total 2127 reported/2122 passed/0 failed or cancelled/5 outside-owned skips. Automatic mode full executes hub free+machine and selected Neovim importers/smoke (8/8), not a claimed full Neovim package run. No hard budget failures or added allowances. T-723's distinct high-load criterion remains unverified and its disposition stays with Coordinator.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T03:44:43.466Z
+
+Merged 447064753250a8627f9d14c90ff96a07d5adb202 onto dev.
