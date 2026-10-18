@@ -3,7 +3,7 @@ id: T-724
 kind: task
 title: qa.test.ts SIGTERM case signals the QA run before its handler is installed and sees no BLOCKED line
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-485
 branch: t/T-724-qa-test-ts-sigterm-case-signals-the-qa
 created: 2026-10-17T05:55:15.692Z
-updated: 2026-10-18T07:25:03.914Z
+updated: 2026-10-18T07:58:25.593Z
 ---
 
 ## Summary
@@ -32,7 +32,9 @@ The case waits for an observable readiness signal from the QA run, such as its s
 - [x] C1. The case sends SIGTERM only after an observable readiness signal from the QA run, with its assertions unchanged in meaning, proved by the file passing with an injected start delay in the run.
   - done: impl-724 · 2026-10-18T07:20:49.899Z
   - verified: rev-31 [reviewer] · run rev-20261018-724-source-2 · 2026-10-18T07:25:03.914Z · commit fe3875ab7860f7b0bf9b756e9c8b744bf391b74a
-- [ ] C2. nvim/test/qa.test.ts passes 10/10 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C2. nvim/test/qa.test.ts passes 10/10 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-724 · 2026-10-18T07:57:59.419Z
+  - verified: rev-31 [reviewer] · run rev-20261018-724-final · 2026-10-18T07:58:25.191Z · commit fe3875ab7860f7b0bf9b756e9c8b744bf391b74a
 
 ## Comments
 
@@ -135,3 +137,49 @@ Standards:0 remaining findings. Spec:0 source gaps; C2 runtime pending.
 Durable review:A-5067.
 
 Criteria: C1 verified.
+
+### impl-724 · 2026-10-18T07:58:00.213Z
+
+C2 complete: droplet verification 35a2aa29-d594-4505-9c54-00eb0fdf29e1 passed at exact reviewed fe3875ab7860f7b0bf9b756e9c8b744bf391b74a (A-5085). Linux x64, Node v24.21.0, Neovim v0.12.5; 2535 tests, 2527 pass, zero failures, 8 platform skips. Target SIGTERM case passed without skip in 378.89ms; qa.test.ts ran as a whole file (three sandbox-exec-only cases skip on Linux). Corrected Mac10/10 raw receipts remain A-5066. Droplet lifetime 1923s, cost $0.1335. Head/tree unchanged; awaiting Reviewer final same-head verdict.
+
+### rev-31 · 2026-10-18T07:58:25.191Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-724-final
+commit: fe3875ab7860f7b0bf9b756e9c8b744bf391b74a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-724 final exact-head evidence review — clear
+
+Commit:fe3875ab7860f7b0bf9b756e9c8b744bf391b74a.
+Scope:evidence. Source continuity:rev-20261018-724-source-2 /A-5067.
+Read-only audit; no Reviewer execution or edits.
+
+## Standards
+
+No remaining findings. The post-handler readiness marker, separate detached-group ownership and original BLOCKED/exit/message/group-gone assertions remain unchanged. C1's delayed-start red/green and held-readiness cleanup proof remain current.
+
+A-5066's corrected-source ten complete serial Mac transcripts were independently audited in source-2:22passes per file,220passes total,0fail/skip/cancel/todo, no late asynchronous diagnostic, sampled load5.10–7.95. Historical pre-correction summaries are not substituted for these current transcripts.
+
+## Spec and Linux execution
+
+A-5085 /35a2aa29-d594-4505-9c54-00eb0fdf29e1 is passed/exit0 at the exact reviewed commit, automatic full selection for mixed hub/Neovim paths. Current origin branch still names this head.
+
+Independently matched all22 qa.test.ts timing identities with raw outcomes:19positive passes and3explicit needs-macOS-sandbox-exec skips. Those three sandbox cases all execute on the Mac evidence; none is the changed SIGTERM case. The SIGTERM case executes positively on Linux in0.378893701s and retains the single BLOCKED JSON,exit2,interrupted message and group-gone assertions.
+
+Overall2535tests,2527pass,0fail/cancelled,8prerequisite skips. Raw phase summaries reconcile as free224pass, machine1912pass+5skip, Neovim391pass+3skip. Full Neovim completed186.20s. No known-failure exception is needed; report-only budgets/ratchet notices are diagnostic.
+
+Linux x64,Node24.21.0,Neovim0.12.5,c-8 lon1,2workers; suite1836.68s,peak load7.46,lifetime1923s,cost$0.1335.
+
+## Verdict
+
+Final review clear; verify C2. C1 remains current from source-2. Claimant may refresh C2 done using the accepted receipt. No further task run, Mac repetitions or per-item QA requested.
+Standards:0 findings. Spec:0 remaining gaps.
+
+Durable review:A-5086.
+
+Criteria: C2 verified.

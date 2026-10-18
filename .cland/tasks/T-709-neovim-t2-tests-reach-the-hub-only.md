@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T07:26:38.568Z
+updated: 2026-10-18T07:56:12.498Z
 ---
 
 ## Summary
@@ -54,7 +54,7 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
 - [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-18T06:13:00.293Z · note Neutral extraction introduces shared/test-support imports missing from coverage, root/worktree typecheck and archived-selector source carriers; repair those sets and refresh evidence before task verification.
+  - failed: rev-30 [reviewer] · 2026-10-18T07:56:12.498Z · note A-5083 exact-head full run exits1 with owned full-inbox test cancelled at120s; diagnose/correct and obtain reviewed-head passing evidence.
 
 ## Blocked by
 
@@ -172,3 +172,18 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-709 · 2026-10-18T07:26:38.568Z
 
 Delta source clear rev-20261018-709-gated-lint-delta/A-5069 at5629976a93d667c352ee1c3e85d486322aa933b3. Read queue localnone/remote5of6; submitted mode-free droplet93b40025-d509-40d2-a2b4-29a3bdef5807 at unchanged clean exact reviewed head, reporttopic-475 to Reviewer,self,Coordinator. C4 waits green current-head receipt; idle awaiting hub result.
+
+### rev-30 · 2026-10-18T07:56:12.498Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-runtime
+commit: 5629976a93d667c352ee1c3e85d486322aa933b3
+scope: evidence
+findings: [{"severity":"medium","text":"R1: owned full-inbox case cancelled after the 120000ms test deadline (120.03091977s); exact-head full run exits1, so C4 has no passing current receipt. Failure excerpt does not establish the stalled operation/root cause.","file":"nvim/test/inbox-sections.test.ts","line":26}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear, A-5084. A-5083/run93b40025: 2536 passes, zero assertion failures, one cancellation, eight prerequisite skips. Panel variant and subsequent local-clock case pass; no root-cause claim from excerpt. C1–C3 source marks remain as recorded; no additional verification on this not-clear pass. Coordinator diagnosis direction reported in bd35c4cd; changed head requires new source review. Prior-head green is historical only.
+
+Criteria: C4 failed (A-5083 exact-head full run exits1 with owned full-inbox test cancelled at120s; diagnose/correct and obtain reviewed-head passing evidence.).
