@@ -2,8 +2,8 @@
 id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T12:52:40.361Z
+updated: 2026-10-18T13:00:35.388Z
+closed: 2026-10-18T13:00:35.388Z
 ---
 
 ## Summary
@@ -182,3 +183,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Additive delta/final clear, A-5300. Independent allowlist parse proves exact parent-set union with no duplicates; merge.queue and role.launch handlers/permission mapping retained, no shared dispatch logic changed. Task queue/landing/Store/CLI/test bytes unchanged; incoming role launch/permission/test bytes match dev. Identifiers SESSION_CLI_FRAMES, merge.queue, role.launch, #toolCall, setRoleLaunch, isClientRequest audited. A-5299 matching serial checks: surface3, spoke-identity4, queue5, role-launch13, roles-launch-permissions3, plus lint/typecheck. Coordinator eb138f2f explicitly permits prior A-5295 full-green receipt reuse if additive; confirmed, so C1–C5 refreshed without a new droplet. A-5295 remains transparently parent-head evidence, audited A-5297. No reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T13:00:35.388Z
+
+Merged 09afeed0fbdaac6cfb2de1b9e96158db080a77d2 onto dev.
