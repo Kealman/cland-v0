@@ -7,6 +7,9 @@ import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 //            identity; the settings add the cland hooks and the variables the mod reads. Both are passed inline:
 //            nothing is written into the project. The hub's secret is never on the command line — the spoke,
 //            the hooks and the mod read the project's `hub.json`.
+//            Settings also supply worktree.bgIsolation = "none" only when neither .claude/settings.json nor
+//            .claude/settings.local.json in the session's cwd sets it. Each launch/relaunch reads both files:
+//            inline settings outrank files, so always passing it would defeat a human's local override.
 //            A session launched with an item (its cwd is the item's task worktree) also gets a `WorktreeCreate`
 //            hook, `cland hook worktree-create`, which refuses every worktree the harness would make and names the
 //            session's own (T-20 decision D8): its sub-agents work there too.
@@ -28,6 +31,7 @@ import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -362,7 +366,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
 
   /** The flags that make a session cland's: the spoke, the hooks, the mod. Given again on a relaunch. `worktree`:
    *  the session's own task worktree, where the harness's own worktrees are refused. */
-  #sessionFlags(name: string, role: string | null, sessionId: string, worktree: string | null, launchToken?: string): string[] {
+  async #sessionFlags(name: string, role: string | null, sessionId: string, cwd: string, worktree: string | null, launchToken?: string): Promise<string[]> {
     const spokeEnv: Record<string, string> = {
       CLAND_HUB_FILE: this.#host.discoveryFile,
       CLAND_SESSION_ID: sessionId,
@@ -382,8 +386,15 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     }
     // not async: its exit status is the refusal
     if (worktree !== null) hooks.WorktreeCreate = [{ hooks: [{ type: 'command', command: `${this.#hookCommand('worktree-create', name, sessionId)} --worktree ${sq(worktree)}`, timeout: 10 }] }];
+    const configuredIsolation = await Promise.all(['settings.json', 'settings.local.json'].map(async file => {
+      try {
+        const settings = JSON.parse(await readFile(join(cwd, '.claude', file), 'utf8'));
+        return Object.hasOwn(settings?.worktree ?? {}, 'bgIsolation');
+      } catch { return false; } // Unreadable or malformed files do not set the key.
+    }));
     const settings = {
       hooks,
+      ...(configuredIsolation.some(Boolean) ? {} : { worktree: { bgIsolation: BG_ISOLATION } }),
       // what the mod reads to find its session and the hub
       env: { CLAND_SESSION_NAME: name, CLAND_SESSION_ID: sessionId, CLAND_HUB_FILE: this.#host.discoveryFile, CLAND_NODE: this.#host.node, CLAND_CLI: this.#host.cli },
     };
@@ -410,7 +421,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         // roles.toml `permissions = "skip"`: the session never stops at a permission prompt or an auto-mode classifier
         ...(permissions === 'skip' ? ['--dangerously-skip-permissions'] : []),
         ...(permissions === 'auto' ? ['--permission-mode', 'auto'] : []),
-        ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree, launchToken),
+        ...yield* wait(this.#sessionFlags(p.name, p.role, p.sessionId, p.cwd, worktree, launchToken)),
       ];
       authorize();
       const d = this.#directory(p);
