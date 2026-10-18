@@ -509,7 +509,7 @@ export type ClientHello = {
 };
 
 // Operational verification occasions are independent of configured tracker container kinds.
-export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release' } as const;
+export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release', soak: 'soak' } as const;
 export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIONS];
 export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
   return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);

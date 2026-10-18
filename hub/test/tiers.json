@@ -327,6 +327,8 @@
     "hub/test/suite-scheduling.test.ts": "T1",
     "hub/test/suite-selection-report.test.ts": "T3",
     "hub/test/suite-selection.test.ts": "T3",
+    "hub/test/suite-soak-component.test.ts": "T2",
+    "hub/test/suite-soak.test.ts": "T1",
     "hub/test/suite-stage-cover.test.ts": "T3",
     "hub/test/suite-stage-rules.test.ts": "T1",
     "hub/test/suite-tier-report.test.ts": "T1",

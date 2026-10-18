@@ -1,3 +1,5 @@
+import { reportSoakQuarantine } from './soak-quarantine.ts';
+import { gitIn } from '../tracker/verdict-git.ts';
 import { interruptionLines } from '../suite-progress.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import type { ClockTimer } from './clock.ts';
@@ -210,7 +212,7 @@ export class Dispatcher {
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(GENERAL.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -720,6 +722,7 @@ export class Dispatcher {
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');
     const log = await readFile(artifact.path, 'utf8');
     await reportSharedDefects(core, job, log, artifact, callerNow);
+    await reportSoakQuarantine(core, job, log, artifact, this.#options.git ?? gitIn(job.cwd, this.#options.env));
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const quarantine = recordQuarantineResults(JSON.parse(core.store.meta('quarantine-results') ?? '{}') as QuarantineHistory, job.id, quarantineResults(log), !!job.cached);
     const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
@@ -749,14 +752,20 @@ export class Dispatcher {
       }
     }
     const result = core.store.transaction(() => {
+      if (job.occasion === 'soak') {
+        if (!core.noticeTo(GENERAL.id, { id: messageId, kind: 'report', to: ['coordinator'], text,
+          detail: { event: 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
+        core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
+        return { message: core.store.message(messageId)! };
+      }
       const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)
         : core.sendFromHuman(job.topic, text, job.to, undefined, undefined, undefined, [artifact], messageId);
       if (core.store.message(result.message.id)) core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
       return result;
     });
     if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
-    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name, topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
-    this.#log({ event: 'audit', session: caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name ?? (job.occasion === 'soak' ? 'hub' : undefined), topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
+    this.#log({ event: 'audit', session: job.occasion === 'soak' ? 'hub' : caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: job.occasion === 'soak' ? 'hub' : caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
     const caller = callerNow();

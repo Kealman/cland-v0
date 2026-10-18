@@ -25,6 +25,30 @@ Every test has a level, and most belong lower than where they're written today. 
 
 The target strategy is task verification at T0–T2, T3 once per merge batch and at stage, epic and release, and T4 nightly and at occasions. During the initial manifest migration, every run keeps its existing file sets and phases: T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase.
 
+`[verification] soak = "03:00"` enables a nightly UTC run; `""` disables it
+(the default for new projects). The hub attempts at most once per UTC day after
+that time, including when it starts late, and persists the attempt across restarts.
+It requires clean `dev` at freshly fetched `origin/dev` and skips an unchanged
+candidate tree. A soak uses one droplet with Coordinator priority, plans T1–T4
+with `CLAND_TEST_SOAK=1`, and load-repeats identities absent from the last green
+soak. The executor reserves shared daily spend before creating the machine;
+a cap refusal skips the night with one notice naming `daily_spend_usd`'s cap.
+Results go to the Coordinator in General. Green coverage maps feed task selection.
+A red soak leaves queued merges intact and does not prevent another batch.
+
+Soak quarantine proposals are General reports, one per failing identity with an
+observed last green and no executable-code change since it (unknown Git facts
+produce no proposal). A last green requires explicit completed-pass progress;
+timing-only, skipped, TODO, cancelled, unfinished, quarantined non-pass and mixed
+repetition/descendant outcomes cannot establish it. Finish-only cancellation
+is retained; unknown or ambiguous child ancestry withholds greens for that file,
+and malformed/unknown outcome receipts supply no green evidence. The shared
+`quarantineProposal` builder carries `identity`,
+`run`, `tree`, `lastGreen: { run, head, tree, log: { artifact, path } }` and
+`log: { artifact, path }` in the `quarantine-proposal` detail. These are proposals
+for Coordinator triage; the independent receipts, isolated repetitions, owner
+item, reason and expiry required below still govern manifest additions.
+
 **When you write or change a test (Implementer):**
 
 - Choose the lowest tier that can prove the behaviour, and state it in the file header or the test's comment. A new file is T1 or T2 unless its header names the process-lifecycle behaviour it proves.

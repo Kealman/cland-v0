@@ -77,13 +77,14 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
 const KEY = 'suite-jobs';
 // Hub-derived: callers cannot accidentally rotate the key when retrying a lost reply.
-const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode'>, head: string): string => createHash('sha256').update(JSON.stringify([input.actor?.sessionId ?? 'human', input.cwd, head, input.mode])).digest('hex');
+const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion'>) => input.actor?.sessionId ?? (input.occasion === 'soak' ? 'nightly-soak' : 'human');
+const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
@@ -159,6 +160,7 @@ export class Suites {
   readonly #clock: Clock;
   readonly #timer: ClockTimer;
   #checking: Promise<void> | null = null;
+  #soaking: Promise<void> | null = null;
   readonly #inspecting = new Map<string, Promise<void>>();
   readonly #starting = new Set<Promise<unknown>>();
   #closed = false;
@@ -230,7 +232,7 @@ export class Suites {
     // Scheduling and metrics share hub time; local workers retain OS deadlines.
     this.#waitTimer = (options.waitClock ?? this.#clock).setInterval(() => this.#waitMetrics.record(), 1000);
     this.#waitTimer.unref();
-    this.#timer = this.#clock.setInterval(() => { void this.#check(); }, 1000);
+    this.#timer = this.#clock.setInterval(() => { void this.#check(); this.#checkSoak(); }, 1000);
     this.#timer.unref();
   }
   configure(config: ProjectConfig): void {
@@ -373,7 +375,7 @@ export class Suites {
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
     const workers = input.workers ?? limits.workers;
-    if (!input.dryRun && this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'))) {
+    if (!input.dryRun && this.#jobs.some(job => this.#active(job) && suiteOwner(job) === suiteOwner(input))) {
       // A retry needs only the current head, not another expensive candidate inspection.
       const existing = this.#existingSubmission(input, await this.#candidate.head(input.cwd), authorize);
       if (existing) return existing;
@@ -384,7 +386,7 @@ export class Suites {
     const { head, branch, tree, budgetBase } = candidate;
     const selection = occasionSelection(candidate.selection, input.occasion);
     if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (input.occasion) selection.loadGateBaseline = await this.#stageIdentities();
+    if (input.occasion) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' ? 'soak' : 'stage');
     const tierPlan = input.occasion ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
 
     if (input.dryRun) {
@@ -451,7 +453,7 @@ export class Suites {
   }
   #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
     authorize();
-    const owned = this.#jobs.filter(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'));
+    const owned = this.#jobs.filter(job => this.#active(job) && suiteOwner(job) === suiteOwner(input));
     const key = submissionKey(input, head);
     const matching = owned.filter(job => (job.submissionKey ?? submissionKey(job, job.head)) === key);
     if (owned.length && !matching.length) throw new Error('this session already has a suite queued or running');
@@ -506,8 +508,8 @@ export class Suites {
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
-  async #stageIdentities(): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
-    const stage = this.#jobs.findLast(job => job.occasion === 'stage' && job.integrated && job.branch === 'dev'
+  async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
+    const stage = this.#jobs.findLast(job => job.occasion === occasion && job.integrated && job.branch === 'dev'
       && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
       && job.reported && job.outcome?.code === 0);
     if (!stage) return { run: null, tests: [] };
@@ -602,7 +604,7 @@ export class Suites {
   #shouldPlanShards(job: SuiteJob): boolean {
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
     // epic occasions). A batch keeps its occasion unset and gains no stage proof.
-    return !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
+    return job.occasion !== 'soak' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
       && job.branch === 'dev' && job.mode === 'all' && job.tree
       && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
   }
@@ -765,6 +767,31 @@ export class Suites {
   #launchRemote(job: SuiteJob): void {
     const work = this.#launch(job).finally(() => this.#launchWork.delete(work));
     this.#launchWork.add(work);
+  }
+  #checkSoak(): void {
+    if (this.#closed || this.#soaking) return;
+    const config = this.#options.projectConfig?.();
+    const time = config?.verification.soak;
+    const now = this.#clock.now().toISOString();
+    const day = now.slice(0, 10);
+    if (!time || now.slice(11, 16) < time || this.#store.meta('soak-attempt') === day) return;
+    // Persist the attempt before I/O: a restart cannot duplicate submissions or notices.
+    this.#store.setMeta('soak-attempt', day);
+    this.#soaking = (async () => {
+      const candidate = await this.#candidate.inspect(this.#root, 'all', config.verification.droplet.workers ?? config.verification.workers);
+      if (this.#closed || this.#options.projectConfig?.().verification.soak !== time) return;
+      if (candidate.branch !== 'dev' || !candidate.tree || candidate.selection.fetchedDev !== candidate.head) throw new Error('clean dev at freshly fetched origin/dev is required');
+      const last = this.#jobs.findLast(job => job.occasion === 'soak' && !job.cached
+        && (!job.outcome || (job.lease as DropletLease | undefined)?.execution?.started));
+      if (last?.tree === candidate.tree) return;
+      // No session identity is borrowed; this job and its reports belong to the hub.
+      await this.start({ mode: 'all', cwd: this.#root, topic: 'general', to: ['coordinator'], actor: null,
+        occasion: 'soak', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
+    })().catch(error => {
+      const text = `nightly soak ${day} skipped: ${error instanceof Error ? error.message : String(error)}`;
+      this.#options.onSoakNotice?.(`soak-skip:${day}`, text);
+      this.#options.log?.({ event: 'verification-soak-skipped', day, text });
+    }).finally(() => { this.#soaking = null; });
   }
   #check(): Promise<void> {
     if (this.#checking) return this.#checking;
@@ -1133,10 +1160,11 @@ export class Suites {
 
   /** Observe completion of already admitted I/O; does not tick or advance time. */
   async settled(): Promise<void> {
+    await this.#soaking;
     await this.#checking;
     await Promise.allSettled(this.#launchWork);
     await Promise.allSettled(this.#inspecting.values());
   }
 
-  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
+  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
 }

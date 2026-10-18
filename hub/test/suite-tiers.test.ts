@@ -35,7 +35,7 @@ test('occasions plan every tier with soak enabled while ordinary all stops at T3
   }
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
   const full = { mode: 'full' as const, files: [], reason: 'all' };
-  for (const [executor, occasion] of [['local', undefined], ['droplet', undefined], ['local', 'stage'], ['droplet', 'stage'], ['droplet', 'epic'], ['local', 'release']] as const) {
+  for (const [executor, occasion] of [['local', undefined], ['droplet', undefined], ['local', 'stage'], ['droplet', 'stage'], ['droplet', 'epic'], ['local', 'release'], ['droplet', 'soak']] as const) {
     const selection = occasionSelection(full, occasion);
     const phases = await packageShards(root, selection.mode, undefined, selection, { executor, workers: 4 });
     const plan = await planTierReport(root, selection, 4, phases);

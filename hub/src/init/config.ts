@@ -16,7 +16,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 export type ProjectConfig = {
   name: string;
   merge: { queue: boolean };
-  verification: { executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { soak: string; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -31,7 +31,7 @@ const MINUTE = 60_000;
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   merge: { queue: false },
-  verification: { executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { soak: '', executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -78,6 +78,8 @@ lifetime = "${c.verification.lifetimeMs % MINUTE === 0 ? `${minutes(c.verificati
 
 run_timeout = ${JSON.stringify(c.verification.runTimeout)}
 daily_spend_usd = ${c.verification.dailySpendUsd}
+# Nightly UTC time (HH:MM); empty disables the droplet soak.
+soak = ${JSON.stringify(c.verification.soak)}
 
 [verification.droplet]
 ${c.verification.droplet.workers === undefined ? "# workers inherits verification.workers" : `workers = ${c.verification.droplet.workers}`}
@@ -163,6 +165,10 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     }
   }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
+  if (verification.soak !== undefined) {
+    if (typeof verification.soak !== 'string' || verification.soak !== '' && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(verification.soak)) throw new Error('verification.soak must be HH:MM UTC or empty');
+    c.verification.soak = verification.soak;
+  }
   for (const [key, field] of [['test_timeout', 'testTimeoutMs'], ['stall_timeout', 'stallTimeoutMs'], ['coverage_max_age', 'coverageMaxAgeMs'], ['wait_p90_target', 'waitP90TargetMs']] as const) {
     if (verification[key] === undefined) continue;
     try {
