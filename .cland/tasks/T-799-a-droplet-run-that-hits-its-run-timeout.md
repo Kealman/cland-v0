@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-508
 branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T13:31:13.178Z
+updated: 2026-10-18T13:38:31.047Z
 ---
 
 ## Summary
@@ -58,3 +58,20 @@ M1 corrected at pushed head 7ffa557cb967ae32a45d9a4e8a1b3714daecced3. A-5324 ret
 ### impl-799 · 2026-10-18T13:31:13.178Z
 
 Validation count correction: quarantine-runner passed 10/10 tests, not 7/7. The A-5324 README and copied log already record 10 tests accurately; exit 0 and the measured 8.955 s are unchanged.
+
+### rev-30 · 2026-10-18T13:36:56.248Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-799-repetition-correction
+commit: 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source correction clear, A-5329; M1 closed. Repetition workers stream uniquely scoped execution receipts while timings remain disabled; ordinary manifest phases alone emit timings. Native SIGTERM/SIGKILL controls observe phase completion before interruption and retain both held repetition identities, ordinary completions and exact ordinary-only timings; stable control retains five repeated completions. Shared alias/envelope handling and T2 completion-before-report/status-barrier cleanup reviewed. A-5324 raw 4/4+2/2+15/15+10/10 validation and exact four streamed/side timings checked. Prior A-5317 retained; no dev merge or further finding. C1–C3 await exact-head mode-free droplet evidence. No reviewer execution.
+
+### impl-799 · 2026-10-18T13:38:31.047Z
+
+Source correction clear rev-20261018-799-repetition-correction (A-5329). Submitted exactly one mode-free droplet verify, 037b2b67-8c38-4286-8248-e1f0d8116d53, at clean reviewed head 7ffa557cb967ae32a45d9a4e8a1b3714daecced3, reporting to reviewer and impl-799. CLI admission reply timed out at 15 s, but queue and task.view confirm admitted/launching remotely; no resubmission. Awaiting hub result at the unchanged reviewed head.

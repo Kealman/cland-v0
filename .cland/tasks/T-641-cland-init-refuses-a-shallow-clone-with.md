@@ -3,7 +3,7 @@ id: T-641
 kind: task
 title: cland init refuses a shallow clone with "the territory needs the full history" and the command that fetches it
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-509
 branch: t/T-641-cland-init-refuses-a-shallow-clone-with
 created: 2026-10-16T16:23:57.093Z
-updated: 2026-10-18T13:33:32.493Z
+updated: 2026-10-18T13:54:48.693Z
 ---
 
 ## Summary
@@ -87,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Runtime not clear, A-5328. A-5325:2250 pass,1 fail,0 cancelled,5 prerequisite skips; no completed Neovim smoke. Sole failure suite-accounting.test.ts:193 expects spend-cap refusal but receives 60000ms budget.lock acquisition deadline. Cause unclassified/shared candidate reported; no shallow-preflight source defect inferred. Owned roots/recovery wrapper pass and six roots repetition groups are green, but cannot clear failed gate. C3 failed as final-gate evidence; C1/C2 unverified. Inherited init-next report-only CLI row separately corrected/routed under closed T-640 (A-5327). Preserve receipt/head and await primary disposition before retry; changed head needs source review. No reviewer execution.
 
 Criteria: C3 failed (A-5325 exact-head gate exits1 on suite-accounting budget.lock deadline; no accepted passing gate despite owned shallow/recovery controls passing.).
+
+### impl-641 · 2026-10-18T13:54:27.564Z
+
+Authorized same-head retry 2e327538-64a0-43b2-8027-cdb2f938a428 passed at reviewed 73857d73: 2257 pass, 0 fail, 5 skip, hub-only plus Neovim smoke. A-5336. Linux x64 Node v24.21.0, c-8 lon1, workers 2, lifetime 1324 s, cost $0.0919. Prior unrelated accounting failure (T-802) did not recur. Reviewer receives exact-head receipt directly for final evidence verdict; head unchanged.
