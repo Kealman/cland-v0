@@ -402,11 +402,15 @@ export class Suites {
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
-  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode'>, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
+  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
     authorize();
-    const active = this.#jobs.find(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'));
+    const owned = this.#jobs.filter(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'));
+    const key = submissionKey(input, head);
+    const matching = owned.filter(job => (job.submissionKey ?? submissionKey(job, job.head)) === key);
+    if (owned.length && !matching.length) throw new Error('this session already has a suite queued or running');
+    // Compare requested overrides, not resolved policy or a fallback executor.
+    const active = matching.find(job => (job.followsConfig ? undefined : job.requestedExecutor ?? job.executor) === input.executor && job.size === input.size && job.workersOverride === input.workers);
     if (!active) return null;
-    if ((active.submissionKey ?? submissionKey(active, active.head)) !== submissionKey(input, head)) throw new Error('this session already has a suite queued or running');
     return { reused: true, id: active.id, pid: active.pid, topic: active.topic, position: active.state === 'queued' ? this.#ordered().findIndex(job => job.id === active.id) + 1 : 1, ...(active.cached ? { cached: active.cached } : {}) };
   }
   /** Targeted tests inspect the machine fence without joining or changing it. */

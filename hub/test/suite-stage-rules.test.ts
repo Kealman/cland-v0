@@ -4,6 +4,55 @@ import assert from 'node:assert/strict';
 import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
+test('active stage submissions retain separate droplet and local runs for one caller', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated stage', fetchedDev: f.candidate.head };
+  const base = { mode: 'all', integrated: true, occasion: 'stage' as const,
+    actor: { name: 'coordinator', sessionId: 'stage-caller', shell: true as const } };
+  const droplet = await f.launch({ ...base, executor: 'droplet' });
+  const local = await f.launch({ ...base, executor: 'local' });
+  assert.notEqual(local.id, droplet.id);
+  assert.equal(f.status(droplet.id).executor, 'droplet');
+  assert.equal(f.status(local.id).executor, 'local');
+  for (const [executor, run] of [['droplet', droplet], ['local', local]] as const) {
+    const retry = await f.launch({ ...base, executor });
+    assert.equal(retry.id, run.id);
+    assert.equal(retry.reused, true);
+  }
+  assert.equal(f.suites.status().length, 2);
+});
+
+test('active submission retries preserve requested overrides across scheduler recovery', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true }, 'workers=2');
+  f.api.sizes.push({ slug: 'c-16', available: true, price_hourly: 0.5, disk: 100, regions: ['lon1'] });
+  f.api.regions[0]!.sizes.push('c-16');
+  const base = { actor: { name: 'coordinator', sessionId: 'override-caller', shell: true as const } };
+  const overrides = [
+    {},
+    { executor: 'droplet' as const },
+    { executor: 'droplet' as const, workers: 2 },
+    { executor: 'droplet' as const, workers: 3 },
+    { executor: 'droplet' as const, size: 'c-8' },
+    { executor: 'droplet' as const, size: 'c-16' },
+  ];
+  const ids: string[] = [];
+  for (const row of overrides) ids.push((await f.launch({ ...base, ...row })).id);
+  assert.equal(new Set(ids).size, overrides.length, 'each requested override has its own run');
+  for (const recover of [false, true]) {
+    if (recover) await f.reopen();
+    for (const [index, row] of overrides.entries()) {
+      const retry = await f.launch({ ...base, ...row });
+      assert.equal(retry.id, ids[index]);
+      assert.equal(retry.reused, true);
+    }
+  }
+  await assert.rejects(f.launch({ ...base, mode: 'hub' }), /already has a suite queued or running/);
+  f.candidate.head = 'b'.repeat(40);
+  await assert.rejects(f.launch(base), /already has a suite queued or running/);
+  assert.equal(f.suites.status().length, overrides.length);
+});
+
 test('fresh failed or unreported stage attempts supersede the older green cache', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true });
   f.candidate.branch = 'dev';
