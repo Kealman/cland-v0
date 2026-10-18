@@ -14,10 +14,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
+topic: topic-473
 branch: t/T-769-aide-test-ts-sessions-inject-queries-the
 created: 2026-10-18T03:35:21.412Z
-updated: 2026-10-18T03:36:29.559Z
+updated: 2026-10-18T03:36:43.536Z
 ---
 
 ## Summary

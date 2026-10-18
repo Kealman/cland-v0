@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-470
 branch: t/T-758-local-test-runs-fail-in-cover-quiet
 created: 2026-10-17T22:04:51.687Z
-updated: 2026-10-18T03:25:02.654Z
+updated: 2026-10-18T03:38:10.384Z
 ---
 
 ## Summary
@@ -226,3 +226,7 @@ Standards: 0 findings. Spec: no source gap; C2 execution evidence pending.
 Durable review: A-4928.
 
 Criteria: C1 verified.
+
+### impl-758 · 2026-10-18T03:38:10.384Z
+
+Post-cover exact-head local proof A-4932 at c30540ac: all four touched files 5/5 serial, peak sampled load1 6.652 (<15). Mixed load-repetition regression green; all prior admission and same-file reporter controls green. Head unchanged and clean since source clear A-4928. Submitting mode-free droplet verification after this proof, as Coordinator directed.
