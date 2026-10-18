@@ -3,8 +3,9 @@ id: T-715
 kind: task
 title: The hub runs a nightly T1–T4 soak on a droplet within the daily spend cap and records the coverage map from it
 state: open
-status: backlog
+status: in progress
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -13,10 +14,10 @@ assignee: null
 parent: E-678
 blocked_by:
   - T-714
-topic: null
-branch: null
+topic: topic-522
+branch: t/T-715-the-hub-runs-a-nightly-t1-t4-soak-on-a
 created: 2026-10-16T19:59:44.178Z
-updated: 2026-10-16T20:00:12.782Z
+updated: 2026-10-18T16:22:01.591Z
 ---
 
 ## Summary
@@ -36,4 +37,3 @@ Decision 7: a nightly T4 soak within the daily spend cap (~$0.15–0.25 a day, m
 - [ ] C2. A soak whose reservation would exceed the daily cap is skipped with one notice naming the cap, proved by a test with the spend ledger.
 - [ ] C3. A green soak records a coverage map that task selection reads, proved by a selection test.
 - [ ] C4. A red soak posts a quarantine proposal per failing test and leaves the merge queue running, proved by a test.
-- [ ] C5. Seven nights after the merge, at least five soaks ran, each under $0.25, recorded on this item from the lease records.

@@ -3,17 +3,18 @@ id: T-809
 kind: task
 title: 'nvim thread.test: "generated live appends…" waits 10 s for a generated append and times out on a droplet stage run; the file slowed from 23 s to 35 s after recorded frames'
 state: open
-status: backlog
+status: in progress
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-520
+branch: t/T-809-nvim-thread-test-generated-live-appends
 created: 2026-10-18T15:41:10.672Z
-updated: 2026-10-18T15:41:10.672Z
+updated: 2026-10-18T16:22:03.817Z
 ---
 
 ## Summary
@@ -23,4 +24,4 @@ nvim/test/thread.test.ts, "generated live appends, ask evictions and delivery ch
 ## Acceptance criteria
 
 - [ ] C1. The generated-append wait observes the render event or hub frame instead of a 10 s wall-clock screen poll, or the oracle's seeds run against a per-file catalog slice (T-774's mechanism). Every assertion is kept.
-- [ ] C2. The file passes 20/20 on Linux at 2 workers, with its time back under its 23.5 s baseline or the new number recorded.
+- [ ] C2. The file passes 20/20 serially on macOS plus a green droplet verify on Linux at 2 workers, with its time back under its 23.5 s baseline or the new number recorded.

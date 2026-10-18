@@ -3,7 +3,7 @@ id: T-623
 kind: task
 title: The skills manifest records the SHA-256 of each file as cland wrote it
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-615
 blocked_by: []
-topic: null
-branch: null
+topic: topic-525
+branch: t/T-623-the-skills-manifest-records-the-sha-256
 created: 2026-10-16T15:57:48.998Z
-updated: 2026-10-17T21:48:42.814Z
+updated: 2026-10-18T16:21:33.028Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ The validation that runs before anything is touched (the mark, the skill names, 
 - [ ] C4. A manifest in the old list form passes `cland doctor`'s skills manifest check and is read by `cland update` without an error.
 - [ ] C5. The existing manifest tests (an invalid manifest deletes nothing, symlinks are never written through) pass against the hashed form, extended with the cases of C3 in the same test file.
 - [ ] C6. The init code's description of the manifest names neither `skills-lock.json` nor `skills/PATCHES.md` and describes the hashes.
+
+## Comments
+
+### impl-623 · 2026-10-18T16:21:33.027Z
+
+Implementation started. Seams: init/update output and on-disk manifest in temporary projects; doctor's public skills-manifest check. Existing init.test.ts covers these seams, including invalid-manifest and symlink guards. Following red→green one slice at a time; no live project provisioning.

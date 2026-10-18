@@ -3,7 +3,7 @@ id: T-636
 kind: task
 title: Existing projects get the Aide's new tools once, at the hub's first 0.1.4 start
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ parent: E-611
 blocked_by:
   - T-628
   - T-630
-topic: null
-branch: null
+topic: topic-523
+branch: t/T-636-existing-projects-get-the-aide-s-new
 created: 2026-10-16T16:04:12.845Z
-updated: 2026-10-16T16:04:14.111Z
+updated: 2026-10-18T16:21:43.350Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ Every existing `roles.toml` lists the Aide's tools explicitly and cland never re
 - [ ] C3. A roles.toml without an `[aide.permissions] tools` list, one that already holds the five tools and one that does not parse are left byte-identical, the last with an Agents notice.
 - [ ] C4. The existing Aide clause line that forbids launching, stopping, resuming and `cland push` is handled as the Coordinator decided, verified in the same test.
 - [ ] C5. After the migration and the Aide's relaunch, the Aide in that project launches a session from its shell (frame-protocol test with the fake harnesses).
+
+## Comments
+
+### impl-636 · 2026-10-18T16:21:43.350Z
+
+Implementation started. Acceptance criteria pre-agree the frame-protocol seam; using T2 projectHub with in-process fake harnesses for C1/C5 and pure source-span editing tests for file preservation. E-611's 2026-10-16 Coordinator decision settles C4: replace only the verbatim v0.1.3 restriction, flag custom clauses in the migration notice. Safety: only temporary fixture roles.toml files.

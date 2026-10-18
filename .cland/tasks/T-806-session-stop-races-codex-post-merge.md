@@ -3,17 +3,17 @@ id: T-806
 kind: task
 title: "session-stop-races: Codex post-merge forced stop waits 15 s for the descendant identity probe file under macOS load"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-519
+branch: t/T-806-session-stop-races-codex-post-merge
 created: 2026-10-18T14:13:11.905Z
-updated: 2026-10-18T14:13:11.905Z
+updated: 2026-10-18T16:19:50.895Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-711
 kind: task
 title: The hub builds a batch of up to three queued heads, runs T1 and T3 once on the batch tree, and lands them in order on green
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -15,10 +15,10 @@ blocked_by:
   - T-710
   - T-697
   - T-679
-topic: null
-branch: null
+topic: topic-521
+branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-18T09:38:05.650Z
+updated: 2026-10-18T16:20:36.621Z
 ---
 
 ## Summary
