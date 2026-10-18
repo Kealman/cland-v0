@@ -3,7 +3,7 @@ id: T-745
 kind: task
 title: Tests retagged to T1/T2 that exceed their new tier budgets before the budgets turn hard
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 1
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-464
 branch: t/T-745-tests-retagged-to-t1-t2-that-exceed
 created: 2026-10-17T17:06:00.092Z
-updated: 2026-10-17T23:49:35.769Z
+updated: 2026-10-18T03:06:03.074Z
 ---
 
 ## Summary
@@ -35,8 +35,9 @@ For each file, either speed the test up to its tier's budget (keeping its assert
 
 ## Acceptance criteria
 
-- [ ] C1. C1. A full droplet `verify all` at T-745's reviewed head, after it merges dev with the stage-2 first owners landed, shows no "would fail" tier-budget line for T1 or T2 files, or each remaining one has an owned allowance with a reason; the next integrated cover confirms it.
-  - failed: rev-30 [reviewer] · 2026-10-17T22:02:54.876Z · note Cost-only T4 placement of repository planner/compiler guards is unresolved against documented tier purpose; preserve task/static protection or document explicit exception.
+- [x] C1. C1. A full droplet `verify all` at T-745's reviewed head, after it merges dev with the stage-2 first owners landed, shows no "would fail" tier-budget line for T1 or T2 files, or each remaining one has an owned allowance with a reason; the next integrated cover confirms it.
+  - done: impl-745 · 2026-10-18T03:04:04.324Z
+  - verified: rev-30 [reviewer] · run rev-20261018-745-final · 2026-10-18T03:06:02.627Z · commit 0ac2fa55a4aed2ff14663e9b291cc0561316955e
 
 ## Comments
 
@@ -117,3 +118,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec source clear, no findings; A-4865. Four-file owned delta derives legacy allowance keys from injected base.manifest.allow using the native pre-tier/explicit-legacy rule and forwards history through hubShards plus shard planTierReport/packageShards. Undefined context retains production Git; explicit null/no-baseline has empty history. Public planner regression preserves prior assertions, proves matching history yields the expected row and empty history rejects. Independently audited A-4861 ten raw file runs: 50 passes, zero fail/cancel/skip or emitted trips; A-4862 records enforced T1/static/native supporting checks. Authorized dev merge preserves prior task sources and exact semantic tier union; durations matches incoming dev, no allowance added. Independently reconciled all 36 latest-green T1/T2 warnings from A-4849 against A-4859 exactly. C1 remains unverified until remaining first-owner integrations, final reviewed-head Coordinator-submitted gate and next integrated cover. Primary 28105f6d final-run sequencing remains; no preliminary verify/dry-run requested. No per-item QA.
+
+### impl-745 · 2026-10-18T02:16:21.468Z
+
+All first owners merged once at9fb552c3 (devca206500); final source0ac2fa55 pushed and delta review requested. Latest directed cover A-4887/fa686b80 yields13 valid budget lines, inventory A-4899; T-766 remains separately owned and not awaited. Preserved verifier100-frame load in newT4 caller with same invariant body at8 frames inT2; cached fixed SQL plans/counts retained, subscription CLI duplicates reduced, deferred artifact fixture native ps eliminated via scoped state/identity. Assertion map A-4900. Final15 targets×5 whole-file passes, serial/load<15, enforcedT1/T2 no post-fix trips (A-4897/A-4898), including shared close component. npm check/test:tiers pass. No allowance added. C1 awaits final reviewed-head Coordinator-run evidence.
+
+### rev-30 · 2026-10-18T02:19:35.779Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-745-final-source
+commit: 0ac2fa55a4aed2ff14663e9b291cc0561316955e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear, no findings; A-4901. Primary543f78c9 authorizes single first-owner merge, A-4887 inventory despite separate T-766 failure, and Coordinator-submitted final gate. Independently reconciled all13 exact T1/T2 warnings. Shared verifierWorkload preserves query/scan/pending/list/coalescing assertions at8-frame T2 and original100-frame T4 scale, including300 seeds and210/110 bounds. EXPLAIN caches only fixed SQL shapes; every real query/meta read is still counted. Subscription restart keeps every flavour/state/assertion with one CLI proof; role artifact fixture isolates executor/process facts without dropping revocation assertions. Census, CLI/frame split, compatibility/context and history propagation survive integration; mandatory T0 guards remain in check. Audited final75 target invocations:15x5, all exit0, no final failure/cancel/skip/trip; initial role red and superseded inbox samples retained. No allowance or duration-baseline change, own whitespace clean. C1 remains unverified pending reviewed-head Coordinator verify-all plus next integrated-cover confirmation. Do not substitute local proof or wait for separate T-766 under this instruction. No per-item QA.
+
+### rev-30 · 2026-10-18T03:06:02.627Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-745-final
+commit: 0ac2fa55a4aed2ff14663e9b291cc0561316955e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear under primary52c62b61; A-4906. Independently scanned entire A-4904 Coordinator all-mode run: zero T1/T2 would-fail budget lines and no hard budgets. All13 owned test files/74 cases have completed timings and ordinary pass lines; full100-frame T4 load executes, both T0 guards run in host check, prior owned legacy-key trip rows absent. Full hub+Neovim exit0:2,504passes,zero fail/cancel,eight unrelated prerequisite skips. Source A-4901 and final75 local invocations remain applicable, no source/allowance change. Sole schedule process trip stays T-759; two T3 overages and ratchet refresh have Coordinator dispositions, not hidden as zero-global-warning claims. C1 done present. Primary52c62b61 directs C1/final settlement on this receipt; next integrated cover remains post-merge Coordinator confirmation and is not claimed complete. No findings; C1 verified. No per-item QA.
+
+Criteria: C1 verified.
