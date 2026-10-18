@@ -2,8 +2,8 @@
 id: T-715
 kind: task
 title: The hub runs a nightly T1–T4 soak on a droplet within the daily spend cap and records the coverage map from it
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-522
 branch: t/T-715-the-hub-runs-a-nightly-t1-t4-soak-on-a
 created: 2026-10-16T19:59:44.178Z
-updated: 2026-10-18T17:23:17.647Z
+updated: 2026-10-18T21:58:04.406Z
+closed: 2026-10-18T21:58:04.406Z
 ---
 
 ## Summary
@@ -208,3 +209,7 @@ Linux x64 c-8lon1,workers2,Node24.21.0/Neovim0.12.5; lifetime1533s,cost$0.1064,p
 Review evidence: A-5496.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T21:58:04.406Z
+
+Merged bc9ef856a5f7fa4879b72c7c3234ce666b14f83b onto dev.
