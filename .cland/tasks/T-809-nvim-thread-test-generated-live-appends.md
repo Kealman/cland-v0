@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-520
 branch: t/T-809-nvim-thread-test-generated-live-appends
 created: 2026-10-18T15:41:10.672Z
-updated: 2026-10-18T18:59:36.531Z
+updated: 2026-10-18T19:19:22.616Z
 ---
 
 ## Summary
@@ -27,9 +27,11 @@ nvim/test/thread.test.ts, "generated live appends, ask evictions and delivery ch
   - done: impl-809 · 2026-10-18T16:37:16.015Z
   - verified: rev-30 [reviewer] · run rev-20261018-809-source · 2026-10-18T16:38:57.198Z · commit bfbc434d077ddb1c2d5e75a33145cc54208bf77b
   - verified: rev-30 [reviewer] · run rev-20261018-809-final · 2026-10-18T18:59:35.099Z · commit bfbc434d077ddb1c2d5e75a33145cc54208bf77b
+  - verified: rev-30 [reviewer] · run rev-20261018-809-recorder-delta · 2026-10-18T19:19:11.618Z · commit 37340f49b28d7086964795110148c123e0a5614a
 - [x] C2. The file passes 20/20 serially on macOS plus a green droplet verify on Linux at 2 workers, with its time back under its 23.5 s baseline or the new number recorded.
   - done: impl-809 · 2026-10-18T18:58:50.918Z
   - verified: rev-30 [reviewer] · run rev-20261018-809-final · 2026-10-18T18:59:35.099Z · commit bfbc434d077ddb1c2d5e75a33145cc54208bf77b
+  - verified: rev-30 [reviewer] · run rev-20261018-809-recorder-delta · 2026-10-18T19:19:11.618Z · commit 37340f49b28d7086964795110148c123e0a5614a
 
 ## Comments
 
@@ -97,3 +99,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged bfbc434d. Independently audited A-5528/f136864b: full hub + Neovim, 2623 pass/2631 total, zero fail/cancelled, eight prerequisite skips. All 23 thread tests finish positively; file 24.241146264s, generated oracle 10.636234301s. Recorded new number satisfies C2 alongside previously audited A-5452 final-source Mac20/20 (460 passes; min/median/max15.110/19.712/26.386s) and separate extended replay. A-5529 records both axes, preserves failed A-5477/A-5480 and Coordinator-authorized replacement/T-814 classification, and discloses inherited report-only trips. C1 source unchanged; no findings, no per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-809 · 2026-10-18T19:17:55.970Z
+
+Coordinator-requested conflict merge pushed as37340f49 (parents reviewed bfbc434d and dev93ac9def). Only manual conflict in hub/test/record-nvim-frames.ts: retained extended-plan environment and T-774 per-file recording keys/slices. A-5538 includes exact identifier/text search, all37 current matching/recorder-consumer files tested whole-file serially, real default-env4×25 maintenance+slice proof and extra extended replay:39invocations,371passes,0fail/cancel/skip. Thread ordinary14.843s/extended40.391s; typecheck/lint pass. All102 reviewed assertions/23titles and every parent catalog record/node preserved. Delta review requested; Coordinator's explicit test-code rule6 waiver uses prior Linux f136864b + delta review, no extra droplet. No manual resolution outside test code.
+
+### rev-30 · 2026-10-18T19:19:11.618Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-809-recorder-delta
+commit: 37340f49b28d7086964795110148c123e0a5614a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta clear at 37340f49. Only manual conflict composes extended CLAND_TEST_SOAK recording with T-774 key collection/slice writes; original task delta remains three test paths. Independently confirmed every catalog entry/node from both parents preserved, valid captured slice including missing seed1/append11 key, unchanged thread assertion bodies, and A-5538 raw39 invocations/371 passes/zero fail-cancel-skip with complete recorder-consumer coverage. A-5539 records both axes. Directly read Coordinator ab1b15d1: test-only resolution qualifies for waiver; prior accepted Mac20/20 and Linux f136864b plus this delta suffice. C1–C2 refreshed at merge head, no new droplet/per-item QA or findings.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T19:19:22.616Z
+
+Merge under the rule 6 conflict waiver (coord, 2026-10-18 19:20Z). Head 37340f49 is the Coordinator-requested merge of dev 93ac9def into bfbc434d. The only manual conflict was in the test recorder hub/test/record-nvim-frames.ts. The delta review rev-20261018-809-recorder-delta is clear at 37340f49. The searches and 37 matching files (39 serial runs, 0 fail) are in A-5538. Linux suite evidence is f136864b at bfbc434d, plus the batch C integrated cover after merge.

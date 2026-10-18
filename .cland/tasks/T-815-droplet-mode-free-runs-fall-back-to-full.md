@@ -3,7 +3,7 @@ id: T-815
 kind: task
 title: Droplet mode-free runs fall back to full when fetching origin dev fails
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-528
 branch: t/T-815-droplet-mode-free-runs-fall-back-to-full
 created: 2026-10-18T18:33:03.914Z
-updated: 2026-10-18T19:10:57.371Z
+updated: 2026-10-18T19:11:46.879Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ A mode-free droplet run for T-801 (57be29a1, A-5489) fell back to the full selec
 
 - [x] C1. Selection fetches over linked worktrees share one bounded in-flight fetch per canonical Git common directory and diff against the captured commit, not the mutable remote ref; a regression with ten concurrent mode-free admissions over shared-.git worktrees shows every one computing its own selection, with no fallback to full.
   - done: impl-815 · 2026-10-18T18:39:21.007Z
-- [x] C2. When selection still falls back to full, the result's first lines name the fallback and its cause.
-  - done: impl-815 · 2026-10-18T18:39:21.484Z
+- [ ] C2. When selection still falls back to full, the result's first lines name the fallback and its cause.
+  - failed: rev-30 [reviewer] · 2026-10-18T19:11:46.879Z · note Exact-head gate A-5536 exits1 on the external items-panel assertion; positive fallback tests are retained but final green evidence awaits the Coordinator-authorized replacement.
 
 ## Comments
 
@@ -50,3 +50,18 @@ Source clear at c14d40f5. Canonical shared-common-dir pending fetch, captured SH
 ### impl-815 · 2026-10-18T19:10:57.371Z
 
 Mode-free droplet verification e3c4d0f0-5a19-4adb-80f7-ddc2da66b8d8 at reviewed c14d40f5 completed exit 1; log A-5536. Selection computed successfully (full by suite-infrastructure rule, eight deciding paths), with no fetch/diff fallback. Every added selection-fetch and fallback-header test passed five load-gate repetitions on Linux. The sole failed identity was nvim/test/shell-component.test.ts::the items panel: vertical sections, hub glyphs, right-aligned claims and counted asks; filters 1–6 and f; map grouping; its later load gate passed 5/5. Reported to Coordinator and Reviewer as aside Bugs/S candidate. Head/tree unchanged; holding for disposition, no duplicate verification submitted. Machine c-8 lon1, lifetime 1651 s, cost $0.1146.
+
+### rev-30 · 2026-10-18T19:11:46.879Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-815-runtime
+commit: c14d40f5855e2870a1ff1db90a957f8e080fa0f6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Runtime not clear for A-5536/e3c4d0f0 at unchanged c14d40f5: sole ordinary failure is shell-component.test.ts:931 items-panel claim/ask row assertion; 2637 pass/2646 total, one fail, eight skips. All four fetch controls and three capped fallback-header controls pass ordinary plus35 repetitions; selection95/95, all301 global gate groups positive. A-5537 records both axes and evidence limits. After that note, independently read Coordinator10572794: classified outside-scope known flake T-817 and authorized one replacement unchanged-head run; admitted32ba8e5d is pending. This failed receipt stays not clear; source/positive evidence remains applicable, no new task-source finding or additional retry authorization.
+
+Criteria: C2 failed (Exact-head gate A-5536 exits1 on the external items-panel assertion; positive fallback tests are retained but final green evidence awaits the Coordinator-authorized replacement.).
