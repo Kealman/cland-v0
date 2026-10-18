@@ -43,7 +43,7 @@ test('config set changes plan approval through the project hub and keeps every o
   const original = parseConfig(await readFile(path, 'utf8'), root);
   const result = await cland(root, 'config', 'set', 'plan.approval', 'human', '--json');
   assert.equal(result.code, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), { key: 'plan.approval', value: 'human', applies: 'restart' });
+  assert.deepEqual(JSON.parse(result.stdout), { key: 'plan.approval', value: 'human', applies: 'now' });
   assert.deepEqual(parseConfig(await readFile(path, 'utf8'), root), { ...original, plan: { ...original.plan, approval: 'human' } });
 });
 

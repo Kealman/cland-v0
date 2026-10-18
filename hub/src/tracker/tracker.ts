@@ -240,7 +240,7 @@ export class Tracker {
   /** Legacy clients read the first kind of each level. */
   get levels(): readonly string[] { return this.ladder.flat; }
   readonly #qaDefault: QaPolicy;
-  readonly #planApproval: 'none' | 'human';
+  #planApproval: 'none' | 'human';
   get kinds(): string[] { return kindsFor(this.ladder); }
   /** The default epic occupies the second configured container level. */
   isPlanContainer(kind: Kind): boolean { return isPlanningContainer(kind, this.ladder); }
@@ -1143,6 +1143,9 @@ export class Tracker {
       this.#log({ event: 'task-plan-approved', id, ...record, ts: event.ts, planHistoryId: event.id });
     }, undefined, true), resumed, { operation: 'plan approve', item: this.#referenceId(rawId) ?? rawId });
   }
+
+  /** Published with the last-good project config; approval records remain unchanged. */
+  configurePlanApproval(approval: 'none' | 'human'): void { this.#planApproval = approval; }
 
   /** Launch approval is an indexed fact; safe to recheck after every lifecycle await. */
   assertPlanLaunch(rawId: string): void {

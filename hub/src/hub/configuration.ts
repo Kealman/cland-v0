@@ -15,7 +15,7 @@ import type { Resumed } from './budget.ts';
 import { setConfigValue } from '../init/config-set.ts';
 
 // These owners establish timers, storage or compatibility machinery at startup.
-const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'plan', 'artifacts', 'hygiene'] as const;
+const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'artifacts', 'hygiene'] as const;
 const STARTUP_VERIFICATION_FIELDS = [['lockPath', 'lock_path'], ['workers', 'workers'], ['testTimeoutMs', 'test_timeout'], ['stallTimeoutMs', 'stall_timeout'], ['coverageMaxAgeMs', 'coverage_max_age']] as const;
 export type ConfigSetResult = { key: string; value: unknown; applies: string };
 
@@ -99,6 +99,7 @@ export class ProjectConfiguration implements RolesSource {
         return setConfigValue(this.layout.root, this.layout.config, key, value, this.env);
       });
       const startup = STARTUP_FIELDS.some(field => key.startsWith(`${field === 'name' ? 'project' : field}.`))
+        || key === 'plan.qa_default'
         || STARTUP_VERIFICATION_FIELDS.some(([, field]) => key === `verification.${field}`);
       if (startup) return { key, value: readback, applies: 'restart' };
       try {
@@ -123,6 +124,7 @@ export class ProjectConfiguration implements RolesSource {
       for (const key of STARTUP_FIELDS) {
         if (!isDeepStrictEqual(config[key], this.#config[key])) throw new Error(`${key === 'tracker' ? 'tracker.levels or tracker.fatal_stall' : key} changed: restart required`);
       }
+      if (!isDeepStrictEqual(config.plan.qaDefault, this.#config.plan.qaDefault)) throw new Error('plan.qa_default changed: restart required');
       for (const [key, field] of STARTUP_VERIFICATION_FIELDS) {
         if (config.verification[key] !== this.#config.verification[key]) throw new Error(`verification.${field} changed: restart required`);
       }
@@ -141,7 +143,7 @@ export class ProjectConfiguration implements RolesSource {
         this.#config = config; this.#roles = roles; this.#stamp = stamp; this.#attemptStamp = stamp;
         this.log({ event: 'roles-loaded', path: file, launch: Object.fromEntries([...roles].map(([role, definition]) => [role, definition.launch])) });
         if (configText !== null) this.#status = { loadedAt: new Date().toISOString(), sourceCommit };
-        const applied = ['verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.droplet', 'keys.layouts', 'roles'];
+        const applied = ['verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.droplet', 'keys.layouts', 'plan.approval', 'roles'];
         for (const warning of warnings) this.log({ event: 'config-reload-warning', file: this.layout.config, warning });
         this.log({ event: 'config-reloaded', ...this.#status, applied, warnings });
         return { ...this.#status, applied, warnings };

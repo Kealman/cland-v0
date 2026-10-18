@@ -161,6 +161,7 @@
     "hub/test/orphan-sweep-lock.test.ts": "T3",
     "hub/test/permissions.test.ts": "T2",
     "hub/test/pid-identity.test.ts": "T3",
+    "hub/test/plan-approval-reload.test.ts": "T2",
     "hub/test/plan-approval.test.ts": "T3",
     "hub/test/plan-gate.test.ts": "T3",
     "hub/test/planned-stage.test.ts": "T3",
