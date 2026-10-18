@@ -146,7 +146,8 @@ test('check runs the report lint once after typecheck and preserves a green exit
   assert.equal(stdout.split('test lint (report only):').length - 1, 1);
   assert.ok(stdout.indexOf('TYPECHECK-COMPLETE') < stdout.indexOf('test lint (report only):'));
   assert.match(stdout, /test lint \(report only\): 1 findings in 1 files/);
-  assert.match(suiteSummary(stdout), /test lint tier: hub\/test\/a.test.ts: T2; qualifies T2/);
+  assert.match(stdout, /test lint tier: hub\/test\/a.test.ts: T2; qualifies T2/);
+  assert.match(suiteSummary(stdout), /test lint detail: 1 tier lines; 1 finding lines; log/);
   // The documented npm entry point forwards --shrink to the lint tool.
   await writeFile(join(cwd, 'hub/test/a.test.ts'), '');
   const shrink = root.attach(ownedCheck(t, cwd, ['run', 'test:lint', '--', '--shrink']));

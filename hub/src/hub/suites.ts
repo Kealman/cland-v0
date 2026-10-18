@@ -95,8 +95,9 @@ function durations(values: Array<number | null | undefined>): DurationStats {
   const n = sorted.length;
   return { count: n, medianMs: n ? n % 2 ? sorted[Math.floor(n / 2)]! : (sorted[n / 2 - 1]! + sorted[n / 2]!) / 2 : null, p90Ms: n ? sorted[Math.ceil(n * 0.9) - 1]! : null };
 }
-export function suiteSummary(log: string, quarantineStatus?: string[]): string {
+export function suiteSummary(log: string, quarantineStatus?: string[], options: { logArtifact?: string; priorityOnly?: boolean } = {}): string {
   const text = log.replace(/\x1b\[[0-9;]*m/g, '');
+  const lines = text.split('\n');
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
   const structured = suiteTestFailures(text);
@@ -107,11 +108,9 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   const timings = merged
     ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard duration shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
     : text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
-  timings.push(...durationBudgetSummary(text.split('\n')));
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^typecheck: /.test(line)));
-  timings.push(...text.split('\n').filter(line => /^test lint (?:\(report only\):|finding:|tier:)/.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate workers /.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate: .* skipped, not load-gated;/.test(line)));
   timings.push(...text.split('\n').filter(line => /^load gate admission blocked:/.test(line)));
@@ -123,8 +122,20 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   timings.push(...text.split('\n').filter(line => /^shard-\d+ tier T[1-4]:/.test(line)));
   const lastTiers = new Map<string, string>();
   for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
+  // Repository-sized lint detail belongs to the artifact. Keep the decision
+  // summaries ahead of timings and failure excerpts in the bounded delivery.
+  const lintTiers = lines.filter(line => line.startsWith('test lint tier:')).length;
+  const lintFindings = lines.filter(line => line.startsWith('test lint finding:')).length;
+  const priority = [
+    ...['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []),
+    ...new Set(lines.filter(line => line.startsWith('test lint (report only):'))),
+    ...durationBudgetSummary(lines),
+    ...(lintTiers || lintFindings ? [`test lint detail: ${lintTiers} tier lines; ${lintFindings} finding lines; log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
+  ];
+  const primary = `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${priority.length ? `\n${priority.join('\n')}` : ''}`;
+  if (options.priorityOnly) return primary;
   const quarantined = quarantineStatus ?? quarantineSummary(quarantineResults(text));
-  return `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${admissions.length ? `\nadmission timeouts ${admissions.length}\n${admissions.map(a => `${a.file ? a.file + ': ' : ''}${a.message}`).join('\n')}` : ''}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}${lastTiers.size ? `\n${['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []).join('\n')}` : ''}`;
+  return `${primary}${admissions.length ? `\nadmission timeouts ${admissions.length}\n${admissions.map(a => `${a.file ? a.file + ': ' : ''}${a.message}`).join('\n')}` : ''}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}`;
 }
 
 export { SuiteAdmissionError } from './suite-candidate.ts';
@@ -350,6 +361,7 @@ export class Suites {
     if (input.dryRun) {
       const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
       const budgetLines = context ? durationBudgetSummary(durationBudgetReport(context.manifest, context.tiers, baselineTimings(context, tierPlan.flatMap(row => row.files)), context.base)) : [];
+      const lintLines = testLintReport(await lintTests(input.cwd, { reachable: input.diagnostics ?? false }));
       if (executor === 'droplet' && input.executor === 'droplet') {
         if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
         await this.#droplet.checkSpend(input.size, config);
@@ -357,7 +369,7 @@ export class Suites {
       if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during admission; try dry-run again');
       authorize();
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
-        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...budgetLines, ...testLintReport(await lintTests(input.cwd, { reachable: input.diagnostics ?? false })), ...(input.diagnostics ? [] : ['reachability diagnostics: `cland verify --dry-run --diagnostics`'])] };
+        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), lintLines[0]!, ...budgetLines, ...lintLines.slice(1), ...(input.diagnostics ? [] : ['reachability diagnostics: `cland verify --dry-run --diagnostics`'])] };
     }
     const existing = this.#existingSubmission(input, head, authorize);
     if (existing) return existing;

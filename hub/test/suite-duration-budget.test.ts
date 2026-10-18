@@ -97,6 +97,13 @@ test('result summaries cap ranked overages at ten and retain legacy progress sep
   assert.ok(summary.includes('budget legacy allowances: 1; 6 s; owner E-677'));
 });
 
+test('result summaries count missing baselines without copying per-file diagnostics', async () => {
+  const { durationBudgetSummary } = await import('../src/suite-duration-budget.ts');
+  const lines = Array.from({ length: 400 }, (_, n) => `budget (report only): missing duration baseline file-${n}; observed 1 s (T2)`);
+  assert.deepEqual(durationBudgetSummary(lines), ['budget missing baselines: 400']);
+  assert.deepEqual(durationBudgetSummary(lines.map(line => line.replace(' (report only)', ''))), ['budget missing baselines: 400']);
+});
+
 test('uncertain source identity does not invent T3 growth from missing timing keys', () => {
   const before = manifest();
   const tiers = { existing: 'T3' } as const;

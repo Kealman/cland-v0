@@ -60,6 +60,14 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   assert.doesNotMatch(output.stdout, /^tier T4:/m);
   assert.match(output.stdout, /tier T1: files 1; tests 2 planned; observed unavailable; projected wall 200 s at 1 workers; wall budget 120 s; over wall \(report only\)/);
   assert.match(output.stdout, /tier share: T1\+T2 55.556 % of 900 s \(T3 400 s, T4 0 s\)/);
+  const priority = ['tier T1:', 'tier T2:', 'tier T3:', 'tier share:',
+    'test lint (report only):', 'budget legacy allowances:', 'test lint finding:', 'test lint tier:'];
+  let previous = -1;
+  for (const line of priority) {
+    const at = output.stdout.indexOf(line);
+    assert.ok(at > previous, `missing or out of order: ${line}\n${output.stdout}`);
+    previous = at;
+  }
   // MCP uses this same suite.start request and receives the structured report.
   const frame = await ui.request({ type: 'suite.start', dryRun: true, mode: 'auto', cwd: root, executor: 'droplet' });
   assert.equal(frame.ok, true, frame.error);
@@ -101,12 +109,14 @@ test('a task run report keeps its green exit when planted tiers exceed the wall 
   const result = await published.promise;
   assert.match(result.text, /tier T1: files 1; tests 1; observed 0.25 s; projected wall 200 s at 1 workers; wall budget 120 s; over wall \(report only\)/);
   assert.match(result.text, /tier T2: files 1; tests 1; observed 0.5 s/);
-  assert.match(result.text, /tier share: T1\+T2 55.556 % of 900 s \(T3 400 s, T4 0 s\)$/);
+  assert.match(result.text, /tier share: T1\+T2 55.556 % of 900 s \(T3 400 s, T4 0 s\)/);
   assert.doesNotMatch(result.text, /^tier T4:/m);
   assert.equal(result.job.outcome?.code, 0);
   assert.match(result.text, /test lint \(report only\): 2 findings in 2 files/);
-  assert.match(result.text, /b.test.ts:1 \[wall-clock-wait\]/);
-  assert.match(result.text, /test lint tier: hub\/test\/b.test.ts: T2; qualifies T2/);
+  assert.doesNotMatch(result.text, /^test lint (?:finding|tier):/m);
+  assert.match(result.text, /test lint detail: 4 tier lines; 2 finding lines; log/);
+  assert.match(await readFile(log, 'utf8'), /b.test.ts:1 \[wall-clock-wait\]/);
+  assert.match(await readFile(log, 'utf8'), /test lint tier: hub\/test\/b.test.ts: T2; qualifies T2/);
   assert.equal((await readFile(log, 'utf8')).split('test lint (report only):').length - 1, 1);
   assert.equal((await readFile(log, 'utf8')).split('tier T1:').length - 1, 1);
 });

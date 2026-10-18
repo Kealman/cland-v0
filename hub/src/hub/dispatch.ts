@@ -707,20 +707,29 @@ export class Dispatcher {
     await reportSharedDefects(core, job, log, artifact, callerNow);
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const quarantine = recordQuarantineResults(JSON.parse(core.store.meta('quarantine-results') ?? '{}') as QuarantineHistory, job.id, quarantineResults(log), !!job.cached);
-    const summary = suiteSummary(log, quarantine.lines);
+    const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
     const outcome = job.outcome!;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
-    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}\n${summary}`;
+    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}\n${summary}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
     let text = report(2048);
     // File counts and the artifact retain the complete decision when a broad diff
     // or a smaller configured cap cannot fit every path in the topic message.
     for (let bytes = 1024; !core.textFits(text) && bytes >= 0; bytes = bytes ? Math.floor(bytes / 2) : -1) text = report(bytes);
     if (!core.textFits(text)) {
-      // Long branch names, failures or log paths can exhaust even the no-files
-      // report. Keep the result/mode/log pointer first and respect any byte cap.
-      text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached${stageCover}\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${stageCover}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${summary}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
+      const priority = suiteSummary(log, [], { logArtifact: artifact.id, priorityOnly: true });
+      const header = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cached ? '; cached' : job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}\nLog ${artifact.id}`;
+      const required = `${header}\n${priority}${job.cached ? `\nhead ${job.head}${provenance}\n${execution}` : ''}`;
+      // Reserve cache provenance and executor facts with the decision summary;
+      // optional diagnostics and metadata cannot displace those required facts.
+      if (core.textFits(required)) {
+        text = core.boundedText(`${required}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${job.cached ? '' : execution}${stageCover}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
+      } else {
+        // If the summary and cache provenance cannot fit (for example, a tiny
+        // configured cap), retain the result/mode/log and execution facts.
+        text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached${stageCover}\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${stageCover}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${summary}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
+      }
     }
     const result = core.store.transaction(() => {
       const result = caller ? core.sendFromSession(caller.name, job.to, text, undefined, job.topic, undefined, caller, [artifact], 'report', messageId, true)

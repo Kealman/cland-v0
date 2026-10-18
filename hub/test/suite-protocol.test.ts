@@ -11,15 +11,17 @@ import type { SuiteJob } from '../src/hub/suites.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { testLintReport, type TestLintFile } from '../src/test-lint.ts';
+import { tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 
-async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '') {
+async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n') {
   const root = await tempProject(t); const clock = new FakeClock();
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), `[verification]\nlock_path=${JSON.stringify(join(root, 'held-lock'))}\n${verification}`);
   await mkdir(join(root, 'held-lock'));
   const started = 'Sat Oct 17 12:00:00 2026';
   await writeFile(join(root, 'held-lock/holder.json'), JSON.stringify({ pid: process.pid, started, since: clock.now().toISOString(), token: 'hand', worktree: '/hand/worktree' }));
-  const log = join(root, 'suite.log'); await writeFile(log, 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n');
+  const log = join(root, 'suite.log'); await writeFile(log, logText);
   const base: SuiteJob = { id: 'cover-0', mode: 'all', cwd: root, topic: 'general', to: [], actor: null, head: 'a'.repeat(40), branch: 'dev', log, result: '', gate: '', pid: null, started: null,
     outcome: { code: 1, cause: '' }, artifact: null, reported: true, error: null, state: 'finished', cleaned: true, integrated: true, executor: 'local', platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'none' },
     cover: { status: 'red', cause: 'test-failure', tests: ['hub/test/planned-stage.test.ts::stage landing query budget'] } };
@@ -27,9 +29,87 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
   const processes = { alive: (pid: number) => pid === process.pid, started: () => started };
   const holder = () => compatibilityHolder([join(root, 'held-lock')], {}, processes);
   const compatibility = { holder, occupied: async () => (await holder()) !== null };
-  const hub = await projectHub(t, root, {}, { clock, compatibility, durationContext: null }); const ui = await connectUi(t, hub.discovery);
+  const candidate = {
+    head: async () => 'a'.repeat(40), tree: async () => 'b'.repeat(40),
+    inspect: async () => { throw new Error('seeded receipts must not admit an executor'); },
+  };
+  const hub = await projectHub(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui, compatibility };
 }
+
+test('repository-sized lint detail leaves the delivered integrated summary complete', async t => {
+  const manifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+  const files: TestLintFile[] = Object.keys(manifest.tests).map(file => ({ file, tier: 'T2', qualifies: 'T2',
+    findings: [{ file, line: 12, rule: 'wall-clock-wait', message: 'existing numeric wall-clock wait' }] }));
+  const tiers: TierPlan = (['T1', 'T2', 'T3', 'T4'] as const).map((tier, i) => ({ tier,
+    files: files.slice(i, i + 1).map(row => row.file), tests: 1, seconds: 100, projectedWall: 100, workers: 1, missing: 0 }));
+  const lint = testLintReport(files);
+  const budget = 'budget (report only): would fail hub/test/component.test.ts::slow 3 s > 2 s (T2)';
+  const log = ['# tests 4', '# pass 4', ...lint, ...tierReport(tiers), budget, 'suite duration 2.00s'].join('\n') + '\n';
+  assert.ok(Buffer.byteLength(log) > 8192, 'fixture exceeds the delivery cap');
+  const f = await seed(t, base => { const { cover: _cover, ...job } = base; return [{ ...job,
+    reported: false, outcome: { code: 0, cause: '' }, tierReported: true, budgetReported: true }]; }, '', log);
+  await f.ui.request({ type: 'subscribe' }); await f.clock.advance(1000);
+  const frame = await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === 'suite:cover-0');
+  const message = frame.message as { text: string; artifacts: { id: string; path: string }[] };
+  const artifact = message.artifacts[0]!;
+  assert.ok(Buffer.byteLength(message.text) <= 8192);
+  t.diagnostic(`${files.length} manifest files: ${Buffer.byteLength(log)} log bytes; ${Buffer.byteLength(message.text)} delivered bytes`);
+  const priority = ['tests 4; pass 4', 'tier T1:', 'tier T2:', 'tier T3:', 'tier T4:', 'tier share:',
+    `test lint (report only): ${files.length} findings in ${files.length} files`, budget];
+  let previous = -1;
+  for (const line of priority) {
+    const at = message.text.indexOf(line);
+    assert.ok(at > previous, `missing or out of order: ${line}\n${message.text}`);
+    previous = at;
+  }
+  assert.doesNotMatch(message.text, /^test lint (?:tier|finding):/m);
+  assert.match(message.text, new RegExp(`test lint detail: ${files.length} tier lines; 12 finding lines; log ${artifact.id}`));
+  const retained = await readFile(artifact.path, 'utf8');
+  for (const line of lint) assert.ok(retained.includes(line), `artifact lost ${line}`);
+});
+
+test('oversized results keep priority summaries for fresh and cached receipts', async t => {
+  const missing = Array.from({ length: 400 }, (_, n) => `budget (report only): missing duration baseline hub/test/component-${n}.test.ts; observed 1 s (T2)`);
+  const priority = ['tests 4; pass 4',
+    ...tierReport((['T1', 'T2', 'T3', 'T4'] as const).map(tier => ({ tier, files: ['fixture'], tests: 1, seconds: 100, projectedWall: 100, workers: 1, missing: 0 }))),
+    'test lint (report only): 1 findings in 1 files',
+    'budget (report only): would fail hub/test/slow.test.ts::slow 3 s > 2 s (T2)'];
+  const log = ['# tests 4', '# pass 4', ...priority.slice(1), ...missing,
+    'test lint tier: hub/test/fixture.test.ts: T2; qualifies T2',
+    'test lint finding: hub/test/fixture.test.ts:12 [wall-clock-wait] existing wait'].join('\n') + '\n';
+  const f = await seed(t, base => { const { cover: _cover, ...job } = base; return [false, true].map(cached => ({ ...job,
+    id: cached ? 'cached' : 'fresh', branch: 'oversized-' + 'x'.repeat(9000), reported: false,
+    outcome: { code: 0, cause: '' }, tierReported: true, budgetReported: true,
+    ...(cached ? { tree: 'b'.repeat(40), cached: { run: 'original', head: 'c'.repeat(40), tree: 'b'.repeat(40) } } : {}) })); }, '', log);
+  await f.ui.request({ type: 'subscribe' }); await f.clock.advance(1000);
+  for (const id of ['fresh', 'cached']) {
+    const frame = await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === `suite:${id}`);
+    const message = frame.message as { text: string; artifacts: { id: string; path: string }[] };
+    const artifact = message.artifacts[0]!;
+    assert.ok(Buffer.byteLength(message.text) <= 8192);
+    if (id === 'cached') {
+      assert.match(message.text, /exit 0; cached; mode full/);
+      assert.ok(message.text.includes('head ' + 'a'.repeat(40)));
+      assert.ok(message.text.includes('Original run original · head ' + 'c'.repeat(40)));
+      assert.ok(message.text.includes('Cached tree ' + 'b'.repeat(40)));
+    }
+    t.diagnostic(`${id}: ${Buffer.byteLength(log)} log bytes; ${Buffer.byteLength(message.text)} delivered bytes`);
+    let previous = -1;
+    for (const line of priority) {
+      const at = message.text.indexOf(line);
+      assert.ok(at > previous, `${id}: missing or out of order: ${line}\n${message.text}`);
+      previous = at;
+    }
+    assert.ok(message.text.indexOf('Branch ') > previous, 'optional metadata follows the priority summaries');
+    assert.match(message.text, /budget missing baselines: 400/);
+    assert.match(message.text, new RegExp(`test lint detail: 1 tier lines; 1 finding lines; log ${artifact.id}`));
+    assert.doesNotMatch(message.text, /^test lint (?:tier|finding):/m);
+    assert.ok(message.text.includes(`Log ${artifact.id}`));
+    const retained = await readFile(artifact.path, 'utf8');
+    for (const line of missing) assert.ok(retained.includes(line));
+  }
+});
 
 test('cover CLI enforces role permissions, journals classifications and renders persisted incident status', async t => {
   const f = await seed(t, base => Array.from({ length: 12 }, (_, i) => ({ ...base, id: `cover-${i}`, completedAt: new Date(Date.UTC(2026, 9, 16, 0, i)).toISOString(),

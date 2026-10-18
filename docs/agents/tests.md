@@ -95,9 +95,17 @@ original sources and retains that reference across dev merges. Once dev carries
 a baseline, that baseline supplies the branch's reference.
 
 The log, result and admitted `cland verify --dry-run` retain
-`test lint (report only): <n> findings in <m> files`, the first twelve census
-findings and each file's lowest qualifying resource tier. Those census lines
-describe existing debt; policy refusals are separate and fail the check.
+`test lint (report only): <n> findings in <m> files`. The log and dry-run also
+retain the first twelve census findings and each file's lowest qualifying
+resource tier. Delivered results put counts, tier and tier-share summaries,
+lint summary and budget lines first; one detail count line points to the log
+artifact instead of repeating per-file tiers or individual lint findings.
+Dry-run puts the same summaries before its detail. Those census lines describe
+existing debt; policy refusals are separate, stay named in full and fail the check.
+Budget summaries count missing baselines instead of copying per-file diagnostics;
+the run log retains every diagnostic. Oversized fresh and cached result messages
+keep their priority summaries and log id before optional execution/selection detail
+when those summaries fit the configured cap.
 It inspects the entire tier manifest, independently of the selected test phases.
 Import and call syntax distinguish the in-process fake harness and FakeClock
 from process helpers and real timers; comments and planted source strings do not
