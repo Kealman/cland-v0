@@ -3,9 +3,11 @@ import { existsSync } from 'node:fs';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import clandMermaid from './src/plugins/mermaid.mjs';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 const SITE = 'https://cland.app';
 const GITHUB = 'https://github.com/Kealman/cland-v0';
+const DISCORD = 'https://discord.gg/Ssv3YFcA8Z';
 
 // Docs pages are written separately; list only the ones that exist so a
 // missing page never breaks the build. Slug `docs` is docs/index.md.
@@ -61,7 +63,24 @@ export default defineConfig({
         replacesTitle: true,
       },
       favicon: '/favicon.svg',
-      social: [{ icon: 'github', label: 'GitHub', href: GITHUB }],
+      // llms.txt, llms-full.txt and llms-small.txt at the site root, for coding agents and LLM tools.
+      plugins: [
+        starlightLlmsTxt({
+          projectName: 'cland',
+          description:
+            'Open-source crew runner: Claude Code, Codex and OpenCode as one coding crew on the subscriptions you already pay for.',
+          details:
+            'A strong model leads, cheaper and open models do the legwork, and the human makes the decisions. cland runs the official claude, codex and opencode CLIs under your own logins, with one hub, one tracker in your repo, review and QA gates before every merge, and releases from the tracker. Apache-2.0, macOS and Linux.',
+          optionalLinks: [
+            { label: 'Source code', url: 'https://github.com/Kealman/cland-v0', description: 'The repository' },
+            { label: 'Build log', url: 'https://cland.app/log/', description: 'What each release took, cost and broke' },
+          ],
+        }),
+      ],
+      social: [
+        { icon: 'github', label: 'GitHub', href: GITHUB },
+        { icon: 'discord', label: 'Discord', href: DISCORD },
+      ],
       // Adds a "Log" link to the build log beside the social icons.
       components: { SocialIcons: './src/components/starlight/SocialIcons.astro' },
       editLink: {},

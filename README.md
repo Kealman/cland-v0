@@ -10,13 +10,14 @@
 <h3 align="center">All your subscriptions. One team.</h3>
 
 <p align="center">
-  One coding crew across every AI plan you pay for.
+  Open-source crew runner: Claude Code, Codex and OpenCode as one coding crew on the subscriptions you already pay for.
 </p>
 
 <p align="center">
   <a href="https://cland.app">Website</a> ·
   <a href="https://cland.app/docs/">Docs</a> ·
   <a href="https://cland.app/docs/quickstart/">Quickstart</a> ·
+  <a href="https://discord.gg/Ssv3YFcA8Z">Discord</a> ·
   <a href="https://x.com/cland_app">X</a>
 </p>
 

@@ -2,8 +2,12 @@
 
 export const SITE = 'https://cland.app';
 export const GITHUB = 'https://github.com/Kealman/cland-v0';
+export const DISCORD = 'https://discord.gg/Ssv3YFcA8Z';
 export const DOCS = '/docs/';
 export const TAGLINE = 'One coding crew across every AI plan you pay for.';
+/** The category line: the same words on the site, the README, the repo and posts. */
+export const CATEGORY =
+  'Open-source crew runner: Claude Code, Codex and OpenCode as one coding crew on the subscriptions you already pay for.';
 
 /** The wordmark's strokes on its 296×84 grid (the c, l, n and d stems). */
 export const wordmarkPath = 'M40.62 37.98A22 22 0 1 0 40.62 74.02M74 6V78M146 34V78M174 78V56A22 22 0 0 1 218 56V78M290 6V78';

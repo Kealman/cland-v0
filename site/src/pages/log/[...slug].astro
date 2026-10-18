@@ -2,7 +2,7 @@
 import { render } from 'astro:content';
 import SiteLayout from '../../layouts/SiteLayout.astro';
 import { getPosts, postHref, type Post } from '../../log';
-import { formatDate, isoDate } from '../../site';
+import { SITE, formatDate, isoDate } from '../../site';
 
 export async function getStaticPaths() {
   const posts = await getPosts();
@@ -28,6 +28,17 @@ const prose = (post.body ?? '')
   .filter((l) => !/^\s*(<|import |\/>|[a-zA-Z]+=|\]|\}|\{)/.test(l))
   .join(' ');
 const minutes = Math.max(1, Math.round(prose.split(/\s+/).filter(Boolean).length / 230));
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: post.data.title,
+  description: post.data.description,
+  datePublished: isoDate(post.data.date),
+  url: new URL(`/log/${post.id}/`, SITE).href,
+  image: `${SITE}/og.png`,
+  author: { '@type': 'Organization', name: 'cland', url: SITE },
+  publisher: { '@type': 'Organization', name: 'cland', url: SITE },
+};
 ---
 
 <SiteLayout
@@ -36,6 +47,7 @@ const minutes = Math.max(1, Math.round(prose.split(/\s+/).filter(Boolean).length
   current="log"
   ogType="article"
   published={post.data.date}
+  jsonLd={jsonLd}
 >
   <article class="wrap post">
     <header class="post-head">
