@@ -5,17 +5,21 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { tempProject } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 
 const component = new URL('./session-stop-races-component.test.ts', import.meta.url);
+const classification = new URL('./stop-classification-fixture.ts', import.meta.url);
 
 test('held stop cleanup survives assertion failure and test-runner cancellation', async t => {
   const root = await tempProject(t);
-  const original = await readFile(component, 'utf8');
+  const original = await readFile(classification, 'utf8');
+  const driver = await readFile(component, 'utf8');
   for (const mode of ['failure', 'cancellation'] as const) {
     const evidence = join(root, `${mode}.json`);
     const fixture = join(root, `${mode}.test.ts`);
+    const classificationFixture = join(root, `${mode}-classification.ts`);
     const probe = `
   const proof = { held: false, requestSettled: false, finallyReached: false };
   onCleanup(t, async () => {
@@ -35,15 +39,22 @@ test('held stop cleanup survives assertion failure and test-runner cancellation'
       ${mode === 'failure' ? "assert.fail('controlled pre-release assertion failure');" : "controller.abort(new Error('controlled test cancellation')); await new Promise(() => {});"}
 `;
     assert.ok(original.includes(boundary), 'plant at the pre-release assertion boundary');
-    const source = original
-      .replace(/from '(\.{1,2}\/[^']+)'/g, (_, relative: string) => `from '${new URL(relative, component).href}'`)
-      .replace("test('manual and post-merge stops remain stopped across graceful and forced completion', async t => {", "const controller = new AbortController();\ntest('controlled stop teardown', { signal: controller.signal }, async t => {")
-      .replace("for (const stop of ['manual', 'post-merge'] as const) for (const forced of [false, true])", "for (const stop of ['manual'] as const) for (const forced of [false])")
+    const source = "import { writeFile } from 'node:fs/promises';\nexport const controller = new AbortController();\n" + original
+      .replace(/from '(\.{1,2}\/[^']+)'/g, (_, relative: string) => `from '${new URL(relative, classification).href}'`)
+      .replace('for (const forced of [false, true])', 'for (const forced of [false])')
       .replace('  const ui = await connectUi(t, discovery);', probe + '  const ui = await connectUi(t, discovery);')
       .replace('.then(result => { answered = true;', '.then(result => { proof.requestSettled = true; answered = true;')
       .replace('} finally { await drain(); }', '} finally { proof.finallyReached = true; await drain(); }')
       .replace(boundary, boundary + planted);
-    await writeFile(fixture, source);
+    await writeFile(classificationFixture, source);
+    const controlledDriver = driver
+      .replace(/from '(\.{1,2}\/[^']+)'/g, (_, relative: string) => `from '${new URL(relative, component).href}'`)
+      .replace(classification.href, pathToFileURL(classificationFixture).href)
+      .replace('{ stopClassification, STOP_GRACE_MS }', '{ stopClassification, STOP_GRACE_MS, controller }')
+      .replace("test('manual stops remain stopped across graceful and forced completion', async t => {", "test('controlled stop teardown', { signal: controller.signal }, async t => {");
+    assert.ok(controlledDriver.includes('signal: controller.signal'), 'the generated driver admits runner cancellation');
+    assert.ok(controlledDriver.includes(pathToFileURL(classificationFixture).href), 'the generated driver uses the planted stop fixture');
+    await writeFile(fixture, controlledDriver);
     const env = { ...process.env };
     delete env.NODE_TEST_CONTEXT;
     const resultReady = Promise.withResolvers<{ code: number | string; output: string }>();

@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { MAX_TEXT_BYTES } from '../src/hub/hygiene.ts';
-import { flushProjectLogs, assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
+import { flushProjectLogs, assignRole, cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
 type Status = { sessions: Presence[]; coordinator: string | null; harnesses: Array<{ name: string; harnessId: string | null; role: string | null; label?: string; model: string | null }> };

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import { decide } from '../src/roles/permissions.ts';
 import { isClientRequest, type Inbox } from '../src/protocol.ts';

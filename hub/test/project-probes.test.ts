@@ -8,7 +8,7 @@ import { promisify } from 'node:util';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-test('projectHub fake probes launch, signal and stop every harness with zero child processes', async t => {
+test('projectHub defaults launch, signal and stop every harness with zero child processes', async t => {
   const census: Record<string, number> = {};
   const originals = new Map<string, Function>();
   for (const method of ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'] as const) {
@@ -39,8 +39,8 @@ test('projectHub fake probes launch, signal and stop every harness with zero chi
   });
   const root = await tempProject(t);
   const clock = new FakeClock();
-  const hub = await projectHub(t, root, {}, { clock, harnesses: 'fake', probes: 'fake' });
-  await assert.rejects(projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' }), /a hub already runs/);
+  const hub = await projectHub(t, root, {}, { clock });
+  await assert.rejects(projectHub(t, root, {}, { clock: new FakeClock() }), /a hub already runs/);
   const { discovery, fakes } = hub;
   const ui = await connectUi(t, discovery);
   const list = async (name: string) => {
@@ -76,7 +76,7 @@ test('projectHub fake probes launch, signal and stop every harness with zero chi
   let commit = 'a'.repeat(40);
   const baseRead = Promise.withResolvers<void>();
   const facts = await projectHub(t, factsRoot, {}, {
-    clock: new FakeClock(), harnesses: 'fake', probes: 'fake',
+    clock: new FakeClock(),
     git: async args => {
       if (args[0] === 'log') return commit;
       if (args[0] === 'for-each-ref') return `${'b'.repeat(40)} refs/heads/dev`;
@@ -96,6 +96,13 @@ test('projectHub fake probes launch, signal and stop every harness with zero chi
   const made = await factsUi.request({ type: 'task.create', title: 'Injected branch facts', size: 'S' });
   assert.equal(made.ok, true, made.error);
   assert.equal((made.value as { item: { verdictBase: string } }).item.verdictBase, 'dev');
+  const item = (made.value as { item: { id: string } }).item.id;
+  const claimed = await factsUi.request({ type: 'task.claim', item });
+  assert.equal(claimed.ok, true, claimed.error);
+  assert.equal((claimed.value as { worktree: unknown }).worktree, null);
+  const merged = await factsUi.request({ type: 'merge', item });
+  assert.equal(merged.ok, false);
+  assert.equal((merged as { code?: string }).code, 'merge-branch', 'the ordinary merge preflight runs without a native lock probe');
   commit = 'c'.repeat(40);
   const reload = await factsUi.request({ type: 'hub.reload' });
   assert.equal(reload.ok, true, reload.error);

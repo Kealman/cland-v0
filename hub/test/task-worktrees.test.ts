@@ -8,7 +8,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { CLI_ENTRY, cland, clandWithEnv, connectUi, connectWsUi, startHub, eventually, fakeClaude, spawnSpoke, projectHub, tempProject, type CliResult, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, cland, clandWithEnv, connectUi, connectWsUi, startHub, eventually, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject, type CliResult, type FrameClient } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import type { Sessions } from '../src/adapters/sessions.ts';

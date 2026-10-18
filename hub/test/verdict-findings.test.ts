@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import { cland, connectUi, flushProjectLogs, projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { cland, connectUi, flushProjectLogs, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
 
 const findings = [
   { severity: 'high', text: 'Drops a verdict', file: 'hub/src/tracker/tracker.ts', line: 42 },

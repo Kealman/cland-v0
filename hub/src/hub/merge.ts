@@ -28,9 +28,11 @@ export class TaskMerges {
   readonly tracker: Tracker;
   readonly worktrees: TaskWorktrees;
   readonly log: LogFn;
+  readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env) {
+  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync) {
     this.#env = env;
+    this.#territoryLock = territoryLock;
     this.tracker = tracker;
     this.worktrees = worktrees;
     this.log = log;
@@ -97,7 +99,7 @@ export class TaskMerges {
       let step = 'territory lock';
       let landingFailure: { step: string; error: string } | undefined;
       try {
-        await withTerritoryLockAsync(this.tracker.root, async () => {
+        await this.#territoryLock(this.tracker.root, async () => {
           resumed(authorize);
           const pendingSync = await access(join(this.tracker.root, '.cland', 'sync.tmp')).then(() => true, err => resumed(() => {
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;

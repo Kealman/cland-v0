@@ -7,7 +7,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, killDaemon, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, killDaemon, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 

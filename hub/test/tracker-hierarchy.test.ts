@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, readDiscovery, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, readDiscovery, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 
 type Item = { id: string; kind: string; version?: string; body: string; path: string; ancestry: Array<{ id: string; kind: string; title: string }> };
 

@@ -15,7 +15,7 @@ import { Tracker } from '../src/tracker/tracker.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, projectHub, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, connectUi, connectWsUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 type Item = { id: string; rank?: number; rank_set?: true; path: string; file: string; parent: string | null };
 

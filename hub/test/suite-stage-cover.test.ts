@@ -7,7 +7,7 @@ import { promisify } from 'node:util';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
-import { cland, eventually, projectHub, inProcessSpoke, tempProject } from './harness.ts';
+import { cland, eventually, nativeProjectHub as projectHub, inProcessSpoke, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 
 const exec = promisify(execFile);

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { withPlan, type EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 
 type Result = { ok: boolean; error?: string; id: string; plan: EpicPlan | null; planError?: string };
 

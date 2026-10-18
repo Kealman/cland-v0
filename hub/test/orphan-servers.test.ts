@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { delimiter, dirname, join, resolve } from 'node:path';
-import { projectHub, flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
+import { nativeProjectHub as projectHub, flushProjectLogs, clandWithEnv, connectUi, fakeCodex, pidAlive, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
 
 import { fakeOpenCode, leftoverOpenCode, OPENCODE_FAKE } from './orphan-server-fixture.ts';
 import { serveProject } from '../src/hub/daemon.ts';

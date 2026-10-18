@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cland, clandWithEnv, killDaemon, projectHub, inProcessSpoke, startDaemon, connectUi, tempProject, type CliResult } from './harness.ts';
+import { cland, clandWithEnv, killDaemon, nativeProjectHub as projectHub, inProcessSpoke, startDaemon, connectUi, tempProject, type CliResult } from './harness.ts';
 import { runInit } from '../src/cli/init.ts';
 import { captureCli } from './cli-in-process.ts';
 import { FakeClock } from './fake-clock.ts';

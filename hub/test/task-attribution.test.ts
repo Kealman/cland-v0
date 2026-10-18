@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { FOUND_BY, parseItem, serializeItem } from '../src/tracker/item.ts';
 import { TrackerIndex } from '../src/tracker/index-db.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import { cland, connectUi, flushProjectLogs, projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { cland, connectUi, flushProjectLogs, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
 
 test('found_by round-trips the discovery vocabulary and refuses orphan attribution', () => {
   const legacy = '---\nid: T-1\nkind: task\ntitle: Rework\nstate: open\nregression_of: T-2\n---\n';

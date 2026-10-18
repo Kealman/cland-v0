@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
-import { cland, connectUi, eventually, fakeClaude, fakeCodex, projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, fakeCodex, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
 import type { Message } from '../src/protocol.ts';
 import type { Rule } from '../src/rules/rulebook.ts';
 

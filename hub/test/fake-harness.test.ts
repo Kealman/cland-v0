@@ -175,7 +175,12 @@ test('serveProject releases its listeners and lock after adapter startup or clea
     const env: NodeJS.ProcessEnv = {};
     for (const [key, value] of Object.entries(process.env)) if (!key.startsWith('CLAND_')) env[key] = value;
     Object.assign(env, { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' });
-    const options = { clock, log: () => {}, env };
+    const options = {
+      clock, log: () => {}, env,
+      git: async () => null,
+      readBase: async () => null,
+      processes: { alive: (pid: number) => pid === process.pid, started: () => null },
+    };
     try {
       const adapter = (host: import('../src/adapters/contract.ts').AdapterHost) => {
         const fake = fakeHarness('codex', { host, clock });

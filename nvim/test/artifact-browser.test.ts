@@ -4,7 +4,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
-import { connectUi, eventually, spawnSpoke, projectHub, tempProject } from '../../hub/test/harness.ts';
+import { connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient, type Client } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 

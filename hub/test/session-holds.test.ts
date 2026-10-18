@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, projectHub, startDaemon, startHub, tempProject } from './harness.ts';
+import { withDiscoveredPid, cland, connectUi, connectWsUi, eventually, fakeClaude, fakeCodex, spawnSpoke, nativeProjectHub as projectHub, startDaemon, startHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Presence } from '../src/protocol.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 

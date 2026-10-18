@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { Message } from '../src/protocol.ts';
-import { clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, projectHub, spawnSpoke, tempProject, withDiscoveredPid } from './harness.ts';
+import { clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, nativeProjectHub as projectHub, spawnSpoke, tempProject, withDiscoveredPid } from './harness.ts';
 
 test('Claude Code consumes one ordered subscription digest through the native frame', async t => {
   const root = await tempProject(t);

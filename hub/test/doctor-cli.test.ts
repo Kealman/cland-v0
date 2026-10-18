@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, eventually, projectHub, tempProject } from './harness.ts';
+import { clandWithEnv, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { initialised, toolchain, check, notOk, NVIM_VERSION } from './doctor-fixture.ts';
 const doctor = (root: string, env: Record<string, string>, ...args: string[]) => clandWithEnv(root, env, 'doctor', ...args);
 const report = async (root: string, env: Record<string, string>) => {

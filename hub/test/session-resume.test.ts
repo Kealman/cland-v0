@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland } from './harness.ts';
+import { nativeProjectHub as projectHub, withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 

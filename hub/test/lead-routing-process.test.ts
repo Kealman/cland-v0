@@ -2,7 +2,7 @@
 import test from 'node:test';
 import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
-import { withDiscoveredPid, connectUi, eventually, spawnSpoke, projectHub, tempProject, fakeClaude } from './harness.ts';
+import { withDiscoveredPid, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, tempProject, fakeClaude } from './harness.ts';
 import type { Message, Subscription } from '../src/protocol.ts';
 
 test('long idle and death climb from item to epic to release; stopped Leads leave inherited routing', async t => {

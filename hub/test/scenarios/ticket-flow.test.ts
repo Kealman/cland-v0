@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, cland, clandWithEnv, eventually, spawnSpoke } from '../harness.ts';
+import { nativeProjectHub as projectHub, cland, clandWithEnv, eventually, spawnSpoke } from '../harness.ts';
 import { type ItemView } from '../../src/tracker/tracker.ts';
 import { git, ok, json, project, task, review, refused } from '../merge-support.ts';
 

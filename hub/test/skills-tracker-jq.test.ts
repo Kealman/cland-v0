@@ -1,11 +1,13 @@
-// T3: execute the documented jq frontier program against real tracker output across claim and close transitions.
+// T3 native contracts: execute the jq frontier program and launch the task CLI with real stdin.
+// CLI process startup/exit proves unchanged UTF-8 bytes at the executable boundary.
 // Parser, template and tracker rule coverage stays in skills-tracker.test.ts (T2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { onCleanup } from './process-cleanup.ts';
 import { cland, create, itemFile, list, ok, project, view, type View } from './skills-tracker-support.ts';
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
 const hasJq = spawnSync('jq', ['--version']).status === 0;
@@ -98,3 +100,24 @@ test('wayfinder: a map item, child tickets wired in a second pass, claim by assi
   assert.deepEqual(await frontier(root, map), [lifetime, template]);
 });
 
+
+test('task CLI reads --body-file - from real stdin without changing its UTF-8 body', async t => {
+  const root = await project(t);
+  const input = '## Summary\n\nπ, quotes "here", and literal $HOME.\nA second line.';
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), 'task', 'create', 'Stdin spec', '--kind', 'spec', '--body-file', '-', '--json'], { cwd: root, env, timeout: 10_000, signal: t.signal, stdio: ['pipe', 'pipe', 'pipe'] });
+  let stdout = '';
+  let stderr = '';
+  child.stdout.on('data', chunk => { stdout += String(chunk); });
+  child.stderr.on('data', chunk => { stderr += String(chunk); });
+  const exited = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
+  const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
+  // The ChildProcess handle owns this CLI directly; no process-table probe is needed.
+  onCleanup(t, async () => {
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    await closed;
+  });
+  child.stdin.end(input);
+  assert.equal(await exited, 0, stderr);
+  assert.equal((JSON.parse(stdout) as { item: View }).item.body, input);
+});

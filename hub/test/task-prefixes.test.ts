@@ -4,7 +4,7 @@ import { mkdir, writeFile, readFile, readdir, rm, rename } from 'node:fs/promise
 import { join } from 'node:path';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectUi, connectWsUi, eventually, spawnSpoke, projectHub, startDaemon, startHub, tempProject, type Session } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, startHub, tempProject, type Session } from './harness.ts';
 
 const legacy = (id: string, kind: string, extra = '') => `---\nid: ${id}\nkind: ${kind}\ntitle: Legacy ${kind}\nstate: open\n${extra}---\n`;
 

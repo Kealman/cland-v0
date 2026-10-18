@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { Artifact } from '../src/protocol.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
 

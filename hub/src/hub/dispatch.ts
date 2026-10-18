@@ -99,6 +99,8 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  hasTerritory?: typeof import('../territory.ts').hasTerritory;
+  territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync;
   git?: import('../tracker/verdict-git.ts').Git;
   env?: NodeJS.ProcessEnv;
   journal?: import('./journal.ts').Journal;
@@ -169,8 +171,8 @@ export class Dispatcher {
   constructor(options: DispatcherOptions) {
     this.#options = options;
     this.#log = options.log ?? (() => {});
-    this.#worktrees = options.tracker ? new TaskWorktrees({ ...(options.env ? { env: options.env } : {}), tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
-    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env) : null;
+    this.#worktrees = options.tracker ? new TaskWorktrees({ ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}), ...(options.env ? { env: options.env } : {}), tracker: options.tracker, log: this.#log, sessions: () => this.#sessionCwds() }) : null;
+    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock) : null;
     this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles, options.core.clock);
     this.#guard = options.requestGuard ?? new RequestGuard({ ...options.guard, log: this.#log });

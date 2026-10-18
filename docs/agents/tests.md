@@ -141,15 +141,20 @@ nested names. No global async hook or per-test instrumentation is added.
 
 ### In-process harnesses
 
-Hub rules use `projectHub(t, root, env, { harnesses: 'fake', probes: 'fake', clock })` by default,
+Hub rules use `projectHub(t, root, env, { clock })` by default,
 with a `FakeClock`. It replaces Claude Code, Codex and OpenCode under their real
 harness names, so `roles.toml` launch choices still work. The returned `fakes`
 map exposes each adapter. `probes: 'fake'` supplies no-repository Git answers and
 an in-process lock identity, so startup and teardown spawn no infrastructure
 processes either. A test needing branch/provenance facts may override `git` and
 `readBase`; a lock test may override `processes` (`alive` and `started`).
-`serveProject` and legacy `projectHub` calls without this option keep native Git
-and ps defaults, covered by the T3 lifecycle files. Import `NO_PS` only from
+`projectHub` defaults to fake harnesses and probes; explicitly supplied adapters,
+Git, base-reader, territory and process facts take precedence. T3 contracts and lifecycle
+files opt into production defaults by importing `nativeProjectHub` (which passes
+`harnesses: 'native', probes: 'native'`). Either option can also be selected
+independently. Receipt-only suite fixtures may inject `compatibility` holder/occupied
+observations and a process table for lease identity reads. `serveProject` retains
+its production Git, lock and ps defaults. Import `NO_PS` only from
 `hub/test/native-process.ts` in native tests; importing the generic harness never
 probes the OS. For a lower-level fixture, use
 `fakeHarness(flavour, { host, clock })` from `hub/test/fakes/harness.ts`.

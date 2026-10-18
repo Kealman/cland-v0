@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { projectHub, cland, clandWithEnv, connectUi, startDaemon, tempProject, pidAlive } from './harness.ts';
+import { nativeProjectHub as projectHub, cland, clandWithEnv, connectUi, startDaemon, tempProject, pidAlive } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { fixture, remoteEventually as eventually } from './remote-fixture.ts';

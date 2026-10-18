@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import type { AccountList } from '../src/accounts/limits.ts';
 
 const usage = { rate_limits: { limits: [

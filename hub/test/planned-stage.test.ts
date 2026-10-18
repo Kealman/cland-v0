@@ -14,7 +14,7 @@ import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import { Store } from '../src/hub/store.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, connectWsUi, eventually, projectHub, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, connectUi, connectWsUi, eventually, nativeProjectHub as projectHub, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
 async function fixture(t: test.TestContext, approval = false, territory = false, gated = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);

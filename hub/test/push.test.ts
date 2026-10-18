@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, spawnSpoke, projectHub, startHub, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject, type CliResult } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev, type PushResult } from '../src/territory-push.ts';
 import { withTerritoryLockAsync } from '../src/territory.ts';

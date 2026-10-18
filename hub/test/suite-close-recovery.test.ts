@@ -5,7 +5,7 @@ import { writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
 import { remoteEventually as eventually } from './remote-fixture.ts';
-import { clandWithEnv, connectUi, killDaemon, projectHub, startDaemon } from './harness.ts';
+import { clandWithEnv, connectUi, killDaemon, nativeProjectHub as projectHub, startDaemon } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
 
 const barrier = `node -e "const fs=require('fs');fs.mkdirSync('.cland',{recursive:true});fs.writeFileSync('.cland/started','yes');const timer=setInterval(()=>{if(fs.existsSync('.cland/finish')){clearInterval(timer);console.log('# tests 1');console.log('# pass 1')}},25)"`;

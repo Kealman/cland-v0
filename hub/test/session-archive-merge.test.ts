@@ -1,6 +1,6 @@
 // T3: real Git task worktree merge lifecycle closes the item that starts its archive window. Fake time proves the window.
 import { FakeClock } from './fake-clock.ts';
-import { projectHub } from './harness.ts';
+import { nativeProjectHub as projectHub } from './harness.ts';
 // Archive through the real hub, a real spoke and the human CLI; fakes sit at the harness boundary.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';

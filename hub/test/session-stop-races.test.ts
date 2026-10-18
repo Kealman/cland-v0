@@ -1,4 +1,5 @@
 // T3 lifecycle: forced post-merge termination reaps each native harness without a death notification.
+// Fake-clock merge-stop classification shares its assertions with the T2 manual-stop file.
 // Codex descendant probes exercise real OS identity disappearing between snapshot and final SIGKILL probe.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,9 +7,11 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, pidAlive, tempProject } from './harness.ts';
+import { nativeProjectHub as projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, pidAlive, tempProject } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
+import { stopClassification, STOP_GRACE_MS } from './stop-classification-fixture.ts';
 import { NO_PS } from './native-process.ts';
-import { copyPreparedProject } from './prepared-project.ts';
+import { copyPreparedProject, preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
@@ -161,4 +164,15 @@ process.exitCode = result.status ?? 1;
   await assertStopped(ui, root);
   const log = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
   assert.match(log, /"event":"signal-skipped"[^\n]+"signal":"SIGKILL"/);
+});
+
+test('post-merge stops remain stopped across graceful and forced completion', async t => {
+  const root = await preparedProject(t);
+  const clock = new FakeClock();
+  const hub = await projectHub(t, root, { CLAND_STOP_GRACE_MS: String(STOP_GRACE_MS) }, { clock, harnesses: 'fake' });
+  await stopClassification(t, 'post-merge', { root, clock, ...hub, commit: async (path, name) => {
+    await writeFile(join(path, 'README.md'), `${name}\n`);
+    git(path, 'add', 'README.md');
+    git(path, 'commit', '-qm', 'Ship');
+  } });
 });

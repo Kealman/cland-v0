@@ -9,7 +9,7 @@ import { parse as parseYaml } from 'yaml';
 import { CONCURRENT_MS } from '../src/tracker/tracker.ts';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
-import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, projectHub, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { cland, flushProjectLogs, connectSocket, connectUi, readDiscovery, sleep, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject, type CliResult } from './harness.ts';
 
 type Summary = { id: string; title: string; state: string; status?: string; kind: string; labels: string[]; assignee: string | null; claim: { session: string; role: string | null } | null };
 type View = Summary & {

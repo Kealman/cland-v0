@@ -6,7 +6,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
-import { cland, clandWithEnv, connectUi, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, FAKE_CLAUDE_DIR, FAKE_CODEX_DIR, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { ModelList } from '../src/models.ts';
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));
 

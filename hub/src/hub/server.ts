@@ -28,6 +28,8 @@ export type HubBaseOptions = CoreOptions & {
   git?: DispatcherOptions['git'];
   droplet?: DropletDependencies;
   verification?: DispatcherOptions['verification'];
+  hasTerritory?: DispatcherOptions['hasTerritory'];
+  territoryLock?: DispatcherOptions['territoryLock'];
   projectConfig?: DispatcherOptions['projectConfig'];
   journal?: import('./journal.ts').Journal;
   artifactFiles?: DispatcherOptions['artifactFiles'];
@@ -104,6 +106,8 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.git ? { git: options.git } : {}),
     ...(options.droplet ? { droplet: options.droplet } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
+    ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}),
+    ...(options.territoryLock ? { territoryLock: options.territoryLock } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,
     ...(options.log ? { log: options.log } : {}),

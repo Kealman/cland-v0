@@ -8,7 +8,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { onCleanup, rememberProcess } from './process-cleanup.ts';
-import { connectUi, eventually, killDaemon, projectHub, tempProject } from './harness.ts';
+import { connectUi, eventually, killDaemon, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { which } from '../src/doctor/report.ts';
 
 // harness.ts prepends the fake executables to PATH; this proof must bypass those entries.

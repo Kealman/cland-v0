@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectSocket, connectUi, projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectSocket, connectUi, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 
 // The hand holder keeps admitted requests observable without launching a package process.

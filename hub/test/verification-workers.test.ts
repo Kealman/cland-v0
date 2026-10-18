@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { packageShards } from '../src/suite-shards.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { fixture } from './remote-fixture.ts';
-import { clandWithEnv, connectUi, eventually, projectHub } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, nativeProjectHub as projectHub } from './harness.ts';
 import { DropletRun } from '../src/executor/droplet/run.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';

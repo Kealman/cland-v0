@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 test('a Coordinator launches an Implementer with a launch brief exactly once after its role clause, without inherited launch environment (explicit role)', async (t) => {

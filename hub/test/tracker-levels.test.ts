@@ -5,7 +5,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseItem } from '../src/tracker/item.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
-import { cland, connectUi, eventually, readDiscovery, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, readDiscovery, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 
 test('configured containers work through CLI, MCP and the hub and enforce adjacent levels', async t => {
   const root = await tempProject(t);

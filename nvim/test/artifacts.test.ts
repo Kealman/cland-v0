@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { cland, connectUi, eventually, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 

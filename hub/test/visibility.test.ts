@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { withDiscoveredPid, connectUi, eventually, fakeClaude, projectHub, startDaemon, tempProject } from './harness.ts';
+import { withDiscoveredPid, connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import type { Inbox, EventsPage } from '../src/protocol.ts';
 

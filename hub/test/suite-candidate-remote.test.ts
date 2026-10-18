@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { fixture } from './remote-fixture.ts';
-import { projectHub } from './harness.ts';
+import { nativeProjectHub as projectHub } from './harness.ts';
 
 test('integrated remote delivery keeps the submitted bundle across tracker and rulebook commits', async t => {
   const f = await fixture(t, { hub: projectHub });

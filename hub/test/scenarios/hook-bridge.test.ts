@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import test from 'node:test';
-import { CLI_ENTRY, connectUi, eventually, fakeClaude, pidAlive, projectHub, tempProject, withDiscoveredPid } from '../harness.ts';
+import { CLI_ENTRY, connectUi, eventually, fakeClaude, pidAlive, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from '../harness.ts';
 import { systemProcesses } from '../../src/system-processes.ts';
 import { ownProcess } from '../process-cleanup.ts';
 

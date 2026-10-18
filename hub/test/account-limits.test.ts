@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, projectHub, tempProject, type FrameClient } from './harness.ts';
+import { cland, connectUi, eventually, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 

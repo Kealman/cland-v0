@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeCodex, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { connectUi, eventually, fakeCodex, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message, SendOutcome } from '../src/protocol.ts';
 
 test('Codex relaunch injects an early accepted clause and frees the queued QA request without a nudge', async t => {

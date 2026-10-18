@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenCodeAdapter } from '../src/adapters/opencode.ts';
-import { projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
+import { nativeProjectHub as projectHub, assertFirstLaunchClause, clandWithEnv, clauseAnswered, connectUi, eventually, killDaemon, spawnSpoke, startDaemon, tempProject, type FrameClient, SPOKE_ENTRY, CLI_ENTRY } from './harness.ts';
 import { NO_PS } from './native-process.ts';
 
 const FAKE_OPENCODE_DIR = fileURLToPath(new URL('./fakes/opencode', import.meta.url));

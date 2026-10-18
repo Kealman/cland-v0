@@ -10,7 +10,7 @@ import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { dirname, join } from 'node:path';
 import { HOOK_EVENTS } from '../src/adapters/claude-code.ts';
-import { connectUi, eventually, fakeClaude, projectHub, tempProject } from './harness.ts';
+import { connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { ownProcess, onCleanup } from './process-cleanup.ts';
 import { ownInitWriter } from './init-writer-owner.ts';
 import { run, gitRepo, sh } from './init-fixture.ts';

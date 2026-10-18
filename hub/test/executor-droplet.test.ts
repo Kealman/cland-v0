@@ -1,7 +1,7 @@
 // T3: provider transport deadlines, ambiguous create/import recovery, detached watchdogs and hub restart/OS process identity.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { clandWithEnv, connectUi, projectHub, startDaemon, tempProject, eventually, pidAlive } from './harness.ts';
+import { clandWithEnv, connectUi, nativeProjectHub as projectHub, startDaemon, tempProject, eventually, pidAlive } from './harness.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { chmod, mkdir, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';

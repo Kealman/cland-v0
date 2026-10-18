@@ -68,6 +68,7 @@ const slugOf = (view: Pick<ItemView, 'id' | 'file'>): string => view.file.replac
 
 export class TaskWorktrees {
   readonly #env: NodeJS.ProcessEnv;
+  readonly #hasTerritory: typeof hasTerritory;
   readonly #tracker: Tracker;
   readonly #log: LogFn;
   readonly #sessions: () => SessionCwd[];
@@ -77,8 +78,9 @@ export class TaskWorktrees {
    *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
   readonly #launching = new Map<string, symbol>();
 
-  constructor(options: { env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+  constructor(options: { hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
     this.#env = options.env ?? process.env;
+    this.#hasTerritory = options.hasTerritory ?? hasTerritory;
     this.#tracker = options.tracker;
     this.#log = options.log ?? (() => {});
     this.#sessions = options.sessions ?? (() => []);
@@ -99,7 +101,7 @@ export class TaskWorktrees {
   async #ineligible(view: ItemView): Promise<string | null> {
     if (view.kind !== 'task') return `${view.id} is ${kindWithArticle(view.kind)}: only a task gets a branch and a worktree`;
     if (view.state !== 'open') return `${view.id} is closed: no worktree`;
-    if (!(await hasTerritory(this.root, this.#env))) return 'the project has no territory (cland init makes one): no branch or worktree';
+    if (!(await this.#hasTerritory(this.root, this.#env))) return 'the project has no territory (cland init makes one): no branch or worktree';
     return null;
   }
 

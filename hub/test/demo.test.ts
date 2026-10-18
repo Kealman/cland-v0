@@ -6,7 +6,7 @@ import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { execFile, execFileSync } from 'node:child_process';
-import { startDaemon, projectHub, connectUi, clandWithEnv, killDaemon, eventually } from './harness.ts';
+import { startDaemon, nativeProjectHub as projectHub, connectUi, clandWithEnv, killDaemon, eventually } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { fixture } from './remote-fixture.ts';
 import { readLease, writeLease } from '../src/executor/droplet/lease.ts';

@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, eventually, fakeCodex, killDaemon, sleep, spawnSpoke, projectHub, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { connectUi, eventually, fakeCodex, killDaemon, sleep, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject, type FrameClient } from './harness.ts';
 
 type Holder = { name: string; role: string | null; live: boolean };
 type RoleList = { roles: Array<{ role: string; holders: Holder[] }>; coordinator: string | null };

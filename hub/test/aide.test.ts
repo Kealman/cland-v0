@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_PERMISSIONS, decide, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message, HarnessProcessView } from '../src/protocol.ts';

@@ -7,7 +7,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { connectUi, inProcessSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev } from '../src/territory-push.ts';

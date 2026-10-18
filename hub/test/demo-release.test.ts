@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { eventually, pidAlive, projectHub } from './harness.ts';
+import { eventually, pidAlive, nativeProjectHub as projectHub } from './harness.ts';
 import { fixture } from './remote-fixture.ts';
 import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
 import { armWatchdog, stopWatchdog } from '../src/executor/droplet/watchdog.ts';

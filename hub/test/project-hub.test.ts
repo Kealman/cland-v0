@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, fakeClaude, projectHub, spawnSpoke, startDaemon, tempProject, eventually } from './harness.ts';
+import { cland, connectUi, fakeClaude, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject, eventually } from './harness.ts';
 
 for (const start of [projectHub, startDaemon]) test(`${start.name}: CLI, spoke, Unix socket and WebSocket share the project`, async t => {
   const root = await tempProject(t);

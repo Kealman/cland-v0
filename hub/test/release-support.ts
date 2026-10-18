@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { dispatcherUi, projectHub, cland, connectUi, startDaemon, tempProject, type CliResult } from './harness.ts';
+import { dispatcherUi, nativeProjectHub as projectHub, cland, connectUi, startDaemon, tempProject, type CliResult } from './harness.ts';
 import { preparedReleaseProject } from './prepared-project.ts';
 
 export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();

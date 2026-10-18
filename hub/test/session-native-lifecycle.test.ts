@@ -8,7 +8,7 @@ import { existsSync } from 'node:fs';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectHub, spawnSpoke, clandWithEnv, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { nativeProjectHub as projectHub, spawnSpoke, clandWithEnv, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, SessionUsage } from '../src/protocol.ts';
 const CODEX_LAUNCH_MS = 30_000;

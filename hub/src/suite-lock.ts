@@ -2,7 +2,7 @@
 import { type Stats, existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { link, mkdir, readFile, realpath, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { acquireLockAsync, processStartedAsync, sameProcess, HubLocked } from './hub/lock.ts';
+import { acquireLockAsync, processStartedAsync, sameProcess, HubLocked, type LockProcessTable } from './hub/lock.ts';
 import { pidAlive } from './project.ts';
 import { run } from './doctor/report.ts';
 import { fileURLToPath } from 'node:url';
@@ -11,14 +11,18 @@ const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export type Holder = { pid: number; started: string | null; startedUtc?: string | null; since: string; token: string; root?: string; worktree?: string; queued?: string; phase?: number; device?: number; inode?: number; runner?: ProcessIdentity; records?: string; integrated?: string };
 export type Lease = { publish: () => Promise<void>; release: () => Promise<void> };
 /** Read-only view of the compatibility slot; never reap or take a lease to display it. */
-export async function compatibilityHolder(dirs: string[], env: NodeJS.ProcessEnv = process.env): Promise<{ holder: Holder | null; since: string | null } | null> {
+export async function compatibilityHolder(dirs: string[], env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<{ holder: Holder | null; since: string | null } | null> {
   for (const dir of dirs) {
     const info = await stat(dir).catch(() => null);
     const holder = await holderAt(`${dir}.owner`) ?? await holderAt(join(dir, 'holder.json'));
     // Display must stay responsive even when the OS identity probe is stalled.
     // A failed probe preserves a live unknown; admission still performs its own checks.
-    if (holder && pidAlive(holder.pid)) {
-      const current = readableStart(holder.startedUtc === undefined ? holder.started : holder.startedUtc) ? await processStartedAsync(holder.pid, 100, undefined, holder.startedUtc === undefined ? undefined : 'UTC', env) : null;
+    if (holder && (processes ? processes.alive(holder.pid) : pidAlive(holder.pid))) {
+      const timezone = holder.startedUtc === undefined ? undefined : 'UTC';
+      const stamp = timezone ? holder.startedUtc! : holder.started;
+      const current = !readableStart(stamp) ? null
+        : processes ? processes.started(holder.pid, timezone)
+        : await processStartedAsync(holder.pid, 100, undefined, timezone, env);
       if (sameProcess(holder, current)) return { holder, since: holder.since };
     }
     if (info && !holder) return { holder: null, since: new Date(info.mtimeMs).toISOString() };

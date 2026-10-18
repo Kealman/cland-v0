@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { stringify } from 'yaml';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { QaPolicy, EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 

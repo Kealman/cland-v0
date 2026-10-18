@@ -3,7 +3,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, fakeCodex, pidAlive, readDiscovery, inProcessSpoke, projectHub, connectUi, dispatcherUi, eventually, fakeClaude, startDaemon, tempProject, type Session } from './harness.ts';
+import { cland, flushProjectLogs, clandWithEnv, fakeCodex, pidAlive, readDiscovery, inProcessSpoke, nativeProjectHub as projectHub, connectUi, dispatcherUi, eventually, fakeClaude, startDaemon, tempProject, type Session } from './harness.ts';
 
 import { NO_PS } from './native-process.ts';
 import { value } from './validation-support.ts';

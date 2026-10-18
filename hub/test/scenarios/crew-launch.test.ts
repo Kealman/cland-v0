@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { connectUi, eventually, fakeClaude, fakeCodex, projectHub, spawnSpoke, tempProject, withDiscoveredPid } from '../harness.ts';
+import { connectUi, eventually, fakeClaude, fakeCodex, nativeProjectHub as projectHub, spawnSpoke, tempProject, withDiscoveredPid } from '../harness.ts';
 import type { HarnessProcessView } from '../../src/protocol.ts';
 
 test('Coordinator launches the three harnesses with clauses and a correlated native reply', async t => {

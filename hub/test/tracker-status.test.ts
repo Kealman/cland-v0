@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { execFileSync } from 'node:child_process';
 import files, { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, connectWsUi, spawnSpoke, projectHub, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, connectUi, connectWsUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, startHub, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 
 import { Tracker } from '../src/tracker/tracker.ts';

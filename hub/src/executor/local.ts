@@ -12,20 +12,27 @@ import type { Executor, Lease, Platform, Released, RunRef, RunStatus } from './e
 export type LocalWorker = { pid: number | null; started: string | null; outcome: { code: number; cause: string } | null; cancelled?: boolean };
 type Resource = LocalWorker & { run: RunRef; platform?: Platform; attempted?: boolean };
 
+/** Machine-slot observations; scheduler fixtures supply facts without acquiring OS locks. */
+export type LocalCompatibility = {
+  holder: () => ReturnType<typeof compatibilityHolder>;
+  occupied: () => Promise<boolean>;
+};
+
 export class LocalExecutor implements Executor {
   readonly #leases = new Map<string, Lease>();
   readonly #starting = new Map<string, Promise<void>>();
   #reserved: string | null = null;
-  readonly #locks: string[];
   readonly #checkpoint: (lease: Lease, worker: LocalWorker) => void;
   readonly #admit: (run: string) => void;
   readonly #env: NodeJS.ProcessEnv;
-  constructor(locks: string[], checkpoint: (lease: Lease, worker: LocalWorker) => void, admit: (run: string) => void, env: NodeJS.ProcessEnv = process.env) {
+  readonly #compatibility: LocalCompatibility;
+  constructor(locks: string[], checkpoint: (lease: Lease, worker: LocalWorker) => void, admit: (run: string) => void, env: NodeJS.ProcessEnv = process.env, compatibility?: LocalCompatibility) {
     this.#env = env;
-    this.#locks = locks; this.#checkpoint = checkpoint; this.#admit = admit;
+    this.#compatibility = compatibility ?? { holder: () => compatibilityHolder(locks, env), occupied: () => compatibilityOccupied(locks, env) };
+    this.#checkpoint = checkpoint; this.#admit = admit;
   }
-  holder(): ReturnType<typeof compatibilityHolder> { return compatibilityHolder(this.#locks, this.#env); }
-  occupied(): Promise<boolean> { return compatibilityOccupied(this.#locks, this.#env); }
+  holder(): ReturnType<typeof compatibilityHolder> { return this.#compatibility.holder(); }
+  occupied(): Promise<boolean> { return this.#compatibility.occupied(); }
   /** Old jobs stored these facts directly. Their persisted identity remains authoritative. */
   restore(run: RunRef, worker: LocalWorker, previous?: Lease): Lease {
     const lease: Lease = { kind: 'local', run: run.id, created: previous?.created ?? run.queued ?? new Date().toISOString(), deadline: previous?.deadline ?? new Date(Date.now() + 15000).toISOString(), resource: { ...(previous?.resource as Partial<Resource> | undefined), pid: worker.pid, started: worker.started, outcome: worker.outcome, ...(worker.cancelled ? { cancelled: true } : {}), run } };

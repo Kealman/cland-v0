@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { projectHub, dispatcherUi, cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, inProcessSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
+import { nativeProjectHub as projectHub, dispatcherUi, cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, inProcessSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
 import { preparedProject, copyPreparedProject } from './prepared-project.ts';
 import { Store } from '../src/hub/store.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';

@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
-import { connectUi, eventually, projectHub, tempProject } from './harness.ts';
+import { connectUi, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { processStarted } from '../src/hub/lock.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { Holder } from '../src/suite-lock.ts';

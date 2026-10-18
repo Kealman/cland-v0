@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import { startFreshnessDaemon } from './freshness-harness.ts';
 import { parseItem, serializeItem, verdictOfText, type ReviewScope } from '../src/tracker/item.ts';
 import type { ItemView, ItemSummary } from '../src/tracker/tracker.ts';

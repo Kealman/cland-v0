@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cland, connectUi, spawnSpoke, projectHub, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
+import { cland, connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject, eventually, fakeClaude } from './harness.ts';
 import type { Inbox } from '../src/protocol.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';

@@ -4586,13 +4586,6 @@
       "expires": "2026-10-24",
       "reason": "Linux c-8 workers=2 measured 5.118139835 s in A-4572 / run 46d9eea8; retains real Node assertion-failure and cancellation fixtures, including cancellation before body finally and confirmed stop/close/result joins before directory removal. Limit 6.5 s gives 1.382 s headroom over the measured Linux run."
     },
-    "hub/test/session-stop-races-component.test.ts::manual and post-merge stops remain stopped across graceful and forced completion": {
-      "seconds": 2.183617,
-      "owner": "E-677",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "macOS post-T-719 merge serial 5/5 peak 5.712381750 s (median 4.380596 s), A-4621: retains the in-process four-cell stop table, two real Git merge frames and separately observed adapter/request completion. Limit 6.5 s gives 0.788 s headroom; no harness or hub subprocess."
-    },
     "hub/test/session-usage.test.ts::final totals and cost aggregate by launch item despite a changed verifier hold across flavours": {
       "seconds": 0.488333,
       "reason": "Runs all three flavour tables through real task attribution, changed verifier holds, publication and canonical documented final-record aggregation. Measured 5.114194657 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. This measurement predates the T-719 fake-probe correction; current zero-child fixtures retain the same policy/attribution assertions, and the allowance remains bounded pending the new-head Linux receipt and E-677 refresh.",

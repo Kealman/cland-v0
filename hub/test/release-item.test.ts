@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, dispatcherUi, projectHub, type CliResult } from './harness.ts';
+import { cland, dispatcherUi, nativeProjectHub as projectHub, type CliResult } from './harness.ts';
 import { preparedReleaseProject } from './prepared-project.ts';
 import { value } from './validation-support.ts';
 import type { ReleaseResult } from '../src/release.ts';

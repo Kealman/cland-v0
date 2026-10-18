@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, connectUi, eventually, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { cland, flushProjectLogs, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 

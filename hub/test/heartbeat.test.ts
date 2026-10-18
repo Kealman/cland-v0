@@ -46,11 +46,11 @@ async function protocolPeer(t: TestContext, dispatcher: Pick<Dispatcher, 'open'>
 async function fixture(t: TestContext, heartbeatMs: number, options: { runTimeoutMs?: number } = {}) {
   const root = await tempProject(t);
   const clock = new FakeClock();
-  const tracker = new Tracker({ root, db: join(root, 'tracker.db'), now: () => clock.now() });
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, 'tracker.db'), now: () => clock.now() });
   tracker.start();
   const crew = new CrewFile(join(root, '.cland/crew.toml'), () => {}, () => {}, tracker);
   await crew.start();
-  const hub = createHubBase({ secret: 'heartbeat', clock, store: new Store(), tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
+  const hub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', clock, store: new Store(), tracker, crew, roles: fixedRoles(), heartbeatMs, ...(options.runTimeoutMs !== undefined ? { heartbeatRunTimeoutMs: options.runTimeoutMs } : {}) });
   beforeDirectories(t, async () => {
     try { await hub.close(); }
     finally { try { await crew.stop(); } finally { await tracker.stop(); } }
@@ -141,7 +141,7 @@ test('a missed heartbeat survives hub restart and fires once rather than replayi
   const root = await tempProject(t);
   const db = join(root, 'heartbeat.db');
   const clock = new FakeClock();
-  let hub = createHubBase({ secret: 'heartbeat', store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, clock });
+  let hub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, clock });
   beforeDirectories(t, () => hub.close());
   let ui = await dispatcherUi(t, hub.dispatcher, root);
   await ui.request({ type: 'subscribe' });
@@ -154,7 +154,7 @@ test('a missed heartbeat survives hub restart and fires once rather than replayi
   coord.close(); ui.close();
   await hub.close();
   await clock.advance(975); // More than three intervals pass with no hub to fire them.
-  hub = createHubBase({ secret: 'heartbeat', store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, clock });
+  hub = createHubBase({ hasTerritory: async () => false, secret: 'heartbeat', store: new Store(db), roles: fixedRoles(), heartbeatMs: 300, clock });
   ui = await dispatcherUi(t, hub.dispatcher, root);
   await ui.request({ type: 'subscribe' });
   await clock.advance(75);

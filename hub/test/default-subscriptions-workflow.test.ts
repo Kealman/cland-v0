@@ -5,7 +5,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import type { Message } from '../src/protocol.ts';
-import { connectUi, eventually, projectHub, spawnSpoke, tempProject } from './harness.ts';
+import { connectUi, eventually, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 
 for (const restart of [false, true]) test(`the item lead runs not-clear, re-review and QA; only ready starts the Coordinator (${restart ? 'after restart' : 'connected'})`, async t => {

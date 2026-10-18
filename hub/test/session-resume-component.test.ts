@@ -3,17 +3,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, inProcessSpoke, projectHub } from './harness.ts';
-import { preparedProject } from './prepared-project.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 type Resumed = { found: boolean; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; reason?: string; fresh?: { brief: string | null } };
 
 test('native and fresh resumes report unavailable claims, closed work, exclusive roles and holds', async t => {
-  const root = await preparedProject(t);
+  const root = await tempProject(t);
   const clock = new FakeClock();
-  const { discovery, fakes } = await projectHub(t, root, {}, { harnesses: 'fake', clock });
+  const { discovery, fakes } = await projectHub(t, root, {}, { harnesses: 'fake', probes: 'fake', clock });
   const ui = await connectUi(t, discovery);
   const fake = fakes['claude-code']!;
   for (const fresh of [false, true]) for (const loss of ['claim', 'closed', 'exclusive', 'hold'] as const) {
@@ -71,8 +70,8 @@ test('native and fresh resumes report unavailable claims, closed work, exclusive
 });
 
 test('Codex fresh resume retains text, artifact and absent briefs after native refusal', async t => {
-  const root = await preparedProject(t);
-  const { discovery, fakes } = await projectHub(t, root, {}, { harnesses: 'fake', clock: new FakeClock() });
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { harnesses: 'fake', probes: 'fake', clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
   const fake = fakes.codex!;
   for (const artifact of [false, true, null]) {

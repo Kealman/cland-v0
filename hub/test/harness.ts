@@ -371,9 +371,28 @@ export async function isolateVerification(root: string): Promise<void> {
   }
 }
 
-/** Default project fixture: a fresh hub in this process, reached through production discovery and edges.
- * No process globals are changed. Process lifecycle assertions must keep startDaemon instead. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: { openDatabase?: (path: string) => import('node:sqlite').DatabaseSync; probes?: 'fake'; git?: import('../src/tracker/verdict-git.ts').Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: import('../src/hub/lock.ts').LockProcessTable; log?: (entry: Record<string, unknown>) => void; droplet?: DropletDependencies; clock?: Clock; harnesses?: 'fake'; adapters?: import('../src/adapters/index.ts').AdapterFactory[] } = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
+export type ProjectHubOptions = {
+  openDatabase?: (path: string) => import('node:sqlite').DatabaseSync;
+  compatibility?: import('../src/executor/local.ts').LocalCompatibility;
+  /** Fake unless a T3 native contract explicitly opts in. */
+  harnesses?: 'fake' | 'native';
+  probes?: 'fake' | 'native';
+  adapters?: import('../src/adapters/index.ts').AdapterFactory[];
+  git?: import('../src/tracker/verdict-git.ts').Git;
+  hasTerritory?: typeof import('../src/territory.ts').hasTerritory;
+  territoryLock?: typeof import('../src/territory.ts').withTerritoryLockAsync;
+  readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
+  processes?: import('../src/hub/lock.ts').LockProcessTable;
+  candidate?: import('../src/hub/suite-candidate.ts').SuiteCandidate;
+  durationContext?: import('../src/suite-duration-budget.ts').DurationBudgetContext | null;
+  log?: (entry: Record<string, unknown>) => void;
+  droplet?: DropletDependencies;
+  clock?: Clock;
+};
+
+/** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
+ * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stop: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   const env: NodeJS.ProcessEnv = {};
@@ -385,16 +404,18 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   await mkdir(join(root, '.cland/log'), { recursive: true });
   const processLog = new Journal(join(root, '.cland/log/hub.log'));
   const fakes: Partial<Record<FakeFlavour, FakeHarness>> = {};
-  const adapters = options.harnesses === 'fake' ? FAKE_FLAVOURS.map(flavour => (host: import('../src/adapters/contract.ts').AdapterHost, clock: Clock) => {
+  const adapters = options.adapters ?? (options.harnesses !== 'native' ? FAKE_FLAVOURS.map(flavour => (host: import('../src/adapters/contract.ts').AdapterHost, clock: Clock) => {
     const fake = fakeHarness(flavour, { host, clock });
     fakes[flavour] = fake;
     return fake;
-  }) : undefined;
-  // No Git repository or child process exists in this T2 fixture. Real Git/ps
-  // remain the default for legacy native fixtures; callers may supply richer answers.
-  const probes = options.probes === 'fake' ? {
+  }) : undefined);
+  // No infrastructure child processes in T2. Native contracts opt in explicitly;
+  // callers can override individual facts without restoring the other native probes.
+  const probes = options.probes !== 'native' ? {
     git: async () => null,
     readBase: async () => null,
+    hasTerritory: async () => false,
+    territoryLock: async <T>(_root: string, operation: () => Promise<T>) => operation(),
     // Unknown start identity keeps a live native holder conservative too; an
     // invented stamp could make another reader mistake this fixture for PID reuse.
     processes: { alive: pidAlive, started: () => null },
@@ -424,6 +445,11 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   };
   return { fakes, discovery: daemon.discovery, dispatcher, stop: () => daemon.stop() };
 }
+
+/** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.
+ * Individual injected facts or fake adapters still take precedence. */
+export const nativeProjectHub: typeof projectHub = (t, root, extra, options) =>
+  projectHub(t, root, extra, { harnesses: 'native', probes: 'native', ...options });
 
 /** Start a fixture without startup orphan inspection; pass { sweep: true } as the fourth argument to opt in.
  * An explicit CLAND_TEST_SKIP_ORPHAN_SWEEP in env takes precedence. Teardown owns the returned PID. */

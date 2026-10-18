@@ -8,7 +8,7 @@ import { promisify } from 'node:util';
 import { readFile, writeFile, rm, readdir, mkdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fixture } from './remote-fixture.ts';
-import { projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
+import { nativeProjectHub as projectHub, cland, clandWithEnv, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 import { warningSeverity } from '../src/hub/visibility.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';

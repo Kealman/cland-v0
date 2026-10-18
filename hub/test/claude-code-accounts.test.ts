@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { clauseAnswered, connectUi, eventually, killDaemon, projectHub, tempProject, withDiscoveredPid } from './harness.ts';
+import { clauseAnswered, connectUi, eventually, killDaemon, nativeProjectHub as projectHub, tempProject, withDiscoveredPid } from './harness.ts';
 import { NO_PS } from './native-process.ts';
 import { captureProcess, cleanupProcesses, onCleanup, ownProcess, type ProcessIdentity } from './process-cleanup.ts';
 

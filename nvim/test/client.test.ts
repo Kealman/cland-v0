@@ -6,7 +6,7 @@ import { realpathSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { cland, killDaemon, readDiscovery, projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
+import { cland, killDaemon, readDiscovery, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
 import { NVIM_DIR } from '../bin/nvim-path.ts';
 import { centreOf, nvimOrSkip, startClient } from './harness.ts';
 

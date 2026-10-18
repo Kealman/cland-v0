@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, connectUi, eventually, spawnSpoke, projectHub, tempProject } from './harness.ts';
+import { clandWithEnv, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { parseCrew, renderCrew, type CrewConfig } from '../src/crew.ts';
 
 type View = { config: CrewConfig; summary: string };

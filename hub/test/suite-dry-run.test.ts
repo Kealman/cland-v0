@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, projectHub, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import { planTierReport, tierPlanWorkers, tierReport, type SuiteDryRun } from '../src/suite-tier-report.ts';
 import { lintTests, testLintReport } from '../src/test-lint.ts';

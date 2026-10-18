@@ -2,7 +2,7 @@
 // Snapshot and lease durability otherwise use projectHub stop/serve in this process.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { projectHub, clandWithEnv, connectUi, startDaemon, tempProject, inProcessSpoke, eventually, flushProjectLogs, pidAlive } from './harness.ts';
+import { nativeProjectHub as projectHub, clandWithEnv, connectUi, startDaemon, tempProject, inProcessSpoke, eventually, flushProjectLogs, pidAlive } from './harness.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';

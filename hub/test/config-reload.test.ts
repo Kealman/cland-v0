@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, fakeClaude, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 
 const exec = promisify(execFile);
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;

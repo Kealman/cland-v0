@@ -68,13 +68,13 @@ test('verdict events use the lead explicit subscription and QA reports use the s
 
 test('a human claim falls back to Coordinator and item addressing preserves ordinary send permissions', async t => {
   const root = await tempProject(t);
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db') });
   tracker.start();
   onCleanup(t, () => tracker.stop());
   const roles = new Map(fixedRoles().get());
   const reviewer = roles.get('reviewer')!;
   roles.set('reviewer', { ...reviewer, permissions: { tools: ['send:human', 'who'] } });
-  const hub = await startHub({ tracker, roles: fixedRoles(roles) });
+  const hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, roles: fixedRoles(roles) });
   onCleanup(t, () => hub.close());
   const ui = await connectWsUi(t, hub);
   await ui.request({ type: 'role.set', session: 'coord', role: 'coordinator' });
@@ -98,7 +98,7 @@ test('a human claim falls back to Coordinator and item addressing preserves ordi
 for (const change of ['claim', 'identity', 'close'] as const) {
   test(`attachment I/O resolves the item lead after the ${change} changes, immediately before recording`, async t => {
     const root = await tempProject(t);
-    const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db') });
+    const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland', 'hub.db') });
     tracker.start();
     onCleanup(t, () => tracker.stop());
     let entered!: () => void;
@@ -106,7 +106,8 @@ for (const change of ['claim', 'identity', 'close'] as const) {
     const reading = new Promise<void>(resolve => { entered = resolve; });
     const gate = new Promise<void>(resolve => { release = resolve; });
     onCleanup(t, () => release());
-    const hub = await startHub({ tracker, roles: fixedRoles(),
+    const hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, roles: fixedRoles(),
+      env: { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state') },
       readArtifact: async path => { const bytes = await readFile(path); entered(); await gate; return bytes; },
       control: { status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: new Date().toISOString(), uptimeMs: 0 }), stop() {} },
     });
@@ -160,10 +161,10 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
   test(`failed adoption preserves the renamed claimant across restart and releases the alias after ${cleanup} cleanup`, async t => {
     const root = await tempProject(t);
     const db = join(root, '.cland', 'hub.db');
-    let tracker = new Tracker({ root, db });
+    let tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db });
     tracker.start();
     onCleanup(t, () => tracker.stop());
-    let hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
+    let hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(db), roles: fixedRoles() });
     onCleanup(t, () => hub.close());
     let ui = await connectWsUi(t, hub);
     await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
@@ -212,9 +213,9 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
     ui.close();
     await hub.close();
     await tracker.stop();
-    tracker = new Tracker({ root, db });
+    tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db });
     tracker.start();
-    hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
+    hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(db), roles: fixedRoles() });
     ui = await connectWsUi(t, hub);
     impl = await inProcessSpoke(t, { hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
     rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });
@@ -237,9 +238,9 @@ for (const cleanup of ['normal', 'interrupted'] as const) {
       await hub.close();
       await tracker.stop();
       cleanupBlocked = false;
-      tracker = new Tracker({ root, db });
+      tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db });
       tracker.start();
-      hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles() });
+      hub = await startHub({ clock: new FakeClock(), hasTerritory: async () => false, tracker, store: new Store(db), roles: fixedRoles() });
       ui = await connectWsUi(t, hub);
       impl = await inProcessSpoke(t, { hub, name: 'renamed', role: 'coordinator', sessionId: 'impl-real' });
       rev = await inProcessSpoke(t, { hub, name: 'rev', role: 'reviewer', sessionId: 'rev-real' });

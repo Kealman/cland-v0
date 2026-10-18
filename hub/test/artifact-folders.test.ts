@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { connectUi, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { connectUi, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import type { Artifact } from '../src/protocol.ts';
 
 test('a folder has one id, a selected entry, on-demand files, and can be attached by a spoke', async t => {

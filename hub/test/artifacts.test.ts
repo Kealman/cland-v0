@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, rm, readdir, mkdir, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, spawnSpoke, projectHub, startDaemon, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempProject } from './harness.ts';
 import { gitIn } from '../src/tracker/verdict-git.ts';
 import type { Artifact, TopicMessage } from '../src/protocol.ts';
 

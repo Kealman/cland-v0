@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PROTOCOL_VERSION } from '../../src/protocol.ts';
-import { cland, clandWithEnv, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, spawnSpoke, startDaemon, tempProject } from '../harness.ts';
+import { cland, clandWithEnv, connectSocket, killDaemon, pidAlive, nativeProjectHub as projectHub, readDiscovery, eventually, spawnSpoke, startDaemon, tempProject } from '../harness.ts';
 
 test('cland hub start creates the .cland skeleton and the discovery file', async (t) => {
   const root = await tempProject(t);

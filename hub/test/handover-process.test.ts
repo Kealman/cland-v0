@@ -3,7 +3,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, projectHub, tempProject, type ChannelEvent, type FrameClient, type Session } from './harness.ts';
+import { clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject, type ChannelEvent, type FrameClient, type Session } from './harness.ts';
 
 type Audit = { event: 'audit'; session: string; role: string | null; tool: string; args: Record<string, unknown>; outcome: string; permission?: string };
 

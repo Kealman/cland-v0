@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Message } from '../src/protocol.ts';
-import { cland, connectUi, eventually, fakeClaude, killDaemon, projectHub, spawnSpoke, startDaemon, tempProject, testWaitMs, withDiscoveredPid } from './harness.ts';
+import { cland, connectUi, eventually, fakeClaude, killDaemon, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject, testWaitMs, withDiscoveredPid } from './harness.ts';
 
 test('a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events', async t => {
   const root = await tempProject(t);

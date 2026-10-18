@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { adapterEventNames, compareEventNames, compareOpenCodeContract, type OpenApi } from '../src/doctor/opencode-contract.ts';
-import { cland, projectHub, tempProject } from './harness.ts';
+import { cland, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 
 function document(): OpenApi {
