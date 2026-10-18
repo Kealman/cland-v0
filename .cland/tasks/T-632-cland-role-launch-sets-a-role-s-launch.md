@@ -5,6 +5,7 @@ title: cland role launch sets a role's launch fields, and cland role list shows 
 state: open
 status: in progress
 size: M
+criterion_seq: 7
 labels:
   - v0.1.4
   - hub
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-492
 branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-18T09:19:57.100Z
+updated: 2026-10-18T09:26:03.657Z
 ---
 
 ## Summary
@@ -34,10 +35,17 @@ updated: 2026-10-18T09:19:57.100Z
 
 ## Acceptance criteria
 
-- [ ] C1. `cland role launch implementer --harness codex --model gpt-6.1-sol --effort high` writes those keys into `[implementer.launch]`, keeps every other line of roles.toml, and `cland role list` shows them (new CLI test against a temporary project's hub).
+- [x] C1. `cland role launch implementer --harness codex --model gpt-6.1-sol --effort high` writes those keys into `[implementer.launch]`, keeps every other line of roles.toml, and `cland role list` shows them (new CLI test against a temporary project's hub).
+  - done: impl-632 · 2026-10-18T09:26:03.657Z
 - [ ] C2. `--permissions` writes any value the roles parser takes and `--account <name>` a registered account, and `cland role list` shows each role's account and permissions.
 - [ ] C3. A harness change without `--model` and `--effort` resets the model to the harness's default and the effort to one the new harness takes, and the output names both changes.
 - [ ] C4. An unknown role, an unknown harness, a permissions value the parser refuses and an account not registered for that harness are each refused with their reason, roles.toml unchanged (one test per case).
 - [ ] C5. The human, the Coordinator and an Aide may run it from their shells, while a Lead, an Implementer, a Reviewer and QA are refused and the refusal shows in Agents (frame-protocol test).
 - [ ] C6. The next `cland session launch --role <role>` uses the new fields without a hub restart, and the output says they apply from the role's next launch (test with the fake harnesses).
 - [ ] C7. `cland role set` still assigns roles to sessions, and the usage text lists `role launch` with its five flags.
+
+## Comments
+
+### impl-632 · 2026-10-18T09:24:39.973Z
+
+Implemented role.launch CLI/frame and serialized source-preserving roles editor updates. T2 red proof initially failed with unknown role command launch; current 13 role-launch tests cover combined flags, accounts/permissions, reset/default output, unchanged-file refusals, shell roles/Agents notices, next-launch settings, legacy role set, and authorization revoked while queued. Host lint/typecheck in progress; pre-review origin/dev merged at 226bd904.

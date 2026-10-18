@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T09:19:33.870Z
+updated: 2026-10-18T09:20:40.341Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 - [ ] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
 - [ ] C4. Entries and their order survive a hub restart, proved by a restart test.
 - [ ] C5. With `queue = false` the existing merge-gate, merge-recovery and merge-checkout tests pass unchanged.
+
+## Comments
+
+### impl-710 · 2026-10-18T09:20:40.341Z
+
+Implementation started. Proposed seams sent to supervising Lead for confirmation: projectHub T2 public merge/tool rules and in-process Store reopen for durability. Investigating existing verdict/lane gate and Git fact port; expected no shared suites.ts/suite-candidate.ts/territory.ts edits.

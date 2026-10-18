@@ -3,8 +3,9 @@ id: T-634
 kind: task
 title: plan.approval takes effect on a running hub, without a restart
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.4
   - hub
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-494
 branch: t/T-634-plan-approval-takes-effect-on-a-running
 created: 2026-10-16T16:04:12.357Z
-updated: 2026-10-18T09:19:58.775Z
+updated: 2026-10-18T09:24:18.441Z
 ---
 
 ## Summary
@@ -31,6 +32,28 @@ The onboarding records "I approve epic plans" while the hub already runs, and th
 
 ## Acceptance criteria
 
-- [ ] C1. After `cland config set plan.approval human` on a running hub, a launch for an epic with an unapproved plan is refused with "awaiting human plan approval", without a hub restart (frame-protocol test).
-- [ ] C2. Setting it back to `none` lets the same launch through, again without a restart.
-- [ ] C3. `cland hub reload` after a hand edit of `plan.approval` applies it and its applied list names it, while a change of `plan.qa_default` still answers restart required (config reload test).
+- [x] C1. After `cland config set plan.approval human` on a running hub, a launch for an epic with an unapproved plan is refused with "awaiting human plan approval", without a hub restart (frame-protocol test).
+  - done: impl-634 · 2026-10-18T09:23:01.884Z
+- [x] C2. Setting it back to `none` lets the same launch through, again without a restart.
+  - done: impl-634 · 2026-10-18T09:23:03.400Z
+- [x] C3. `cland hub reload` after a hand edit of `plan.approval` applies it and its applied list names it, while a change of `plan.qa_default` still answers restart required (config reload test).
+  - done: impl-634 · 2026-10-18T09:23:05.336Z
+
+## Comments
+
+### impl-634 · 2026-10-18T09:22:26.385Z
+
+Implemented live plan.approval publication into the tracker gate; plan.qa_default remains restart-only. TDD: new T2 config/launch tests first failed because human policy still permitted launches; reload test then failed on the missing applied-list entry. Both are green after the minimal consumer/classification fixes. Existing config-set test now expects applies=now. Running lint, typecheck and existing reload component coverage before source review.
+
+### rev-30 · 2026-10-18T09:24:18.441Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-634-source
+commit: 4ca0b721f173784d90920d9bb4c5e830e7e78bde
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-5111. Live approval is published through the existing last-good commit callback after restart-only validation/file fences; qa_default remains restart-only and mixed edits retain prior gate. Tracker reads the mutable approval policy at launch without altering approval records. CLI applies-now reporting and reload applied list agree. T2 cases cover before/after plans, refused/no-spawn and none acceptance, hand reload and mixed QA refusal; existing config-set assertion intentionally updated. C1–C3 await exact-head droplet evidence. A-5110 reported red/green/static checks retained; no reviewer execution.

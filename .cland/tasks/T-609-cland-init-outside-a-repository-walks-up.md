@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T09:20:05.030Z
+updated: 2026-10-18T09:25:45.897Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ On 2026-10-16 at about 12:41Z, a prototype `cland init` run in a non-empty folde
 - [ ] C1. `cland init` (and `update`) works only on the current directory or `--dir`. When the root it finds differs from the cwd, it refuses and names both paths.
 - [ ] C2. HOME is never accepted as a project root, and a test proves `cland init` in a non-repository folder under a HOME that holds the hub's state directory writes nothing outside that folder.
 - [ ] C3. The hub's per-user state directory no longer shares its name with the project marker. For example, it moves to `~/.local/state/cland`, with a one-time migration of executor/spend.json.
+
+## Comments
+
+### impl-609 · 2026-10-18T09:25:45.897Z
+
+Implemented root validation before provisioning: cwd/positional target must match discovered root, HOME aliases refuse, linked worktrees/subfolders refuse with both paths. Red test reproduced unintended ancestor provisioning; T1 root regressions now pass. Spend state defaults to XDG_STATE_HOME/cland (fallback ~/.local/state/cland), with retained legacy bytes, atomic verified publication, conservative lease reconciliation, and a once-only durable migration log. Coordinator clarification at 5025447d-8dcf-4a02-9e2d-99ef91a01111 governs migration; no real HOME/state touched. Initial typecheck and test lint passed; finishing targeted safety evidence before review.

@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T09:20:12.832Z
+updated: 2026-10-18T09:23:48.807Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/client.ts`, `hu
 - [ ] C1. A timed-out inject retried at the next idle reaches the fake server once, and a broadcast's recipients each get their own id.
 - [ ] C2. A child session's model appears in the sub-agent launch record and its usage adds to the parent's usage record.
 - [ ] C3. A child waiting for approval shows its parent session as waiting.
+
+## Comments
+
+### impl-535 · 2026-10-18T09:23:48.807Z
+
+TDD progress: lost-response admission regression failed with two native admissions and now passes with stable per-message/per-session msg_ ids. Child usage regression failed with parent-only totals and now passes; child-approval aggregation regression failed with parent busy and now passes at the existing T2 scripted transport seam. Adding recipient isolation and reconnect coverage before review.

@@ -3,8 +3,9 @@ id: T-631
 kind: task
 title: permissions = "auto" launches Claude Code with --permission-mode auto
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 5
 labels:
   - v0.1.4
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-493
 branch: t/T-631-permissions-auto-launches-claude-code
 created: 2026-10-16T16:04:11.937Z
-updated: 2026-10-18T09:19:57.741Z
+updated: 2026-10-18T09:25:38.832Z
 ---
 
 ## Summary
@@ -34,8 +35,19 @@ Which roles the template puts on `auto` is the template ticket's. The fake Claud
 
 ## Acceptance criteria
 
-- [ ] C1. With `permissions = "auto"`, a Claude Code launch spawns `claude` with `--permission-mode auto` and without `--dangerously-skip-permissions` (adapter test with the fake Claude Code).
-- [ ] C2. A resume and a relaunch of that session carry the same flag, read from roles.toml at that moment (adapter test).
-- [ ] C3. `skip` still passes `--dangerously-skip-permissions`, and `""` or an absent key passes neither flag (existing tests kept green).
-- [ ] C4. A Codex and an OpenCode launch for a role with `permissions = "auto"` start as before, Codex with its approval and sandbox (adapter tests).
-- [ ] C5. A roles.toml with an unknown `permissions` value is refused with a message naming `""`, `auto` and `skip` (parser test), and the template's header comment documents `auto`.
+- [x] C1. With `permissions = "auto"`, a Claude Code launch spawns `claude` with `--permission-mode auto` and without `--dangerously-skip-permissions` (adapter test with the fake Claude Code).
+  - done: impl-631 · 2026-10-18T09:24:46.046Z
+- [x] C2. A resume and a relaunch of that session carry the same flag, read from roles.toml at that moment (adapter test).
+  - done: impl-631 · 2026-10-18T09:24:47.506Z
+- [x] C3. `skip` still passes `--dangerously-skip-permissions`, and `""` or an absent key passes neither flag (existing tests kept green).
+  - done: impl-631 · 2026-10-18T09:24:49.047Z
+- [x] C4. A Codex and an OpenCode launch for a role with `permissions = "auto"` start as before, Codex with its approval and sandbox (adapter tests).
+  - done: impl-631 · 2026-10-18T09:24:54.731Z
+- [x] C5. A roles.toml with an unknown `permissions` value is refused with a message naming `""`, `auto` and `skip` (parser test), and the template's header comment documents `auto`.
+  - done: impl-631 · 2026-10-18T09:25:01.392Z
+
+## Comments
+
+### impl-631 · 2026-10-18T09:22:14.775Z
+
+Parser RED: auto rejected, unknown-value message omitted ""/auto, template omitted auto. GREEN after enum/parser/header changes. CLI-boundary RED: auto launch lacked --permission-mode; GREEN after argv support, table covers auto/skip/null/absent on launch, fresh/native-conversation spawn and relaunch. T2 policy test will cover current roles.toml on fresh resume and relaunch; rediscovery-only resume starts no process.

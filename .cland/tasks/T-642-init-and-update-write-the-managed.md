@@ -3,8 +3,9 @@ id: T-642
 kind: task
 title: Init and update write the managed worktree.bgIsolation = "none" into .claude/settings.json and never touch settings.local.json
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 5
 labels:
   - v0.1.4
   - init
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-495
 branch: t/T-642-init-and-update-write-the-managed
 created: 2026-10-16T16:23:58.091Z
-updated: 2026-10-18T09:20:15.306Z
+updated: 2026-10-18T09:23:12.424Z
 ---
 
 ## Summary
@@ -32,14 +33,39 @@ Claude Code 2.1.143 and later refuse a background session's Edit and Write in th
 
 ## Acceptance criteria
 
-- [ ] C1. A fresh project's `.claude/settings.json` holds `"worktree": {"bgIsolation": "none"}` beside the cland hooks (init-settings.test.ts, on the scratch machine of ticket T-639).
-- [ ] C2. After a human edit to `"bgIsolation": "worktree"`, `cland update` restores `"none"` and reports the file updated; a second `cland update` reports it unchanged.
-- [ ] C3. A project's own hooks, `model` and `worktree.baseRef` survive init and update unchanged beside the managed key.
-- [ ] C4. A `.claude/settings.local.json` holding `"bgIsolation": "worktree"` is byte-identical, with the same mtime, after init and update.
-- [ ] C5. Demo: in a scratch project, `cland init`, an edit of the key, `cland update` and `git diff .claude/settings.json` show only the key restored.
+- [x] C1. A fresh project's `.claude/settings.json` holds `"worktree": {"bgIsolation": "none"}` beside the cland hooks (init-settings.test.ts, on the scratch machine of ticket T-639).
+  - done: impl-642 · 2026-10-18T09:22:24.267Z
+- [x] C2. After a human edit to `"bgIsolation": "worktree"`, `cland update` restores `"none"` and reports the file updated; a second `cland update` reports it unchanged.
+  - done: impl-642 · 2026-10-18T09:22:25.204Z
+- [x] C3. A project's own hooks, `model` and `worktree.baseRef` survive init and update unchanged beside the managed key.
+  - done: impl-642 · 2026-10-18T09:22:26.822Z
+- [x] C4. A `.claude/settings.local.json` holding `"bgIsolation": "worktree"` is byte-identical, with the same mtime, after init and update.
+  - done: impl-642 · 2026-10-18T09:22:28.129Z
+- [x] C5. Demo: in a scratch project, `cland init`, an edit of the key, `cland update` and `git diff .claude/settings.json` show only the key restored.
+  - done: impl-642 · 2026-10-18T09:22:28.875Z
+  - verified: rev-30 [reviewer] · run rev-20261018-642-source · 2026-10-18T09:23:12.424Z · commit 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
 
 ## Comments
 
 ### impl-642 · 2026-10-18T09:20:15.306Z
 
 Started: using shared settings provisioner at T1 in init-settings.test.ts for C1-C4, with scratch init/update demo for C5. Existing task claim retained; repository settings and user state remain outside test targets.
+
+### impl-642 · 2026-10-18T09:22:29.631Z
+
+Implementation pushed at 90adfa3f on t/T-642-init-and-update-write-the-managed, after fetching/merging origin/dev 226bd904. Evidence A-5106 (scratch init/update diff) and A-5107 (red/green + scope). Host checks pass: test:lint, typecheck, git diff --check; init-settings.test.ts 4/4 in 0.143 s, existing init.test.ts 13/13 in 24.364 s. New tests carry 5 s timeouts and use no processes. Stage qaPolicy is none/after-stage, so source review only; droplet verify follows clear source verdict.
+
+### rev-30 · 2026-10-18T09:23:12.424Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-642-source
+commit: 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-5109. Shared BG_ISOLATION and mergeWorktree overwrite only bgIsolation, preserving other settings/worktree keys; shared init/update provisioner retains byte/mtime-preserving unchanged path. No local settings path is read/written. Required docs and four filesystem-only T1 controls cover managed value, restoration, preservation and local override. C5 scratch CLI diff/demo A-5106 verified. C1–C4 remain pending accepted exact-head runtime evidence; A-5107 reported red/green/static checks retained. T-643/root update outside scope. No reviewer execution.
+
+Criteria: C5 verified.
