@@ -2,8 +2,8 @@
 id: T-622
 kind: task
 title: Each kept upstream skill records its origin and changes in its header; skills-lock.json and PATCHES.md go
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-524
 branch: t/T-622-each-kept-upstream-skill-records-its
 created: 2026-10-16T15:57:48.844Z
-updated: 2026-10-18T17:16:28.345Z
+updated: 2026-10-18T21:58:15.267Z
+closed: 2026-10-18T21:58:15.267Z
 ---
 
 ## Summary
@@ -121,3 +122,7 @@ Linux x64 c-8lon1,workers2,Node24.21.0/Neovim0.12.5; lifetime1667s,cost$0.1157,p
 Review evidence: A-5486.
 
 Criteria: C4 verified.
+
+### coord · 2026-10-18T21:58:15.267Z
+
+Merged 0e9470d02d742da7d95e8d4edcd35b643427f3bb onto dev.
