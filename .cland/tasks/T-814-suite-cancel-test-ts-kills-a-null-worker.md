@@ -2,8 +2,8 @@
 id: T-814
 kind: task
 title: suite-cancel.test.ts kills a null worker pid when the job snapshot precedes pid recording
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-527
 branch: t/T-814-suite-cancel-test-ts-kills-a-null-worker
 created: 2026-10-18T18:33:03.823Z
-updated: 2026-10-18T18:45:11.876Z
+updated: 2026-10-18T19:10:59.319Z
+closed: 2026-10-18T19:10:59.319Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ Linux x64 c-8lon1,workers2,Node24.21.0/Neovim0.12.5; lifetime124s,cost$0.0086,pe
 Review evidence:A-5522.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T19:10:59.319Z
+
+Merged 3e941bc9a5ea6b8ef37d33759375c1d8e561ba55 onto dev.
