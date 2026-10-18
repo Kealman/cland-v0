@@ -172,13 +172,15 @@ test('cancelled results held by reporting permissions survive restart and publis
 });
 
 test('a worker killed while the hub is down is reported after restart and its package children are cleaned', async t => {
+  // T3: killing a worker while the hub is stopped proves restart crash recovery.
   // Artificial hold: this test kills or cancels the worker before the 30-second failure ceiling.
   const f = await fixture(t, 'node -e "require(\'fs\').writeFileSync(\'child-pid\',String(process.pid));setTimeout(()=>{},30000)"', undefined, undefined, undefined, undefined, undefined, startDaemon);
   const job = await f.launch();
   const child = await eventually('package child identity', async () => readFile(join(f.root, 'child-pid'), 'utf8').then(Number, () => undefined));
   ownProcess(t, child);
+  const pid = await f.workerPid(job.id);
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
-  process.kill(job.pid!, 'SIGKILL');
+  process.kill(pid, 'SIGKILL');
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
   const result = await eventually('recovered crash report', async () => {
