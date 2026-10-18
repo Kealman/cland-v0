@@ -88,6 +88,7 @@ export type Control = {
   stop: () => void;
   reload?: (resumed?: import('./budget.ts').Resumed) => Promise<import('./configuration.ts').ConfigReloadResult>;
   setConfig?: (key: string, value: unknown, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<import('./configuration.ts').ConfigSetResult>;
+  setRoleLaunch?: (role: string, fields: import('../roles/launch.ts').LaunchFields, resumed: import('./budget.ts').Resumed, authorize: () => void) => Promise<import('../roles/launch.ts').RoleLaunchResult>;
   flushLogs?: () => Promise<void>;
 };
 
@@ -133,7 +134,7 @@ class VerifyAllReserved extends Error {}
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1641,6 +1642,24 @@ export class Dispatcher {
               return { type: 'result' as const, id: request.id, ok: true, value: { rule } };
             }), error => resumed(() => Dispatcher.#failure(request.id, error))));
           } catch (error) { return peer.send(Dispatcher.#failure(request.id, error)); }
+        }
+        if (isClientRequest(frame) && frame.type === 'role.launch') {
+          const reason = 'role launch editing belongs to the Coordinator, an Aide or the human';
+          if (caller && !['coordinator', 'aide'].includes(caller.role ?? '')) return this.#refuse(caller, frame, peer, frame.type, reason);
+          const authorize = () => {
+            const now = this.#asSession(frame);
+            if (caller && (!now || now.sessionId !== caller.sessionId || !['coordinator', 'aide'].includes(now.role ?? ''))) {
+              this.#refuse(now ?? caller, frame, peer, frame.type, reason, '', false);
+              throw new ToolForbidden(now?.role ?? null, frame.type, reason);
+            }
+          };
+          const set = this.#options.control?.setRoleLaunch;
+          if (!set) return peer.send(Dispatcher.#failure(frame.id, new Error('role launch editing is unavailable')));
+          const resumed = this.#guard.resumer(frame.type, client);
+          return later(frame.type, set(frame.role, frame.fields, resumed, authorize).then(
+            value => resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { ...value, ...(caller?.role === frame.role ? { applies: `${value.applies}; your own session keeps its settings until its next launch` } : {}) } })),
+            error => resumed(() => Dispatcher.#failure(frame.id, error)),
+          ));
         }
         if (isClientRequest(frame) && frame.type === 'config.set') {
           const reason = 'config editing belongs to the Coordinator, an Aide or the human';

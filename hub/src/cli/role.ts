@@ -4,6 +4,8 @@ import { hubDiscovery, readDiscovery } from '../project.ts';
 import type { RoleHolder, RoleList } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
+import { LAUNCH_FIELDS, type LaunchFields, type RoleLaunchResult } from '../roles/launch.ts';
+
 import { ROLE_USAGE } from './usage.ts';
 export { ROLE_USAGE } from './usage.ts';
 
@@ -15,7 +17,7 @@ function describe(v: RoleList): string {
     const box = r.launch.sandbox;
     const details = box && box.mode !== 'danger-full-access' ? [box.writableRoots.length ? `writable: ${box.writableRoots.join(' ')}` : '', `network: ${box.network}`].filter(Boolean).join('; ') : '';
     const sandbox = box && `sandbox ${box.mode}${details ? ` (${details})` : ''}`;
-    const launch = [r.launch.harness, r.launch.model, r.launch.effort && `effort ${r.launch.effort}`, r.launch.approval && `approval ${r.launch.approval}`, sandbox].filter(Boolean).join(', ');
+    const launch = [r.launch.harness, `model ${r.launch.model ?? 'harness default'}`, `effort ${r.launch.effort ?? 'harness default'}`, `account ${r.launch.account ?? 'harness default'}`, `permissions ${r.launch.permissions ?? 'harness default'}`, `approval ${r.launch.approval ?? 'harness default'}`, sandbox || 'sandbox harness default'].join(', ');
     lines.push(`${r.label}${r.exclusive ? ' (one holder)' : ''}  launch: ${launch || 'harness default'}`);
     lines.push(r.holders.length ? r.holders.map((h) => `  ${holderLine(h)}`).join('\n') : '  no holder');
   }
@@ -40,6 +42,25 @@ export async function runRole(args: string[], cwd: string = process.cwd()): Prom
   const [first, second] = rest.filter((a, i) => !a.startsWith('--') && !(noteAt >= 0 && i === noteAt + 1) && !(itemAt >= 0 && i === itemAt + 1));
   const out = (value: unknown, text: string) => process.stdout.write(json ? `${JSON.stringify(value)}\n` : `${text}\n`);
   switch (sub) {
+    case 'launch': {
+      const [role, ...flags] = rest;
+      if (!role || role.startsWith('--')) throw new Error('usage: cland role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]');
+      const fields: LaunchFields = {};
+      for (let i = 0; i < flags.length; i++) {
+        const flag = flags[i]!;
+        if (flag === '--json') continue;
+        const key = LAUNCH_FIELDS.find(key => flag === `--${key}`);
+        if (!key) throw new Error(`unknown role launch flag ${flag}`);
+        const value = flags[++i];
+        if (value === undefined || value.startsWith('--')) throw new Error(`${flag} needs a value`);
+        fields[key] = value;
+      }
+      if (!Object.keys(fields).length) throw new Error('role launch needs at least one launch flag');
+      const value = await askHubFrame(d, { type: 'role.launch', role, fields }, 10_000) as RoleLaunchResult;
+      const changes = Object.entries(value.changes).map(([key, v]) => `${key} = ${v || 'harness default'}`).join(', ');
+      out(value, `${value.role}: ${changes}; applies ${value.applies}`);
+      return 0;
+    }
     case 'set': {
       if (!first || !second) throw new Error('usage: cland role set <session> <role> [--note-file <file>] [--move]');
       const note = noteFile !== undefined ? readFileSync(noteFile, 'utf8') : undefined;

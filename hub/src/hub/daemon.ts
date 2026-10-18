@@ -64,7 +64,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -244,6 +244,7 @@ export async function serveProject(root: string, options: { lintWarmer?: Pick<Te
       control: {
         reload: resumed => roles.reload(resumed),
         setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),
+        setRoleLaunch: (role, fields, resumed, authorize) => roles.setRoleLaunch(role, fields, resumed, authorize),
         flushLogs: async () => { await journal.flush(); await processJournal?.flush(); await options.flushLog?.(); },
         // without listeners: port 0 and no socket
         status: () => ({
@@ -368,7 +369,7 @@ export async function serveProject(root: string, options: { lintWarmer?: Pick<Te
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
   lintWarmer.request(devTip);
-  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock);
+  accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);
   hub.dispatcher.useAccountPoller(accountPoller);
   void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.

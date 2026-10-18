@@ -13,6 +13,7 @@ import type { Layout } from '../project.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from './budget.ts';
 import { setConfigValue } from '../init/config-set.ts';
+import { setRoleLaunch, type LaunchFields, type RoleLaunchResult } from '../roles/launch.ts';
 
 // These owners establish timers, storage or compatibility machinery at startup.
 const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'artifacts', 'hygiene'] as const;
@@ -108,6 +109,18 @@ export class ProjectConfiguration implements RolesSource {
       } catch (error) {
         return { key, value: readback, applies: `saved; not applied: ${error instanceof Error ? error.message : String(error)}; resolve the refusal and run cland hub reload, or restart the hub` };
       }
+    });
+    this.#work = work.catch(() => {});
+    return work;
+  }
+  setRoleLaunch(role: string, fields: LaunchFields, resumed: Resumed, authorize: () => void): Promise<RoleLaunchResult> {
+    const work = this.#work.then(async () => {
+      resumed(() => { authorize(); if (this.#stopped) throw new Error('hub is stopping'); });
+      const edit = await setRoleLaunch(this.layout.roles, role, fields, resumed, authorize, this.env);
+      // Publish the exact parsed settings immediately; running sessions retain their launch snapshots.
+      // Leave the last-read file stamp intact so a concurrent external edit still triggers refresh.
+      resumed(() => { this.#roles = edit.roles; });
+      return edit.result;
     });
     this.#work = work.catch(() => {});
     return work;

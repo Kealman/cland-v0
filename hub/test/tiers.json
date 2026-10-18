@@ -197,6 +197,7 @@
     "hub/test/review-qa.test.ts": "T3",
     "hub/test/role-integrity-component.test.ts": "T2",
     "hub/test/role-integrity.test.ts": "T3",
+    "hub/test/role-launch.test.ts": "T2",
     "hub/test/roles-component.test.ts": "T2",
     "hub/test/roles-editor.test.ts": "T1",
     "hub/test/roles-launch-permissions.test.ts": "T1",

@@ -595,6 +595,7 @@ export type ClientRequest =
   | { type: 'role.clear'; id: string; session: string }
   /** The roles, their definitions and holders: `RoleList`. */
   | { type: 'role.list'; id: string }
+  | { type: 'role.launch'; id: string; role: string; fields: import('./roles/launch.ts').LaunchFields }
   /** A person lifts the loop breaker's mute of a pair of sessions (by name): `{ lifted: boolean, pair: [a, b] }`. */
   | { type: 'hygiene.unmute'; id: string; a: string; b: string }
 
@@ -619,6 +620,8 @@ export type RoleHolder = { name: string; role: string | null; label: string; liv
 /** A role's launch defaults (roles.toml): `approval` and `sandbox` are null where the file gives none. */
 export type RoleLaunch = {
   harness: string;
+  account: string | null;
+  permissions: string | null;
   model: string | null;
   effort: string | null;
   approval: string | null;
@@ -870,6 +873,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.items === undefined || (Array.isArray(f.items) && f.items.every((i) => typeof i === 'string'))) && (f.dryRun === undefined || typeof f.dryRun === 'boolean');
     case 'topic.answer':
       return typeof f.ask === 'string' && (f.option === undefined || typeof f.option === 'number') && (f.text === undefined || typeof f.text === 'string') && (f.as === undefined || isObject(f.as) && typeof f.as.name === 'string' && (f.as.sessionId === undefined || typeof f.as.sessionId === 'string') && (f.as.shell === undefined || typeof f.as.shell === 'boolean'));
+    case 'role.launch':
+      return typeof f.role === 'string' && isObject(f.fields) && Object.values(f.fields).every(value => typeof value === 'string');
     case 'role.set':
       return typeof f.session === 'string' && typeof f.role === 'string' && (f.note === undefined || typeof f.note === 'string' || isObject(f.note)) && (f.move === undefined || typeof f.move === 'boolean') && (f.item === undefined || typeof f.item === 'string');
     case 'role.state':

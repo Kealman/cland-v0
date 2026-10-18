@@ -130,6 +130,9 @@ export const ROLE_USAGE = `  role set <session> <role>   assign a role (coordina
                   --move              move the Coordinator from its holder without a note
                   --item T-n         move this Lead node to the receiver (with --move or --note-file)
   role clear <session>        revoke the session's role
+  role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]
+                  save launch settings; applies from the role's next launch
+                  --model "" and --account "" use the harness's default
   role list       the roles, their launch defaults and holders (--json for JSON)
 `;
 

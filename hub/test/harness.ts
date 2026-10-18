@@ -378,6 +378,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Replace external account probes while retaining the registry and poll scheduling. */
+  accountReader?: import('../src/accounts/poller.ts').AccountReader;
   /** Snapshot warming is independent of the tracker's injected Git facts. */
   lintWarmer?: Pick<import('../src/test-lint-policy.ts').TestLintWarmer, 'request' | 'close'>;
   scheduleTips?: import('../src/tracker/freshness.ts').TipSchedule;

@@ -144,10 +144,10 @@ test('Coordinator is exclusive: a second assignment is refused with the reason; 
   // cland role list: each role with its defaults and holders
   const list = await cland(root, 'role', 'list');
   assert.equal(list.code, 0, list.stderr);
-  assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, claude-fable-5-1, effort max\n {2}coord \[Coordinator\]\n/);
-  assert.match(list.stdout, /\nImplementer  launch: opencode, approval never, sandbox danger-full-access\n {2}impl-1 \[Implementer\]\n/);
-  assert.match(list.stdout, /\nReviewer  launch: codex, gpt-6\.1-sol, effort high, approval never, sandbox read-only \(network: none\)\n {2}no holder\n/);
-  assert.match(list.stdout, /\nQA  launch: codex, gpt-6-astra, effort high, approval never, sandbox danger-full-access\n {2}no holder\n/);
+  assert.match(list.stdout, /^Coordinator \(one holder\)  launch: claude-code, model claude-fable-5-1, effort max, account harness default, permissions harness default, approval harness default, sandbox harness default\n {2}coord \[Coordinator\]\n/);
+  assert.match(list.stdout, /\nImplementer  launch: opencode, model harness default, effort harness default, account harness default, permissions harness default, approval never, sandbox danger-full-access\n {2}impl-1 \[Implementer\]\n/);
+  assert.match(list.stdout, /\nReviewer  launch: codex, model gpt-6\.1-sol, effort high, account harness default, permissions harness default, approval never, sandbox read-only \(network: none\)\n {2}no holder\n/);
+  assert.match(list.stdout, /\nQA  launch: codex, model gpt-6-astra, effort high, account harness default, permissions harness default, approval never, sandbox danger-full-access\n {2}no holder\n/);
   assert.match(list.stdout, /\ncoordinator: coord\n$/);
 
   // the human clears the only Coordinator: the vacancy is the very next role event, and status shows it

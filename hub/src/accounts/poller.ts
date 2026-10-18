@@ -11,6 +11,8 @@ import type { Sessions } from '../adapters/sessions.ts';
 import type { LogFn } from '../log.ts';
 
 type Schedule = { at: number; failures: number };
+/** External harness account read; component fixtures supply an in-process reader. */
+export type AccountReader = (account: Account) => Promise<LimitWindow[]>;
 const timing = (key: string, fallback: number, env: NodeJS.ProcessEnv): number => {
   const n = Number(env[`CLAND_TEST_ACCOUNT_POLL_${key}_MS`]);
   return Number.isFinite(n) && n > 0 ? n : fallback;
@@ -61,10 +63,12 @@ export class AccountPoller {
   readonly #floor: number;
   readonly #minimum: number;
   readonly #bound: number;
+  readonly #reader: AccountReader | undefined;
   #active = 0;
   #closed = false;
   #timer: ClockTimer | null = null;
-  constructor(core: HubCore, sessions: Pick<Sessions, 'list' | 'readAccountLimits'>, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock) {
+  constructor(core: HubCore, sessions: Pick<Sessions, 'list' | 'readAccountLimits'>, root: string, log: LogFn, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, reader?: AccountReader) {
+    this.#reader = reader;
     this.#clock = clock;
     this.#env = env;
     this.#floor = timing('FLOOR', 15 * 60_000, env); this.#minimum = timing('MINIMUM', 5 * 60_000, env); this.#bound = timing('BOUND', 30_000, env);
@@ -167,7 +171,7 @@ export class AccountPoller {
     this.#save(); // Persist the attempt before starting a process, including a hub crash.
     let ok = false;
     try {
-      const windows = await this.#read(account);
+      const windows = await (this.#reader ? this.#reader(account) : this.#read(account));
       if (!this.#closed) {
         state.failures = 0;
         await this.#core.publishAccountLimits({ account: account.name, harness: account.harness, windows, at: new Date(at).toISOString(), source: { kind: 'poll' } });
