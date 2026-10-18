@@ -3,7 +3,7 @@ id: T-810
 kind: task
 title: "worktree-cli.test.ts hangs intermittently: four full runs today stalled with it as the last started file"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-515
 branch: t/T-810-worktree-cli-test-ts-hangs
 created: 2026-10-18T16:14:16.762Z
-updated: 2026-10-18T16:33:23.424Z
+updated: 2026-10-18T16:45:15.138Z
 ---
 
 ## Summary
@@ -23,7 +23,8 @@ Four full runs today ended in a machine-phase stall or a 75 min timeout with hub
 
 ## Acceptance criteria
 
-- [ ] C1. The hanging case and its cause are named, from a reproduction (loop the file 50× on macOS and Linux) or from T-799's hung-test receipt.
+- [x] C1. The hanging case and its cause are named, from a reproduction (loop the file 50× on macOS and Linux) or from T-799's hung-test receipt.
+  - done: impl-810 · 2026-10-18T16:45:04.062Z
 - [ ] C2. Every wait in the file has a bounded deadline that fails naming the case, the cause is fixed with every assertion kept, and the file passes 50/50 serially on macOS plus a green droplet verify on Linux.
 
 ## Comments

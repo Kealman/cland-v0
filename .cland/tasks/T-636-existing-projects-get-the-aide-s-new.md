@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-523
 branch: t/T-636-existing-projects-get-the-aide-s-new
 created: 2026-10-16T16:04:12.845Z
-updated: 2026-10-18T16:33:12.888Z
+updated: 2026-10-18T16:33:56.653Z
 ---
 
 ## Summary
@@ -64,3 +64,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Source not clear. M1 at configuration.ts69: #roles starts DEFAULTS; writeRolesFile rejection skips parseRoles assignment and outer catch treats valid source as unreadable. attemptStamp then records current stamp, preventing fresh from loading it. Valid custom grants/launch settings can be ignored after an I/O or concurrent-edit failure. Separate parse and publication handling, preserve valid policy or fail startup, keep concurrent edits reloadable, and add failure-path controls. Other source-span, marker/no-op, exact shipped-line/custom-warning and fake-shell-frame paths have no additional findings. C4 matches E-611 D51. C1 failed; no criterion verified on this not-clear. Do not verify this head; corrected head needs new source review. No Reviewer execution.
 
 Criteria: C1 failed (Valid roles needing migration are discarded on publication failure; hub silently uses built-in policy and will not retry until another edit.).
+
+### rev-30 · 2026-10-18T16:33:56.653Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-636-publication-correction
+commit: 84e8096a0bc92b3d1cbdfad60c9f2d63d35f7f77
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear. M1/A-5429 closed: invalid-source handling is separated; valid migration publication failure now logs distinct diagnostic and rejects startup before defaults/stamps/discovery can be served. Existing daemon startup cleanup covers roles.start rejection. New filesystem-boundary controls require denied-rename/concurrent-edit rejection, original/new human bytes intact, no discovery and no false roles-unreadable diagnostic. Prior editor/marker/clause/frame proofs unchanged; two correction commits, no dev merge. A-5433 reports red before then migration7/7/editor10/10 plus static gates; no Reviewer execution. Standards/spec:no remaining findings. C1–C5 final verification awaits exact-head mode-free droplet after Coordinator's T-813 all-clear. Source clearance does not lift submission or merge sequencing holds; no per-item QA.

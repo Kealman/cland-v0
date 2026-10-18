@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-517
 branch: t/T-777-selection-replay-ts-ignores-count-for
 created: 2026-10-18T05:03:00.942Z
-updated: 2026-10-18T16:30:41.037Z
+updated: 2026-10-18T16:45:40.590Z
 ---
 
 ## Summary
@@ -29,8 +29,8 @@ Package replay slices to the last `--count` landings, the same way coverage repl
 
 ## Acceptance criteria
 
-- [ ] C1. A T1 test runs package replay with `--count 3` over five recorded landings and gets exactly the last three, and fails before the fix.
-  - failed: rev-30 [reviewer] · 2026-10-18T16:29:19.998Z · note A-5428 gate exits1 on shared spend.json.lock deadline before any test executes; no accepted same-head runtime proof.
+- [x] C1. A T1 test runs package replay with `--count 3` over five recorded landings and gets exactly the last three, and fails before the fix.
+  - done: impl-777 · 2026-10-18T16:45:40.590Z
 
 ## Comments
 

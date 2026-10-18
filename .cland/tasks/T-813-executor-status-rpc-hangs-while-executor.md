@@ -3,18 +3,18 @@ id: T-813
 kind: task
 title: executor status RPC hangs while executor reconcile or lease recovery is deferred
 state: open
-status: in progress
+status: review
 size: M
-criterion_seq: 4
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
+topic: topic-526
 branch: t/T-813-executor-status-rpc-hangs-while-executor
 created: 2026-10-18T16:28:28.718Z
-updated: 2026-10-18T16:33:37.669Z
+updated: 2026-10-18T16:45:09.185Z
 ---
 
 ## Summary
@@ -31,10 +31,16 @@ Since about 16:23Z on 2026-10-18, `cland executor status` on the serving hub (pi
 
 ## Acceptance criteria
 
-- [ ] C1. `cland executor status` answers within 2 s while a reconcile, lease recovery or provider sweep is in progress or deferred, and reports that state.
-- [ ] C2. Every provider call and lock wait in the executor reconcile, lease-recovery and sweep paths has a deadline; a regression test with a provider that never answers proves the status RPC and hub stop still finish within their bounds.
-- [ ] C3. The inspect tick does no work for a finished job whose report already failed permanently (for example, a forbidden artifact.create for a role-less session): #restoreRemoteResult skips it or records a terminal state, and #save writes nothing when the jobs are unchanged; a regression test with 6 such jobs shows zero suite-jobs writes over several ticks.
-- [ ] C4. Finished jobs stop growing the suite-jobs meta blob: they are kept out of the snapshot that #save rewrites (separate rows or a bounded tail), so one save stays under 1 MB with 930 jobs in history.
+- [x] C1. `cland executor status` answers within 2 s while a reconcile, lease recovery or provider sweep is in progress or deferred, and reports that state.
+  - done: impl-813 · 2026-10-18T16:45:05.454Z
+- [x] C2. Every provider call and lock wait in the executor reconcile, lease-recovery and sweep paths has a deadline; a regression test with a provider that never answers proves the status RPC and hub stop still finish within their bounds.
+  - done: impl-813 · 2026-10-18T16:45:06.265Z
+- [x] C3. The inspect tick does no work for a finished job whose report already failed permanently (for example, a forbidden artifact.create for a role-less session): #restoreRemoteResult skips it or records a terminal state, and #save writes nothing when the jobs are unchanged; a regression test with 6 such jobs shows zero suite-jobs writes over several ticks.
+  - done: impl-813 · 2026-10-18T16:45:07.358Z
+- [x] C4. Finished jobs stop growing the suite-jobs meta blob: they are kept out of the snapshot that #save rewrites (separate rows or a bounded tail), so one save stays under 1 MB with 930 jobs in history.
+  - done: impl-813 · 2026-10-18T16:45:08.224Z
+- [x] C5. The spend-ledger lock is released on every exit path of reconcile, lease recovery and sweep (failure, deferral, timeout), and a holder never awaits work that needs the same lock; a regression test that fails reconcile mid-hold proves the next admission takes the lock within 1 s.
+  - done: impl-813 · 2026-10-18T16:45:09.185Z
 
 ## Comments
 
@@ -49,3 +55,7 @@ Since about 16:23Z on 2026-10-18, `cland executor status` on the serving hub (pi
 ### human · 2026-10-18T16:32:38.554Z
 
 CPU profile of the serving hub pid 68650 (cland-impl, 2026-10-18 16:52Z, V8 inspector via SIGUSR1, 8 s at 0.5 ms sampling, 10100 samples; file scratchpad/prof9/profile-68650.txt in the stand-in session). Self time: idle 31.8%, suites.ts #save (line 240) 21.7%, store.ts setMeta (605) 11.8%, sqlite all/run/prepare/get ~16%, store.toMessage 2.1%. Inclusive, project code: #save 37.0%, #inspect (suites.ts 862) 28.0%, inbox.list (inbox.ts 211) 17.2%, #restoreRemoteResult (827) 9.4%, store.inboxMessages 9.3%, epicDemoFreshness 4.7%. Paused stack: idle in processTimers (not wedged, spinning on timers). Mechanism: #save does setMeta('suite-jobs', JSON.stringify(this.#jobs)) and the blob is 8,848,331 bytes for 930 jobs (486 finished droplet, 437 finished local). Six finished droplet jobs are unreported and keep failing their report with 'forbidden: artifact.create (a session with no role has no tools)': 97a70087 T-550, de3df9c9 T-556, 3df8e38c T-505, 4cff14eb T-559, 85b2c03a T-517, f2baa6f7 T-604. Each inspect tick re-runs #restoreRemoteResult on them (their receipt files exist), which sets state and calls #save, so the hub rewrites the 8.8 MB snapshot several times per tick, forever. Suggested fix: save only when something changed in #restoreRemoteResult (skip when job.state is already finished with the same receipt), stop retrying reports whose session has no role, and trim the snapshot (archive finished jobs out of the meta blob). The ledger lock ~/.local/state/cland/spend.json.lock held by pid 68650 since 16:24:11Z is a separate symptom under the same CPU starvation; executor status still times out at 30 s.
+
+### impl-813 · 2026-10-18T16:45:05.362Z
+
+Implemented and pushed d188b465: reproduced the starvation-induced async lock release leak and forbidden-report spin; added isolated dead-owner restart, failed publication, legacy deferral, status/stop never-provider, six-job no-write and 930-job persistence regressions. Host lint/typecheck and 12 targeted test files pass. Source review requested; verify remains held pending Coordinator all-clear.
