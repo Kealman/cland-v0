@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T04:41:49.350Z
+updated: 2026-10-18T05:07:40.160Z
 ---
 
 ## Summary
@@ -45,3 +45,13 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
 ## Blocked by
 
 T-688 (type-only imports and Neovim narrowing), T-690 (Neovim T2 tags).
+
+## Comments
+
+### impl-709 · 2026-10-18T05:00:49.485Z
+
+Implementation removes T2 runtime imports through Neovim-owned client/fixture helpers and a synchronous committed-frame replay catalog. Boundary guard currently returns [] over all 11 manifest T2 files plus stub-hub. A 40-landing replay reports zero import-decided T2 selections. Fixture refresh also exercises existing T3 stub consumers for T-774 reuse; full assertion audit and 5/5 whole-file Mac evidence are in progress. No per-item duration allowances added.
+
+### impl-709 · 2026-10-18T05:07:40.160Z
+
+C3 evidence: A-4969 (durable replay artifact) and docs/evidence/T-709-selection-replay.md replay exactly the last 40 task landings at origin/dev af981f17 using the current importer graph. All 11 T2 files have an empty hub import closure; nvim test import decides 0 T2 selections. Shared-contract/infrastructure and mixed-path fallbacks remain intact. C2 actual production-source plant/rewrite/restore proof is A-4968.

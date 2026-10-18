@@ -3,8 +3,9 @@ id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-477
 branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-18T04:49:22.472Z
+updated: 2026-10-18T05:34:58.514Z
 ---
 
 ## Summary
@@ -32,15 +33,61 @@ Week 1 stops the growth (memo §5.5 step 1): a new test must be T1 or T2 unless 
 
 ## Acceptance criteria
 
-- [ ] C1. A new T3 test file without a lifecycle header is refused at verify and merge with the rule named, and the same file with the header is admitted, proved by admission and merge-gate tests.
-- [ ] C2. A new numeric sleep wait in an existing file is refused unless it carries the reasoned marker, and removing one then running the shrink tool lowers the file's baseline count, proved by lint tests.
-- [ ] C3. A new `startDaemon` call site in a file without a T3 header is refused, and one in a file with the header is admitted, proved by lint tests.
-- [ ] C4. A baseline file whose counts grew is refused by name, proved by a lint test.
-- [ ] C5. `until` fails with its `what` text after the load-scaled deadline, proved by a harness unit test, and one existing flaky test file uses it in place of its fixed sleeps with its assertions unchanged in meaning.
-- [ ] C6. `docs/agents/tests.md` documents the refusal rules, the T3 header, the baseline, the shrink tool and `until`.
+- [x] C1. A new T3 test file without a lifecycle header is refused at verify and merge with the rule named, and the same file with the header is admitted, proved by admission and merge-gate tests.
+  - done: impl-684 · 2026-10-18T04:57:01.679Z
+- [x] C2. A new numeric sleep wait in an existing file is refused unless it carries the reasoned marker, and removing one then running the shrink tool lowers the file's baseline count, proved by lint tests.
+  - done: impl-684 · 2026-10-18T04:57:02.078Z
+- [x] C3. A new `startDaemon` call site in a file without a T3 header is refused, and one in a file with the header is admitted, proved by lint tests.
+  - done: impl-684 · 2026-10-18T04:57:02.814Z
+- [x] C4. A baseline file whose counts grew is refused by name, proved by a lint test.
+  - done: impl-684 · 2026-10-18T04:57:04.458Z
+- [x] C5. `until` fails with its `what` text after the load-scaled deadline, proved by a harness unit test, and one existing flaky test file uses it in place of its fixed sleeps with its assertions unchanged in meaning.
+  - done: impl-684 · 2026-10-18T04:57:05.627Z
+- [x] C6. `docs/agents/tests.md` documents the refusal rules, the T3 header, the baseline, the shrink tool and `until`.
+  - done: impl-684 · 2026-10-18T04:57:07.252Z
+  - verified: rev-30 [reviewer] · run rev-20261018-684-source · 2026-10-18T05:05:41.542Z · commit ab93275fc79203cdf2926027f92a6c2752daa509
+  - verified: rev-30 [reviewer] · run rev-20261018-684-coverage-delta · 2026-10-18T05:34:58.514Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
 
 ## Comments
 
 ### impl-684 · 2026-10-18T04:49:22.472Z
 
 Implemented shared lint admission policy, per-file/category frozen baseline and --shrink, lifecycle/helper/wait regressions, load-scaled until helper, and hygiene reconnect worked example. Initial typecheck/test:tiers/test:lint and targeted checks green. Completing whole-file 5/5 serial checks at one-minute load <15 before committing and requesting review.
+
+### impl-684 · 2026-10-18T05:02:27.119Z
+
+Source ab93275fc79203cdf2926027f92a6c2752daa509 committed and pushed to origin after merging origin/dev. All C1–C6 marked done. Typecheck, tier lint and test lint green; every touched whole test file passed 5/5 serial at peak one-minute load 12.038 (<15). Implementation/criterion map and all 30 receipts: A-4967, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4967-t-684-implementation-and-final-serial-5-5-receipts. Source review delivered to Reviewer; waiting for verdict before exact-head droplet verification.
+
+### rev-30 · 2026-10-18T05:05:41.542Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-684-source
+commit: ab93275fc79203cdf2926027f92a6c2752daa509
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-4970: source clear, no Standards/Spec findings; C6 verified from documentation. Shared direct-source policy gates committed/worktree verify and immutable merge before queue/ref mutation with typed codes and file/line/rule text; dry run uses the same inspection. Baseline categories are independent, values cannot grow/disappear, and shrink takes per-category minima; all 339 manifest paths match. Reasoned markers/lifecycle exceptions and same-line bound-site counting are covered. until owns a scaled deadline and retains reconnect identity assertions. Direct-only admission follows T-744's accepted diagnostic-reachability scope. Audited A-4967: all six files 5/5, 300 test passes, zero failures/cancellations/skips. No duration allowance changes. C1–C5 runtime verification remains pending exact-head task evidence.
+
+Criteria: C6 verified.
+
+### impl-684 · 2026-10-18T05:34:25.202Z
+
+First droplet A-4990 failed only the process coverage fixture: its copied harness support list omitted until.ts. Reproduced the exact missing module on Mac, added the file in one line, and pushed 00c13011d1df307dc342a0ed727d92c3c895f073. Whole suite-coverage.test.ts passed 5/5 serial at peak load 3.435; typecheck, tiers and lint green again. Delta review requested before fresh droplet verification. Evidence A-4991: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4991-t-684-coverage-fixture-dependency-fix-and-serial-5-5-receipts. T-747 current account module copy compatibility inspected read-only; subscribed to its landing.
+
+### rev-30 · 2026-10-18T05:34:58.514Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-684-coverage-delta
+commit: 00c13011d1df307dc342a0ed727d92c3c895f073
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-4992: Standards/Spec delta clear, no findings. Sole change copies until.ts into the process-coverage fixture; its Clock dependency is already in copied hub/src. No original assertion, baseline, policy or allowance changes. Failed parent A-4990 remains disclosed; Coordinator eebb1875 authorizes correction/review/new verification. A-4991's five whole-file logs each pass both tests (10 aggregate passes), with positive package-capture receipts, zero failures/cancellations/skips and peak load 3.435. Current T-747 account module remains in the support list; landing follow-up remains explicit. C6 documentation refreshed; C1–C5 remain unverified until a passing exact-head task receipt. Normal verification may proceed.
+
+Criteria: C6 verified.

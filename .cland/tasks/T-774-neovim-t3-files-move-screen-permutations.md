@@ -3,7 +3,7 @@ id: T-774
 kind: task
 title: Neovim T3 files move screen permutations to committed-frame T2 tests (A-4961 group, ~150 s)
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -18,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-18T04:49:28.746Z
-updated: 2026-10-18T04:49:28.746Z
+updated: 2026-10-18T05:16:01.697Z
 ---
 
 ## Summary
