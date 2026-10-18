@@ -51,6 +51,8 @@ export default defineConfig({
       },
       favicon: '/favicon.svg',
       social: [{ icon: 'github', label: 'GitHub', href: GITHUB }],
+      // Adds a "Log" link to the build log beside the social icons.
+      components: { SocialIcons: './src/components/starlight/SocialIcons.astro' },
       editLink: {},
       lastUpdated: false,
       customCss: [
@@ -69,6 +71,7 @@ export default defineConfig({
         { tag: 'meta', attrs: { property: 'og:image:height', content: '640' } },
         { tag: 'meta', attrs: { name: 'twitter:image', content: `${SITE}/og.png` } },
         { tag: 'meta', attrs: { name: 'twitter:site', content: '@cland_app' } },
+        { tag: 'link', attrs: { rel: 'alternate', type: 'application/rss+xml', title: 'cland build log', href: `${SITE}/log/rss.xml` } },
       ],
       sidebar,
     }),

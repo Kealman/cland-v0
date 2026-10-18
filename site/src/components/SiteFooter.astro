@@ -1,0 +1,58 @@
+---
+import { DOCS, GITHUB, wordmarkPath } from '../site';
+
+interface Props {
+  /** True on the landing: the licence link stays an in-page anchor. */
+  home?: boolean;
+}
+
+const { home = false } = Astro.props;
+---
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <svg height="22" viewBox="0 0 296 84" aria-hidden="true"><g fill="none" stroke="#8a94a3" stroke-width="12" stroke-linecap="round"><path d={wordmarkPath}></path><circle cx="124" cy="56" r="22"></circle><circle cx="268" cy="56" r="22"></circle></g><circle cx="50" cy="56" r="6" fill="#f0b429"></circle></svg>
+    <span>All your subscriptions. One team.</span>
+    <div class="footer-links">
+      <a href={DOCS}>Docs</a>
+      <a href="/log/">Log</a>
+      <a href={GITHUB}>GitHub</a>
+      <a href="https://x.com/cland_app">X @cland_app</a>
+      <a href={home ? '#faq' : '/#faq'}>Apache-2.0</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--border);
+  }
+  .footer-row {
+    padding-top: 32px;
+    padding-bottom: 32px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 32px;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-left: auto;
+  }
+  .footer-links a {
+    color: var(--muted);
+  }
+  .footer-links a:hover {
+    color: var(--amber);
+  }
+  @media (max-width: 600px) {
+    .footer-links {
+      margin-left: 0;
+    }
+  }
+</style>

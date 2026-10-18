@@ -1,0 +1,332 @@
+---
+import { render } from 'astro:content';
+import SiteLayout from '../../layouts/SiteLayout.astro';
+import { getPosts, postHref, type Post } from '../../log';
+import { formatDate, isoDate } from '../../site';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    // Posts are newest first: the previous entry is newer, the next one older.
+    props: { post, newer: posts[i - 1], older: posts[i + 1] },
+  }));
+}
+
+interface Props {
+  post: Post;
+  newer?: Post;
+  older?: Post;
+}
+
+const { post, newer, older } = Astro.props;
+const { Content } = await render(post);
+
+// Reading time from the prose only: component tags and imports are not words.
+const prose = (post.body ?? '')
+  .split('\n')
+  .filter((l) => !/^\s*(<|import |\/>|[a-zA-Z]+=|\]|\}|\{)/.test(l))
+  .join(' ');
+const minutes = Math.max(1, Math.round(prose.split(/\s+/).filter(Boolean).length / 230));
+---
+
+<SiteLayout
+  title={`${post.data.title} · cland build log`}
+  description={post.data.description}
+  current="log"
+  ogType="article"
+  published={post.data.date}
+>
+  <article class="wrap post">
+    <header class="post-head">
+      <a href="/log/" class="back">← Build log</a>
+      <div class="post-meta">
+        <time datetime={isoDate(post.data.date)}>{formatDate(post.data.date)}</time>
+        {post.data.release && <span class="release">{post.data.release}</span>}
+        <span>{minutes} min read</span>
+      </div>
+      <h1>{post.data.title}</h1>
+      <p class="post-lead">{post.data.description}</p>
+    </header>
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <nav aria-label="More posts" class="post-nav">
+      {
+        older ? (
+          <a href={postHref(older)} class="post-nav-link">
+            <span class="dir">← Older</span>
+            <span class="t">{older.data.title}</span>
+          </a>
+        ) : (
+          <span />
+        )
+      }
+      {
+        newer && (
+          <a href={postHref(newer)} class="post-nav-link newer">
+            <span class="dir">Newer →</span>
+            <span class="t">{newer.data.title}</span>
+          </a>
+        )
+      }
+    </nav>
+    <p class="post-foot"><a href="/log/">All posts</a> · <a href="/log/rss.xml">RSS</a></p>
+  </article>
+</SiteLayout>
+
+<style>
+  .wrap.post {
+    max-width: calc(68ch + 48px);
+    padding-top: 64px;
+    padding-bottom: 96px;
+  }
+  .post-head {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 32px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .back {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .release {
+    padding: 1px 8px;
+    border: 1px solid var(--amber-border);
+    border-radius: 999px;
+    background: var(--amber-ground);
+    color: var(--amber);
+    font-size: 12px;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: clamp(28px, 4.2vw, 40px);
+    line-height: 1.15;
+    letter-spacing: -0.8px;
+  }
+  .post-lead {
+    margin: 0;
+    font-size: 19px;
+    color: var(--body-muted);
+  }
+
+  /* Prose: the rendered Markdown. */
+  .prose {
+    font-size: 17px;
+    line-height: 1.7;
+  }
+  .prose :global(p),
+  .prose :global(ul),
+  .prose :global(ol) {
+    margin: 1.1em 0;
+  }
+  .prose :global(li + li) {
+    margin-top: 0.4em;
+  }
+  .prose :global(ul),
+  .prose :global(ol) {
+    padding-left: 1.4em;
+  }
+  .prose :global(li::marker) {
+    color: var(--muted);
+  }
+  .prose :global(h2) {
+    margin: 2.4em 0 0.6em;
+    font-family: var(--mono);
+    font-size: 24px;
+    line-height: 1.25;
+    letter-spacing: -0.3px;
+  }
+  .prose :global(h3) {
+    margin: 1.8em 0 0.4em;
+    font-family: var(--mono);
+    font-size: 19px;
+    line-height: 1.3;
+  }
+  .prose :global(h2 + p),
+  .prose :global(h3 + p) {
+    margin-top: 0.4em;
+  }
+  .prose :global(a) {
+    color: var(--amber);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+  .prose :global(strong) {
+    color: #f3f5f8;
+    font-weight: 600;
+  }
+  .prose :global(code) {
+    white-space: nowrap;
+    font-size: 0.88em;
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    background: #161b24;
+  }
+  .prose :global(pre) {
+    margin: 1.5em 0;
+    padding: 16px 18px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel) !important;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .prose :global(pre code) {
+    white-space: inherit;
+    padding: 0;
+    background: none;
+    font-size: inherit;
+  }
+  .prose :global(blockquote) {
+    margin: 1.6em 0;
+    padding: 4px 0 4px 20px;
+    border-left: 3px solid var(--amber);
+    color: var(--text);
+  }
+  .prose :global(blockquote p) {
+    margin: 0.4em 0;
+  }
+  .prose :global(hr) {
+    margin: 2.5em 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+  }
+  .prose :global(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    margin: 1.6em 0;
+    border-collapse: collapse;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .prose :global(th),
+  .prose :global(td) {
+    padding: 8px 14px 8px 0;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+  }
+  .prose :global(th) {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .prose :global(td:not(:first-child)),
+  .prose :global(th:not(:first-child)) {
+    padding-left: 14px;
+  }
+  .prose :global(figure:not(.not-prose)) {
+    margin: 2em 0;
+  }
+  .prose :global(figure:not(.not-prose) img) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .prose :global(figcaption) {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .post-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 56px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+  .post-nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+  }
+  .post-nav-link:hover {
+    border-color: var(--amber-border);
+  }
+  .post-nav-link.newer {
+    text-align: right;
+  }
+  .dir {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .t {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+  .post-foot {
+    margin: 24px 0 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .post-foot a {
+    color: var(--amber);
+  }
+  @media (max-width: 600px) {
+    .wrap.post {
+      max-width: none;
+      padding-top: 40px;
+      padding-bottom: 64px;
+    }
+    .post-lead {
+      font-size: 17px;
+    }
+    .prose {
+      font-size: 16.5px;
+    }
+    .prose :global(h2) {
+      font-size: 21px;
+    }
+    .prose :global(table) {
+      font-size: 14px;
+    }
+    .prose :global(th),
+    .prose :global(td) {
+      padding-right: 8px;
+    }
+    .prose :global(td:not(:first-child)),
+    .prose :global(th:not(:first-child)) {
+      padding-left: 8px;
+    }
+    .post-nav {
+      grid-template-columns: 1fr;
+    }
+    .post-nav-link.newer {
+      text-align: left;
+    }
+  }
+</style>
