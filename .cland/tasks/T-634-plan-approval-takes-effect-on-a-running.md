@@ -2,8 +2,8 @@
 id: T-634
 kind: task
 title: plan.approval takes effect on a running hub, without a restart
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-494
 branch: t/T-634-plan-approval-takes-effect-on-a-running
 created: 2026-10-16T16:04:12.357Z
-updated: 2026-10-18T09:52:12.801Z
+updated: 2026-10-18T10:06:04.700Z
+closed: 2026-10-18T10:06:04.700Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5165: independently audited exact-head A-5163 / e8bfcb59: 2149 pass/0 fail/5 outside-scope skips, Neovim smoke complete. Both owned live approval cases pass ordinarily and 10/10 load repetitions; all eight config-set carrier cases pass. Live human/none policy and applied-list/qa_default last-good assertions satisfy C1–C3. Source unchanged; no findings.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T10:06:04.700Z
+
+Merged 1e940659046614a6ab994c2003f97c6c05d8a81d onto dev.
