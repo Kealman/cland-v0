@@ -1,5 +1,5 @@
 // T3 real detached lifecycle: an embedded hub cannot prove the CLI startup path.
-// The listening hang keeps a 10 s budget to reach its first connection on a loaded runner;
+// The injected listening hang allows 5 s to reach its first connection;
 // the pre-discovery hang needs only 2 s because it holds before daemon startup.
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 import { eventually, pidAlive, tempProject } from './harness.ts';
-import { ownProcess } from './process-cleanup.ts';
+import { beforeDirectories, ownProcess } from './process-cleanup.ts';
 
 const smokeName = 'hub startup serves status within 10 seconds, serves a tracker request and stops';
 
@@ -68,18 +68,27 @@ test('a planted listening startup hang fails the smoke within its bound and name
       };
     }
   `);
-  const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '10000', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
+  const env: NodeJS.ProcessEnv = { ...process.env, CLAND_TEST_SMOKE_BUDGET_MS: '5000', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(preload).href}` };
   delete env.NODE_TEST_CONTEXT;
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-    execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(new URL('./scenarios/startup-smoke.test.ts', import.meta.url))], { env, timeout: 20_000 }, (error, stdout, stderr) => {
+    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', `--test-name-pattern=^${smokeName}$`, fileURLToPath(new URL('./scenarios/startup-smoke.test.ts', import.meta.url))], { env, timeout: 20_000 }, (error, stdout, stderr) => {
       if (error && typeof error.code !== 'number') reject(new Error('planted-hang smoke did not exit within 20 seconds'));
       else resolve({ code: error ? error.code as number : 0, stdout, stderr });
     });
+    ownProcess(t, child.pid);
+    let closed = false;
+    child.once('close', () => { closed = true; });
+    beforeDirectories(t, async () => {
+      await eventually('listening-hang worker closed before fixture removal', () => closed, 3000);
+      assert.equal(closed, true);
+      assert.equal((await stat(root)).isDirectory(), true);
+      t.diagnostic('listening-hang worker closed before fixture removal');
+    });
   });
   assert.equal(result.code, 1, result.stdout + result.stderr);
-  assert.match(result.stdout, /hub startup smoke failed within 10000 ms; last startup log event: planted-startup-hang/);
-  // Allow two seconds for fixture teardown/reporting beyond the ten-second readiness budget.
+  assert.match(result.stdout, /hub startup smoke failed within 5000 ms; last startup log event: planted-startup-hang/);
+  // Allow two seconds for fixture teardown/reporting beyond the injected readiness budget.
   const duration = /duration_ms: ([\d.]+)/.exec(result.stdout);
   assert.ok(duration, result.stdout);
-  assert.ok(Number(duration[1]) < 12000, result.stdout);
+  assert.ok(Number(duration[1]) < 7000, result.stdout);
 });
