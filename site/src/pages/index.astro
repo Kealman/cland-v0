@@ -4,7 +4,7 @@ import SiteLayout from '../layouts/SiteLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import Screenshot from '../components/Screenshot.astro';
 import Diagram from '../components/Diagram.astro';
-import { GITHUB, TAGLINE } from '../site';
+import { DISCORD, GITHUB, TAGLINE } from '../site';
 import { getPosts } from '../log';
 import heroShot from '../assets/screens/hero.png';
 import accountsShot from '../assets/screens/accounts.png';
@@ -418,6 +418,7 @@ const crewRows = [
       <div class="actions actions-center">
         <a href="#install" class="btn btn-primary">Get started</a>
         <a href={GITHUB} class="btn btn-ghost">Star on GitHub</a>
+        <a href={DISCORD} class="btn btn-ghost">Join the Discord</a>
       </div>
     </div>
   </section>

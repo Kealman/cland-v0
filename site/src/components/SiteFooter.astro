@@ -1,5 +1,5 @@
 ---
-import { DOCS, GITHUB, wordmarkPath } from '../site';
+import { DISCORD, DOCS, GITHUB, wordmarkPath } from '../site';
 
 interface Props {
   /** True on the landing: the licence link stays an in-page anchor. */
@@ -17,6 +17,7 @@ const { home = false } = Astro.props;
       <a href={DOCS}>Docs</a>
       <a href="/log/">Log</a>
       <a href={GITHUB}>GitHub</a>
+      <a href={DISCORD}>Discord</a>
       <a href="https://x.com/cland_app">X @cland_app</a>
       <a href={home ? '#faq' : '/#faq'}>Apache-2.0</a>
     </div>
