@@ -2,8 +2,8 @@
 id: T-769
 kind: task
 title: 'aide.test.ts: Sessions.#inject queries the process table after the hub closed its store ("database is not open")'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-473
 branch: t/T-769-aide-test-ts-sessions-inject-queries-the
 created: 2026-10-18T03:35:21.412Z
-updated: 2026-10-18T04:09:39.456Z
+updated: 2026-10-18T04:09:48.636Z
+closed: 2026-10-18T04:09:48.636Z
 ---
 
 ## Summary
@@ -79,3 +80,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4952: final same-head evidence clear; C1 verified, no findings. A-4951 / f25373a5 exits 0 with 1047/1047 passes and no failures/cancellations/skips, including smoke 5/5. Both shutdown regressions have ordinary pass/timing receipts (0.110s, 0.244s) plus 5/5 fresh load gates each; all six fake-harness and eight aide cases execute positively, including original settings-hook case at 2.758s. Together with the source-reviewed baseline-red ProcessTable/#inject and Store.markUncertain receipts and audited aide 20/20/local 190 passes, this establishes C1. No source or allowance changes since source clear; report-only unrelated duration notices remain disclosed.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T04:09:48.636Z
+
+Merged a4ba0a7dfa8707ed367d0767d566a4198b6f1356 onto dev.
