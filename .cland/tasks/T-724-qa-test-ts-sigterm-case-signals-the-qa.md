@@ -2,8 +2,8 @@
 id: T-724
 kind: task
 title: qa.test.ts SIGTERM case signals the QA run before its handler is installed and sees no BLOCKED line
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-485
 branch: t/T-724-qa-test-ts-sigterm-case-signals-the-qa
 created: 2026-10-17T05:55:15.692Z
-updated: 2026-10-18T07:58:25.593Z
+updated: 2026-10-18T07:58:33.699Z
+closed: 2026-10-18T07:58:33.699Z
 ---
 
 ## Summary
@@ -183,3 +184,7 @@ Standards:0 findings. Spec:0 remaining gaps.
 Durable review:A-5086.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T07:58:33.699Z
+
+Merged 2cb7047a567cf715a19937a7eea694351273eed8 onto dev.
