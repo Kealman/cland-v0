@@ -538,6 +538,13 @@ export class Suites {
       job.outcome ??= { code: 1, cause: error instanceof Error ? error.message : String(error) }; this.#save(job);
     } finally { this.#launching.delete(job.id); if (job.cancelled) void this.#inspectJob(job); }
   }
+  #shouldPlanShards(job: SuiteJob): boolean {
+    // Integrated is assigned by dispatch only to Coordinator root runs (or QA
+    // epic occasions). A batch keeps its occasion unset and gains no stage proof.
+    return !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
+      && job.branch === 'dev' && job.mode === 'all' && job.tree
+      && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
+  }
   async #planShards(job: SuiteJob, free: number): Promise<void> {
     // Cancellation may mark an outcome now, but cannot collect/report before reservation settles.
     this.#planning.add(job.id);
@@ -646,7 +653,7 @@ export class Suites {
     }));
     const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}`);
     const prefix = (await readFile(job.log, 'utf8')).split('\n--- close shards ---\n')[0];
-    await writeFile(job.log, `${prefix}\n--- close shards ---\noccasion ${job.occasion}\n${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    await writeFile(job.log, `${prefix}\n--- close shards ---\n${job.occasion ? `occasion ${job.occasion}\n` : ''}${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
     job.groupMerged = true; job.cleaned = true; this.#save(job);
     return true;
   }
@@ -745,7 +752,7 @@ export class Suites {
       if (job && (job.state !== 'queued' || job.outcome)) continue;
       if (job?.executor === 'droplet' && remoteActive < this.#remoteBudget) {
         this.#captureConfig(job);
-        if (job.occasion && !job.shardingSkipped) await this.#planShards(job, this.#remoteBudget - remoteActive);
+        if (this.#shouldPlanShards(job)) await this.#planShards(job, this.#remoteBudget - remoteActive);
         if (job.state !== 'queued' || job.outcome) continue;
         remoteActive += job.shards?.length ?? 1;
         this.#options.log?.({ event: 'verification-admitted', id: job.id, item: job.item ?? null, session: job.actor?.name ?? 'human', executor: 'droplet', remoteActive, remoteBudget: this.#remoteBudget });
@@ -762,7 +769,7 @@ export class Suites {
       if (job) {
         this.#captureConfig(job);
         if (job.executor === 'droplet') {
-          if (job.occasion && !job.shardingSkipped) await this.#planShards(job, 0);
+          if (this.#shouldPlanShards(job)) await this.#planShards(job, 0);
           this.#fallback(job, 'remote budget full');
         }
         await this.#launch(job);

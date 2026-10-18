@@ -70,17 +70,17 @@ test('occasion roles allow Coordinator closes and only QA epic closes', () => {
 });
 
 // Reservation arithmetic is covered at the spend boundary; here its refusal is an executor receipt.
-test('close run falls back whole with one warning for cap or slots', async t => {
+test('batch and close runs fall back whole with one warning for cap or slots', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 2, machineReceiptsOnly: true });
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated close', fetchedDev: f.candidate.head };
   // A cap rejection comes from the executor's public reservation seam.
   const { DropletExecutor } = await import('../src/executor/droplet/droplet.ts');
   t.mock.method(DropletExecutor.prototype, 'reserveShards', async () => { throw new Error('daily spend cap $0.1 would be exceeded'); });
-  for (const cause of ['cap', 'slots'] as const) {
+  for (const [cause, occasion] of [['cap', undefined], ['cap', 'stage'], ['slots', undefined], ['slots', 'stage']] as const) {
     if (cause === 'slots') f.configure('[verification]\nexecutor="droplet"\nremote_budget=1');
     const before = f.acquisitions.length, notices = f.shardingNotices.length;
-    const job = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
+    const job = await f.launch({ mode: 'all', integrated: true, ...(occasion ? { occasion } : {}), fresh: true });
     await f.machine.waits.run(f.when(() => f.status(job.id).state === 'running' ? true : undefined));
     await f.machine.started(job.id); await f.finish(job.id);
     assert.equal(f.status(job.id).outcome!.code, 0);

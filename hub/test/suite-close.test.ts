@@ -118,27 +118,28 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
   assert.ok(executor.spend.spent > 0 && executor.spend.spent < 3);
 });
 
+// Historical title retained for its duration identity; T-790 now expects two batch shards.
 test('ordinary integrated batch uses one slot and its green tree serves a later release occasion cache hit', async t => {
   const f = await integrated(t, '', 2, undefined, { hub: projectHub });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const batch = await f.spoke.call<{ ok: boolean; id: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, fresh: true });
   assert.equal(batch.ok, true);
   assert.match((await f.result(batch.id)).text, /exit 0/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
   const close = await f.spoke.call<{ ok: boolean; id: string; cached?: { run: string } }>('verify', { mode: 'all', cwd: f.root, report: f.topic, occasion: 'release' });
   assert.equal(close.ok, true);
   assert.equal(close.cached?.run, batch.id);
   const result = await f.result(close.id);
   assert.match(result.text, /occasion release/);
   assert.match(result.text, /cached/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1, 'cache hit provisions no shards');
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2, 'cache hit provisions no shards');
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'qa' })).ok, true);
   const refused = await f.spoke.call<{ ok: boolean; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], occasion: 'stage' });
   assert.equal(refused.ok, false); assert.match(refused.error!, /occasion requires the Coordinator/);
   const qa = await f.spoke.call<{ ok: boolean; id: string; cached?: { run: string }; error?: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['impl'], occasion: 'epic' });
   assert.equal(qa.ok, true, qa.error); assert.equal(qa.cached?.run, batch.id);
   assert.match((await f.result(qa.id)).text, /occasion epic/);
-  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
 
 });
 
