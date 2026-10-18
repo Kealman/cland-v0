@@ -2,8 +2,8 @@
 id: T-767
 kind: task
 title: "Two T3 tests exceed the 10 s per-test budget: typecheck pinned compilers (13.5 s) and the startup-smoke planted hang (10.9 s)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-482
 branch: t/T-767-two-t3-tests-exceed-the-10-s-per-test
 created: 2026-10-18T03:04:17.694Z
-updated: 2026-10-18T06:38:12.806Z
+updated: 2026-10-18T06:38:20.117Z
+closed: 2026-10-18T06:38:20.117Z
 ---
 
 ## Summary
@@ -169,3 +170,7 @@ Standards:0 findings. Spec:0 remaining gaps.
 Durable review:A-5044.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T06:38:20.117Z
+
+Merged 150abcc86f74a79c968fde12b03d906a4704c19e onto dev.
