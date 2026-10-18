@@ -2,8 +2,8 @@
 id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-477
 branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-18T07:07:11.675Z
+updated: 2026-10-18T07:07:23.182Z
+closed: 2026-10-18T07:07:23.182Z
 ---
 
 ## Summary
@@ -159,3 +160,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, A-5051. A-5049 full exit-zero run 900b652c has 2527 passes, zero failures/cancellations, eight prerequisite skips and full Neovim completion. Eleven focused files have 82 ordinary timing identities/positive reporter lines; all Mac top-level positive titles match Linux identities. Twenty-one focused gates pass 5/5 (105 repetitions), including until/lint and baseline-history tests; restored watcher also passes. A-5030 supplies 55 raw Mac whole-file runs/420 aggregate passes; A-5037 source/assertion review current. C1–C5 verified, C6 remains current. Unrelated report-only T-759 probes and duration diagnostics disclosed; prior failures preserved.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T07:07:23.182Z
+
+Merged 92ae2220cb9f3434f331cdbb723e99a58ee7c8c9 onto dev.
