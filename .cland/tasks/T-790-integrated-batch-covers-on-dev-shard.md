@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-499
 branch: t/T-790-integrated-batch-covers-on-dev-shard
 created: 2026-10-18T09:20:05.013Z
-updated: 2026-10-18T09:25:34.793Z
+updated: 2026-10-18T09:26:36.117Z
 ---
 
 ## Summary
@@ -34,6 +34,7 @@ An integrated `verify all` on clean root dev, by the Coordinator, uses the same 
 - [x] C3. docs/agents/tests.md and the Coordinator clause say batch covers shard.
   - done: impl-790 · 2026-10-18T09:24:30.850Z
   - verified: rev-30 [reviewer] · run rev-20261018-790-source · 2026-10-18T09:25:34.793Z · commit 723de8d2d6febe0237aa87961e2dee165d584844
+  - verified: rev-30 [reviewer] · run rev-20261018-790-clause-delta · 2026-10-18T09:26:36.117Z · commit 415573cb86e06b052919c26a51491083bf779f8a
 
 ## Comments
 
@@ -53,5 +54,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, A-5115. Clean fetched root-dev Coordinator all requests reuse existing shard planner/accounting/fallback/collector; task and non-Coordinator isolation remains enforced by dispatcher integration identity plus branch/root guards. Unset occasion omitted from merged log, no stage provenance fabricated; gates unchanged. T2 batch reservation/merged-result, cap/slot fallback and single-slot controls reviewed; real batch/cache expectations intentionally updated. C3 docs/clause verified. C1/C2 await exact-head droplet evidence; A-5112 reported red/green/static checks retained. No reviewer execution or throughput claim.
+
+Criteria: C3 verified.
+
+### rev-30 · 2026-10-18T09:26:36.117Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-790-clause-delta
+commit: 415573cb86e06b052919c26a51491083bf779f8a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5118. Sole change restores QA clause to dev, matching primary Coordinator8f8f08a5 single-Coordinator-line scope. Runtime/tests/docs unchanged from A-5115; no dev merge. C3 current, C1/C2 await exact-head droplet evidence. Prior A-5112 validation remains applicable; no reviewer execution.
 
 Criteria: C3 verified.

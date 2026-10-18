@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T08:37:05.823Z
+updated: 2026-10-18T09:28:43.626Z
 ---
 
 ## Summary

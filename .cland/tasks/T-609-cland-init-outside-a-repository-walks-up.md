@@ -3,8 +3,9 @@ id: T-609
 kind: task
 title: "`cland init` outside a repository walks up and takes HOME as the project root because of ~/.cland"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 3
 labels:
   - bug
   - hub
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T09:25:45.897Z
+updated: 2026-10-18T09:29:05.820Z
 ---
 
 ## Summary
@@ -25,9 +26,12 @@ On 2026-10-16 at about 12:41Z, a prototype `cland init` run in a non-empty folde
 
 ## Acceptance criteria
 
-- [ ] C1. `cland init` (and `update`) works only on the current directory or `--dir`. When the root it finds differs from the cwd, it refuses and names both paths.
-- [ ] C2. HOME is never accepted as a project root, and a test proves `cland init` in a non-repository folder under a HOME that holds the hub's state directory writes nothing outside that folder.
-- [ ] C3. The hub's per-user state directory no longer shares its name with the project marker. For example, it moves to `~/.local/state/cland`, with a one-time migration of executor/spend.json.
+- [x] C1. `cland init` (and `update`) works only on the current directory or `--dir`. When the root it finds differs from the cwd, it refuses and names both paths.
+  - done: impl-609 · 2026-10-18T09:28:56.395Z
+- [x] C2. HOME is never accepted as a project root, and a test proves `cland init` in a non-repository folder under a HOME that holds the hub's state directory writes nothing outside that folder.
+  - done: impl-609 · 2026-10-18T09:29:01.013Z
+- [x] C3. The hub's per-user state directory no longer shares its name with the project marker. For example, it moves to `~/.local/state/cland`, with a one-time migration of executor/spend.json.
+  - done: impl-609 · 2026-10-18T09:29:03.910Z
 
 ## Comments
 

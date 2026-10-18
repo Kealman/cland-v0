@@ -3,8 +3,9 @@ id: T-535
 kind: task
 title: OpenCode injects carry idempotent ids, and child sessions feed the instrumentation
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - v0.1.3
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T09:23:48.807Z
+updated: 2026-10-18T09:26:44.461Z
 ---
 
 ## Summary
@@ -32,9 +33,12 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/client.ts`, `hu
 
 ## Acceptance criteria
 
-- [ ] C1. A timed-out inject retried at the next idle reaches the fake server once, and a broadcast's recipients each get their own id.
-- [ ] C2. A child session's model appears in the sub-agent launch record and its usage adds to the parent's usage record.
-- [ ] C3. A child waiting for approval shows its parent session as waiting.
+- [x] C1. A timed-out inject retried at the next idle reaches the fake server once, and a broadcast's recipients each get their own id.
+  - done: impl-535 · 2026-10-18T09:26:27.059Z
+- [x] C2. A child session's model appears in the sub-agent launch record and its usage adds to the parent's usage record.
+  - done: impl-535 · 2026-10-18T09:26:28.464Z
+- [x] C3. A child waiting for approval shows its parent session as waiting.
+  - done: impl-535 · 2026-10-18T09:26:33.580Z
 
 ## Comments
 

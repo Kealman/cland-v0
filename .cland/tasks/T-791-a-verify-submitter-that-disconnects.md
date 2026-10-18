@@ -3,7 +3,7 @@ id: T-791
 kind: task
 title: A verify submitter that disconnects during admission loses its run without any durable receipt
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-770
-topic: null
-branch: null
+topic: topic-500
+branch: t/T-791-a-verify-submitter-that-disconnects
 created: 2026-10-18T09:26:02.167Z
-updated: 2026-10-18T09:26:02.167Z
+updated: 2026-10-18T09:26:46.142Z
 ---
 
 ## Summary

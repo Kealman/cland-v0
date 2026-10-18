@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T09:19:41.481Z
+updated: 2026-10-18T09:27:01.160Z
 ---
 
 ## Summary
@@ -39,3 +39,9 @@ Decision 2 keeps two-platform T3 and T4 at stage, epic and release. T4 is where 
 ## Blocked by
 
 T-679 (tiers), T-681 (tier lines).
+
+## Comments
+
+### impl-714 · 2026-10-18T09:27:01.160Z
+
+Implemented occasion T1–T4 planning and soak worker environment, stage-receipt identity load gating, shard tier reporting and tier-aware cache/stage-cover admission. T1 red/green tests prove planner and identity policy; T2 red/green test proves T4 lines per shard. Added a T1 large-selection round trip because the current identity list is ~297 KB, beyond an inline environment value. Typecheck and test lint pass; sequential touched-file checks in progress before dev merge/source review.

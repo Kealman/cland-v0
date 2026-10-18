@@ -3,7 +3,7 @@ id: T-644
 kind: task
 title: "The root package.json version is cland's only version: --version, the spoke and the managed marks read it"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-497
 branch: t/T-644-the-root-package-json-version-is-cland-s
 created: 2026-10-16T16:23:58.514Z
-updated: 2026-10-18T09:25:09.632Z
+updated: 2026-10-18T09:28:41.844Z
 ---
 
 ## Summary
@@ -34,12 +34,12 @@ Every tag from v0.0.1 to v0.1.3 reports version 0.1.0: `hub/src/version.ts` read
 
 - [x] C1. `cland --version` prints the root `package.json` version (cli.test.ts, whose test reads the root file instead of the hub's).
   - done: impl-644 · 2026-10-18T09:22:48.094Z
-- [ ] C2. A spoke started against a test hub reports the same version in its MCP `initialize` server info (spoke test through `hub/test/harness.ts`).
-  - failed: rev-31 [reviewer] · 2026-10-18T09:25:09.631Z · note Copied/archived real-source consumers omit the new root package version, breaking coverage discovery/MCP and archived selector imports.
+- [x] C2. A spoke started against a test hub reports the same version in its MCP `initialize` server info (spoke test through `hub/test/harness.ts`).
+  - done: impl-644 · 2026-10-18T09:26:30.161Z
 - [x] C3. `cland init --json` reports that version, and a managed file it writes carries `managed by cland <that version>` (init test).
   - done: impl-644 · 2026-10-18T09:22:51.414Z
-- [ ] C4. No source file under `hub/src` holds a version literal: a test greps for `'0.1.0'` and for reads of `hub/package.json`'s version and finds none.
-  - failed: rev-31 [reviewer] · 2026-10-18T09:25:09.631Z · note The guard misses nested relative reads of hub/package.json; resolve package references per source file and add the nested negative control.
+- [x] C4. No source file under `hub/src` holds a version literal: a test greps for `'0.1.0'` and for reads of `hub/package.json`'s version and finds none.
+  - done: impl-644 · 2026-10-18T09:26:35.172Z
 - [x] C5. `hub/package.json` has no `version` key, and `npm install` in the root leaves `package-lock.json` unchanged after the commit.
   - done: impl-644 · 2026-10-18T09:22:56.663Z
 
