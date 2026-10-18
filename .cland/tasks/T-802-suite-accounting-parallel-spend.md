@@ -3,7 +3,7 @@ id: T-802
 kind: task
 title: "suite-accounting: parallel spend reservations hit the budget.lock 60 s deadline instead of the cap refusal, once on a droplet after T-609's two-ledger locking"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-512
 branch: t/T-802-suite-accounting-parallel-spend
 created: 2026-10-18T13:31:26.640Z
-updated: 2026-10-18T14:45:33.875Z
+updated: 2026-10-18T15:09:22.730Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ In T-641's droplet verify baead1a4 (A-5325, head 73857d73, init-only diff), hub/
 - [x] C1. The cause is named: lock ordering between budget.lock and the two ledgers' locks under parallel acquires, or a clock mismatch in the deadline.
   - done: impl-802 · 2026-10-18T14:43:37.761Z
   - verified: rev-30 [reviewer] · run rev-20261018-802-source · 2026-10-18T14:45:33.875Z · commit ebe4d0f877dfe6a854805e35db2cb9153438ca98
+  - verified: rev-30 [reviewer] · run rev-20261018-802-final · 2026-10-18T15:09:21.960Z · commit ebe4d0f877dfe6a854805e35db2cb9153438ca98
 - [x] C2. Parallel acquirers at the cap get the cap refusal, never a lock-deadline error, proved 50/50 by a T1/T2 test with injected concurrency and FakeClock.
   - done: impl-802 · 2026-10-18T14:43:38.734Z
+  - verified: rev-30 [reviewer] · run rev-20261018-802-final · 2026-10-18T15:09:21.960Z · commit ebe4d0f877dfe6a854805e35db2cb9153438ca98
 
 ## Comments
 
@@ -53,3 +55,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear. C1 verified: accounting fixture disables legacy migration, budget.lock releases before reserveSpend, and native probe deadlines are translated; the reproduced failure is fake retry time outrunning native lease publication, compounded by overlapping drivers. Fixture-only ownership tracking pauses advancement until native work yields/completes and serializes run drivers. T1 publication/driver control and T2 fifty-real-acquirer cap control retain exact outcomes and cleanup; no production spend changes or new process. Standards/spec have no findings. A-5360 supplied red/green summary reviewed; local checks are reported, not Reviewer execution. Temporary 8s allowance is scoped, dated and owned by E-482 under primary approval 7261d97c. C2 remains pending the exact-head post-source mode-free droplet gate; no per-item QA.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-18T15:09:21.960Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-802-final
+commit: ebe4d0f877dfe6a854805e35db2cb9153438ca98
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear. A-5385/1b140d88 passes at unchanged reviewed head: 2245 pass, zero fail/cancelled, five prerequisite skips; hub phases and Neovim smoke complete. Independent positive timing/reporter audit confirms clock 10/10, accounting 10/10, spend 10/10 and admission-lock 4/4. New clock control 0.007133358s and fifty-acquirer control 4.879818045s each pass 5/5 load repetitions. Fifty exact cap refusals, frozen fake time during native publication, and final provider/lease state remain asserted. C1–C2 verified with source A-5366. New case fits approved 8s E-482 allowance; no hard gate failure. Four inherited report-only trips remain C-326/T-803, none in audited carriers; no global zero claim. No source change, Reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified.

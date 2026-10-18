@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 13 -->
+<!-- cland: rule high-water 14 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -118,4 +118,17 @@ Reason: OpenCode's background service resumes any mid-turn session it finds in t
 Retired-origin: message:general/9670ff36-30f0-4b97-a0e3-6c76f7d15738
 
 Never run the `opencode` CLI inside a cland session against the user's default OpenCode data directory or database until T-296 (OpenCode's own database) merges. Tests and probes that need the real binary set their own scratch HOME, XDG_DATA_HOME, config and OPENCODE_DB under a temp directory and start a standalone server. T-296's merge retires this rule.
+
+## 14 Marketing pushes on cland-marketing's word
+Scope: coordinator
+Date: 2026-10-18
+Status: active
+Origin: message:general/96f55758-7a6f-4567-a884-47df25be611f
+Reason: The human talks to cland-marketing about the site and should not have to repeat each push request in General; release-gated code must still never reach GitHub this way.
+
+The human authorizes cland-marketing to tell the Coordinator when to publish marketing material to GitHub outside a release. On cland-marketing's request the Coordinator pushes the named commits to GitHub `site` and `main` without a fresh human confirmation, but only when:
+- every changed path is in site/**, docs/brand/**, README.md, LICENSE or .github/workflows/pages.yml;
+- the push fast-forwards main from its current GitHub tip;
+- the diff carries no secret.
+The Coordinator then merges the published tip into dev; it never runs `cland sync` for this. Anything outside those paths, or not a fast-forward, still needs the human's own confirmation.
 
