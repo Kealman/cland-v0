@@ -66,7 +66,7 @@ Every process cland starts for a session runs in that account's environment: the
 cland account list
 ```
 
-```
+```text
 claude-work  claude-code  ~/.claude-work  5h 42% ↻14:00 · wk 18% ↻Sun 04:03 · 2m ago (session impl-42)
 codex-b      codex        ~/.codex-b      5h 7% ↻16:20 · wk 61% ↻Thu 09:12 · 9m ago (session rev-1)
 oc-router    opencode     ~/.local/share/oc-router   no limit data
@@ -106,6 +106,8 @@ A running session stays on its account for its whole life, through relaunches an
 
 ## The meters
 
+![The sessions panel up close: the Accounts block on top shows two plans with their 5-hour and weekly limit windows, and the crew's sessions are listed below with harness, model and account.](../../../assets/screens/accounts.png)
+
 The sessions panel opens with an **Accounts** block, and the web workbench has an **Accounts** area. Each account shows the windows its harness reports:
 
 - the **5-hour** window (`5h`);
@@ -136,7 +138,7 @@ An account with no reading yet says `no reading yet`; a signed-out one says `sig
 When a harness signals a hard limit (not a passing rate throttle), the hub:
 
 1. Marks the account **limited** until its reset, or "until cleared" when the reset is unknown.
-2. Posts one warning to the inbox, the Agents log and the Coordinator.
+2. Posts one warning to the inbox, the Agents topic and the Coordinator.
 3. Refuses every new launch, relaunch and pool reuse on that account, with the account and reset time. Running sessions keep running.
 
 The Coordinator then reads `cland account list` and asks you. The ask names the limited account and its reset, lists the harness's other accounts with their current usage, and offers:

@@ -1,0 +1,129 @@
+/* cland.app: the brand tokens and base styles shared by the landing and the build log.
+   The docs use Starlight with their own theme in starlight.css. */
+
+:root {
+  --ground: #0b0e14;
+  --panel: #10141b;
+  --alt: #0e1219;
+  --border: #222a35;
+  --text: #d6dbe4;
+  --body-muted: #aab3c0;
+  --muted: #8a94a3;
+  --amber: #f0b429;
+  --teal: #35c4a0;
+  --green: #7ddc8a;
+  --blue: #79c0ff;
+  --violet: #b392f0;
+  --pink: #f778ba;
+  --red: #ff7b72;
+  --dash: #3a4554;
+  --amber-ground: #1a160c;
+  --amber-border: #5a4614;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+a {
+  color: var(--text);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--amber);
+}
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+code {
+  font-family: var(--mono);
+}
+summary {
+  cursor: pointer;
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Shared building blocks: the page column, muted text and buttons. */
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.muted {
+  color: var(--muted);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 16px;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--amber);
+  color: var(--ground);
+  font-weight: 700;
+}
+.btn-primary:hover {
+  color: var(--ground);
+  background: #f5c44f;
+}
+.btn-ghost {
+  border: 1px solid var(--border);
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--teal);
+  letter-spacing: 1px;
+}
+
+@media (max-width: 600px) {
+  .wrap {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Mermaid diagrams on the landing (src/components/Diagram.astro): the dark values of
+   the docs' --cland-diagram-* colours in src/styles/starlight.css. */
+:root {
+  --cland-diagram-bg: #0b0e14;
+  --cland-diagram-fg: #d6dbe4;
+  --cland-diagram-line: #5b6574;
+  --cland-diagram-accent: #f0b429;
+  --cland-diagram-muted: #8a94a3;
+  --cland-diagram-surface: #161b24;
+  --cland-diagram-border: #3a4554;
+  --cland-diagram-teal: #35c4a0;
+}

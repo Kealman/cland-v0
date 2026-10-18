@@ -5,6 +5,8 @@ sidebar:
   order: 6
 ---
 
+import Screenshot from '../../../components/Screenshot.astro';
+
 The hub serves a web workbench: everything the terminal workbench shows, in a browser. It is a second client of the same hub, not a separate service. Open it beside Neovim, in several browsers, and on your phone at once: every client sees the same state, live.
 
 There is no cloud service. The hub serves the page from your machine. It is reachable on your machine by default, on your local network when you allow it, and anywhere else only through your own tunnel or VPN.
@@ -25,6 +27,8 @@ The cookie is `HttpOnly` and `SameSite=Strict`. Every connection checks its `Hos
 - **The top strip** holds the release switcher, the palette, the Coordinator and its state, the **needs you** pill and the hub's connection dot.
 - **The main area** shows the selected area. `⌘\` splits it into two panes.
 - **The drawer** on the right shows the card of the selected item, or the thread of the selected session, topic or inbox row.
+
+<Screenshot n={3} />
 
 **Items** has four views of the same items, with one switcher that keeps your scope, filter and selection: the tree (the explorer), **Board**, **Graph** and **Plan** (the plan of the selected epic).
 
@@ -51,6 +55,10 @@ An ask is a card with numbered options and a free answer. The same ask shows in 
 **Declining** an ask is an answer too: you give a reason, the asker receives it, and it may ask again later.
 
 A message to a busy session is queued and shown as queued, with **Withdraw** to take it back into the composer. Drafts are kept per topic in the browser and survive a reload.
+
+<Screenshot n={11} />
+
+Topics, asks and the inbox work the same in every client: see [Topics and the inbox](/docs/topics/).
 
 ## On your phone
 
@@ -84,12 +92,15 @@ On iOS an installed app keeps its cookies apart from Safari. Open the sign-in li
 
 At phone width the rail becomes a bottom bar: **Inbox**, **Topics**, **Sessions**, **Events** and **More**. More opens Items, Artifacts and Accounts, read-only.
 
+
 - **The inbox is home.** Its sections fold under large headers. With nothing waiting it says "Nothing needs you".
 - **An ask opens as a bottom sheet** that rides on the keyboard: large option buttons, a free answer field, and **Decline** beside the field's label.
 - **A topic** opens full screen with a back control. You can read and write to the Coordinator or any session.
 - **Sessions** are two-line rows. Stop, Resume and Archive live on the session's own page, behind a confirmation.
 - **Accounts** is a strip of cells, one per account, showing its fullest usage window.
 - **An HTML artifact** is a chip that opens full screen.
+
+<Screenshot n={4} />
 
 When the connection drops, a strip says since when and when the next retry runs. The last state stays on screen with its time. Answers, approvals and Send are disabled until the phone reconnects, and nothing is queued behind your back. On reconnect the page catches up from where it left off.
 
@@ -109,7 +120,7 @@ The web workbench watches, plans and steers through messages. A few things stay 
 | What | Where |
 | --- | --- |
 | **Claude Code's command approvals.** Claude Code asks in its own TUI. The web shows these rows marked **answer in Neovim** and notifies you; attach to the session to answer. Codex and OpenCode approvals are answered from the web. | Neovim, attached to the session |
-| **The harness terminal.** In the browser a session is its thread: what the hub knows. To watch or type into the harness itself, attach from Neovim. | Neovim, or `cland session attach` |
+| **The harness terminal.** In the browser a session is its thread: what the hub knows. To watch or type into the harness itself, [attach to it](/docs/sessions/#attach-to-a-session) from Neovim. | Neovim, or `cland session attach` |
 | **Plan approval on a phone.** Approving needs the plan view. The phone shows a waiting plan as a row and notifies you. | The web on a desktop, or Neovim |
 | **Stopping or restarting the hub, releasing, and creating artifacts from arbitrary files on your machine.** These keep the CLI's authority. | The CLI or Neovim |
 

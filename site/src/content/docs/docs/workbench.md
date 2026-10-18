@@ -20,21 +20,14 @@ Prefer a browser? The [web workbench](/docs/web-and-phone/) shows the same state
 
 ## Layout
 
-```
- cland my-project │ Explorer        ● Coordinator · Claude Code · busy   ✓ needs you 0   sessions 4
- ITEMS ␣i    │ centre view                          │ TOPICS (dock) ␣T
-             │ explorer · thread · session terminal ├──────────────────
-             │ board · graph · plan · events · log  │ INBOX ␣n
-             │                                      │ or SESSIONS ␣s
-             ├──────────────────────────────────────┤ or TOPICS ␣t
-             │ composer (threads)                   │
- <context> │ hub: connected │ sessions: 1 busy · 0 waiting · 3 idle │ key hints
-```
+![The terminal workbench, dark: the top bar across the screen; on the left the items panel with a release and its epics; in the centre a topic thread with a Coordinator's ask waiting for an answer and the composer under it; on the right the sessions panel with the accounts' limit windows and the live sessions; the status line at the bottom.](../../../assets/screens/hero.png)
+
+From top to bottom and left to right:
 
 - **The top bar** shows the project, the centre view, the Coordinator and its state (a red "no coordinator" when nobody holds the role), the **needs you** count and the live sessions.
-- **The centre** shows one view at a time. `␣␣` returns to the previous one.
-- **The left panel** is the items panel.
-- **The right panel** is the inbox, the sessions or the topics. Topics can also dock above it.
+- **The centre** shows one view at a time: the explorer, a thread with its composer, a session's terminal, the board, the graph, a plan, the events view or the Agents topic. `␣␣` returns to the previous one.
+- **The left panel** is the items panel (`␣i`).
+- **The right panel** is the inbox (`␣n`), the sessions (`␣s`) or the topics (`␣t`). Topics can also dock above it (`␣T`).
 - **The status line** shows the view's context, the hub's state, session counts, the latest notice and key hints.
 
 Colours carry meaning everywhere: amber for what needs you, teal for work in progress, green for done, red for a failure or a dead session. Each role has its own colour in threads: you blue, the Coordinator teal, Implementers violet, Reviewers pink, QA sky.
@@ -72,6 +65,8 @@ The explorer is the default centre view: the current release as an outline, its 
 | `zb` | Unfold the agents' text of the item. |
 
 The explorer changes nothing by hand. To reorder, re-parent or plan items, select them (`V` for a range) and press `m`: the Coordinator receives your text plus one line per item and acts through the tracker.
+
+What the items are and how the tracker is configured: [Items and the tracker](/docs/items/).
 
 ## Panels
 
@@ -122,6 +117,8 @@ Only what needs you, in four sections: asks and approvals, plan approvals, reque
 
 With nothing waiting it says `✓ nothing needs you`. The line below the sections counts new events since your last look; `e` opens the events view.
 
+What reaches the inbox and why: [Topics and the inbox](/docs/topics/#the-inbox).
+
 ### Topics, `␣t`
 
 Topics grouped as **needs you**, **open** and **closed**, with unread badges. `n` creates a topic, `c` closes one, `r` resolves its wait. `␣T` docks topics above the inbox.
@@ -136,7 +133,7 @@ Topics grouped as **needs you**, **open** and **closed**, with unread badges. `n
 | `␣G` | Task graph by blocking edges (experimental). |
 | `gp` | The plan of the epic under the cursor. `a` approves it when approval is yours. |
 | `␣E` | Events view: everything that happened, newest first, with filters. |
-| `␣L` | The Agents log: agent-to-agent traffic. |
+| `␣L` | The [Agents topic](/docs/topics/#the-agents-topic): agent-to-agent traffic and session lifecycle events, read-only. |
 | `␣R` | The rulebook. `a` adds a rule. |
 | `␣N` | The inbox full width. |
 
@@ -162,19 +159,7 @@ The composer sits under a thread. `Enter` sends, `Shift+Enter` (or `Alt+Enter`) 
 
 ## Attaching to a session's terminal
 
-Every session runs its harness's own TUI. `Enter` on a session row attaches to it in the centre, `C-v` in a split. You see exactly what the harness shows and can type into it.
-
-- `C-\` leaves terminal mode. `Esc` always goes to the harness.
-- `C-h` `C-j` `C-k` `C-l` move focus out of the terminal.
-- Closing the terminal ends only the attach, never the session.
-
-Approvals a harness asks for in its own TUI are answered there. A session waiting on one shows in the inbox and the sessions panel with the command it waits on; `Enter` attaches to it.
-
-From a plain shell, print the attach command and run it yourself:
-
-```sh
-cland session attach impl-42
-```
+Every session runs its harness's own interface. `Enter` on a session row attaches it in the centre, `C-v` in a split, and you type into the harness directly. `C-\` leaves terminal mode; closing the terminal ends only the attach, never the session. See [Sessions and harness access](/docs/sessions/#attach-to-a-session) for the details, approvals and the shell command.
 
 ## Presets
 

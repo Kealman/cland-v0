@@ -122,3 +122,54 @@ h1#_top {
 .sl-markdown-content code:not(:where(.not-content *)) {
   border-radius: 4px;
 }
+
+/* Mermaid diagrams, rendered to SVG at build time (src/plugins/mermaid.mjs).
+   The SVG reads these colours, so it follows the theme switch. */
+:root {
+  --cland-diagram-bg: #10141b;
+  --cland-diagram-fg: #d6dbe4;
+  --cland-diagram-line: #5b6574;
+  --cland-diagram-accent: #f0b429;
+  --cland-diagram-muted: #8a94a3;
+  --cland-diagram-surface: #161b24;
+  --cland-diagram-border: #3a4554;
+  --cland-diagram-teal: #35c4a0;
+}
+:root[data-theme='light'] {
+  --cland-diagram-bg: #f6f7f9;
+  --cland-diagram-fg: #1a1f28;
+  --cland-diagram-line: #7d8796;
+  --cland-diagram-accent: #c98a04;
+  --cland-diagram-muted: #4f5866;
+  --cland-diagram-surface: #ffffff;
+  --cland-diagram-border: #c9cfd8;
+  --cland-diagram-teal: #1f8f73;
+}
+.cland-diagram {
+  margin: 1.5rem 0;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 12px;
+  background: var(--cland-diagram-bg);
+}
+.cland-diagram-scroll {
+  /* A wide diagram scrolls inside its box, never the page. */
+  overflow-x: auto;
+  padding: 0.25rem;
+  border-radius: 12px;
+}
+.cland-diagram svg {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  height: auto;
+  /* Shrinks to 80% of its drawn size on a narrow screen, then scrolls. */
+  min-width: calc(var(--diagram-width) * 0.8px);
+  max-width: calc(var(--diagram-width) * 1px);
+}
+.cland-diagram svg text {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+.cland-diagram-scroll:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: 2px;
+}

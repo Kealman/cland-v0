@@ -5,12 +5,25 @@ sidebar:
   order: 9
 ---
 
+import Screenshot from '../../../components/Screenshot.astro';
+
 Work reaches GitHub in three steps. A task is verified and reviewed on its branch, merged onto `dev` through the merge gate, and released from `dev` to GitHub `main` with a tag.
 
+```mermaid
+flowchart TB
+  %% From a task branch to GitHub: review, verification and QA when the plan requires it, the merge gate, dev in the territory, then cland release to GitHub main with a tag.
+  branch["Task branch<br/>in its own worktree"]
+  checks["Review, cland verify<br/>and QA when the plan asks"]
+  gate["Merge gate"]
+  dev["dev<br/>in the territory"]
+  rel["cland release"]
+  gh["GitHub main<br/>tagged vX.Y.Z"]
+  branch --> checks -->|clear, criteria verified| gate -->|ready| dev --> rel --> gh
+  classDef out stroke:var(--cland-diagram-accent)
+  class gh out
 ```
- task branch ──review──verify──QA?──▶ merge gate ──▶ dev ──▶ cland release ──▶ github main + vX.Y.Z
- (worktree)                                         (territory)
-```
+
+A not-clear verdict sends the work back to its branch: a fix makes a new head, and the new head needs a new review and a new run.
 
 ## Verification for any stack
 
@@ -59,6 +72,19 @@ cland verify --dry-run --report general   # show what would run, queue nothing
 ```
 
 The sessions panel's `verify:` line summarises the queue; Enter on it opens the full queue view.
+
+```mermaid
+%% How a verification run moves through the hub's queue to its result
+flowchart TD
+  A["cland verify at the committed head"] --> B(["Has this tree passed before?"])
+  B -- yes --> C["Reuse the cached result"]
+  B -- no --> D["The hub's queue: one line for everyone, you included"]
+  D --> E["Your machine: one run at a time"]
+  D --> F["Cloud machines: parallel, under the daily spend cap"]
+  E --> G["Result artifact in the topic and on the task's card"]
+  F --> G
+  C --> G
+```
 
 ### Review first, then verify
 
@@ -148,6 +174,10 @@ When a task's verdicts are in, the hub decides whether it can land. It requires:
 
 When everything holds, the hub sets the task to `ready` and tells the lead. A not-clear verdict or a failed criterion sends it back to `in progress`.
 
+<Screenshot n={9} />
+
+The criteria and their marks are part of the item: see [Acceptance criteria](/docs/items/#acceptance-criteria).
+
 ## Merging
 
 ```sh
@@ -215,6 +245,43 @@ A release:
 4. Only after GitHub accepts it, moves your local `main` and the territory, comments the tag on the release item and closes it. The next open release becomes current.
 
 No GitHub API is called and no version file in your project is changed. `cland release` is the only command that pushes to GitHub.
+
+```mermaid
+%% How a release comes together: from an idea through the plan and the build to the push
+flowchart TD
+  I(["An idea"]) --> G["Grilling: the questions until the idea is clear"]
+  I --> W["Wayfinder map, when the way is foggy"]
+  W --> RS["Research"]
+  W --> PR["Prototype"]
+  RS --> S["Spec"]
+  PR --> S
+  G --> S
+  S --> R["Release item: its epics and tasks"]
+  R --> EA["Epic: a plan with stages and lanes, you approve it"]
+  R --> EB["Another epic"]
+  EA --> T1["Task in its own worktree"]
+  EA --> T2["Task in a parallel lane"]
+  EB --> T3["Task"]
+  T1 --> M["Review, verify, merge gate"]
+  T2 --> M
+  T3 --> M
+  M --> D["dev"]
+  D --> Q["QA runs each epic's demo"]
+  Q --> A["You accept the version and the notes"]
+  A --> P(["cland release: tag, notes, one atomic push to GitHub"])
+```
+
+Publishing itself is one atomic step:
+
+```mermaid
+%% What cland release does once you approve
+flowchart TD
+  A["Every child of the release item is closed"] --> C["Notes: the release's Notes, each epic's goal, one line per merged task"]
+  C --> D["Annotated tag v-version at dev"]
+  D --> E["One atomic push to GitHub: dev as main, and the tag"]
+  E -- GitHub accepts --> F["Local main and the territory move, the item closes"]
+  F --> H["The next open release becomes current"]
+```
 
 In practice the Coordinator prepares the release with the shipped `release` skill and asks you to approve the version and notes before it publishes. The version always comes from you.
 

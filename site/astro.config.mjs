@@ -2,6 +2,7 @@
 import { existsSync } from 'node:fs';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import clandMermaid from './src/plugins/mermaid.mjs';
 
 const SITE = 'https://cland.app';
 const GITHUB = 'https://github.com/Kealman/cland-v0';
@@ -23,13 +24,21 @@ const sidebar = [
     ['Quickstart', 'docs/quickstart'],
     ['Install', 'docs/install'],
   ]),
+  // What cland does, one page per feature; the overview links every feature.
+  group('Features', [
+    ['Overview', 'docs/features'],
+    ['Items and the tracker', 'docs/items'],
+    ['Topics and the inbox', 'docs/topics'],
+    ['Sessions and harness access', 'docs/sessions'],
+    ['Accounts and limits', 'docs/accounts'],
+    ['Verification and release', 'docs/verification-and-release'],
+    ['Web and phone', 'docs/web-and-phone'],
+  ]),
+  // How to drive and configure it.
   group('Using cland', [
     ['Concepts', 'docs/concepts'],
     ['The workbench', 'docs/workbench'],
-    ['Web and phone', 'docs/web-and-phone'],
-    ['Accounts and limits', 'docs/accounts'],
     ['Crew configuration', 'docs/crew'],
-    ['Verification and release', 'docs/verification-and-release'],
   ]),
   group('Reference', [
     ['CLI', 'docs/cli'],
@@ -40,6 +49,8 @@ const sidebar = [
 export default defineConfig({
   site: SITE,
   integrations: [
+    // Renders ```mermaid blocks to themed SVG at build time; see src/plugins/mermaid.mjs.
+    clandMermaid(),
     starlight({
       title: 'cland',
       description: 'One coding crew across every AI plan you pay for.',
@@ -51,6 +62,8 @@ export default defineConfig({
       },
       favicon: '/favicon.svg',
       social: [{ icon: 'github', label: 'GitHub', href: GITHUB }],
+      // Adds a "Log" link to the build log beside the social icons.
+      components: { SocialIcons: './src/components/starlight/SocialIcons.astro' },
       editLink: {},
       lastUpdated: false,
       customCss: [
@@ -69,6 +82,7 @@ export default defineConfig({
         { tag: 'meta', attrs: { property: 'og:image:height', content: '640' } },
         { tag: 'meta', attrs: { name: 'twitter:image', content: `${SITE}/og.png` } },
         { tag: 'meta', attrs: { name: 'twitter:site', content: '@cland_app' } },
+        { tag: 'link', attrs: { rel: 'alternate', type: 'application/rss+xml', title: 'cland build log', href: `${SITE}/log/rss.xml` } },
       ],
       sidebar,
     }),

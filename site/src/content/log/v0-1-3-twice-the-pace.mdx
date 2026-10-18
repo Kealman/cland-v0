@@ -1,0 +1,166 @@
+---
+title: 'v0.1.3: twice the pace, and none of seven stage-close runs went green'
+description: 'The crew merged 2.9 tasks an hour instead of 1.2, and more of them cleared review on the first pass. The test suite did not keep up: the queue shrank, but each run got longer, droplets cost $18.11, and the release took nine runs.'
+date: 2026-10-16
+release: v0.1.3
+tags: [retrospective, verification, executors, rules]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+v0.1.3 took 31.7 hours from the start of the build to the release tag. The crew merged 2.9 tasks an hour, up from 1.2 in v0.1.2, and 78% of tasks cleared their first review, up from 56%. Then we tried to close the stages. Seven stage-close runs, and not one of them was green. The release itself needed nine runs over 3.2 hours.
+
+Same crew as last time: a Coordinator on `claude-opus-5-5`, Implementers and Reviewers on `gpt-6.1-sol`, QA on `gpt-6-astra`. We kept the lineup on purpose to build a baseline across two releases, so every comparison below is the same crew against itself.
+
+## What we set out to build
+
+We called v0.1.3 "Rhythm and rules". It was about how the crew keeps moving without the maintainer at the keyboard:
+
+- **Lane flow.** An epic can follow another in the same lane and start on the first one's last merge instead of waiting for its QA demo.
+- **A heartbeat for the Coordinator.** The hub wakes it at intervals with a digest of what is in flight and what looks stale.
+- **A rulebook.** The project's own rules, kept with the project and fed into every role's instructions.
+- **Test speed, stage two.** Test selection by coverage, sharded close runs, an in-process hub for tests, and a gate that runs every new test five times under load.
+- **Records for the retrospective.** New fields for findings, which check caught an escape, who answered an ask, and the status of each integrated run.
+
+## The numbers
+
+<Stats
+  items={[
+    { value: '93', label: 'tasks landed', was: 'v0.1.2: 94 in 77 h' },
+    { value: '5', label: 'epics, each closed by a clean QA demo on a droplet', was: 'v0.1.2: 10' },
+    { value: '78%', label: 'cleared their first review', was: 'v0.1.2: 56%' },
+    { value: '1.5 h', label: 'median from claim to landing', was: 'v0.1.2: 1.9 h' },
+    { value: '29 min', label: 'verification per task run, queue plus run', was: 'earlier baseline: 39 min' },
+    { value: '$18.11', label: 'of droplets, 203 leases', was: 'v0.1.2: $1.17' },
+  ]}
+/>
+
+Of the 93 tasks, 47 belonged to v0.1.3 itself and 43 to two epics that were later moved to v0.1.4. The maintainer and the stand-in answered 21 asks, with a median wait of one minute.
+
+<BarChart
+  title="v0.1.2 against v0.1.3, same crew"
+  legend={[
+    { name: 'v0.1.2', color: 'muted' },
+    { name: 'v0.1.3', color: 'amber' },
+  ]}
+  perRow
+  rows={[
+    { label: 'Merges per hour', bars: [{ value: 1.2, text: '1.2', color: 'muted' }, { value: 2.9, text: '2.9' }] },
+    { label: 'Cleared first review', bars: [{ value: 56, text: '56%', color: 'muted' }, { value: 78, text: '78%' }] },
+    { label: 'Claim to landing, median', bars: [{ value: 1.9, text: '1.9 h', color: 'muted' }, { value: 1.5, text: '1.5 h' }] },
+    { label: 'Build time with no Implementer turn', bars: [{ value: 26.8, text: '26.8%', color: 'muted' }, { value: 18.9, text: '18.9%' }] },
+    { label: 'Tokens, millions', bars: [{ value: 2212, text: '2,212', color: 'muted' }, { value: 4270, text: '4,270', color: 'pink' }] },
+    { label: 'Red task runs', bars: [{ value: 43, text: '43%', color: 'muted' }, { value: 67, text: '67%', color: 'pink' }] },
+    { label: 'Tests in the full suite', bars: [{ value: 2050, text: '~2,050', color: 'muted' }, { value: 2341, text: '2,341', color: 'pink' }] },
+  ]}
+  caption="Each pair is scaled on its own. The first four rows got better; the pink rows got more expensive. The red-run rate is not directly comparable: the flaky-test gate now asks for two Linux receipts, and every new test runs five times under load, so some red runs are by design."
+/>
+
+The pace came from lane flow. Epics overlapped instead of queueing: the crew held 7.3 open claims on average, against 4.0 before, and the share of build time with no Implementer turn fell from 26.8% to 18.9%. In v0.1.2 the gap from one epic's last merge to the next epic's first claim ran from 16 minutes to 15.6 hours. In v0.1.3 two epics made their first claim 19.1 and 9.6 hours before their predecessor's last merge, and the third followed 54 minutes after one.
+
+The cost came in tokens: 4,270 million, against 2,212 million. Implementers used 2,016 million across 95 sessions, the Coordinator 1,249 million in one session, four Reviewer sessions 865 million and QA 137 million. Only 6.25 million were output tokens; the rest were cache reads. All of it ran on subscriptions. The Codex weekly window went from 1% to 58% in 30 hours.
+
+## What broke or hurt
+
+### The queue shrank, the run grew
+
+<BarChart
+  title="Minutes per task run: waiting and running"
+  legend={[
+    { name: 'waiting in the queue', color: 'teal' },
+    { name: 'running', color: 'amber' },
+  ]}
+  rows={[
+    { label: 'Earlier baseline, from our test-speed study', bars: [{ value: 24.4, text: '24.4', color: 'teal' }, { value: 14.75, text: '14.75' }] },
+    { label: 'v0.1.3, all 217 task runs', bars: [{ value: 5.4, text: '5.4', color: 'teal' }, { value: 23.5, text: '23.5' }] },
+    { label: 'on the Mac, 45 runs', bars: [{ value: 9.8, text: '9.8', color: 'teal' }, { value: 13.6, text: '13.6' }] },
+    { label: 'on a droplet, 172 runs', bars: [{ value: 4.2, text: '4.2', color: 'teal' }, { value: 26.1, text: '26.1' }] },
+    { label: 'selected by coverage, 7 runs', bars: [{ value: 8.9, text: '8.9', color: 'teal' }, { value: 6.1, text: '6.1' }] },
+  ]}
+  caption="Means. The 90th-percentile wait was 19.4 minutes against a target of 20."
+/>
+
+Droplets ate the queue. They ran 196 of the 251 runs, and we raised the number allowed at once from four to six. The median wait dropped to zero. But a run on a droplet took about twice as long as on the Mac, and the full suite grew to 2,341 tests.
+
+Coverage selection, the one change that made a run short, decided only 7 of 217 task runs. Those seven took 15 minutes from submission to result. The test-speed epic closed on its infrastructure alone: it measured 743 daemon starts and 888 seconds per shard, against targets of under 600 starts and a two-shard run under 600 seconds, and those targets moved to a later epic. Thirty-six droplet requests fell back to the Mac, 31 of them because the budget was full.
+
+### No stage closed green
+
+Seven stage-close runs, zero green. Half failed on infrastructure, such as a dirty tree when the run was bundled, or a typecheck without its dependencies installed. The other half were test escapes. Across ten red covers and eleven red close runs we found 21 causes:
+
+| Cause | Count |
+| --- | --- |
+| Infrastructure: dirty tree at bundling (3), a moved head, a typecheck without its compiler, the coverage collector | 6 |
+| Test escapes | 6 |
+| Flaky under load | 5 |
+| Duration budget alone (2 more paired with a flake) | 3 |
+| A fix merged under a review waiver without a typechecked head | 1 |
+
+Not one was a product defect. Three of the duration-budget failures were a new or renamed test that ran a fraction of a second over 5 seconds on Linux. Six of the nine shared fixes in the window were duration allowances for exactly that, copied 36 times across branches.
+
+### The release took nine runs
+
+| Time (UTC) | Run |
+| --- | --- |
+| 11:47 | Coverage file cut off at 160 KiB, plus a second bug |
+| 12:06 | Droplets green, 2,341 passed, 0 failed, $0.13 |
+| 12:27 | macOS: a sandbox test wrote coverage where it may not, and an account-limits test failed |
+| 12:43 | The fix for 12:27 broke the typecheck; nobody had typechecked the head |
+| 13:00 | Shard 2 exited 1 with no failing test: files over the duration budget |
+| 13:21 | A tracker test at 4.90 s of 5; its allowance was filed under the test's old name |
+| 13:38 | Droplets green |
+| 13:56 | macOS: a timing test on task worktrees |
+| 14:17 | macOS: 2,341 passed, 0 failed, then the coverage collector crashed on a reused process id |
+
+The maintainer accepted the last run as it stood and filed the collector bug for v0.1.4. v0.1.3 shipped at 14:59.
+
+### Large tasks, again
+
+Seven L tasks, and one cleared its first review. In v0.1.2 it was two of ten. Four of them produced 12 of the 36 escapes, and an L task took a median of 5.2 hours from claim to landing, against 1.4 to 2.1 hours for every other size. All seven were new infrastructure: lane flow, the in-process hub, coverage selection, sharding, the heartbeat, rule delivery and demo leases.
+
+XS and S tasks got cleaner, at 91% and 81%, and M rose to 73%.
+
+### Droplet spend: the cap went from $3 to $14 in a day
+
+On 15 October the daily cap was $3 in the morning and $14 by the evening. Each raise came as spend closed in on the cap, and each is on record as a decision.
+
+| Time (UTC) | Spent so far | New cap |
+| --- | --- | --- |
+| 08:34 | | $3 |
+| 11:26 | $1.99 | $6 |
+| 15:24 | $4.99 | $10 |
+| 20:54 | $8.92 | $14 |
+
+That day ended at $11.24; 16 October, up to the release, cost $6.90. Task runs took 88% of the spend, and 41 tasks fixing flaky tests cost $5.73 of it. No droplet leaked. On 16 October the rollback of a prototype of `cland init` deleted the hub's spend ledger, so this window's figures come from the hub's log.
+
+### The records we built went unused
+
+The retrospective fields landed mid-release. Findings were filled in on 0 of 98 verdicts, because the Reviewers were not relaunched after the merge. Which check caught an escape was filled in on 0 of 17 regressions. The field for who answered an ask recorded "human" for the maintainer and the stand-in alike.
+
+### The stand-in blocked for 3 hours 25 minutes
+
+A stand-in session answers asks on the maintainer's behalf. On 16 October, from 06:45 to 10:10, it sat on a question in its own terminal. The Coordinator sent it nine messages in vain, two of them covers meant for a hub restart.
+
+## What we changed in cland because of it
+
+**Rules, now in the rulebook.** The rulebook went live during the build, and 13 rules went into it. Rules 1 to 8 were seeded from the crew's notes. Rules 9 to 12 came straight out of the release's flaky tests: wait for exactly what the assertion checks, observe completion before measuring, keep the reviewed head, stop fixture writers before deleting. Rule 13 was temporary: it went from decision to rule to retirement on its own condition in 8.6 hours. Another 53 proposed rules from Implementers and Reviewers are waiting for the maintainer.
+
+**The heartbeat earned its place.** It fired 25 times. Fourteen times it woke an idle Coordinator, who started a turn within two minutes. Once it repaired a real stall: the Coordinator had sat for 35 minutes after missing a cover's finish. Once it missed: after a harness exit left a live process marked as exited, a stop of nearly half an hour was caught by the stand-in's hourly check instead.
+
+**Hub fixes under load.** The tracker store stalled 146 times. Two fixes followed: every task view used to parse a 74 MB journal, and the inbox used to rebuild on every change. One fail-fast on a 5-second store stall took the hub down four times in four minutes, and was hotfixed.
+
+**The stand-in asks no blocking questions.** That is now a written rule.
+
+## What is next
+
+v0.1.4 starts from these:
+
+- **Split L tasks by default** when an epic is planned. An infrastructure L stays whole only with a written reason.
+- **Make the new fields mandatory** where it is cheap: a regression must say what caught it, a verdict without findings is refused, and the client, not a flag, says who answered an ask.
+- **Ship the allowance with the test.** A new test near the 5-second budget on Linux carries its own duration allowance in the same task.
+- **Wake the Coordinator with a cover's result**, and have the heartbeat notice a session marked as exited while its process is alive.
+- **Selection before slots.** No more droplet slots or cap raises until a selected verification takes under 5 minutes.
+- **No close runs from a dirty root, no merge without a typechecked head**, and finished remote runs must give their slots back.
+
+The crew doubled its pace in v0.1.3. The suite did not keep up. The next post looks at why.

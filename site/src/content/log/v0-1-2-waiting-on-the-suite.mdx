@@ -1,0 +1,151 @@
+---
+title: 'v0.1.2: the crew spent twice as long waiting for tests as running them'
+description: 'In 77 hours a cland crew landed 94 tasks across 10 epics for $1.17 of cloud runners. The crew was not the bottleneck: the verification queue was, and not one red integrated run found a product bug.'
+date: 2026-10-15
+release: v0.1.2
+tags: [retrospective, verification, executors]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+Between the v0.1.1 and v0.1.2 releases, 77 hours passed. In that time a cland crew landed 94 tasks across 10 epics, and every epic closed with a clean QA demo. That part went well. The part that set the pace was something else: tasks spent 6,618 minutes waiting in the verification queue, against 3,411 minutes of machine time actually running tests.
+
+This is the first post in our build log. cland is built by a cland crew. A Coordinator on `claude-opus-5-5` plans the work and merges it, Implementers and Reviewers on `gpt-6.1-sol` write and check the code, QA on `gpt-6-astra` runs the epic demos, and the maintainer makes the decisions. Everything below comes from the crew's own records: the tracker, the hub's journal and a retrospective script that reads both.
+
+## What we set out to build
+
+v0.1.2 was about working with items. Four threads ran through it:
+
+- **Remote executors.** Verification runs on DigitalOcean droplets, so the Mac that hosts the crew is no longer the only place tests can run.
+- **Accounts.** The plans each role runs on, with their limit windows, in one place.
+- **The explorer.** The centre view of the item tree in the workbench.
+- **Test speed.** The first quick wins from a study of why the suite was slow.
+
+Every role ran on one model for the whole release, with no rotation. So these numbers are a baseline for this crew, not a comparison of models.
+
+## The numbers
+
+<Stats
+  items={[
+    { value: '94', label: 'tasks landed (109 under the release)' },
+    { value: '10', label: 'epics, each closed by a clean QA demo' },
+    { value: '56%', label: 'of tasks cleared their first review' },
+    { value: '1.9 h', label: 'median from claim to landing' },
+    { value: '254', label: 'test runs; 43% of task runs red' },
+    { value: '$1.17', label: 'of droplets for the release, cap $3 a day' },
+  ]}
+/>
+
+The size of a task, set when it is filed, predicted how its first review would go. Large tasks rarely cleared it.
+
+<BarChart
+  title="Tasks that cleared their first review, by size"
+  rows={[
+    { label: 'XS · 6 tasks', bars: [{ value: 67, text: '67%', color: 'green' }] },
+    { label: 'S · 22 tasks', bars: [{ value: 82, text: '82%', color: 'green' }] },
+    { label: 'M · 18 tasks', bars: [{ value: 67, text: '67%', color: 'amber' }] },
+    { label: 'L · 10 tasks', bars: [{ value: 20, text: '20%', color: 'pink' }] },
+    { label: 'No size recorded · 38 tasks', bars: [{ value: 45, text: '45%', color: 'muted' }] },
+  ]}
+  max={100}
+  caption="The size field arrived partway through the release, so the 38 earliest tasks have none."
+/>
+
+Eight of the ten L tasks failed their first review, but they still closed in a median of 1.4 hours: the review rounds were short. The Implementer's output tokens per task grew with size, from 15 thousand for XS to 58 thousand for L at the median. Fixes for regressions were cheap and clean: 11 of 13 cleared review the first time.
+
+The harnesses counted 2,212 million tokens, cache reads included: 953 million for Implementers, 676 million for the Coordinator in a single session, 461 million for Reviewers and 121 million for QA. Every harness ran on a subscription, so there is no per-token bill to report, only tokens and machine minutes.
+
+Reviewers earned their tokens by reading. They recorded 5 high and 71 medium findings from the code alone; another 55 "not clear" verdicts came from red test runs.
+
+## What broke or hurt
+
+### The queue set the pace
+
+<BarChart
+  title="Verification time across the release, in minutes"
+  rows={[
+    { label: 'Waiting in the queue', bars: [{ value: 6618, text: '6,618', color: 'amber' }] },
+    { label: 'Running tests', bars: [{ value: 3411, text: '3,411', color: 'teal' }] },
+  ]}
+  caption="Summed over every run. The 90th-percentile wait for one run was 56 minutes."
+/>
+
+A task is not done until its tests pass, and with several Implementers finishing at once, their runs queued. The suite also grew under our feet: a green full run took 12.5 minutes at 1,344 tests on 12 October and 16.4 minutes at about 2,050 tests on 14 October.
+
+### No red integrated run found a product bug
+
+After merges, the Coordinator runs the full suite on the integrated `dev` branch. We call that run a cover. Eight covers went red, and not one of them found a product defect. Seven were tests that pass alone and fail under the load of a full run: a log read before it was written, a process id that came back empty at a load average of 25.9, a card read a moment too early, a connection refused on a test that passed five times out of five on its own. The eighth was a new test that took 93 seconds against a 5-second budget.
+
+All seven flaky covers went red while other runs were going on beside them. After three red covers in one night we made a rule: while the Coordinator holds the verification slot, nobody runs any tests. After that rule, the only red cover was the duration budget.
+
+Ten runs were cancelled. Five were cancelled because the branch head moved or the working tree was dirty after the run was submitted. One was lost when the Coordinator's process died, taking 43 minutes of deliveries with it. Four were cancelled by hand.
+
+### Large tasks escaped
+
+When a fix lands for a bug that got past review, it records which task the bug came from. There were 18 such links: 12 pointed at a test or a fixture, 6 at product behaviour. L tasks were behind 8 of the 17 escapes. A single L task, the droplet snapshot, caused three on its own, and the remote executors epic accounted for six.
+
+The test escapes were the same flakes again: green alone, red under a full suite. Four of them were filed straight from red covers.
+
+### Linux was an afterthought
+
+The six task runs we sent to droplets were all red, every one on a Linux-only test. Task gates went back to the macOS host until the Linux fixes merged, so Linux failures surfaced late.
+
+### The hub restarted 38 times
+
+Eighteen of those starts came within 27 minutes on 12 October, from one startup bug. From 14 October there were only four. In 17 cases the journal has no stop record before the start, which means a crash or a kill. The tracker's store stalled 23 times.
+
+### One merge skipped review
+
+The only time `dev` broke in this release was a merge the maintainer allowed past review by override. It broke a test file.
+
+## What we changed in cland because of it
+
+**Test speed.** The test-speed epic landed its quick wins. Before and after ran under different loads, so QA judged it by summed test time rather than wall time.
+
+| Measure | Before | After |
+| --- | --- | --- |
+| Hub tests, summed (1,577 tests) | 4,038 s | 2,867 s |
+| Full run, wall time | 1,149 s | 919 s |
+| Neovim-only run | ~900 s | 95 s |
+| Three timer tests | 92 s | 28 s |
+
+**Tests chosen by the diff.** A task now verifies only the tests its diff selects; full suites run on the integrated `dev`. Replayed over 40 merges, a full run was needed 26 times instead of 37; nine needed only the hub tests and five only the Neovim tests.
+
+**Review before verification.** Reviews come first, and the run happens on the head that was reviewed. Delta reviews, which check only what changed since the last review, cleared 43 of 43.
+
+**Rules, written down as the run went:**
+
+- Quiet during a cover: while the Coordinator holds the verification slot, nobody runs tests.
+- A flaky test that passes five of five alone earns one resubmit and a ticket.
+- No commits to `dev` and no edits in the root checkout during an integrated run.
+- A test that fails alone on `dev` is a `dev` defect: one fix, cherry-picked into every branch. Eight shared fixes went into 22 branches this way.
+- Lane flow: the next epic starts on the previous epic's last merge, not on its QA demo.
+- Restart the hub only after a green cover, with an empty queue, no droplets and the hub code on `dev` equal to the cover's head. Two restarts went through this way without losing anything.
+
+**Droplets with a budget and a daily cap.** We capped remote runners at two at a time and $3 a day, and allowed acceptance runs on a c-8 droplet to live up to 45 minutes. The spend ledger, kept from 14 October:
+
+| Day | Project | Prepares | Runs | Cost |
+| --- | --- | --- | --- | --- |
+| 14 Oct | temporary test projects | 7 | 5, one on `c-16` | $0.42 |
+| 14 Oct | cland | 1 | 4 on `c-8` | $0.44 |
+| 15 Oct | cland | 1 | 5 on `c-8` | $0.31 |
+| **Total** | | **9** | **14** | **$1.17** |
+
+No droplet leaked, and when the droplet identity guard fired, it recovered.
+
+**A stand-in for asks.** A stand-in session answered the crew's asks on the maintainer's behalf. There were 13 asks, all answered, with a median wait of 1.9 minutes and a longest of 13.9. The crew never stopped overnight.
+
+## What is next
+
+For v0.1.3 we wrote down what to start and stop:
+
+- **Rotate models across roles.** With one model per role and one Reviewer session writing 80% of the 394 verdicts, we cannot tell a model's effect from a session's.
+- **Cut L tasks before work starts.** Split them into two or three M tasks when the epic is planned, and never file an XL.
+- **Fields instead of prose.** Severity on findings, which check caught an escape, whether the maintainer or the stand-in answered an ask, a cover's status and cause, and the model of each sub-agent. In v0.1.2 all 13 sub-agents were recorded as "unknown", because Claude Code does not pass the model to the hook.
+- **Proof on Linux before merge.** One droplet run in each stage's cover, not after the release.
+- **Count the queue, not only the run.** The target for v0.1.3: a 90th-percentile wait under 20 minutes, shown where everyone can see it.
+- **Load-test new tests.** A new test passes five of five under a load of 12 or more before it reaches `dev`.
+- **Let the hub enforce what we now enforce by agreement:** refuse tests beside a cover, refuse commits during one, and run a hub startup smoke test on any merge that touches startup.
+
+The lesson of this release: a crew of agents moves as fast as its verification lets it. The pace was set by the checks, not by the crew.

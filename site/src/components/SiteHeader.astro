@@ -1,0 +1,78 @@
+---
+import { GITHUB, wordmarkPath } from '../site';
+
+interface Props {
+  /** True on the landing: section links stay in-page anchors. */
+  home?: boolean;
+  /** The nav entry for the current section, marked with aria-current. */
+  current?: 'log';
+}
+
+const { home = false, current } = Astro.props;
+const at = (hash: string) => (home ? hash : `/${hash}`);
+---
+
+<header class="site-header">
+  <nav aria-label="Main" class="nav wrap">
+    <a href={home ? '#top' : '/'} aria-label="cland home" class="nav-logo">
+      <svg height="28" viewBox="0 0 296 84" aria-hidden="true"><g fill="none" stroke="#d6dbe4" stroke-width="12" stroke-linecap="round"><path d={wordmarkPath}></path><circle cx="124" cy="56" r="22"></circle><circle cx="268" cy="56" r="22"></circle></g><circle cx="50" cy="56" r="6" fill="#f0b429"></circle></svg>
+    </a>
+    <div class="nav-links">
+      <a href={at('#how')}>How it works</a>
+      <a href={at('#features')}>Features</a>
+      <a href={at('#workbench')}>Workbench</a>
+      <a href={at('#install')}>Install</a>
+      <a href={at('#faq')}>FAQ</a>
+      <a href="/log/" aria-current={current === 'log' ? 'page' : undefined}>Log</a>
+      <a href="/docs/">Docs</a>
+    </div>
+    <a href={GITHUB} class="btn btn-ghost btn-nav">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7-6.2-3.6-6.2 3.6 1.4-7L2 9.3l7-.8z"></path></svg>Star on GitHub
+    </a>
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid var(--border);
+  }
+  .nav {
+    padding-top: 18px;
+    padding-bottom: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 28px;
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+  }
+  .nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    font-family: var(--mono);
+    font-size: 15px;
+    margin-left: auto;
+  }
+  .nav-links a[aria-current='page'] {
+    color: var(--amber);
+  }
+  .btn-nav {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 15px;
+  }
+  @media (max-width: 600px) {
+    .nav-links {
+      margin-left: 0;
+      order: 3;
+      width: 100%;
+      gap: 6px 18px;
+    }
+    .btn-nav {
+      margin-left: auto;
+    }
+  }
+</style>
