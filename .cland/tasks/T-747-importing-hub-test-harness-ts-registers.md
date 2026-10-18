@@ -2,8 +2,8 @@
 id: T-747
 kind: task
 title: Importing hub/test/harness.ts registers ps and socket work at module load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-478
 branch: t/T-747-importing-hub-test-harness-ts-registers
 created: 2026-10-17T17:24:17.537Z
-updated: 2026-10-18T05:57:12.272Z
+updated: 2026-10-18T05:57:19.960Z
+closed: 2026-10-18T05:57:19.960Z
 ---
 
 ## Summary
@@ -115,3 +116,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5005: final same-head evidence clear; C1/C2 verified. A-5004/a98d8631 exits zero with complete hub+Neovim phases: 2,519 pass/0 fail/8 unrelated prerequisite skips. Audited positive census, lifetime/isolation, all 12 cover controls, all 17 runner tests including the unchanged three-spawn guard, and UI/vboard receipts; focused files have no tier trips/skips. Three new identities each pass 5/5 load repetitions. Census is qualifying/reachable T1/0; existing qualification population unchanged. Mac A-4988's 25 whole-file logs/170 passes and prior unchanged-entry proof remain applicable. Failed parent A-4984 remains disclosed; unrelated report-only Claude ps probe is the known T-759 class. Linux c-8 lon1, 1,479s lifetime, $0.1027. No per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T05:57:19.960Z
+
+Merged 8963200c89b43472d012f1b158c37192cbfb8ff7 onto dev.
