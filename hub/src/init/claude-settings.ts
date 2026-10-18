@@ -1,6 +1,9 @@
 // The Claude Code hooks in the project's `.claude/settings.json` (spec 4.9, decision #17), merged into whatever the
 // file already holds. Each cland entry is one hook whose command ends in the mark (`# managed by cland <v>`, a shell
-// comment), which is how `cland update` finds and replaces them; every other hook and setting is left as it is.
+// comment), which is how `cland update` finds and replaces them. The other managed key is worktree.bgIsolation:
+// "none" lets Claude Code 2.1.143+ background sessions edit the project's working copy without EnterWorktree.
+// `update` restores it; a human can override it in settings.local.json, which cland never reads or writes.
+// Every other hook and setting, including other worktree keys, is left as it is.
 //
 // What a hook runs is `cland hook <event>` found on the PATH: no machine path in a committed file. It does nothing
 // in a session the hub launched (CLAND_SESSION_NAME is set there): that session already has the same hooks,
@@ -8,7 +11,7 @@
 // the spoke. The project hooks are for a session the human starts by hand, and do nothing when `cland` is not on
 // the PATH. The mod is not provisioned into the project: it needs the session's identity, which only a launch has.
 import { join } from 'node:path';
-import { HOOK_EVENTS } from '../adapters/claude-code.ts';
+import { BG_ISOLATION, HOOK_EVENTS } from '../adapters/claude-code.ts';
 import { MANAGED_BY } from '../project.ts';
 import { readText, writeIfChanged, type Report } from './files.ts';
 
@@ -51,7 +54,13 @@ export function mergeHooks(settings: Record<string, unknown>): Record<string, un
   return { ...settings, hooks };
 }
 
-/** Merge the cland hooks into `.claude/settings.json`; the file is written only when its content changes. */
+/** Set cland's background isolation policy while preserving the project's other worktree settings. */
+export function mergeWorktree(settings: Record<string, unknown>): Record<string, unknown> {
+  const worktree = isRecord(settings.worktree) ? settings.worktree : {};
+  return { ...settings, worktree: { ...worktree, bgIsolation: BG_ISOLATION } };
+}
+
+/** Merge the cland hooks and worktree policy into `.claude/settings.json`; write only when content changes. */
 export function provisionClaudeSettings(report: Report, root: string): void {
   const path = join(root, '.claude', 'settings.json');
   const current = readText(path);
@@ -70,7 +79,7 @@ export function provisionClaudeSettings(report: Report, root: string): void {
     }
     settings = parsed;
   }
-  const merged = mergeHooks(settings);
+  const merged = mergeWorktree(mergeHooks(settings));
   // the same content in the project's own formatting is left byte for byte
   if (current !== null && current.trim() !== '' && JSON.stringify(merged) === JSON.stringify(settings)) {
     report.add(path, 'unchanged');

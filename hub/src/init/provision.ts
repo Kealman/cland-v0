@@ -7,7 +7,8 @@
 //   .agents/skills/<name>/ and its manifest, .claude/skills (a symlink, or one per skill in the project's own folder)
 //   docs/agents/issue-tracker.md, domain.md, triage-labels.md
 //   AGENTS.md's managed block, the @AGENTS.md import of an existing CLAUDE.md
-//   the cland hooks in .claude/settings.json
+//   the cland hooks and worktree.bgIsolation = "none" in .claude/settings.json, so background sessions edit the
+//   working copy without EnterWorktree; settings.local.json can override it and is never read or written
 //
 // The territory runs first: root cleanliness must be checked before generated files appear.
 import { existsSync, mkdirSync } from 'node:fs';

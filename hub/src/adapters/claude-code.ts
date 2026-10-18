@@ -70,6 +70,9 @@ export const CLAUDE_CODE_CAPABILITIES: Capabilities = {
   },
 };
 
+/** Keep background sessions in the project's working copy (spec v0.1.4 §3.2). */
+export const BG_ISOLATION = 'none';
+
 /** The hook events cland listens to, and the `cland hook` event each one runs. */
 export const HOOK_EVENTS: Readonly<Record<string, string>> = {
   SessionStart: 'session-start',
