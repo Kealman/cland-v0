@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-521
 branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-18T16:39:24.072Z
+updated: 2026-10-18T16:45:55.040Z
 ---
 
 ## Summary
@@ -64,3 +64,16 @@ Reusing `territory.squashTask` keeps the gate. A new landing path must invoke th
 ### impl-711 · 2026-10-18T16:38:03.788Z
 
 Implemented the durable merge-batch controller, immutable squash preparation, hub-owned T1/T3 occasion and queue/report visibility. Red-green evidence began with C1's missing batch submission; later failing tests exposed config duration rendering and T3-only load repetition. C1 now exercises real TaskMerges + tracker merge receipts on in-process Git/ref and worktree edges, with the scripted in-process droplet provider and FakeClock. T2 projectHub proofs cover merged-tree budget refusal before checkout/refs and report fan-out/queue visibility. Source review preparation is in progress; no verify submission under the Coordinator's T-813 hold.
+
+### rev-30 · 2026-10-18T16:45:55.040Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-711-source
+commit: ceea9c6b1e57c036b01e00712d890eb4689939bd
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at ceea9c6b; Standards and Spec have no findings. A-5454 records FIFO preparation/landing, immutable merged-tree budgets before checkout/ref mutation, durable recovery, T1/T3 selection and T3 load gate, and queue/report fan-out. C1–C5 have matching source/tests but remain unverified pending exact-head runtime evidence. Coordinator's T-813 verification hold and E-678 stage/merge sequencing remain in force; do not submit until explicit all-clear.

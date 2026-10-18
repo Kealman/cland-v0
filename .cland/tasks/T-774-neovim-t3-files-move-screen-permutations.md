@@ -2,8 +2,8 @@
 id: T-774
 kind: task
 title: Neovim T3 files move screen permutations to committed-frame T2 tests (A-4961 group, ~150 s)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-510
 branch: t/T-774-neovim-t3-files-move-screen-permutations
 created: 2026-10-18T04:49:28.746Z
-updated: 2026-10-18T15:57:35.850Z
+updated: 2026-10-18T16:46:10.667Z
+closed: 2026-10-18T16:46:10.667Z
 ---
 
 ## Summary
@@ -79,3 +80,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear. A-5407/e609b4ac passes at unchanged A-5398 source-reviewed head:2616 pass,0 fail/cancelled,8 prerequisite skips; hub and full Neovim finalize. Independent timing/positive reporter audit covers27 changed test files plus workbench:238 timing-backed ordinary identities, all positive/no scoped skips;147 scoped load groups pass735/735. C1 remains the reviewed27-row same-title/assertion/native-boundary audit. C2 verified with A-5395 raw Mac182 serial runs/1843passes/0fail-cancel-skip,>=5 per changed test file, plus this exact-head Linux gate. Seven unique scoped report-only duration warnings remain disclosed (thread stress/history/rewrites, events quiet, explorer preferences, shell/thread file totals); no hard gate failure or new allowance. Route remainder for budget follow-up/dedup; no integrated speed target claimed. Four inherited report-only trips remain C-326/T-803, no scoped trips. No source change, Reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T16:46:10.667Z
+
+Merged a6b6d018b615029d777f8ae3adaa0ce7898e39ae onto dev.

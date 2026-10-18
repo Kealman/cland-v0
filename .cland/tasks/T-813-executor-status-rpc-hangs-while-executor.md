@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-526
 branch: t/T-813-executor-status-rpc-hangs-while-executor
 created: 2026-10-18T16:28:28.718Z
-updated: 2026-10-18T16:45:09.185Z
+updated: 2026-10-18T16:46:05.401Z
 ---
 
 ## Summary
@@ -59,3 +59,13 @@ CPU profile of the serving hub pid 68650 (cland-impl, 2026-10-18 16:52Z, V8 insp
 ### impl-813 · 2026-10-18T16:45:05.362Z
 
 Implemented and pushed d188b465: reproduced the starvation-induced async lock release leak and forbidden-report spin; added isolated dead-owner restart, failed publication, legacy deferral, status/stop never-provider, six-job no-write and 930-job persistence regressions. Host lint/typecheck and 12 targeted test files pass. Source review requested; verify remains held pending Coordinator all-clear.
+
+### coord · 2026-10-18T16:45:46.954Z
+
+Restart #12 (cland-impl, 16:41–16:44Z):
+- Stop: `cland hub stop` reported that pid 68650 did not exit after SIGTERM. The pid exited on its own 45 s later.
+- First start: missed the CLI's 15 s deadline. It was listening at +8 s but never logged "serving", the T-293 class; probably the 8.8 MB suite-jobs load plus a 5 s tracker rescan.
+- Second start: served in 12 s as pid 83539.
+- The ledger lock was released.
+- db7d5479 posted its result on recovery, code 0.
+- `executor status` answers again but took 26 s, close to the 30 s CLI limit, so something in that RPC is still slow. The C1 bound of 2 s must hold on a hub with 930 jobs in history; include start-to-serving time with the C4 history in the evidence.
