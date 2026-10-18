@@ -156,6 +156,8 @@ test('release, topic closure and cleanup failures remain merged and retry the re
       assert.equal(done.followUp, undefined);
       assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
       assert.equal(tracker.view(work.id).claim, null);
+      // Closing succeeds before deferred session cleanup necessarily removes the worktree.
+      await eventually('retried follow-up worktree cleanup', () => !existsSync(work.path) ? true : undefined);
       assert.equal(existsSync(work.path), false);
       assert.equal(git(root, 'branch', '--list', work.branch), '');
       const history = await ui.request({ type: 'topic.history', topic: (topic.value as { topic: { id: string } }).topic.id });
@@ -244,6 +246,7 @@ test('deferred cleanup preserves a worktree switched onto an unrelated branch an
   const retry = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(retry.commit, merged.commit);
   assert.equal(retry.cleanup, 'removed');
+  await eventually('restored branch worktree cleanup', () => !existsSync(work.path) ? true : undefined);
   assert.equal(existsSync(work.path), false);
   assert.notEqual(git(root, 'branch', '--list', 'keep-this-branch'), '');
 });
@@ -322,6 +325,8 @@ test('a rejected push with failed rollback remains landed and retry restores the
   assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', 'dev^{tree}'));
   assert.equal(git(root, 'diff', '--name-only'), '');
   assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
+  // Publishing succeeds before deferred session cleanup necessarily removes the worktree.
+  await eventually('retried rejected-push worktree cleanup', () => !existsSync(work.path) ? true : undefined);
   assert.equal(existsSync(work.path), false);
 });
 
