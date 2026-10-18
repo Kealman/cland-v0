@@ -2,8 +2,8 @@
 id: T-645
 kind: task
 title: cland release refuses with release-version when dev's package.json version differs from the release's
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-504
 branch: t/T-645-cland-release-refuses-with-release
 created: 2026-10-16T16:23:58.697Z
-updated: 2026-10-18T13:20:41.656Z
+updated: 2026-10-18T13:20:56.340Z
+closed: 2026-10-18T13:20:56.340Z
 ---
 
 ## Summary
@@ -167,3 +168,7 @@ Evidence: A-5318, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5318
 Artifact A-5321.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T13:20:56.340Z
+
+Merged a3f9177c8c1223ba35e2731ce8558f1534711944 onto dev.
