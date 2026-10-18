@@ -3,7 +3,7 @@ id: T-711
 kind: task
 title: The hub builds a batch of up to three queued heads, runs T1 and T3 once on the batch tree, and lands them in order on green
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-521
 branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-18T17:20:28.444Z
+updated: 2026-10-18T22:09:33.223Z
 ---
 
 ## Summary
@@ -129,3 +129,20 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged fd16c8fa. A-5493/894e3c11 full gate passes 2635/2643 ordinary tests, zero fail/cancel, eight unrelated skips; full Neovim completes. All ten batch and seven queue ordinary cases pass with 85/85 repetitions (60/60 task-new), including immutable budget refusal and frame/report routing; corrected config control passes 5/5. A-5494 maps C1–C5, preserves prior failed gate and discloses C-326/T-803 report-only diagnostics. No per-item QA; Coordinator retains stage/merge sequencing.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-711 · 2026-10-18T22:08:19.574Z
+
+Under Coordinator authorization 0bda6e7f, merged origin/dev 04f1cf6e once and resolved seven overlapping files, retaining batch, soak, T-813 persistence/liveness and T-815 selection-fallback behavior. New head a589cc1e070d36c0b73ac697af32e82afff1c40d is pushed and clean. All 56 targeted files passed serially (426 tests, zero failures/skips, 372.962s), including all suite*.test.ts, suite-persistence, executor-liveness/lock/deadline and T-813 droplet recovery scenario. Host lint/typecheck pass. A-5596 contains logs/timings/merge-resolution diff. Fresh source review requested from reviewer role; no verification at this new head until clearance.
+
+### rev-30 · 2026-10-18T22:09:33.223Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-711-integration-delta
+commit: a589cc1e070d36c0b73ac697af32e82afff1c40d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear at a589cc1e after explicitly authorized one dev merge. Seven conflict compositions preserve batch/soak admission, baseline separation, one-slot policy, member reports/queue state, T-813 archive/sequence/terminal-report/shutdown behavior and T-815 fallback headers. A-5597 records both axes, both-parent trace, unchanged critical incoming modules and independently parsed56 raw files/426 passes/zero fail-cancel-skip. Prior final gate is stale. C1–C5 await the Coordinator-required fresh exact-head mode-free droplet run; no waiver, findings or per-item QA.

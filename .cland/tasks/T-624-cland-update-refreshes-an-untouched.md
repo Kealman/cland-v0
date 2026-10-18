@@ -3,7 +3,7 @@ id: T-624
 kind: task
 title: cland update refreshes an untouched skill and keeps one edited in the project
 state: open
-status: planned
+status: review
 size: M
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-615
 blocked_by:
   - T-623
-topic: null
-branch: null
+topic: topic-534
+branch: t/T-624-cland-update-refreshes-an-untouched
 created: 2026-10-16T15:57:49.170Z
-updated: 2026-10-17T21:48:42.841Z
+updated: 2026-10-18T22:05:05.106Z
 ---
 
 ## Summary
@@ -43,3 +43,22 @@ Taking cland's version of an edited skill stays the human's act: remove the fold
 - [ ] C6. A skill new to the simulated set is `created`, and one whose folder already exists in the project is `kept` as the project's own and stays out of the manifest.
 - [ ] C7. The update tests cover C1 to C6 in a scratch project with `CLAND_SKILLS_SOURCE_OVERRIDE`, and the rewritten "never adopted" test asserts the per-skill verdict.
 - [ ] C8. `cland update` prints one line per kept skill with its note, and `cland update --json` lists the same action and note for that skill's path.
+
+## Comments
+
+### impl-624 · 2026-10-18T22:03:01.102Z
+
+Implemented whole-skill preflight for hashed manifests. T1 coverage includes untouched refresh, edited/deleted/added files, version-note decisions, repeat/undo, matching-current adoption, new-name ownership and the rewritten added-file regression. T2 invokes runUpdate in-process with scratch HOME/XDG and CLAND_SKILLS_SOURCE_OVERRIDE to prove text/JSON parity. First regression failed with action updated instead of kept before implementation. Host checks and source review preparation underway.
+
+### rev-30 · 2026-10-18T22:05:05.106Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-624-source
+commit: f5fe13dff194388665c59c10f8dbbf03b3f275cc
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at f5fe13df. Whole hashed-skill preflight preserves edited/missing/added copies and install hashes, matching-current adoption, newer-version note semantics, complete untouched refresh/structural transitions and new-name ownership. Scratch T1/T2 cases cover the decision matrix and text/JSON parity; requested never-adopted carrier rewritten. Legacy/dropped policies remain separate. A-5595 records both axes and claimant-reported host checks with limits. C1–C8 await accepted exact-head runtime. No findings or per-item QA; normal mode-free verification may follow.
