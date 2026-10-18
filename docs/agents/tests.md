@@ -71,9 +71,33 @@ this check for candidates declaring it and `test:lint`; older candidate packages
 keep their typecheck command. A matching host gate reuses the whole check on the
 droplet, including the lint, so the report is not repeated there.
 
-The lint currently reports only. The log, result and `cland verify --dry-run`
-include `test lint (report only): <n> findings in <m> files`, the first twelve
-findings with file, line and rule, and each file's lowest qualifying resource tier.
+The direct-source census remains a report of existing debt. The policy gate
+refuses growth, before verify reserves a queue slot or merge changes refs:
+`verify-test-lint` and `merge-test-lint` name the file, line and rule.
+Dry runs perform the same admission and return the same refusal lines.
+A test absent from the base `tiers.json` must obey its T1/T2 resource rules;
+a new T3 file needs `// T3: <process behaviour>` in its first comment block.
+A valid contract or scenario manifest entry supplies that lifecycle declaration.
+
+`hub/test/lint-baseline.json` freezes counts by file and category:
+`wall-clock-wait`, `wall-clock-assertion`, `startDaemon`, `spawnSpoke`,
+`fakeClaude`, `fakeCodex` and `fakeOpenCode`. Missing categories mean zero.
+No count may exceed its frozen allowance. Process-helper growth is permitted
+only with a T3 lifecycle header or contract/scenario entry; wall-clock growth
+still needs a trailing reasoned `// lint-allow-wall-clock: <reason>`.
+The baseline itself may only shrink, including in lifecycle files; it cannot
+be removed to disable enforcement. After removing debt, run
+`npm run test:lint -- --shrink` and commit the reduced baseline. The tool
+takes the minimum of the current count and existing allowance, so it cannot
+bless new debt. Files and categories can independently be lowered to zero.
+While the first freeze awaits publication on dev, lint validates it against its
+original sources and retains that reference across dev merges. Once dev carries
+a baseline, that baseline supplies the branch's reference.
+
+The log, result and admitted `cland verify --dry-run` retain
+`test lint (report only): <n> findings in <m> files`, the first twelve census
+findings and each file's lowest qualifying resource tier. Those census lines
+describe existing debt; policy refusals are separate and fail the check.
 It inspects the entire tier manifest, independently of the selected test phases.
 Import and call syntax distinguish the in-process fake harness and FakeClock
 from process helpers and real timers; comments and planted source strings do not
@@ -187,6 +211,35 @@ The fake harness **binaries** in `hub/test/fakes/{claude-code,codex,opencode}`
 are reserved for one real-binary adapter contract file per harness and T3
 scenarios. They are not the default for routing, roles, subscriptions or tracker
 rules. Existing files migrate under E-677; new tests use the in-process adapter.
+
+### Waiting for an observable condition
+
+Use `until(predicate, { what })` from `hub/test/harness.ts` for a condition
+without an event API. It yields to I/O between observations and owns one deadline,
+including asynchronous predicate time. The failure names `what`; the final
+assertion still states the behaviour proved. `timeoutMs` defaults to the harness
+wait budget (15 seconds, or `CLAND_TEST_WAIT_MS`). The deadline is multiplied by
+`CLAND_TEST_LOAD_FACTOR`; absent an override, the executor default is 2 on a
+droplet and 1 locally. Invalid factors fall back to 1. Tests of the helper inject
+one complete `Clock` and a `loadFactor`, without waiting for real time.
+
+The heartbeat reconnect regression in `hub/test/hygiene.test.ts` is the worked
+example. Its hand-written loop slept 25 ms after each probe. It now waits for
+the observable fresh hello, then keeps both identity assertions:
+
+```ts
+await until(async () => {
+  after = await connectedAt('alpha');
+  return after !== undefined && after !== before;
+}, { what: 'a fresh alpha hello after heartbeat reconnect' });
+assert.ok(after !== undefined && after !== before);
+assert.equal(await connectedAt('beta'), betaBefore);
+```
+
+Prefer a frame, journal receipt or fake clock when one exists. A negative assertion
+needs a positive completion boundary or fake time; an already-true predicate does
+not prove that nothing happens later. Existing intentional expiry waits remain
+part of the baseline until migrated.
 
 ### Real-binary adapter contract checklist
 

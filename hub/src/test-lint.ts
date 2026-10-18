@@ -1,4 +1,4 @@
-// Syntax-only test policy. Findings are data; reporting never changes admission.
+// Syntax-only test analysis; the policy module decides which findings refuse admission.
 import type ts from 'typescript';
 import { createRequire } from 'node:module';
 import { readFile, realpath } from 'node:fs/promises';
@@ -21,7 +21,7 @@ const numeric = (node: ts.Node | undefined): boolean => !!node && (syntax().isNu
 type Resource = { line: number; level: number; description: string };
 type LocalImport = { line: number; specifier: string; name: string; fallback?: string };
 type ModuleSlice = { resources: Resource[]; imports: LocalImport[] };
-type ModuleAnalysis = { result: TestLintFile; select: (name: string) => ModuleSlice };
+type ModuleAnalysis = { calls: TestLintFinding[]; lifecycle: boolean; result: TestLintFile; select: (name: string) => ModuleSlice };
 
 function analyzeTestSource(file: string, text: string, entry: TierEntry): ModuleAnalysis {
   const ts = syntax();
@@ -29,6 +29,8 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
   const source = ts.createSourceFile(virtualFile, text, ts.ScriptTarget.Latest, true);
   const tier = typeof entry === 'string' ? entry : entry.tier;
   const findings: TestLintFinding[] = [];
+  const calls: TestLintFinding[] = [];
+  const findingSites = new Set<string>();
   const resources: Array<Resource & { node: ts.Node }> = [];
   const runtimeImports = new Map<ts.Node, LocalImport>();
   const runtimeCalls = new Map<ts.Node, LocalImport[]>();
@@ -67,7 +69,9 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
         if (token === ts.SyntaxKind.SingleLineCommentTrivia && /^\/\/\s*lint-allow-wall-clock:\s*\S/.test(scanner.getTokenText())) return;
       }
     }
-    if (!findings.some(f => f.line === line && f.rule === rule && f.message === message)) findings.push({ file, line, rule, message });
+    const site = `${node.pos}:${rule}:${message}`;
+    if (!findingSites.has(site)) findings.push({ file, line, rule, message });
+    findingSites.add(site);
   };
   const resource = (node: ts.Node, level: number, description: string) => {
     requireTier(level);
@@ -269,7 +273,10 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
     const b = bindingOf(node.expression);
     const name = b?.name ?? nameOf(node.expression);
     if (b && ['fs', 'fs/promises'].includes(b.module) && sharedLockPath(node.arguments[0])) resource(node, 2, 'shared suite lock');
-    if ((!b || harness(b.module)) && processHelpers.has(name)) resource(node, 3, name);
+    if ((!b || harness(b.module)) && processHelpers.has(name)) {
+      resource(node, 3, name);
+      if (name !== 'killDaemon') calls.push({ file, line: lineOf(node), rule: 'tier-process', message: name });
+    }
     if ((!b || harness(b.module)) && socketHelpers.has(name)) resource(node, 2, name);
     if (b?.module === 'nvim/test/harness.ts' && name === 'startClient' && !stubEnvironment(node.arguments[3])) resource(node, 3, 'Neovim without an explicit stub hub command');
     if (name === 'listen') resource(node, 2, 'socket listen');
@@ -289,7 +296,8 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
       : ts.isPropertyAccessExpression(node.expression) && (node.expression.expression.getText(source) === 'assert' || ['assert', 'assert/strict'].includes(bindingOf(node.expression.expression)?.module ?? ''));
     if (assertion && node.arguments.some(delta)) add(node, 'wall-clock-assertion', 'assertion depends on an elapsed wall-clock difference');
   }
-  if (tier === 'T3' && typeof entry === 'string') {
+  let lifecycle = typeof entry !== 'string' && !!('contract' in entry ? entry.contract : entry.scenario);
+  {
     const leading = ts.getLeadingCommentRanges(text, 0) ?? [];
     let end = leading[0]?.end ?? 0;
     for (const comment of leading.slice(1)) {
@@ -297,7 +305,8 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
       end = comment.end;
     }
     const header = text.slice(leading[0]?.pos ?? 0, end);
-    if (!/\bT3:\s*[^\s*/][^\n]*/.test(header)) add(source, 't3-lifecycle', 'first comment block must name the process behaviour: T3: <behaviour>');
+    lifecycle ||= /\bT3:\s*[^\s*/][^\n]*/.test(header);
+    if (tier === 'T3' && !lifecycle) findings.push({ file, line: 1, rule: 't3-lifecycle', message: 'first comment block must name the process behaviour: T3: <behaviour>' });
   }
   const exported = new Map<string, ts.Node>();
   const reexports = new Map<string, LocalImport>();
@@ -436,12 +445,18 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
     slices.set(name, result);
     return result;
   };
-  return { result: { file, tier, qualifies: `T${minimum}` as Tier, findings: findings.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule)) }, select };
+  return { calls, lifecycle, result: { file, tier, qualifies: `T${minimum}` as Tier, findings: findings.sort((a, b) => a.line - b.line || a.rule.localeCompare(b.rule)) }, select };
 }
 
 /** Analyze one source without reading its imports; lintTests adds the local graph. */
 export function lintTestSource(file: string, text: string, entry: TierEntry): TestLintFile {
   return analyzeTestSource(file, text, entry).result;
+}
+
+/** Direct policy facts share the lexical binding analysis used by the report. */
+export function testLintFacts(file: string, text: string, entry: TierEntry) {
+  const { result, calls, lifecycle } = analyzeTestSource(file, text, entry);
+  return { result, calls, lifecycle };
 }
 
 /** Hermetic admission uses the same import/call analysis as the tier report. */

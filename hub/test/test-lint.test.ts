@@ -504,3 +504,53 @@ test('report names findings and every file qualifying tier without refusing', ()
   assert.match(result[1]!, /planted.test.ts:1 \[wall-clock-wait\]/);
   assert.ok(result.includes('test lint tier: hub/test/clean.test.ts: T1; qualifies T1'));
 });
+
+test('numeric waits cannot grow and shrinking retires their allowance', async () => {
+  const { checkTestLint, shrinkLintBaseline } = await import('../src/test-lint-policy.ts');
+  const manifest = { version: 1 as const, tests: { [file]: 'T2' as const } };
+  const baseline = { version: 1 as const, files: { [file]: { 'wall-clock-wait': 1 } } };
+  const source = async () => 'sleep(10);\nsleep(20);';
+  const findings = await checkTestLint({ manifest, source, baseline, base: { manifest, baseline } });
+  assert.equal(findings[0]?.rule, 'wall-clock-wait');
+  assert.equal(findings[0]?.line, 2);
+  assert.equal((await checkTestLint({ manifest, source: async () => 'sleep(10); sleep(20);', baseline, base: { manifest, baseline } }))[0]?.rule, 'wall-clock-wait', 'two sites on one line must not collapse into one allowance');
+  assert.deepEqual(await checkTestLint({ manifest, source: async () => 'sleep(10);\nsleep(20); // lint-allow-wall-clock: waits for native timeout boundary', baseline, base: { manifest, baseline } }), []);
+  const shrunk = await shrinkLintBaseline(manifest, async () => '', baseline);
+  assert.deepEqual(shrunk.files[file], {});
+  assert.equal((await checkTestLint({ manifest, source: async () => 'sleep(10);', baseline: shrunk, base: { manifest, baseline: shrunk } }))[0]?.rule, 'wall-clock-wait');
+});
+
+test('process helper growth requires lifecycle evidence for each category', async () => {
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  const manifest = { version: 1 as const, tests: { [file]: 'T3' as const } };
+  const baseline = { version: 1 as const, files: {} };
+  for (const helper of ['startDaemon', 'spawnSpoke', 'fakeClaude', 'fakeCodex', 'fakeOpenCode']) {
+    const source = async () => `import { ${helper} as run } from './harness.ts'; run(t, root);`;
+    assert.equal((await checkTestLint({ manifest, source, baseline, base: { manifest, baseline } }))[0]?.rule, helper);
+    assert.deepEqual(await checkTestLint({ manifest, source: async () => '// T3: native child shutdown and reaping\n' + await source(), baseline, base: { manifest, baseline } }), []);
+  }
+});
+
+test('new files require tier rules or a T3 lifecycle declaration', async () => {
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  for (const entry of ['T3', { tier: 'T3', contract: 'codex' }, { tier: 'T3', scenario: 'flow' }] as const) {
+    const manifest = { version: 1 as const, tests: { [file]: entry } };
+    const findings = await checkTestLint({ manifest, source: async () => '' });
+    assert.equal(findings.some(f => f.rule === 't3-lifecycle'), typeof entry === 'string' || !('contract' in entry || 'scenario' in entry));
+    assert.deepEqual(await checkTestLint({ manifest, source: async () => '// T3: process crash and restart' }), []);
+  }
+  const findings = await checkTestLint({ manifest: { version: 1, tests: { [file]: 'T2' } }, source: async () => 'startDaemon(t, root);' });
+  assert.ok(findings.some(f => f.rule === 'tier-process'));
+});
+
+test('baseline counts cannot grow or disappear with the frozen file', async () => {
+  const { checkTestLint, LINT_BASELINE } = await import('../src/test-lint-policy.ts');
+  const manifest = { version: 1 as const, tests: { [file]: 'T3' as const } };
+  const baseline = { version: 1 as const, files: { [file]: { startDaemon: 1 } } };
+  const source = async () => '// T3: lifecycle\nstartDaemon(); startDaemon();';
+  const grown = { version: 1 as const, files: { [file]: { startDaemon: 2 } } };
+  const findings = await checkTestLint({ manifest, source, baseline: grown, base: { manifest, baseline } });
+  assert.equal(findings[0]?.file, LINT_BASELINE);
+  assert.match(findings[0]!.message, /baseline grew.*startDaemon/);
+  assert.equal((await checkTestLint({ manifest, source, base: { manifest, baseline } }))[0]?.rule, 'lint-baseline');
+});

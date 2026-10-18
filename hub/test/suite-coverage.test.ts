@@ -43,7 +43,7 @@ test('package capture retains real process coverage and a successful exit beside
   // Copy the production entries so raw V8 URLs name this fixture's own sources.
   // No fake dispatcher, spoke transport or CLI is introduced by this proof.
   for (const path of ['hub/src', 'hub/bin', 'hub/test/fakes', 'hub/package.json']) await cp(join(repository, path), join(root, path), { recursive: true, filter: path => !path.endsWith('.test.ts') });
-  for (const file of ['harness.ts', 'tier-cli.ts', 'account-fixture-env.ts', 'cover-quiet.ts', 'hub-resources.ts', 'process-cleanup.ts']) await cp(join(repository, 'hub/test', file), join(root, 'hub/test', file));
+  for (const file of ['harness.ts', 'until.ts', 'tier-cli.ts', 'account-fixture-env.ts', 'cover-quiet.ts', 'hub-resources.ts', 'process-cleanup.ts']) await cp(join(repository, 'hub/test', file), join(root, 'hub/test', file));
   const dependencies = dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!));
   await symlink(dependencies, join(root, 'node_modules'), 'dir');
   await writeFile(join(root, 'package.json'), '{"type":"module"}');

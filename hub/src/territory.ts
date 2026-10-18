@@ -1,3 +1,4 @@
+import { testLintPolicy, TestLintError } from './test-lint-policy.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
 import { execFile, spawnSync } from 'node:child_process';
@@ -649,6 +650,10 @@ export async function squashTask(
   }
   try { await lintHubShardTree(root, tree, env, { head: tip, base: before }); }
   catch (err) { resumed(() => { throw new MergeError('merge-tiers', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
+  try {
+    const findings = await testLintPolicy(root, { tree, head: tip, base: before, env });
+    if (findings.length) throw new TestLintError(findings);
+  } catch (err) { resumed(() => { throw new MergeError('merge-test-lint', err instanceof Error ? err.message : String(err), err instanceof TestLintError ? err.files : undefined); }); }
   // Include deleted rename sources as well as destinations for path-based merge gates and checkout safety.
   const touched = await territoryGitAsync(root, ['diff', '--no-renames', '--name-only', '-z', before, tree, '--'], undefined, undefined, env);
   const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--'], undefined, undefined, env);

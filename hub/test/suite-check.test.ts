@@ -1,7 +1,7 @@
 // T3: npm check completion and cancellation reap retained writers before fixture removal.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, access, writeFile, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -110,7 +110,7 @@ const hold = watch('writer', () => {});
 console.log(process.argv[2] === 'startup-held' ? 'WRITER-STARTUP-HELD' : 'CHECK-HELD');`;
   await writeFile(join(cwd, 'writer.mjs'), writer);
   // Separate process group models a retained writer after npm's group exits.
-  const launcher = `import { spawn } from 'node:child_process'; import { watch } from 'node:fs';
+  const launcher = `import { spawn, execFileSync } from 'node:child_process'; import { watch } from 'node:fs';
 process.on('SIGTERM', () => {});
 const writer = spawn(process.execPath, ['writer.mjs', ${JSON.stringify(heldStartup ? 'startup-held' : 'ready')}], { detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
 writer.once('exit', () => console.log('WRITER-REAPED'));
@@ -132,6 +132,10 @@ test('check runs the report lint once after typecheck and preserves a green exit
     typecheck: 'node -e "console.log(\'TYPECHECK-COMPLETE\')"',
     'test:lint': `node ${JSON.stringify(script)} ${JSON.stringify(cwd)}`,
   } }));
+  await writeFile(join(cwd, 'hub/test/lint-baseline.json'), JSON.stringify({ version: 1, files: { 'hub/test/a.test.ts': { 'wall-clock-wait': 1 } } }));
+  const git = (...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' });
+  git('init', '-qb', 'dev'); git('add', '.');
+  git('-c', 'user.name=Lint fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Frozen lint baseline');
   const check = await suiteCheckCommand(cwd);
   assert.deepEqual(check, ['run', 'check']);
   assert.deepEqual(suiteCommands({ mode: 'auto' }, check), [['run', 'check'], ['test']]);
@@ -143,6 +147,13 @@ test('check runs the report lint once after typecheck and preserves a green exit
   assert.ok(stdout.indexOf('TYPECHECK-COMPLETE') < stdout.indexOf('test lint (report only):'));
   assert.match(stdout, /test lint \(report only\): 1 findings in 1 files/);
   assert.match(suiteSummary(stdout), /test lint tier: hub\/test\/a.test.ts: T2; qualifies T2/);
+  // The documented npm entry point forwards --shrink to the lint tool.
+  await writeFile(join(cwd, 'hub/test/a.test.ts'), '');
+  const shrink = root.attach(ownedCheck(t, cwd, ['run', 'test:lint', '--', '--shrink']));
+  const shrunk = await shrink.result;
+  assert.equal(shrunk.code, 0, shrunk.stderr);
+  await shrink.stop();
+  assert.deepEqual(JSON.parse(await readFile(join(cwd, 'hub/test/lint-baseline.json'), 'utf8')).files['hub/test/a.test.ts'], {});
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
   assert.deepEqual(await suiteCheckCommand(cwd), ['run', 'typecheck'], 'older candidates retain their command and host-gate identity');
 });

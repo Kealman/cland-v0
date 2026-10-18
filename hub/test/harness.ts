@@ -1,6 +1,8 @@
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
 import type { Clock } from '../src/hub/clock.ts';
+import { testWaitMs } from './until.ts';
+export { until, testWaitMs } from './until.ts';
 // The test harness for the two seams:
 //   1. the spoke's MCP surface — in-memory for T2, a real stdio process for binary contracts/lifecycle
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
@@ -757,12 +759,6 @@ export async function fakeClaude(
  */
 export const clauseAnswered = (ui: FrameClient, session: string, timeoutMs = 15_000) =>
   ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === session && (f.message as { text: string }).text.startsWith('pong: cland hub: you hold the role'), timeoutMs);
-
-/** Test-only failure budget; production processes never read this setting. */
-export function testWaitMs(fallbackMs = 15_000): number {
-  const configured = Number(process.env.CLAND_TEST_WAIT_MS);
-  return Number.isFinite(configured) && configured > 0 ? configured : fallbackMs;
-}
 
 /** Claude launches may return before the shared agents schedule discovers their pid. */
 export async function withDiscoveredPid<T extends { sessionId: string }>(ui: FrameClient, launched: T): Promise<T & { pid: number }> {

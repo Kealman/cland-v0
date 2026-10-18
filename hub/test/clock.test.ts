@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { FakeClock } from './fake-clock.ts';
+import { until } from './until.ts';
 import { realClock, resolveClock, type ClockOptions } from '../src/hub/clock.ts';
 
 test('FakeClock runs nested timers in deadline order with microtasks between callbacks', async () => {
@@ -91,6 +92,28 @@ test('hub time owners call only their clock except documented real I/O timers', 
     }
     assert.doesNotMatch(source, /(?<![\w.])(?:setTimeout|setInterval|clearTimeout|clearInterval)\s*\(|\bDate\s*\.\s*now\s*\(/, file);
   }
+});
+
+test('until names the unmet condition at one load-scaled deadline', async () => {
+  const clock = new FakeClock(0);
+  let finished = false;
+  const waiting = until(() => false, { what: 'worker completion receipt', timeoutMs: 100, loadFactor: 3, clock });
+  const failure = assert.rejects(waiting, /worker completion receipt: not within 300 ms/).then(() => { finished = true; });
+  await clock.advance(299);
+  assert.equal(finished, false);
+  await clock.advance(1);
+  await failure;
+  assert.equal(clock.pending, 0);
+});
+
+
+test('until returns on its observation and cancels the deadline', async () => {
+  const clock = new FakeClock(0);
+  let ready = false;
+  const waiting = until(() => ready, { what: 'ready receipt', clock });
+  ready = true;
+  await waiting;
+  assert.equal(clock.pending, 0);
 });
 
 test('FakeClock blocking work delays due callbacks without moving time backwards', async () => {

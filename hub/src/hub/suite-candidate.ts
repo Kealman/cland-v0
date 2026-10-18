@@ -4,14 +4,17 @@ import { candidateTree } from '../verification-tree.ts';
 import { selectPackageSuite, type SuiteRequest, type SuiteSelection } from '../suite-selection.ts';
 import { lintHubShards, lintHubShardTree, ShardManifestError } from '../suite-shards.ts';
 import { planTierReport, type TierPlan } from '../suite-tier-report.ts';
+import { testLintPolicy, TestLintError } from '../test-lint-policy.ts';
 import { durationBase } from '../suite-duration-context.ts';
 
 export class SuiteAdmissionError extends Error {
-  readonly code = 'verify-tiers';
+  readonly code: 'verify-tiers' | 'verify-test-lint';
   readonly files: string[];
   constructor(error: unknown) {
-    super(`verify-tiers: ${error instanceof Error ? error.message : String(error)}`);
-    this.files = error instanceof ShardManifestError ? error.files : [];
+    const code = error instanceof TestLintError ? 'verify-test-lint' : 'verify-tiers';
+    super(`${code}: ${error instanceof Error ? error.message : String(error)}`);
+    this.code = code;
+    this.files = error instanceof ShardManifestError || error instanceof TestLintError ? error.files : [];
   }
 }
 
@@ -38,6 +41,12 @@ export function suiteCandidate(env: NodeJS.ProcessEnv): SuiteCandidate {
       try {
         if (at !== 'unknown') await lintHubShardTree(cwd, at, env);
         await lintHubShards(cwd);
+        if (at !== 'unknown') {
+          const findings = await testLintPolicy(cwd, { tree: at, head: at, env });
+          if (findings.length) throw new TestLintError(findings);
+        }
+        const findings = await testLintPolicy(cwd, { head: at, env });
+        if (findings.length) throw new TestLintError(findings);
       } catch (error) { throw new SuiteAdmissionError(error); }
       return { head: at, branch, selection, tree: candidate,
         tierPlan: await planTierReport(cwd, selection, workers), budgetBase: await durationBase(cwd, at, env) };

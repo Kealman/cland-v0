@@ -5,7 +5,7 @@ import type { Socket } from 'node:net';
 import { test } from 'node:test';
 import { WebSocket } from 'ws';
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from '../src/protocol.ts';
-import { eventually, inProcessSpoke, sleep, startHub, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, sleep, startHub, until, TEST_SECRET } from './harness.ts';
 
 type Send = { ok: boolean; error?: string; outcomes?: Array<{ to: string; outcome: string; reason?: string }> };
 
@@ -100,10 +100,11 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
     const betaBefore = await connectedAt('beta');
     assert.ok(before && betaBefore, 'both connected');
     // the hub closes alpha after two missed heartbeats (≤ 3 s); alpha reconnects with a fresh hello: poll, never sleep
-    const after = await eventually('spoke reconnects with a fresh hello', async () => {
-      const current = await connectedAt('alpha');
-      return current !== undefined && current !== before ? current : undefined;
-    }, 15_000);
+    let after: string | undefined;
+    await until(async () => {
+      after = await connectedAt('alpha');
+      return after !== undefined && after !== before;
+    }, { what: 'a fresh alpha hello after heartbeat reconnect' });
     assert.ok(after !== undefined && after !== before, `a fresh hello after the close (before ${before}, after ${after})`);
     assert.equal(await connectedAt('beta'), betaBefore, 'the session that heartbeats was never cut off');
   } finally {

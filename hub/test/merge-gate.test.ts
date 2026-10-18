@@ -69,6 +69,13 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
     'hub/test/base.test.ts': 'T1', 'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3',
   } }));
   git(work.path, 'commit', '-qam', 'Classify new tests');
+  await review(rev, work.id, 'clear', 'missing-lifecycle');
+  const lifecycle = await refused(ui, root, work.id, 'merge-test-lint', ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
+  assert.match(lifecycle.error!, /hub\/src\/new.test.ts:1 \[t3-lifecycle\]/);
+  assert.equal(existsSync(join(root, 'hub/test/new.test.ts')), false);
+  await writeFile(join(work.path, 'hub/src/new.test.ts'), '// T3: native process startup\n');
+  await writeFile(join(work.path, 'hub/test/new.test.ts'), '// T3: native timeout expiry\nsetTimeout(() => {}, 1); // lint-allow-wall-clock: observes native timer expiry\n');
+  git(work.path, 'commit', '-qam', 'Declare lifecycle evidence');
   for (const key of ['hub/test/new.test.ts::new', baseline.expiringKey]) {
     const invalid = structuredClone(baseline.manifest);
     invalid.allow[key] = baseline.legacy;
@@ -90,7 +97,7 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
   await review(rev, work.id, 'clear', 'classified');
   const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
-  assert.equal(await readFile(join(root, 'hub/test/new.test.ts'), 'utf8'), 'setTimeout(() => {}, 1);\n');
+  assert.match(await readFile(join(root, 'hub/test/new.test.ts'), 'utf8'), /^\/\/ T3: native timeout expiry/);
   const landedDurations = JSON.parse(await readFile(join(root, 'hub/test/durations.json'), 'utf8'));
   assert.equal(landedDurations.allow[baseline.legacyKey], undefined, 'dev retirement survives the merge');
   assert.deepEqual(landedDurations.allow[baseline.expiringKey], baseline.manifest.allow[baseline.expiringKey]);

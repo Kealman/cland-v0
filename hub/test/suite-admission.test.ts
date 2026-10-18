@@ -136,6 +136,16 @@ test('verify refuses every unclassified hub test before reserving a queue slot, 
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
     'hub/src/new.test.ts': 'T3', 'hub/test/new.test.ts': 'T3',
   } }));
+  const lifecycle = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
+  assert.equal(lifecycle.ok, false);
+  assert.equal((lifecycle as { code?: string }).code, 'verify-test-lint');
+  assert.match(lifecycle.error!, /hub\/src\/new.test.ts:1 \[t3-lifecycle\]/);
+  const dry = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'], dryRun: true });
+  assert.equal(dry.ok, false);
+  assert.equal(dry.error, lifecycle.error, 'dry run returns identical policy refusal lines');
+  assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
+  await writeFile(join(f.root, 'hub/src/new.test.ts'), '// T3: native process startup\n');
+  await writeFile(join(f.root, 'hub/test/new.test.ts'), '// T3: native timeout expiry\nsetTimeout(() => {}, 1); // lint-allow-wall-clock: observes native timer expiry\n');
   const job = await f.launch();
   assert.equal(job.pid, null);
   assert.equal(job.position, 1, 'refused requests consume no queue position');
@@ -234,4 +244,51 @@ if (args.join(' ') === 'rev-parse HEAD' && existsSync('hold-head')) {
   assert.deepEqual((status.value as HubStatus).suites, [], 'head change cannot reserve a suite');
   const queue = await f.ui.request({ type: 'suite.queue' });
   assert.deepEqual((queue.value as VerificationQueue).waiters, []);
+});
+
+// T3: native Git ancestry proves a freeze survives dev moving before publication.
+test('the first lint baseline keeps its freeze when dev moves debt before publication', async t => {
+  const { testLintPolicy, shrinkTestLint, LINT_BASELINE } = await import('../src/test-lint-policy.ts');
+  const root = await tempProject(t, 'cland-lint-freeze-history-');
+  const git = (...args: string[]) => promisify(execFile)('git', args, { cwd: root }).then(result => result.stdout.trim());
+  await git('init', '-qb', 'dev');
+  await git('config', 'user.name', 'Lint history fixture');
+  await git('config', 'user.email', 'fixture@example.invalid');
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  const native = 'hub/test/native.test.ts', component = 'hub/test/component.test.ts';
+  const assertion = 'const wrote = Date.now(); assert.ok(Date.now() - wrote < 1000);';
+  const nativeSource = '// T3: native watcher latency\n' + assertion;
+  await writeFile(join(root, native), nativeSource);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [native]: 'T3' } }));
+  await git('add', 'hub'); await git('commit', '-qm', 'Native latency debt');
+  await git('update-ref', 'refs/remotes/origin/dev', 'HEAD');
+  await git('checkout', '-qb', 'candidate');
+  const frozen = { version: 1, files: { [native]: { 'wall-clock-assertion': 1 } } };
+  await writeFile(join(root, LINT_BASELINE), JSON.stringify(frozen));
+  await git('add', 'hub'); await git('commit', '-qm', 'First freeze');
+  assert.deepEqual(await testLintPolicy(root), []);
+  // An inflated first freeze must not become its own authority.
+  await writeFile(join(root, LINT_BASELINE), JSON.stringify({ version: 1, files: { [native]: { 'wall-clock-assertion': 2 } } }));
+  await git('commit', '-qam', 'Inflated freeze', '--amend');
+  assert.ok((await testLintPolicy(root)).some(f => f.rule === 'lint-baseline' && /baseline grew/.test(f.message)));
+  await writeFile(join(root, LINT_BASELINE), JSON.stringify(frozen));
+  await git('commit', '-qam', 'First freeze', '--amend');
+  await git('checkout', '-q', 'dev');
+  await writeFile(join(root, native), '// T3: native watcher lifecycle\n');
+  await writeFile(join(root, component), assertion);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [native]: 'T3', [component]: 'T2' } }));
+  await git('add', 'hub'); await git('commit', '-qm', 'Move latency before freeze is published');
+  await git('update-ref', 'refs/remotes/origin/dev', 'HEAD');
+  await git('checkout', '-q', 'candidate'); await git('merge', '--no-edit', 'dev');
+  // Correct the tiering at the original, already frozen path.
+  await writeFile(join(root, native), nativeSource);
+  await writeFile(join(root, component), '');
+  await shrinkTestLint(root);
+  await git('commit', '-qam', 'Restore native latency and shrink');
+  assert.deepEqual(await testLintPolicy(root), []);
+  assert.deepEqual(await testLintPolicy(root, { tree: 'HEAD', head: 'HEAD', base: 'dev' }), []);
+  const grown = JSON.parse(await readFile(join(root, LINT_BASELINE), 'utf8'));
+  grown.files[native]['wall-clock-assertion'] = 2;
+  await writeFile(join(root, LINT_BASELINE), JSON.stringify(grown));
+  assert.ok((await testLintPolicy(root)).some(f => f.rule === 'lint-baseline' && /baseline grew/.test(f.message)));
 });
