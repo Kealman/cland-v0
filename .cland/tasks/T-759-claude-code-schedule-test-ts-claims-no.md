@@ -3,7 +3,7 @@ id: T-759
 kind: task
 title: "processStartedAsync's ps probe (doctor/report.ts → hub/lock.ts) is reachable from T2 tests: claude-code-schedule and tracker-levels"
 state: open
-status: backlog
+status: in progress
 size: S
 criterion_seq: 1
 labels:
@@ -11,12 +11,12 @@ labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-481
+branch: t/T-759-claude-code-schedule-test-ts-claims-no
 created: 2026-10-17T22:05:24.636Z
-updated: 2026-10-18T05:43:31.144Z
+updated: 2026-10-18T06:27:39.690Z
 ---
 
 ## Summary

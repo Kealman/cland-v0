@@ -10,12 +10,12 @@ labels:
   - hub
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-482
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T22:53:23.993Z
-updated: 2026-10-17T22:53:23.993Z
+updated: 2026-10-18T06:27:14.950Z
 ---
 
 ## Summary

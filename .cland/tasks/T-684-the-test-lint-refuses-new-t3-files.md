@@ -3,7 +3,7 @@ id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-477
 branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-18T06:15:52.596Z
+updated: 2026-10-18T06:24:57.105Z
 ---
 
 ## Summary
@@ -119,3 +119,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5008: final same-head evidence clear; C1–C5 verified, C6 source verification remains current. A-5007/b3c086e9 exits zero with full hub+Neovim phases: 2,520 pass/0 fail/8 unrelated skips. Audited all seven touched files/62 positive ordinary test receipts and six new identities 5/5 (30/30), covering admission/merge refusals, markers/helpers, baseline/shrink, until deadline/cancellation and retained reconnect identity assertions. No owned skips/trips. Mac A-4967 and repaired coverage A-4991 remain applicable; failed parent A-4990 stays disclosed. A-5006 completes the read-only T-747 dependency follow-up, without claiming combined runtime evidence. Unrelated report-only Claude ps probe remains known T-759. Linux c-8 lon1, 1,915s lifetime, $0.1330; no per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-684 · 2026-10-18T06:24:51.215Z
+
+Coordinator-authorized origin/dev integration completed and pushed at bb465000cf88d4f5ac25cb487cdb1020ca8a2d8d (merge d098f160, dev d550c948). Clock conflict retains both until cases and FakeClock drain-horizon regression; lazy harness auto-merge retained. Per Coordinator, corrected T-772 tiering by restoring the unchanged native latency assertion case from tracker-component.test.ts to T3 tracker.test.ts. Shrink has zero count increases and retires 33 daemon, 43 spoke and 3 wait sites. Fixed first-freeze history reference exposed by the advanced merge base, with red/green Git-backed regression rejecting seed inflation/later growth. T0 checks and 55 serial whole-file runs across 11 files green, peak load 4.660. Evidence A-5018: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5018-t-684-authorized-integration-baseline-shrink-and-55-serial-receipts. Delta review requested before fresh exact-head droplet run.

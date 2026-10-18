@@ -3,19 +3,19 @@ id: T-771
 kind: task
 title: A test-fixture hub outlives its test worker when the worker is SIGTERMed mid-file
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - verification
   - hub
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-482
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-771-a-test-fixture-hub-outlives-its-test
 created: 2026-10-18T04:44:16.774Z
-updated: 2026-10-18T04:44:16.774Z
+updated: 2026-10-18T06:27:39.204Z
 ---
 
 ## Summary

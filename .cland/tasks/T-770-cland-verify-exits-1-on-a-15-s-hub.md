@@ -3,7 +3,7 @@ id: T-770
 kind: task
 title: "`cland verify` exits 1 on a 15 s hub-socket timeout even though the hub accepted the run, inviting a duplicate submission"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
@@ -11,12 +11,12 @@ labels:
   - cli
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-482
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-770-cland-verify-exits-1-on-a-15-s-hub
 created: 2026-10-18T03:49:21.322Z
-updated: 2026-10-18T03:49:21.322Z
+updated: 2026-10-18T06:27:34.546Z
 ---
 
 ## Summary
