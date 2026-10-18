@@ -2,8 +2,8 @@
 id: T-761
 kind: task
 title: test:tiers refuses a duration allowance owned by a task, so a merge can't make dev's manifest invalid
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-514
 branch: t/T-761-test-tiers-refuses-a-duration-allowance
 created: 2026-10-17T22:53:23.993Z
-updated: 2026-10-18T15:12:44.178Z
+updated: 2026-10-18T16:18:04.879Z
+closed: 2026-10-18T16:18:04.879Z
 ---
 
 ## Summary
@@ -151,3 +152,7 @@ Evidence A-5388: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5388-
 Artifact A-5390.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T16:18:04.879Z
+
+Merged c14711256aa4a02f19575fa27baa6958939f418c onto dev.
