@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { nvimHubImports } from '../src/suite-selection.ts';
 import { assertRecordings } from './nvim-fixture-check.ts';
 import { recordedOutput } from './nvim-frame-source.ts';
-import { canonical, packRecordings, unpackRecordings, replayFrame } from '../../nvim/test/frame-fixtures.ts';
+import { canonical, packRecordings, unpackRecordings, replayFrame, selectRecordings, recordingReader } from '../../nvim/test/frame-fixtures.ts';
 const root = fileURLToPath(new URL('../../', import.meta.url));
 test('T2 Neovim import closures contain no hub runtime or harness', async () => {
   const { tests } = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
@@ -53,4 +53,34 @@ test('timestamp occurrences keep the same key across coincident and adjacent clo
 
 test('an unmatched recording names its operation and protocol request', () => {
   assert.throws(() => replayFrame('frame', { requestType: 'missing.request', frame: { type: 'result', value: 'not recorded' } }), /unrecorded protocol frame.*operation=frame.*request=missing.request.*key=/);
+});
+
+test('a per-file catalog retains complete requested frames and refuses a missing recording', () => {
+  const records = {
+    first: { operation: 'frame', input: { requestType: 'task.list' }, output: { items: [{ id: 'T-1', title: 'Shared task' }] } },
+    second: { operation: 'frame', input: { requestType: 'task.view' }, output: { item: { id: 'T-1', title: 'Shared task' } } },
+    unrelated: { operation: 'frame', input: {}, output: { text: 'Unrelated scenario' } },
+  };
+  const slice = selectRecordings(records, ['first', 'second', 'first']);
+  assert.deepEqual(unpackRecordings(packRecordings(slice)), { first: records.first, second: records.second });
+  assert.doesNotMatch(JSON.stringify(packRecordings(slice)), /Unrelated scenario/);
+  assert.throws(() => selectRecordings(records, ['missing']), /missing.*run npm run test:nvim-fixtures/);
+});
+
+test('a slice loads the committed catalog once for a recorded interleaving and still refuses unknown frames', () => {
+  const records = {
+    first: { operation: 'frame', input: {}, output: { text: 'First frame' } },
+    later: { operation: 'frame', input: {}, output: { text: 'Later frame' } },
+  };
+  let loads = 0;
+  const read = recordingReader(packRecordings({ first: records.first }), () => {
+    loads++;
+    return packRecordings(records);
+  });
+  assert.deepEqual(read('first', 'frame', {}), { text: 'First frame' });
+  assert.equal(loads, 0, 'normal slice reads do not parse the main catalog');
+  assert.deepEqual(read('later', 'frame', {}), { text: 'Later frame' });
+  assert.deepEqual(read('later', 'frame', {}), { text: 'Later frame' });
+  assert.equal(loads, 1, 'the full catalog is cached after its first use');
+  assert.throws(() => read('missing', 'frame', { requestType: 'task.view', frame: { type: 'result' } }), /operation=frame request=task.view key=missing/);
 });

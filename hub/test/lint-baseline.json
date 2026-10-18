@@ -36,6 +36,8 @@
       "spawnSpoke": 2
     },
     "hub/test/aide-component.test.ts": {},
+    "hub/test/aide-import-cli.test.ts": {},
+    "hub/test/aide-permissions.test.ts": {},
     "hub/test/aide.test.ts": {
       "spawnSpoke": 1,
       "fakeClaude": 3
@@ -113,6 +115,7 @@
     },
     "hub/test/doctor.test.ts": {},
     "hub/test/duration-legacy.test.ts": {},
+    "hub/test/durations-runner-budget.test.ts": {},
     "hub/test/durations-runner.test.ts": {
       "wall-clock-wait": 1
     },
@@ -151,6 +154,7 @@
     "hub/test/executor-safety.test.ts": {
       "startDaemon": 1
     },
+    "hub/test/executor-spend.test.ts": {},
     "hub/test/executor.test.ts": {
       "startDaemon": 3,
       "spawnSpoke": 1
@@ -197,9 +201,12 @@
     "hub/test/inbox-workload.test.ts": {},
     "hub/test/init-config.test.ts": {},
     "hub/test/init-machine.test.ts": {},
+    "hub/test/init-next.test.ts": {},
     "hub/test/init-process.test.ts": {
       "fakeClaude": 1
     },
+    "hub/test/init-roots.test.ts": {},
+    "hub/test/init-settings.test.ts": {},
     "hub/test/init.test.ts": {},
     "hub/test/item-lead.test.ts": {},
     "hub/test/journal-async.test.ts": {
@@ -232,6 +239,7 @@
     },
     "hub/test/lead-routing.test.ts": {},
     "hub/test/lifecycle-serialization.test.ts": {},
+    "hub/test/merge-budget.test.ts": {},
     "hub/test/merge-checkout.test.ts": {
       "startDaemon": 2
     },
@@ -240,6 +248,7 @@
     },
     "hub/test/merge-override.test.ts": {},
     "hub/test/merge-policy.test.ts": {},
+    "hub/test/merge-queue.test.ts": {},
     "hub/test/merge-recovery.test.ts": {
       "wall-clock-wait": 1,
       "startDaemon": 3,
@@ -265,7 +274,9 @@
     },
     "hub/test/opencode-check.test.ts": {},
     "hub/test/opencode-database.test.ts": {},
+    "hub/test/opencode-launch-policy.test.ts": {},
     "hub/test/opencode-native.test.ts": {},
+    "hub/test/opencode-policy.test.ts": {},
     "hub/test/orphan-servers-perf.test.ts": {
       "wall-clock-wait": 1,
       "wall-clock-assertion": 2,
@@ -288,6 +299,7 @@
       "fakeClaude": 1,
       "fakeCodex": 1
     },
+    "hub/test/plan-approval-reload.test.ts": {},
     "hub/test/plan-approval.test.ts": {
       "startDaemon": 4,
       "spawnSpoke": 2,
@@ -349,8 +361,10 @@
       "startDaemon": 2,
       "fakeCodex": 2
     },
+    "hub/test/role-launch.test.ts": {},
     "hub/test/roles-component.test.ts": {},
     "hub/test/roles-editor.test.ts": {},
+    "hub/test/roles-launch-permissions.test.ts": {},
     "hub/test/roles-session-refresh.test.ts": {},
     "hub/test/roles-snapshot-cli.test.ts": {},
     "hub/test/roles-snapshot.test.ts": {},
@@ -467,6 +481,8 @@
     "hub/test/subscription-hygiene.test.ts": {},
     "hub/test/subscriptions.test.ts": {},
     "hub/test/suite-accounting.test.ts": {},
+    "hub/test/suite-admission-close.test.ts": {},
+    "hub/test/suite-admission-cost.test.ts": {},
     "hub/test/suite-admission.test.ts": {
       "startDaemon": 1
     },
@@ -491,6 +507,7 @@
     "hub/test/suite-coverage.test.ts": {},
     "hub/test/suite-dry-run.test.ts": {},
     "hub/test/suite-duration-budget.test.ts": {},
+    "hub/test/suite-duration-context.test.ts": {},
     "hub/test/suite-human-component.test.ts": {},
     "hub/test/suite-human.test.ts": {},
     "hub/test/suite-load-diagnostics.test.ts": {},
@@ -615,6 +632,7 @@
     },
     "hub/test/verifier-routing.test.ts": {},
     "hub/test/verify-all.test.ts": {},
+    "hub/test/verify-submission.test.ts": {},
     "hub/test/visibility-component.test.ts": {},
     "hub/test/visibility-volume.test.ts": {},
     "hub/test/visibility.test.ts": {
@@ -629,6 +647,7 @@
       "startDaemon": 2,
       "spawnSpoke": 6
     },
+    "nvim/test/artifact-browser-component.test.ts": {},
     "nvim/test/artifact-browser.test.ts": {
       "spawnSpoke": 5
     },
@@ -636,6 +655,7 @@
       "startDaemon": 4,
       "spawnSpoke": 4
     },
+    "nvim/test/client-component.test.ts": {},
     "nvim/test/client.test.ts": {
       "wall-clock-wait": 2,
       "startDaemon": 2,
@@ -645,6 +665,7 @@
       "wall-clock-wait": 1,
       "startDaemon": 1
     },
+    "nvim/test/criteria-component.test.ts": {},
     "nvim/test/criteria.test.ts": {
       "startDaemon": 2
     },
@@ -654,13 +675,17 @@
     "nvim/test/events.test.ts": {
       "wall-clock-assertion": 9
     },
+    "nvim/test/explorer-card-component.test.ts": {},
     "nvim/test/explorer-card.test.ts": {
       "startDaemon": 1
     },
+    "nvim/test/explorer-component.test.ts": {},
+    "nvim/test/explorer-compose-component.test.ts": {},
     "nvim/test/explorer-compose.test.ts": {
       "startDaemon": 1,
       "spawnSpoke": 1
     },
+    "nvim/test/explorer-roots-component.test.ts": {},
     "nvim/test/explorer-roots.test.ts": {
       "startDaemon": 1
     },
@@ -688,6 +713,7 @@
       "startDaemon": 5,
       "fakeClaude": 1
     },
+    "nvim/test/layers-component.test.ts": {},
     "nvim/test/layers.test.ts": {
       "startDaemon": 1,
       "spawnSpoke": 1,
@@ -701,16 +727,19 @@
     "nvim/test/nvim-path.test.ts": {
       "wall-clock-wait": 1
     },
+    "nvim/test/palette-component.test.ts": {},
     "nvim/test/palette.test.ts": {
       "wall-clock-wait": 1,
       "startDaemon": 1,
       "spawnSpoke": 1
     },
+    "nvim/test/plan-component.test.ts": {},
     "nvim/test/plan.test.ts": {},
     "nvim/test/qa-shipped.test.ts": {},
     "nvim/test/qa.test.ts": {
       "wall-clock-wait": 2
     },
+    "nvim/test/rulebook-component.test.ts": {},
     "nvim/test/rulebook.test.ts": {},
     "nvim/test/scenarios/workbench.test.ts": {
       "spawnSpoke": 2
@@ -724,6 +753,7 @@
       "fakeClaude": 2,
       "fakeCodex": 2
     },
+    "nvim/test/shell-component.test.ts": {},
     "nvim/test/shell.test.ts": {
       "wall-clock-wait": 11
     },

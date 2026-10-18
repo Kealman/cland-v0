@@ -1,17 +1,23 @@
+// T2: screen permutations consume committed protocol frames through stub-client.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { createConnection } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
+import { nvimOrSkip, startClient } from './stub-client.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { EventKind, EventRow } from '../../hub/src/protocol.ts';
+import { tempProject } from './fixture.ts';
+
 const nvim = await nvimOrSkip();
+
 const skip = 'skip' in nvim ? nvim.skip : false;
+
 const bin = 'bin' in nvim ? nvim.bin : '';
+
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
+
 const kinds: EventKind[] = ['session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic'];
 
 test('one row per verdict counts once in the live inbox, warnings view and saved-filter cold start', { skip }, async t => {

@@ -11,6 +11,7 @@ import { ensureNvim, NVIM_DIR, NVIM_VERSION } from '../bin/nvim-path.ts';
 import { connectRpc, type Rpc } from './rpc.ts';
 import { beforeDirectories, ownDirectory, ensureFixtureAdmission } from './fixture.ts';
 import { headlessNvimLaunch } from './headless-launch.ts';
+import { frameFixturesForTest } from './frame-fixtures.ts';
 
 export const INIT_LUA = join(NVIM_DIR, 'init.lua');
 
@@ -119,6 +120,7 @@ export async function createClient(t: TestContext, bin: string, root: string, en
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
   // the restart snapshot lives under stdpath('state'): one per test
   Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
+  if (stubOnly) childEnv.CLAND_STUB_FRAME_FIXTURES = frameFixturesForTest(process.argv[1]);
   // Replay stress belongs to the Neovim stub, never to real hubs or production.
   for (const key of ['CLAND_STUB_SNAPSHOT_DELAY_MS', 'CLAND_STUB_ROLE_DELAY_MS']) {
     if (env.CLAND_COMMAND && process.env[key]) childEnv[key] = process.env[key];

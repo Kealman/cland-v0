@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
-import { FRAME_FIXTURES, parseRecordings, type Recording } from '../../nvim/test/frame-fixtures.ts';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { FRAME_FIXTURES, FRAME_SLICES, parseRecordings, selectRecordings, type Recording } from '../../nvim/test/frame-fixtures.ts';
 import { recordedOutput } from './nvim-frame-source.ts';
 export function assertRecordings(recordings: Record<string, Recording>, produce = recordedOutput): void {
   assert.ok(Object.keys(recordings).length > 0, 'protocol recording catalog must not be empty');
@@ -9,7 +9,12 @@ export function assertRecordings(recordings: Record<string, Recording>, produce 
   }
 }
 export async function checkRecordings(): Promise<void> {
-  assertRecordings(parseRecordings(await readFile(FRAME_FIXTURES, 'utf8')));
+  const recordings = parseRecordings(await readFile(FRAME_FIXTURES, 'utf8'));
+  assertRecordings(recordings);
+  for (const file of await readdir(FRAME_SLICES).catch(error => { if (error.code === 'ENOENT') return []; throw error; })) {
+    const slice = parseRecordings(await readFile(new URL(file, FRAME_SLICES), 'utf8'));
+    assert.deepEqual(slice, selectRecordings(recordings, Object.keys(slice)), `Neovim per-file fixture ${file} drifted; run npm run test:nvim-fixtures`);
+  }
 }
 export async function checkLiveFrames(frames: unknown): Promise<void> {
   const path = new URL('../../nvim/test/fixtures/live-protocol-frames.json', import.meta.url);

@@ -1,12 +1,26 @@
 // Committed protocol recordings. Unknown inputs fail closed; only the T3 refresh
 // process installs the recorder. Ordinary client tests read JSON, never hub code.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, basename } from 'node:path';
 import { STUB_NOW } from './fixtures/clock.ts';
 export type Recording = { operation: string; input: unknown; output: unknown };
 export const FRAME_FIXTURES = new URL('./fixtures/protocol-frames.json', import.meta.url);
+export const FRAME_SLICES = new URL('./fixtures/protocol-frames/', import.meta.url);
+export const frameSlicePath = (file: string): URL => new URL(`${basename(file).replace(/\.test\.ts$/, '')}.json`, FRAME_SLICES);
+/** The parent test selects its slice before spawning the stdio stub. Other callers use the catalog. */
+export function frameFixturesForTest(file: string | undefined): string {
+  const slice = file?.endsWith('.test.ts') ? frameSlicePath(file) : undefined;
+  return fileURLToPath(slice && existsSync(slice) ? slice : FRAME_FIXTURES);
+}
+export function selectRecordings(recordings: Record<string, Recording>, keys: Iterable<string>): Record<string, Recording> {
+  return Object.fromEntries([...new Set(keys)].map(key => {
+    const record = recordings[key];
+    if (!record) throw new Error(`missing recording ${key}; run npm run test:nvim-fixtures`);
+    return [key, record];
+  }));
+}
 export function canonical(value: unknown, root: string, at = STUB_NOW) {
   const substitutions: Array<[string, string]> = [['@root@', root], ['@root@', root.replace(/^\/private(?=\/var\/)/, '')], ['@repo@', fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '')], ['@node@', process.execPath]];
   if (basename(dirname(root)).startsWith('cland-')) {
@@ -47,24 +61,18 @@ export function canonical(value: unknown, root: string, at = STUB_NOW) {
   } };
 }
 export const recordingKey = (operation: string, input: unknown): string => createHash('sha256').update(JSON.stringify([operation, input])).digest('hex');
-let outputFor: ((key: string, operation: string, input: unknown) => unknown) | undefined;
+type ReadRecording = (key: string, operation: string, input: unknown) => unknown;
+let outputFor: ReadRecording | undefined;
 export function replayFrame<T>(operation: string, input: unknown): T {
   const at = input && typeof input === 'object' && 'at' in input && typeof input.at === 'string' ? input.at : STUB_NOW;
   const normalized = canonical(input, process.cwd(), at);
   const recorder = Reflect.get(globalThis, Symbol.for('cland.nvim.frameRecorder')) as ((operation: string, input: unknown) => unknown) | undefined;
   if (recorder) return normalized.restore(recorder(operation, normalized.input)) as T;
   if (!outputFor) {
-    const data = JSON.parse(readFileSync(FRAME_FIXTURES, 'utf8')) as Packed;
-    const decode = fixtureDecoder(data);
-    outputFor = (key, operation, input) => {
-      const recording = data.records[key];
-      if (!recording) {
-        const value = (input && typeof input === 'object' ? input : {}) as { requestType?: unknown; frame?: { type?: unknown } };
-        const request = (value.frame?.type === 'result' ? value.requestType : value.frame?.type) ?? operation;
-        throw new Error(`unrecorded protocol frame: operation=${operation} request=${String(request)} key=${key}; run npm run test:nvim-fixtures`);
-      }
-      return decode(recording.output);
-    };
+    const main = fileURLToPath(FRAME_FIXTURES);
+    const preferred = process.env.CLAND_STUB_FRAME_FIXTURES ?? main;
+    const read = (path: string) => JSON.parse(readFileSync(path, 'utf8')) as Packed;
+    outputFor = recordingReader(read(preferred), preferred === main ? undefined : () => read(main));
   }
   return normalized.restore(outputFor(recordingKey(operation, normalized.input), operation, normalized.input)) as T;
 }
@@ -74,6 +82,22 @@ export function replayFrame<T>(operation: string, input: unknown): T {
 type Atom = string | number | boolean | null | { ref: string };
 type Node = { array: Atom[] } | { object: Array<[string, Atom]> } | { text: string };
 type Packed = { version: 1; nodes: Record<string, Node>; records: Record<string, { operation: string; input: Atom; output: Atom }> };
+/** Scheduling may expose another already-recorded frame. Only a slice miss reads
+ * the main committed catalog, once; neither reader can call a hub producer. */
+export function recordingReader(data: Packed, fallback?: () => Packed): ReadRecording {
+  const decode = fixtureDecoder(data);
+  let other: ReadRecording | undefined;
+  return (key, operation, input) => {
+    const recording = data.records[key];
+    if (!recording && fallback) return (other ??= recordingReader(fallback()))(key, operation, input);
+    if (!recording) {
+      const value = (input && typeof input === 'object' ? input : {}) as { requestType?: unknown; frame?: { type?: unknown } };
+      const request = (value.frame?.type === 'result' ? value.requestType : value.frame?.type) ?? operation;
+      throw new Error(`unrecorded protocol frame: operation=${operation} request=${String(request)} key=${key}; run npm run test:nvim-fixtures`);
+    }
+    return decode(recording.output);
+  };
+}
 export function packRecordings(recordings: Record<string, Recording>): Packed {
   const nodes: Record<string, Node> = {};
   const encode = (value: unknown): Atom => {

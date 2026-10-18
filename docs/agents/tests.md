@@ -181,6 +181,15 @@ rewrite the live attach baseline. This maintenance command requires one-minute
 load below 15. A trailing test file refreshes that file while retaining the
 catalog; `--from-recordings` regenerates existing inputs and the live baseline
 without replaying client assertions. Use the full command after adding scenarios.
+For an expensive consumer, `npm run test:nvim-fixtures -- --slice <test-file>`
+also commits a per-file catalog under `nvim/test/fixtures/protocol-frames/`.
+The parent test selects that slice for its stub processes; consumers without a
+slice use the full catalog. A slice miss lazily loads the main committed catalog
+once, so another recorded request ordering can still replay; a frame absent
+from both catalogs is refused. Refreshing a
+consumer updates its existing slice, and `--from-recordings` regenerates slices
+from their recorded keys. The workbench recorder checks every slice against the
+full catalog as well as checking that catalog against the hub producers.
 Review the generated JSON with the assertions that consume it. The catalog
 interns repeated JSON nodes, binds transient machine paths, UUIDs and timestamps,
 and retains the seven-day visibility age class and original wire values.

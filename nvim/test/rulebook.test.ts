@@ -1,16 +1,19 @@
+// T3: stdio child hub rule writes, CLI/hand-edit pushes and historical message-origin lookup.
+// Screen permutations live in rulebook-component.test.ts; workbench owns the shared real-hub flow.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { createConnection } from 'node:net';
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { cland, connectUi, readDiscovery, tempProject } from '../../hub/test/harness.ts';
 import type { Rule } from '../../hub/src/rules/rulebook.ts';
 import { nvimOrSkip, startClient } from './harness.ts';
 
 const nvim = await nvimOrSkip();
+
 const skip = 'skip' in nvim ? nvim.skip : false;
+
 const bin = 'bin' in nvim ? nvim.bin : '';
+
 const source = '# Project rules\n\n## 1 Older rule\nScope: all\nDate: 2026-10-14\nStatus: retired 2026-10-15\nOrigin: memory:/planning/rules.md\nReason: replaced\n\nOld text.\n\n## 2 Serial suites\nScope: implementer\nDate: 2026-10-15\nStatus: active\nOrigin: shell\nReason: avoid contention\n\nRun only one suite.\n';
 
 test('Rulebook keys and palette show sorted rule rows, unfold origins and list help', { skip }, async t => {
@@ -88,7 +91,6 @@ test('workbench drafts add and edit rules, retain refused text, retire, and foll
   assert.equal((await list()).find(r => r.number === 2)?.origin, 'workbench');
 });
 
-
 test('thread origins show topic and message time, and gt reaches an older human message', { skip }, async t => {
   const root = await tempProject(t);
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio' });
@@ -113,36 +115,4 @@ test('thread origins show topic and message time, and gt reaches an older human 
   await c.input('gt');
   await c.waitScreen(s => s.includes('Run one suite at a time, please.') && !s.includes('Rulebook ·'), 'origin human message');
   assert.equal(await c.lua('return vim.b.cland_topic'), id);
-});
-
-
-test('a push during the initial snapshot stays current, and Enter on a rule event selects that rule', { skip }, async t => {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.git'));
-  const controlPath = join(root, 'control.sock');
-  const rule: Rule = { number: 1, title: 'Snapshot rule', text: 'Initial text.', scope: 'all', date: '2026-10-15', status: 'active', origin: 'session:helper', reason: 'initial' };
-  const live: Rule = { ...rule, number: 2, title: 'Live rule', text: 'Current text.' };
-  const event = { id: 'rule-event', ts: new Date().toISOString(), kind: 'rule', glyph: '§', subject: { kind: 'rule', id: '2' }, text: 'rule 2 changed' };
-  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]), CLAND_STUB_CONTROL: controlPath, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ holdSnapshots: ['rule.list'], rules: [rule], events: [event] }) });
-  const control = (command: Record<string, unknown>) => new Promise<void>((resolve, reject) => {
-    const socket = createConnection(controlPath); let text = '';
-    socket.setEncoding('utf8'); socket.on('error', reject);
-    socket.on('data', data => { text += data; if (text.includes('\n')) { socket.end(); resolve(); } });
-    socket.write(`${JSON.stringify(command)}\n`);
-  });
-  await c.waitScreen(s => s.includes('hub: connected'), 'stub connected');
-  await control({ waitSnapshot: 'rule.list' });
-  await control({ emit: { type: 'rules.changed', rules: [rule, live] } });
-  await c.input('<Esc> R');
-  await c.waitScreen(s => s.includes('Live rule'), 'live push before snapshot');
-  await control({ releaseSnapshots: ['rule.list'] });
-  await c.lua("assert(vim.wait(2000,function() for j in pairs(require('cland').client.snapshots) do if j.request.type=='rule.list' then return false end end; return true end))");
-  await c.waitScreen(s => s.includes('Live rule') && s.includes('Snapshot rule'), 'live state survives older snapshot');
-  await c.input(' E');
-  await c.waitScreen(s => s.includes('rule 2 changed'), 'rule event');
-  await c.input('ggjjj<CR>');
-  await c.waitScreen(s => s.includes('Rulebook ·') && s.includes('Live rule'), 'event opens Rulebook');
-  assert.match(await c.lua<string>('return vim.api.nvim_get_current_line()'), /rule 2/);
-  await c.input('<CR>');
-  await c.waitScreen(s => s.includes('Origin: helper'), 'Aide origin name');
 });

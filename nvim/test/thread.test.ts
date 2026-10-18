@@ -1,23 +1,26 @@
-// Topic blocks at the Neovim/stub-hub boundary (T-132).
+// T2: screen permutations consume committed protocol frames through stub-client.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'node:net';
-import { ownDirectory } from '../../hub/test/process-cleanup.ts';
-import { eventually } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
+import { nvimOrSkip, startClient } from './stub-client.ts';
 import { threadSeedPlan } from './thread-seed-plan.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
+import { eventually, tempProject } from './fixture.ts';
 
 const nvim = await nvimOrSkip();
+
 const skip = 'skip' in nvim ? nvim.skip : false;
+
 const bin = 'bin' in nvim ? nvim.bin : '';
+
 const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
+
 const ts = '2026-10-09T10:00:00.000Z';
+
 const msg = (id: string, role = 'coordinator', text = 'Taking T-58.') => ({
   id, from: role === 'human' ? 'human' : role, fromKind: role === 'human' ? 'human' : 'agent',
   fromRole: role === 'human' ? null : role, to: role === 'human' ? ['coordinator'] : ['human'],
@@ -318,8 +321,7 @@ test('resize bursts project once at final width and stale closed/reused windows 
 });
 
 async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', charting = true) {
-  const root = await mkdtemp(join(tmpdir(), 'cland-thread-'));
-  ownDirectory(t, root);
+  const root = await tempProject(t, 'cland-thread-');
   await mkdir(join(root, '.git'));
   const controlPath = join(root, 'stub.sock');
   const c = await startClient(t, bin, root, {
