@@ -2,8 +2,8 @@
 id: T-817
 kind: task
 title: shell-component items panel test asserts the claim and asks before their events render
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-530
 branch: t/T-817-shell-component-items-panel-test-asserts
 created: 2026-10-18T19:11:17.011Z
-updated: 2026-10-18T19:29:57.526Z
+updated: 2026-10-18T20:06:33.843Z
+closed: 2026-10-18T20:06:33.843Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged05b208a9. A-5542/c44dadfc passes380/383 with zero fail/cancelled, three prerequisite skips: hub smoke8/8 and full Neovim372/375. Independently confirmed shell-component60/60 ordinary positives, changed items-panel case0.664550393s and5/5 repetitions. Prior A-5540 Mac20/20 complete files/1200 passes and delayed-frame proof remain audited in A-5541. A-5543 records both axes and timing/report-only limits; no findings or per-item QA. C1–C2 verified; claimant done marks remain separate.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T20:06:33.843Z
+
+Merged 8e238905060420972d29acb2e806bf39cbc1334b onto dev.
