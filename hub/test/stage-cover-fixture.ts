@@ -14,8 +14,8 @@ export async function seedStageCover(root: string): Promise<void> {
   assert.ok(tree);
   const base: SuiteJob = {
     id: `mac-${head}`, mode: 'all', cwd: root, topic: 'general', to: [], actor: null,
-    head, tree, branch: 'dev', integrated: true, executor: 'local',
-    selection: { mode: 'full', reason: 'historical integrated cover', files: [] },
+    head, tree, branch: 'dev', integrated: true, executor: 'local', occasion: 'stage',
+    selection: { mode: 'full', reason: 'historical integrated stage cover', files: [], soak: true, loadGate: true },
     log: '', result: '', gate: '', pid: null, started: null, outcome: { code: 0, cause: '' },
     artifact: null, reported: true, error: null, state: 'finished', finished: new Date().toISOString(),
     platform: { os: 'darwin', arch: 'arm64', release: 'fixture', node: process.version, nvim: 'fixture' },

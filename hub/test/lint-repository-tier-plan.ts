@@ -20,7 +20,7 @@ async function lintRepositoryTierPlan(): Promise<void> {
   // T1 alone is hermetic; T2/T3/T4 retain the machine phase, and Neovim stays one package phase.
   const hub = Object.keys(tiers.tests).filter(path => path.startsWith('hub/'));
   const hermetic = (path: string) => { const value = tiers.tests[path]!; return (typeof value === 'string' ? value : value.tier) === 'T1'; };
-  assert.deepEqual(await packageShards(root, 'full', undefined, undefined, { workers: 4, legacyKeys }), [
+  assert.deepEqual(await packageShards(root, 'full', undefined, { mode: 'full', files: [], reason: 'occasion inventory', soak: true }, { workers: 4, legacyKeys }), [
     { name: 'hub free', resource: 'free', workers: 1, targets: hub.filter(hermetic) },
     { name: 'hub machine', resource: 'machine', workers: 4, targets: hub.filter(path => !hermetic(path)) },
     { name: 'Neovim', resource: 'machine', workers: 4, targets: ['nvim/test/**/*.test.ts'] },

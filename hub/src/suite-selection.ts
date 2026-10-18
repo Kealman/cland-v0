@@ -1,12 +1,13 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { dirname, posix, relative, resolve } from 'node:path';
 import { coverageSelection, type CoverageRecording } from './suite-coverage.ts';
 import { defaultConfig, parseConfig } from './init/config.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; loadGate?: boolean; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -42,7 +43,8 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
 
 /** Cache receipts are reusable only for identical effective package/test sets. */
 export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
-  return previous?.mode === selection.mode
+  return previous?.soak === selection.soak
+    && previous?.mode === selection.mode
     && (selection.mode !== 'hub-selected' || JSON.stringify([previous.tests, previous.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull]))
     && JSON.stringify(previous.nvimTests) === JSON.stringify(selection.nvimTests);
 }
@@ -183,8 +185,16 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   return selection;
 }
 
-export function selectionFromEnv(): SuiteSelection | undefined {
-  const text = process.env.CLAND_SUITE_SELECTION;
+/** Keep large stage identity sets below OS argument/environment size limits. */
+export function selectionTransport(selection: SuiteSelection | undefined, path: string): { env: NodeJS.ProcessEnv; file?: string } {
+  const text = JSON.stringify(selection ?? null);
+  return Buffer.byteLength(text) > 64 * 1024
+    ? { env: { CLAND_SUITE_SELECTION_FILE: path }, file: text }
+    : { env: { CLAND_SUITE_SELECTION: text } };
+}
+
+export function selectionFromEnv(env: NodeJS.ProcessEnv = process.env): SuiteSelection | undefined {
+  const text = env.CLAND_SUITE_SELECTION_FILE ? readFileSync(env.CLAND_SUITE_SELECTION_FILE, 'utf8') : env.CLAND_SUITE_SELECTION;
   if (!text) return undefined;
   const value: unknown = JSON.parse(text);
   if (!value || typeof value !== 'object' || !('mode' in value) || !['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(value.mode)) || !('files' in value) || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !('reason' in value) || typeof value.reason !== 'string') throw new Error('invalid suite selection');

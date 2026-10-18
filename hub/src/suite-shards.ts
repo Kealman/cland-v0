@@ -171,7 +171,24 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
   catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }
 }
 
+/** Package cadence excludes soak files unless the admitted selection enables them. */
 export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: DurationHistory & { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
+  const phases = await unfilteredPackageShards(cwd, mode, selection, coverage, options);
+  if (coverage?.soak) return phases;
+  const tiers = await readTierAssignments(cwd);
+  const soak = [...tiers ?? []].filter(([, tier]) => tier === 'T4').map(([file]) => file);
+  if (!soak.length) return phases;
+  const planned: SuiteShard[] = [];
+  for (const phase of phases) {
+    if (!soak.some(file => phase.targets.some(target => matchesGlob(file, target)))) { planned.push(phase); continue; }
+    const targets: string[] = [];
+    for await (const file of glob(phase.targets, { cwd })) if (tiers?.get(file) !== 'T4') targets.push(file);
+    if (targets.length) planned.push({ ...phase, targets: targets.sort() });
+  }
+  return planned;
+}
+
+async function unfilteredPackageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: DurationHistory & { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
   const workers = options.workers ?? (await suiteLimits(cwd, options.executor)).workers;
   if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
   if (selection) {

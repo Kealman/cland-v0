@@ -6,7 +6,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
-import { hubShards, balanceCloseShards } from '../suite-shards.ts';
+import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
@@ -32,6 +32,7 @@ import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
 import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suite-quarantine.ts';
 import { suiteAdmissionTimeouts } from '../test-admission-outcome.ts';
 import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
+import { occasionSelection } from '../verification-occasion.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
@@ -119,6 +120,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[]): string {
   const loadDiagnostics = text.split('\n').filter(line => line.startsWith('load gate failure '));
   timings.push(...loadDiagnostics);
   const tierLines = text.split('\n').filter(line => /^tier (?:T[1-4]:|share:)/.test(line));
+  timings.push(...text.split('\n').filter(line => /^shard-\d+ tier T[1-4]:/.test(line)));
   const lastTiers = new Map<string, string>();
   for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
   const quarantined = quarantineStatus ?? quarantineSummary(quarantineResults(text));
@@ -253,7 +255,7 @@ export class Suites {
   stageCovers(include?: Readonly<SuiteJob>): StageCover[] {
     const originals = new Map(this.#jobs.map(job => [job.id, job]));
     return [...this.#jobs.filter(job => job.id !== include?.id), ...(include ? [include] : [])].flatMap<StageCover>(job => {
-      if (!job.integrated || job.branch !== 'dev' || !job.tree || job.selection?.mode !== 'full' || job.outcome?.code !== 0 || job.cancelled || job.requesterDied || !job.reported && job !== include) return [];
+      if (!job.integrated || job.branch !== 'dev' || !job.tree || !job.selection?.soak || job.selection.mode !== 'full' || job.outcome?.code !== 0 || job.cancelled || job.requesterDied || !job.reported && job !== include) return [];
       if (job.executor === 'local' && job.platform?.os === 'darwin') return [{ id: job.id, head: job.head, tree: job.tree, platform: 'macOS' as const }];
       const source = job.cached ? originals.get(job.cached.run) : job;
       if (job.executor === 'droplet' && source?.occasion === 'stage' && job.platform?.os === 'linux'
@@ -338,8 +340,12 @@ export class Suites {
     }
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
-    const { head, branch, selection, tree, tierPlan, budgetBase } = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
+    const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
+    const { head, branch, tree, budgetBase } = candidate;
+    const selection = occasionSelection(candidate.selection, input.occasion);
     if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
+    if (input.occasion) selection.loadGateBaseline = await this.#stageIdentities();
+    const tierPlan = input.occasion ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
 
     if (input.dryRun) {
       const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
@@ -402,7 +408,7 @@ export class Suites {
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
-  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
+  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
     authorize();
     const owned = this.#jobs.filter(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'));
     const key = submissionKey(input, head);
@@ -411,6 +417,7 @@ export class Suites {
     // Compare requested overrides, not resolved policy or a fallback executor.
     const active = matching.find(job => (job.followsConfig ? undefined : job.requestedExecutor ?? job.executor) === input.executor && job.size === input.size && job.workersOverride === input.workers);
     if (!active) return null;
+    if (active.occasion !== input.occasion || (active.submissionKey ?? submissionKey(active, active.head)) !== submissionKey(input, head)) throw new Error('this session already has a suite queued or running');
     return { reused: true, id: active.id, pid: active.pid, topic: active.topic, position: active.state === 'queued' ? this.#ordered().findIndex(job => job.id === active.id) + 1 : 1, ...(active.cached ? { cached: active.cached } : {}) };
   }
   /** Targeted tests inspect the machine fence without joining or changing it. */
@@ -457,6 +464,15 @@ export class Suites {
       const rank = (s: SuiteJob | HumanSlot) => 'actor' in s ? s.priority ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
+  }
+  async #stageIdentities(): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
+    const stage = this.#jobs.findLast(job => job.occasion === 'stage' && job.integrated && job.branch === 'dev'
+      && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
+      && job.reported && job.outcome?.code === 0);
+    if (!stage) return { run: null, tests: [] };
+    const artifact = stage.artifact ? this.#store.resolveArtifact(stage.artifact) : null;
+    const log = await readFile(artifact?.path ?? stage.log, 'utf8').catch(() => '');
+    return { run: stage.id, tests: [...new Set(timingReceipts(log).map(test => `${test.file}::${test.name}`))].sort() };
   }
   #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
@@ -564,12 +580,16 @@ export class Suites {
         // Without an injected context, keep the production Git-backed lint path.
         const history = context === undefined ? {} : { legacyKeys: new Set(Object.entries(baseline?.allow ?? {})
           .filter(([, entry]) => !baseline?.budget.T1 || entry.legacy).map(([key]) => key)) };
-        const plans = balanceCloseShards((await hubShards(job.cwd, false, undefined, history)).flatMap(shard => shard.targets), (await readDurationManifest(job.cwd))?.files ?? {}, count);
+        const tiers = job.selection?.soak ? null : await readTierAssignments(job.cwd);
+        const included = (file: string) => tiers?.get(file) !== 'T4';
+        const files = (await hubShards(job.cwd, false, undefined, history)).flatMap(shard => shard.targets).filter(included);
+        const durations = Object.fromEntries(Object.entries((await readDurationManifest(job.cwd))?.files ?? {}).filter(([file]) => included(file)));
+        const plans = balanceCloseShards(files, durations, count);
         job.shards ??= plans.map((plan, i) => {
           const id = `${job.id}-shard-${i + 1}`, dir = join(this.#root, '.cland/run/suites', id);
           const { shards: _shards, ...parent } = job;
           return { ...parent, id, parentRun: job.id, shardName: `shard-${i + 1}`, state: 'launching',
-            selection: { mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim }, ...(job.selection?.recordCoverage ? { recordCoverage: job.selection.recordCoverage } : {}) },
+            selection: { ...job.selection!, mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim } },
             log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
         });
         for (const shard of job.shards) shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4, undefined, history);
@@ -653,7 +673,7 @@ export class Suites {
     const logs = await Promise.all(shards.map(async shard => {
       const log = await readFile(shard.log, 'utf8').catch(() => '');
       // Keep counts machine-readable and label every failure in the merged log.
-      return `--- ${shard.shardName} ---\n${log.replace(/^(\s*(?:not ok \d+|✖ |duration budget: ).*)$/gm, `$1 [${shard.shardName}]`)}`;
+      return `--- ${shard.shardName} ---\n${log.replace(/^(\s*(?:not ok \d+|✖ |duration budget: ).*)$/gm, `$1 [${shard.shardName}]`).replace(/^tier (T[1-4]:.*)$/gm, `${shard.shardName} tier $1`)}`;
     }));
     const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}`);
     const prefix = (await readFile(job.log, 'utf8')).split('\n--- close shards ---\n')[0];

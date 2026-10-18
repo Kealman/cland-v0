@@ -1782,8 +1782,7 @@ At admission, free remote slots up to `[verification] shards` (default 2) set th
 shard count. Hub files are placed largest-first on the lightest shard using
 `hub/test/durations.json` `files[*].seconds`; unknown files use the manifest
 median. Neovim goes to the shard with the least hub time, on that same droplet.
-`CLAND_SUITE_SELECTION` carries each explicit file list into the package runner,
-which retains free/machine classification inside that shard.
+`CLAND_SUITE_SELECTION` carries each explicit file list into the package runner, which retains free/machine classification inside that shard. Selections above 64 KiB, including large stage identity baselines, use a delivered JSON file named by `CLAND_SUITE_SELECTION_FILE` on both executors; test workers and repetition workers inherit neither selection variable.
 
 The hub atomically reserves the whole group's estimated lifetime cost against
 the shared daily ledger ($3 here) before creating machines. When the cap cannot
@@ -1796,7 +1795,7 @@ One merged result sums counts, labels failed/lost shards, lists each machine,
 size, duration and cost, total cost, and wall from admission to final collection.
 The merged log and one log per shard are durable artifacts. Leases and child
 receipts survive hub restart, and confirmed deletion precedes slot release.
-An identical green tree/mode cache entry serves a later occasion request. Stage
+An identical green tree/mode cache entry with matching soak coverage serves a later occasion request. Ordinary batch greens cannot satisfy occasions. Stage
 requests also match the requested executor/platform; a stage's Linux cache must
 itself cover a stage close.
 Two c-8 machines with ten-minute lifetimes estimate $0.0833 total at $0.25/hour;
@@ -2493,10 +2492,7 @@ refuses with `verify-tiers` before queueing; merge admission checks the immutabl
 merged candidate and refuses with `merge-tiers` before changing refs. The old
 `verify-shards`/`merge-shards` wire codes remain accepted aliases.
 
-This migration keeps run phases and file sets unchanged: T1 maps to `hub free`,
-T2–T4 to `hub machine`, and Neovim keeps its package phase. T4 runs wherever T3
-does until its occasions land; close-run balancing continues to place every hub
-file independently. A pre-migration tree carrying only `hub/test/shards.json`
+T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
 remains admissible: `free` maps to T1 and `machine` to T3, without requiring
 Neovim entries or sorted keys. If both manifests exist, `tiers.json` takes priority.
 
@@ -2601,7 +2597,7 @@ work. Each identity stays on one lane with sequential repetitions; no repetition
 are dropped to meet a deadline. The log and run report include the lane count.
 Increasing it trades wall time for load independently of ordinary phase workers.
 A reasoned duration allowance does not make a test known to the load gate;
-the Coordinator's stage-close manifest refresh does.
+the Coordinator's stage-close manifest refresh does for task runs. Occasion runs instead use the runtime identities from the latest completed, reported green integrated stage receipt, pinned at admission and carried to every shard. Names absent from that receipt repeat five times even if the current duration manifest knows them. Ordinary batches, failed stages and cache hits do not move this baseline; without a stage receipt every identity is new.
 
 Every repetition needs a green process exit and exactly one passing receipt for
 the named test. Skips, TODOs and missed names do not count. The log names each

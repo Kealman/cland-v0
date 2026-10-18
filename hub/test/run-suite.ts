@@ -24,6 +24,7 @@ import { loadGateReporter, runLoadGate } from './load-gate.ts';
 import { assertTestAdmission } from '../src/test-admission.ts';
 import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
 import { AdmissionTimeout } from '../src/test-admission-outcome.ts';
+import { suiteTestEnv } from '../src/verification-occasion.ts';
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan } = {}): Promise<number> {
@@ -119,9 +120,10 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
         machine = await acquire([machineDir], () => interruption.signal !== null, holder);
         machineWait = Date.now() - phaseStarted;
       }
-      const env: NodeJS.ProcessEnv = { ...process.env, TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
+      const env: NodeJS.ProcessEnv = { ...suiteTestEnv(options.selection), TMPDIR: root, TMP: root, TEMP: root, TEST_SUITE_RUN_ID: holder.token, TEST_SUITE_CWD: holder.worktree };
       // Selection belongs to this runner, not its tests or any nested package run.
       delete env.CLAND_SUITE_SELECTION;
+      delete env.CLAND_SUITE_SELECTION_FILE;
       // Never propagate a parent's capture into nested fixture package runs.
       delete env.CLAND_COVERAGE_OUTPUT;
       delete env.DIGITALOCEAN_TOKEN;
@@ -187,6 +189,7 @@ process.chdir(cwd);`);
       await writeFile(gate, 'ready');
       if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
       const repeats = loadGate ? runLoadGate({
+        ...(options.selection ? { selection: options.selection } : {}),
         discovery: loadDiscovery, root, cwd, env, manifest: durationManifest!,
         quarantine,
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,

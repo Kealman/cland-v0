@@ -56,15 +56,16 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   assert.match(output.stdout, /test lint \(report only\): 2 findings in 2 files/);
   assert.match(output.stdout, /test lint tier: hub\/test\/b.test.ts: T2; qualifies T2/);
   assert.match(output.stdout, /mode full; .*deciding files/s);
-  assert.match(output.stdout, /planned tiers: T1, T2, T3, T4/);
+  assert.match(output.stdout, /^planned tiers: T1, T2, T3$/m);
+  assert.doesNotMatch(output.stdout, /^tier T4:/m);
   assert.match(output.stdout, /tier T1: files 1; tests 2 planned; observed unavailable; projected wall 200 s at 1 workers; wall budget 120 s; over wall \(report only\)/);
-  assert.match(output.stdout, /tier share: T1\+T2 50 % of 1000 s \(T3 400 s, T4 100 s\)/);
+  assert.match(output.stdout, /tier share: T1\+T2 55.556 % of 900 s \(T3 400 s, T4 0 s\)/);
   // MCP uses this same suite.start request and receives the structured report.
   const frame = await ui.request({ type: 'suite.start', dryRun: true, mode: 'auto', cwd: root, executor: 'droplet' });
   assert.equal(frame.ok, true, frame.error);
   const report = frame.value as SuiteDryRun;
   assert.equal(report.dryRun, true);
-  assert.deepEqual(report.tiers.map(row => row.tier), ['T1', 'T2', 'T3', 'T4']);
+  assert.deepEqual(report.tiers.map(row => row.tier), ['T1', 'T2', 'T3']);
   assert.deepEqual(((await ui.request({ type: 'hub.status' })).value as HubStatus).suites, before.suites);
   const queue = (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.deepEqual(queue.waiters, []); assert.deepEqual(queue.remote, []); assert.equal(queue.holder, null);
@@ -100,7 +101,8 @@ test('a task run report keeps its green exit when planted tiers exceed the wall 
   const result = await published.promise;
   assert.match(result.text, /tier T1: files 1; tests 1; observed 0.25 s; projected wall 200 s at 1 workers; wall budget 120 s; over wall \(report only\)/);
   assert.match(result.text, /tier T2: files 1; tests 1; observed 0.5 s/);
-  assert.match(result.text, /tier share: T1\+T2 50 % of 1000 s \(T3 400 s, T4 100 s\)$/);
+  assert.match(result.text, /tier share: T1\+T2 55.556 % of 900 s \(T3 400 s, T4 0 s\)$/);
+  assert.doesNotMatch(result.text, /^tier T4:/m);
   assert.equal(result.job.outcome?.code, 0);
   assert.match(result.text, /test lint \(report only\): 2 findings in 2 files/);
   assert.match(result.text, /b.test.ts:1 \[wall-clock-wait\]/);

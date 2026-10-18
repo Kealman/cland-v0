@@ -16,6 +16,7 @@ import { readSnapshot } from './prepare.ts';
 import { writeLease, type DropletLease } from './lease.ts';
 import { pause, testTiming } from './watchdog.ts';
 import { candidatePathspec, candidateTree } from '../../verification-tree.ts';
+import { selectionTransport } from '../../suite-selection.ts';
 
 const exec = promisify(execFile);
 const remoteDir = (lease: DropletLease): string => {
@@ -58,7 +59,10 @@ export class DropletRun {
     if (!committedOnly) await checkWorktree();
     const dir = remoteDir(lease);
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
-    const env = `${run.limits ? `export CLAND_SUITE_LIMITS=${quote(JSON.stringify(run.limits))}\nexport CLAND_SUITE_LIMITS_CWD="$(pwd -P)"\n` : ''}export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}export CLAND_SUITE_SELECTION=${quote(JSON.stringify(run.selection ?? null))}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
+    const transport = selectionTransport(run.selection, join(local, 'selection.json'));
+    if (transport.file) await writeFile(join(local, 'selection.json'), transport.file, { mode: 0o600 });
+    const selectionEnv = transport.file ? `unset CLAND_SUITE_SELECTION\nexport CLAND_SUITE_SELECTION_FILE=${dir}/selection.json` : `unset CLAND_SUITE_SELECTION_FILE\nexport CLAND_SUITE_SELECTION=${quote(transport.env.CLAND_SUITE_SELECTION!)}`;
+    const env = `${run.limits ? `export CLAND_SUITE_LIMITS=${quote(JSON.stringify(run.limits))}\nexport CLAND_SUITE_LIMITS_CWD="$(pwd -P)"\n` : ''}export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}${selectionEnv}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
     const commands = suiteCommands(run, await suiteCheckCommand(run.cwd)).map((args, index) => {
       const command = `echo ${quote(`$ npm ${args.join(' ')}`)}\nnpm ${args.map(quote).join(' ')} || exit $?`;
@@ -88,7 +92,7 @@ git write-tree
       .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env) / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
-    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh']) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
+    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
     const lock = quote(snapshot.key.lock);
     const pin = quote(snapshot.key.nvim.tag);
     const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\nif test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${lock}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\nif test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${pin}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;

@@ -5,7 +5,46 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { hubShards, lintHubShards, packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
-import { chooseSuiteMode } from '../src/suite-selection.ts';
+import { occasionSelection, suiteTestEnv } from '../src/verification-occasion.ts';
+import { planTierReport } from '../src/suite-tier-report.ts';
+import { selectionTransport, selectionFromEnv, chooseSuiteMode } from '../src/suite-selection.ts';
+
+test('large stage identity baselines reach the runner through a file instead of an environment value', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-selection-file-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const selection = { mode: 'full' as const, files: [], reason: 'stage', soak: true,
+    loadGateBaseline: { run: 'previous-stage', tests: Array.from({ length: 6000 }, (_, n) => `hub/test/example.test.ts::known stage identity ${n}`) } };
+  const transport = selectionTransport(selection, join(root, 'selection.json'));
+  assert.ok(transport.file);
+  assert.ok(JSON.stringify(transport.env).length < 1024, 'the environment contains only a short file path');
+  await writeFile(transport.env.CLAND_SUITE_SELECTION_FILE!, transport.file);
+  assert.deepEqual(selectionFromEnv(transport.env), selection);
+});
+
+test('occasions plan every tier with soak enabled while ordinary all stops at T3', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-occasion-plan-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const tests: TierManifest['tests'] = {
+    'hub/test/component.test.ts': 'T2', 'hub/test/integration.test.ts': 'T3',
+    'hub/test/soak.test.ts': 'T4', 'hub/test/unit.test.ts': 'T1',
+    'nvim/test/editor.test.ts': 'T3', 'nvim/test/soak.test.ts': 'T4',
+  };
+  for (const file of Object.keys(tests)) {
+    await mkdir(join(root, file, '..'), { recursive: true });
+    await writeFile(join(root, file), '');
+  }
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  const full = { mode: 'full' as const, files: [], reason: 'all' };
+  for (const [executor, occasion] of [['local', undefined], ['droplet', undefined], ['local', 'stage'], ['droplet', 'stage'], ['droplet', 'epic'], ['local', 'release']] as const) {
+    const selection = occasionSelection(full, occasion);
+    const phases = await packageShards(root, selection.mode, undefined, selection, { executor, workers: 4 });
+    const plan = await planTierReport(root, selection, 4, phases);
+    assert.deepEqual(plan.flatMap(row => row.files).sort(), Object.keys(tests).filter(file => occasion || tests[file] !== 'T4').sort());
+    assert.deepEqual(plan.map(row => row.tier), occasion ? ['T1', 'T2', 'T3', 'T4'] : ['T1', 'T2', 'T3']);
+    assert.equal(suiteTestEnv(selection, { CLAND_TEST_SOAK: '1' }).CLAND_TEST_SOAK, occasion ? '1' : undefined);
+    assert.equal(selection.loadGate, occasion ? true : undefined);
+  }
+});
 
 test('verification admission infrastructure selects the full suite', () => {
   for (const path of ['hub/src/test-lint-policy.ts', 'hub/src/hub/suite-candidate.ts']) assert.equal(chooseSuiteMode([path]), 'full', path);

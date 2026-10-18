@@ -7,6 +7,8 @@ import { redactLoadDiagnostic } from '../src/suite-load-diagnostics.ts';
 import { timingKey, type DurationManifest } from '../src/suite-durations.ts';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import type { LoadGateEvent } from './load-gate-reporter.ts';
+import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
+import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { QuarantineManifest, QuarantineReceipt } from '../src/suite-quarantine.ts';
 import { admissionTimeoutMessage } from '../src/test-admission-outcome.ts';
 
@@ -16,6 +18,7 @@ export const loadGateReporter = fileURLToPath(new URL('./load-gate-reporter.ts',
  * coordinators retain the owned root as cwd, making them recovery anchors
  * even if the package runner dies before publishing their identities. */
 export async function runLoadGate(options: {
+  selection?: SuiteSelection;
   discovery: string; root: string; cwd: string; env: NodeJS.ProcessEnv;
   manifest: DurationManifest; timeoutMs: number; workers: number; phase: Promise<number>;
   quarantine?: QuarantineManifest | null;
@@ -68,7 +71,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
     const skipReasons = new Set<string>();
     const pattern = `^${event.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`;
     process.stderr.write(`load gate start: ${key}; five repetitions alongside phase\n`);
-    for (let repetition = 0; repetition < 5 && !options.interrupted(); repetition++) {
+    for (let repetition = 0; repetition < loadGateRepetitions(key, options.selection, options.manifest.tests) && !options.interrupted(); repetition++) {
       const receipt = join(options.root, `load-${sequence++}.jsonl`);
       const quarantinePath = `${receipt}.quarantine`;
       const gate = `${receipt}.start`;
@@ -77,6 +80,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       if (env.CLAND_TEST_TIER_ASSIGNMENTS) env.CLAND_TEST_TIER_REPORT = tierReceipt;
       delete env.NODE_V8_COVERAGE;
       delete env.CLAND_SUITE_SELECTION;
+      delete env.CLAND_SUITE_SELECTION_FILE;
       const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`] : [];
       const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
       const done = new Promise<number>((resolve, reject) => {
@@ -165,7 +169,7 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
         // Only enqueue records discover identities; nested failures are diagnostics.
         if (event.passed !== undefined || event.diagnostic) continue;
         const key = timingKey({ ...event, seconds: 0 });
-        if (seen.has(key) || Object.hasOwn(options.manifest.tests, key)) continue;
+        if (seen.has(key) || !loadGateRepetitions(key, options.selection, options.manifest.tests)) continue;
         seen.add(key);
         queued.push(event);
       }

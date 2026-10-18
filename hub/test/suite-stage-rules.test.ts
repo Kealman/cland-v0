@@ -3,6 +3,51 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
+
+test('occasion load gate repeats only identities absent from the last green stage', async t => {
+  const f = await suiteUnit(t, { machineReceiptsOnly: true });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const old = 'hub/test/example.test.ts::old';
+  const added = 'hub/test/example.test.ts::added after stage';
+  const timing = (name: string) => `suite timing ${JSON.stringify({ file: 'hub/test/example.test.ts', name, seconds: 0.01 })}\n`;
+  const stage = await f.launch({ mode: 'all', integrated: true, occasion: 'stage', fresh: true });
+  assert.deepEqual(f.status(stage.id).selection?.loadGateBaseline, { run: null, tests: [] });
+  await f.finish(stage.id, 0, '# tests 1\n# pass 1\n' + timing('old'));
+  // Neither a later ordinary batch nor a failed stage advances the baseline.
+  for (const occasion of [undefined, 'stage'] as const) {
+    const run = await f.launch({ mode: 'all', integrated: true, ...(occasion ? { occasion } : {}), fresh: true });
+    await f.finish(run.id, occasion ? 1 : 0, '# tests 2\n' + timing('old') + timing('added after stage'));
+  }
+  await f.reopen();
+  for (const occasion of ['stage', 'epic', 'release'] as const) {
+    const run = await f.launch({ mode: 'all', integrated: true, occasion, fresh: true });
+    const selection = f.status(run.id).selection!;
+    assert.deepEqual(selection.loadGateBaseline, { run: stage.id, tests: [old] });
+    assert.equal(loadGateRepetitions(old, selection, { [old]: 0.01 }), 0);
+    assert.equal(loadGateRepetitions(added, selection, { [added]: 0.01 }), 5, 'current timing manifest cannot hide a post-stage identity');
+    // Keep the original green stage as the baseline for every occasion case.
+    await f.finish(run.id, 1);
+  }
+});
+
+test('a T1 to T3 batch green cannot supply an occasion cache or stage cover', async t => {
+  const f = await suiteUnit(t, { machineReceiptsOnly: true });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const actor = { name: 'coordinator', sessionId: 'coordinator', shell: true as const };
+  const batch = await f.launch({ mode: 'all', integrated: true, fresh: true, actor });
+  await assert.rejects(f.launch({ mode: 'all', integrated: true, occasion: 'stage', actor }), /already has a suite queued or running/);
+  await f.finish(batch.id);
+  assert.deepEqual(f.suites.stageMissing(f.candidate.tree), ['Linux droplet', 'macOS']);
+  const close = await f.launch({ mode: 'all', integrated: true, occasion: 'release' });
+  assert.equal(close.cached, undefined);
+  await f.finish(close.id);
+  const epic = await f.launch({ mode: 'all', integrated: true, occasion: 'epic' });
+  assert.equal(epic.cached?.run, close.id, 'identical soak coverage can reuse an occasion green');
+  await f.result(epic.id);
+});
 
 test('active stage submissions retain separate droplet and local runs for one caller', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1, machineReceiptsOnly: true });

@@ -1,13 +1,40 @@
 // T2: shard failure aggregation and cancellation during reservation use scripted machines on the hub clock.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { integrated } from './close-run-fixture.ts';
 import { drive } from './remote-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
+import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
+
+test('two-shard stage result shows each shard T4 tier line', async t => {
+  const f = await integrated(t, '', 2, undefined, { machine: 'scripted' });
+  const paths = ['hub/test/soak-one.test.ts', 'hub/test/soak-two.test.ts'];
+  const tierPath = join(f.root, 'hub/test/tiers.json');
+  const tiers = JSON.parse(await readFile(tierPath, 'utf8')) as TierManifest;
+  for (const path of paths) {
+    await writeFile(join(f.root, path), '');
+    tiers.tests[path] = 'T4';
+    f.durationContext.manifest.files[path] = { seconds: 20, tests: 1 };
+    f.durationContext.tiers[path] = 'T4';
+  }
+  await writeFile(tierPath, serializeTierManifest(tiers));
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify(f.durationContext.manifest));
+  f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  await startedShards(f, job.id);
+  for (const [index, path] of paths.entries()) {
+    f.machine.finish(`${job.id}-shard-${index + 1}`, 0, '# tests 1\n# pass 1\n' + `suite timing ${JSON.stringify({ file: path, name: 'soak', seconds: 0.01 })}\n`);
+  }
+  await f.clock.advance(1000);
+  const result = await drive(f, f.result(job.id));
+  assert.match(result.text, /shard-1 tier T4: files 1; tests 1; observed 0.01 s/);
+  assert.match(result.text, /shard-2 tier T4: files 1; tests 1; observed 0.01 s/);
+});
 
 async function startedShards(f: Awaited<ReturnType<typeof integrated>>, id: string) {
   await drive(f, Promise.all([1, 2].map(n => f.machine.started(`${id}-shard-${n}`))));
@@ -19,6 +46,16 @@ async function startedShards(f: Awaited<ReturnType<typeof integrated>>, id: stri
 
 test('a Coordinator integrated batch reserves two shards without stage provenance', async t => {
   const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { machine: 'scripted' });
+  // A soak file must not displace ordinary files onto one shard in the batch plan.
+  const soak = 'hub/test/soak.test.ts';
+  await writeFile(join(f.root, soak), '');
+  const tierPath = join(f.root, 'hub/test/tiers.json');
+  const tiers = JSON.parse(await readFile(tierPath, 'utf8')) as TierManifest;
+  tiers.tests[soak] = 'T4';
+  await writeFile(tierPath, serializeTierManifest(tiers));
+  f.durationContext.manifest.files[soak] = { seconds: 1000, tests: 1 };
+  f.durationContext.tiers[soak] = 'T4';
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify(f.durationContext.manifest));
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   let reservations: number[] = [];
@@ -42,6 +79,8 @@ test('a Coordinator integrated batch reserves two shards without stage provenanc
   assert.match(result.text, /tests 2; pass 2/);
   for (const shard of ['shard-1', 'shard-2']) assert.match(result.text, new RegExp(`shard duration ${shard}.*c-8.*[\\d.]+s.*cost \\$`));
   assert.match(result.text, /total cost \$/);
+  for (const shard of ['shard-1', 'shard-2']) assert.match(result.text, new RegExp(`${shard} tier T1: files 1;`));
+  assert.doesNotMatch(result.text, /tier T4:/);
   assert.doesNotMatch(result.text, /occasion |stage cover/);
   assert.equal((await f.messages(job.id)).length, 1);
   assert.deepEqual(f.api.droplets, []);

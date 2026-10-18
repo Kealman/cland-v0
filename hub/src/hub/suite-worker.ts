@@ -11,7 +11,7 @@ import type { Platform } from '../executor/executor.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
-import type { SuiteSelection } from '../suite-selection.ts';
+import { selectionTransport, type SuiteSelection } from '../suite-selection.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
 import { suiteCommand } from '../suite-command.ts';
 
@@ -77,8 +77,14 @@ export async function suiteWorker(input: string): Promise<void> {
       delete env.CLAND_SUITE_LEASE;
       if (leases.length && borrowable) env.CLAND_SUITE_LEASE = JSON.stringify({ dirs, pid: holder.pid, started, token: holder.token });
       // One durable decision feeds the package runner and the result, even after restart.
-      if (job.selection) env.CLAND_SUITE_SELECTION = JSON.stringify(job.selection);
-      else delete env.CLAND_SUITE_SELECTION;
+      delete env.CLAND_SUITE_SELECTION;
+      delete env.CLAND_SUITE_SELECTION_FILE;
+      if (job.selection) {
+        const path = join(dirname(job.result), 'selection.json');
+        const transport = selectionTransport(job.selection, path);
+        if (transport.file) await writeFile(path, transport.file, { mode: 0o600 });
+        Object.assign(env, transport.env);
+      }
       if (job.selection?.recordCoverage && index > 0) env.CLAND_COVERAGE_OUTPUT = join(dirname(job.result), 'coverage-map.json');
       else delete env.CLAND_COVERAGE_OUTPUT;
       const outcome = await suiteCommand(args, job.cwd, env);
