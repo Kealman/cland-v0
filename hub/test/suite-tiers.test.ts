@@ -194,3 +194,62 @@ test('duration lint uses supplied legacy keys for package planning and rejects u
   await assert.doesNotReject(lintHubShards(root, history));
   await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), /new duration allowance cannot be legacy/);
 });
+
+test('test:tiers refuses an open task allowance with its line and open epic replacement', async t => {
+  const { root, write } = await fixture(t);
+  await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, '.cland/tasks/T-761-fixture.md'), '---\nid: T-761\nkind: task\ntitle: Implementing task\nstate: open\nparent: E-482\n---\n');
+  await writeFile(join(root, '.cland/tasks/E-482-fixture.md'), '---\nid: E-482\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  // Admission uses today's date; keep this allowance valid whenever the test runs.
+  const today = new Date().toISOString().slice(0, 10);
+  const expires = new Date(Date.parse(today) + 86_400_000).toISOString().slice(0, 10);
+  const key = 'hub/test/a.test.ts::temporary migration';
+  const manifest = {
+    version: 1, source: { artifacts: [], commit: 'fixture' },
+    budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: { [key]: 6 },
+    allow: {
+      'hub/test/a.test.ts::existing': { seconds: 6, reason: key, owner: 'E-482', added: today, expires },
+      [key]: { seconds: 6, owner: 'T-761', added: today, expires, reason: 'Temporary component migration.' },
+    },
+  };
+  const source = JSON.stringify(manifest, null, 2) + '\n';
+  await writeFile(join(root, 'hub/test/durations.json'), source);
+  const line = source.split('\n').findIndex(line => line.includes('"owner": "T-761"')) + 1;
+  await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), (error: unknown) => {
+    assert.ok(error instanceof Error);
+    assert.ok(error.message.includes(`hub/test/durations.json:${line}`), error.message);
+    assert.match(error.message, /task owner T-761/);
+    assert.match(error.message, /open epic owner.*E-482/);
+    assert.ok(error.message.includes(key), error.message);
+    return true;
+  });
+});
+
+test('duration owners follow container state through the E-677 to E-482 transition', async t => {
+  const { root, write } = await fixture(t);
+  await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  const item = (id: string, kind: string, state = 'open') => writeFile(join(root, `.cland/tasks/${id}-fixture.md`), `---\nid: ${id}\nkind: ${kind}\ntitle: Allowance owner\nstate: ${state}\n---\n`);
+  const today = new Date().toISOString().slice(0, 10);
+  const expires = new Date(Date.parse(today) + 86_400_000).toISOString().slice(0, 10);
+  const allowance = { seconds: 6, owner: 'E-677', added: today, expires, reason: 'Temporary component migration.' };
+  const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' },
+    budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {},
+    allow: { 'hub/test/a.test.ts::temporary migration': allowance } };
+  const save = () => writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(manifest));
+  for (const [id, kind] of [['E-677', 'epic'], ['R-577', 'release'], ['C-100', 'category'], ['T-761', 'epic']] as const) {
+    await item(id, kind);
+    allowance.owner = id;
+    await save();
+    await assert.doesNotReject(lintHubShards(root, { legacyKeys: new Set() }), `${kind} owners are accepted by kind, including old T-prefixed containers`);
+  }
+  allowance.owner = 'E-677';
+  await save();
+  await item('E-677', 'epic', 'closed');
+  await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), /closed owner E-677/);
+  await item('E-482', 'epic');
+  allowance.owner = 'E-482';
+  await save();
+  await assert.doesNotReject(lintHubShards(root, { legacyKeys: new Set() }));
+});

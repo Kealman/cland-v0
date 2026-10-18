@@ -139,11 +139,12 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
   const source = (path: string) => git(['show', `${tree}:${path}`]);
   if (paths.includes(DURATION_MANIFEST)) {
     try {
-      const manifest = JSON.parse(await source(DURATION_MANIFEST)) as DurationManifest;
+      const durationSource = await source(DURATION_MANIFEST);
+      const manifest = JSON.parse(durationSource) as DurationManifest;
       lintDurationManifest(manifest);
       const ownerCwd = (await git(['rev-parse', '--show-toplevel'])).trim();
       const legacyKeys = await legacyDurationKeys(git, history.head, history.base);
-      lintDurationManifest(manifest, { owners: await durationOwners(ownerCwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
+      lintDurationManifest(manifest, { source: durationSource, owners: await durationOwners(ownerCwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
     }
     catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   }
@@ -164,7 +165,7 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
       lintDurationManifest(manifest);
       const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
       const legacyKeys = history.legacyKeys ?? await legacyDurationKeys(git);
-      lintDurationManifest(manifest, { owners: await durationOwners(cwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
+      lintDurationManifest(manifest, { source: await readFile(join(cwd, DURATION_MANIFEST), 'utf8'), owners: await durationOwners(cwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
     }
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   try { await readQuarantineManifest(cwd); }

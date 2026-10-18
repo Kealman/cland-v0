@@ -59,7 +59,7 @@ test('T3 projection removes retired identities and charges new or promoted tests
   const promoted = durationBudgetReport(manifest(), { ...tiers, component: 'T3' }, [{ file: 'component', name: 'promoted', seconds: 2 }], base);
   assert.ok(promoted.includes('T3 ratchet (report only): 16 s vs base 14 s; would refuse growth (needs T3 allowance)'));
   const head = manifest();
-  head.allow.T3 = { seconds: 17, owner: 'T-1', added: '2026-10-17', expires: '2026-10-24', reason: 'Curated lifecycle coverage.' };
+  head.allow.T3 = { seconds: 17, owner: 'E-482', added: '2026-10-17', expires: '2026-10-24', reason: 'Curated lifecycle coverage.' };
   assert.ok(durationBudgetReport(head, tiers, added, base).includes('T3 ratchet (report only): 17 s vs base 14 s; allowed'));
 });
 
@@ -67,9 +67,9 @@ test('allowance lint names bad reasons, owners and dates while legacy entries fo
   const { lintDurationManifest } = await import('../src/suite-durations.ts');
   const head = manifest();
   const key = 'known::slow';
-  const entry = { seconds: 6, reason: 'Curated lifecycle coverage.', owner: 'T-1', added: '2026-10-17', expires: '2026-10-24' };
+  const entry = { seconds: 6, reason: 'Curated lifecycle coverage.', owner: 'E-482', added: '2026-10-17', expires: '2026-10-24' };
   const now = Date.parse('2026-10-17');
-  const owners = { 'T-1': 'open', 'T-2': 'closed', 'E-677': 'open' } as const;
+  const owners = { 'E-482': { state: 'open', kind: 'epic' }, 'T-2': { state: 'closed', kind: 'task' }, 'E-677': { state: 'open', kind: 'epic' } } as const;
   for (const [patch, message] of [
     [{ reason: 'TODO explain' }, /non-TODO reason/], [{ owner: '' }, /owner/], [{ owner: 'T-2' }, /closed owner/], [{ owner: 'T-3' }, /unknown owner/],
     [{ expires: '2026-10-25' }, /seven days/], [{ expires: '2026-10-17' }, /seven days/], [{ added: '2026-10-09', expires: '2026-10-16' }, /expired/],
@@ -82,7 +82,7 @@ test('allowance lint names bad reasons, owners and dates while legacy entries fo
   assert.doesNotThrow(() => lintDurationManifest(head, { now, owners }));
   head.allow[key] = { seconds: 6, reason: 'Original reason.', owner: 'E-677', legacy: true };
   assert.doesNotThrow(() => lintDurationManifest(head, { now, owners }));
-  assert.throws(() => lintDurationManifest(head, { now, owners: { ...owners, 'E-677': 'closed' } }), /closed owner.*known::slow/);
+  assert.throws(() => lintDurationManifest(head, { now, owners: { ...owners, 'E-677': { state: 'closed', kind: 'epic' } } }), /closed owner.*known::slow/);
 });
 
 test('result summaries cap ranked overages at ten and retain legacy progress separately', async () => {
