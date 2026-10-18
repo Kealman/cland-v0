@@ -2,8 +2,8 @@
 id: T-651
 kind: task
 title: 'cland open in a project not yet set up prints "next: cland setup" and opens the workbench as usual'
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-536
 branch: t/T-651-cland-open-in-a-project-not-yet-set-up
 created: 2026-10-16T16:24:00.577Z
-updated: 2026-10-18T23:50:23.204Z
+updated: 2026-10-18T23:50:28.259Z
+closed: 2026-10-18T23:50:28.259Z
 ---
 
 ## Summary
@@ -107,3 +108,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 9f6d69a6. A-5645/caf18bde accepted exit0: 2310 pass, zero failures/cancellations, five skips; hub plus Neovim smoke. Hint/marked suppression and predicate checks pass ordinary plus10/10 task repetitions; whole open5/5 and roles-editor11/11. Shared executor recovery now passes. A-5646 maps C1–C3, both axes and inherited report-only trips. Verified all; no findings. Restore claimant C1 done against this replacement receipt; prior failed evidence remains history.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T23:50:28.259Z
+
+Merged 9d17f8d1a4db6f85ebdcf98cc15bd1550a00bd63 onto dev.
