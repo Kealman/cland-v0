@@ -8,9 +8,9 @@ import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import { decide, DEFAULT_PERMISSIONS, KNOWN_TOOLS } from '../src/roles/permissions.ts';
 import type { Artifact, Message } from '../src/protocol.ts';
 
-const aideTools = ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status', 'session.launch', 'session.stop', 'session.resume'];
+const aideTools = ['rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'task.plan', 'task.create', 'task.edit', 'task.close', 'task.link', 'task.comment', 'task.claim', 'task.criterion', 'task.view', 'task.list', 'artifact.create', 'artifact.keep', 'artifact.move', 'artifact.archive', 'artifact.promote', 'send', 'topic.create', 'history', 'who', 'status', 'session.launch', 'session.stop', 'session.resume', 'task.import', 'push'];
 
-test('Aide defaults are non-exclusive, use the human model, and grant exactly §3.3/3.4/3.10 tools', (t) => {
+test('Aide defaults are non-exclusive, use the human model, and grant exactly the specified tools', (t) => {
   const aide = DEFAULTS.get('aide')!;
   assert.equal(aide.exclusive, false);
   assert.equal(aide.launch.harness, 'claude-code');
@@ -92,7 +92,7 @@ test('Aide tracker, topics, artifacts and named sends work; crew operations name
     assert.match(refused.reason, /Aide rule \(v0.1 §3.3\)/, tool);
     if (tool !== 'send') assert.match(refused.reason, /sessions on the human's word/, tool);
   }
-  for (const args of [['release', '0.1.0'], ['sync'], ['push']]) {
+  for (const args of [['release', '0.1.0'], ['sync']]) {
     const refused = await clandWithEnv(root, { CLAND_SESSION_NAME: 'aide-1', CLAND_SESSION_ID: 'aide-id' }, ...args);
     assert.equal(refused.code, 1, args.join(' '));
     assert.match(refused.stderr, /Aide rule \(v0.1 §3.3\)/, args.join(' '));

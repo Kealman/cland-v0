@@ -1,16 +1,19 @@
+// T3: real Git territory publication and shell identity; native push/refusal flows share one fixture seed.
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject, type CliResult } from './harness.ts';
+import { fileURLToPath } from 'node:url';
+import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, inProcessSpoke, projectHub as embeddedProjectHub, spawnSpoke, nativeProjectHub as projectHub, startHub, tempProject, type CliResult } from './harness.ts';
 import { copyPreparedProject } from './prepared-project.ts';
 import { pushDev, type PushResult } from '../src/territory-push.ts';
 import { withTerritoryLockAsync } from '../src/territory.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { Store } from '../src/hub/store.ts';
 import { fixedRoles } from '../src/roles/config.ts';
+import { FakeClock } from './fake-clock.ts';
 
 const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
@@ -49,7 +52,47 @@ test('human cland push publishes tracker commits, preserves dirty staged work, i
   assert.equal(refs(root, territory), before);
 });
 
-test('only Coordinator and human shells push; role spoofing and unknown shell ids refuse, and no spoke push tool exists', async t => {
+// T3: Aide shell import and real Git territory publication; fake adapter, no hub/harness process.
+test('an Aide publishes imported GitHub issues from its shell using the github remote', { timeout: 5000 }, async t => {
+  const { root, territory } = await repository(t);
+  git(root, 'remote', 'add', 'github', 'git@github.com:acme/widgets.git');
+  const audits: Record<string, unknown>[] = [];
+  await embeddedProjectHub(t, root, {}, { clock: new FakeClock(), log: entry => {
+    if (entry.event === 'audit' && ['task.import', 'push'].includes(String(entry.tool))) audits.push(entry);
+  } });
+  const aide = await inProcessSpoke(t, { cwd: root, discover: true, name: 'aide-1', role: 'aide', sessionId: 'aide-id' });
+  await aide.waitForPresence(['aide-1']);
+  const fixture = join(root, 'github.json');
+  await fs.writeFile(fixture, JSON.stringify({
+    'repos/acme/widgets/issues?state=open&per_page=100': [{
+      number: 1, html_url: 'https://github.com/acme/widgets/issues/1', title: 'Imported work',
+      body: 'An open issue.', state: 'open', labels: [], comments: 0, created_at: '2026-01-01T00:00:00Z',
+    }],
+  }));
+  const env = {
+    CLAND_SESSION_NAME: 'aide-1', CLAND_SESSION_ID: 'aide-id',
+    PATH: `${fileURLToPath(new URL('./fixtures/fake-gh', import.meta.url))}:${process.env.PATH ?? ''}`,
+    FAKE_GH_FIXTURE: fixture,
+  };
+  const imported = JSON.parse(ok(await clandWithEnv(root, env, 'task', 'import-github', '--json')).stdout);
+  assert.equal(imported.repo, 'acme/widgets');
+  assert.equal(imported.created, 1);
+  const view = await aide.call<{ item: { title: string; github: { repo: string } } }>('task.view', { id: 'T-1' });
+  assert.equal(view.item.title, 'Imported work');
+  assert.equal(view.item.github.repo, 'acme/widgets');
+  git(root, 'add', '.cland/tasks');
+  git(root, 'commit', '-qm', 'Import open issues');
+  const dev = git(root, 'rev-parse', 'dev');
+  const previous = git(territory, 'rev-parse', 'dev');
+  assert.notEqual(previous, dev);
+  const pushed = JSON.parse(ok(await clandWithEnv(root, env, 'push', '--json')).stdout);
+  assert.deepEqual(pushed, { dev, previous });
+  assert.equal(git(territory, 'rev-parse', 'dev'), dev);
+  assert.deepEqual([...new Set(audits.map(row => row.tool))].sort(), ['push', 'task.import']);
+  for (const row of audits) assert.deepEqual([row.session, row.sessionId, row.role, row.client, row.outcome], ['aide-1', 'aide-id', 'aide', 'cli', 'ok']);
+});
+
+test('Coordinator and human shells push; role spoofing and unknown shell ids refuse, and no spoke push tool exists', async t => {
   const { root, territory, ui } = await project(t);
   git(root, 'commit', '--allow-empty', '-qm', 'Tracker commit');
   for (const role of ['implementer', 'reviewer', 'qa', 'coordinator']) {

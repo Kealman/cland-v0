@@ -1723,7 +1723,9 @@ export class Dispatcher {
         if (frame.type === 'prompt.send' || (frame.type === 'topic.send' && frame.artifacts !== undefined)) return attachedSend(frame, () => this.#asSession(frame));
         if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync' || frame.type === 'push')) {
           const tool = frame.type;
-          if (caller && (client !== 'cli' || caller.role !== 'coordinator')) return this.#refuse(caller, frame, peer, tool, `${tool} belongs to the human or the Coordinator from its own shell`);
+          const allowedRole = (role: string | null | undefined) => role === 'coordinator' || (tool === 'push' && role === 'aide');
+          const roles = tool === 'push' ? 'Coordinator or an Aide' : 'Coordinator';
+          if (caller && (client !== 'cli' || !allowedRole(caller.role))) return this.#refuse(caller, frame, peer, tool, `${tool} belongs to the human or the ${roles} from its own shell`);
           if (!this.#releases) return peer.send(Dispatcher.#failure(frame.id, new ReleaseError('release-state', 'this hub has no tracker')));
           const resumed = <T,>(write: () => T): T => this.#guard.measure(tool, client, write, 'resumed');
           const authorize = () => {
@@ -1731,8 +1733,8 @@ export class Dispatcher {
             const now = this.#asSession(frame);
             const grants = core.roles?.get().get(now?.role ?? '')?.permissions.tools;
             const decision = decide(now?.role ?? null, grants, { tool });
-            if (!now || now.role !== 'coordinator' || !decision.ok) {
-              const reason = decision.ok ? `the calling session no longer holds Coordinator` : decision.reason;
+            if (!now || !allowedRole(now.role) || !decision.ok) {
+              const reason = decision.ok ? `the calling session no longer holds ${roles}` : decision.reason;
               if (now) this.#refuse(now, frame, peer, tool, reason, '', false);
               throw new ToolForbidden(now?.role ?? null, tool, reason);
             }

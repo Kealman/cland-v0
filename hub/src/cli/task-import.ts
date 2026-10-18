@@ -157,10 +157,13 @@ export async function runImportGithub(args: string[], cwd: string, io: Io, env: 
   }
   let repo = values.repo?.trim();
   if (!repo) {
-    const url = await gitRunner(['remote', 'get-url', 'origin'], root).catch(() => '');
-    repo = repoOfRemote(url) ?? undefined;
+    for (const remote of ['github', 'origin']) {
+      const url = await gitRunner(['remote', 'get-url', remote], root).catch(() => '');
+      repo = repoOfRemote(url) ?? undefined;
+      if (repo) break;
+    }
     if (!repo) {
-      io.err(`cland: no GitHub repository in \`git remote get-url origin\` of ${root}; pass --repo owner/name\n`);
+      io.err(`cland: no GitHub repository in remotes \`github\` or \`origin\` of ${root}; pass --repo owner/name\n`);
       return 1;
     }
   }
