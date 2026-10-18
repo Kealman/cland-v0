@@ -2,8 +2,8 @@
 id: T-788
 kind: task
 title: verify admission runs T-684's test-lint policy before replying and overruns the CLI's 15 s deadline
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T10:45:54.704Z
+updated: 2026-10-18T11:08:00.950Z
+closed: 2026-10-18T11:08:00.950Z
 ---
 
 ## Summary
@@ -118,3 +119,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5219: exact-head A-5216 passes full hub/Neovim, 2540 pass/0 fail/8 prerequisite skips. Owned admission carrier and nested deadline/warming/diagnostics/refusal controls pass plus5/5 repetitions. Former project-probes census failures resolved; zero warmer trip rows, no owned trips or hard budgets. C1/C2 verified; C3 exact-head dry-run proof remains current. Claimant done marks restored. No findings.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T11:08:00.950Z
+
+Merged cae51b5c004898a957233c535c84401f65e3d9c7 onto dev.
