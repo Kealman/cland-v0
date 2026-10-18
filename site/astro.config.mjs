@@ -4,7 +4,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 const SITE = 'https://cland.app';
-const GITHUB = 'https://github.com/[owner]/cland';
+const GITHUB = 'https://github.com/Kealman/cland-v0';
 
 // Docs pages are written separately; list only the ones that exist so a
 // missing page never breaks the build. Slug `docs` is docs/index.md.

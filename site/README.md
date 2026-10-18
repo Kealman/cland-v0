@@ -32,4 +32,4 @@ There is no `src/content/docs/index.md` on purpose: Starlight must not claim `/`
 
 ## Deployment
 
-The site deploys to GitHub Pages with the custom domain `cland.app` (`public/CNAME`, and `site: 'https://cland.app'` in `astro.config.mjs`). There is no deployment workflow yet.
+The site deploys to GitHub Pages with the custom domain `cland.app` (`public/CNAME`, and `site: 'https://cland.app'` in `astro.config.mjs`). The workflow `.github/workflows/pages.yml` builds `site/` and deploys it on a push to `main` (every release) or to the `site` branch (site changes between releases). The repository's Pages source is GitHub Actions, and its custom domain is set in the repository settings: a `CNAME` file alone does not set it for an Actions deployment.

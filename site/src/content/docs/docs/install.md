@@ -26,7 +26,7 @@ curl -fsSL https://cland.app/install.sh | sh
 Requires Node 24.
 
 ```sh
-git clone https://github.com/[owner]/cland
+git clone https://github.com/Kealman/cland-v0 cland
 cd cland
 npm ci
 npm link
