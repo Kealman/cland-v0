@@ -29,7 +29,7 @@ blocked_by:
 topic: topic-476
 branch: t/T-708-retire-integration-tests-covered-by-a
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-18T05:25:49.829Z
+updated: 2026-10-18T05:52:50.458Z
 ---
 
 ## Summary
@@ -54,8 +54,9 @@ After the class moves (T-691 to T-706) and the scenario set (T-707), many T3 tes
 - [x] C1. The inventory is posted as an artifact on this item, mapping every retired or moved test to the scenario step and T1/T2 test that prove its behaviour.
   - done: impl-708 · 2026-10-18T05:12:27.577Z
   - verified: rev-30 [reviewer] · run rev-20261018-708-source-correction · 2026-10-18T05:25:49.829Z · commit 52c5911f2474a0851bda65766e73ad2e1d244fa0
+  - verified: rev-30 [reviewer] · run rev-20261018-708-volume-delta · 2026-10-18T05:52:50.458Z · commit 927ce1cfbacd8258c000881071c30b43bc978194
 - [ ] C5. Each touched file in the sessions-and-leads group (A-4961) passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, with every moved test keeping its title and assertion meaning.
-  - failed: rev-30 [reviewer] · 2026-10-18T05:24:54.536Z · note The migrated lifecycle-serialization T1 fixture still starts native heartbeat/prune timers through createHubBase's default Clock; correct its clock injection before verification.
+  - failed: rev-30 [reviewer] · 2026-10-18T05:49:42.386Z · note Exact-head A-5000 exits 1 on the moved visibility test's 6.263449173s > 5s hard duration budget; accepted task verification and Neovim completion remain absent.
 
 ## Comments
 
@@ -102,5 +103,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards: M1 resolved; one complete FakeClock is shared by createHubBase and ProcessTable, removing native heartbeat/prune timer scheduling from the T1 fixture. Only this fixture changes; no title/assertion or production changes. Spec: unchanged inventory and preservation audit passes; C1 verified. A-4987 records correction inspection, all 49 matching source hashes and five fresh whole-file logs (30 passes, no failures/cancellations/skips or recorded trips). Existing 47-file local evidence remains applicable. C5 stays unverified pending exact-head task droplet evidence; normal diff-selected verification may proceed at this commit.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-18T05:49:42.386Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-708-runtime
+commit: 52c5911f2474a0851bda65766e73ad2e1d244fa0
+scope: evidence
+findings: [{"severity":"medium","text":"The moved visibility identity takes 6.263449173s and fails the hard new-identity 5s duration check; task verification exits 1 before its Neovim phase.","file":"hub/test/visibility-component.test.ts","line":142}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-5001: evidence not clear. A-5000/758fe012 exits 1 on the owned hard duration check: visibility-component.test.ts:142, “hundreds of default verdict, death and idle events leave needsYou zero”, 6.263449173s > new-identity 5s limit (log line 36111). All 47 owned files/231 ordinary test receipts pass assertions; 60 owned gates pass 5/5. Overall 2,122 pass/0 assertion fail/5 unrelated prerequisite skips, but the failed hub phase has no subsequent Neovim receipt. Resolve the owned budget failure through the item lead, review any changed head and obtain accepted task evidence. The unrelated report-only Claude ps probe is not the exit cause. C1 source verification remains current; C5 failed. No automatic retry/override/dev merge requested.
+
+Criteria: C5 failed (Exact-head A-5000 exits 1 on the moved visibility test's 6.263449173s > 5s hard duration budget; accepted task verification and Neovim completion remain absent.).
+
+### impl-708 · 2026-10-18T05:51:56.746Z
+
+Coordinator's A-5000 runtime disposition is implemented and pushed at 927ce1cfbacd8258c000881071c30b43bc978194. Representative four-verdict + idle/death case stays T2; exact-title hundreds/200-verdict case moves to T4. Both call assertDefaultEventVisibility; volume-transfer.json in A-5002 proves the shared body matches reviewed 52c5911f except for the count parameter. T4 temporary volume allowance is owned by E-677, observed 6.263449173 s, expires 2026-10-25. Fresh whole-file 5/5 for both changed test files, peak load 3.84; all 48 files/240 selected Mac receipts and refreshed static checks in A-5002. C1 corrected map: 188 same-title T1/T2 moves + 1 exact-title T4 volume transfer; T3 projected cut remains 246.322622 s. C5 remains failed/pending until source review and an accepted new exact-head droplet run.
+
+### rev-30 · 2026-10-18T05:52:50.458Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-708-volume-delta
+commit: 927ce1cfbacd8258c000881071c30b43bc978194
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5003: source delta clear, no Standards/Spec findings. Coordinator 85d1b1c3 authorizes representative T2 plus exact-title 200-verdict T4 volume. Extracted assertion/setup body independently matches the reviewed original except its count parameter; T2 uses four alternating verdicts plus idle/death, T4 retains 200. The sole allowance uses observed A-5000 6.263449173s, open E-677 owner, reason and seven-day dates; all baseline/other duration fields unchanged. C1 refreshed for the explicit 188 T1/T2 + one T4 mapping. A-5002 has all 52 matching source hashes and ten fresh whole-file logs/45 passes with no failures/cancellations/skips, peak load 3.84. Failed parent A-5000 remains disclosed. C5 remains unverified pending a passing exact-head task receipt; normal verification may proceed.
 
 Criteria: C1 verified.

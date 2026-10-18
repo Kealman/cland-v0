@@ -3,7 +3,7 @@ id: T-747
 kind: task
 title: Importing hub/test/harness.ts registers ps and socket work at module load
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-478
 branch: t/T-747-importing-hub-test-harness-ts-registers
 created: 2026-10-17T17:24:17.537Z
-updated: 2026-10-18T05:30:19.123Z
+updated: 2026-10-18T05:57:12.272Z
 ---
 
 ## Summary
@@ -31,9 +31,12 @@ Make harness.ts import side-effect free: account-fixture setup, the ownDirectory
 
 ## Acceptance criteria
 
-- [ ] C1. Importing only a pure helper from harness.ts runs no ps, socket or child-process work, proved by a T1 census, and T-744's lint no longer charges those importers. The review request lists the files whose qualification changes.
-- [ ] C2. The cover-quiet and fixture-isolation tests pass unchanged, 5/5 on the Mac and in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-18T04:54:47.368Z · note Cover admission is lost for actual explicit-command/stub Neovim fixture startup; the adapted driver tests an unrelated preliminary tempProject instead.
+- [x] C1. Importing only a pure helper from harness.ts runs no ps, socket or child-process work, proved by a T1 census, and T-744's lint no longer charges those importers. The review request lists the files whose qualification changes.
+  - done: impl-747 · 2026-10-18T05:56:16.074Z
+  - verified: rev-30 [reviewer] · run rev-20261018-747-final · 2026-10-18T05:57:11.446Z · commit fccf4991ead89c042c3b0388e2605d06137af093
+- [x] C2. The cover-quiet and fixture-isolation tests pass unchanged, 5/5 on the Mac and in the task's droplet verify.
+  - done: impl-747 · 2026-10-18T05:56:16.478Z
+  - verified: rev-30 [reviewer] · run rev-20261018-747-final · 2026-10-18T05:57:11.446Z · commit fccf4991ead89c042c3b0388e2605d06137af093
 
 ## Comments
 
@@ -97,3 +100,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-4989: Standards/Spec delta clear, no findings. Async ensureAccountFixture wraps cached initialization in a fresh caller-owned Promise while preserving lazy admission, shared setup and conditional worker cleanup. The planted non-stub test admits its shared fixture before subtests; exact socket/command/default spawn-trip and inner pass-4 assertions are unchanged. Coordinator ffc4b0d5 authorizes this task-caused correction after failed A-4984, which remains disclosed. Parsed A-4988's 25 whole-file logs: 170 passes, zero failures/cancellations/skips; complete runner 5/5 and five enforced census rows each resourceCount=0. Prior cover/isolation/native-entry audit remains applicable. C1/C2 remain unverified pending new exact-head task evidence; normal verification may proceed.
+
+### rev-30 · 2026-10-18T05:57:11.446Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-747-final
+commit: fccf4991ead89c042c3b0388e2605d06137af093
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5005: final same-head evidence clear; C1/C2 verified. A-5004/a98d8631 exits zero with complete hub+Neovim phases: 2,519 pass/0 fail/8 unrelated prerequisite skips. Audited positive census, lifetime/isolation, all 12 cover controls, all 17 runner tests including the unchanged three-spawn guard, and UI/vboard receipts; focused files have no tier trips/skips. Three new identities each pass 5/5 load repetitions. Census is qualifying/reachable T1/0; existing qualification population unchanged. Mac A-4988's 25 whole-file logs/170 passes and prior unchanged-entry proof remain applicable. Failed parent A-4984 remains disclosed; unrelated report-only Claude ps probe is the known T-759 class. Linux c-8 lon1, 1,479s lifetime, $0.1027. No per-item QA.
+
+Criteria: C1 verified, C2 verified.
