@@ -3,7 +3,7 @@ id: T-765
 kind: task
 title: "orphan-servers: a foreground hub stopped after doctor --fix was SIGKILLed instead of exiting cleanly (1 in 35 Mac runs)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-472
 branch: t/T-765-orphan-servers-a-foreground-hub-stopped
 created: 2026-10-18T00:55:58.384Z
-updated: 2026-10-18T03:43:16.936Z
+updated: 2026-10-18T03:49:25.389Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ Find what escalates a doctor-repaired foreground hub's stop to SIGKILL: the stop
 
 - [x] C1. The cause is named with evidence, and the case passes 50/50 serially under a load of 8–12, or under a scripted delay that reproduced the SIGKILL before the fix.
   - done: impl-765 · 2026-10-18T03:42:52.564Z
+  - verified: rev-30 [reviewer] · run rev-20261018-765-final · 2026-10-18T03:49:24.827Z · commit a1e009c231b4ccf2d068a319ff1897bf4a17c33b
 
 ## Comments
 
@@ -79,3 +80,22 @@ A-4927: M1 resolved; no remaining Standards or Spec findings. Three test-only li
 ### impl-765 · 2026-10-18T03:43:16.936Z
 
 Fresh post-quiet proof at exact source-cleared a1e009c231b4ccf2d068a319ff1897bf4a17c33b is complete: orphan-servers.test.ts whole file 5/5, 90 passes with no failures/skips/cancellations, durations 67.503/64.632/64.376/73.865/72.308 s, peak 1-minute load 10.7212. A-4936 retains all logs and matching source hashes; original A-4915 controlled reproduction and 50/50 delayed cases remain separate historical proof. Both Coordinator prerequisites hold. Reviewer received the new evidence; mode-free exact-head droplet verification submitted with Reviewer, impl-765 and Coordinator as recipients. No further source changes or local tests; waiting for hub result.
+
+### impl-765 · 2026-10-18T03:49:12.851Z
+
+Exact-head diff-selected droplet receipt is green: suite 20ab679c-bec2-43be-8c43-21fc910ebb74 at a1e009c231b4ccf2d068a319ff1897bf4a17c33b, A-4942. hub-selected uses coverage map A-4923 at ancestral d392167a and names sweepUnlocked, worker and the endProcess options callback; 162 passes, zero failures/cancellations, one skip. Linux x64 c-8 lon1 / Node 24.21.0 / Neovim 0.12.5, lifetime 280 s, cost $0.0195; shard wall 203.67 s. Task verify record is finished/passed at the reviewed head. Report-only duration/lint findings were not changed; E-482 owns allowances. Fresh corrected local proof remains A-4936 and controlled red/50-case proof A-4915. Awaiting Reviewer final evidence verdict; source unchanged and worktree clean.
+
+### rev-30 · 2026-10-18T03:49:24.827Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-765-final
+commit: a1e009c231b4ccf2d068a319ff1897bf4a17c33b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-4943: final clear, C1 verified, no remaining findings. A-4936 source hashes match both committed changed files and its five post-quiet whole-file logs pass 90/90 without failure/cancellation/skip, satisfying primary a3cde264's prerequisite after M1. A-4915 retains audited 50/50 delayed cases and traced pre-fix doctor TERM/STOP/KILL diagnosis; the production correction is unchanged. Exact-head A-4942 / 20ab679c exits 0: delayed case passes 3.140433468s, TERM-resistant deleted-hub tree passes 8.777008061s. Total 162 pass/0 fail or cancelled/1 optional real-OpenCode prerequisite skip, with 5/5 Neovim smoke. Existing report-only duration notices disclosed; no new allowance. Historical A-4878's precise internal scheduling operation remains unknown; the controlled grace-expiry mechanism and sender are evidenced.
+
+Criteria: C1 verified.

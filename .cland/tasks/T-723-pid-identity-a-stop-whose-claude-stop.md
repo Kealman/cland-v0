@@ -3,7 +3,7 @@ id: T-723
 kind: task
 title: pid-identity 'a stop whose claude stop fails never SIGTERMs a reused pid' fails with 'database is locked' under load
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-474
+branch: t/T-723-pid-identity-a-stop-whose-claude-stop
 created: 2026-10-17T01:06:44.540Z
-updated: 2026-10-17T21:48:42.618Z
+updated: 2026-10-18T03:45:43.419Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ Find which two writers contend, the test fixture or the hub under test, and make
 
 - [ ] C1. The cause of the lock is recorded on this item and fixed, with the case's assertions unchanged in meaning.
 - [ ] C2. pid-identity.test.ts passes 10/10 serially as a whole file on the Mac at load above 8, and in the task's droplet verify.
+
+## Comments
+
+### impl-723 · 2026-10-18T03:45:43.419Z
+
+C1 cause confirmed after merging origin/dev: T-763 (447064753250a8627f9d14c90ff96a07d5adb202), evidence A-4909, identified raw DatabaseSync handles without a busy_timeout. The fixture's stale Claude identity UPDATE competes with the live hub's independent harness_processes writes; the raw fixture handle formerly failed immediately with database is locked. T-763 moved all three pid-identity.test.ts hub.db handles (reusePid, pidRow and the Claude stale-identity UPDATE) to shared openDatabase, which sets pragma busy_timeout = 5000 before use. No raw node:sqlite import or DatabaseSync construction remains in this file. Assertions and PID refusal semantics are unchanged; no further source change is needed.

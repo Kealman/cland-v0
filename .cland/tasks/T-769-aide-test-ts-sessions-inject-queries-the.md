@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-473
 branch: t/T-769-aide-test-ts-sessions-inject-queries-the
 created: 2026-10-18T03:35:21.412Z
-updated: 2026-10-18T03:44:50.485Z
+updated: 2026-10-18T03:46:00.377Z
 ---
 
 ## Summary
@@ -46,3 +46,16 @@ Reproduces alone on dev d392167a. coord ran `node --test hub/test/aide.test.ts` 
 ### impl-769 · 2026-10-18T03:39:46.052Z
 
 Merged origin/dev at 37c4921c. Added two T2 component regressions in fake-harness.test.ts using projectHub/FakeClock and in-process adapters: (1) held injection with pending bridge retry at adapter close reproduces the exact ProcessTable.bySessionId → #inject database-is-not-open stack; (2) accept/reject/uncertain outcomes arriving after hub stop reproduce a closed Store.markUncertain rejection. Both observed red on unchanged production source, then green with existing Sessions.#closed guarding entry and all promise continuations. A-4933 preserves the first red. Host typecheck, tiers and lint passed; serial 5x touched-file and 20x aide validation now running below load 15.
+
+### rev-30 · 2026-10-18T03:46:00.377Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-769-source
+commit: ef6453528422dad29e66a9254279754b50b9e499
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-4941: source clear; no Standards or Spec findings. Existing #closed state now gates injection entry, success, rejection/uncertain and queued retry before storage access; in-flight cleanup remains, and open-session behavior is unchanged. Two T2 projectHub/FakeClock regressions cover close-settled retry and accept/reject/uncertain callbacks after full storage close. Baseline-red ProcessTable/#inject and Store.markUncertain receipts are preserved in A-4933/A-4935. Audited A-4940: fake-harness whole file 5/5 (30 passes) and aide whole file 20/20 (160 passes), zero failures/cancellations/skips. No new process, observation sleep or duration allowance. C1 remains unverified until the exact-head task receipt is assessed.
