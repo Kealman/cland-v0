@@ -2,8 +2,8 @@
 id: T-650
 kind: task
 title: 'cland outside a project prints "not a cland project: run cland init" and starts no hub'
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-533
 branch: t/T-650-cland-outside-a-project-prints-not-a
 created: 2026-10-16T16:24:00.374Z
-updated: 2026-10-18T20:44:56.397Z
+updated: 2026-10-18T22:13:36.821Z
+closed: 2026-10-18T22:13:36.821Z
 ---
 
 ## Summary
@@ -102,3 +103,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 9810ca43. Independently audited A-5583/2f7b6977: all four open cases positive, three new identities15/15 repetitions; full hub+Neovim smoke2286 pass/2291 total, zero fail/cancelled, five prerequisite skips. Refusal snapshots/no discovery/launcher, explicit paths/Git/legacy HOME and initialized startup/exit/PID reuse execute. Corrected provider/account boundary control passes. A-5584 records both axes, C1–C5 mapping, retained M1/correction chain and inherited report-only diagnostics. All criteria verified; no findings or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T22:13:36.821Z
+
+Merged 2bf89e7b3c7692e1e0d17949d5c097693156cc01 onto dev.
