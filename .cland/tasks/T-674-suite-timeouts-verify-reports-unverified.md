@@ -2,8 +2,8 @@
 id: T-674
 kind: task
 title: suite-timeouts 'verify reports unverified fast-exit pipe cleanup once…' fails under load; fix it and lift its quarantine
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-531
 branch: t/T-674-suite-timeouts-verify-reports-unverified
 created: 2026-10-16T19:04:11.816Z
-updated: 2026-10-18T20:32:29.465Z
+updated: 2026-10-18T20:32:39.289Z
+closed: 2026-10-18T20:32:39.289Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 5e425e0b. Independently audited A-5576/72b6a0e8: all seven suite-timeouts cases and full file positive, target cleanup-warning/successor case8.2156453s; accepted selected gate21/21 including hub+Neovim smoke, zero fail/cancel/skip. Source/red-green A-5575/A-5566 and ten loaded Mac7/7 files A-5573 remain audited; minimum test-time load11.0806 and excess-load/cleanup disposition retained. A-5577 records both axes and evidence limits. C1–C2 verified, no findings or per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T20:32:39.289Z
+
+Merged c28f1dc8a29220c64438a2fbd3459577f9b00305 onto dev.
