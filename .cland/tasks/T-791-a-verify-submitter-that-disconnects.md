@@ -3,7 +3,7 @@ id: T-791
 kind: task
 title: A verify submitter that disconnects during admission loses its run without any durable receipt
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-770
 topic: topic-500
 branch: t/T-791-a-verify-submitter-that-disconnects
 created: 2026-10-18T09:26:02.167Z
-updated: 2026-10-18T10:24:04.110Z
+updated: 2026-10-18T11:14:52.283Z
 ---
 
 ## Summary
@@ -129,3 +129,41 @@ Standards: no new findings. Spec: final clear.
 Artifact A-5204.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-791 · 2026-10-18T11:13:48.319Z
+
+Completed Coordinator-authorized one-time merge of origin/dev 80e90ab2 after T-788 landed. New pushed head 34ecb72f preserves lintWarmer/diagnostics plus captured-identity durable receipts. Conflicts: daemon.ts options union, dispatch.ts diagnostics forwarding plus receipt handler, tiers.json both T2 entries. Serial checks green: admission-close 6/6 1.004 s; admission-cost 5/5 1.412 s; verify-submission 4/4 0.584 s; lint/typecheck passed. A-5227 records delta. Fresh source delta review requested; no verify submitted while hub restart hold is active.
+
+### rev-31 · 2026-10-18T11:14:52.283Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-791-merge-delta
+commit: 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-791 merge delta source review
+
+Commit: 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
+Run: rev-20261018-791-merge-delta
+Scope: delta
+Result: clear
+
+Compared the merge with both parents: prior final-clear 7a2a2e1af399236284a37d486c5c1658a9dd0a85 and dev 80e90ab2. The origin task branch matches the requested head. Coordinator 72e60d0e-c211-4b09-81c8-f87e0806ee84 independently authorizes one dev merge after T-788 lands, preserving both behaviours and requiring serial targeted checks, delta review and fresh droplet verification. The dev parent includes T-788 cae51b5c and T-790 bdd0cf54.
+
+## Standards
+No findings. Conflict resolutions add no process, wait, test identity, allowance or assertion. Both admission files remain T2. Source comparison against dev comprises the original seven task files. No task whitespace issue. A-5227 reports serial admission-close 6/6 in 1.004 s, admission-cost 5/5 in 1.412 s and verify-submission 4/4 in 0.584 s, plus lint/typecheck green. These targeted results do not substitute for the new task receipt. No Reviewer tests run.
+
+## Spec
+No findings. daemon.ts retains both lintWarmer and selectSuite options: production warmer construction, startup/dev-tip warming and close ownership remain; selection forwarding remains. dispatch.ts retains T-788 diagnostics forwarding and the entire captured-identity/current-authority recheck and durable outcome handler from source-2. Initial asynchronous refusal still passes through recording, publication remains limited to a previously authorized report destination, and notices still omit an explicit lifecycle id. The distinct journal event and replay-tail regression are byte-unchanged.
+
+The six admission-close controls, server selection port and journal change are byte-unchanged from the previous reviewed parent. T-788 scanner, policy, CLI, Suites, admission-cost controls and verify-submission tests are byte-identical to dev. tiers.json retains both T2 entries. T-790 inherited suite behaviour is not manually rewritten.
+
+C1–C3 source continuity is clear, but previous final execution marks refer to 7a2a2e1a and are historical at this merged head. All three await the fresh exact-head mode-free task receipt. This is source clearance only. The Implementer must retain the active submission hold until the Coordinator posts hub restarted; this verdict does not release that hold. No per-item QA required.
+
+Standards: zero findings. Spec: zero findings.
+
+Artifact A-5229.

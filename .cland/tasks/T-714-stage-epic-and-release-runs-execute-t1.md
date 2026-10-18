@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T09:53:59.969Z
+updated: 2026-10-18T11:16:20.768Z
 ---
 
 ## Summary
@@ -62,3 +62,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5166: source clear, no findings. Audited occasion T1–T4/soak versus ordinary T1–T3, persisted stage-receipt identity baseline through local/droplet/shards/reopen, large-selection file transport, tier-aware cache/stage cover and per-shard T4 summary. C1–C3 remain runtime-dependent and unverified. Per sequencing, wait for authorized T-790 integration and fresh delta review, including ordinary-batch shard filtering, before final droplet verification.
+
+### impl-714 · 2026-10-18T11:14:54.559Z
+
+Coordinator-authorized post-source-review dev merge completed at 6ec6b8ee (includes T-790/T-788). Added red/green T2 evidence and soak-based exclusion before ordinary batch balancing, including duration weights. All five affected files pass sequentially (A-5228), followed by lint/typecheck. Delta review requested; waiting for clear verdict and hub-restarted notice before the single droplet verify. No further dev merges without instruction.
+
+### rev-30 · 2026-10-18T11:16:20.768Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-714-integration-delta
+commit: 6ec6b8ee73a1cd3c3eaa05ad43aa23f179df11a4
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5232: authorized T-790/dev integration source clear, no findings. Ordinary sharding excludes T4 paths and all T4 timing weights; occasions retain them. Sentinel test preserves reservation/accounting/cleanup and proves ordinary files balance without T4; stage T4 lines remain covered. T-788/planner merge resolutions intact, prior transport/policy files unchanged. C1–C3 runtime pending. Preserve Coordinator hold: verify only after source clear AND hub-restarted notice; E-676 merge hold separate.

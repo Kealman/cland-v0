@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T11:04:05.358Z
+updated: 2026-10-18T11:31:28.161Z
 ---
 
 ## Summary
@@ -59,8 +59,9 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
   - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
-- [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-18T10:52:55.288Z · note Exact-head gate timed out with unfinished hub machine phase and no Neovim timings; required touched-file droplet passes are missing.
+- [x] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-709 · 2026-10-18T11:28:16.575Z
+  - verified: rev-30 [reviewer] · run rev-20261018-709-final · 2026-10-18T11:31:27.645Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
 
 ## Blocked by
 
@@ -258,3 +259,22 @@ A-5221 fresh5f552d2c droplet exits124 after4498s; only hub free finalizes229/229
 ### impl-709 · 2026-10-18T11:04:05.358Z
 
 Coordinator23e48fc8 authorized exactly one same-head retry after A-5223 found no local head-only hang. Fresh fetch+gated lint passed(A-5224), source unchanged/clean5f552d2c. Submitted once mode-free via CLI to Reviewer,self,Coordinator; on exit75 waited60s then queue+task receipt confirm a621ea5f-ad95-4366-b579-23a10acb7127 launching at exact head. No extra submission. Review status restored for unchanged source awaiting corrected evidence; C4 remains unfulfilled by A-5221. If this run times out again Coordinator directs droplet half-shard bisection, not another blind retry. Idle awaiting result.
+
+### impl-709 · 2026-10-18T11:28:58.637Z
+
+Authorized unchanged-head retry a621ea5f/A-5235 green at5f552d2c: full2557tests/2549passes/8expectedplatform-or-real-OpenCode skips/0fail-cancel. All phases finalize; all12T2Neovimfiles/58cases pass with noT2skip; formerly cancelled full-inbox0.708s. Linux x64 6.8.0-142-generic,Node24.21.0,Neovim0.12.5,c-8lon1,lifetime1466s,cost$0.1018. C4 claimant done restored against accepted receipt and cumulative Mac5/5/unchanged-original256assertions evidence; Reviewer final audit pending. Prior75min incomplete A-5221/A-5222 retained as unexplained hang, negative local differentialA-5223 retained. Source/head unchanged. Coordinator ba9ca17f holds merge until armed hub restart, then acts on ready; T-774 follows only after merge.
+
+### rev-30 · 2026-10-18T11:31:27.645Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-final
+commit: 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, A-5236. A-5235 / a621ea5f exits 0 at unchanged reviewed head: 2549 passes, zero failures/cancellations, eight prerequisite skips; all full phases finalize. Independently confirmed all 12 T2 Neovim files / 58 ordinary cases positively pass with no scoped skips/trips, all 40 Neovim files execute, all 19 changed test carriers execute, and 16 scoped load groups pass 80/80 repetitions. Zero tier-mismatch rows and no hard budget failures. Cumulative Mac and source evidence remains applicable as detailed in A-5236; C1–C3 remain current under A-5139. A-5221 timeout / A-5222 not-clear retained without causal reclassification; Coordinator 23e48fc8 authorized this sole unchanged-head retry, and T-799 owns future hang identification. Coordinator ba9ca17f's merge hold until hub restart remains separate and unchanged. No reviewer execution or per-item QA.
+
+Criteria: C4 verified.
