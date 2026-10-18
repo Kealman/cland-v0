@@ -3,7 +3,7 @@ id: T-761
 kind: task
 title: test:tiers refuses a duration allowance owned by a task, so a merge can't make dev's manifest invalid
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - verification
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T22:53:23.993Z
-updated: 2026-10-18T06:27:14.950Z
+updated: 2026-10-18T07:19:20.230Z
 ---
 
 ## Summary

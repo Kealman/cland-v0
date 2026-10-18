@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-484
 branch: t/T-771-a-test-fixture-hub-outlives-its-test
 created: 2026-10-18T04:44:16.774Z
-updated: 2026-10-18T06:36:43.392Z
+updated: 2026-10-18T07:40:27.090Z
 ---
 
 ## Summary
@@ -29,8 +29,9 @@ A fixture-started hub dies with its test worker: a process group or a parent-dea
 
 ## Acceptance criteria
 
-- [ ] C1. A T3 test SIGTERMs a test worker that holds a fixture hub, finds no surviving hub process and no temp project left within the cleanup bound, and fails before the fix.
-  - failed: rev-31 [reviewer] · 2026-10-18T06:34:27.358Z · note Seedless root recovery can re-authorize a replaced registered PID and its children; carry original identities through discovered signal cleanup and prove preservation.
+- [x] C1. A T3 test SIGTERMs a test worker that holds a fixture hub, finds no surviving hub process and no temp project left within the cleanup bound, and fails before the fix.
+  - verified: rev-31 [reviewer] · run rev-20261018-771-final · 2026-10-18T07:37:53.706Z · commit 004f53acdc08c32ecde71d737c3c141a6ab724c9
+  - done: impl-771 · 2026-10-18T07:38:06.676Z
 
 ## Comments
 
@@ -117,3 +118,74 @@ Source clear. C1 is not marked fully verified until its Linux receipt is audited
 Standards:0 findings. Spec:source and Mac red/green established; Linux execution pending.
 
 Durable review:A-5042.
+
+### rev-31 · 2026-10-18T07:37:53.706Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-771-final
+commit: 004f53acdc08c32ecde71d737c3c141a6ab724c9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-771 final evidence review — clear
+
+Commit:004f53acdc08c32ecde71d737c3c141a6ab724c9.
+Scope:evidence. Source continuity:rev-20261018-771-source-2 /A-5042.
+Read-only audit; no Reviewer execution or edits.
+
+## Standards
+
+No remaining findings. M1 remains resolved: original identity seeds survive forced root discovery, preserving replaced PIDs/children while recovering unrecorded hubs and dead-leader writers. Source/Mac evidence remains current: A-5040 ten whole-file receipts,145passes,0fail/skip/cancel, and both retained red proofs A-5035/A-5039. No head move since source-2.
+
+## Spec and execution
+
+Independently audited raw A-5070 /42bfddc8-ce56-44c5-85e5-e369984a9926 at the exact reviewed commit. Hub records passed/exit0, automatic full selection due shared process-cleanup infrastructure.
+
+All29 owned cases execute positively: lifecycle1case in1.448120932s; process-cleanup28cases totaling3.734058486s. No owned skip. The signal-replacement control passes in0.114920639s. Both new identities also pass5/5 load repetitions,10/10. The lifecycle retains actual worker SIGTERM,exit143,fixture hub PID gone and project directory removed within its bounds; the synthetic control separately proves unrelated replacement identities survive.
+
+Overall2530tests,2522pass,0fail/cancelled,8prerequisite skips. Raw phase summaries reconcile as free218pass, machine1913pass+5skip, Neovim391pass+3skip. Full Neovim completed153.27s; no known-failure exception is needed.
+
+Linux x64/Node24.21.0/Neovim0.12.5,c-8 lon1,2workers; peak load8.10,lifetime1511s,cost$0.1049. Current origin branch still names the same commit. Earlier A-5048 remains a failed historical receipt (T-724 QA SIGTERM signature); matched Mac controls A-5052 and the green retry are distinct evidence, not a relabeled failed run.
+
+## Verdict
+
+Final review clear; verify C1. The original red and current Mac/Linux proofs establish the criterion. Claimant may refresh C1 done using this green receipt; no further task run or per-item QA requested.
+Standards:0 findings. Spec:0 remaining gaps.
+
+Durable review:A-5071.
+
+Criteria: C1 verified.
+
+### impl-771 · 2026-10-18T07:39:45.050Z
+
+Coordinator-authorized one origin/dev merge (b27f71f4) completed as 7eb2137e, then lint header correction/shrink committed and pushed as 5601d0cf. First comment now uses exact T3: declaration. npm run test:lint passed before npm run test:lint -- --shrink; shrink passed and only serialized an empty baseline entry for the new file (no allowance). Typecheck/test:tiers pass. Both owned test files 5/5 serial at start load 3.63–3.95; raw logs A-5072. Delta review and a fresh exact-head droplet run now required; prior green at 004f53ac remains historical.
+
+### rev-31 · 2026-10-18T07:40:27.090Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-771-integration-delta
+commit: 5601d0cf989c1dbb04bf8e825599b4eac34cd87b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-771 authorized integration delta — clear
+
+Commit:5601d0cf989c1dbb04bf8e825599b4eac34cd87b.
+Scope:delta. Prior source/final:004f53ac, A-5042/A-5071.
+Read-only; no Reviewer execution or edits.
+
+Independently read Coordinator97a28e33-7523-46a0-91a2-79c6ef9573c6: trial merge was refused by the newly live T-684 lifecycle-header gate; one fetched dev merge, exact header correction, lint/shrink, two-file5/5, delta review and fresh droplet were required.
+
+Merge7eb2137e has parents004f53ac andb27f71f4, with the approved T-684/T-767 integration inherited. No conflict or manual production resolution. Task process-cleanup.ts and process-cleanup.test.ts are byte-identical to the accepted head. The lifecycle test changes only its first comment to the exact T3: lifecycle form. Against the merged dev baseline, lint-baseline.json only adds its empty file entry; no policy suppression, allowance or count increase.
+
+A-5072 raw refreshed transcript independently audited: both complete files5/5,145passes,0failures/skips/cancellations/todo, no late asynchronous diagnostics. Admitted load3.63427734375–3.95263671875. Existing red proofs and ownership/assertion analysis remain applicable. Typecheck, tiers and live lint/shrink are reported passed.
+
+Standards:0 findings. Spec:C1 source design remains established, while its prior execution mark at004f53ac is historical for the new merged head. Source delta clear; leave C1 final verification pending the required ordinary mode-free fresh droplet result. A-5070 remains valid prior-head evidence, not a new-head full-green claim. No extra Mac run or per-item QA requested.
+
+Durable review:A-5073.

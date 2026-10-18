@@ -3,8 +3,9 @@ id: T-724
 kind: task
 title: qa.test.ts SIGTERM case signals the QA run before its handler is installed and sees no BLOCKED line
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 2
 labels:
   - v0.1.4
   - flaky
@@ -12,10 +13,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-485
+branch: t/T-724-qa-test-ts-sigterm-case-signals-the-qa
 created: 2026-10-17T05:55:15.692Z
-updated: 2026-10-17T21:48:42.655Z
+updated: 2026-10-18T07:25:03.914Z
 ---
 
 ## Summary
@@ -28,5 +29,109 @@ The case waits for an observable readiness signal from the QA run, such as its s
 
 ## Acceptance criteria
 
-- [ ] C1. The case sends SIGTERM only after an observable readiness signal from the QA run, with its assertions unchanged in meaning, proved by the file passing with an injected start delay in the run.
+- [x] C1. The case sends SIGTERM only after an observable readiness signal from the QA run, with its assertions unchanged in meaning, proved by the file passing with an injected start delay in the run.
+  - done: impl-724 · 2026-10-18T07:20:49.899Z
+  - verified: rev-31 [reviewer] · run rev-20261018-724-source-2 · 2026-10-18T07:25:03.914Z · commit fe3875ab7860f7b0bf9b756e9c8b744bf391b74a
 - [ ] C2. nvim/test/qa.test.ts passes 10/10 serially as a whole file on the Mac and once in the task's droplet verify.
+
+## Comments
+
+### coord · 2026-10-18T07:11:06.170Z
+
+New receipt (coord, 2026-10-18 07:11Z): Linux droplet run 6c237173 (A-5048), T-771 at 004f53ac, failed nvim/test/qa.test.ts:290, "a run that is interrupted (SIGTERM) takes its Neovim with it and still says BLOCKED", with "one JSON line on stdout, got: 0". That's this item's signature. On the Mac it passed 10/10 at both the T-771 head and clean dev 5f8d274a (A-5052). It's Linux-only so far.
+
+### impl-724 · 2026-10-18T07:13:58.540Z
+
+Diagnosed the signal-handler readiness race: an awaited 2s startup gap after Neovim spawn reproduces empty stdout (0 JSON lines); waiting for the post-handler-installation stderr marker passes with that same mutation (A-5054). Required typecheck, test:tiers and test:lint pass. Delayed whole-file and 10 serial Mac repetitions underway; no QA policy or QA criteria require a separate brief.
+
+### impl-724 · 2026-10-18T07:17:46.181Z
+
+Implementation committed and pushed as 6f58083b7d6a5f20bf06a4c637923e601ca08803. Final-tree qa.test.ts passes 10/10 serially on Mac (22 tests each; 18.53–21.11s; sampled 1m load 5.52–7.36), A-5057. Required npm typecheck, test:tiers, test:lint pass. C1 red/green probe A-5054 and delayed whole-file pass A-5055. C2 awaits exact-reviewed-head droplet verification after source clearance; separate QA scope is none.
+
+### rev-31 · 2026-10-18T07:19:30.090Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261018-724-source-1
+commit: 6f58083b7d6a5f20bf06a4c637923e601ca08803
+scope: full
+findings: [{"severity":"medium","text":"M1: only the CLI is owned while readiness is pending; parent cancellation before handler installation can leave its detached Neovim group alive.","file":"nvim/test/qa.test.ts","line":311}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-724 source review — not clear
+
+Commit:6f58083b7d6a5f20bf06a4c637923e601ca08803.
+Fixed point:b27f71f4bfc16bea228ef55c5d2f79248535b658.
+Scope:full. Read-only review, no Reviewer execution or edits.
+
+## Standards
+
+M1 medium — nvim/test/qa.test.ts:311. The new readiness wait can fail/cancel after nv.pid resolves but before QA signal handlers are installed. The CLI child is owned by qa-runner, but its Neovim is a detached group with no separate fixture owner. Cleanup may SIGKILL the CLI before it can reap that group, while tempDir cleanup proceeds. The parent PID alone does not establish ownership of that separately detached group in the shared targeted cleanup path.
+
+Register the observed Neovim group immediately when nv.pid resolves, before the readiness race can complete, and retain bounded group/close observations before directory disposal. Add a controlled suppressed/held-readiness cancellation check proving both owned processes are gone and the root remains until cleanup completes. Implementer confirms no outer owner (f977ccf4) and will correct before verification.
+
+No other source finding. qa() invokes its started callback synchronously, so the ready Promise is installed before Promise.all evaluates it. qaReady handles split data, closed stderr and a10s bound. The emitted stderr marker follows handler installation; stdout's single JSON result remains untouched. No fixed signal delay, skip or allowance was introduced.
+
+## Spec
+
+The main signal race is addressed: SIGTERM waits for both the Neovim PID and the post-handler marker; the original BLOCKED,exit2,interrupted-message and group-gone assertions remain. Child finish before readiness is a failure, not permission to signal an exited run.
+
+A-5054 records the2s pre-handler mutation: old case fails with zero JSON lines; corrected readiness passes with the same delay. A-5055 raw delayed whole-file receipt is22/22pass,0fail/skip/cancel,21.908404125s. Temporary injected delay is removed from final source.
+
+A-5057 supplies ten run summaries with exit0/load5.52–7.36; raw ten-run transcripts have since been attached as A-5060 and await audit with the corrected-source repetitions. Typecheck/tiers/lint are reported passed. No task verification before fresh source clearance.
+
+## Verdict
+
+Source not clear for M1; C1 failed until readiness failure cleanup owns the detached group. C2's corrected-source Mac10/10 and same-head droplet execution remain pending. No per-item QA.
+Standards:1 medium finding. Spec:positive readiness proof present; failure-path ownership and final execution evidence pending.
+
+Durable review:A-5062.
+
+Criteria: C1 failed (Readiness failure/cancellation can leave the detached Neovim group unowned; register it on PID receipt and prove bounded cleanup before root disposal.).
+
+### impl-724 · 2026-10-18T07:24:26.028Z
+
+M1 corrected and pushed at fe3875ab7860f7b0bf9b756e9c8b744bf391b74a: ownProcess registers detached Neovim immediately on PID observation. Held-readiness cancellation proof A-5063 demonstrates group-gone before fixture disposal with ownership, versus a surviving group without ownership; temporary probes removed. Fresh typecheck, test:tiers and test:lint pass. Fresh whole-file Mac10/10 (22 tests per file, 18.55–22.20s; sampled load 5.10–7.95) with raw transcripts and loads in A-5066. C2 droplet remains pending clear source review.
+
+### rev-31 · 2026-10-18T07:25:03.914Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-724-source-2
+commit: fe3875ab7860f7b0bf9b756e9c8b744bf391b74a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-724 corrected source review — clear
+
+Commit:fe3875ab7860f7b0bf9b756e9c8b744bf391b74a.
+Scope:full source continuation. Prior review:A-5062 /rev-20261018-724-source-1.
+Read-only; no Reviewer execution or edits.
+
+## Standards
+
+M1 resolved. The test now registers the detached Neovim group immediately in nv.pid().then, before the combined PID/readiness barrier resolves. Shared owned-process cleanup covers the CLI and detached group even if readiness fails before the CLI can handle signals. Normal BLOCKED/exit2/message/group-gone assertions are retained.
+
+A-5063 independently inspected: an unreleased post-spawn/pre-handler barrier intentionally reaches the readiness AbortError. Without ownership the group remains at the fixture-disposal boundary; with ownership it is gone while the fixture still exists, then the fixture is removed. These are intentional red primary tests used for cleanup control, not counted as green. Probe barriers/assertions are removed from final source.
+
+The marker remains after all signal-handler registrations; qa() invokes started synchronously, so its listener Promise is installed before evaluation of Promise.all. Readiness is bounded10s and handles fragmented chunks, stream closure and early completion. SIGTERM occurs only after both marker and PID receipt. No fixed signal delay, skip, allowance or unrelated source change; no dev merge after first review.
+
+## Spec and evidence
+
+C1 established. The2s startup-delay mutation in A-5054 makes the old signal-on-PID case fail with zero JSON lines and the corrected marker case pass. A-5055 delayed complete-file execution is22/22pass with no skip/cancellation. Assertion meaning is unchanged: one BLOCKED JSON result,exit2,interrupted-by-SIGTERM message and the Neovim group gone.
+
+A-5066 current-source raw transcripts independently audited: ten complete serial Mac runs,22pass each,220passes total, zero failures/skips/cancellations/todo and no late asynchronous diagnostics. All ten SIGTERM cases execute positively. Wall18.55–22.20s/file; sampled load5.10–7.95. Refreshed host typecheck/tiers/lint are reported passed. Earlier A-5057 summary/A-5060 raw logs are historical; current proof is A-5066.
+
+C2's Mac portion is established; final verification waits for the exact-reviewed-head mode-free diff-selected droplet receipt. Both current origin branch and review request name this commit. No separate per-item QA.
+
+## Verdict
+
+Source clear; verify C1. C2 remains unverified pending Linux execution. No additional Mac run requested.
+Standards:0 remaining findings. Spec:0 source gaps; C2 runtime pending.
+
+Durable review:A-5067.
+
+Criteria: C1 verified.

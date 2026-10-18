@@ -3,7 +3,7 @@ id: T-777
 kind: task
 title: selection-replay.ts ignores --count for package replay and iterates every landing
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - verification
@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T05:03:00.942Z
-updated: 2026-10-18T06:27:15.053Z
+updated: 2026-10-18T07:19:20.272Z
 ---
 
 ## Summary

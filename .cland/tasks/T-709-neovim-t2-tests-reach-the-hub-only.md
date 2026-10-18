@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T06:50:38.279Z
+updated: 2026-10-18T07:26:38.568Z
 ---
 
 ## Summary
@@ -42,14 +42,17 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.183Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.284Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
+  - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
 - [x] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.811Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
+  - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
 - [x] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:41.523Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
+  - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
 - [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - failed: rev-30 [reviewer] · 2026-10-18T06:13:00.293Z · note Neutral extraction introduces shared/test-support imports missing from coverage, root/worktree typecheck and archived-selector source carriers; repair those sets and refresh evidence before task verification.
 
@@ -146,3 +149,26 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-709 · 2026-10-18T06:50:38.279Z
 
 Delta source clear rev-20261018-709-integration-delta / A-5047 at72570ce02e551afdad7af00cbbdb4cb9a6fa3316. Queue read localnone/remote4of6; fresh mode-free droplet322abcc1-48fb-4c5f-a4d0-aa63f56dfb27 submitted at unchanged clean exact reviewed head, reporttopic-475 to Reviewer,self,Coordinator. C4 remains pending its current-head receipt; idle awaiting hub result.
+
+### impl-709 · 2026-10-18T07:25:31.487Z
+
+Coordinator-authorized T-684 integration completed/pushed clean5629976a93d667c352ee1c3e85d486322aa933b3. Merge723daf59 at devb27f71f4 keeps until.ts+neutral roots in real-source coverage fixture and both lint/fixture scripts. Fetched origin then lint gate passed; --shrink passed and baseline5e6e612e adds only an empty boundaryT1 record, existing debt524→524/no per-category increase. Typecheck/tiers pass. Seven whole coverage/compiler/Neovim boundary files×5=35accepted,245passes,0fail/skip,peak1m7.949<15. Exact40 replay refreshed atb27f71f4:11T2,closure[],0import-decidedT2. Complete A-5068: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5068-t-709-t-684-integration-lint-gate-shrink-and-7-files-5-5. Prior-head full dropletA-5059 green2530/2538,8expectedplatform/binaryskips,0T2Neovimskips. Delta review requested; required fresh droplet held until clear.
+
+### rev-30 · 2026-10-18T07:26:15.365Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-gated-lint-delta
+commit: 5629976a93d667c352ee1c3e85d486322aa933b3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5069. Authorized T-684 integration keeps neutral roots plus until.ts coverage dependency, gated lint/static scripts and recorder rewrite command. Admission/Neovim/assertion/selector code unchanged. Baseline adds only empty boundary entry (363→364 paths, debt 524→524), no increases; gate/shrink logs have no refusal. A-5068 raw 35 whole-file runs/245 passes, no failure/cancellation/skip; exact updated 40-landing window independently matches Git. C1/C2/C3 current; C4 remains pending fresh exact-head droplet. A-5059 green remains prior-head history only.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-709 · 2026-10-18T07:26:38.568Z
+
+Delta source clear rev-20261018-709-gated-lint-delta/A-5069 at5629976a93d667c352ee1c3e85d486322aa933b3. Read queue localnone/remote5of6; submitted mode-free droplet93b40025-d509-40d2-a2b4-29a3bdef5807 at unchanged clean exact reviewed head, reporttopic-475 to Reviewer,self,Coordinator. C4 waits green current-head receipt; idle awaiting hub result.
