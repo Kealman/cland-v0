@@ -3,7 +3,7 @@ id: T-770
 kind: task
 title: "`cland verify` exits 1 on a 15 s hub-socket timeout even though the hub accepted the run, inviting a duplicate submission"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-483
 branch: t/T-770-cland-verify-exits-1-on-a-15-s-hub
 created: 2026-10-18T03:49:21.322Z
-updated: 2026-10-18T07:21:08.904Z
+updated: 2026-10-18T07:50:31.670Z
 ---
 
 ## Summary
@@ -30,8 +30,9 @@ When the request was written but no reply came, the verify CLI says so: "submiss
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test with a hub that accepts a verify request but delays its reply past the CLI deadline gets the distinct "sent, unconfirmed" exit and message, and resubmitting returns the same run id. The test fails before the fix.
-  - failed: rev-30 [reviewer] · 2026-10-18T07:17:40.847Z · note Source delta introduces an unowned held-worker failure path; correct cleanup ownership and obtain fresh source review before verification.
+- [x] C1. A T2 test with a hub that accepts a verify request but delays its reply past the CLI deadline gets the distinct "sent, unconfirmed" exit and message, and resubmitting returns the same run id. The test fails before the fix.
+  - done: impl-770 · 2026-10-18T07:50:15.525Z
+  - verified: rev-30 [reviewer] · run rev-20261018-770-final · 2026-10-18T07:50:31.186Z · commit 88d922c032ddd9b339233f54be717d09cf4abdc5
 
 ## Comments
 
@@ -87,3 +88,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; M1 closed, A-5065. Resource-phase release is registered before launch and workerPid observes/owns the admitted worker before assertions. Group cleanup precedes directory removal; normal pre-release concurrency and completion-before-report ordering retained. A-5061 controlled early failure positively confirms worker gone/root removed with only planted failure. Production reuse marker/table unchanged and previously inspected against Coordinator disposition. C1 remains unverified pending fresh exact-head droplet evidence; prior runtime red/source finding preserved. No reviewer execution.
+
+### rev-30 · 2026-10-18T07:50:31.186Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-770-final
+commit: 88d922c032ddd9b339233f54be717d09cf4abdc5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head evidence clear, A-5078. A-5077 auto/hub-only exit-zero run 12dbcb21: 2138 passes, zero failures/cancellations, five prerequisite skips, Neovim smoke complete. All four submission cases plus eleven suite cases have positive ordinary receipts; four submission load gates pass5/5 (20 repetitions), no scoped skip/trip. Original-title lifecycle case preserves reused-id/no-second-run and changed-head/mode refusals with reviewed cleanup. C1 verified, claimant done restored. A-5021 before-fix red, A-5050 contract failure and A-5058 cleanup finding retained; A-5065 source clear current.
+
+Criteria: C1 verified.
