@@ -2,8 +2,8 @@
 id: T-609
 kind: task
 title: "`cland init` outside a repository walks up and takes HOME as the project root because of ~/.cland"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T12:22:04.332Z
+updated: 2026-10-18T12:30:02.888Z
+closed: 2026-10-18T12:30:02.888Z
 ---
 
 ## Summary
@@ -218,3 +219,7 @@ Standards: zero findings. Spec: zero findings.
 Artifact A-5273.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T12:30:02.888Z
+
+Merged 88a0ec68e5992b96ca2505cf1c1197c512352dda onto dev.
