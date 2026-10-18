@@ -3,7 +3,7 @@ id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ parent: E-678
 blocked_by:
   - T-679
   - T-681
-topic: null
-branch: null
+topic: topic-490
+branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-16T20:00:52.861Z
+updated: 2026-10-18T09:19:41.481Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-634
 kind: task
 title: plan.approval takes effect on a running hub, without a restart
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-611
 blocked_by:
   - T-633
-topic: null
-branch: null
+topic: topic-494
+branch: t/T-634-plan-approval-takes-effect-on-a-running
 created: 2026-10-16T16:04:12.357Z
-updated: 2026-10-16T16:04:29.059Z
+updated: 2026-10-18T09:19:58.775Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-630
 kind: task
 title: The Aide imports GitHub issues and runs cland push; the import finds the github remote
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-611
 blocked_by:
   - T-629
-topic: null
-branch: null
+topic: topic-491
+branch: t/T-630-the-aide-imports-github-issues-and-runs
 created: 2026-10-16T16:04:11.801Z
-updated: 2026-10-16T16:04:28.714Z
+updated: 2026-10-18T09:19:47.868Z
 ---
 
 ## Summary

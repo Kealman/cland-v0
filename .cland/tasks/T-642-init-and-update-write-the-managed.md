@@ -3,7 +3,7 @@ id: T-642
 kind: task
 title: Init and update write the managed worktree.bgIsolation = "none" into .claude/settings.json and never touch settings.local.json
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-612
 blocked_by:
   - T-639
-topic: null
-branch: null
+topic: topic-495
+branch: t/T-642-init-and-update-write-the-managed
 created: 2026-10-16T16:23:58.091Z
-updated: 2026-10-16T16:24:32.749Z
+updated: 2026-10-18T09:20:15.306Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ Claude Code 2.1.143 and later refuse a background session's Edit and Write in th
 - [ ] C3. A project's own hooks, `model` and `worktree.baseRef` survive init and update unchanged beside the managed key.
 - [ ] C4. A `.claude/settings.local.json` holding `"bgIsolation": "worktree"` is byte-identical, with the same mtime, after init and update.
 - [ ] C5. Demo: in a scratch project, `cland init`, an edit of the key, `cland update` and `git diff .claude/settings.json` show only the key restored.
+
+## Comments
+
+### impl-642 · 2026-10-18T09:20:15.306Z
+
+Started: using shared settings provisioner at T1 in init-settings.test.ts for C1-C4, with scratch init/update demo for C5. Existing task claim retained; repository settings and user state remain outside test targets.

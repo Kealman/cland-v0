@@ -3,7 +3,7 @@ id: T-535
 kind: task
 title: OpenCode injects carry idempotent ids, and child sessions feed the instrumentation
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.3
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-424
 blocked_by: []
-topic: null
-branch: null
+topic: topic-498
+branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-15T20:59:36.003Z
+updated: 2026-10-18T09:20:12.832Z
 ---
 
 ## Summary

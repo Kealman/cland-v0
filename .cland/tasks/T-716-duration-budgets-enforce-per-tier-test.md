@@ -3,7 +3,7 @@ id: T-716
 kind: task
 title: "Duration budgets enforce: per-tier test and file budgets fail runs, the T3 ratchet and the T2 wall refuse merges"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ parent: E-678
 blocked_by:
   - T-683
   - T-679
-topic: null
-branch: null
+topic: topic-489
+branch: t/T-716-duration-budgets-enforce-per-tier-test
 created: 2026-10-16T19:59:44.270Z
-updated: 2026-10-17T01:52:35.917Z
+updated: 2026-10-18T09:19:41.358Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-678
 blocked_by: []
-topic: null
-branch: null
+topic: topic-488
+branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-16T20:00:52.835Z
+updated: 2026-10-18T09:19:33.870Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-632
 kind: task
 title: cland role launch sets a role's launch fields, and cland role list shows them all
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-611
 blocked_by:
   - T-628
-topic: null
-branch: null
+topic: topic-492
+branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-16T16:04:28.980Z
+updated: 2026-10-18T09:19:57.100Z
 ---
 
 ## Summary

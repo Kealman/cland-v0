@@ -3,7 +3,7 @@ id: T-644
 kind: task
 title: "The root package.json version is cland's only version: --version, the spoke and the managed marks read it"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-612
 blocked_by: []
-topic: null
-branch: null
+topic: topic-497
+branch: t/T-644-the-root-package-json-version-is-cland-s
 created: 2026-10-16T16:23:58.514Z
-updated: 2026-10-16T16:24:32.916Z
+updated: 2026-10-18T09:20:11.163Z
 ---
 
 ## Summary

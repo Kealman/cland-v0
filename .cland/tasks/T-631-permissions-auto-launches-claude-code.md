@@ -3,7 +3,7 @@ id: T-631
 kind: task
 title: permissions = "auto" launches Claude Code with --permission-mode auto
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: E-611
 blocked_by: []
-topic: null
-branch: null
+topic: topic-493
+branch: t/T-631-permissions-auto-launches-claude-code
 created: 2026-10-16T16:04:11.937Z
-updated: 2026-10-16T16:04:28.799Z
+updated: 2026-10-18T09:19:57.741Z
 ---
 
 ## Summary
