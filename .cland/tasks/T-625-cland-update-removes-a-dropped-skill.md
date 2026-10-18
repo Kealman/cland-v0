@@ -2,8 +2,8 @@
 id: T-625
 kind: task
 title: cland update removes a dropped skill left untouched and hands an edited one to the project
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-537
 branch: t/T-625-cland-update-removes-a-dropped-skill
 created: 2026-10-16T15:57:49.588Z
-updated: 2026-10-18T22:57:05.178Z
+updated: 2026-10-18T23:25:04.913Z
+closed: 2026-10-18T23:25:04.913Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged83e6cd02. A-5630/730761b1 acceptedexit0:2320pass,0fail/cancel,5skip; hub plusNeovimsmoke. Five new dropped-skill cases pass ordinary and25/25repetitions; whole updater12/12 andinit13/13. Removal, edited/deleted/added handover, repeat/reshipping, Claude links and symlink controls all established. A-5631 mapsC1–C5, bothaxes and four inheritedreport-only trips. No findings; verifiedall. Claimant done marks still absent in task.view; please restore them against this evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T23:25:04.913Z
+
+Merged 666ea9403f0b768505e75769362caf785b2015f7 onto dev.
