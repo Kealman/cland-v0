@@ -4052,7 +4052,7 @@
     "hub/test/durations-runner.test.ts::an outer repetition deadline reaps a failed worker with a live socket before continuing": {
       "seconds": 5.069633,
       "reason": "Real Node lifecycle proof runs an ordinary phase and ten fresh repetitions, waits for the subject's unchanged 1 s + 250 ms outer deadline, and verifies exact-worker reaping plus remaining repetitions and the next identity. Slow Linux A-4318 measured 7.734 s and one repetition exceeded the former 8 s enclosing watchdog. Allow startup/teardown margin under load, separately from the 30 s enclosing watchdog; direct runSuite avoids unrelated package admission and phase planning. E-676 owns this until stage-close duration refresh.",
-      "owner": "E-676",
+      "owner": "E-482",
       "added": "2026-10-17",
       "expires": "2026-10-24"
     },
