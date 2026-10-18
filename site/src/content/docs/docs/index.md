@@ -39,32 +39,33 @@ Every session runs under one of your own logins, through the official CLI. cland
 
 ## How it fits together
 
-```
-                    you
-                     │
-   ┌─────────────────┼──────────────────┐
-   │  workbench: Neovim · browser · phone │
-   └─────────────────┼──────────────────┘
-                     │
-              ┌──────┴──────┐
-              │     hub     │  one per project, on your machine
-              └──────┬──────┘
-     ┌───────────┬───┴───────┬───────────┐
- Coordinator  Implementer  Reviewer      QA        sessions of Claude Code,
-  (claude)     (codex)     (claude)    (codex)     Codex and OpenCode,
-     │            │           │           │        each on your own account
-     └────────────┴─────┬─────┴───────────┘
-                        │
-   ┌────────────────────┴─────────────────────┐
-   │ tracker  .cland/tasks/   one file per item │
-   │ git      local territory, a branch a task  │
-   └──────────────────────────────────────────┘
+```mermaid
+flowchart TB
+  %% How cland fits together: you use the workbench, the workbench talks to the hub, the hub connects the sessions, and the sessions work in your repository's tracker and local Git territory.
+  you(["You"])
+  wb["Workbench<br/>Neovim · browser · phone"]
+  hub["Hub<br/>one per project, on your machine"]
+  subgraph crew ["Sessions, each on your own account"]
+    coord["Coordinator<br/>Claude Code"]
+    impl["Implementer<br/>Codex"]
+    rev["Reviewer<br/>Claude Code"]
+    qa["QA<br/>Codex"]
+  end
+  subgraph repo ["Your repository"]
+    tracker["Tracker<br/>one file per item"]
+    git["Git territory<br/>a branch per task"]
+  end
+  you --> wb --> hub
+  hub --> coord & impl & rev & qa
+  crew --> repo
+  classDef human stroke:var(--cland-diagram-accent)
+  class you human
 ```
 
 - **The hub** is a small local service, one per project. Sessions talk to each other and to you through it. It holds the shared state, enforces what each role may do, and knows each session's real state (busy, idle, waiting for you) from the harness itself, never from what the model says.
-- **The tracker** lives in your repository: one Markdown file per item under `.cland/tasks/`. Releases contain epics, epics contain tasks. It is the crew's only source of work.
+- **The tracker** lives in your repository: one Markdown file per item under `.cland/tasks/`. Releases contain epics, epics contain tasks, and categories hold loose work. It is the crew's only source of work. See [Items and the tracker](/docs/items/).
 - **The territory** is a local bare Git repository that becomes `origin`. Agents branch, push and merge there. Your GitHub remote is renamed `github`, and only `cland release` pushes to it.
-- **The workbench** is where you watch and steer: a terminal UI in Neovim, and the same picture in the browser and on your phone. You talk to the Coordinator in topics, answer its questions in the inbox and read every verdict.
+- **The workbench** is where you watch and steer: a terminal UI in Neovim, and the same picture in the browser and on your phone. You talk to the Coordinator in [topics](/docs/topics/), answer its questions in the inbox and read every verdict. Any session's own harness is one key away: [attach to it](/docs/sessions/) and type.
 
 ## What a day looks like
 
@@ -80,6 +81,7 @@ You never type a command the crew could run for you. You are asked for decisions
 ## Where to go next
 
 - [Quickstart](/docs/quickstart/): from an empty folder to a running crew in fifteen minutes.
+- [Features](/docs/features/): everything cland does, one line each.
 - [Install](/docs/install/): the three install methods and what cland needs.
 - [Concepts](/docs/concepts/): the words cland uses and where its state lives.
 - [The workbench](/docs/workbench/): the panels and the keys.

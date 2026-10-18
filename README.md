@@ -54,7 +54,9 @@ One Claude plan works too: opus leads, sonnet implements and reviews. So does a 
 ## Features
 
 - **Every plan in one place.** See the 5-hour and weekly window of each subscription, pick the account each role runs on, and choose where work moves when a plan runs low.
-- **The tracker lives in your repo.** Releases, epics and tasks are Markdown files next to your code, versioned with it. Import your GitHub issues in one command.
+- **The tracker lives in your repo.** Releases, epics, tasks, specs and questions are Markdown files next to your code, with a container ladder and categories you configure. Import your GitHub issues in one command.
+- **Topics, not one noisy chat.** Talk to the Coordinator in topics bound to the work, keep free conversation in General, and find every decision waiting on you in the inbox.
+- **Direct access to every harness.** Each session is a real Claude Code, Codex or OpenCode session: attach to it from the workbench and type, any time.
 - **Plans you approve.** Every epic gets stages, parallel lanes and a QA policy before work starts. You see it and say go.
 - **A gate before every merge.** Review and QA verdicts, fresh for the branch's head, or the merge does not happen.
 - **Verification for any stack.** Your own check and test commands, on your machine or on cloud runners with a daily spend cap.

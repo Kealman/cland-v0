@@ -46,7 +46,7 @@ cland init
 
 It ends with one line:
 
-```
+```text
 next: cland setup
 ```
 
@@ -102,7 +102,7 @@ Within a minute the Coordinator plans the first task and launches an Implementer
 - **`␣s`** (Space, then `s`) opens the sessions panel: each session with its role, harness, model, state and the item it works on.
 - **`␣g`** opens General, your conversation with the Coordinator. Type a message and press Enter.
 - **`␣n`** opens the inbox: only what needs you.
-- **Enter on a session row** attaches its terminal in the centre, so you can watch the harness work. `C-\` leaves the terminal.
+- **Enter on a session row** attaches its terminal in the centre, so you can watch the harness work and type into it. `C-\` leaves the terminal. See [Sessions and harness access](/docs/sessions/).
 
 A task moves through `planned`, `in progress`, `review`, `ready` and `done`. You see each move as it happens. See [The workbench](/docs/workbench/) for every panel and key.
 
@@ -124,6 +124,8 @@ That is the whole loop: the crew works, you decide.
 
 ## Next
 
+- See everything cland does: [Features](/docs/features/).
+- Talk to the crew and answer its asks: [Topics and the inbox](/docs/topics/).
 - Change the crew's harnesses and models: [Crew configuration](/docs/crew/).
 - Follow the crew from your phone: [Web and phone](/docs/web-and-phone/).
 - Learn how work reaches `dev` and GitHub: [Verification and release](/docs/verification-and-release/).
