@@ -2,8 +2,8 @@
 id: T-631
 kind: task
 title: permissions = "auto" launches Claude Code with --permission-mode auto
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-493
 branch: t/T-631-permissions-auto-launches-claude-code
 created: 2026-10-16T16:04:11.937Z
-updated: 2026-10-18T09:55:26.873Z
+updated: 2026-10-18T10:06:27.282Z
+closed: 2026-10-18T10:06:27.282Z
 ---
 
 ## Summary
@@ -110,3 +111,7 @@ Standards: no new findings. Spec: C1–C4 execution verified; C5 remains current
 Artifact A-5168.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T10:06:27.282Z
+
+Merged 974cbc7da5a1e840081d4b5a7fe69ae524b4c49e onto dev.
