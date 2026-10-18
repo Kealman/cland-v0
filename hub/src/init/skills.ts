@@ -1,21 +1,22 @@
-// The skills cland ships (spec 4.9, decision #17): the vendored Matt Pocock set with cland's patches, and later
-// cland's own. Their source of truth is this repository's `.agents/skills/` — the live copies cland's own
-// sessions use, recorded in `skills-lock.json` and patched per `skills/PATCHES.md` — read relative to the cland
-// package, so an installed cland provisions exactly what it was built with and nothing is duplicated.
+// The curated skill set cland ships: cland's own skills and the upstream skills it keeps, recording their
+// origins and cland's changes in their headers. Their source of truth is this repository's `.agents/skills/`,
+// the live copies cland's own sessions use, read relative to the cland package. An installed cland provisions
+// exactly what it was built with and nothing is duplicated.
 //
 // In a project, each skill goes to `.agents/skills/<name>/`, and `.claude/skills` is a symlink to
 // `../.agents/skills` (Claude Code, Codex and OpenCode all see one set). A project that already has its own
 // `.claude/skills/` folder keeps it and gets one symlink per cland skill in it instead. `.agents/skills/.cland-manifest.json`
-// lists what cland installed, file by file: `cland update` refreshes those and only those; a skill folder the
+// records what cland installed, file by file, with the SHA-256 of the bytes cland wrote. Earlier manifests
+// list paths without hashes and remain readable. `cland update` refreshes those files; a skill folder the
 // manifest does not list is the project's own and is never written.
 //
 // The manifest is trusted only once validated (review of #39): it carries the mark, each skill name is
-// `[a-z0-9-]+`, each path is relative, with no empty, `.` or `..` segment, and resolves inside
-// `.agents/skills/<name>/`. A manifest failing any of that is reported, and nothing is installed, rewritten or
+// `[a-z0-9-]+`, each hash is 64 lowercase hex characters, and each path is relative, with no empty, `.` or `..`
+// segment, resolving inside `.agents/skills/<name>/`. A manifest failing any of that is reported, and nothing is installed, rewritten or
 // removed. Ownership is per file: a file the previous manifest did not list, on disk where a newer cland ships one,
 // is the human's: kept, reported as a conflict, never adopted. Nothing is written or removed through a symlink
-// (`files.ts`). Vendored skill files carry no "managed by cland" mark of their own (they are upstream's text): the
-// manifest's mark covers every file it lists.
+// (`files.ts`). Skill files need no "managed by cland" mark of their own: the manifest's mark covers every file it lists.
+import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +30,10 @@ export const MANIFEST = '.cland-manifest.json';
 /** What `.claude/skills` points at when it is cland's symlink. */
 export const SKILLS_LINK = `..${sep}.agents${sep}skills`;
 
-export type Manifest = { managed: string; skills: Record<string, string[]> };
+export type ManifestFiles = string[] | Record<string, string>;
+export type Manifest = { managed: string; skills: Record<string, ManifestFiles> };
+
+const paths = (files: ManifestFiles): string[] => Array.isArray(files) ? files : Object.keys(files);
 
 /** A skill's name, as a manifest may list it: one folder of `.agents/skills/`. */
 export const SKILL_NAME = /^[a-z0-9-]+$/;
@@ -92,15 +96,20 @@ export function readManifest(target: string): ManifestRead {
   if (!isRecord(m)) return { kind: 'invalid', why: 'not a JSON object' };
   if (typeof m.managed !== 'string' || !/managed by cland\b/.test(m.managed)) return { kind: 'invalid', why: 'no "managed by cland" mark in its "managed" field: not cland\'s' };
   if (!isRecord(m.skills)) return { kind: 'invalid', why: '"skills" is not an object' };
-  const skills: Record<string, string[]> = {};
+  const skills: Record<string, ManifestFiles> = {};
   for (const [name, files] of Object.entries(m.skills)) {
     if (!SKILL_NAME.test(name)) return { kind: 'invalid', why: `skill name ${JSON.stringify(name)} is not [a-z0-9-]+` };
-    if (!Array.isArray(files)) return { kind: 'invalid', why: `skill "${name}" has no list of files` };
-    for (const rel of files) {
+    if (!Array.isArray(files) && !isRecord(files)) return { kind: 'invalid', why: `skill "${name}" has no list or map of files` };
+    for (const rel of Array.isArray(files) ? files : Object.keys(files)) {
       const why = badPath(target, name, rel);
       if (why !== null) return { kind: 'invalid', why };
     }
-    skills[name] = files as string[];
+    if (!Array.isArray(files)) {
+      for (const [rel, hash] of Object.entries(files)) {
+        if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) return { kind: 'invalid', why: `skill "${name}" lists ${JSON.stringify(rel)} with a hash that is not 64 lowercase hex characters` };
+      }
+    }
+    skills[name] = files as ManifestFiles;
   }
   return { kind: 'ok', manifest: { managed: m.managed, skills } };
 }
@@ -144,7 +153,7 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
   const manifest: Manifest = { managed: `${MANAGED_BY} — cland update rewrites the skills listed here; a skill folder not listed is the project's own`, skills: {} };
   for (const name of shippedSkills(source)) {
     const dir = join(target, name);
-    const before = previous[name];
+    const before = Object.hasOwn(previous, name) ? previous[name] : undefined;
     if (before === undefined && exists(dir) !== null) {
       report.add(dir, 'kept', "a skill of the project's own by that name: cland's is not installed");
       continue;
@@ -155,14 +164,16 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       if (before !== undefined) manifest.skills[name] = before;
       continue;
     }
-    const owned: string[] = [];
+    const owned = new Map<string, string | undefined>();
+    const retain = (rel: string) => owned.set(rel, Array.isArray(before) ? undefined : before?.[rel]);
+    const beforePaths = before === undefined ? [] : paths(before);
     let wrote = false;
     const files = filesUnder(join(source, name));
     for (const rel of files) {
       const to = join(dir, rel);
-      const had = before?.includes(rel) ?? false;
+      const had = beforePaths.includes(rel);
       if (refuseSymlink(report, to)) {
-        if (had) owned.push(rel);
+        if (had) retain(rel);
         continue;
       }
       const kind = exists(to);
@@ -170,24 +181,33 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
         report.add(to, 'kept', CONFLICT);
         continue;
       }
-      owned.push(rel);
       const from = readFileSync(join(source, name, rel));
-      if (kind === 'file' && readFileSync(to).equals(from)) continue;
+      const hash = createHash('sha256').update(from).digest('hex');
+      if (kind === 'file' && readFileSync(to).equals(from)) {
+        owned.set(rel, hash);
+        continue;
+      }
       const refused = writeAtomic(report.root, to, from);
       if (refused !== null) {
         report.add(to, 'kept', symlinkNote(refused));
+        if (had) retain(rel);
         continue;
       }
+      owned.set(rel, hash);
       wrote = true;
     }
     // files an earlier version installed that this one no longer ships
-    for (const rel of before ?? []) {
+    for (const rel of beforePaths) {
       if (files.includes(rel)) continue;
       if (removeFile(report, join(dir, rel), target)) wrote = true;
-      else owned.push(rel);
+      else retain(rel);
     }
     report.add(dir, wrote ? (before !== undefined ? 'updated' : 'created') : 'unchanged');
-    manifest.skills[name] = owned;
+    // A refused legacy path has no hash to carry forward. Keep its skill in the
+    // legacy form until every retained file has a known hash.
+    manifest.skills[name] = [...owned.values()].some(hash => hash === undefined)
+      ? [...owned.keys()]
+      : Object.fromEntries(owned) as Record<string, string>;
   }
   // skills an earlier version installed that this one no longer ships
   for (const [name, files] of Object.entries(previous)) {
@@ -199,8 +219,8 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       manifest.skills[name] = files;
       continue;
     }
-    const left = files.filter((rel) => !removeFile(report, join(dir, rel), target));
-    if (left.length) manifest.skills[name] = left;
+    const left = paths(files).filter((rel) => !removeFile(report, join(dir, rel), target));
+    if (left.length) manifest.skills[name] = Array.isArray(files) ? left : Object.fromEntries(left.map(rel => [rel, files[rel]!]));
     else report.add(dir, 'removed', 'no longer shipped by cland');
   }
   writeIfChanged(report, manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
