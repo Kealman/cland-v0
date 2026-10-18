@@ -2,8 +2,8 @@
 id: T-751
 kind: task
 title: Remote, executor and doctor component fixtures inject machine and Git facts instead of bootstrapping native Git and doctor probes
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-460
 branch: t/T-751-remote-executor-and-doctor-component
 created: 2026-10-17T18:44:08.662Z
-updated: 2026-10-18T00:18:07.621Z
+updated: 2026-10-18T00:18:17.808Z
+closed: 2026-10-18T00:18:17.808Z
 ---
 
 ## Summary
@@ -228,3 +229,7 @@ Final evidence clear; verify C1 with the explicit T-745 scope qualification abov
 Durable review: A-4872.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T00:18:17.808Z
+
+Merged 3006de4166d394e9b68b7f98d469758ca140c4dd onto dev.
