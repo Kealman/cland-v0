@@ -3,7 +3,7 @@ id: T-643
 kind: task
 title: The hub's Claude Code launches carry bgIsolation = "none" only where the project's settings files lack the key
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-502
 branch: t/T-643-the-hub-s-claude-code-launches-carry
 created: 2026-10-16T16:23:58.322Z
-updated: 2026-10-18T10:11:34.808Z
+updated: 2026-10-18T10:35:03.294Z
 ---
 
 ## Summary
@@ -37,12 +37,16 @@ A project whose `.claude/settings.json` lacks the managed key (one not yet updat
 
 - [x] C1. A fake Claude Code launched in a project whose settings files lack the key records `worktree.bgIsolation = "none"` in its launch settings (claude-code-adapter.test.ts).
   - done: impl-643 · 2026-10-18T10:10:28.235Z
+  - verified: rev-30 [reviewer] · run rev-20261018-643-final · 2026-10-18T10:35:01.974Z · commit 15250f96000d1024ab977e09c4d5a2e4830ae256
 - [x] C2. With the key in `.claude/settings.json`, the recorded launch settings carry no `worktree` key.
   - done: impl-643 · 2026-10-18T10:10:28.880Z
+  - verified: rev-30 [reviewer] · run rev-20261018-643-final · 2026-10-18T10:35:01.974Z · commit 15250f96000d1024ab977e09c4d5a2e4830ae256
 - [x] C3. With `"bgIsolation": "worktree"` in `.claude/settings.local.json` and no key in `settings.json`, the launch settings carry no `worktree` key, and `settings.local.json` is unchanged.
   - done: impl-643 · 2026-10-18T10:10:30.068Z
+  - verified: rev-30 [reviewer] · run rev-20261018-643-final · 2026-10-18T10:35:01.974Z · commit 15250f96000d1024ab977e09c4d5a2e4830ae256
 - [x] C4. A session launched for an item reads its task worktree's files, not the root's (test with the key present in one and absent in the other).
   - done: impl-643 · 2026-10-18T10:10:31.118Z
+  - verified: rev-30 [reviewer] · run rev-20261018-643-final · 2026-10-18T10:35:01.974Z · commit 15250f96000d1024ab977e09c4d5a2e4830ae256
 
 ## Comments
 
@@ -66,3 +70,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5184: source clear, no findings. Conditional fallback uses session cwd and rereads both project/local files for every new launch/fresh resume/relaunch, respects explicit keys and malformed/unreadable policy, writes neither file. Existing authorization continuation/hooks/env/permissions retained. Recorded T2 permutations plus one existing native contract assertion cover C1–C4; runtime verification remains pending exact-head droplet evidence.
+
+### rev-30 · 2026-10-18T10:35:01.974Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-643-final
+commit: 15250f96000d1024ab977e09c4d5a2e4830ae256
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5210: exact-head A-5209 passes hub plus Neovim smoke, 2160 pass/0 fail/5 outside-scope skips. All four environment cases pass, both new settings tests have10/10 load repetitions and no owned trips; retained permission, six native adapter and three schedule carriers pass. Conditional project/local/cwd/relaunch mapping satisfies all C1–C4. No hard budgets, source changes or findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

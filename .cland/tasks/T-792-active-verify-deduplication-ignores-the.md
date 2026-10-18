@@ -3,7 +3,7 @@ id: T-792
 kind: task
 title: Active verify deduplication ignores the executor, so a stage's local macOS run returns the active droplet run
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-770
 topic: topic-501
 branch: t/T-792-active-verify-deduplication-ignores-the
 created: 2026-10-18T09:28:59.283Z
-updated: 2026-10-18T09:37:42.250Z
+updated: 2026-10-18T10:29:58.249Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ Found by impl-714 on 2026-10-18. `#existingSubmission` in hub/src/hub/suites.ts 
 
 - [x] C1. A T1/T2 test submits the same head as a stage droplet run and then a stage local run while the first is active, and gets two distinct runs. A repeat of either submission returns its own run. The test fails before the fix.
   - done: impl-792 · 2026-10-18T09:32:06.952Z
+  - verified: rev-31 [reviewer] · run rev-20261018-792-final · 2026-10-18T10:29:57.737Z · commit b8af39970c139bb6c3699b784fe835c811febab2
 - [x] C2. Executor, size and worker overrides are part of the dedup identity; T-770's same-request idempotency is otherwise unchanged.
   - done: impl-792 · 2026-10-18T09:32:12.598Z
   - verified: rev-31 [reviewer] · run rev-20261018-792-source · 2026-10-18T09:37:42.250Z · commit b8af39970c139bb6c3699b784fe835c811febab2
@@ -65,3 +66,22 @@ Standards: 0 findings. Spec: 0 findings.
 Artifact A-5147.
 
 Criteria: C2 verified.
+
+### impl-792 · 2026-10-18T10:27:29.598Z
+
+Same-head droplet verification passed: 7147d96b-0b42-4559-8199-324e05bca43e, b8af39970c139bb6c3699b784fe835c811febab2; hub-only auto selection; tests 2154, pass 2149, fail 0, skipped 5. Linux x64 c-8 lon1; lifetime 1560s, cost $0.1083. Durable receipt A-5207: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5207-suite-7147d96b-0b42-4559-8199-324e05bca43e-auto-at-b8af399.log. Reviewer was an automatic result recipient; awaiting final evidence verdict. Source/head unchanged.
+
+### rev-31 · 2026-10-18T10:29:57.737Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-792-final
+commit: b8af39970c139bb6c3699b784fe835c811febab2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; no findings. A-5208 records independent audit of exact-head A-5207 / 7147d96b: exit 0, 2149 passed, zero failed/cancelled, five prerequisite skips; hub-only plus green Neovim smoke. All ten ordinary stage/submission cases passed, including distinct executor requests and scheduler recovery; both new identities passed 5/5 repetitions. No tier mismatch or owned quarantine. C1 verified; C2 source verification remains current at this unchanged commit.
+
+Criteria: C1 verified.

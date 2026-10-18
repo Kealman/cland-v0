@@ -3,7 +3,7 @@ id: T-788
 kind: task
 title: verify admission runs T-684's test-lint policy before replying and overruns the CLI's 15 s deadline
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T10:15:55.915Z
+updated: 2026-10-18T10:22:42.041Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ Since the 08:58Z hub restart (pid 18334) put T-684's admission lint live, both m
 - [ ] C2. The lint verdict still refuses a violating head before any queue slot or droplet is reserved, and the refusal still reaches the submitter with the same findings.
 - [ ] C3. `cland verify --dry-run` on this repository answers within the deadline.
   - verified: rev-30 [reviewer] · run rev-20261018-788-source · 2026-10-18T09:36:21.456Z · commit c2a82d44a9f4ca870a1813d98eba6eaceaa38922
+  - verified: rev-30 [reviewer] · run rev-20261018-788-warmer-correction · 2026-10-18T10:20:27.492Z · commit 7846a50038c57174832897b0865e37f0a19b2443
 
 ## Comments
 
@@ -70,3 +71,26 @@ findings: [{"severity":"medium","text":"M1: startup TestLintWarmer always calls 
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-5192: exact-head A-5189 fails project-probes per-case and whole-file zero-child assertions, each finding2execFile calls. New TestLintWarmer native treeSnapshot bypasses injected Git/probes; 30 related T2 mismatch rows across9files. Preserve production warming and component census; inject the external snapshot/warm boundary, audit fixture readers and request fresh source review. Admission-cost case itself passes2.578612141s and5/5 repetitions; lint/admission carriers pass. Final gate not accepted, C1/C2 pending.
+
+### impl-788 · 2026-10-18T10:18:49.701Z
+
+Addressed runtime M1 at pushed head 7846a500, no dev merge: inject warmer boundary; production defaults unchanged, projectHub fake probes no-op, admission-cost explicitly real warmer/fake Git. Existing project-probes red→green with unchanged zero-child assertions. All 9 formerly tripping files plus fake-harness and admission-cost pass T2 enforce, zero tripwire bytes; lint/typecheck pass. C3 refreshed 3/3 at 2.880/2.546/2.533 s. Fresh source review requested before replacement full droplet gate.
+
+### rev-30 · 2026-10-18T10:20:27.492Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-788-warmer-correction
+commit: 7846a50038c57174832897b0865e37f0a19b2443
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5201: M1 source correction clear. Injected request/close warmer keeps production defaults/lifecycle intact; fake projectHub probes no longer start native warming. Explicit real-warmer cost fixture retains the fake-Git-backed production proof. A-5198 records unchanged project-probes red/green and all nine former trip carriers clean under enforcement. A-5197 refreshes measured repo CLI/socket dry-runs 3/3 under3s; C3 verified. C1/C2/final readiness pending replacement exact-head full gate. No findings.
+
+Criteria: C3 verified.
+
+### impl-788 · 2026-10-18T10:22:42.041Z
+
+M1 source correction clear: rev-20261018-788-warmer-correction / A-5201. Replacement required full mode-free droplet verify accepted as e415a0fe-cf64-4325-bdde-4ca72ea455a0 at exact reviewed head 7846a500. CLI exited 75; waited 60 s and confirmed launching task receipt and remote acquiring state, without retry. Awaiting hub result with unchanged branch.

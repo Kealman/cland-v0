@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-499
 branch: t/T-790-integrated-batch-covers-on-dev-shard
 created: 2026-10-18T09:20:05.013Z
-updated: 2026-10-18T09:51:43.995Z
+updated: 2026-10-18T10:20:55.238Z
 ---
 
 ## Summary
@@ -27,13 +27,14 @@ An integrated `verify all` on clean root dev, by the Coordinator, uses the same 
 
 ## Acceptance criteria
 
-- [x] C1. A T2 test shows a Coordinator `verify all` on clean dev reserving two remote slots and producing one merged result with per-shard machine, duration and cost, without stage provenance.
-  - done: impl-790 · 2026-10-18T09:24:19.865Z
+- [ ] C1. A T2 test shows a Coordinator `verify all` on clean dev reserving two remote slots and producing one merged result with per-shard machine, duration and cost, without stage provenance.
+  - failed: rev-30 [reviewer] · 2026-10-18T10:19:32.108Z · note Renamed task-owned batch/cache test hard-fails duration budget (8.321s >5s); metadata correction and accepted exact-head gate required.
 - [x] C2. Fewer than two free slots or an insufficient cap runs it whole on one slot with the existing warn notice; a task head or a non-Coordinator request still uses one slot.
   - done: impl-790 · 2026-10-18T09:24:26.463Z
 - [x] C3. docs/agents/tests.md and the Coordinator clause say batch covers shard.
   - done: impl-790 · 2026-10-18T09:51:14.974Z
   - verified: rev-30 [reviewer] · run rev-20261018-790-clause-correction · 2026-10-18T09:51:43.995Z · commit 2ec016ea3d86ec6d29e3f8d9d322282189a11b78
+  - verified: rev-30 [reviewer] · run rev-20261018-790-duration-identity-correction · 2026-10-18T10:20:55.238Z · commit be41e99b0924dbe331b4c48c449faa28ebcfe245
 
 ## Comments
 
@@ -98,5 +99,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5164: M1/A-5161 source correction clear. One Coordinator bullet only, 140 UTF-8 bytes shorter, explicitly retaining batches shard too and cap/slot fallback. Existing size guard unchanged; A-5162 reports roles whole-file 4/4 green. C3 verified; C1/C2 and final readiness await fresh exact-head droplet evidence. No runtime/test changes or dev merge, no findings.
+
+Criteria: C3 verified.
+
+### rev-30 · 2026-10-18T10:19:32.108Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-790-runtime-budget
+commit: 2ec016ea3d86ec6d29e3f8d9d322282189a11b78
+scope: evidence
+findings: [{"severity":"medium","text":"M2: renamed existing batch/cache test has no matching duration allowance, so new identity hard-fails at8.321s >5s. Carry measured provenance/expiry/open-epic ownership to the correct identity without rewriting historical baselines.","file":"hub/test/suite-close.test.ts","line":121}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-5199: A-5196 has zero assertion failures but exits1 on the renamed task-owned batch/cache identity (8.321s > unallowanced5s). Correct measured duration metadata without rewriting historical baselines; fresh source review then accepted exact-head gate required. Clause snapshot passes and five owned load gates pass25/25. This hard budget failure is task-caused, not shared/report-only.
+
+Criteria: C1 failed (Renamed task-owned batch/cache test hard-fails duration budget (8.321s >5s); metadata correction and accepted exact-head gate required.).
+
+### rev-30 · 2026-10-18T10:20:55.238Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-790-duration-identity-correction
+commit: be41e99b0924dbe331b4c48c449faa28ebcfe245
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5202: M2 source correction clear. Historical test title restored per primary cb9ef3ab, with explicit two-shard behavior comment; all assertions, production source and durations.json unchanged. A-5200 replay maps captured8.321s to existing identity without hard failure; close file4/4 reportedgreen. C3 source verified again. C1/C2 and final readiness await fresh exact-head gate and current claimant done marks. No findings.
 
 Criteria: C3 verified.

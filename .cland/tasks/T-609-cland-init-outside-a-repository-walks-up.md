@@ -3,7 +3,7 @@ id: T-609
 kind: task
 title: "`cland init` outside a repository walks up and takes HOME as the project root because of ~/.cland"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T10:13:14.818Z
+updated: 2026-10-18T10:37:42.668Z
 ---
 
 ## Summary
@@ -28,10 +28,13 @@ On 2026-10-16 at about 12:41Z, a prototype `cland init` run in a non-empty folde
 
 - [x] C1. `cland init` (and `update`) works only on the current directory or `--dir`. When the root it finds differs from the cwd, it refuses and names both paths.
   - done: impl-609 · 2026-10-18T10:12:31.328Z
+  - verified: rev-31 [reviewer] · run rev-20261018-609-final · 2026-10-18T10:37:41.580Z · commit df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
 - [x] C2. HOME is never accepted as a project root, and a test proves `cland init` in a non-repository folder under a HOME that holds the hub's state directory writes nothing outside that folder.
   - done: impl-609 · 2026-10-18T09:29:01.013Z
+  - verified: rev-31 [reviewer] · run rev-20261018-609-final · 2026-10-18T10:37:41.580Z · commit df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
 - [x] C3. The hub's per-user state directory no longer shares its name with the project marker. For example, it moves to `~/.local/state/cland`, with a one-time migration of executor/spend.json.
   - done: impl-609 · 2026-10-18T09:37:34.499Z
+  - verified: rev-31 [reviewer] · run rev-20261018-609-final · 2026-10-18T10:37:41.580Z · commit df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
 
 ## Comments
 
@@ -148,3 +151,22 @@ A-5186 records the exact focused pre-fix parent-root refusal and corrected full 
 
 Standards: 0 findings. Spec: 0 findings. Source clear only.
 Artifact A-5187.
+
+### impl-609 · 2026-10-18T10:37:36.430Z
+
+Corrected-head Linux droplet verification 15e3ea8d-e0fc-4b3e-9e17-af6f676f6835 passed at unchanged reviewed df7a73623e6d80d76c3a4c4a9f06547acec8f1cc. A-5211: exit 0; 2,166 tests / 2,161 pass / 0 fail / 5 platform/binary-prerequisite skips; Neovim smoke completed. All 14 new root/spend cases passed plus 70/70 load repetitions (lines 29882–30192); ordinary T1 cases are 0.006–0.161 s. Corrected independent-child routing case passed in 1.655 s (line 34804), with every original assertion retained. Host gate reused matching tree e4aca30597ce236447086d954addb4f50701dbaf. Linux x64 c-8 lon1, workers 2, lifetime 1358 s, cost $0.0943; suite 1286.29 s. No source changes since review. Awaiting Reviewer's final evidence verdict; legacy retirement remains T-794.
+
+### rev-31 · 2026-10-18T10:37:41.580Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-609-final
+commit: df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear; no remaining standards or specification findings. A-5212 records independent audit of A-5211 / 15e3ea8d at unchanged source-3 head: exit 0, 2161 pass/0 fail/0 cancelled/5 prerequisite skips, hub-only plus green Neovim smoke. All 14 root/spend cases and 70/70 repetitions passed; all 13 existing init and four worktree CLI cases passed, including the formerly failing independent-child case (1.655 s). No tier mismatch, owned quarantine or owned skip. C1–C3 verified with retained source/red-green evidence A-5149/A-5187. Legacy-first write-through remains as authorized during coexistence; retirement remains separate T-794. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.

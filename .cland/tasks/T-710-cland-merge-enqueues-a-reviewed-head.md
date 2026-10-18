@@ -3,7 +3,7 @@ id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T10:13:17.707Z
+updated: 2026-10-18T10:17:24.172Z
 ---
 
 ## Summary
@@ -33,8 +33,8 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 
 ## Acceptance criteria
 
-- [ ] C1. With `queue = true`, merging a reviewed code task replies `queued 1`, and `task view` and `cland merge queue` show the entry, proved by a merge test on `projectHub`.
-  - failed: rev-30 [reviewer] · 2026-10-18T10:13:17.706Z · note New merge.queue tool is missing from shared public-tool census, causing four exact surface/identity/resilience failures (M2).
+- [x] C1. With `queue = true`, merging a reviewed code task replies `queued 1`, and `task view` and `cland merge queue` show the entry, proved by a merge test on `projectHub`.
+  - done: impl-710 · 2026-10-18T10:16:46.957Z
 - [x] C2. With `queue = true`, a tracker-and-docs-only task and a human-shell override land at once with today's receipts, proved by merge tests.
   - done: impl-710 · 2026-10-18T09:31:56.291Z
 - [x] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
@@ -92,3 +92,16 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-5188: A-5185 exit1 has four task-caused exact public-tool census failures from DOCUMENTED_TOOLS omitting merge.queue, plus a separate unclassified executor-safety two-project remote-result timeout. Preserve exact-list/count checks, update census/readers and request fresh source review. Queue/Store/policy/legacy merge carriers pass, and six owned new identities pass30/30 repetitions; retain that evidence. Separate timeout needs lead disposition; no same-head blind retry.
 
 Criteria: C1 failed (New merge.queue tool is missing from shared public-tool census, causing four exact surface/identity/resilience failures (M2).).
+
+### rev-30 · 2026-10-18T10:17:24.172Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-census-correction
+commit: 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5194: M2 source correction clear, exact one-line DOCUMENTED_TOOLS update; four exact consumer assertions preserved and independently audited. Actual resolved SHA is 0b70662f62863acaa65d33c0852d21ce6b2d11a5; request/A-5193 full SHA was malformed and needs labeling correction. No source findings. Coordinator e4e7e155 classifies separate timeout as T-797 and authorizes one second droplet receipt; C1–C5 final verification awaits that gate.

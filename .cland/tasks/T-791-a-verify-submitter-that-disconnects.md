@@ -3,7 +3,7 @@ id: T-791
 kind: task
 title: A verify submitter that disconnects during admission loses its run without any durable receipt
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-770
 topic: topic-500
 branch: t/T-791-a-verify-submitter-that-disconnects
 created: 2026-10-18T09:26:02.167Z
-updated: 2026-10-18T09:41:32.468Z
+updated: 2026-10-18T10:24:04.110Z
 ---
 
 ## Summary
@@ -26,10 +26,13 @@ Found by impl-788 on 2026-10-18. Suite admission calls `authorize()` again after
 
 - [x] C1. A T2 test closes the submitting connection mid-inspection. Admission then either completes, with its receipt posted to the requested report topic, or refuses, with the refusal posted durably to that topic and journaled. The run never vanishes silently. The test fails before the fix.
   - done: impl-791 · 2026-10-18T09:38:49.173Z
+  - verified: rev-31 [reviewer] · run rev-20261018-791-final · 2026-10-18T10:24:03.032Z · commit 7a2a2e1af399236284a37d486c5c1658a9dd0a85
 - [x] C2. Identity for the post-inspection check comes from the identity captured at submission. A session whose role or claim was revoked during admission is still refused, durably.
   - done: impl-791 · 2026-10-18T09:38:49.534Z
+  - verified: rev-31 [reviewer] · run rev-20261018-791-final · 2026-10-18T10:24:03.032Z · commit 7a2a2e1af399236284a37d486c5c1658a9dd0a85
 - [x] C3. The "connection closed before the answer" audit line and the admission outcome line are distinguishable in the journal.
   - done: impl-791 · 2026-10-18T09:38:49.971Z
+  - verified: rev-31 [reviewer] · run rev-20261018-791-final · 2026-10-18T10:24:03.032Z · commit 7a2a2e1af399236284a37d486c5c1658a9dd0a85
 
 ## Comments
 
@@ -96,3 +99,33 @@ No findings remain. C1–C3 await exact-head post-source-clear mode-free task ve
 
 Standards: 0 findings. Spec: 0 findings.
 Artifact A-5152.
+
+### impl-791 · 2026-10-18T10:23:40.020Z
+
+Same-head droplet verification de855fb1-16c6-4243-841f-effd7dba72f2 passed at 7a2a2e1af399236284a37d486c5c1658a9dd0a85: full selection, 2547 tests, 2539 pass, 0 fail, 8 skipped. Artifact A-5203. Linux x64, Node v24.21.0, Neovim v0.12.5; c-8 lon1, lifetime 1358 s, cost $0.0943. New T2 admission file observed 1.117 s. Reviewer received the same-head result; awaiting final verdict. No head changes or additional verification runs.
+
+### rev-31 · 2026-10-18T10:24:03.032Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-791-final
+commit: 7a2a2e1af399236284a37d486c5c1658a9dd0a85
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review at unchanged 7a2a2e1af399236284a37d486c5c1658a9dd0a85, matching origin and source-2 / A-5152.
+
+Independently audited A-5203 / de855fb1-16c6-4243-841f-effd7dba72f2: auto full, exit 0, 2547 total / 2539 pass / 0 fail / 0 cancelled / 8 prerequisite skips. Hub-free 224/224, hub-machine 1924 pass + 5 skips, Neovim 391 pass + 3 skips; full Neovim completed in 153.13s. Failure identity arrays are empty; no owned quarantine or runtime tier-mismatch receipts.
+
+All six admission-close cases are positive (0.110–0.342s) and each passes 5/5 load repetitions, 30/30. The controls cover CLI/MCP mid-inspection close with durable outcomes, captured identity with current role/claim revocation, candidate refusal, reserved-mode asynchronous refusal, unauthorized report non-publication, and Store reopening. The CLI case's durable unprojected Agents tail replays exactly once without receipt checkpoint interference. Transport-close audit remains distinguishable from verification-submission outcome.
+
+Also audited positive compatibility receipts for agents-checkpoint (6), suite-dry-run (4), suite-protocol (8), and verify-all (1): 25 ordinary cases across those files and the six primary cases, with no owned skips/excuses. Prior M1/M2 corrections remain source-identical.
+
+Linux x64 c-8 lon1, Node24.21.0 / Neovim0.12.5, workers 2, lifetime 1358s, cost $0.0943, peak load 6.63. Existing report-only diagnostics leave raw exit 0 unchanged. C1–C3 verified. No known-red exception, extra run or per-item QA required.
+
+Standards: no new findings. Spec: final clear.
+Artifact A-5204.
+
+Criteria: C1 verified, C2 verified, C3 verified.
