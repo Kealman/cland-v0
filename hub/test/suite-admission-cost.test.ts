@@ -11,21 +11,29 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FakeClock } from './fake-clock.ts';
+import type { TierManifest } from '../src/suite-shards.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 
-async function fixture(t: TestContext) {
+async function fixture(t: TestContext, coldViolation = false) {
   const clock = new FakeClock();
   const head = 'a'.repeat(40), base = 'b'.repeat(40);
-  const repository = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+  const repository: TierManifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
   const paths = Array.from({ length: Object.keys(repository.tests).length }, (_, n) => `hub/test/case-${String(n).padStart(4, '0')}.test.ts`);
   const files = new Map(paths.map(path => [path, '// component fixture\n']));
-  files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: Object.fromEntries(paths.map(path => [path, 'T2'])) }));
+  const tiers = Object.values(repository.tests).map(entry => typeof entry === 'string' ? entry : entry.tier);
+  files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: Object.fromEntries(paths.map((path, n) => [path, tiers[n]])) }));
   files.set('hub/test/lint-baseline.json', JSON.stringify({ version: 1, files: Object.fromEntries(paths.map(path => [path, {}])) }));
   const previous = new Map(files);
+  const planted = 'hub/test/new-violation.test.ts';
+  if (coldViolation) {
+    files.set(planted, 'sleep(10);\n');
+    files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: { ...JSON.parse(files.get('hub/test/tiers.json')!).tests, [planted]: 'T2' } }));
+  }
   const snapshots = new Map([[head, files], [base, previous]]);
   let dev = base;
   let poll!: () => Promise<void>;
   const logs: Record<string, unknown>[] = [];
+  const commands: string[][] = [];
   let heldBatch: { entered: ReturnType<typeof Promise.withResolvers<void>>; release: ReturnType<typeof Promise.withResolvers<void>> } | undefined;
   const missing = () => Object.assign(new Error('missing Git object'), { code: 128 });
   function execute(args: string[]): string {
@@ -43,12 +51,14 @@ async function fixture(t: TestContext) {
     }
     if (args[0] === 'ls-tree') {
       const snapshot = snapshots.get(args.find(arg => snapshots.has(arg))!)!;
+      if (args.includes('--name-only')) return [...snapshot.keys()].join('\0') + '\0';
       return [...snapshot].map(([path, text]) => `100644 blob ${createHash('sha1').update(text).digest('hex')}\t${path}\0`).join('');
     }
     throw new Error(`unexpected Git command: ${args.join(' ')}`);
   }
   const fakeExec = (file: string, args: string[], options: { encoding?: string }, callback: (error: Error | null, stdout?: string | Buffer, stderr?: string) => void) => {
     assert.equal(file, 'git');
+    commands.push(args);
     clock.block(50); // Model process startup under load, independently of host speed.
     const child = new EventEmitter() as childProcess.ChildProcess;
     if (args[0] === 'cat-file') {
@@ -88,14 +98,31 @@ async function fixture(t: TestContext) {
     lintWarmer: new TestLintWarmer(root, {}, row => logs.push(row)),
     git: async args => args[0] === 'for-each-ref' ? `${dev} refs/heads/dev` : null,
     readBase: async () => 'dev',
-    scheduleTips: read => { poll = read; void read(); return { poke() {}, stop() {} }; },
+    scheduleTips: read => { poll = read; if (!coldViolation) void read(); return { poke() {}, stop() {} }; },
     log: row => logs.push(row),
     compatibility: { holder: async () => null, occupied: async () => true } });
   const ui = await connectUi(t, hub.discovery);
-  return { root, clock, ui, files, paths, head, logs, eventually,
+  return { root, clock, ui, files, paths, head, logs, eventually, commands, planted,
     holdBatch: () => heldBatch = { entered: Promise.withResolvers<void>(), release: Promise.withResolvers<void>() },
     moveDev: async () => { dev = head; await poll(); } };
 }
+
+test('cold suite.start refuses a new violating file inside the three-second admission budget', async t => {
+  const f = await fixture(t, true);
+  const started = f.clock.now().getTime();
+  const reply = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, dryRun: true });
+  assert.equal(reply.ok, false);
+  assert.equal((reply as { code?: string }).code, 'verify-test-lint');
+  assert.deepEqual((reply as { files?: string[] }).files, [f.planted]);
+  assert.equal(reply.error, `verify-test-lint: ${f.planted}:1 [wall-clock-wait] wall-clock-wait count 1 exceeds frozen allowance 0`);
+  const elapsed = f.clock.now().getTime() - started;
+  t.diagnostic(`${elapsed} ms modeled admission; ${f.commands.filter(args => args[0] === 'show').length} git show calls`);
+  assert.ok(elapsed < 3000, `${elapsed} ms cold refusal exceeds the 3 s budget`);
+  const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+  assert.deepEqual(queue.waiters, []);
+  assert.deepEqual(queue.remote, []);
+  assert.equal(queue.holder, null);
+});
 
 test('suite.start admission over a repository-sized manifest', async t => {
   const f = await fixture(t);

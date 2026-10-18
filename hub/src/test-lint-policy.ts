@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setImmediate as yieldToRequests } from 'node:timers/promises';
+import { treeSources } from './git-tree-sources.ts';
 import type { LogFn } from './log.ts';
 import type { TierManifest } from './suite-shards.ts';
 import { testLintFacts, type TestLintFinding } from './test-lint.ts';
@@ -90,40 +91,6 @@ async function optional(source: Source, path: string): Promise<string | undefine
 async function snapshot(source: Source): Promise<Snapshot> {
   const [tiers, baseline] = await Promise.all([optional(source, TIERS), optional(source, LINT_BASELINE)]);
   return { source, ...(tiers ? { manifest: JSON.parse(tiers) } : {}), ...(baseline ? { baseline: JSON.parse(baseline) } : {}) };
-}
-/** Read the manifest's blobs in one process, preserving byte boundaries and Git errors. */
-async function treeSources(cwd: string, tree: string, files: string[], env?: NodeJS.ProcessEnv): Promise<Source> {
-  const wanted = new Set(files);
-  const listing = (await promisify(execFile)('git', ['ls-tree', '-r', '-z', '--full-tree', tree], { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
-  const entries = listing.split('\0').filter(Boolean).flatMap(record => {
-    const tab = record.indexOf('\t');
-    const [, kind, oid] = record.slice(0, tab).split(' ');
-    const file = record.slice(tab + 1);
-    return kind === 'blob' && wanted.has(file) ? [{ file, oid: oid! }] : [];
-  });
-  const sources = new Map<string, string>();
-  if (entries.length) {
-    const output = await new Promise<Buffer>((resolve, reject) => {
-      const child = execFile('git', ['cat-file', '--batch'], { cwd, env, encoding: 'buffer', timeout: 30_000, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => error ? reject(error) : resolve(stdout));
-      child.stdin!.on('error', reject);
-      child.stdin!.end(entries.map(entry => entry.oid).join('\n') + '\n');
-    });
-    let offset = 0;
-    for (const entry of entries) {
-      const end = output.indexOf(10, offset);
-      const [oid, kind, sizeText] = output.subarray(offset, end).toString('ascii').split(' ');
-      const size = Number(sizeText);
-      if (end < offset || oid !== entry.oid || kind !== 'blob' || !Number.isSafeInteger(size) || size < 0 || end + 1 + size >= output.length || output[end + 1 + size] !== 10) throw new Error(`invalid Git blob response: ${entry.file}`);
-      sources.set(entry.file, output.subarray(end + 1, end + 1 + size).toString('utf8'));
-      offset = end + 1 + size + 1;
-    }
-    if (offset !== output.length) throw new Error('unexpected trailing Git blob response');
-  }
-  return async file => {
-    const source = sources.get(file);
-    if (source === undefined) throw Object.assign(new Error(`missing Git source: ${file}`), { code: 'ENOENT' });
-    return source;
-  };
 }
 async function treeSnapshot(cwd: string, tree: string, env?: NodeJS.ProcessEnv): Promise<Snapshot> {
   const value = await snapshot(async file => (await promisify(execFile)('git', ['show', `${tree}:${file}`], { cwd, env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout);

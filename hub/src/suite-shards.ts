@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, readFile } from 'node:fs/promises';
 import { join, matchesGlob } from 'node:path';
+import { treeSources } from './git-tree-sources.ts';
 import { touchesMachineResources } from './test-lint.ts';
 import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
@@ -136,7 +137,14 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
   const exec = promisify(execFile);
   const git = async (args: string[]) => (await exec('git', args, { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test', 'nvim/test'])).split('\0').filter(Boolean);
-  const source = (path: string) => git(['show', `${tree}:${path}`]);
+  // T1 validation reads every source even when direct facts are warm. One
+  // batch avoids a serial Git process startup per test on the refusal path.
+  let sources: Promise<(file: string) => Promise<string>> | undefined;
+  const source = async (path: string) => {
+    sources ??= treeSources(cwd, tree, paths.filter(path => PATTERNS.some(pattern => matchesGlob(path, pattern))
+      || [TIER_MANIFEST, LEGACY_MANIFEST, DURATION_MANIFEST, QUARANTINE_MANIFEST].includes(path)), env);
+    return (await sources)(path);
+  };
   if (paths.includes(DURATION_MANIFEST)) {
     try {
       const durationSource = await source(DURATION_MANIFEST);
