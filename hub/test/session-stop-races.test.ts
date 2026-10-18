@@ -4,12 +4,14 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { watch } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { nativeProjectHub as projectHub, withDiscoveredPid, cland, connectUi, eventually, fakeClaude, fakeCodex, pidAlive, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { stopClassification, STOP_GRACE_MS } from './stop-classification-fixture.ts';
+import { onCleanup } from './process-cleanup.ts';
 import { NO_PS } from './native-process.ts';
 import { copyPreparedProject, preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
@@ -100,7 +102,7 @@ test(`Codex: ${stop} forced stop succeeds when a captured descendant exits befor
   // The OS still supplies every identity; only the exit timing is controlled.
   await writeFile(join(bin, 'ps'), `#!${process.execPath}
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 const args = process.argv.slice(2);
 const leaderFile = ${JSON.stringify(leaderFile)};
 const evidence = ${JSON.stringify(evidence)};
@@ -119,7 +121,8 @@ if (args[0] === '-o' && existsSync(leaderFile) && !existsSync(evidence)) {
       if (!after.stdout.trim()) break;
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 5);
     }
-    writeFileSync(evidence, JSON.stringify({ pid, leader, before: before.stdout.trim(), after: after.stdout.trim(), code: after.status }));
+    writeFileSync(evidence + '.tmp', JSON.stringify({ pid, leader, before: before.stdout.trim(), after: after.stdout.trim(), code: after.status }));
+    renameSync(evidence + '.tmp', evidence);
   }
 }
 const result = ps(args);
@@ -146,14 +149,22 @@ process.exitCode = result.status ?? 1;
     git(worktree.path, 'add', 'README.md');
     git(worktree.path, 'commit', '-qm', 'Ship');
   }
-  const stopped = stop === 'manual'
-    ? await cland(root, 'session', 'stop', 'impl', '--json').then(result => {
+  // Arm before stopping so even an immediate probe publication cannot be missed.
+  // Atomic rename publishes complete JSON; the suite's per-test timeout bounds the wait.
+  const probeWritten = Promise.withResolvers<void>();
+  const watcher = watch(root, { signal: t.signal }, (_event, filename) => {
+    if (filename === 'probe.json') probeWritten.resolve();
+  });
+  watcher.on('error', probeWritten.reject);
+  onCleanup(t, () => watcher.close());
+  const stopping = stop === 'manual'
+    ? cland(root, 'session', 'stop', 'impl', '--json').then(result => {
       assert.equal(result.code, 0, result.stderr || result.stdout);
       return { ok: true, error: result.stderr, value: JSON.parse(result.stdout) as unknown };
     })
-    : await ui.request({ type: 'merge', item, override: 'Exercise descendant exit during post-merge stop' }, 30_000);
-  const probe = await eventually('descendant identity probe written', async () =>
-    JSON.parse(await readFile(evidence, 'utf8')) as { before: string; after: string; code: number });
+    : ui.request({ type: 'merge', item, override: 'Exercise descendant exit during post-merge stop' }, 30_000);
+  const [stopped] = await Promise.all([stopping, probeWritten.promise]);
+  const probe = JSON.parse(await readFile(evidence, 'utf8')) as { before: string; after: string; code: number };
   assert.ok(probe.before, 'the captured descendant had a real start time');
   assert.equal(probe.after, '', 'the descendant exited before its final identity read');
   assert.equal(probe.code, 1, 'ps reports that the captured descendant is gone');
