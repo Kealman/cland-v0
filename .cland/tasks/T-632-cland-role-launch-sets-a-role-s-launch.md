@@ -2,8 +2,8 @@
 id: T-632
 kind: task
 title: cland role launch sets a role's launch fields, and cland role list shows them all
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-492
 branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-18T12:43:33.513Z
+updated: 2026-10-18T12:45:06.880Z
+closed: 2026-10-18T12:45:06.880Z
 ---
 
 ## Summary
@@ -200,3 +201,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at latest merged head, A-5283. A-5282 full gate: 2605 passed,0 failed/cancelled,8 prerequisite skips; all hub/Neovim phases finalize. All 13 owned role-launch cases positively execute and 65/65 repetitions pass. Retained role, account-reader clock/native, admission-close and verify-submission carriers pass. Zero tier-mismatch rows anywhere and no hard budget failures. C1–C7 verified with source A-5265 and unchanged criterion mapping. Previous-head receipts remain historical. No reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-18T12:45:06.880Z
+
+Merged 373d845b2e70bfdc9920bdff21f74aff1196bb4c onto dev.
