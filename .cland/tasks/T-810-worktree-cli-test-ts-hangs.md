@@ -2,8 +2,8 @@
 id: T-810
 kind: task
 title: "worktree-cli.test.ts hangs intermittently: four full runs today stalled with it as the last started file"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-515
 branch: t/T-810-worktree-cli-test-ts-hangs
 created: 2026-10-18T16:14:16.762Z
-updated: 2026-10-18T18:05:03.349Z
+updated: 2026-10-18T18:33:13.853Z
+closed: 2026-10-18T18:33:13.853Z
 ---
 
 ## Summary
@@ -180,3 +181,7 @@ Findings:none. C1/C2 verified from source, accepted reproduction, current-source
 Review evidence:A-5506.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T18:33:13.853Z
+
+Merged a9beabb313d8625b0d96e91c6e749d1873ebe9fc onto dev.
