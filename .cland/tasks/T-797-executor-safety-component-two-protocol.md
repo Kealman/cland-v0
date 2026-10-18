@@ -3,7 +3,7 @@ id: T-797
 kind: task
 title: 'executor-safety-component: "two protocol projects reserve against one cap…" times out waiting for the remote result (30 s) on a droplet'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-513
 branch: t/T-797-executor-safety-component-two-protocol
 created: 2026-10-18T10:16:24.882Z
-updated: 2026-10-18T14:55:41.625Z
+updated: 2026-10-18T15:24:27.861Z
 ---
 
 ## Summary
@@ -28,6 +28,7 @@ hub/test/executor-safety-component.test.ts, "two protocol projects reserve again
   - verified: rev-31 [reviewer] · run rev-20261018-797-source-2 · 2026-10-18T14:55:41.625Z · commit d2c62d803b01a6151acd1d71929cd05e502b02b6
 - [x] C2. The test waits on an observed event or FakeClock step instead of a 30 s wall-clock deadline, keeping every assertion, and passes 20/20 under both Node 24 and 25.
   - done: impl-797 · 2026-10-18T14:54:17.849Z
+  - verified: rev-31 [reviewer] · run rev-20261018-797-final · 2026-10-18T15:24:27.210Z · commit d2c62d803b01a6151acd1d71929cd05e502b02b6
 
 ## Comments
 
@@ -122,3 +123,44 @@ Standards: zero findings. Spec: zero findings.
 Artifact A-5384.
 
 Criteria: C1 verified.
+
+### impl-797 · 2026-10-18T15:23:57.582Z
+
+Exact-head mode-free droplet verify a00e0ef0 passed at d2c62d803b01a6151acd1d71929cd05e502b02b6 (A-5399): Linux x64, Node24.21.0, c-8 lon1,2 workers;2618 total/2610 pass/0 fail/8 skipped. Target shared-cap case0.577s; held-I/O control0.230s and additional load gate5/5 green. Machine lifetime1584s,cost$0.1100. Working tree/head unchanged; awaiting final Reviewer evidence verdict.
+
+### rev-31 · 2026-10-18T15:24:27.210Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-797-final
+commit: d2c62d803b01a6151acd1d71929cd05e502b02b6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-797 final exact-head evidence review
+
+Commit: d2c62d803b01a6151acd1d71929cd05e502b02b6
+Run: rev-20261018-797-final
+Scope: evidence
+Result: clear
+Task findings: none on Standards or Spec axes.
+
+Task receipt and origin branch match source-2 / A-5384. A-5399 / a00e0ef0-b6ea-4a6a-b7d8-9d221851796e is raw exit 0, auto full: 2618 total, 2610 passed, zero failures/cancellations, eight prerequisite skips. Free 276/276; machine 1962 passed with five skips; full Neovim 372 with three skips completed in 184.38 s. Structured failure arrays are empty.
+
+The complete executor-safety component file passed: eight top-level cases plus two provider-list nested cases (ten test results). The held-I/O clock-freeze control passed in .229624444 s and all five load-gate repetitions. The original two-project cap/reservation/confirmed-accounting case passed in .576914997 s. All eleven retained assertions are supported. No owned quarantine, skip or runtime resource mismatch is present.
+
+C2 verified by this completed exact-head receipt plus previously independently audited A-5376/A-5377: twenty whole-file serial passes each on Node 24.21.0 and 25.6.1, forty target and held-I/O control passes. C1's source-verified frozen-clock diagnosis remains current. No additional task run or per-item QA required.
+
+Disclosure: the raw green report-only run also contains the same four inherited T2 child-process identities already disclosed during T-761 review: init-next.test.ts and three suite-close-component cases. These are outside this correction and are not new task-owned resource findings; prior reviewer deduplication identifies C-326/T-803. This verdict does not claim zero global tier diagnostics.
+
+The completion seam remains observation-only, joining admitted scheduler/sweep work without scheduling or advancing time. The helper's shared-clock advances occur only after both hubs' completion observations; the retained negative control catches removal of those joins. No outstanding source finding.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 1584 s, cost $0.1100, peak one-minute load 7.40.
+
+Evidence A-5399: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5399-suite-a00e0ef0-b6ea-4a6a-b7d8-9d221851796e-auto-at-d2c62d8.log.
+
+Artifact A-5400.
+
+Criteria: C2 verified.
