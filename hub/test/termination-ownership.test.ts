@@ -1,6 +1,8 @@
+// T3: process lifecycle: concurrent session stop and doctor terminate one harness tree;
+// competing doctors reap one deleted hub process and its descendants exactly once.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DatabaseSync } from 'node:sqlite';
+import { openDatabase } from '../src/database.ts';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -17,9 +19,9 @@ test('session stop and doctor share one termination owner and report the tree on
   assert.equal(launched.ok, true, launched.error);
   const { pid } = (launched.value as { process: { pid: number } }).process;
   // An exited row can still own a live server; both stop and doctor must settle it.
-  const db = new DatabaseSync(join(root, '.cland/hub.db'));
-  db.prepare("update harness_processes set status = 'exited' where name = 'impl'").run();
-  db.close();
+  const db = openDatabase(join(root, '.cland/hub.db'));
+  try { db.prepare("update harness_processes set status = 'exited' where name = 'impl'").run(); }
+  finally { db.close(); }
   const stopping = ui.request({ type: 'session.stop', session: 'impl' }, 15_000);
   const log = join(fake.home, 'log', `${pid}.log`);
   await eventually('stop has sent TERM while the server remains alive', async () =>

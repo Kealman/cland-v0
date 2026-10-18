@@ -4,6 +4,7 @@ const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
 import { DatabaseSync } from 'node:sqlite';
+import { openDatabase } from '../database.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
 import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
@@ -351,7 +352,7 @@ const toKnown = (r: Row): KnownSession => ({
 /** Read a project's existing role mapping without opening a hub connection or changing its store. */
 export function hasRoleMappedSession(path: string, sessionId: string): boolean {
   if (sessionId === 'unknown' || !existsSync(path)) return false;
-  const db = new DatabaseSync(path, { readOnly: true });
+  const db = openDatabase(path, path => new DatabaseSync(path, { readOnly: true }));
   try {
     const row = db.prepare('select role from sessions where session_id = ? order by last_seen desc limit 1').get(sessionId);
     return typeof row?.role === 'string';
@@ -373,9 +374,7 @@ export class Store implements HygieneMemory {
 
 
   constructor(path: string = ':memory:', open = (path: string) => new DatabaseSync(path)) {
-    this.#db = open(path);
-    // Init/update can open the live hub's store while it is committing a write.
-    this.#db.exec('pragma busy_timeout = 5000;');
+    this.#db = openDatabase(path, open);
     this.#db.function('item_number', { deterministic: true }, raw => {
       if (typeof raw !== 'string') return null;
       const parsed = parseItemReference(raw);

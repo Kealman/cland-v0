@@ -5,6 +5,7 @@ import { existsSync, realpathSync, statSync } from 'node:fs';
 import { mkdir, readdir, readlink, stat } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { openDatabase } from './database.ts';
 import { acquireLockAsync, HubLocked, readLock } from './hub/lock.ts';
 import { endProcess, systemProcesses, type SystemProcess } from './system-processes.ts';
 
@@ -18,10 +19,11 @@ const directoryMissing = (path: string) => {
 const within = (path: string, root: string) => path === root || path.startsWith(root + sep);
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function sessions(root: string): Session[] | null {
+/** Doctor's read-only ownership snapshot; null preserves processes when inspection fails. */
+export function orphanSessions(root: string): Session[] | null {
   const path = join(root, '.cland', 'hub.db');
   if (!existsSync(path)) return [];
-  const db = new DatabaseSync(path, { readOnly: true });
+  const db = openDatabase(path, path => new DatabaseSync(path, { readOnly: true }));
   try {
     if (!db.prepare("select name from sqlite_master where type = 'table' and name = 'harness_processes'").get()) return [];
     return db.prepare('select name, pid, pid_started, status, cwd from harness_processes').all() as Session[];
@@ -103,9 +105,9 @@ export async function findOrphans(root: string, includeHubs = false, deadline?: 
   root = real(root);
   if (hubScopeRoot !== undefined) hubScopeRoot = real(hubScopeRoot);
   let table: Session[] | null;
-  try { table = sessions(root); } catch { table = null; }
+  try { table = orphanSessions(root); } catch { table = null; }
   const rows = await systemProcesses(undefined, deadline);
-  try { table = sessions(root); } catch { table = null; }
+  try { table = orphanSessions(root); } catch { table = null; }
   const protectedPids = runningTree(table, rows);
   const out: Orphan[] = [];
   await parallel(rows, async row => {
@@ -209,7 +211,7 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
     const paths = await pathsOf(candidate.process.pid, deadline);
     const rows = await systemProcesses(undefined, deadline);
     let table: Session[] | null;
-    try { table = sessions(root); } catch { table = null; }
+    try { table = orphanSessions(root); } catch { table = null; }
     const current = rows.find(p => p.pid === candidate.process.pid && p.started === candidate.process.started);
     if (!current) return;
     const proof = await ownership(current, table, rows, root, paths.cwd, deadline);
@@ -225,7 +227,7 @@ async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>)
       }
       if (kind === 'hub') return directoryMissing(candidate.root);
       let table: Session[] | null;
-      try { table = sessions(root); } catch { return false; }
+      try { table = orphanSessions(root); } catch { return false; }
       if (table === null) return false;
       const current = rows.find(p => p.pid === candidate.process.pid && p.started === candidate.process.started);
       const owner = current && recordedOwner(current, table, rows);

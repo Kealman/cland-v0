@@ -3,6 +3,7 @@ import { realClock, type Clock } from '../hub/clock.ts';
 // its own, through a connection of its own, so a restarted hub re-finds the sessions that outlived it.
 import type { Resumed } from '../hub/worktrees.ts';
 import { DatabaseSync } from 'node:sqlite';
+import { openDatabase } from '../database.ts';
 import type { HarnessProcess } from './contract.ts';
 import type { LaunchFilesState } from './launch-files.ts';
 import { processStartedAsync as processStarted } from '../hub/lock.ts';
@@ -122,8 +123,8 @@ export class ProcessTable {
 
   constructor(path: string = ':memory:', clock: Clock = realClock, open = (path: string) => new DatabaseSync(path)) {
     this.#clock = clock;
-    this.#db = open(path);
-    this.#db.exec('pragma journal_mode = wal; pragma busy_timeout = 2000;');
+    this.#db = openDatabase(path, open);
+    this.#db.exec('pragma journal_mode = wal;');
     this.#db.exec(SCHEMA);
     // additive, as the store's own migrations: a table written before the column existed grows in place
     const columns = new Set((this.#db.prepare('pragma table_info(harness_processes)').all() as Row[]).map((r) => r.name as string));

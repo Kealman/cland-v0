@@ -1,3 +1,4 @@
+// T3: process lifecycle: stop, crash/restart and relaunch preserve an unrelated process after PID reuse.
 import { ownDirectory, ownProcess } from './process-cleanup.ts';
 // A pid is never signalled on a guess (Codex review of #26): the process table records each harness process's
 // start time, and every adapter (Codex, OpenCode, Claude Code) verifies it before a SIGTERM or SIGKILL. A pid that
@@ -8,7 +9,7 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtemp, readdir, readFile, realpath } from 'node:fs/promises';
-import { DatabaseSync } from 'node:sqlite';
+import { openDatabase } from '../src/database.ts';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,9 +37,8 @@ async function bystander(t: TestContext): Promise<number> {
 
 /** The pid was reused: the process table's row now names the bystander (its recorded start time is the old one's). */
 function reusePid(root: string, name: string, pid: number): void {
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = openDatabase(join(root, '.cland', 'hub.db'));
   try {
-    db.exec('pragma busy_timeout = 2000');
     assert.equal(db.prepare('update harness_processes set pid = ? where name = ?').run(pid, name).changes, 1);
   } finally {
     db.close();
@@ -51,7 +51,7 @@ async function harness(ui: FrameClient, name: string): Promise<Harness | undefin
 }
 
 function pidRow(root: string, name: string): { pid: number; pid_started: string | null; status: string; harness_id: string | null } {
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
+  const db = openDatabase(join(root, '.cland', 'hub.db'));
   try {
     return db.prepare('select pid, pid_started, status, harness_id from harness_processes where name = ?').get(name) as ReturnType<typeof pidRow>;
   } finally { db.close(); }
@@ -114,9 +114,9 @@ test('Claude Code: a stop whose `claude stop` fails never SIGTERMs a pid that an
   // not prove that ps's whole-second start stamps differ (T-525).
   const staleStarted = 'Sat Jan 1 00:00:00 2000';
   // `claude stop` cannot find the session either
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  db.prepare("update harness_processes set harness_id = 'gone0000', pid_started = ? where name = 'cc'").run(staleStarted);
-  db.close();
+  const db = openDatabase(join(root, '.cland', 'hub.db'));
+  try { db.prepare("update harness_processes set harness_id = 'gone0000', pid_started = ? where name = 'cc'").run(staleStarted); }
+  finally { db.close(); }
   const staged = pidRow(root, 'cc');
   const originalAlive = pidAlive(original.pid);
   const originalStarted = processStarted(original.pid);
