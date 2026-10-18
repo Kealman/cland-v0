@@ -1475,6 +1475,7 @@ export class Sessions {
   /** `at`: when the idle that asks for this happened; an idle from before an inject in flight went out is no
    *  news to it (that inject already counted on it). */
   #inject(sessionId: string, messageId: string, at?: number): void {
+    if (this.#closed) return;
     const p = this.#table.bySessionId(sessionId);
     // a session no adapter launched has nobody to inject: its messages stay `delivered`
     if (!p || p.status !== 'running') return;
@@ -1495,8 +1496,12 @@ export class Sessions {
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
     adapter
       .inject(p, message, topic)
-      .then(() => this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name))
+      .then(() => {
+        if (this.#closed) return;
+        this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
+      })
       .catch((err: unknown) => {
+        if (this.#closed) return;
         // the request reached the harness and no answer came: never replayed on its own
         if (err instanceof InjectUncertain) this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message);
         else this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error: err instanceof Error ? err.message : String(err) });
@@ -1505,7 +1510,8 @@ export class Sessions {
         this.#inflight.delete(key);
         // a retry was asked for meanwhile (a bridge connected, the session went idle): made now, if the
         // message still waits for this session
-        if (!flight.again) return;
+        // Adapter close may settle the promise after Sessions and its storage have closed.
+        if (this.#closed || !flight.again) return;
         const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
         if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId);
       });

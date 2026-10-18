@@ -7,10 +7,11 @@ import { layout } from '../src/project.ts';
 import { hubResources } from './hub-resources.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setImmediate as yieldIO } from 'node:timers/promises';
 import { FakeClock } from './fake-clock.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { fakeHarness, FAKE_FLAVOURS } from './fakes/harness.ts';
-import { connectSocket, connectUi, dispatcherUi, isolateVerification, projectHub, startHub, tempProject } from './harness.ts';
+import { connectSocket, connectUi, dispatcherUi, inProcessSpoke, isolateVerification, projectHub, startHub, tempProject } from './harness.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
 
 test('projectHub drives fake harness lifecycle and delivery outcomes across flavours', async t => {
@@ -132,6 +133,79 @@ test('createHub installs adapter replacements and owns their clock cleanup', asy
   await hub.close();
   closed = true;
   assert.equal(clock.pending, 0);
+});
+
+test('hub close drops a pending injection retry before closing its process table', async t => {
+  const root = await tempProject(t);
+  const logs: unknown[] = [];
+  const { discovery, fakes, stop } = await projectHub(t, root, {}, { clock: new FakeClock(), log: entry => logs.push(entry) });
+  const fake = fakes['claude-code']!;
+  // The fake bridge provides the connection receipt; Sessions owns the retry it triggers.
+  Object.assign(fake, { bridge: () => () => {} });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code', brief: 'Start work' });
+  assert.equal(launched.ok, true, launched.error);
+  const process = (launched.value as { process: HarnessProcessView }).process;
+  const peer = await connectSocket(discovery.socket);
+  t.after(() => peer.close());
+  peer.send({ type: 'hello', protocol: 2, secret: discovery.secret, name: 'worker', sessionId: process.sessionId, cwd: root, launchToken: fake.spawns[0]!.launchToken });
+  const welcome = await peer.next();
+  assert.equal(welcome.type, 'welcome', String(welcome.message));
+  let first;
+  do {
+    first = await peer.next();
+    assert.ok(first.type === 'role' || first.type === 'deliver');
+    peer.send({ type: 'ack', id: first.id });
+  } while (first.id !== fake.spawns[0]!.brief!.id);
+  await ui.waitFor(f => f.type === 'delivery' && f.message === first.id && f.stage === 'injected');
+  fake.scriptInject('worker', 'hold');
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['worker'], text: 'Pending at shutdown' });
+  assert.equal(sent.ok, true, sent.error);
+  const message = (sent.value as { message: Message }).message;
+  const delivery = await peer.next();
+  assert.equal(delivery.id, message.id);
+  peer.send({ type: 'ack', id: message.id });
+  await ui.waitFor(f => f.type === 'delivery' && f.message === message.id && f.stage === 'delivered');
+  assert.equal((await ui.request({ type: 'session.bridge', session: 'worker' })).ok, true);
+  const attempts = () => fake.injections.filter(input => input.message.id === message.id).length;
+  assert.equal(attempts(), 1, 'retry stays pending while injection is held');
+  // close rejects the held adapter promise; its retry continuation must not access closed resources.
+  await stop();
+  assert.equal(attempts(), 1, 'shutdown never retries a cancelled injection');
+  assert.ok(!JSON.stringify(logs).includes('database is not open'));
+});
+
+test('hub close discards injection outcomes arriving after storage closes', async t => {
+  const root = await tempProject(t);
+  const logs: unknown[] = [];
+  const { discovery, fakes, stop } = await projectHub(t, root, {}, { clock: new FakeClock(), log: entry => logs.push(entry) });
+  const fake = fakes['claude-code']!;
+  const close = fake.close.bind(fake);
+  // Model an adapter whose outstanding transport callbacks settle after close returns.
+  fake.close = () => {};
+  t.after(close);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  const pending: Array<{ name: string; id: string; outcome: 'accept' | 'reject' | 'uncertain' }> = [];
+  for (const outcome of ['accept', 'reject', 'uncertain'] as const) {
+    const name = `worker-${outcome}`;
+    const launched = await ui.request({ type: 'session.launch', name, role: 'implementer', harness: 'claude-code', brief: outcome });
+    assert.equal(launched.ok, true, launched.error);
+    const process = (launched.value as { process: HarnessProcessView }).process;
+    const request = fake.spawns.at(-1)!;
+    fake.scriptInject(name, 'hold');
+    await inProcessSpoke(t, { cwd: root, discover: true, name, sessionId: process.sessionId, launchToken: request.launchToken! });
+    await ui.waitFor(f => f.type === 'delivery' && f.message === request.brief!.id && f.stage === 'delivered');
+    pending.push({ name, id: request.brief!.id, outcome });
+  }
+  assert.equal(fake.injections.length, pending.length, 'all outcomes are held before shutdown');
+  await stop();
+  for (const { name, id, outcome } of pending) fake.settle(name, id, outcome);
+  // Let the settled promise chains and Node's unhandled-rejection check run in this test.
+  await yieldIO();
+  assert.ok(!JSON.stringify(logs).includes('database is not open'));
+  assert.equal(fake.injections.length, pending.length, 'late outcomes never start another injection');
 });
 
 test('adapter construction rolls back resources on factory failure or duplicate harness', async t => {
