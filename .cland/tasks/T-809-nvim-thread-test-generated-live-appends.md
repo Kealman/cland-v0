@@ -3,7 +3,7 @@ id: T-809
 kind: task
 title: 'nvim thread.test: "generated live appends…" waits 10 s for a generated append and times out on a droplet stage run; the file slowed from 23 s to 35 s after recorded frames'
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-520
 branch: t/T-809-nvim-thread-test-generated-live-appends
 created: 2026-10-18T15:41:10.672Z
-updated: 2026-10-18T17:14:17.663Z
+updated: 2026-10-18T18:59:36.531Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ nvim/test/thread.test.ts, "generated live appends, ask evictions and delivery ch
 - [x] C1. The generated-append wait observes the render event or hub frame instead of a 10 s wall-clock screen poll, or the oracle's seeds run against a per-file catalog slice (T-774's mechanism). Every assertion is kept.
   - done: impl-809 · 2026-10-18T16:37:16.015Z
   - verified: rev-30 [reviewer] · run rev-20261018-809-source · 2026-10-18T16:38:57.198Z · commit bfbc434d077ddb1c2d5e75a33145cc54208bf77b
-- [ ] C2. The file passes 20/20 serially on macOS plus a green droplet verify on Linux at 2 workers, with its time back under its 23.5 s baseline or the new number recorded.
-  - failed: rev-30 [reviewer] · 2026-10-18T17:14:17.663Z · note Linux gate A-5477 failed in unchanged hub suite-cancel before Neovim; no thread execution or green Linux two-worker receipt exists.
+  - verified: rev-30 [reviewer] · run rev-20261018-809-final · 2026-10-18T18:59:35.099Z · commit bfbc434d077ddb1c2d5e75a33145cc54208bf77b
+- [x] C2. The file passes 20/20 serially on macOS plus a green droplet verify on Linux at 2 workers, with its time back under its 23.5 s baseline or the new number recorded.
+  - done: impl-809 · 2026-10-18T18:58:50.918Z
+  - verified: rev-30 [reviewer] · run rev-20261018-809-final · 2026-10-18T18:59:35.099Z · commit bfbc434d077ddb1c2d5e75a33145cc54208bf77b
 
 ## Comments
 
@@ -76,3 +78,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Runtime not clear: A-5477/b329e5fa exits1 at unchanged bfbc434d; suite-cancel.test.ts:181 process.kill(null) causes the sole ordinary failure. Neovim/thread not reached. A-5480 retains independently audited 20/20 Mac plus extended replay evidence and distinguishes ordinary vs repeated-body counts. No new task-source finding; Bugs/S shared-defect candidate routed to lead for classification. C1 source verification remains; no retry authorized by this verdict.
 
 Criteria: C2 failed (Linux gate A-5477 failed in unchanged hub suite-cancel before Neovim; no thread execution or green Linux two-worker receipt exists.).
+
+### impl-809 · 2026-10-18T18:59:02.521Z
+
+C2 complete at source-reviewed bfbc434d: authorized replacement Linux2-worker run f136864b passes (A-5528),2623pass,0fail/cancel,8prerequisite skips. Neovim runs fully; thread has23 positive timing records and24 positive finish receipts including file, no scoped skips. Oracle10.636s; thread file24.241s (new Linux number recorded versus23.5s baseline); Neovim shard170.21s. Final-source Mac20/20 evidence A-5452 remains independently audited, median19.712s, plus extended4×25 replay23/23. C2 marked done; awaiting Reviewer final evidence verdict. No source/head changes since initial source review.
+
+### rev-30 · 2026-10-18T18:59:35.099Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-809-final
+commit: bfbc434d077ddb1c2d5e75a33145cc54208bf77b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged bfbc434d. Independently audited A-5528/f136864b: full hub + Neovim, 2623 pass/2631 total, zero fail/cancelled, eight prerequisite skips. All 23 thread tests finish positively; file 24.241146264s, generated oracle 10.636234301s. Recorded new number satisfies C2 alongside previously audited A-5452 final-source Mac20/20 (460 passes; min/median/max15.110/19.712/26.386s) and separate extended replay. A-5529 records both axes, preserves failed A-5477/A-5480 and Coordinator-authorized replacement/T-814 classification, and discloses inherited report-only trips. C1 source unchanged; no findings, no per-item QA.
+
+Criteria: C1 verified, C2 verified.
