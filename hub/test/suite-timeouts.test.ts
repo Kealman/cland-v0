@@ -143,21 +143,34 @@ setTimeout(()=>process.exit(0),3000);`);
 });
 
 test('verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor', async t => {
+  // T3: real parent exit/reparenting determines whether the worker can prove pipe ownership.
   const bin = await tempProject(t, 'cland-fast-exit-ps-');
   const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
   const armed = join(bin, 'armed'); const snapshot = join(bin, 'snapshot');
   await writeFile(join(bin, 'ps'), `#!${process.execPath}
-import {spawnSync} from 'node:child_process'; import {existsSync,writeFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process'; import {existsSync,readFileSync,writeFileSync} from 'node:fs';
+import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
+import {pidAlive} from ${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)};
+import {parseProcessTable} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
 const result=spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), {encoding:'utf8'});
+if (process.argv.includes('-e') && existsSync(${JSON.stringify(armed)}) && !existsSync(${JSON.stringify(snapshot)})) {
+  const parent=Number(readFileSync(${JSON.stringify(armed)},'utf8'));
+  if (result.status===0 && parseProcessTable(result.stdout).some(row=>row.pid===parent)) {
+    writeFileSync(${JSON.stringify(snapshot)},'captured');
+    // Keep this pre-child snapshot in flight until ancestry is gone. Otherwise a
+    // later capture can own the child while its parent yields in writeFile below.
+    await until(()=>!pidAlive(parent),{what:'fast parent exited before ownership observation resumes'});
+  }
+}
 process.stdout.write(result.stdout ?? ''); process.stderr.write(result.stderr ?? '');
-if (process.argv.includes('-e') && existsSync(${JSON.stringify(armed)}) && !existsSync(${JSON.stringify(snapshot)})) writeFileSync(${JSON.stringify(snapshot)},'captured');
 process.exitCode=result.status ?? 1;`, {mode:0o700});
   const f = await fixture(t, `${process.execPath} fast-parent.mjs`, undefined, { text: '[hygiene]\nloop_breaker_max=2\n', verification: 'stall_timeout="3s"' }, {PATH:`${bin}:${process.env.PATH ?? ''}`});
   const marker = join(f.root, 'fast-pids.json');
-  await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises'; import {existsSync} from 'node:fs'; import {setTimeout as pause} from 'node:timers/promises';
+  await writeFile(join(f.root, 'fast-parent.mjs'), `import {spawn} from 'node:child_process'; import {writeFile} from 'node:fs/promises'; import {existsSync} from 'node:fs';
+import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
 const heartbeat=setInterval(()=>console.log('waiting for ownership snapshot'),100);
-await writeFile(${JSON.stringify(armed)}, 'ready');
-while(!existsSync(${JSON.stringify(snapshot)})) await pause(5);
+await writeFile(${JSON.stringify(armed)}, String(process.pid));
+await until(()=>existsSync(${JSON.stringify(snapshot)}),{what:'ownership snapshot captured before pipe holder starts'});
 const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'inherit'});
 await writeFile(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,child:child.pid}));
 clearInterval(heartbeat);process.exit(0);`);
@@ -167,6 +180,7 @@ clearInterval(heartbeat);process.exit(0);`);
   const job = await f.launch();
   const pids = await eventually('fast pipe holder started after snapshot', () => readFile(marker,'utf8').then(text=>JSON.parse(text) as {parent:number;child:number},()=>undefined));
   ownProcess(t,pids.parent);ownProcess(t,pids.child);
+  await eventually('fast parent exited with its unverified pipe holder alive',()=>!pidAlive(pids.parent)&&pidAlive(pids.child)?true:undefined);
   // The warning follows the worker's stall watchdog and process/lease cleanup.
   // Give that teardown its own bound so it cannot consume the warning's receipt wait.
   await eventually('fast-exit worker cleanup receipt', () =>
