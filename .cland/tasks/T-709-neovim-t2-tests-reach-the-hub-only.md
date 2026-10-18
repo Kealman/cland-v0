@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T07:56:12.498Z
+updated: 2026-10-18T08:37:05.823Z
 ---
 
 ## Summary
@@ -43,16 +43,19 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - done: impl-709 · 2026-10-18T06:17:40.183Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.284Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
+  - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
 - [x] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.811Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
+  - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
 - [x] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:41.523Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
+  - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
 - [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - failed: rev-30 [reviewer] · 2026-10-18T07:56:12.498Z · note A-5083 exact-head full run exits1 with owned full-inbox test cancelled at120s; diagnose/correct and obtain reviewed-head passing evidence.
 
@@ -187,3 +190,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Runtime not clear, A-5084. A-5083/run93b40025: 2536 passes, zero assertion failures, one cancellation, eight prerequisite skips. Panel variant and subsequent local-clock case pass; no root-cause claim from excerpt. C1–C3 source marks remain as recorded; no additional verification on this not-clear pass. Coordinator diagnosis direction reported in bd35c4cd; changed head requires new source review. Prior-head green is historical only.
 
 Criteria: C4 failed (A-5083 exact-head full run exits1 with owned full-inbox test cancelled at120s; diagnose/correct and obtain reviewed-head passing evidence.).
+
+### impl-709 · 2026-10-18T08:35:16.876Z
+
+Owned runtime cancellation corrected at 5a9c087938682350ff3ba30b6b856f6c47b1c859 (pushed). Confirmed cause: equality-based timestamp tokens make the inbox replay key depend on clock coincidences; an uncaught projection error closes the peer and the control caller ignores close. Coordinator-approved correction binds timestamp occurrences and rejects named incomplete/refused control exchanges, with a surviving peer error response. A-5093 contains red-first canonical/socket/actual-client controls, ordinary coincident/distinct clock replay 5/5 each, 4464-frame refresh (321 passes), and 96 serial whole-file invocations / 804 passes / zero fail-cancel-skip / peak load 6.941<15. All original 256 assertions retained; 12 T2 import closures empty; exact40 at a08e40ec gives zero import-decided T2 selections. Actual production-prefix mutation/rewrite/restoration remains red-capable. Typecheck/tiers/gated lint/shrink pass; final origin fetch + gated lint pass without dev merge. Baseline debt524 unchanged with only an empty new T2 entry. Delta review requested next; no verify until source clear and Coordinator lifts restart hold.
+
+### rev-30 · 2026-10-18T08:37:05.823Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-timestamp-correction
+commit: 5a9c087938682350ff3ba30b6b856f6c47b1c859
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source correction clear, A-5094. Occurrence-bound timestamps remove equality-dependent keys while preserving wire restoration/UUID identity. Control client rejects close/refusal with named request; stub reports projection failure and remains usable. Red-first canonical/socket/actual-client controls reviewed. A-5093 raw96 whole-file runs/804 passes, no failure/cancel/skip;4464 corpus keys independently recomputed,24807 nodes decoded; actual production-prefix drift red/rewrite/restoration green. Original assertions retained, empty T2 baseline entry only, exact40 landing window matches. C1/C2/C3 verified; C4 awaits corrected-head droplet after restart hold lifts. A-5083 cancellation retained; no reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
