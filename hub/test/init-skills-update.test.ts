@@ -1,11 +1,11 @@
 // T1: whole-skill update decisions through filesystem provisioning; no processes or clocks.
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import { Report } from '../src/init/files.ts';
-import { MANIFEST, provisionSkills, readManifest } from '../src/init/skills.ts';
+import { MANIFEST, provisionClaudeSkills, provisionSkills, readManifest } from '../src/init/skills.ts';
 
 function fixture(t: TestContext) {
   const scratch = mkdtempSync(join(tmpdir(), 'cland-skill-update-'));
@@ -31,7 +31,8 @@ function fixture(t: TestContext) {
   };
   const update = () => {
     const report = new Report(root);
-    provisionSkills(report, root, process.env.CLAND_SKILLS_SOURCE_OVERRIDE);
+    const managed = provisionSkills(report, root, process.env.CLAND_SKILLS_SOURCE_OVERRIDE);
+    provisionClaudeSkills(report, root, managed);
     return report.changes;
   };
   const manifest = () => {
@@ -46,6 +47,110 @@ function fixture(t: TestContext) {
   );
   return { root, source, target, put, update, manifest, snapshot };
 }
+
+test('a dropped untouched skill is removed with the folders it leaves empty', t => {
+  const f = fixture(t);
+  f.put(f.source, 'tdd/SKILL.md', 'old');
+  f.put(f.source, 'tdd/docs/nested/ref.md', 'reference');
+  f.update();
+  rmSync(join(f.source, 'tdd'), { recursive: true });
+  assert.deepEqual(f.update().find(c => c.path === '.agents/skills/tdd'), {
+    path: '.agents/skills/tdd', action: 'removed', note: "no longer in cland's set",
+  });
+  assert.equal(existsSync(join(f.target, 'tdd')), false);
+  assert.equal(Object.hasOwn(f.manifest(), 'tdd'), false);
+});
+
+test('a dropped edited skill becomes the project\'s own even if cland ships its name again', t => {
+  const f = fixture(t);
+  f.put(f.source, 'tdd/SKILL.md', 'old');
+  f.put(f.source, 'tdd/docs/ref.md', 'reference');
+  f.put(f.source, 'grilling/SKILL.md', 'abc');
+  f.update();
+  const installed = f.manifest();
+  for (const edit of ['edited', 'deleted', 'added']) {
+    f.put(f.target, MANIFEST, JSON.stringify({ managed: 'managed by cland', skills: installed }));
+    rmSync(join(f.target, 'tdd'), { recursive: true });
+    f.put(f.target, 'tdd/SKILL.md', 'old');
+    f.put(f.target, 'tdd/docs/ref.md', 'reference');
+    if (edit === 'edited') f.put(f.target, 'tdd/SKILL.md', 'project edit');
+    if (edit === 'deleted') rmSync(join(f.target, 'tdd/SKILL.md'));
+    if (edit === 'added') f.put(f.target, 'tdd/local/notes.md', 'project notes');
+    rmSync(join(f.source, 'tdd'), { recursive: true, force: true });
+    const own = f.snapshot(join(f.target, 'tdd'));
+    assert.deepEqual(f.update().find(c => c.path === '.agents/skills/tdd'), {
+      path: '.agents/skills/tdd', action: 'kept', note: "edited in the project; no longer in cland's set",
+    }, edit);
+    assert.deepEqual(f.snapshot(join(f.target, 'tdd')), own);
+    assert.deepEqual(f.manifest(), { grilling: installed.grilling }, 'only the handed-over entry leaves the manifest');
+    assert.equal(f.update().some(c => c.path.startsWith('.agents/skills/tdd')), false);
+    f.put(f.source, 'tdd/SKILL.md', 'new release');
+    assert.equal(f.update().find(c => c.path === '.agents/skills/tdd')?.action, 'kept');
+    assert.deepEqual(f.snapshot(join(f.target, 'tdd')), own, 're-shipping cannot reclaim the skill');
+    assert.deepEqual(f.manifest(), { grilling: installed.grilling });
+  }
+});
+
+test('Claude links follow dropped skill removal or handover in the project\'s own skills folder', t => {
+  const f = fixture(t);
+  const claude = join(f.root, '.claude/skills');
+  mkdirSync(claude, { recursive: true });
+  for (const name of ['tdd', 'grilling']) f.put(f.source, `${name}/SKILL.md`, 'abc');
+  f.update();
+  const link = readlinkSync(join(claude, 'tdd'));
+  f.put(f.target, 'tdd/SKILL.md', 'project edit');
+  for (const name of ['tdd', 'grilling']) rmSync(join(f.source, name), { recursive: true });
+  f.update();
+  assert.equal(existsSync(join(claude, 'grilling')), false);
+  assert.equal(readdirSync(claude).includes('grilling'), false, 'remove the link itself, not just its target');
+  assert.ok(lstatSync(join(claude, 'tdd')).isSymbolicLink());
+  assert.equal(readlinkSync(join(claude, 'tdd')), link);
+  assert.equal(readFileSync(join(claude, 'tdd/SKILL.md'), 'utf8'), 'project edit');
+  f.update();
+  assert.equal(readlinkSync(join(claude, 'tdd')), link);
+});
+
+test('a link on a dropped skill path retains its install hashes without touching its target', t => {
+  const f = fixture(t);
+  for (const name of ['untouched', 'edited']) f.put(f.source, `${name}/SKILL.md`, 'abc');
+  f.update();
+  const installed = f.manifest();
+  for (const name of ['untouched', 'edited']) {
+    const outside = join(f.root, name);
+    renameSync(join(f.target, name), outside);
+    symlinkSync(outside, join(f.target, name));
+    if (name === 'edited') f.put(outside, 'SKILL.md', 'project edit');
+    rmSync(join(f.source, name), { recursive: true });
+    const own = f.snapshot(outside);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const changes = f.update();
+      assert.match(changes.find(c => c.path === `.agents/skills/${name}`)?.note ?? '', /^symlink:/);
+      assert.equal(changes.find(c => c.path === `.agents/skills/${name}`)?.action, 'kept');
+      assert.deepEqual(f.snapshot(outside), own);
+      assert.deepEqual(f.manifest(), installed, 'a refused link retains the original hashes');
+    }
+  }
+});
+
+test('a link inside a dropped skill keeps the complete skill under cland ownership', t => {
+  const f = fixture(t);
+  f.put(f.source, 'tdd/SKILL.md', 'abc');
+  f.put(f.source, 'tdd/docs/ref.md', 'abc');
+  f.update();
+  const installed = f.manifest();
+  const outside = join(f.root, 'outside.md');
+  f.put(f.root, 'outside.md', 'project reference');
+  rmSync(join(f.target, 'tdd/docs/ref.md'));
+  symlinkSync(outside, join(f.target, 'tdd/docs/ref.md'));
+  rmSync(join(f.source, 'tdd'), { recursive: true });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    assert.match(f.update().find(c => c.path === '.agents/skills/tdd/docs/ref.md')?.note ?? '', /^symlink:/);
+    assert.deepEqual(f.manifest(), installed, 'refused links retain all install hashes');
+    assert.equal(readFileSync(join(f.target, 'tdd/SKILL.md'), 'utf8'), 'abc');
+    assert.equal(readlinkSync(join(f.target, 'tdd/docs/ref.md')), outside);
+    assert.equal(readFileSync(outside, 'utf8'), 'project reference');
+  }
+});
 
 test('an edited skill stays whole across repeated updates until its edit is undone', t => {
   const f = fixture(t);

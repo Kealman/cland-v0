@@ -462,7 +462,8 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   assert.deepEqual((await read()).skills.tdd, hashed, 'refused hashed file retains the old hash, not source or target bytes');
   await rm(join(source, 'tdd', 'SKILL.md'));
   update();
-  assert.deepEqual((await read()).skills.tdd, { 'NOTES.md': (hashed as Record<string, string>)['NOTES.md'] }, 'failed removal retains the old hash');
+  assert.deepEqual((await read()).skills.tdd, hashed, 'a link in a dropped hashed skill retains its install hashes');
+  assert.equal(await readFile(join(target, 'tdd', 'SKILL.md'), 'utf8'), 'new skill', 'the refused skill stays whole');
 });
 
 test('provisioning never writes through a symlink: a managed file, AGENTS.md or a parent folder that is a link is kept, its target untouched', async (t) => {

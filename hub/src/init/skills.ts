@@ -15,7 +15,8 @@
 // `[a-z0-9-]+`, each hash is 64 lowercase hex characters, and each path is relative, with no empty, `.` or `..`
 // segment, resolving inside `.agents/skills/<name>/`. A manifest failing any of that is reported, and nothing is installed, rewritten or
 // removed. A file added, changed or deleted in the project keeps the entire hashed skill and its original hashes;
-// a project copy matching the current shipped skill adopts its hashes. Legacy path lists retain per-file ownership
+// a project copy matching the current shipped skill adopts its hashes. A dropped hashed skill is removed only
+// when untouched; an edited one leaves the manifest and belongs to the project. Legacy path lists retain per-file ownership
 // until migrated. Nothing is written or removed through a symlink
 // (`files.ts`). Skill files need no "managed by cland" mark of their own: the manifest's mark covers every file it lists.
 import { createHash } from 'node:crypto';
@@ -44,14 +45,16 @@ function sameHashes(a: Record<string, string> | null, b: Record<string, string>)
 }
 
 /** Inspect the project's whole skill without following links or ignoring added entries. */
-function installedHashes(report: Report, dir: string): Record<string, string> | null {
-  if (exists(dir) !== 'dir') return null;
+function installedHashes(report: Report, dir: string): { hashes: Record<string, string> | null; symlink: boolean } {
+  if (exists(dir) !== 'dir') return { hashes: null, symlink: false };
   const hashes: Record<string, string> = Object.create(null) as Record<string, string>;
+  let symlink = false;
   const walk = (sub: string): boolean => {
     for (const e of readdirSync(join(dir, sub), { withFileTypes: true })) {
       const rel = sub ? join(sub, e.name) : e.name;
       if (e.isSymbolicLink()) {
         refuseSymlink(report, join(dir, rel));
+        symlink = true;
         return false;
       }
       if (e.isDirectory()) { if (!walk(rel)) return false; }
@@ -60,7 +63,8 @@ function installedHashes(report: Report, dir: string): Record<string, string> | 
     }
     return true;
   };
-  return walk('') ? hashes : null;
+  const complete = walk('');
+  return { hashes: complete ? hashes : null, symlink };
 }
 
 /** A skill's name, as a manifest may list it: one folder of `.agents/skills/`. */
@@ -195,7 +199,7 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
     const files = filesUnder(join(source, name));
     if (before !== undefined && !Array.isArray(before) && exists(dir) !== null) {
       const shipped = Object.fromEntries(files.map(rel => [rel, hashBytes(readFileSync(join(source, name, rel)))]));
-      const installed = installedHashes(report, dir);
+      const installed = installedHashes(report, dir).hashes;
       if (sameHashes(installed, shipped)) {
         report.add(dir, 'unchanged');
         manifest.skills[name] = shipped;
@@ -261,9 +265,20 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       manifest.skills[name] = files;
       continue;
     }
+    if (!Array.isArray(files) && exists(dir) !== null) {
+      const installed = installedHashes(report, dir);
+      if (installed.symlink) {
+        manifest.skills[name] = files;
+        continue;
+      }
+      if (!sameHashes(installed.hashes, files)) {
+        report.add(dir, 'kept', "edited in the project; no longer in cland's set");
+        continue;
+      }
+    }
     const left = paths(files).filter((rel) => !removeFile(report, join(dir, rel), target));
     if (left.length) manifest.skills[name] = Array.isArray(files) ? left : Object.fromEntries(left.map(rel => [rel, files[rel]!]));
-    else report.add(dir, 'removed', 'no longer shipped by cland');
+    else report.add(dir, 'removed', "no longer in cland's set");
   }
   writeIfChanged(report, manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return Object.keys(manifest.skills).filter((name) => exists(join(target, name)) === 'dir');
