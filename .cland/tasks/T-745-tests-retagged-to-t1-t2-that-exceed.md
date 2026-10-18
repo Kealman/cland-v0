@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-464
 branch: t/T-745-tests-retagged-to-t1-t2-that-exceed
 created: 2026-10-17T17:06:00.092Z
-updated: 2026-10-17T22:55:34.825Z
+updated: 2026-10-17T23:49:35.769Z
 ---
 
 ## Summary
@@ -100,3 +100,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear; A-4830. Standards/Spec no findings. Primary94178a14 authorizes tiers.json integration; only manual docs resolution keeps T0 static gates plus landed T3 inventory. Authored source/test/package blobs are unchanged; task host check still includes both T0 guards. Incoming duration manifest exactly matches315af806 and all scenario allowance owners areE-677 perfc084b8a; no T-745 allowance added. A-4826 retains historical53-warning inventory, not final-budget proof. C1 stays unverified/pending first-owner integrations, legacy-key propagation, final-head review and Coordinator-owned full evidence per28105f6d. No preliminary dry-run or Implementer all submission requested.
+
+### impl-745 · 2026-10-17T23:48:15.925Z
+
+Pushed 84700ea0 after authorized merge of landed T-752/T-754/T-702 (784e6e4d). Owned legacy-key residual now passes baseline allowance provenance through Suites shard placement and per-shard tier planning, preserving native production defaults. New public planner test red→green; suite-tier-report and suite-duration-budget each5/5 under enforced T1 with no trips; native legacy lint2/2; npm check/test:tiers green. Fresh review requested, artifacts A-4861/A-4862. Refreshed exact warning inventory A-4859 from latest completed green A-4849 (36 lines), replacing old two-cover53-line inventory. C1 awaits remaining T-750/T-751/T-703 landings and final Coordinator-submitted evidence. No allowance added.
+
+### rev-30 · 2026-10-17T23:49:35.769Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-745-history-delta
+commit: 84700ea0636c7f6ab039905b9b33af0fa0303911
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear, no findings; A-4865. Four-file owned delta derives legacy allowance keys from injected base.manifest.allow using the native pre-tier/explicit-legacy rule and forwards history through hubShards plus shard planTierReport/packageShards. Undefined context retains production Git; explicit null/no-baseline has empty history. Public planner regression preserves prior assertions, proves matching history yields the expected row and empty history rejects. Independently audited A-4861 ten raw file runs: 50 passes, zero fail/cancel/skip or emitted trips; A-4862 records enforced T1/static/native supporting checks. Authorized dev merge preserves prior task sources and exact semantic tier union; durations matches incoming dev, no allowance added. Independently reconciled all 36 latest-green T1/T2 warnings from A-4849 against A-4859 exactly. C1 remains unverified until remaining first-owner integrations, final reviewed-head Coordinator-submitted gate and next integrated cover. Primary 28105f6d final-run sequencing remains; no preliminary verify/dry-run requested. No per-item QA.

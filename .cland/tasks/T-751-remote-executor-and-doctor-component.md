@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-460
 branch: t/T-751-remote-executor-and-doctor-component
 created: 2026-10-17T18:44:08.662Z
-updated: 2026-10-17T22:07:59.308Z
+updated: 2026-10-17T23:48:41.234Z
 ---
 
 ## Summary
@@ -32,8 +32,9 @@ Inject the Git, snapshot and doctor facts these fixtures need at their seams (T-
 
 - [ ] C1. The runtime tripwire reports no child_process trip in these files, proved by a full droplet run's trip report.
 - [x] C2. The review request maps every changed fixture call with Mac 5/5 medians before and after.
-  - done: impl-751 · 2026-10-17T22:06:22.454Z
   - verified: rev-31 [reviewer] · run rev-20261017-751-source · 2026-10-17T22:07:59.308Z · commit 9dc81db646d4f027a3b400e3840674f716e2ee69
+  - done: impl-751 · 2026-10-17T23:46:48.155Z
+  - verified: rev-31 [reviewer] · run rev-20261017-751-merge-delta · 2026-10-17T23:47:41.070Z · commit 8a2b593bc66d491fea5ec0731149b9a28cb89447
 
 ## Comments
 
@@ -106,3 +107,63 @@ Standards: 0 findings. Spec: 0 findings.
 Durable review: A-4777, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-4777-t-751-source-review-injected-machine-facts-at-9dc81db6.md.
 
 Criteria: C2 verified.
+
+### impl-751 · 2026-10-17T23:46:48.528Z
+
+Required T-752-first integration complete: merged dev a8ece990 then b51907e6, pushed 8a2b593bc66d491fea5ec0731149b9a28cb89447. Clean auto-merges audited; no post-review implementation edits. Delta review requested from reviewer; A-4858/A-4857 refresh ten-file5/5 and final-head typecheck/tiers/lint plus eleven enforced zero-trip files. A-4772 assertion/call map remains current. C1 still pending delta verdict, mode-free dry-run inclusion and same-head droplet run. Coordinator d8972c4d lifted restart hold; no verify submitted before release.
+
+### rev-31 · 2026-10-17T23:47:41.070Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261017-751-merge-delta
+commit: 8a2b593bc66d491fea5ec0731149b9a28cb89447
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-751 integration delta source review — clear
+
+Exact commit: 8a2b593bc66d491fea5ec0731149b9a28cb89447.
+Prior source: 9dc81db646d4f027a3b400e3840674f716e2ee69, rev-20261017-751-source / A-4777.
+Integrated dev: b51907e6ff78fda34f55925cc351775275f5367b.
+Scope: delta. Read-only review; no Reviewer edits or execution.
+
+Coordinator d8972c4d explicitly required the dev merge after T-752 landed. The first-parent delta consists of two dev merge commits, 1f53e40d and 8a2b593b, with no new task implementation commit. The net diff against integrated dev still has exactly the same 20 task paths as the original review.
+
+## Standards
+
+No findings. Native defaults, fixture lifecycle ownership, file lock semantics and original assertions reviewed in A-4777 remain intact. No new test declaration, wait, retag or task allowance was added by the integration. The task adds no allowance relative to dev; inherited scenario allowances are now E-677-owned following the Coordinator's ownership correction.
+
+## Spec and integration
+
+No findings. Among the 20 task files, only dispatch.ts and remote-fixture.ts differ from the prior reviewed source. Those changes are inherited dev:
+- Dispatch adds T-755 health receipt formatting/journal fields beside the retained project Git injection into Demos.
+- remote-fixture adds the rejecting mount shim only within the existing non-scripted branch; all scripted candidate/snapshot/Git/process injection remains.
+The second merge changes none of the 20 task files.
+
+Inspected Suites integration: T-752 durationContext remains alongside the inherited health/cache/result receipt paths. Health parsing reads existing logs and leaves a missing scripted health receipt optional; it does not replace duration facts or admission provenance. Native transport/worker health code is inherited from reviewed dev, rather than task-side scope expansion. T-754 Neovim boundary and T-702 migration are inherited dev work; no unmerged T-750 implementation was imported.
+
+## C2 evidence
+
+A-4772's before/after call-site and assertion map remains applicable. A-4857/A-4858 refresh after measurements: ten files, five code-0 samples each, every admission load below 15. Independently regrouped all 50 records and recalculated medians:
+demo-cap .975; demo-release-component 2.682; executor-admission .375; executor-admission-lock 1.593; executor-droplet-component .332; executor-prepare-retry 1.221; executor-safety-component 1.981; remote-scripted .875; doctor 1.329; suite-close-component 1.580 seconds.
+
+Measurements were taken at 1f53e40d; independent diff confirms all 20 task files are byte-identical at final head. The original pre-change baseline remains A-4771/A-4752. Evidence records are structured measurement/check results, not raw TAP transcripts; this review does not claim a raw-log audit. Final-head typecheck/tiers/report-only lint records all exit 0. Eleven local enforced file records report code 0 and zero child-process trips.
+
+C2 verified at the new head. C1 remains unverified pending actual droplet execution and positive trip/identity evidence for all twelve C1 files. The suite-close-component legacyDurationKeys path remains the explicitly T-745-owned residual under cf3ae51e; compatibility readers remain T-750-owned under d90d40c3. No residual is silently marked clean.
+
+## Verdict and next gate
+
+Source delta clear; verify C2 only. Next inspect a mode-free droplet dry-run for inclusion of the nine assigned files plus suite-close-component, suite-accounting and suite-stage-rules. Then submit the authorized mode-free droplet verification at this exact head; missing coverage goes to the lead/Coordinator. Submission hold was explicitly lifted in d8972c4d. No final execution clearance or per-item QA is claimed.
+
+Standards: 0 findings. Spec: 0 findings.
+
+Durable review: A-4860.
+
+Criteria: C2 verified.
+
+### impl-751 · 2026-10-17T23:48:41.234Z
+
+Delta source clear rev-20261017-751-merge-delta at 8a2b593b / A-4860; C2 reverified. Mode-free droplet dry-run A-4863 and all12-file proof A-4864 establish complete C1 selection (hub-only,2 workers). Accepted mode-free droplet run 0ade3bc3-efdc-4833-ae97-438caf22c150 at exact clean reviewed 8a2b593bc66d491fea5ec0731149b9a28cb89447. No head changes planned; awaiting runtime/trip receipt before marking C1 done and final evidence verdict. T-745 legacyDurationKeys residual explicitly excluded per Coordinator scope.

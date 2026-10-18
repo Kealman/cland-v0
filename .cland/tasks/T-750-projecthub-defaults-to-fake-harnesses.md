@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-17T23:44:04.731Z
+updated: 2026-10-18T00:04:29.021Z
 ---
 
 ## Summary
@@ -32,8 +32,10 @@ projectHub (and the fixtures built on it) default to `harnesses: 'fake'` and `pr
 
 - [x] C1. The runtime tripwire (T-748) reports no child_process trip in the R1 projectHub files listed in A-4703 (session-*, lead-*, heartbeat, handover, item-lead, permissions, rule-cli, project-clock, in-process-spoke, fake-harness, adapter-composition, codex-*/opencode-native, skills-tracker, suite-protocol, suite-close-component), proved by a full droplet run's trip report.
   - done: impl-750 · 2026-10-17T23:43:59.643Z
+  - verified: rev-30 [reviewer] · run rev-20261017-750-final · 2026-10-17T23:45:21.052Z · commit d3fda4f3c40dd3bc24776570a843a54a4844184c
 - [x] C2. Every test that relied on native defaults either opts in explicitly in a T3 file or is rewritten with injected facts; the review request maps each, with Mac 5/5 medians before and after.
   - done: impl-750 · 2026-10-17T23:44:00.259Z
+  - verified: rev-30 [reviewer] · run rev-20261017-750-final · 2026-10-17T23:45:21.052Z · commit d3fda4f3c40dd3bc24776570a843a54a4844184c
 
 ## Comments
 
@@ -99,3 +101,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Cleanup-guard delta source clear; A-4836. Standards/Spec no findings. Sole changed file plants the same assertion/cancellation contract into extracted stop-classification-fixture, runs it through current manual driver and proves helper/signal wiring. All held-work/finally distinction/fake-stop restoration/pending-wait/child-close/result/root-removal assertions remain. A-4835 five original failures→five corrected whole-file passes, median0.972s,maxadmission1.8955. No production/defaults/native-caller/allowance/baseline change. Parent A-4834 remains red historical evidence, not final green. C1/C2 await current-head full-population droplet proof; normal mode-free verify may proceed at this unchanged head.
+
+### rev-30 · 2026-10-17T23:45:21.052Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261017-750-final
+commit: d3fda4f3c40dd3bc24776570a843a54a4844184c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final full-population evidence clear under primary residual dispositions; A-4856. Independently matched original A-4703's exact 34-file R1 population to A-4854 execution: all 175 R1 cases pass; 22 T-750-owned files/115 cases have zero trips. Remaining 74 resource rows are explicitly delegated: 71 T-751 fixture/doctor/lock rows, two T-752 suite-protocol duration-context rows, one T-745 suite-tiers legacy-key row. Every residual identity is named in A-4856; this is not a zero-total-trip claim. Primary d5a3a80c/6621d69b/bac79924 establish scope, and latest d8972c4d permits final settlement on green d3fda4f3 after T-752 lands. Full run c8eaa828 exits zero: 2,494 passes, zero failure/cancellation, eight prerequisite skips; full Neovim completes. All 100 changed test files positively execute, including three native binary contracts. Native/injected caller mapping, accepted 280 raw Mac before/after/sample logs under 06ae69bc exemption, and cleanup 5/5 remain applicable to unchanged source. Three moved/new load gates pass 5/5; no hard budgets/new allowance. No findings; C1/C2 verified. No per-item QA.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-750 · 2026-10-18T00:02:28.085Z
+
+Coordinator-authorized conflict merge of dev b51907e6 pushed at69800204. All12 conflict blocks resolved; normalized11 conflicted test bodies match dev, native imports move to current support/scenario boundaries; T-702 T2 subscription carriers retain fake component fixtures. Kept T-752 durationContext alongside compatibility and forwarded supplied/null context from serveProject; suite-protocol passes null on every serve/reopen. A-4866 holds70 raw serial Mac runs:11 conflicted tests+suite-protocol5/5,9 moved native samples,1 protocol enforce pass with0trips. All load1<15; typecheck/tiers/lint pass (284 report-only findings163files). Native map regenerated. Fresh delta review then required exact-head mode-free droplet run; old d3fda4f3 receipt historical.
+
+### rev-30 · 2026-10-18T00:04:29.021Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-750-conflict-delta
+commit: 69800204639ddfb5b2e574f1e8c4feaecf569fb9
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear, no findings; A-4867. Primary ad4c4b1b authorizes integration and requires fresh mode-free gate. Independently verified all eleven conflicted tests match incoming dev after only native import alias normalization, all thirteen import-only proofs hold, and all 91 native import occurrences are mapped. T-702 component carriers retain fake facts; four native splits and T-707 scenario/shared setup explicitly retain native boundaries. Suites preserves durationContext plus compatibility; serveProject forwards explicit null while undefined keeps native Git, and protocol reopens all inject null. Raw A-4866 audit: 70 local outputs, 625 passes, zero fail/cancel/skip; protocol enforced eight-case run has zero trips. After-integration measurements remain distinct from original before/after data. No new allowance/timing baseline; incoming owners retained; own whitespace clean. C1/C2 final execution verification remains pending fresh exact-head droplet receipt; d3fda4f3 green evidence is historical. No per-item QA.
