@@ -2,8 +2,8 @@
 id: T-773
 kind: task
 title: Suites, executor, CLI and doctor T3 files move their rule tests to T2 under the same titles (A-4961 groups, ~70 s)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-480
 branch: t/T-773-suites-executor-cli-and-doctor-t3-files
 created: 2026-10-18T04:49:25.413Z
-updated: 2026-10-18T05:37:37.834Z
+updated: 2026-10-18T05:37:44.262Z
+closed: 2026-10-18T05:37:44.262Z
 ---
 
 ## Summary
@@ -155,3 +156,7 @@ Standards:0 task findings. Spec:0 remaining gaps.
 Durable review:A-4994.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T05:37:44.262Z
+
+Merged 1c5798727af1ea1a8edf652431c346ed3ddc3421 onto dev.
