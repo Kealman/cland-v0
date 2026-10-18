@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T09:40:15.531Z
+updated: 2026-10-18T10:13:14.818Z
 ---
 
 ## Summary
@@ -27,7 +27,7 @@ On 2026-10-16 at about 12:41Z, a prototype `cland init` run in a non-empty folde
 ## Acceptance criteria
 
 - [x] C1. `cland init` (and `update`) works only on the current directory or `--dir`. When the root it finds differs from the cwd, it refuses and names both paths.
-  - done: impl-609 · 2026-10-18T09:28:56.395Z
+  - done: impl-609 · 2026-10-18T10:12:31.328Z
 - [x] C2. HOME is never accepted as a project root, and a test proves `cland init` in a non-repository folder under a HOME that holds the hub's state directory writes nothing outside that folder.
   - done: impl-609 · 2026-10-18T09:29:01.013Z
 - [x] C3. The hub's per-user state directory no longer shares its name with the project marker. For example, it moves to `~/.local/state/cland`, with a one-time migration of executor/spend.json.
@@ -98,3 +98,53 @@ C1–C3 remain pending exact-head post-source-clear task verification; no per-it
 
 Standards: 0 findings. Spec: 0 findings.
 Artifact A-5149.
+
+### rev-31 · 2026-10-18T10:11:10.637Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261018-609-runtime-1
+commit: d8dbeecaf4687502e6bd8c892c819b94253b8589
+scope: evidence
+findings: [{"severity":"medium","text":"Existing fixture still expects bare child init beneath a running parent to succeed; strict root validation now refuses it, failing the suite.","file":"hub/test/worktree-cli.test.ts","line":57}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Evidence review at source-cleared d8dbeecaf4687502e6bd8c892c819b94253b8589 (source-2 / A-5149).
+
+A-5181 / 37f7af60-9c11-455f-94f4-4773812e1e18 is raw exit 1, auto hub-only: 2161 total / 2155 pass / 1 fail / 5 prerequisite skips. Neovim smoke was not reached. This is not green and no external-failure exception applies.
+
+Medium M2 — hub/test/worktree-cli.test.ts:57 (C1): the existing independent-child routing fixture calls runInit on a bare child directory while a parent hub is active. The new intentional strict-root rule resolves that target to the parent and refuses; the fixture still expects success. The failure is deterministic task-related compatibility, not an external flake. Prepare an independently rooted child before init (without weakening root validation) and retain all child-vs-parent discovery/tracker assertions. A changed head needs fresh source review before retry. The source review missed this existing caller; it is now included in the required compatibility check.
+
+The 14 added root/spend cases all passed ordinary execution and 5/5 repetitions, 70/70; no runtime tier-mismatch receipts. Their positive evidence is retained but does not clear the failed run. Ledger compatibility and T-794 retirement remain unchanged. No Reviewer tests run.
+
+Standards: no additional finding. Spec: one medium fixture-compatibility finding; final not clear pending corrected-head gate.
+Artifact A-5183.
+
+Criteria: C1 failed (Exact-head run fails the existing independent-child init fixture; adapt its setup to strict root validation while retaining routing assertions.).
+
+### impl-609 · 2026-10-18T10:12:47.681Z
+
+Corrected task-related fixture compatibility from A-5181/A-5183 at df7a73623e6d80d76c3a4c4a9f06547acec8f1cc, pushed to origin. Existing independent-child routing fixture reproduced red (0.353 s), then now explicitly creates child/.cland before init; all routing assertions and production code unchanged. Full worktree-cli.test.ts 4/4 pass, 10.588 s; corrected case 0.954 s. Typecheck and test lint exit 0; no new process/wait/test, no dev merge after first source review. C1 re-marked done. A-5186 has raw red/green and check evidence. Fresh source review requested before droplet retry; prior run remains failed, with 14 new cases and 70/70 repetitions green.
+
+### rev-31 · 2026-10-18T10:13:14.818Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-609-source-3
+commit: df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source review at df7a73623e6d80d76c3a4c4a9f06547acec8f1cc, original fixed base 23244cfa9f1dbf53b75c2c1455d4fc9bb46f460d. Independently inspected correction diff against d8dbeecaf4687502e6bd8c892c819b94253b8589. No dev merge or Reviewer test execution.
+
+Standards: no findings. The only change replaces bare child-directory creation in the existing worktree-cli T3 fixture with creation of child/.cland and a boundary explanation. No processes, waits, tests, bounds or assertions added/removed.
+
+Spec: prior runtime M2 resolved at setup. The marker explicitly establishes this fixture's independent non-worktree project boundary before runInit. All idle-child discovery, parent isolation, distinct hub socket, child/parent tracker content and item-count assertions are byte-unchanged. Production strict-root/HOME and legacy-first ledger code is byte-unchanged from source-2 / A-5149.
+
+A-5186 records the exact focused pre-fix parent-root refusal and corrected full worktree-cli file 4/4 in 10.588s, target 0.954s, no skips/cancellations; typecheck/lint/diff checks pass. A-5181 remains a failed prior-head receipt, despite positive 14-case/70-repeat root/spend evidence. A new exact-head mode-free task receipt remains necessary for C1–C3. No remaining source findings; no per-item QA. Legacy retirement remains T-794.
+
+Standards: 0 findings. Spec: 0 findings. Source clear only.
+Artifact A-5187.
