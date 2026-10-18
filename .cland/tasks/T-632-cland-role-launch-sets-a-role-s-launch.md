@@ -3,7 +3,7 @@ id: T-632
 kind: task
 title: cland role launch sets a role's launch fields, and cland role list shows them all
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-492
 branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-18T12:06:50.349Z
+updated: 2026-10-18T12:17:07.036Z
 ---
 
 ## Summary
@@ -161,3 +161,20 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Merged-head final clear, A-5252. Exact-head A-5250 full gate passes 2580 tests, zero failures/cancellations, eight prerequisite skips; all hub/Neovim phases finalize. All 13 role-launch cases positively execute and 65/65 repetitions pass, covering C1–C7 with unchanged source mapping A-5240. Retained account poller clock/native cases, role component and warmer/admission carriers also pass. Zero tier-mismatch rows anywhere and no hard budgets; incidental native polling does not recur. Prior-head green remains historical. No reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-632 · 2026-10-18T12:16:03.616Z
+
+Second Coordinator-authorized merge-conflict recovery pushed 4b851f6a, parents prior reviewed05f750eb + dev1d67e5a6 (T-791/T-534/T-716). Sole conflict options declaration retained accountReader, lintWarmer and selectSuite with their forwarding. Five targeted files green serially: role-launch13/13 enforced/zero trips; suite-admission-close6/6; suite-admission-cost5/5; roles-component4/4; account-poller-clock10/10. Fetch/test:lint and typecheck green. Delta review requested before one exact-head droplet gate.
+
+### rev-30 · 2026-10-18T12:17:07.036Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-632-admission-delta
+commit: 4b851f6ab5240c305d12c372c0b8f15968de280e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5265. Coordinator-authorized additional dev merge resolves only serveProject option declaration, retaining AccountReader, lintWarmer and incoming selectSuite. All forwarding/lifecycle paths remain; incoming captured-identity admission behavior and admission-close test source are preserved. Task editor/CLI/account-reader implementation and both task tests are byte-identical to prior final-reviewed parent. A-5260 serial validation summary reviewed; no allowance or quarantine changes, own diff check clean. C1–C7 await fresh exact-head droplet gate; A-5250/A-5252 are prior-head history. No reviewer execution.

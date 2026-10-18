@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T10:37:42.668Z
+updated: 2026-10-18T12:22:04.332Z
 ---
 
 ## Summary
@@ -29,12 +29,15 @@ On 2026-10-16 at about 12:41Z, a prototype `cland init` run in a non-empty folde
 - [x] C1. `cland init` (and `update`) works only on the current directory or `--dir`. When the root it finds differs from the cwd, it refuses and names both paths.
   - done: impl-609 · 2026-10-18T10:12:31.328Z
   - verified: rev-31 [reviewer] · run rev-20261018-609-final · 2026-10-18T10:37:41.580Z · commit df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
+  - verified: rev-31 [reviewer] · run rev-20261018-609-merge-delta · 2026-10-18T12:22:03.227Z · commit 0cae2f5c1ccc6c3cd3554265f7c0105231618f4c
 - [x] C2. HOME is never accepted as a project root, and a test proves `cland init` in a non-repository folder under a HOME that holds the hub's state directory writes nothing outside that folder.
   - done: impl-609 · 2026-10-18T09:29:01.013Z
   - verified: rev-31 [reviewer] · run rev-20261018-609-final · 2026-10-18T10:37:41.580Z · commit df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
+  - verified: rev-31 [reviewer] · run rev-20261018-609-merge-delta · 2026-10-18T12:22:03.227Z · commit 0cae2f5c1ccc6c3cd3554265f7c0105231618f4c
 - [x] C3. The hub's per-user state directory no longer shares its name with the project marker. For example, it moves to `~/.local/state/cland`, with a one-time migration of executor/spend.json.
   - done: impl-609 · 2026-10-18T09:37:34.499Z
   - verified: rev-31 [reviewer] · run rev-20261018-609-final · 2026-10-18T10:37:41.580Z · commit df7a73623e6d80d76c3a4c4a9f06547acec8f1cc
+  - verified: rev-31 [reviewer] · run rev-20261018-609-merge-delta · 2026-10-18T12:22:03.227Z · commit 0cae2f5c1ccc6c3cd3554265f7c0105231618f4c
 
 ## Comments
 
@@ -168,5 +171,50 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final evidence clear; no remaining standards or specification findings. A-5212 records independent audit of A-5211 / 15e3ea8d at unchanged source-3 head: exit 0, 2161 pass/0 fail/0 cancelled/5 prerequisite skips, hub-only plus green Neovim smoke. All 14 root/spend cases and 70/70 repetitions passed; all 13 existing init and four worktree CLI cases passed, including the formerly failing independent-child case (1.655 s). No tier mismatch, owned quarantine or owned skip. C1–C3 verified with retained source/red-green evidence A-5149/A-5187. Legacy-first write-through remains as authorized during coexistence; retirement remains separate T-794. No per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-609 · 2026-10-18T12:21:05.732Z
+
+Performed the one Coordinator-authorized origin/dev merge (8b2d2cd5) and pushed 0cae2f5c1ccc6c3cd3554265f7c0105231618f4c. Only manual conflict resolution is tiers.json: sorted union of 379 entries preserves both task T1 entries and all dev entries/tier changes. Git remerge-diff contains only three removed conflict markers around init-roots/init-settings; no manual source/test-body changes. A-5269 includes exact resolution patch and raw check logs. test:tiers exit 0; init-roots 4/4 in 0.477 s; executor-spend 10/10 in 1.228 s (sequential files); typecheck/lint exit 0; diff check clean. Requesting delta review. No new droplet submitted: Coordinator authorized rule 6 merge on that delta review if Reviewer confirms entries-only resolution; otherwise fresh droplet verification. Previous A-5211 receipt remains prior-head green evidence, not a claimed same-head result. Lane continues T-640, then T-641 after merge/handoff.
+
+### rev-31 · 2026-10-18T12:22:03.227Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-609-merge-delta
+commit: 0cae2f5c1ccc6c3cd3554265f7c0105231618f4c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-609 authorized merge delta review
+
+Commit: 0cae2f5c1ccc6c3cd3554265f7c0105231618f4c
+Parents: final-reviewed df7a73623e6d80d76c3a4c4a9f06547acec8f1cc; dev 1d67e5a6
+Run: rev-20261018-609-merge-delta
+Scope: delta
+Result: clear
+
+## Standards
+No findings. Independently compared the merge against both parents and read A-5269's recorded remerge patch. The only conflict resolution is in hub/test/tiers.json, retaining the adjacent init-roots and init-settings entries. The merged manifest parses as the exact dev manifest plus both task-only T1 paths (executor-spend and init-roots), 379 entries in sorted order; every dev tier/value and other field is preserved.
+
+The original eight-file task payload remains relative to dev. Task production code and all test bodies match df7a7362 byte-for-byte. usage.ts additionally inherits only dev's diagnostics-help line; its task init-root wording remains. There are no manual production/test edits, new processes, waits, bounds or allowances.
+
+A-5269 raw logs show init-roots 4/4 in 0.477 s and executor-spend 10/10 in 1.228 s, no failures/skips/cancellations, each case below 0.5 s; tier, hub/Neovim typecheck and test-lint checks pass. No Reviewer tests run. The recorded remerge patch and combined diff agree.
+
+## Spec
+No findings. Source-3 and final review continuity is retained for C1–C3: strict physical init/update target and HOME refusal, conservative new-state ledger reconciliation and legacy-first mixed-version write-through, plus the corrected independent-child fixture remain unchanged. Legacy retirement remains T-794.
+
+Independently read Coordinator decision 8b2d2cd5-0f2d-475f-a4fc-0495912d08fe in topic-496: once the Reviewer confirms only tier-entry conflict resolution, the Coordinator will merge on delta review without a new droplet under its explicit rule-6 disposition. That condition is satisfied.
+
+Carry C1–C3 verification forward at this merged head using prior audited A-5211 / 15e3ea8d (2161 pass, zero failures, five prerequisite skips; 14 task cases plus 70/70 repetitions, existing init/worktree compatibility and green Neovim smoke) together with this manifest-only conflict review and fresh local checks. A-5211 remains an exact-old-head receipt, not exact-current-head green or full Neovim evidence. No new droplet run is required by the explicit disposition; no per-item QA.
+
+Origin task ref independently matches 0cae2f5c. No remaining finding.
+
+Standards: zero findings. Spec: zero findings.
+
+Artifact A-5273.
 
 Criteria: C1 verified, C2 verified, C3 verified.

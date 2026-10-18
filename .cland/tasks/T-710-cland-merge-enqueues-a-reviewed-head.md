@@ -3,7 +3,7 @@ id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T10:46:26.438Z
+updated: 2026-10-18T12:22:42.376Z
 ---
 
 ## Summary
@@ -129,3 +129,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5220: exact-head A-5218 passes full hub/Neovim, 2541 pass/0 fail/8 prerequisite skips. Queue5/5, Store18/18, policy13/13, all unchanged merge-gate/recovery/checkout and corrected surface carriers pass. Eight new owned groups pass40/40 repetitions; no owned trips/hard budgets. T-797 timeout case passes0.583s. All C1–C5 verified, including Coordinator-approved Store reopen seam for C4. No findings.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-18T12:22:42.376Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-budget-integration-delta
+commit: 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5274. Authorized dev integration retains queue/landed distinction and budgetLines propagation/output. Every immediate queue-bypass landing still uses unchanged incoming squashTask, which checks immutable merged-tree budgets before ref/checkout mutation; no alternate landing path added. Incoming spoke VERSION/diagnostics and fixture admission behavior retained; queue implementation and task queue/policy/Store tests byte-identical to prior reviewed parent. A-5271 six-file serial validation summary reviewed; diff check clean. C1–C5 await fresh exact-head droplet; prior A-5218 green remains historical. No reviewer execution or new allowance.

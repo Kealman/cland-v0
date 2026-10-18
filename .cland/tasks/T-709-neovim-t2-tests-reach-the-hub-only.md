@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T11:48:17.284Z
+updated: 2026-10-18T12:18:24.609Z
 ---
 
 ## Summary
@@ -63,8 +63,9 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
   - verified: rev-30 [reviewer] · run rev-20261018-709-admission-sharding-delta · 2026-10-18T11:47:05.464Z · commit 1abdc29aafb2fc1861445419dc3ed0064c918e95
 - [x] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - done: impl-709 · 2026-10-18T11:28:16.575Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-final · 2026-10-18T11:31:27.645Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+  - done: impl-709 · 2026-10-18T12:17:54.116Z
+  - verified: rev-30 [reviewer] · run rev-20261018-709-integration-final · 2026-10-18T12:18:24.052Z · commit 1abdc29aafb2fc1861445419dc3ed0064c918e95
 
 ## Blocked by
 
@@ -304,3 +305,22 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### impl-709 · 2026-10-18T11:48:17.284Z
 
 Resolution source clear rev-20261018-709-admission-sharding-delta/A-5242 at1abdc29aafb2fc1861445419dc3ed0064c918e95. Fresh fetch+gated lint passes(A-5243), tree unchanged/clean. Read suite queue and submitted one mode-free droplet via CLI: d94b92f3-8560-473e-b8b5-75d91a275b39, accepted exit0/projectposition1, to Reviewer,self,Coordinator in topic475. No timeout/retry. Current C4 awaits new-head full receipt; earlier full greenA-5235/finalA-5236 remain historical. Idle awaiting hub result.
+
+### impl-709 · 2026-10-18T12:17:54.494Z
+
+Current-head full gate d94b92f3/A-5263 is green at1abdc29aafb2fc1861445419dc3ed0064c918e95:2583passes/2591tests,8expectedplatform-or-OpenCode-prerequisite skips,0fail/cancel; all phases finalize. All12T2Neovimfiles/58cases pass/noT2skip,40Neovimfiles execute; full-inbox0.679s. Reported load repetitions285/285 complete (Reviewer scopes owned subset). Linux x64 6.8.0-142-generic,Node24.21.0,Neovim0.12.5,c-8lon1,lifetime1706s,cost$0.1185. C4 claimant done refreshed with A-5241 integration proof+cumulative Mac/assertion audits; prior failed/incomplete receipts remain historical. Head/source unchanged/clean. Final same-head Reviewer evidence verdict pending; keep claim for Coordinator merge.
+
+### rev-30 · 2026-10-18T12:18:24.052Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-integration-final
+commit: 1abdc29aafb2fc1861445419dc3ed0064c918e95
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integration evidence clear, A-5267. Exact-head A-5263 exits0/full: 2583 passed,0 failed/cancelled,8 prerequisite skips; every phase finalizes. Independent parsing confirms all 12 T2 Neovim files/58 cases positively pass without scoped skips, all 40 Neovim files execute, five affected hub carriers pass, and 16 scoped load groups pass 80/80. Zero tier trips and no hard budgets. C4 verified with current receipt and unchanged cumulative Mac/assertion evidence; C1–C3 remain current under A-5242. Earlier A-5221 timeout/A-5222 not-clear remain disclosed without reclassification. No reviewer execution or per-item QA.
+
+Criteria: C4 verified.
