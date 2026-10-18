@@ -70,9 +70,9 @@ export type Approval = (typeof APPROVALS)[number];
 export const SANDBOX_MODES = ['read-only', 'workspace-write', 'danger-full-access'] as const;
 export const SANDBOX_NETWORKS = ['none', 'local', 'full'] as const;
 
-/** Whether a launched Claude Code session skips its permission checks (roles.toml's `permissions = "skip"`:
- *  `claude --dangerously-skip-permissions`). Adapters whose harness takes no such flag ignore it. */
-export const PERMISSIONS = ['skip'] as const;
+/** Claude Code permission mode: `auto` guards commands without per-command prompts; `skip` bypasses checks.
+ *  Codex and OpenCode ignore this setting. */
+export const PERMISSIONS = ['auto', 'skip'] as const;
 export type Permissions = (typeof PERMISSIONS)[number];
 
 /**
@@ -96,7 +96,7 @@ export type LaunchPolicy = {
   approval?: Approval | null;
   /** Absent: the harness's own sandbox. */
   sandbox?: Sandbox | null;
-  /** `skip`: the session runs with every permission check bypassed (Claude Code); absent: the harness's own settings. */
+  /** Claude Code: `auto` passes `--permission-mode auto`, `skip` bypasses checks; absent: the harness's own settings. */
   permissions?: Permissions | null;
 };
 

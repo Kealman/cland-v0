@@ -91,11 +91,17 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   // Drain hook/mod posts at each boundary so even a fast turn keeps its pushed states observable.
   const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, awaitSignals: true });
   const { discovery } = await projectHub(t, root, fake.env);
+  const rolesFile = join(root, '.cland/roles.toml');
+  await writeFile(rolesFile, (await readFile(rolesFile, 'utf8')).replace('[coordinator.launch]', '[coordinator.launch]\npermissions = "auto"'));
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 
   const launchMark = ui.frames.length;
   const launched = await launch(ui, 'coord', { role: 'coordinator', model: 'claude-fake-1' });
+  const calls = (await readFile(join(fake.home, 'invocations.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { args: string[] });
+  const bg = calls.find(c => c.args.includes('--bg'))!.args;
+  assert.equal(bg[bg.indexOf('--permission-mode') + 1], 'auto');
+  assert.ok(!bg.includes('--dangerously-skip-permissions'));
   assert.match(await hubLog(root, ui), /"event":"session-launched".*"early":1/, 'the early SessionStart was kept and replayed');
   // the session's first turn is its role clause, injected as soon as the launch's bridge and SessionStart are in
   await clauseAnswered(ui, 'coord');

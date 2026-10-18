@@ -409,6 +409,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         ...(effort ? ['--effort', effort] : []),
         // roles.toml `permissions = "skip"`: the session never stops at a permission prompt or an auto-mode classifier
         ...(permissions === 'skip' ? ['--dangerously-skip-permissions'] : []),
+        ...(permissions === 'auto' ? ['--permission-mode', 'auto'] : []),
         ...this.#sessionFlags(p.name, p.role, p.sessionId, worktree, launchToken),
       ];
       authorize();

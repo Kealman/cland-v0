@@ -27,6 +27,9 @@ test('the first OpenCode native prompt carries the role clause before the launch
   const root = await tempProject(t);
   const fake = await fakeOpenCode(t);
   const { discovery } = await projectHub(t, root, fake.env);
+  // Claude's permission mode does not change OpenCode's native launch settings.
+  const rolesFile = join(root, '.cland/roles.toml');
+  await writeFile(rolesFile, (await readFile(rolesFile, 'utf8')).replace('[implementer.launch]', '[implementer.launch]\npermissions = "auto"'));
   const ui = await connectUi(t, discovery);
   const brief = 'Build from this OpenCode launch brief.';
   const launched = await launch(ui, 'impl-brief', { role: 'implementer', brief });

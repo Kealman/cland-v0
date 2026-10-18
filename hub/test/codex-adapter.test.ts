@@ -455,6 +455,8 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   assert.deepEqual([impl.thread, impl.overrides], [{ approvalPolicy: 'never', permissions: ':danger-full-access' }, {}]);
 
   // the Reviewer: read-only, no network, so a built-in profile is enough
+  // Claude's permission mode is ignored: Codex keeps this role's approval and sandbox.
+  await writeFile(file, (await readFile(file, 'utf8')).replace('[reviewer.launch]', '[reviewer.launch]\npermissions = "auto"'));
   const rev = await started('rev-1', { role: 'reviewer' });
   assert.match(await fake.log(rev.launched.pid!), /turn\/start input effort=high/);
   assert.deepEqual([rev.thread, rev.overrides], [{ approvalPolicy: 'never', permissions: ':read-only' }, {}]);

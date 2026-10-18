@@ -16,7 +16,9 @@ export const DEFAULT_ROLES_TOML = `${MANAGED_MARK} ${VERSION}: written when the 
 #                         cland init writes no accounts.toml.
 #                         How a launched session may act, read at each launch (and relaunch). Codex takes approval and
 #                         sandbox; Claude Code takes permissions; OpenCode keeps its own settings and ignores them all:
-#                           permissions     "" (the default: the harness's own permission settings) | skip (Claude Code
+#                           permissions     "" (the default: the harness's own permission settings)
+#                                           | auto (--permission-mode auto: guarded without per-command prompts)
+#                                           | skip (Claude Code
 #                                           launches with --dangerously-skip-permissions: no permission prompts, no
 #                                           auto-mode classifier; the human's choice for a machine where that is safe)
 #                           approval        never (the default: the session never stops to ask the human; a command

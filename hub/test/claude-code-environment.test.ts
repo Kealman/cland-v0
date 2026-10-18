@@ -9,6 +9,40 @@ import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
 
+test('Claude permission flags stay exclusive across launch, fresh resume and relaunch', { timeout: 2000 }, async t => {
+  const calls: string[][] = [];
+  t.mock.method(cp, 'execFile', (_bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: null, stdout: string, stderr: string) => void) => {
+    calls.push(args);
+    queueMicrotask(() => callback(null, args[0] === 'agents' ? '[]' : 'claude attach abcdef12', ''));
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const adapter = new ClaudeCodeAdapter(host, { agentsMs: 0, env: { HOME: '/fixture/home' } });
+  try {
+    for (const permissions of ['auto', 'skip', null, undefined] as const) {
+      calls.length = 0;
+      const policy = permissions === undefined ? {} : { permissions };
+      const request = { name: 'plain', cwd: '/fixture', role: null, model: null, ...policy };
+      const launched = await adapter.spawn(request);
+      await adapter.stop(launched);
+      await adapter.spawn({ ...request, resumeConversation: 'native-conversation' });
+      const resumed = await adapter.resume({ ...launched, status: 'stopped' }, { relaunch: true, policy });
+      assert.equal(resumed.found, true);
+      const bg = calls.filter(args => args[0] === '--bg');
+      assert.equal(bg.length, 3);
+      assert.ok(!bg[0]!.includes('--resume'));
+      assert.ok(bg[1]!.includes('--resume'));
+      assert.ok(bg[2]!.includes('--resume'));
+      for (const args of bg) {
+        assert.equal(args.includes('--dangerously-skip-permissions'), permissions === 'skip');
+        assert.equal(args.includes('--permission-mode'), permissions === 'auto');
+        if (permissions === 'auto') assert.equal(args[args.indexOf('--permission-mode') + 1], 'auto');
+      }
+    }
+  } finally { adapter.close(); }
+});
+
 test('Claude environment composition preserves implicit, pathless, pinned and inherited selections (T-603)', async t => {
   const home = '/fixture/home';
   const pinned = "/fixture/account's directory";

@@ -1,13 +1,39 @@
 // T2 component: resume restores only available work, using in-process harnesses and protocol peers.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 type Resumed = { found: boolean; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; reason?: string; fresh?: { brief: string | null } };
+
+test('Claude resumes take permission policy from the current roles file', { timeout: 2000 }, async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  const fake = fakes['claude-code']!;
+  const setPermissions = (value: string) => writeFile(join(root, '.cland/roles.toml'), `[coordinator.launch]\nharness = "claude-code"\npermissions = "${value}"\n`);
+  await setPermissions('skip');
+  const launched = await ui.request({ type: 'session.launch', name: 'coord', role: 'coordinator' });
+  assert.equal(launched.ok, true, launched.error);
+  assert.equal(fake.spawns.at(-1)!.permissions, 'skip');
+  for (const mode of ['relaunch', 'fresh'] as const) {
+    assert.equal((await ui.request({ type: 'session.stop', session: 'coord' })).ok, true);
+    await setPermissions('auto');
+    const result = await ui.request({ type: 'session.resume', session: 'coord', ...(mode === 'relaunch' ? { relaunch: true } : { fresh: true }) });
+    assert.equal(result.ok, true, result.error);
+    if (mode === 'fresh') assert.equal(fake.spawns.at(-1)!.permissions, 'auto');
+    else assert.equal(fake.resumes.at(-1)!.options?.policy?.permissions, 'auto');
+    // Change away before each next operation, so a cached policy would be detectable.
+    await setPermissions('');
+    assert.equal((await ui.request({ type: 'session.stop', session: 'coord' })).ok, true);
+    const reset = await ui.request({ type: 'session.resume', session: 'coord', relaunch: true });
+    assert.equal(reset.ok, true, reset.error);
+    assert.equal(fake.resumes.at(-1)!.options?.policy?.permissions, undefined);
+  }
+});
 
 test('native and fresh resumes report unavailable claims, closed work, exclusive roles and holds', async t => {
   const root = await tempProject(t);

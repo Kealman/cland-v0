@@ -22,7 +22,7 @@ export type LaunchDefaults = {
   /** What the session's commands may touch, `writableRoots` as the file gives them (relative to the project
    *  root); null: the harness's own sandbox. Adapters whose harness takes neither ignore both. */
   sandbox: Sandbox | null;
-  /** `skip`: Claude Code launches pass `--dangerously-skip-permissions`; null: the harness's own settings. */
+  /** Claude Code: `auto` guards commands, `skip` bypasses checks; null: the harness's own settings. */
   permissions: Permissions | null;
 };
 
@@ -61,9 +61,9 @@ const optString = (v: unknown, where: string): string | null => {
  */
 const DEFAULT_WRITABLE_ROOTS: Readonly<Record<string, string[]>> = { qa: ['.cland/qa'] };
 
-const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string): T | null => {
+const oneOf = <T extends string>(v: unknown, values: readonly T[], where: string, nameEmpty = false): T | null => {
   const s = optString(v, where);
-  if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${values.join(', ')}`);
+  if (s !== null && !values.includes(s as T)) throw new Error(`${where} must be one of ${nameEmpty ? '"", ' : ''}${values.join(', ')}`);
   return s as T | null;
 };
 
@@ -143,7 +143,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null, al
         // a key left out is the role's built-in value; `""` is the adapter's or the harness's own
         approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
         sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
-        permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : launch.permissions === '' ? null : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`),
+        permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
       },
       permissions: { tools: grants(permissions.tools, role) },
     });
