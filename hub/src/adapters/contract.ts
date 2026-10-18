@@ -11,6 +11,8 @@ import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.
 export type Reliability = 'reliable' | 'heuristic' | 'none';
 
 export type Capabilities = {
+  /** OpenCode maps launch policy to permission rules without OS isolation. */
+  launchPolicy?: 'rules, not a sandbox';
   /** Optional capabilities (spec 4.3). */
   history: Reliability;
   usage: Reliability;
@@ -61,6 +63,8 @@ export type HarnessProcess = {
   pidStarted?: string | null;
   /** Warning attached to this explicit launch result. */
   warning?: string;
+  /** Effective native launch rules and fields the harness cannot enforce. */
+  launchPolicy?: { rules: Array<{ action: string; resource: string; effect: 'allow' | 'deny' | 'ask' }>; unsupported: Array<{ field: string; reason: string }>; warnings: string[] };
 };
 
 /** Whether a launched session stops to ask before a command its sandbox refuses (roles.toml's `approval`). */
@@ -71,7 +75,7 @@ export const SANDBOX_MODES = ['read-only', 'workspace-write', 'danger-full-acces
 export const SANDBOX_NETWORKS = ['none', 'local', 'full'] as const;
 
 /** Claude Code permission mode: `auto` guards commands without per-command prompts; `skip` bypasses checks.
- *  Codex and OpenCode ignore this setting. */
+ *  OpenCode maps `skip` to allow-all permission rules; Codex ignores this setting. */
 export const PERMISSIONS = ['auto', 'skip'] as const;
 export type Permissions = (typeof PERMISSIONS)[number];
 
@@ -131,7 +135,7 @@ export type SpawnRequest = LaunchPolicy & {
 /** A native sub-agent start; absent model means unreported, never the parent model. */
 export type SubagentLaunch = { id?: string; type?: string; model?: string };
 /** A harness report with optional state and launch metadata. State ordering drops older signals. */
-export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch };
+export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; moved?: { directory: string } };
 
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {

@@ -541,7 +541,7 @@ export function eventRow(r: JournalRecord, offset = ''): EventRow | null {
   else if (kind === 'task' && /plan/.test(text)) glyph = '▤';
   else if (kind === 'task' && /criterion|criteria/.test(text)) glyph = '◐';
   else if (kind === 'task' && /status/.test(text)) glyph = '◉';
-  const warning = glyph === '⚠' || kind === 'suite' && r.branch === 'dev' && glyph === '✗';
+  const warning = r.severity === 'warn' || glyph === '⚠' || kind === 'suite' && r.branch === 'dev' && glyph === '✗';
   const bookkeeping = !warning && (['session-launched', 'session-resumed', 'session-stopped', 'task-claimed'].includes(r.event) || kind === 'session' && /launched|resumed|stopped/.test(text) || kind === 'task' && /claimed|status changed|criterion|criteria/.test(text) || kind === 'topic' && /closed/.test(text));
   return { ...(warning ? { warning: true } : {}), ...(bookkeeping ? { bookkeeping: true } : {}), id: value('rowId') ?? `journal:${offset}`, ts: r.ts, kind, subject, text: text.replace(/[\r\n]+/g, ' '), glyph: warning ? '⚠' : glyph, ...(item ? { item } : {}), ...(session ? { session } : {}), ...(topic ? { topic } : {}), ...(artifact ? { artifact } : {}), [subject.kind]: subject.id };
 }

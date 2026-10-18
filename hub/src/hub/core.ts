@@ -95,7 +95,7 @@ export const TOPIC_HISTORY_LIMIT = 200;
 
 type DefaultItem = Pick<ItemSummary, 'id' | 'state' | 'parent' | 'claim'>;
 
-type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; verdict?: Pick<Verdict, 'verdict' | 'result' | 'run'>; ready?: boolean; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' };
+type EventContext = { role?: string | null; item?: string | null; ancestry?: string[]; final?: boolean; taskChange?: 'status' | 'verdict'; verdict?: Pick<Verdict, 'verdict' | 'result' | 'run'>; ready?: boolean; severity?: 'warn'; lifecycle?: 'died' | 'stopped' | 'waiting for approval' | 'long idle' | 'moved' };
 
 export type Connection = {
   name: string;
@@ -826,7 +826,7 @@ export class HubCore {
         recipients.set(name, 'now');
       }
     }
-    if (session && (facts.lifecycle === 'long idle' || facts.lifecycle === 'died' || facts.lifecycle === 'stopped')) {
+    if (session && (facts.lifecycle === 'long idle' || facts.lifecycle === 'died' || facts.lifecycle === 'stopped' || facts.lifecycle === 'moved')) {
       const sessionId = this.sessionIdentity(`name:${session}`);
       const items = this.#defaultItemSet();
       for (const item of items.values()) {
@@ -859,7 +859,7 @@ export class HubCore {
       }
       // All modes and recipient counts join the same commit before any observer can bind a digest.
       for (const [digest, to] of groups) {
-        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.verdict ? { verdict: context.verdict.verdict, result: context.verdict.result, run: context.verdict.run } : {}), ...(context.lifecycle ? { lifecycle: context.lifecycle } : {}), ...(context.final ? { final: true } : {}) } }, defaultRecipients);
+        const message = this.#recordNotice(AGENTS.id, { kind: 'event', to, text: body, detail: { event, subject, key, digest, count: 1, ...(context.verdict ? { verdict: context.verdict.verdict, result: context.verdict.result, run: context.verdict.run } : {}), ...(context.lifecycle ? { lifecycle: context.lifecycle } : {}), ...(context.severity ? { severity: context.severity } : {}), ...(context.final ? { final: true } : {}) } }, defaultRecipients);
         if (!message) continue;
         this.#afterCommit(() => this.#emitMessage(message));
         for (const name of to) this.#afterCommit(() => { this.#send(message, name); });

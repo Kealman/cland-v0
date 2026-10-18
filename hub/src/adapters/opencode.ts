@@ -24,10 +24,11 @@ import type { Resumed } from '../hub/worktrees.ts';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
-import { dirname } from 'node:path';
+import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
-import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
+import { sessionPolicy } from './opencode/policy.ts';
 import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef, type PermissionRequest, type ServerEvent } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
@@ -42,6 +43,7 @@ export const OPENCODE = 'opencode';
 export const OPENCODE_CLAUSE_AT_SPAWN = false;
 
 export const OPENCODE_CAPABILITIES: Capabilities = {
+  launchPolicy: 'rules, not a sandbox',
   // the session's messages are readable (`GET /api/session/{id}/message`), but cland does not read them in v0
   history: 'none',
   // `session.step.ended` carries each assistant message's tokens and cost
@@ -155,7 +157,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     return { $schema: 'https://opencode.ai/config.json', mcp: { servers: { cland: { type: 'local', command: [this.#host.node, this.#host.spoke], environment } } } };
   }
 
-  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv'>, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
+  async #launch(p: Pick<HarnessProcess, 'name' | 'role' | 'model' | 'cwd' | 'sessionId' | 'harnessSessionId' | 'account' | 'accountEnv' | 'item' | 'effort'> & LaunchPolicy, relaunch: boolean, resumed: Resumed = untimed, launchToken?: string, authorize: () => void = () => {}, retainConversation = false): Promise<HarnessProcess> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, HarnessProcess, unknown> {
       this.#recoveries.assertAvailable(p.name, p.sessionId);
       p = { ...p, accountEnv: p.accountEnv ?? { OPENCODE_DB: clandOpenCodeDatabase(this.#processEnv) } };
@@ -169,6 +171,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         pid = started.pid;
         const { url } = started;
         const client = new OpenCodeClient(url, password);
+        const policy = { ...sessionPolicy(p), warnings: [] as string[] };
         let model: ModelRef | null = p.model ? parseModel(p.model) : null;
         let session = p.harnessSessionId ? yield* wait(client.session(p.harnessSessionId)) : null;
         if (relaunch && !session) throw new Error(`cannot resume OpenCode conversation ${p.harnessSessionId}: session not found`);
@@ -190,13 +193,22 @@ export class OpenCodeAdapter implements HarnessAdapter {
         if (!session) {
           if (!model)
             model = yield* wait(this.#freeModel(client, resumed));
+          if (p.effort && !model?.variant) {
+            const models = yield* wait(client.models().catch(() => null));
+            const entry = models?.find(entry => entry.providerID === model?.providerID && entry.id === model.id);
+            if (model && entry?.variants?.some(variant => variant.id === p.effort)) model = { ...model, variant: p.effort };
+            else policy.warnings.push(`effort ${p.effort}: ${model ? formatModel(model) : 'the default model'} has no matching catalog variant${models === null ? ' (catalog unavailable)' : ''}; using no variant`);
+          }
           authorize();
-          session = yield* wait(client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd }));
+          session = yield* wait(client.createSession({ ...(p.harnessSessionId ? { id: p.harnessSessionId } : {}), title: p.name, model, directory: p.cwd, permissions: policy.rules }));
+        } else {
+          policy.rules = session.permissions ?? [];
+          policy.warnings.push('Existing conversation retains its native permission rules and model variant');
         }
         const chosen = session.model ? formatModel(session.model) : model ? formatModel(model) : p.model;
-        this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, database: openCodeDatabase(p.accountEnv ?? {}), relaunch });
+        this.#host.log({ event: 'harness-launched', harness: this.harness, session: p.name, url, pid, harnessSessionId: session.id, model: chosen, database: openCodeDatabase(p.accountEnv ?? {}), policy, relaunch });
         transaction.commit();
-        return { ...p, harness: this.harness, model: chosen ?? null, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
+        return { ...p, harness: this.harness, model: chosen ?? null, launchPolicy: policy, pid, harnessId: url, harnessSessionId: session.id, startedAt: new Date().toISOString(), status: 'running' };
       } catch (err) {
         // a server whose session could not be made is of no use: it does not outlive the failed launch
         return yield* wait(this.#recoveries.failed(p.sessionId, p.name, transaction, err, () => {}));
@@ -235,7 +247,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   spawn(request: SpawnRequest, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<HarnessProcess> {
-    return this.#launch({ account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
+    return this.#launch({ account: request.account ?? null, accountEnv: request.accountEnv ?? null, name: request.name, role: request.role, model: request.model, cwd: request.cwd, sessionId: request.sessionId ?? randomUUID(), harnessSessionId: request.resumeConversation ?? null, item: request.item ?? null, effort: request.effort ?? null, approval: request.approval ?? null, sandbox: request.sandbox ?? null, permissions: request.permissions ?? null }, false, resumed, request.launchToken, authorize, request.resumeConversation !== undefined);
   }
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
@@ -386,6 +398,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
             snapshotEvents?.push(e);
             // An admission can queue the next turn: only delivered inbox items fed this execution.
             const d = e.data ?? {};
+            if (e.type === 'session.moved' && d.sessionID === w.tracker.sessionId && w.process.item) {
+              const location = d.location as { directory?: unknown } | undefined;
+              if (typeof location?.directory === 'string') {
+                const directory = resolve(location.directory, typeof d.subpath === 'string' ? d.subpath : '');
+                const path = relative(w.process.cwd, directory);
+                if (path === '..' || path.startsWith('../') || isAbsolute(path)) this.#host.signal(w.process.sessionId, { source: 'sse', at: e.created ?? this.#clock.now().getTime(), moved: { directory } });
+              }
+            }
             if (e.type === 'session.created' && d.parentID === w.tracker.sessionId) {
               const model = d.model as ModelRef | undefined;
               if (typeof d.sessionID === 'string' && !w.children.has(d.sessionID)) {
@@ -510,7 +530,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     }
   }
 
-  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; resumed?: Resumed } = {}): Promise<ResumeResult> {
+  async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: OpenCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
       this.#recoveries.assertAvailable(p.name, p.sessionId);
@@ -542,7 +562,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       if (!options.relaunch)
         return { found: false, reason };
       yield* wait(this.stop(p, options.resumed));
-      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId }, true, resumed, undefined, options.authorize));
+      const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, true, resumed, undefined, options.authorize));
       return { found: true, process: process_, state: 'unknown' as SessionState };
     }).call(this), options.resumed ?? untimed);
   }

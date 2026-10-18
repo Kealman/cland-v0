@@ -2,17 +2,18 @@
 // user `opencode` and the server's password, and its server-sent event stream (`GET /api/event`).
 // Only the routes the adapter uses (verified against the OpenAPI document of opencode v2.0.24).
 
-/** A model as OpenCode names it: `{providerID, id}`; cland writes it `<providerID>/<id>`. */
-export type ModelRef = { providerID: string; id: string };
+/** OpenCode's model reference; cland writes `<providerID>/<id>#<variant>` when a variant is selected. */
+export type ModelRef = { providerID: string; id: string; variant?: string };
 
 /** One entry of `GET /api/model`: only the fields the adapter reads. */
-export type ModelEntry = { id: string; providerID: string; status?: string; enabled?: boolean; capabilities?: { tools?: boolean }; cost?: Array<{ input?: number; output?: number }> };
+export type ModelEntry = { id: string; providerID: string; variants?: Array<{ id: string }>; status?: string; enabled?: boolean; capabilities?: { tools?: boolean }; cost?: Array<{ input?: number; output?: number }> };
 
 /** One event of the stream: `data: {id, type, created, location?, data}`. */
 export type ServerEvent = { id?: string; type: string; created?: number; data?: Record<string, unknown> };
 
 /** Pending permission data shared by the SSE event and permission list. */
 export type PermissionRequest = { id: string; action?: unknown; source?: unknown };
+export type PermissionRule = { action: string; resource: string; effect: 'allow' | 'deny' | 'ask' };
 
 const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 
@@ -51,9 +52,9 @@ export class OpenCodeClient {
   }
 
   /** `GET /api/session/{id}`: the session, or null when the server does not know it. */
-  async session(id: string): Promise<{ id: string; title?: string; model?: ModelRef; location?: { directory: string } } | null> {
+  async session(id: string): Promise<{ id: string; title?: string; model?: ModelRef; permissions?: PermissionRule[]; location?: { directory: string } } | null> {
     try {
-      return (await this.request<{ data: { id: string; title?: string; model?: ModelRef; location?: { directory: string } } }>('GET', `/api/session/${encodeURIComponent(id)}`)).data;
+      return (await this.request<{ data: { id: string; title?: string; model?: ModelRef; permissions?: PermissionRule[]; location?: { directory: string } } }>('GET', `/api/session/${encodeURIComponent(id)}`)).data;
     } catch (err) {
       if (err instanceof HttpError && err.status === 404) return null;
       throw err;
@@ -64,12 +65,13 @@ export class OpenCodeClient {
     await this.request('POST', `/api/session/${encodeURIComponent(id)}/move`, { directory, delivery: 'queue' });
   }
 
-  async createSession(body: { id?: string; title: string; model: ModelRef | null; directory: string }): Promise<{ id: string; model?: ModelRef }> {
+  async createSession(body: { id?: string; title: string; model: ModelRef | null; directory: string; permissions?: PermissionRule[] }): Promise<{ id: string; model?: ModelRef }> {
     const r = await this.request<{ data: { id: string; model?: ModelRef } }>('POST', '/api/session', {
       ...(body.id ? { id: body.id } : {}),
       title: body.title,
       ...(body.model ? { model: body.model } : {}),
       location: { directory: body.directory },
+      ...(body.permissions?.length ? { permissions: body.permissions } : {}),
     });
     return r.data;
   }
@@ -158,11 +160,14 @@ export class OpenCodeClient {
 
 /** `<providerID>/<id>` (the provider is everything before the first `/`; a bare id is OpenCode Zen's). */
 export function parseModel(model: string): ModelRef {
+  const hash = model.lastIndexOf('#');
+  const variant = hash >= 0 ? model.slice(hash + 1) : undefined;
+  if (hash >= 0) model = model.slice(0, hash);
   const slash = model.indexOf('/');
-  return slash > 0 ? { providerID: model.slice(0, slash), id: model.slice(slash + 1) } : { providerID: 'opencode', id: model };
+  return { ...(slash > 0 ? { providerID: model.slice(0, slash), id: model.slice(slash + 1) } : { providerID: 'opencode', id: model }), ...(variant ? { variant } : {}) };
 }
 
-export const formatModel = (m: ModelRef): string => `${m.providerID}/${m.id}`;
+export const formatModel = (m: ModelRef): string => `${m.providerID}/${m.id}${m.variant ? `#${m.variant}` : ''}`;
 
 export const KNOWN_GOOD_FREE_MODELS = ['opencode/big-pickle'];
 

@@ -256,3 +256,27 @@ test('instruction cleanup refusal leaves delivery unconfirmed until a completed 
   assert.equal(f.native.instruction, undefined);
   await eventually('retried revocation injected', async () => (await records()).some(e => e.event === 'injected' && e.id === failed.id) || undefined);
 });
+
+
+test('an OpenCode session moved outside its item worktree warns its supervising lead', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t, false, true);
+  for (const directory of [f.root, `${f.root}/inside`]) f.native.emit('session.moved', { location: { directory } });
+  f.native.emit('session.moved', { sessionID: 'unrelated', location: { directory: '/elsewhere' } });
+  f.native.emit('session.moved', { location: { directory: `${f.root}-outside` } });
+  const events = await eventually('move warning reaches events view', async () => {
+    const result = (await f.ui.request({ type: 'events.list' })).value as { rows: Array<{ text: string; warning?: boolean }> };
+    return result.rows.some(row => row.text.includes('moved outside')) ? result.rows : undefined;
+  });
+  const warning = events.filter(row => row.text.includes('moved outside'));
+  assert.equal(warning.length, 1);
+  assert.equal(warning[0]!.warning, true);
+  const history = (await f.ui.request({ type: 'topic.history', topic: 'agents' })).value as { messages: Message[] };
+  const notice = history.messages.find(m => m.text.includes('moved outside'));
+  assert.deepEqual(notice?.to, ['coord']);
+  assert.equal(notice?.severity, 'warn');
+  await f.peer.call('send', { to: ['coord'], text: 'move observation barrier' });
+  await f.coord.waitForEvent(e => e.params.content.includes('move observation barrier'));
+  const delivered = await f.coord.waitForEvent(e => e.params.content.includes('moved outside'));
+  assert.match(delivered.params.content, /moved outside/);
+  assert.match(delivered.params.content, /-outside/);
+});

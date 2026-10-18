@@ -299,14 +299,14 @@ One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (th
 | --- | --- | --- | --- |
 | Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | none given | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
 | Lead (one per node) | claude-code, `claude-fable-5-1`, effort `max` | none given | handover, merge |
-| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | `never`; `danger-full-access` (applied when it is launched on Codex) | implement, tdd, diagnosing-bugs |
+| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | `never`; `danger-full-access` | implement, tdd, diagnosing-bugs |
 | Reviewer | codex, `gpt-6.1-sol`, effort `high` | `never`; `read-only` | code-review |
 | QA | codex, `gpt-6-astra`, effort `high` | `never`; `danger-full-access` | diagnosing-bugs |
 | Aide (non-exclusive) | claude-code, the human's configured model (no `model` key; set one to override), effort `max` | `never`; `danger-full-access` | none |
 
 The human decided on 2026-10-09 (T-65) that every session of every harness must be able to do any work its role needs. Implementer and QA therefore default to full access with no approval prompts, the equivalent of Claude Code's auto mode. Reviewer stays read-only with no network.
 
-How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). They belong to the role, whatever harness a launch names (the model and effort are the role's harness's only). The Codex adapter applies it (The Codex adapter, below); Claude Code and OpenCode keep their own permission settings and ignore these keys.
+How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). They belong to the role, whatever harness a launch names (the model and effort are the role's harness's only). The Codex adapter applies it as a sandbox (The Codex adapter, below). OpenCode maps it to per-session permission rules at creation (The OpenCode adapter, below). Claude Code uses its own permission settings and the `permissions` launch key.
 
 | Key | Values | Meaning |
 | --- | --- | --- |
@@ -314,7 +314,7 @@ How a launched session may act is read from `[<role>.launch]` at each launch, an
 | `sandbox` | `read-only`, `workspace-write`, `danger-full-access`; `""`: the harness's own | What the session's commands may write: nothing; the session's cwd and the temp dir; or anything (no sandbox). |
 | `writable_roots` | a list of directories, relative to the project root; needs `workspace-write` | More writable directories. One that holds a `.git` directory is writable with it, and with the session's own git directory when that lies there (a worktree's `.git/worktrees/<name>`): this is what lets a session in a worktree commit. |
 | `network` | `none`, `local`, `full`; needs a sandbox | `local`: Unix sockets under the project's `.cland/`, the session's cwd and the temp dir, and loopback, so `cland` reaches the hub and tests start their own hubs; every other host is refused. `full`: the whole network. |
-| `permissions` | `skip`; `""`: the harness's own settings | Claude Code only: `skip` launches (and relaunches) the session with `--dangerously-skip-permissions`, so it never stops at a permission prompt or an auto-mode classifier. Codex and OpenCode ignore it. |
+| `permissions` | `skip`; `""`: the harness's own settings | Claude Code only: `skip` launches (and relaunches) the session with `--dangerously-skip-permissions`, so it never stops at a permission prompt or an auto-mode classifier. OpenCode maps `skip` to allow-all rules, subject to the item rule below; Codex ignores it. |
 
 A key the table leaves out takes the role's built-in value from the table above, key by key, so a `[<role>.launch]` written before these keys existed still launches with its role's approval and sandbox defaults; only a written value overrides, and `""` asks for none. Inherited roots apply only to `workspace-write`, and `danger-full-access` closes no network. The Coordinator has no built-in values. A wrong value, `writable_roots` with a sandbox that is not `workspace-write`, or `network` or `writable_roots` with `sandbox = ""` makes the file unreadable, as any other mistake in it. `cland role list` shows each role's values. `docs/review-and-qa.md` ("The Codex sandbox") says what each role's sandbox allows, what it cannot, and why.
 
@@ -1294,6 +1294,41 @@ The adapter follows OpenCode 2.x. Doctor passes versions in `src/doctor/ranges.t
 
 Doctor reports warnings for each role configured on OpenCode: free model selection (including the default) may train on the code it sees, and OpenCode has no OS sandbox. Permission rules do not isolate host processes. These warnings never refuse a launch. The shipped role clauses keep a session in its item's worktree and forbid using `session_move` or `worktree_create` to leave it; request a handover from the item lead instead.
 
+The adapter declares `launchPolicy: "rules, not a sandbox"`. The following table maps
+`roles.toml` policy onto the ordered `permissions` array of `POST /api/session`.
+V2 rules have `{action, resource, effect}` fields; the last matching rule wins.
+The `edit` action covers edit, write and patch tools. These rules do not isolate
+shell processes or provide network controls.
+
+| Launch field | OpenCode session rules |
+| --- | --- |
+| `approval = "never"` | Allow the sandbox's permitted actions and deny its external-directory remainder; no permission prompt. |
+| `approval = "on-request"` | Allow permitted actions; ask for the external-directory remainder of `workspace-write`. Explicit read-only edit denials remain denials. |
+| `approval = "untrusted"` | As on-request, with every `shell` resource set to `ask`. |
+| `sandbox = "read-only"` | Start with allow-all, then deny `edit` on `*`. This covers edit/write/patch tools; shell authority is unchanged. |
+| `sandbox = "workspace-write"` | Start with allow-all, then deny (or ask, per approval above) `external_directory` on `*`; allow `<cwd>/*` and each absolute `writable_roots` directory followed by `/*`. |
+| `sandbox = "danger-full-access"` | Allow all actions and resources, subject to untrusted shell approvals and the item rule. |
+| `sandbox = ""` | Leave OpenCode's sandbox rules alone; explicit approval, permissions and item rules still apply. |
+| `network` | No counterpart. The launch record names the requested setting and missing network isolation. |
+| `permissions = "skip"` | Allow all actions and resources, overriding approval and sandbox rules; the item rule still applies. Claude Code's `auto` setting has no OpenCode counterpart. |
+| item (D8) | Append external-directory denials outside the item's cwd, plus edit denials for canonical absolute paths and parent-relative paths outside it. Roots outside the item stay denied even with skip. These directory rules also restrict external reads. |
+| `effort` | Select the matching variant id from that model's `GET /api/model` entry. If absent or the catalog is unavailable, select no variant and warn in the launch record. |
+| `provider/model#variant` | Send `{providerID: "provider", id: "model", variant: "variant"}`. An explicit variant wins over effort without a catalog lookup. |
+
+Both the adapter's `harness-launched` log and the durable `session-launched`
+journal record carry `policy.rules`, `policy.unsupported` (each field and reason)
+and `policy.warnings`. Sandbox isolation, network, Claude Code auto permissions
+and Code Mode's item-rule gap are recorded where requested. Retained native
+conversations keep their existing rules and model variant; their launch record
+reads those rules back instead of claiming a new policy was applied.
+
+`session.moved` is watched for item-bound sessions. A destination outside the
+item's original cwd (including a sibling with the same prefix) produces a
+warn-level lifecycle event for the supervising Lead, falling back to the
+Coordinator, and a warning in the events view. Moves within the item and events
+for other native sessions do not warn. Code Mode's `worktree_create` and
+`session_move` request no permission, so the clause remains part of D8.
+
 The cland MCP server keeps OpenCode's default CodeMode setting: the E-424 send experiment did not justify disabling it.
 
 The experimental adapter option `roleInstructions` (or `CLAND_OPENCODE_ROLE_INSTRUCTIONS=1` on the hub) defaults to off. When enabled, a hub role clause goes into the durable `cland-role` instruction entry, replacing the previous assignment or revocation. A bundled launch brief still arrives as a prompt. If the instruction PUT fails, the adapter must confirm deletion of the `cland-role` entry before falling back to the ordinary message path and logging `opencode-instructions-fallback`. If deletion fails, delivery stays unconfirmed for retry; it never acknowledges fallback while an old role instruction may remain. Adoption awaits the human's decision after the E-424 forced-compaction experiment.
@@ -1302,7 +1337,7 @@ Without an explicit model, launch polls `GET /api/model` every 200 ms: a cold ca
 
 | | Surface (OpenCode 2.0.24) |
 | --- | --- |
-| spawn | A standalone `opencode serve --hostname 127.0.0.1 --port 0` per session, detached, in the session's cwd; the url comes from its `server listening on …` line. The spoke is a local MCP server of a generated config passed as `OPENCODE_CONFIG` (`mcp.servers.cland: {type: local, command, environment}` with the same `CLAND_*` variables as Claude Code's), and the server gets a password of its own as `OPENCODE_PASSWORD`. Both live in `.cland/opencode/<name>/` (`opencode.json`, `password` mode 600, `serve.log`), which a `.gitignore` of its own (`*`) keeps out of the repository. Then `POST /api/session {title, model, location}`. The model is `<provider>/<id>` (`opencode/big-pickle`); without one, a free model of `GET /api/model` (zero input/output price, tools supported, enabled and active). The known-good preference list is `opencode/big-pickle`; if it is not offered free, use the first free OpenCode Zen model, else the first free model from another provider. Selection is deterministic and makes no launch-time probe request; a listed model that later fails is reported as a failed turn. The row keeps the server's pid, its url as `harnessId` and the `ses_…` id as `harnessSessionId`. The server starts its MCP servers when the session is created, so the spoke connects right after the launch. |
+| spawn | A standalone `opencode serve --hostname 127.0.0.1 --port <chosen-port>` per session, detached, in the session's cwd; readiness comes from authenticated `GET /api/session/active`, with logs used only to explain failures. The spoke is a local MCP server of a generated config passed as `OPENCODE_CONFIG` (`mcp.servers.cland: {type: local, command, environment}` with the same `CLAND_*` variables as Claude Code's), and the server gets a password of its own as `OPENCODE_PASSWORD`. Both live in `.cland/opencode/<name>/` (`opencode.json`, `password` mode 600, `serve.log`), which a `.gitignore` of its own (`*`) keeps out of the repository. Then `POST /api/session {title, model, location, permissions}`. The model is `<provider>/<id>` (`opencode/big-pickle`); without one, a free model of `GET /api/model` (zero input/output price, tools supported, enabled and active). The known-good preference list is `opencode/big-pickle`; if it is not offered free, use the first free OpenCode Zen model, else the first free model from another provider. Selection is deterministic and makes no launch-time probe request; a listed model that later fails is reported as a failed turn. The row keeps the server's pid, its url as `harnessId` and the `ses_…` id as `harnessSessionId`. The server starts its MCP servers when the session is created, so the spoke connects right after the launch. |
 | attach | `OPENCODE_PASSWORD="$(cat <password file>)" opencode --server <url> --session <ses_…> <cwd>`: the OpenCode TUI as one more client of the session's server, in the session's directory. The password never appears on a command line. The directory matters: the server keeps one instance per directory its clients work in, and each instance starts the configured MCP servers, so a TUI in another directory would start a second spoke under the session's id, which replaces the spoke the session's tool calls go through (found in the T-42 run). Closing the TUI (or Neovim) leaves the server and the session running. |
 | inject | `POST /api/session/{id}/prompt {text, delivery}` with the envelope as text: `steer` while the session runs a turn (it joins the turn at the next step boundary), `queue` otherwise. The reply is the durably admitted inbox item (`msg_…`), which confirms `injected`. A failed or timed-out request leaves the message `delivered` for the retry at the next `idle`. |
 | state | `GET /api/event` (SSE), one subscription per server, re-opened with backoff while the session is watched; each time it opens, a snapshot (`GET /api/session/active`, `GET /api/session/{id}/permission`, `GET /api/session/{id}/form`), since the stream is live-only. `session.execution.started` → `busy`; `.succeeded`, `.failed`, `.interrupted` → `idle`; `permission.asked` → `waiting for approval` until `permission.replied`, with `approvalCommand` read from the permission's source tool part (`GET /api/session/{id}/message/{messageID}`): the shell command for a finished `shell` tool input, the tool name otherwise, the permission's `action` when the source is missing or unreadable (no other tool input leaves the adapter); `form.created` → `waiting for human` until `form.replied` or `form.cancelled`. A pending approval outranks a pending form, which outranks a running turn. States reach the hub with source `sse`. A stream that ends with its server, or a pid gone at the `CLAND_ADAPTER_POLL_MS` check, is `unknown`. |

@@ -938,7 +938,7 @@ export class Sessions {
         if (reservation) this.#core.launchSettled(request.name);
         this.#lastAt.delete(p.sessionId);
         this.#lastPush.delete(p.sessionId);
-        this.#log({ event: 'session-launched', account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
+        this.#log({ event: 'session-launched', ...(p.launchPolicy ? { policy: p.launchPolicy } : {}), account: p.account ?? null, ...(p.harness === 'opencode' && p.accountEnv ? { database: openCodeDatabase(p.accountEnv) } : {}), session: p.name, harness: p.harness, pid: p.pid, harnessId: p.harnessId, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, model: p.model, effort, role: p.role, cwd: p.cwd, ...(p.item ? { item: p.item } : {}), early: this.#launching.get(p.name)?.length ?? 0 });
         adapter.watch(p);
         const hit = this.#earlyLimitHits.get(p.sessionId);
         this.#earlyLimitHits.delete(p.sessionId);
@@ -1180,7 +1180,7 @@ export class Sessions {
       const current = row();
       const process: HarnessProcess = { ...found.process, name: current.name, role: current.role, item: current.item ?? null, launchBrief: current.launchBrief ?? null, effort: current.effort ?? null, pidStarted, stoppedAt: null, archivedAt: null, archivedBy: null };
       this.#table.put(process);
-      this.#log({ event: 'session-launched', account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
+      this.#log({ event: 'session-launched', ...(process.launchPolicy ? { policy: process.launchPolicy } : {}), account: process.account ?? null, ...(process.harness === 'opencode' && process.accountEnv ? { database: openCodeDatabase(process.accountEnv) } : {}), session: process.name, sessionId: process.sessionId, harness: process.harness, harnessSessionId: process.harnessSessionId, harnessId: process.harnessId, pid: process.pid, model: process.model, effort: process.effort ?? null, role: process.role, cwd: process.cwd, ...(process.item ? { item: process.item } : {}), resumed: true });
       if (current.archivedAt) this.#log({ event: 'session-unarchived', session: process.name, sessionId: process.sessionId, by: current.archivedBy, reason: 'resume' });
       adapter.watch(process);
       this.#core.publishProcess(this.view(process));
@@ -1335,6 +1335,7 @@ export class Sessions {
   #signal(sessionId: string, signal: StateSignal, push: boolean): boolean {
     const p = this.#table.bySessionId(sessionId);
     if (!p || p.status !== 'running') return false;
+    if (signal.moved && p.item) this.#core.publishEvent({ session: p.name }, 'session.state', `${this.#core.label(p.name)} moved outside its item worktree ${p.cwd} to ${signal.moved.directory}`, { item: p.item, lifecycle: 'moved', severity: 'warn' });
     this.#recordHarness(p, signal);
     if (!signal.state) return Boolean(signal.model || signal.subagent);
     // Native adapter signals and injection retries stay in the transport time domain.

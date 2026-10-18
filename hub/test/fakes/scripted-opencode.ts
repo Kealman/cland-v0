@@ -117,7 +117,7 @@ export class ScriptedOpenCode {
   }
 }
 
-export async function scriptedOpenCode(t: TestContext, roleInstructions = false) {
+export async function scriptedOpenCode(t: TestContext, roleInstructions = false, withItem = false) {
   const root = await tempProject(t);
   const clock = new FakeClock();
   const native = new ScriptedOpenCode();
@@ -148,14 +148,16 @@ export async function scriptedOpenCode(t: TestContext, roleInstructions = false)
   }] });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  assert.equal((await ui.request({ type: 'session.launch', harness: 'opencode', name: 'impl', role: 'implementer' })).ok, true);
+  const created = withItem ? await ui.request({ type: 'task.create', title: 'OpenCode item', kind: 'epic' }) : null;
+  const item = created ? (created.value as { item: { id: string } }).item.id : undefined;
+  assert.equal((await ui.request({ type: 'session.launch', harness: 'opencode', name: 'impl', role: withItem ? 'lead' : 'implementer', ...(item ? { item } : {}) })).ok, true);
   await eventually('native snapshot applied', () => native.reconnected === 1 || undefined);
-  const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: process.sessionId, ...(launchToken ? { launchToken } : {}) });
+  const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', assignRole: false, sessionId: process.sessionId, ...(launchToken ? { launchToken } : {}) });
   await peer.waitForPresence(['impl']);
   await peer.waitForEvent(e => e.params.meta?.kind === 'role');
-  const sender = await inProcessSpoke(t, { discover: true, cwd: root, name: 'sender', role: 'reviewer' });
+  const sender = await inProcessSpoke(t, { discover: true, cwd: root, name: 'sender', role: 'reviewer', sessionId: 'scripted-sender' });
   await sender.waitForPresence(['sender']);
-  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'scripted-coord' });
   await coord.waitForPresence(['coord']);
   async function records() {
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
