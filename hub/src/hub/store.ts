@@ -372,8 +372,8 @@ export class Store implements HygieneMemory {
   }
 
 
-  constructor(path: string = ':memory:') {
-    this.#db = new DatabaseSync(path);
+  constructor(path: string = ':memory:', open = (path: string) => new DatabaseSync(path)) {
+    this.#db = open(path);
     // Init/update can open the live hub's store while it is committing a write.
     this.#db.exec('pragma busy_timeout = 5000;');
     this.#db.function('item_number', { deterministic: true }, raw => {

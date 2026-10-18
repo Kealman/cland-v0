@@ -1,0 +1,216 @@
+// T2: indexed query budgets through real frames and fixture-owned SQLite tracing.
+import { sqliteProbe } from './sqlite-probe.ts';
+import { FakeClock } from './fake-clock.ts';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { PassThrough } from 'node:stream';
+import { DatabaseSync } from 'node:sqlite';
+import { Store } from '../src/hub/store.ts';
+import { ProcessTable } from '../src/adapters/processes.ts';
+import type { Dispatcher } from '../src/hub/dispatch.ts';
+import { createStdioEdge } from '../src/hub/stdio.ts';
+import { connectUi, eventually, projectHub, tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
+import type { Inbox } from '../src/protocol.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
+
+const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+function pipe(daemon: { dispatcher: Pick<Dispatcher, 'open'> }) {
+  const input = new PassThrough(), output = new PassThrough();
+  const frames: Array<Record<string, unknown>> = [];
+  let pending = '';
+  const waiters = new Map<string, (frame: Record<string, unknown>) => void>();
+  output.setEncoding('utf8');
+  output.on('data', (text: string) => {
+    pending += text;
+    let at: number;
+    while ((at = pending.indexOf('\n')) >= 0) {
+      const frame = JSON.parse(pending.slice(0, at)) as Record<string, unknown>;
+      frames.push(frame);
+      const done = typeof frame.id === 'string' ? waiters.get(frame.id) : undefined;
+      if (done) { waiters.delete(frame.id as string); done(frame); }
+      pending = pending.slice(at + 1);
+    }
+  });
+  createStdioEdge({ input, output, dispatcher: daemon.dispatcher, onEnd: () => {} });
+  return { frames, request: (frame: Record<string, unknown> & { id: string }) => new Promise<Record<string, unknown>>(resolve => {
+    waiters.set(frame.id, resolve); input.write(JSON.stringify(frame) + '\n');
+  }), send: (frame: Record<string, unknown>) => input.write(JSON.stringify(frame) + '\n'),
+    batch: (batch: Array<Record<string, unknown>>) => input.write(batch.map(f => JSON.stringify(f)).join('\n') + '\n'),
+    close: () => { input.end(); output.end(); } };
+}
+
+
+/** Same query-budget proof at merge-path and soak scales. */
+export async function archiveWorkload(t: import('node:test').TestContext, scale: { items: number; messages: number; processes: number; events: number }) {
+  const database = sqliteProbe();
+  const clock = new FakeClock();
+  const root = await tempProject(t, 'cland-archive-work-'), db = join(root, '.cland', 'hub.db');
+  let stop = async () => {};
+  onCleanup(t, () => stop());
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "1s"\narchive_after_stop = "1s"\n');
+  const tracker = new Tracker({ root, db });
+  const actor = { id: 'human', name: 'human', role: null, human: true };
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await Promise.all(Array.from({ length: scale.items }, (_, i) => writeFile(join(root, '.cland/tasks', `T-${i + 1}-retained.md`), `---\nid: T-${i + 1}\nkind: task\ntitle: Retained item ${i}\nstate: open\n---\n`)));
+  await tracker.rescanAsync();
+  await tracker.stop();
+  const seed = new Store(db), ts = new Date(clock.now().getTime() - 86400000).toISOString();
+  seed.transaction(() => {
+    for (let i = 0; i < scale.messages; i++) seed.record({ id: `old-${i}`, from: 'old', fromKind: 'agent', via: 'session', to: [], text: 'Retained message', ts }, [], Date.now());
+  });
+  seed.close();
+  const processes = new ProcessTable(db);
+  for (let i = 0; i < scale.processes; i++) processes.put({ name: `old-${i}`, harness: 'claude-code', role: 'implementer', item: 'T-1', model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-id-${i}`, harnessSessionId: null, startedAt: ts, stoppedAt: ts, status: 'stopped' });
+  processes.close();
+  const prepare = database.prepare;
+  let batches = 0, lifecycleLookups = 0, archiveCounts = 0;
+  // A native tracer counts queries without retaining node:test's per-call stack/arguments on this large store.
+  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+    if (args[0].startsWith('update harness_processes set archived_at')) batches++;
+    // The lifecycle lookup now prefers the frontmatter column before its receipt fallback.
+    if (args[0].includes('coalesce(i.closed, m.merged_at')) lifecycleLookups++;
+    if (args[0] === 'select count(*) as n from harness_processes where archived_at is not null') archiveCounts++;
+    return prepare.apply(this, args);
+  });
+  const records: Array<Record<string, unknown>> = [];
+  let turn = 0;
+  let turnTimer: ReturnType<typeof setImmediate>;
+  const nextTurn = () => { turn++; turnTimer = setImmediate(nextTurn); };
+  nextTurn();
+  onCleanup(t, () => clearImmediate(turnTimer));
+  const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: entry => records.push({ ...entry, turn }) });
+  const human = pipe(daemon), verifier = pipe(daemon);
+  stop = async () => { human.close(); verifier.close(); await daemon.stop(); };
+  await tick();
+  const startup = records.filter(r => r.event === 'session-archive-sweep');
+  assert.equal(startup.length, 1, 'one sweep at startup');
+  assert.deepEqual([startup[0]!.rows, startup[0]!.archived, startup[0]!.batches], [scale.processes, scale.processes, 1]);
+  assert.equal(batches, 1, 'one native archive batch for every due row');
+  assert.equal(lifecycleLookups, 1, 'one indexed item timestamp lookup for a shared item');
+  assert.equal(archiveCounts, 1, 'one authoritative count scan for the whole startup batch');
+  human.send({ type: 'hello', protocol: 2, client: 'ui' });
+  const archived = await human.request({ type: 'session.list', id: 'archive', archived: true });
+  assert.equal((archived.value as { archived: number }).archived, scale.processes);
+  assert.ok((archived.value as { processes: HarnessProcessView[] }).processes.every(p => p.archivedBy === 'rule'));
+  await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' });
+  verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
+  await eventually('verifier connected', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
+  await tick();
+  const before = records.filter(r => r.event === 'session-archive-sweep').length;
+  verifier.batch(Array.from({ length: scale.events }, (_, i) => ({ type: 'task.hold', id: `hold-${i}`, item: `T-${i + 1}`, release: true })));
+  await eventually('all protocol holds committed', () => verifier.frames.filter(f => f.type === 'result' && String(f.id).startsWith('hold-')).length === scale.events || undefined);
+  await tick();
+  assert.equal(records.filter(r => r.event === 'session-archive-sweep').length - before, 1, 'all item events in one input chunk coalesce into one sweep');
+  // Fixtures represent live, unconnected harness rows with no OS process, so stop needs no external process.
+  const live = new ProcessTable(db);
+  for (let i = 0; i < 8; i++) live.put({ name: `new-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `new-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
+  live.close();
+  const beforeStops = records.filter(r => r.event === 'session-archive-sweep').length;
+  human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `new-${i}` })));
+  await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
+  const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
+  assert.ok(stopped.every(f => f.ok), `stop frames succeeded: ${JSON.stringify(stopped.find(f => !f.ok))}`);
+  await tick();
+  const sweeps = records.filter(r => r.event === 'session-archive-sweep').slice(beforeStops);
+  assert.ok(sweeps.length > 0, 'stops trigger cleanup');
+  assert.equal(sweeps.length, new Set(sweeps.map(r => r.turn)).size, 'asynchronous stops produce at most one sweep in each event-loop tick');
+}
+
+/** The same startup query-plan and coalescing proof at component and load scales. */
+export async function inboxStartupWorkload(t: import('node:test').TestContext, scale: { processes: number; messagePairs: number; requests: number; events: number; turns: number }) {
+  const database = sqliteProbe();
+  const clock = new FakeClock();
+  const root = await tempProject(t, 'cland-inbox-work-'), db = join(root, '.cland', 'hub.db');
+  let stop = async () => {};
+  onCleanup(t, () => stop());
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const seed = new Store(db), ts = clock.now().toISOString();
+  seed.createTopic('history', 'Answered history', null, ts);
+  seed.createTopic('requests', 'Replied requests', null, ts);
+  seed.createTopic('replies', 'Explicit replies', null, ts);
+  seed.transaction(() => {
+    for (let i = 0; i < scale.messagePairs; i++) {
+      seed.record({ id: `report-${i}`, topic: 'history', from: 'aide', fromKind: 'agent', fromRole: 'aide', via: 'session', to: [], text: `Report ${i}`, ts }, [], Date.now());
+      seed.record({ id: `answer-${i}`, topic: 'history', from: 'human', fromKind: 'human', via: 'session', to: [], text: `Answer ${i}`, ts }, [], Date.now());
+    }
+    for (let i = 0; i < scale.requests; i++) {
+      seed.record({ id: `request-${i}`, topic: 'requests', from: 'aide', fromKind: 'agent', fromRole: 'aide', via: 'session', to: [], kind: 'request', request: 'review', subject: 'remembered-0', text: `Request ${i}`, ts }, [], Date.now());
+      seed.record({ id: `reply-${i}`, topic: 'replies', from: 'human', fromKind: 'human', via: 'session', to: [], replyTo: `request-${i}`, text: `Reply ${i}`, ts }, [], Date.now());
+    }
+  });
+  seed.close();
+  const processes = new ProcessTable(db);
+  for (let i = 0; i < scale.processes; i++) processes.put({ name: `remembered-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-${i}`, harnessSessionId: null, startedAt: ts, status: 'stopped' });
+  processes.close();
+
+  let queries = 0, candidateRows = 0, inboxSql = '', topicSql = '';
+  const prepare = database.prepare;
+  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+    const sql = args[0], statement = prepare.apply(this, args);
+    if (sql.includes('order by standing desc')) topicSql = sql;
+    if (sql.startsWith('with latest_messages as')) {
+      queries++;
+      inboxSql = sql;
+      const all = statement.all;
+      t.mock.method(statement, 'all', function(this: typeof statement, ...bindings: Parameters<typeof all>) {
+        const rows = all.apply(this, bindings);
+        candidateRows = rows.length;
+        return rows;
+      });
+    }
+    return statement;
+  });
+  const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: () => {} });
+  const clients: Array<() => void> = [];
+  stop = async () => { for (const close of clients) close(); await daemon.stop(); };
+  const atServing = queries;
+  t.diagnostic(`startup inbox queries at serving: ${atServing}`);
+  assert.ok(atServing <= 3, `startup recomputed the inbox ${atServing} times for ${scale.processes} remembered processes`);
+  await clock.advance(250);
+  await eventually('initial inbox publication', () => queries > 0 || undefined);
+  assert.ok(queries <= 3, `startup and its first publication used ${queries} inbox queries`);
+  assert.ok(queries > 0, 'the native tracer saw an actual inbox query');
+  assert.ok(daemon.discovery);
+  const ui = await connectUi(t, daemon.discovery);
+  clients.push(() => ui.close());
+  const snapshot = await ui.request({ type: 'inbox.list' });
+  assert.equal(snapshot.ok, true, snapshot.error);
+  assert.equal((snapshot.value as Inbox).needsYou, 0, 'same-topic answers and cross-topic explicit replies leave no waiting rows');
+  assert.ok(candidateRows <= 3, `a settled snapshot materialized ${candidateRows} retained candidates instead of current topic ends`);
+  const planner = new DatabaseSync(db, { readOnly: true });
+  try {
+    for (const [name, sql] of [['inbox', inboxSql], ['topics', topicSql]]) {
+      assert.ok(sql, `${name} was observed at the protocol boundary`);
+      const plan = planner.prepare( `explain query plan ${sql}`).all() as Array<{ detail: string }>;
+      t.diagnostic(`${name} query plan: ${JSON.stringify(plan.map(row => row.detail))}`);
+      assert.ok(!plan.some(row => /^SCAN [mh](?: |$)/.test(row.detail)), `${name} scans retained message history`);
+    }
+  } finally { planner.close(); }
+  const client = pipe(daemon);
+  clients.push(() => client.close());
+  client.send({ type: 'hello', protocol: 2, client: 'ui' });
+  assert.equal(client.frames[0]?.type, 'welcome');
+  await tick();
+  for (let batch = 0; batch < 2; batch++) {
+    const before = queries, frameCount = client.frames.length;
+    client.batch(Array.from({ length: scale.events }, (_, i) => ({ type: 'topic.read', id: `read-${batch}-${i}`, topic: 'history', upTo: `answer-${i + batch * scale.events}` })));
+    const replies = client.frames.slice(frameCount).filter(f => f.type === 'result');
+    assert.equal(replies.length, scale.events, 'all event-producing writes completed in this input chunk');
+    assert.ok(replies.every(f => f.ok === true));
+    assert.equal(queries, before, 'no full inbox query runs synchronously per event');
+    const started = clock.now().getTime();
+    for (let turn = 0; turn < scale.turns; turn++) {
+      client.send({ type: 'topic.read', id: `turn-${batch}-${turn}`, topic: 'history', upTo: `answer-${turn}` });
+      await tick();
+    }
+    const allowance = Math.ceil((clock.now().getTime() - started) / 250) + 1;
+    assert.ok(queries - before <= allowance, `cross-turn burst used ${queries - before} inbox rebuilds (budget ${allowance})`);
+    await clock.advance(250);
+    await eventually('coalesced inbox rebuild', () => queries > before || undefined);
+  }
+}

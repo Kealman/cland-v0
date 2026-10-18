@@ -120,9 +120,9 @@ export class ProcessTable {
   readonly #db: DatabaseSync;
   readonly #listeners = new Set<(process: HarnessProcess, archived: number) => void>();
 
-  constructor(path: string = ':memory:', clock: Clock = realClock) {
+  constructor(path: string = ':memory:', clock: Clock = realClock, open = (path: string) => new DatabaseSync(path)) {
     this.#clock = clock;
-    this.#db = new DatabaseSync(path);
+    this.#db = open(path);
     this.#db.exec('pragma journal_mode = wal; pragma busy_timeout = 2000;');
     this.#db.exec(SCHEMA);
     // additive, as the store's own migrations: a table written before the column existed grows in place

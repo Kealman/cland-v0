@@ -1,11 +1,12 @@
+// T2: reservation rules through native SQLite and real frames; fixture-owned faults.
+import { sqliteProbe } from './sqlite-probe.ts';
 import { FakeClock } from './fake-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { processStartedAsync } from '../src/hub/lock.ts';
+import { readFile, writeFile } from 'node:fs/promises';
 import { Sessions } from '../src/adapters/sessions.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import { Store } from '../src/hub/store.ts';
@@ -15,17 +16,18 @@ import { fixedRoles } from '../src/roles/config.ts';
 import type { Subscription } from '../src/protocol.ts';
 import type { LogFn } from '../src/log.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { inProcessSpoke, connectSocket, connectUi, eventually, spawnSpoke, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { inProcessSpoke, connectSocket, connectUi, eventually, startHub, tempProject, TEST_SECRET } from './harness.ts';
 
-const nativePrepare = DatabaseSync.prototype.prepare;
 
 async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
+  const database = sqliteProbe();
+  const nativePrepare = database.prepare;
   const root = await tempProject(t);
   const clock = new FakeClock();
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), now: () => clock.now() });
+  const tracker = new Tracker({ git: async () => null, openDatabase: database.open, root, db: join(root, '.cland', 'hub.db'), clock });
   tracker.start();
   onCleanup(t, () => tracker.stop());
-  const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db')), roles: fixedRoles(), clock, retentionMs: 1, ...(log ? { log } : {}) });
+  const hub = await startHub({ tracker, store: new Store(join(root, '.cland', 'hub.db'), database.open), roles: fixedRoles(), clock, retentionMs: 1, ...(log ? { log } : {}) });
   let hubClosed = false;
   const closeHub = async () => { if (hubClosed) return; hubClosed = true; await hub.close(); };
   onCleanup(t, closeHub);
@@ -37,7 +39,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const made = await ui.request({ size: 'M', type: 'task.create', title: 'Pending claimant', assignee: 'session-1' });
   const item = (made.value as { item: { id: string } }).item.id;
   assert.equal((await ui.request({ type: 'task.claim', item, as: { name: 'session-1' } })).ok, true);
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  database.mock(t, function (this: DatabaseSync, sql: string) {
     if (faultAdoption && sql.startsWith('update tracker_written_verdicts set session_id')) throw new Error('adoption deliberately failed');
     return nativePrepare.call(this, sql);
   });
@@ -51,8 +53,9 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   hub.core.prune(); // The existing daily retention job: the alias outlives the old name's traffic.
   assert.equal(hub.core.store.sessionNames().includes('session-1'), false);
 
-  const table = new ProcessTable(join(root, '.cland', 'hub.db'));
-  const sessions = new Sessions({ root, core: hub.core, table, ...(log ? { log } : {}) });
+  const table = new ProcessTable(join(root, '.cland', 'hub.db'), clock, database.open);
+  const probes = { started: async (_pid: number): Promise<string | null> => 'current-start', rows: async () => [{ pid: process.pid, parent: 0, group: 0, started: 'current-start', state: 'S', command: 'fixture' }] };
+  const sessions = new Sessions({ processStarted: pid => probes.started(pid), processRows: async () => probes.rows(), root, core: hub.core, table, ...(log ? { log } : {}) });
   let sessionsClosed = false;
   const closeSessions = () => { if (sessionsClosed) return; sessionsClosed = true; sessions.close(); table.close(); };
   onCleanup(t, closeSessions);
@@ -85,7 +88,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
     assert.deepEqual((sent.value as { message: { to: string[] } }).message.to, ['renamed']);
     await owner.waitForEvent(e => e.params.content.includes('Still for the original claimant'));
   };
-  return { clock, closeHub, closeSessions, root, edge, tracker, table, watched, ui, owner, item, hub, sessions, hello, openHello, launch, remainsOwner, starts };
+  return { probes, database, clock, closeHub, closeSessions, root, edge, tracker, table, watched, ui, owner, item, hub, sessions, hello, openHello, launch, remainsOwner, starts };
 }
 
 test('unnamed hellos keep a published launch identity and skip a pruned pending alias when allocating a name', async t => {
@@ -118,7 +121,7 @@ test('rename refuses another identity’s pending alias', async t => {
   const f = await pendingAlias(t);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'renamed', role: 'implementer' })).ok, true);
   assert.equal((await f.ui.request({ type: 'role.set', session: 'other', role: 'coordinator' })).ok, true);
-  const other = await spawnSpoke({ hub: f.hub, name: 'other', sessionId: 'other-id' });
+  const other = await inProcessSpoke(t, { hub: f.hub, name: 'other', sessionId: 'other-id' });
   onCleanup(t, () => other.close());
   await other.waitForPresence(['renamed', 'other']);
   const refused = await other.call<{ ok: boolean; error: string }>('rename', { name: 'session-1' });
@@ -141,8 +144,8 @@ for (const role of ['implementer', null]) {
 test('rename still refuses a live destination when two connections present the same session id', async t => {
   const hub = await startHub();
   onCleanup(t, () => hub.close());
-  const first = await spawnSpoke({ hub, name: 'first', role: 'coordinator', sessionId: 'shared-id' });
-  const second = await spawnSpoke({ hub, name: 'second', role: 'coordinator', sessionId: 'shared-id' });
+  const first = await inProcessSpoke(t, { hub, name: 'first', role: 'coordinator', sessionId: 'shared-id' });
+  const second = await inProcessSpoke(t, { hub, name: 'second', role: 'coordinator', sessionId: 'shared-id' });
   onCleanup(t, () => first.close()); onCleanup(t, () => second.close());
   await first.waitForPresence(['first', 'second']);
   const renamed = await first.call<{ ok: boolean; error: string }>('rename', { name: 'second' });
@@ -244,19 +247,11 @@ test('a reconnectable offline identity is fenced while its next launch awaits th
   client.close();
   await client.closed;
   await eventually('historic target disconnected', () => !f.hub.core.presence().some(s => s.name === 'target') || undefined);
-  const bin = join(f.root, 'pid-probe-bin');
-  await mkdir(bin);
-  await writeFile(join(bin, 'ps'), '#!/bin/sh\n: > "$CLAND_TEST_PRIOR_PID_GATE/entered"\nwhile [ ! -f "$CLAND_TEST_PRIOR_PID_GATE/release" ]; do /bin/sleep 0.02; done\nexec /bin/ps "$@"\n');
-  await chmod(join(bin, 'ps'), 0o755);
-  const previousPath = process.env.PATH;
-  const previousGate = process.env.CLAND_TEST_PRIOR_PID_GATE;
-  process.env.PATH = `${bin}:${previousPath}`;
-  process.env.CLAND_TEST_PRIOR_PID_GATE = bin;
-  onCleanup(t, () => {
-    process.env.PATH = previousPath;
-    if (previousGate === undefined) delete process.env.CLAND_TEST_PRIOR_PID_GATE;
-    else process.env.CLAND_TEST_PRIOR_PID_GATE = previousGate;
-  });
+  let entered!: () => void, releaseProbe!: () => void;
+  const probingStarted = new Promise<void>(done => { entered = done; });
+  const probeReleased = new Promise<void>(done => { releaseProbe = done; });
+  onCleanup(t, releaseProbe);
+  f.probes.started = async () => { entered(); await probeReleased; return 'current-start'; };
   const adapter = f.sessions.adapter('test');
   f.sessions.register({ ...adapter, spawn: async (request, resumed) => ({ ...await adapter.spawn(request, resumed), pid: process.pid, pidStarted: null }) });
   const { started, release } = deferSpawn(t, f.sessions);
@@ -264,9 +259,9 @@ test('a reconnectable offline identity is fenced while its next launch awaits th
   await Promise.race([started, launching.then(result => { assert.fail(JSON.stringify(result)); })]);
   const changing = await f.ui.request({ type: 'role.clear', session: 'target' });
   release();
-  await eventually('native pid probe entered', () => readFile(join(bin, 'entered')).then(() => true, () => undefined));
+  await probingStarted;
   const probing = await f.ui.request({ type: 'role.clear', session: 'target' });
-  await writeFile(join(bin, 'release'), '');
+  releaseProbe();
   assert.equal((await launching).ok, true);
   for (const result of [changing, probing]) {
     assert.equal(result.ok, false);
@@ -332,6 +327,7 @@ test('conflict cleanup preserves an owner who disconnects while the spawned proc
   release();
   await stopping;
   await f.owner.close();
+  await eventually('owner disconnect observed', () => !f.hub.core.presence().some(p => p.name === 'target') || undefined);
   assert.equal(f.hub.core.presence().some(p => p.name === 'target'), false);
   finishStop();
   const refused = await launching;
@@ -524,24 +520,28 @@ test('a credentialed anonymous first hello after acceptance binds to the publish
   assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' })).ok, true, 'accepted ownership binding is outside the pending fence');
 });
 
-for (const carried of [false, true]) for (const first of ['hello', 'acceptance'] as const) test(`a launch records exactly one role notice when ${first} comes first${carried ? ' with the clause carried at spawn' : ''}`, async t => {
+test('first-role notice permutations share one pending-alias fixture', async t => {
   const events: Array<Record<string, unknown>> = [];
   const record = agentsRecord();
   const f = await pendingAlias(t, record.tap(event => { events.push(event); }));
   record.attach(f.hub.core);
-  f.sessions.register({ ...f.sessions.adapter('test'), clauseAtSpawn: carried });
+  const adapter = f.sessions.adapter('test');
+  let cell = 0;
+  for (const carried of [false, true]) for (const first of ['hello', 'acceptance'] as const) {
+    const target = `target-${++cell}`;
+    await t.test(`case ${cell}`, async t => {  f.sessions.register({ ...adapter, clauseAtSpawn: carried });
   const { started, release, credential } = deferSpawn(t, f.sessions);
-  const launching = f.launch('target');
+  const launching = f.launch(target);
   await started;
   const notices = async () => {
     const history = await f.ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
     assert.equal(history.ok, true, history.error);
     return (history.value as { messages: Array<{ kind?: string; text: string }> }).messages
-      .filter(m => m.kind === 'role-assign' && m.text.startsWith('target took Implementer at launch'));
+      .filter(m => m.kind === 'role-assign' && m.text.startsWith(`${target} took Implementer at launch`));
   };
   let connection: Awaited<ReturnType<typeof f.openHello>>;
   if (first === 'hello') {
-    connection = await f.openHello('launched:target', 'target', credential());
+    connection = await f.openHello(`launched:${target}`, target, credential());
     assert.equal(connection.welcome.type, 'welcome');
     const earlyNotices = await notices();
     release();
@@ -551,60 +551,81 @@ for (const carried of [false, true]) for (const first of ['hello', 'acceptance']
     release();
     assert.equal((await launching).ok, true);
     assert.equal((await notices()).length, 1, 'acceptance publishes its grant without waiting for hello');
-    connection = await f.openHello('launched:target', 'target', credential());
+    connection = await f.openHello(`launched:${target}`, target, credential());
     assert.equal(connection.welcome.type, 'welcome');
   }
   // A live join and an offline reconnect cannot repeat the first-role grant or notice.
-  const joined = await f.openHello('launched:target', 'target', credential());
+  const joined = await f.openHello(`launched:${target}`, target, credential());
   assert.equal(joined.welcome.type, 'welcome');
   connection.client.close();
   joined.client.close();
   await Promise.all([connection.client.closed, joined.client.closed]);
-  await eventually('launched target disconnected', () => !f.hub.core.presence().some(s => s.name === 'target') || undefined);
-  assert.equal((await f.hello('launched:target', 'target', credential())).type, 'welcome');
+  await eventually('launched target disconnected', () => !f.hub.core.presence().some(s => s.name === target) || undefined);
+  assert.equal((await f.hello(`launched:${target}`, target, credential())).type, 'welcome');
   assert.equal((await notices()).length, 1);
-  assert.equal(events.filter(e => e.event === 'role-taken-at-launch' && e.session === 'target').length, 1);
+  assert.equal(events.filter(e => e.event === 'role-taken-at-launch' && e.session === target).length, 1);
+
+    });
+  }
 });
 
-for (const joined of [false, true]) test(`an accepted first-role credential cannot overwrite a later human grant${joined ? ' after a credentialed join' : ''}`, async t => {
+test('accepted credentials preserve subsequent human grants across join permutations', async t => {
   const f = await pendingAlias(t);
+  const adapter = f.sessions.adapter('test');
+  let cell = 0;
+  for (const joined of [false, true]) {
+    const target = `target-${++cell}`;
+    await t.test(`case ${cell}`, async t => {
+  f.sessions.register(adapter);
   const { started, release, credential } = deferSpawn(t, f.sessions);
-  const launching = f.launch('target');
+  const launching = f.launch(target);
   await started;
   release();
   assert.equal((await launching).ok, true);
   if (joined) {
-    const first = await f.openHello('launched:target', 'target');
-    const additional = await f.openHello('launched:target', 'target', credential());
+    const first = await f.openHello(`launched:${target}`, target);
+    const additional = await f.openHello(`launched:${target}`, target, credential());
     assert.equal(first.welcome.type, 'welcome');
     assert.equal(additional.welcome.type, 'welcome');
     first.client.close();
     additional.client.close();
     await Promise.all([first.client.closed, additional.client.closed]);
-    await eventually('accepted joined session disconnected', () => !f.hub.core.presence().some(s => s.name === 'target') || undefined);
+    await eventually('accepted joined session disconnected', () => !f.hub.core.presence().some(s => s.name === target) || undefined);
   }
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' })).ok, true);
-  assert.equal((await f.hello('launched:target', 'target', credential())).type, 'welcome');
-  assert.equal(f.hub.core.store.roleOf('target'), 'reviewer');
-  assert.equal(f.hub.core.presence().find(s => s.name === 'target')?.role, 'reviewer');
-  assert.equal(f.table.get('target')?.role, 'reviewer');
+  assert.equal((await f.ui.request({ type: 'role.set', session: target, role: 'reviewer' })).ok, true);
+  assert.equal((await f.hello(`launched:${target}`, target, credential())).type, 'welcome');
+  assert.equal(f.hub.core.store.roleOf(target), 'reviewer');
+  assert.equal(f.hub.core.presence().find(s => s.name === target)?.role, 'reviewer');
+  assert.equal(f.table.get(target)?.role, 'reviewer');
+
+    });
+  }
 });
 
-for (const changed of ['reviewer', null]) test(`a first launch hello preserves a human ${changed ?? 'clear'} while spawn is pending`, async t => {
+test('pending first-hello permutations preserve human role changes', async t => {
   const f = await pendingAlias(t);
+  const adapter = f.sessions.adapter('test');
+  let cell = 0;
+  for (const changed of ['reviewer', null]) {
+    const target = `target-${++cell}`;
+    await t.test(`case ${cell}`, async t => {
+  f.sessions.register(adapter);
   const { started, release, credential } = deferSpawn(t, f.sessions);
-  const launching = f.launch('target');
+  const launching = f.launch(target);
   await started;
-  const update = changed === null ? { type: 'role.clear' as const, session: 'target' } : { type: 'role.set' as const, session: 'target', role: changed };
+  const update = changed === null ? { type: 'role.clear' as const, session: target } : { type: 'role.set' as const, session: target, role: changed };
   assert.equal((await f.ui.request(update)).ok, true);
-  const hello = await f.hello('launched:target', 'target', credential());
+  const hello = await f.hello(`launched:${target}`, target, credential());
   release();
   assert.equal((await launching).ok, true);
   assert.equal(hello.type, changed === null ? 'error' : 'welcome');
   if (changed === null) assert.equal(hello.code, 'no-role');
-  assert.equal(f.hub.core.store.roleOf('target'), changed);
-  assert.equal(f.hub.core.presence().find(s => s.name === 'target')?.role ?? null, changed);
-  assert.equal(f.table.get('target')?.role, changed, 'acceptance retains the human role for later reconnects');
+  assert.equal(f.hub.core.store.roleOf(target), changed);
+  assert.equal(f.hub.core.presence().find(s => s.name === target)?.role ?? null, changed);
+  assert.equal(f.table.get(target)?.role, changed, 'acceptance retains the human role for later reconnects');
+
+    });
+  }
 });
 
 test('a credentialed foreign live join adds no launch proof and keeps its role after spawn rejection', async t => {
@@ -669,8 +690,8 @@ test('a refused anonymous hello cannot leave uncommitted rollback provenance for
   const launching = f.launch('target');
   await started;
   assert.equal((await f.hello('unknown', 'wrong-name', credential())).type, 'error');
-  const prepare = DatabaseSync.prototype.prepare;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  const prepare = f.database.prepare;
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     if (sql.startsWith('insert into harness_processes')) throw new Error('publication refused');
     return prepare.call(this, sql);
   });
@@ -740,19 +761,11 @@ for (const returnedId of ['foreign-id', 'unknown']) test(`an anonymous credentia
   foreign.client.close();
   await foreign.client.closed;
   await eventually('foreign target offline', () => !f.hub.core.presence().some(s => s.name === 'target') || undefined);
-  const bin = join(f.root, 'pid-probe-bin');
-  await mkdir(bin);
-  await writeFile(join(bin, 'ps'), '#!/bin/sh\n: > "$CLAND_TEST_PRIOR_PID_GATE/entered"\nwhile [ ! -f "$CLAND_TEST_PRIOR_PID_GATE/release" ]; do /bin/sleep 0.02; done\nexec /bin/ps "$@"\n');
-  await chmod(join(bin, 'ps'), 0o755);
-  const previousPath = process.env.PATH;
-  const previousGate = process.env.CLAND_TEST_PRIOR_PID_GATE;
-  process.env.PATH = `${bin}:${previousPath}`;
-  process.env.CLAND_TEST_PRIOR_PID_GATE = bin;
-  onCleanup(t, () => {
-    process.env.PATH = previousPath;
-    if (previousGate === undefined) delete process.env.CLAND_TEST_PRIOR_PID_GATE;
-    else process.env.CLAND_TEST_PRIOR_PID_GATE = previousGate;
-  });
+  let entered!: () => void, releaseProbe!: () => void;
+  const probingStarted = new Promise<void>(done => { entered = done; });
+  const probeReleased = new Promise<void>(done => { releaseProbe = done; });
+  onCleanup(t, releaseProbe);
+  f.probes.started = async () => { entered(); await probeReleased; return 'current-start'; };
   const adapter = f.sessions.adapter('test');
   let credential: string | undefined;
   f.sessions.register({ ...adapter, spawn: async request => {
@@ -760,38 +773,47 @@ for (const returnedId of ['foreign-id', 'unknown']) test(`an anonymous credentia
     return { ...await adapter.spawn(request), sessionId: returnedId, pid: process.pid, pidStarted: null };
   } });
   const launching = f.launch('target');
-  await eventually('returned identity PID probe entered', () => readFile(join(bin, 'entered')).then(() => true, () => undefined));
+  await probingStarted;
   assert.ok(credential);
   const hello = await f.hello('unknown', 'target', credential);
-  await writeFile(join(bin, 'release'), '');
+  releaseProbe();
   assert.equal((await launching).ok, false);
   assert.equal(f.hub.core.store.roleOf('target'), 'implementer');
   assert.equal(hello.type, 'error');
   assert.match(String(hello.message), returnedId === 'unknown' ? /stable session identity.*unknown/ : /pre-existing.*foreign-id/);
 });
 
-for (const priorId of ['prior-id', 'unknown']) for (const returnedId of ['prior-id', 'unknown']) test(`invalid returned ${returnedId} restores Reviewer to prior ${priorId}`, async t => {
+test('invalid returned identity permutations restore the prior Reviewer', async t => {
   const f = await pendingAlias(t);
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' })).ok, true);
-  const prior = await f.openHello(priorId, 'target');
-  assert.equal(prior.welcome.type, 'welcome');
-  prior.client.close();
-  await prior.client.closed;
-  await eventually('prior Reviewer offline', () => !f.hub.core.presence().some(s => s.name === 'target') || undefined);
-  // A non-UNKNOWN returned id is invalid only when it already exists at admission.
-  if (priorId === 'unknown' && returnedId === 'prior-id') {
-    assert.equal((await f.ui.request({ type: 'role.set', session: 'other', role: 'implementer' })).ok, true);
-    assert.equal((await f.hello('prior-id', 'other')).type, 'welcome');
-  }
   const adapter = f.sessions.adapter('test');
+  let cell = 0;
+  for (const prior of ['prior-id', 'unknown']) for (const returned of ['prior-id', 'unknown']) {
+    const target = `target-${++cell}`;
+    await t.test(`case ${cell}`, async t => {
+  const priorId = prior === 'unknown' ? prior : `prior-id-${cell}`;
+  const returnedId = returned === 'unknown' ? returned : `prior-id-${cell}`;
+  assert.equal((await f.ui.request({ type: 'role.set', session: target, role: 'reviewer' })).ok, true);
+  const previous = await f.openHello(priorId, target);
+  assert.equal(previous.welcome.type, 'welcome');
+  previous.client.close();
+  await previous.client.closed;
+  await eventually('prior Reviewer offline', () => !f.hub.core.presence().some(s => s.name === target) || undefined);
+  // A non-UNKNOWN returned id is invalid only when it already exists at admission.
+  if (prior === 'unknown' && returned === 'prior-id') {
+    assert.equal((await f.ui.request({ type: 'role.set', session: `other-${cell}`, role: 'implementer' })).ok, true);
+    assert.equal((await f.hello(returnedId, `other-${cell}`)).type, 'welcome');
+  }
   f.sessions.register({ ...adapter, spawn: async request => ({ ...await adapter.spawn(request), sessionId: returnedId }) });
-  const refused = await f.launch('target');
+  const refused = await f.launch(target);
   assert.equal(refused.ok, false);
-  assert.equal(f.hub.core.store.roleOf('target'), 'reviewer');
+  assert.equal(f.hub.core.store.roleOf(target), 'reviewer');
   assert.deepEqual(f.table.pendingStops(), []);
-  assert.equal(f.table.get('target'), null);
-  assert.equal((await f.hello(priorId, 'target')).type, 'welcome');
-  assert.equal(f.hub.core.presence().find(s => s.name === 'target')?.role, 'reviewer');
+  assert.equal(f.table.get(target), null);
+  assert.equal((await f.hello(priorId, target)).type, 'welcome');
+  assert.equal(f.hub.core.presence().find(s => s.name === target)?.role, 'reviewer');
+
+    });
+  }
 });
 
 test('spawn rejection revokes its early hello grant by stable identity and releases the mutation fence', async t => {
@@ -805,7 +827,7 @@ test('spawn rejection revokes its early hello grant by stable identity and relea
   const launching = f.launch('target');
   await started;
   assert.ok(launchToken, 'the hub gave the adapter a launch credential');
-  const target = await spawnSpoke({ hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken });
+  const target = await inProcessSpoke(t, { hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken });
   onCleanup(t, () => target.close());
   await target.waitForPresence(['renamed', 'target']);
   const changing = await f.ui.request({ type: 'role.set', session: 'target', role: 'reviewer' });
@@ -841,8 +863,8 @@ test('spawn rejection of an unknown early hello cannot roll back another unknown
 
 test('process publication failure still stops and supervises the returned process', async t => {
   const f = await pendingAlias(t);
-  const prepare = DatabaseSync.prototype.prepare;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  const prepare = f.database.prepare;
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     if (sql.startsWith('insert into harness_processes')) throw new Error('process publication deliberately failed');
     return prepare.call(this, sql);
   });
@@ -900,7 +922,7 @@ test('a rollback logger failure cannot suppress committed revocation and role pu
   f.sessions.register({ ...f.sessions.adapter('test'), watch: () => { throw new Error('watch failed after publication'); } });
   const launching = f.launch('target');
   await started;
-  const target = await spawnSpoke({ hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken: credential() });
+  const target = await inProcessSpoke(t, { hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken: credential() });
   onCleanup(t, () => target.close());
   await target.waitForPresence(['renamed', 'target']);
   release();
@@ -951,7 +973,7 @@ test('an early-connected failed launch cannot rename while its stop is pending',
   f.sessions.register({ ...f.sessions.adapter('test'), watch: () => { throw new Error('watch failed after publication'); } });
   const launching = f.launch('target', 'coordinator');
   await started;
-  const target = await spawnSpoke({ hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken: credential() });
+  const target = await inProcessSpoke(t, { hub: f.hub, name: 'target', sessionId: 'launched:target', launchToken: credential() });
   onCleanup(t, () => target.close());
   await target.waitForPresence(['renamed', 'target']);
   const early = await target.call<{ ok: boolean; error: string }>('rename', { name: 'early-renamed' });
@@ -983,8 +1005,8 @@ test('an unpublished row failure preserves the prior identity and its claimant l
   const item = (made.value as { item: { id: string } }).item.id;
   const claim = await f.ui.request({ type: 'task.claim', item, as: { name: 'target' } });
   assert.equal(claim.ok, true, claim.error);
-  const prepare = DatabaseSync.prototype.prepare;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  const prepare = f.database.prepare;
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     if (sql.startsWith('insert into harness_processes')) throw new Error('unpublished row failed');
     return prepare.call(this, sql);
   });
@@ -1005,8 +1027,8 @@ test('an unpublished row failure ends proven early subscriber ownership', async 
   const welcome = await f.hello('launched:target', 'target', credential());
   assert.equal(welcome.type, 'welcome');
   assert.equal((await f.ui.request({ type: 'event.subscribe', as: { name: 'target' }, subject: { role: 'reviewer' }, events: ['session.state'] })).ok, true);
-  const prepare = DatabaseSync.prototype.prepare;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  const prepare = f.database.prepare;
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     if (sql.startsWith('insert into harness_processes')) throw new Error('unpublished row failed');
     return prepare.call(this, sql);
   });
@@ -1065,9 +1087,9 @@ test('failed publication retains recovery when accepted-row removal fails after 
     if (process.status === 'running') throw new Error('committed publication observer failed');
   });
   onCleanup(t, unsubscribe);
-  const prepare = DatabaseSync.prototype.prepare;
+  const prepare = f.database.prepare;
   let refuseRemoval = true;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     if (refuseRemoval && sql === 'delete from harness_processes where session_id = ?') throw new Error('row removal deliberately failed');
     return prepare.call(this, sql);
   });
@@ -1104,9 +1126,9 @@ test('completed cleanup stages survive receipt-clear failure and do not roll bac
     if (process.status === 'running') throw new Error('committed publication observer failed');
   });
   onCleanup(t, unsubscribe);
-  const prepare = DatabaseSync.prototype.prepare;
+  const prepare = f.database.prepare;
   let refuseClear = true;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     if (refuseClear && sql === 'delete from harness_pending_stops where session_id = ?') throw new Error('receipt clear deliberately failed');
     return prepare.call(this, sql);
   });
@@ -1160,16 +1182,16 @@ async function restartPending(t: TestContext, f: Awaited<ReturnType<typeof pendi
   await f.closeHub();
   await f.tracker.stop();
   const db = join(f.root, '.cland', 'hub.db');
-  const tracker = new Tracker({ root: f.root, db, now: () => f.clock.now() });
+  const tracker = new Tracker({ git: async () => null, openDatabase: f.database.open, root: f.root, db, clock: f.clock });
   tracker.start();
   onCleanup(t, () => tracker.stop());
-  const hub = await startHub({ tracker, store: new Store(db), roles: fixedRoles(), clock: f.clock });
+  const hub = await startHub({ tracker, store: new Store(db, f.database.open), roles: fixedRoles(), clock: f.clock });
   onCleanup(t, () => hub.close());
   const socket = join(f.root, 'hub.sock');
   const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
   onCleanup(t, () => edge.close());
-  const table = new ProcessTable(db);
-  const sessions = new Sessions({ root: f.root, core: hub.core, table });
+  const table = new ProcessTable(db, f.clock, f.database.open);
+  const sessions = new Sessions({ processStarted: pid => f.probes.started(pid), processRows: async () => f.probes.rows(), root: f.root, core: hub.core, table });
   onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const stopped: string[] = [];
   const watched: string[] = [];
@@ -1192,9 +1214,9 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
   for (const subject of [{ session: 'target' }, { role: 'implementer' }]) {
     assert.equal((await f.owner.call<{ ok: boolean }>('subscribe', { subject, events: ['session.state'] })).ok, true);
   }
-  const prepare = DatabaseSync.prototype.prepare;
+  const prepare = f.database.prepare;
   let fault = true;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+  f.database.mock(t, function (this: DatabaseSync, sql: string) {
     const statement = prepare.call(this, sql);
     if (sql.startsWith('insert into meta')) {
       const run = statement.run.bind(statement);
@@ -1230,7 +1252,7 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
   await r.sessions.resumeAll();
   await r.sessions.resumeAll();
   assert.deepEqual(r.stopped, [], 'already verified stop is never replayed');
-  const owner = await spawnSpoke({ hub: r.hub, name: 'renamed', sessionId: 'owner-id' });
+  const owner = await inProcessSpoke(t, { hub: r.hub, name: 'renamed', sessionId: 'owner-id' });
   onCleanup(t, () => owner.close());
   await owner.waitForPresence(['renamed']);
   assert.equal((await r.ui.request({ type: 'topic.send', topic: 'general', to: ['renamed'], text: 'Recovered failed launch lifecycle' })).ok, true);
@@ -1253,13 +1275,13 @@ for (const failure of ['stop refusal', 'settlement failure', 'stop save with gon
     const f = await pendingAlias(t);
     const live = failure === 'stop refusal';
     const stopSave = failure.startsWith('stop save');
-    const actualStarted = await processStartedAsync(process.pid);
+    const actualStarted = 'current-start';
     assert.ok(actualStarted);
-    const identity = { pid: failure === 'stop save with gone original' ? 2147483000 : process.pid, pidStarted: live ? actualStarted : 'previous start identity' };
+    const identity = { pid: process.pid, pidStarted: live ? actualStarted : 'previous start identity' };
     const { started, release } = deferSpawn(t, f.sessions, { refuseStop: live, identity });
-    const prepare = DatabaseSync.prototype.prepare;
+    const prepare = f.database.prepare;
     let fault = true;
-    t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+    f.database.mock(t, function (this: DatabaseSync, sql: string) {
       if (fault && failure === 'settlement failure' && sql === 'delete from harness_processes where session_id = ?') throw new Error('settlement deliberately failed');
       const statement = prepare.call(this, sql);
       if (stopSave && sql.startsWith('insert or replace into harness_pending_stops')) {
@@ -1286,18 +1308,12 @@ for (const failure of ['stop refusal', 'settlement failure', 'stop save with gon
     assert.equal(durable?.stages.roleRolledBack, false);
     fault = false;
     const r = await restartPending(t, f, !live);
+    if (failure === 'stop save with gone original') f.probes.rows = async () => [];
     const before = await r.ui.request({ type: 'session.list' });
     assert.equal((before.value as { pendingStops: unknown[] }).pendingStops.length, 1);
     assert.deepEqual(r.watched, [], 'recovery waits for identity verification before watching');
-    const previousPath = process.env.PATH;
-    if (failure === 'stop save with unreadable identity') {
-      const bin = join(f.root, 'probe-bin');
-      await mkdir(bin);
-      await writeFile(join(bin, 'ps'), '#!/bin/sh\nexit 1\n');
-      await chmod(join(bin, 'ps'), 0o755);
-      process.env.PATH = `${bin}:${previousPath}`;
-      onCleanup(t, () => { process.env.PATH = previousPath; });
-    }
+    const previousRows = f.probes.rows;
+    if (failure === 'stop save with unreadable identity') f.probes.rows = async () => { throw new Error('process identity unreadable'); };
     await r.sessions.resumeAll();
     assert.deepEqual(r.stopped, live ? ['launched:target'] : []);
     assert.deepEqual(r.watched, live ? ['launched:target'] : []);
@@ -1305,7 +1321,7 @@ for (const failure of ['stop refusal', 'settlement failure', 'stop save with gon
       assert.equal(r.table.pendingStops().length, 1, 'unreadable identity neither signals nor settles');
       assert.deepEqual(r.disposed, []);
       assert.equal(r.table.pendingStops()[0]?.stages.stopped, false);
-      process.env.PATH = previousPath;
+      f.probes.rows = previousRows;
       await r.sessions.resumeAll();
       assert.deepEqual(r.stopped, []);
     }
@@ -1313,7 +1329,7 @@ for (const failure of ['stop refusal', 'settlement failure', 'stop save with gon
     const after = await r.ui.request({ type: 'session.list' });
     assert.deepEqual((after.value as { pendingStops: unknown[] }).pendingStops, []);
     assert.deepEqual((after.value as { processes: unknown[] }).processes, []);
-    const owner = await spawnSpoke({ hub: r.hub, name: 'target', sessionId: 'owner-id' });
+    const owner = await inProcessSpoke(t, { hub: r.hub, name: 'target', sessionId: 'owner-id' });
     onCleanup(t, () => owner.close());
     await owner.waitForPresence(['target']);
     const presence = await owner.call<{ sessions: Array<{ role: string }> }>('who');
@@ -1328,9 +1344,9 @@ for (const failure of ['role transaction checkpoint', 'process receipt rollback 
       if (process.status === 'running') throw new Error('committed publication observer failed');
     });
     onCleanup(t, unsubscribe);
-    const prepare = DatabaseSync.prototype.prepare;
+    const prepare = f.database.prepare;
     let fault = true;
-    t.mock.method(DatabaseSync.prototype, 'prepare', function (this: DatabaseSync, sql: string) {
+    f.database.mock(t, function (this: DatabaseSync, sql: string) {
       const statement = prepare.call(this, sql);
       const run = statement.run.bind(statement);
       if (sql.startsWith('insert into meta') || sql.startsWith('insert or replace into harness_pending_stops')) {

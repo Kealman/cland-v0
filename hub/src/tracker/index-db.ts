@@ -180,9 +180,9 @@ export class TrackerIndex {
   /** Marks already selected with each index row, retained only for that returned object. */
   readonly #criteria = new WeakMap<IndexedItem, CriterionSummary[]>();
 
-  constructor(path: string, kinds?: readonly string[]) {
+  constructor(path: string, kinds?: readonly string[], open = (path: string) => new DatabaseSync(path)) {
     this.#kinds = kinds;
-    this.#db = new DatabaseSync(path);
+    this.#db = open(path);
     this.#db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;');
     this.#db.exec(SCHEMA);
     this.#db.exec('create index if not exists tracker_items_number on tracker_items (n); create index if not exists tracker_items_parent on tracker_items (parent); create index if not exists tracker_items_file on tracker_items (file); create index if not exists tracker_items_branch on tracker_items (branch)');

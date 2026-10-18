@@ -1,3 +1,5 @@
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
+import type { DatabaseSync } from 'node:sqlite';
 import { epicDemoFreshness, type DemoFreshness } from './epic-surfaces.ts';
 // The tracker: item files in `.cland/tasks/` are the source of truth, the hub writes them and keeps the
 // index (spec 4.6, ADR 0002).
@@ -291,7 +293,8 @@ export class Tracker {
   readonly #revisions = new Map<string, number>();
   readonly #readyChecks = new Set<string>();
   readonly #readyAgain = new Set<string>();
-  readonly #readyRetries = new Map<string, NodeJS.Timeout>();
+  readonly #readyRetries = new Map<string, ClockTimer>();
+  readonly #clock: Clock;
   readonly #retryCounts = new Map<string, number>();
   readonly #readyErrors = new Map<string, string>();
   readonly #retryDelays = new Map<string, number>();
@@ -312,7 +315,10 @@ export class Tracker {
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+    this.#clock = options.clock ?? realClock;
+    this.#parse = options.parse ?? parseItem;
+    this.#watch = options.watch ?? watchFolder;
     this.#env = options.env ?? process.env;
     for (const entry of options.planHistory ?? []) {
       if ((entry.event !== 'task-plan-changed' && entry.event !== 'task-plan-approved') || typeof entry.id !== 'string' || typeof entry.ts !== 'string' || typeof entry.by !== 'string') continue;
@@ -352,9 +358,9 @@ export class Tracker {
     this.#writeGate = options.writeGate;
     this.#dir = join(options.root, TASKS_REL);
     this.#log = options.log ?? (() => {});
-    this.#now = options.now ?? (() => new Date());
+    this.#now = options.now ?? (() => this.#clock.now());
     mkdirSync(this.#dir, { recursive: true });
-    this.#index = new TrackerIndex(options.db, [...this.kinds, 'category']);
+    this.#index = new TrackerIndex(options.db, [...this.kinds, 'category'], options.openDatabase);
     this.#git = options.git ?? gitIn(options.root);
     this.#fresh = new Freshness({
       git: this.#git,
@@ -515,7 +521,7 @@ export class Tracker {
         }
         const delay = Math.min((this.#retryDelays.get(id) ?? 25) * 2, 1000);
         this.#retryDelays.set(id, delay);
-        const timer = setTimeout(() => resumed(() => {
+        const timer = this.#clock.setTimeout(() => resumed(() => {
           this.#readyRetries.delete(id);
           this.#scheduleReady(id, true);
         }), delay);
@@ -674,7 +680,7 @@ export class Tracker {
     this.rescan();
     // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
     for (const item of this.list()) this.#announced.set(`T-${idNumber(item.id)}`, item);
-    this.#watcher = watchFolder(
+    this.#watcher = this.#watch(
       this.#dir,
       {
         changed: (name) => {
@@ -736,7 +742,7 @@ export class Tracker {
     this.#watcher = null;
     for (const t of this.#pending.values()) clearTimeout(t);
     this.#pending.clear();
-    for (const retry of this.#readyRetries.values()) clearTimeout(retry);
+    for (const retry of this.#readyRetries.values()) this.#clock.clearTimeout(retry);
     this.#readyRetries.clear();
     if (this.#rescanTimer) clearTimeout(this.#rescanTimer);
     if (this.#plannedTimer) clearImmediate(this.#plannedTimer);
@@ -1320,8 +1326,11 @@ export class Tracker {
     return ref ? (this.#stopping ? null : this.#index.resolve(`T-${ref.n}`)) ?? `T-${ref.n}` : null;
   }
 
+  readonly #parse: typeof parseItem;
+  readonly #watch: typeof watchFolder;
+
   #parseItem(text: string, file?: string, levels = this.ladder): Item {
-    const item = parseItem(text, file, levels);
+    const item = this.#parse(text, file, levels);
     item.fm.id = `${prefixOf(item.fm.kind)}-${idNumber(item.fm.id)}`;
     if (item.fm.parent) item.fm.parent = this.#referenceId(item.fm.parent) ?? item.fm.parent;
     item.fm.blocked_by = item.fm.blocked_by.map(id => this.#referenceId(id) ?? id);

@@ -1,3 +1,4 @@
+import type { DatabaseSync } from 'node:sqlite';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { realClock, type Clock } from './clock.ts';
 // The hub as a project's daemon: the project's lock taken first, `.cland/` prepared, the store opened on
@@ -62,7 +63,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { candidate?: import('./suite-candidate.ts').SuiteCandidate; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -154,7 +155,7 @@ export async function serveProject(root: string, options: { candidate?: import('
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
-  const tracker = new Tracker({ now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
+  const tracker = new Tracker({ clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -217,7 +218,7 @@ export async function serveProject(root: string, options: { candidate?: import('
       ...(options.git ? { git: options.git } : {}),
       ...(options.droplet ? { droplet: options.droplet } : {}),
       verification: { ...(options.candidate ? { candidate: options.candidate } : {}), ...(options.durationContext !== undefined ? { durationContext: options.durationContext } : {}), executor: config?.verification.executor ?? 'local', localFallback: config?.verification.localFallback ?? true, lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, waitP90TargetMs: config?.verification.waitP90TargetMs ?? 1200000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, shards: config?.verification.shards ?? 2, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
-      store: new Store(l.db),
+      store: new Store(l.db, options.openDatabase),
       log,
       requestGuard,
       ...(config ? { rateLimit: config.hygiene.rateLimit, eventLimit: config.hygiene.eventLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
@@ -345,7 +346,7 @@ export async function serveProject(root: string, options: { candidate?: import('
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   try {
-    adapters = projectSessions({ core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
+    adapters = projectSessions({ ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
     adapters.sessions.sweepArchive();
   } catch (error) {

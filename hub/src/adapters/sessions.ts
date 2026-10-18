@@ -56,6 +56,8 @@ function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: 
 }
 
 export type SessionsOptions = {
+  processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
+  processRows?: (resumed: Resumed) => ReturnType<typeof systemProcesses>;
   env?: NodeJS.ProcessEnv;
   core: HubCore;
   table: ProcessTable;
@@ -75,6 +77,8 @@ const untimed: Resumed = (work) => work();
 export const DEFAULT_HARNESS = 'claude-code';
 
 export class Sessions {
+  readonly #processStarted: NonNullable<SessionsOptions['processStarted']>;
+  readonly #processRows: NonNullable<SessionsOptions['processRows']>;
   readonly #env: NodeJS.ProcessEnv;
   readonly #core: HubCore;
   readonly #table: ProcessTable;
@@ -265,6 +269,8 @@ export class Sessions {
 
   constructor(options: SessionsOptions) {
     this.#env = options.env ?? process.env;
+    this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#env));
+    this.#processRows = options.processRows ?? (resumed => systemProcesses(resumed, undefined, undefined, undefined, this.#env));
     this.#core = options.core;
     this.#table = options.table;
     this.#root = options.root;
@@ -405,7 +411,7 @@ export class Sessions {
       recordPid: (sessionId, pid) => {
         const p = this.#table.bySessionId(sessionId);
         if (p) {
-          void processStarted(pid, undefined, undefined, undefined, this.#env).then(started => {
+          void this.#processStarted(pid).then(started => {
             if (this.#closed || started === null) return;
             const current = this.#table.bySessionId(sessionId);
             // Keep the native stop path until PID and identity can be published together.
@@ -692,7 +698,7 @@ export class Sessions {
           resumed(() => { entry.stopIntent = true; this.#table.pendingStop(entry); });
           let gone = false;
           if (recovering) {
-            const rows = await systemProcesses(resumed, undefined, undefined, undefined, this.#env);
+            const rows = await this.#processRows(resumed);
             gone = resumed(() => {
               if (p.pid === null) throw new Error('failed launch process identity is unknown; cleanup remains pending');
               const current = rows.find(row => row.pid === p.pid);
@@ -913,7 +919,7 @@ export class Sessions {
         if (proven && brief && clause !== null && adapter.clauseAtSpawn === true) this.#core.completeCarriedBrief(launchToken, owned!.sessionId);
       });
       // Retain ownership before the PID probe too: a thrown probe still owes cleanup of this process.
-      const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await processStarted(owned.pid, undefined, resumed, undefined, this.#env) : null);
+      const pidStarted = owned.pidStarted ?? (owned.pid !== null ? await this.#processStarted(owned.pid, resumed) : null);
       const p: HarnessProcess = { ...owned, ...selected, accountEnv: selected.accountEnv ?? owned.accountEnv ?? null, item, pidStarted, launchBrief: request.brief ?? null, effort };
       owned = p;
       return resumed(() => {
@@ -1202,7 +1208,7 @@ export class Sessions {
       const cached = r.process.pid === current.pid ? current.pidStarted : null;
       // Cached identities publish in this same stretch; only an actual OS probe introduces another await.
       if (cached != null || r.process.pid === null) return { answer: publish(r, cached ?? null) };
-      return { identity: processStarted(r.process.pid, undefined, resumed, undefined, this.#env), resumed: r };
+      return { identity: this.#processStarted(r.process.pid, resumed), resumed: r };
     });
     if ('answer' in settled) return settled.answer!;
     const pidStarted = await settled.identity;

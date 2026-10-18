@@ -1,3 +1,7 @@
+// T3: offline lock/PID admission, real restart ID recovery and Git landing of pre-migration branches.
+import { Tracker } from '../src/tracker/tracker.ts';
+import { runTask } from '../src/cli/task.ts';
+import { inProcessSpoke, projectHub } from './harness.ts';
 import test from 'node:test';
 import { execFileSync } from 'node:child_process';
 import { preparedProject } from './prepared-project.ts';
@@ -5,8 +9,28 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, killDaemon, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, killDaemon, pidAlive, startDaemon, tempProject } from './harness.ts';
 import type { MigrationPlan } from '../src/tracker/migrate.ts';
+
+async function migrate(root: string, ...args: string[]) {
+  let stdout = '', stderr = '';
+  const code = await runTask(['migrate', ...args], root, { out: text => { stdout += text; }, err: text => { stderr += text; } }, {});
+  return { code, stdout, stderr };
+}
+async function buildIndex(root: string) {
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), git: async () => null });
+  try { await tracker.rescanAsync(); } finally { await tracker.stop(); }
+}
+// Only the restart and old-branch landing scenarios own a real hub process.
+const nativeHub = (t: Parameters<typeof startDaemon>[0], root: string) => startDaemon(t, root);
+
+async function stopForMigration(pid: number): Promise<void> {
+  await killDaemon(pid);
+  // Cleanup's process-table receipt can precede OS PID reaping. Offline lock
+  // admission uses kill(pid, 0), so observe that exact boundary before migrating.
+  await eventually('offline migration hub PID reaped', () => !pidAlive(pid) || undefined);
+  assert.equal(pidAlive(pid), false, 'the old hub cannot still own its offline lock');
+}
 
 const indexSnapshot = (root: string) => {
   const db = new DatabaseSync(join(root, '.cland/hub.db'), { readOnly: true });
@@ -23,21 +47,17 @@ const filesSnapshot = async (root: string) => {
 
 test('offline closed backfill previews receipt, journal and commit sources and changes only closed lines once', async t => {
   const root = await preparedProject(t);
-  await startDaemon(t, root);
-  // Seed the categories in a separate maintenance window so this plan contains only closing times.
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  assert.equal((await cland(root, 'task', 'migrate')).code, 0);
-  await startDaemon(t, root);
+  // Seed categories before the isolated closing-time backfill.
+  assert.equal((await migrate(root)).code, 0);
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db') });
+  const actor = { id: 'human', name: 'human', role: null, human: true };
   const items: Array<{ id: string; path: string }> = [];
   for (const title of ['receipt', 'journal', 'commit', 'unresolved', 'already']) {
-    const made = await cland(root, 'task', 'create', '--size', 'M', title, '--json');
-    assert.equal(made.code, 0, made.stderr);
-    const item = JSON.parse(made.stdout).item;
+    const item = await tracker.create(actor, { title, size: 'M' });
     items.push(item);
-    assert.equal((await cland(root, 'task', 'close', item.id)).code, 0);
+    await tracker.close(actor, item.id);
   }
-  await flushProjectLogs(t, root);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
+  await tracker.stop();
   // Legacy tracker copy: strip the new field and remove newer closes from the copied journal.
   for (const item of items.slice(0, 4)) {
     const path = join(root, item.path);
@@ -59,7 +79,7 @@ test('offline closed backfill previews receipt, journal and commit sources and c
     }
   } finally { db.close(); }
   const before = await filesSnapshot(root), beforeIndex = indexSnapshot(root);
-  const preview = await cland(root, 'task', 'migrate', '--dry-run', '--json');
+  const preview = await migrate(root, '--dry-run', '--json');
   assert.equal(preview.code, 0, preview.stderr);
   const plan: MigrationPlan = JSON.parse(preview.stdout);
   assert.deepEqual(plan.closed.map(c => [c.item, c.time, c.source]), [
@@ -68,22 +88,21 @@ test('offline closed backfill previews receipt, journal and commit sources and c
   assert.deepEqual(plan.unresolved.map(c => [c.item, c.field]), [[items[3]!.id, 'closed']]);
   assert.deepEqual(await filesSnapshot(root), before);
   assert.deepEqual(indexSnapshot(root), beforeIndex);
-  assert.match((await cland(root, 'task', 'migrate', '--dry-run')).stdout, /closed T-\d+: .* \(receipt\)/);
-  const applied = await cland(root, 'task', 'migrate', '--json');
+  assert.match((await migrate(root, '--dry-run')).stdout, /closed T-\d+: .* \(receipt\)/);
+  const applied = await migrate(root, '--json');
   assert.equal(applied.code, 0, applied.stderr);
   assert.deepEqual(JSON.parse(applied.stdout), plan);
   const after = await filesSnapshot(root);
   assert.deepEqual(after.map(([name, text]) => [name, text!.replace(/^closed:.*\n/m, '')]), before.map(([name, text]) => [name, text!.replace(/^closed:.*\n/m, '')]));
   const noOpIndex = indexSnapshot(root);
-  const rerun = await cland(root, 'task', 'migrate');
+  const rerun = await migrate(root);
   assert.equal(rerun.code, 0, rerun.stderr);
   assert.match(rerun.stdout, /^nothing to do\n/);
   assert.match(rerun.stdout, /unresolved closed/);
   assert.deepEqual(await filesSnapshot(root), after);
   assert.deepEqual(indexSnapshot(root), noOpIndex);
-  await startDaemon(t, root);
-  const view = await cland(root, 'task', 'view', items[0]!.id, '--json');
-  assert.equal(JSON.parse(view.stdout).item.closed, '2026-10-03T10:00:00.000Z');
+  const restored = new Tracker({ root, db: join(root, '.cland/hub.db') });
+  try { await restored.rescanAsync(); assert.equal(restored.view(items[0]!.id).closed, '2026-10-03T10:00:00.000Z'); } finally { await restored.stop(); }
 });
 
 test('offline migration matches its preview, preserves prose and resolves old ids after a real hub restart', async t => {
@@ -101,26 +120,26 @@ test('offline migration matches its preview, preserves prose and resolves old id
   for (const [file, n, kind, title, extra] of fixtures) {
     await writeFile(join(dir, file), `---\nid: T-${n}\nkind: ${kind}\ntitle: ${JSON.stringify(title)}\nstate: open\n${extra}---\n`);
   }
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await nativeHub(t, root);
   const ui = await connectUi(t, discovery);
   for (const [name, role] of [['coord', 'coordinator'], ['impl', 'implementer']] as const) {
-    const spoke = await spawnSpoke({ discover: true, cwd: root, name, role, sessionId: `sess-${name}` });
+    const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId: `sess-${name}` });
     t.after(() => spoke.close());
     await spoke.waitForPresence([name]);
   }
-  const running = await cland(root, 'task', 'migrate', '--dry-run');
+  const running = await migrate(root, '--dry-run');
   assert.equal(running.code, 1);
   assert.match(running.stderr, /hub.*running|stop.*hub/);
   const frameRefused = await ui.request({ type: 'task.migrate', dryRun: true });
   assert.equal(frameRefused.ok, false);
-  await killDaemon(discovery.pid);
+  await stopForMigration(discovery.pid);
   const beforeFiles = await filesSnapshot(root);
   const beforeIndex = indexSnapshot(root);
-  const plain = await cland(root, 'task', 'migrate', '--dry-run');
+  const plain = await migrate(root, '--dry-run');
   assert.equal(plain.code, 0, plain.stderr);
   assert.match(plain.stdout, /rename T-1-release-v0-1-1.md → R-1-release-v0-1-1.md/);
   assert.match(plain.stdout, /category create C-6-bugs.md/);
-  const json = await cland(root, 'task', 'migrate', '--dry-run', '--json');
+  const json = await migrate(root, '--dry-run', '--json');
   assert.equal(json.code, 0, json.stderr);
   const plan: MigrationPlan = JSON.parse(json.stdout);
   assert.deepEqual(plan.ids.map(c => c.to), ['R-1', 'E-2', 'C-3']);
@@ -133,7 +152,7 @@ test('offline migration matches its preview, preserves prose and resolves old id
   const refused = await clandWithEnv(root, { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'sess-impl' }, 'task', 'migrate');
   assert.equal(refused.code, 1);
   assert.match(refused.stderr, /Coordinator or the human/);
-  const applied = await cland(root, 'task', 'migrate', '--json');
+  const applied = await migrate(root, '--json');
   assert.equal(applied.code, 0, applied.stderr);
   assert.deepEqual(JSON.parse(applied.stdout), plan);
   const after = await filesSnapshot(root);
@@ -150,12 +169,12 @@ test('offline migration matches its preview, preserves prose and resolves old id
     assert.equal(migrated.slice(migrated.indexOf('\n---', 4) + 4), text!.slice(text!.indexOf('\n---', 4) + 4));
   }
   const noopIndex = indexSnapshot(root);
-  const noop = await cland(root, 'task', 'migrate');
+  const noop = await migrate(root);
   assert.equal(noop.code, 0, noop.stderr);
   assert.equal(noop.stdout.trim(), 'nothing to do');
   assert.deepEqual(await filesSnapshot(root), after);
   assert.deepEqual(indexSnapshot(root), noopIndex);
-  const restarted = await startDaemon(t, root);
+  const restarted = await nativeHub(t, root);
   const newUi = await connectUi(t, restarted.discovery);
   const view = await cland(root, 'task', 'view', 'T-3', '--json');
   assert.equal(view.code, 0, view.stderr);
@@ -177,8 +196,7 @@ test('offline migration refuses disk locks and recovery records without changing
   const root = await tempProject(t);
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/T-1-epic.md'), '---\nid: T-1\nkind: epic\ntitle: "Epic: Work"\nstate: open\n---\nBody T-1\n');
-  const { discovery } = await startDaemon(t, root);
-  await killDaemon(discovery.pid);
+  await buildIndex(root);
   const before = await filesSnapshot(root), index = indexSnapshot(root);
   const cases = [
     ['.cland/territory.lock', /merge or territory operation/],
@@ -192,7 +210,7 @@ test('offline migration refuses disk locks and recovery records without changing
   for (const [path, reason] of cases) {
     await writeFile(join(root, path), '{}');
     for (const args of [[], ['--dry-run']]) {
-      const result = await cland(root, 'task', 'migrate', ...args);
+      const result = await migrate(root, ...args);
       assert.equal(result.code, 1, result.stdout);
       assert.match(result.stderr, reason);
     }
@@ -203,14 +221,14 @@ test('offline migration refuses disk locks and recovery records without changing
   const db = new DatabaseSync(join(root, '.cland/hub.db'));
   db.prepare('insert into tracker_merges (item_id, branch, tip, base, commit_sha, merged_at) values (?, ?, ?, ?, ?, ?)').run('T-1', 'task', 'tip', 'dev', 'commit', new Date().toISOString());
   db.close();
-  const pending = await cland(root, 'task', 'migrate');
+  const pending = await migrate(root);
   assert.equal(pending.code, 1);
   assert.match(pending.stderr, /merge receipt prepared but unfinished/);
   assert.deepEqual(await filesSnapshot(root), before);
   const clear = new DatabaseSync(join(root, '.cland/hub.db'));
   clear.exec('delete from tracker_merges'); clear.close();
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic"]\n');
-  const ladder = await cland(root, 'task', 'migrate');
+  const ladder = await migrate(root);
   assert.equal(ladder.code, 1);
   assert.match(ladder.stderr, /cland update.*restart the hub/);
   assert.deepEqual(await filesSnapshot(root), before);
@@ -222,7 +240,7 @@ test('a renamed file with its old id completes after interruption without duplic
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   const prose = '\nBody T-1.\n\n## Comments\n\n### human · 2026-01-01T00:00:00Z\n\nKeep T-1 here.\n';
   await writeFile(join(root, '.cland/tasks/R-1-old-slug.md'), '---\nid: T-1\nkind: release\ntitle: "Release: Ship"\nstate: open\ncreated: 2026-01-01T00:00:00Z\nupdated: 2026-01-01T00:00:00Z\ncustom: untouched\n---\n' + prose);
-  const run = await cland(root, 'task', 'migrate', '--json');
+  const run = await migrate(root, '--json');
   assert.equal(run.code, 0, run.stderr);
   assert.deepEqual(JSON.parse(run.stdout).renames, []);
   const files = await filesSnapshot(root);
@@ -231,7 +249,7 @@ test('a renamed file with its old id completes after interruption without duplic
   assert.ok(text.endsWith(prose));
   assert.match(text, /custom: untouched/);
   assert.match(text, /id: R-1/);
-  const restarted = await startDaemon(t, root);
+  const restarted = await projectHub(t, root, {}, { probes: 'fake', harnesses: 'fake' });
   const ui = await connectUi(t, restarted.discovery);
   const view = await ui.request({ type: 'task.view', item: 'T-1' });
   assert.equal(view.ok, true, view.error);
@@ -248,7 +266,7 @@ for (const editContainer of [false, true]) test(`an older task branch lands afte
   await writeFile(join(dir, container), '---\nid: T-1\nkind: epic\ntitle: "Epic: Old container"\nstate: open\n---\n' + prose);
   await writeFile(join(dir, 'T-2-work.md'), '---\nid: T-2\nkind: task\ntitle: Work\nstate: open\nstatus: backlog\nparent: T-1\n---\n');
   git(root, 'add', '.cland/tasks'); git(root, 'commit', '-qm', 'Legacy tracker');
-  let { discovery } = await startDaemon(t, root);
+  let { discovery } = await nativeHub(t, root);
   assert.equal((await cland(root, 'push')).code, 0);
   const claim = await cland(root, 'task', 'claim', 'T-2', '--json');
   assert.equal(claim.code, 0, claim.stderr);
@@ -261,19 +279,19 @@ for (const editContainer of [false, true]) test(`an older task branch lands afte
   }
   git(work.path, 'commit', '-qm', 'Feature on old tracker');
   git(work.path, 'push', '-q', 'origin', work.branch);
-  const linked = await cland(work.path, 'task', 'migrate');
+  const linked = await migrate(work.path);
   assert.equal(linked.code, 1);
   assert.match(linked.stderr, /project root.*linked worktree/);
-  await killDaemon(discovery.pid);
-  const migration = await cland(root, 'task', 'migrate', '--json');
+  await stopForMigration(discovery.pid);
+  const migration = await migrate(root, '--json');
   assert.equal(migration.code, 0, migration.stderr);
   const migrated = await filesSnapshot(root);
   git(root, 'add', '.cland/tasks');
   assert.match(git(root, 'diff', '--cached', '--stat', '-M'), /legacy-epic/);
   git(root, 'commit', '-qm', 'Prefix migration');
-  ({ discovery } = await startDaemon(t, root));
+  ({ discovery } = await nativeHub(t, root));
   assert.equal((await cland(root, 'push')).code, 0);
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'sess-rev' });
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'sess-rev' });
   t.after(() => rev.close());
   await rev.waitForPresence(['rev']);
   const verdict = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: 'T-2', verdict: 'review', scope: 'full', result: 'clear', run: 'migration-merge' });
@@ -304,7 +322,7 @@ test('fully migrated files repair a stale final index row, then a clean rerun wr
   const root = await tempProject(t);
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/T-1-release.md'), '---\nid: T-1\nkind: release\ntitle: "Release: Ship"\nstate: open\n---\nKeep T-1.\n');
-  const initial = await cland(root, 'task', 'migrate', '--json');
+  const initial = await migrate(root, '--json');
   assert.equal(initial.code, 0, initial.stderr);
   const beforeFiles = await filesSnapshot(root), beforeIndex = indexSnapshot(root);
   const fileTimes = () => Promise.all(beforeFiles.map(async ([name]) => [name, (await stat(join(root, '.cland/tasks', name!), { bigint: true })).mtimeNs]));
@@ -315,11 +333,11 @@ test('fully migrated files repair a stale final index row, then a clean rerun wr
   db.prepare('delete from tracker_items where n = ?').run(5);
   db.prepare('update tracker_items set hash = ? where n = ?').run('stale', 1);
   db.close();
-  const preview = await cland(root, 'task', 'migrate', '--dry-run', '--json');
+  const preview = await migrate(root, '--dry-run', '--json');
   assert.equal(preview.code, 0, preview.stderr);
   assert.ok(Object.entries(JSON.parse(preview.stdout)).every(([, changes]) => Array.isArray(changes) && changes.length === 0));
   const staleIndex = indexSnapshot(root);
-  const resumed = await cland(root, 'task', 'migrate', '--json');
+  const resumed = await migrate(root, '--json');
   assert.equal(resumed.code, 0, resumed.stderr);
   assert.deepEqual(JSON.parse(resumed.stdout), JSON.parse(preview.stdout));
   assert.deepEqual(await filesSnapshot(root), beforeFiles);
@@ -331,7 +349,7 @@ test('fully migrated files repair a stale final index row, then a clean rerun wr
   assert.deepEqual(rows.map(row => [row.file, row.hash]).sort(), original.map(row => [row.file, row.hash]).sort());
   const beforeLog = await readFile(join(root, '.cland/log/hub.log'), 'utf8');
   const beforeJournal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
-  const clean = await cland(root, 'task', 'migrate');
+  const clean = await migrate(root);
   assert.equal(clean.code, 0, clean.stderr);
   assert.equal(clean.stdout.trim(), 'nothing to do');
   assert.deepEqual(await filesSnapshot(root), beforeFiles);
@@ -343,26 +361,25 @@ test('fully migrated files repair a stale final index row, then a clean rerun wr
 
 test('offline size backfill uses explicit decisions, previews without writes and applies once', async t => {
   const root = await preparedProject(t);
-  await startDaemon(t, root);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  assert.equal((await cland(root, 'task', 'migrate')).code, 0);
+  await buildIndex(root);
+  assert.equal((await migrate(root)).code, 0);
   const dir = join(root, '.cland/tasks');
   for (const [n, kind, state, size] of [[328, 'task', 'open', ''], [329, 'task', 'open', 'size: XL\n'], [330, 'task', 'closed', ''], [331, 'task', 'open', ''], [332, 'epic', 'open', '']] as const) {
     await writeFile(join(dir, `${kind === 'epic' ? 'E' : 'T'}-${n}-legacy.md`), `---\nid: T-${n}\nkind: ${kind}\ntitle: Legacy\nstate: ${state}\n${kind === 'task' ? `status: ${state === 'closed' ? 'done' : 'backlog'}\n` : ''}${size}labels: [] # keep my formatting\n---\n\n## Summary\n\nLegacy body.\n`);
   }
   // Get canonical prefixes and index in sync before the isolated size backfill.
-  assert.equal((await cland(root, 'task', 'migrate')).code, 0);
+  assert.equal((await migrate(root)).code, 0);
   const sizesFile = join(root, 'sizes.json');
   await writeFile(sizesFile, JSON.stringify({ 'E-328': 'M', 'T-329': 'S', 'T-330': 'L' }));
   const beforeFiles = await filesSnapshot(root), beforeDb = indexSnapshot(root);
-  const preview = await cland(root, 'task', 'migrate', '--sizes', sizesFile, '--dry-run', '--json');
+  const preview = await migrate(root, '--sizes', sizesFile, '--dry-run', '--json');
   assert.equal(preview.code, 0, preview.stderr);
   const plan = JSON.parse(preview.stdout) as MigrationPlan;
   assert.deepEqual(plan.sizes.map(c => [c.item, c.size]), [['T-328', 'M']]);
   assert.ok(plan.unresolved.some(c => c.item === 'T-331' && c.field === 'size'));
   assert.deepEqual(await filesSnapshot(root), beforeFiles);
   assert.deepEqual(indexSnapshot(root), beforeDb);
-  const applied = await cland(root, 'task', 'migrate', '--sizes', sizesFile, '--json');
+  const applied = await migrate(root, '--sizes', sizesFile, '--json');
   assert.equal(applied.code, 0, applied.stderr);
   assert.deepEqual(JSON.parse(applied.stdout), plan);
   const changed = await filesSnapshot(root);
@@ -371,26 +388,26 @@ test('offline size backfill uses explicit decisions, previews without writes and
     assert.equal(file!.startsWith('T-328-') ? after!.replace(/^size: M\n/m, '') : after, text, file);
   }
   const dbAfter = indexSnapshot(root);
-  const rerun = await cland(root, 'task', 'migrate', '--sizes', sizesFile);
+  const rerun = await migrate(root, '--sizes', sizesFile);
   assert.equal(rerun.code, 0, rerun.stderr);
   assert.match(rerun.stdout, /nothing to do/);
   assert.deepEqual(await filesSnapshot(root), changed);
   assert.deepEqual(indexSnapshot(root), dbAfter);
   for (const invalid of [{ 'T-332': 'S' }, { '999': 'L' }, { '328': 'XXL' }, { 'T-328': 'M', 'E-328': 'L' }]) {
     await writeFile(sizesFile, JSON.stringify(invalid));
-    const refused = await cland(root, 'task', 'migrate', '--sizes', sizesFile);
+    const refused = await migrate(root, '--sizes', sizesFile);
     assert.equal(refused.code, 1);
     assert.match(refused.stderr, /sizes file/);
     assert.deepEqual(await filesSnapshot(root), changed);
     assert.deepEqual(indexSnapshot(root), dbAfter);
   }
-  await startDaemon(t, root);
+  await projectHub(t, root, {}, { probes: 'fake', harnesses: 'fake' });
   for (const id of ['T-328', 'E-328', '328']) {
     const result = await cland(root, 'task', 'view', id, '--json');
     assert.equal(result.code, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).item.size, 'M');
   }
-  const live = await cland(root, 'task', 'migrate', '--sizes', sizesFile, '--dry-run');
+  const live = await migrate(root, '--sizes', sizesFile, '--dry-run');
   assert.equal(live.code, 1);
   assert.match(live.stderr, /hub is running/);
 });

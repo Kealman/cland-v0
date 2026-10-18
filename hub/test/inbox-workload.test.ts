@@ -1,25 +1,25 @@
-// Real project startup and the JSON-lines protocol; native SQLite tracing observes work without replacing it.
+import { archiveWorkload, inboxStartupWorkload } from './inbox-archive-workload.ts';
+// T2: indexed query budgets through real frames and fixture-owned SQLite tracing.
+import { sqliteProbe } from './sqlite-probe.ts';
+import { FakeClock } from './fake-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../src/hub/store.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
-import { serveProject, type Daemon } from '../src/hub/daemon.ts';
+import type { Dispatcher } from '../src/hub/dispatch.ts';
 import { createStdioEdge } from '../src/hub/stdio.ts';
-import { connectUi, eventually } from './harness.ts';
-import { ownDirectory } from './process-cleanup.ts';
-import type { Inbox } from '../src/protocol.ts';
+import { eventually, projectHub, tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
 import { createHubBase, type HubBase } from '../src/hub/server.ts';
 import { eventRow, type JournalRecord } from '../src/hub/journal.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import type { HarnessProcessView } from '../src/protocol.ts';
 
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
-function pipe(daemon: Pick<Daemon, 'hub'>) {
+function pipe(daemon: { dispatcher: Pick<Dispatcher, 'open'> }) {
   const input = new PassThrough(), output = new PassThrough();
   const frames: Array<Record<string, unknown>> = [];
   let pending = '';
@@ -36,7 +36,7 @@ function pipe(daemon: Pick<Daemon, 'hub'>) {
       pending = pending.slice(at + 1);
     }
   });
-  createStdioEdge({ input, output, dispatcher: daemon.hub.dispatcher, onEnd: () => {} });
+  createStdioEdge({ input, output, dispatcher: daemon.dispatcher, onEnd: () => {} });
   return { frames, request: (frame: Record<string, unknown> & { id: string }) => new Promise<Record<string, unknown>>(resolve => {
     waiters.set(frame.id, resolve); input.write(JSON.stringify(frame) + '\n');
   }), send: (frame: Record<string, unknown>) => input.write(JSON.stringify(frame) + '\n'),
@@ -46,10 +46,11 @@ function pipe(daemon: Pick<Daemon, 'hub'>) {
 
 for (const kind of ['task', 'epic'] as const)
 test(`a protocol stop burst does bounded indexed work despite unrelated retained ${kind} items`, async t => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-stop-work-'))), db = join(root, '.cland', 'hub.db');
-  const cleanup = ownDirectory(undefined, root);
+  const database = sqliteProbe();
+  const clock = new FakeClock();
+  const root = await tempProject(t, 'cland-stop-work-'), db = join(root, '.cland', 'hub.db');
   let stop = async () => {};
-  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
+  onCleanup(t, () => stop());
   const tracker = new Tracker({ root, db });
   const actor = { id: 'human', name: 'human', role: null, human: true };
   for (let i = 0; i < 64; i++) {
@@ -61,21 +62,20 @@ test(`a protocol stop burst does bounded indexed work despite unrelated retained
   }
   await tracker.rescanAsync();
   await tracker.stop();
-  const daemon = await serveProject(root, { log: () => {} });
+  const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: () => {} });
   const human = pipe(daemon);
   stop = async () => { human.close(); await daemon.stop(); };
   human.send({ type: 'hello', protocol: 2, client: 'ui' });
   await tick();
   const table = new ProcessTable(db);
-  for (let i = 0; i < 8; i++) table.put({ name: `stop-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: 2147483646, harnessId: null, sessionId: `stop-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
+  for (let i = 0; i < 8; i++) table.put({ name: `stop-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `stop-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
   table.close();
-  const prepare = DatabaseSync.prototype.prepare;
+  const prepare = database.prepare;
   let queries = 0;
-  DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
     if (args[0].includes('tracker_')) queries++;
     return prepare.apply(this, args);
-  };
-  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
+  });
   human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `stop-${i}` })));
   await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
   const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
@@ -86,16 +86,17 @@ test(`a protocol stop burst does bounded indexed work despite unrelated retained
 });
 
 test('a task hold release reads bounded indexed work despite unrelated retained items', async t => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-hold-work-'))), db = join(root, '.cland', 'hub.db');
-  const cleanup = ownDirectory(undefined, root);
+  const database = sqliteProbe();
+  const clock = new FakeClock();
+  const root = await tempProject(t, 'cland-hold-work-'), db = join(root, '.cland', 'hub.db');
   let stop = async () => {};
-  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
+  onCleanup(t, () => stop());
   const tracker = new Tracker({ root, db });
   const actor = { id: 'human', name: 'human', role: null, human: true };
   const target = await tracker.create(actor, { title: 'Hold target' });
   for (let i = 0; i < 64; i++) await tracker.create(actor, { title: `Unrelated item ${i}` });
   await tracker.stop();
-  const daemon = await serveProject(root, { listen: 'never', log: () => {} });
+  const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: () => {} });
   const human = pipe(daemon), verifier = pipe(daemon);
   stop = async () => { human.close(); verifier.close(); await daemon.stop(); };
   human.send({ type: 'hello', protocol: 2, client: 'ui' });
@@ -103,13 +104,12 @@ test('a task hold release reads bounded indexed work despite unrelated retained 
   verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
   await eventually('verifier connected', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
   await tick();
-  const prepare = DatabaseSync.prototype.prepare;
+  const prepare = database.prepare;
   let queries = 0;
-  DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
     queries++;
     return prepare.apply(this, args);
-  };
-  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
+  });
   const released = await verifier.request({ type: 'task.hold', id: 'release', item: target.id, release: true });
   assert.equal(released.ok, true, String(released.error));
   t.diagnostic(`hold-release indexed queries: ${queries}`);
@@ -117,177 +117,22 @@ test('a task hold release reads bounded indexed work despite unrelated retained 
   assert.ok(queries <= 100, `one hold release used ${queries} indexed queries for 64 unrelated items`);
 });
 
-test('archive startup batches hundreds of stops; item and stop bursts schedule one sweep per tick with thousands of retained items and messages', async t => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-archive-work-'))), db = join(root, '.cland', 'hub.db');
-  const cleanup = ownDirectory(undefined, root);
-  let stop = async () => {};
-  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
-  await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "1s"\narchive_after_stop = "1s"\n');
-  const tracker = new Tracker({ root, db });
-  const actor = { id: 'human', name: 'human', role: null, human: true };
-  for (let i = 0; i < 2000; i++) await tracker.create(actor, { title: `Retained item ${i}` });
-  await tracker.stop();
-  const seed = new Store(db), ts = new Date(Date.now() - 86400000).toISOString();
-  seed.transaction(() => {
-    for (let i = 0; i < 3000; i++) seed.record({ id: `old-${i}`, from: 'old', fromKind: 'agent', via: 'session', to: [], text: 'Retained message', ts }, [], Date.now());
-  });
-  seed.close();
-  const processes = new ProcessTable(db);
-  for (let i = 0; i < 256; i++) processes.put({ name: `old-${i}`, harness: 'claude-code', role: 'implementer', item: 'T-1', model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-id-${i}`, harnessSessionId: null, startedAt: ts, stoppedAt: ts, status: 'stopped' });
-  processes.close();
-  const prepare = DatabaseSync.prototype.prepare;
-  let batches = 0, lifecycleLookups = 0, archiveCounts = 0;
-  // A native tracer counts queries without retaining node:test's per-call stack/arguments on this large store.
-  DatabaseSync.prototype.prepare = function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    if (args[0].startsWith('update harness_processes set archived_at')) batches++;
-    // The lifecycle lookup now prefers the frontmatter column before its receipt fallback.
-    if (args[0].includes('coalesce(i.closed, m.merged_at')) lifecycleLookups++;
-    if (args[0] === 'select count(*) as n from harness_processes where archived_at is not null') archiveCounts++;
-    return prepare.apply(this, args);
-  };
-  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
-  const records: Array<Record<string, unknown>> = [];
-  let turn = 0;
-  let turnTimer: ReturnType<typeof setImmediate>;
-  const nextTurn = () => { turn++; turnTimer = setImmediate(nextTurn); };
-  nextTurn();
-  t.after(() => clearImmediate(turnTimer));
-  const daemon = await serveProject(root, { log: entry => records.push({ ...entry, turn }) });
-  const human = pipe(daemon), verifier = pipe(daemon);
-  stop = async () => { human.close(); verifier.close(); await daemon.stop(); };
-  await tick();
-  const startup = records.filter(r => r.event === 'session-archive-sweep');
-  assert.equal(startup.length, 1, 'one sweep at startup');
-  assert.deepEqual([startup[0]!.rows, startup[0]!.archived, startup[0]!.batches], [256, 256, 1]);
-  assert.equal(batches, 1, 'one native archive batch for every due row');
-  assert.equal(lifecycleLookups, 1, 'one indexed item timestamp lookup for a shared item');
-  assert.equal(archiveCounts, 1, 'one authoritative count scan for the whole startup batch');
-  human.send({ type: 'hello', protocol: 2, client: 'ui' });
-  const archived = await human.request({ type: 'session.list', id: 'archive', archived: true });
-  assert.equal((archived.value as { archived: number }).archived, 256);
-  assert.ok((archived.value as { processes: HarnessProcessView[] }).processes.every(p => p.archivedBy === 'rule'));
-  await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' });
-  verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
-  await eventually('verifier connected', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
-  await tick();
-  const before = records.filter(r => r.event === 'session-archive-sweep').length;
-  verifier.batch(Array.from({ length: 100 }, (_, i) => ({ type: 'task.hold', id: `hold-${i}`, item: `T-${i + 1}`, release: true })));
-  await eventually('all protocol holds committed', () => verifier.frames.filter(f => f.type === 'result' && String(f.id).startsWith('hold-')).length === 100 || undefined);
-  await tick();
-  assert.equal(records.filter(r => r.event === 'session-archive-sweep').length - before, 1, '100 item events in one input chunk coalesce into one sweep');
-  // Fixtures represent live, unconnected harness rows with no OS process, so stop needs no external process.
-  const live = new ProcessTable(db);
-  for (let i = 0; i < 8; i++) live.put({ name: `new-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: 2147483646, harnessId: null, sessionId: `new-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
-  live.close();
-  const beforeStops = records.filter(r => r.event === 'session-archive-sweep').length;
-  human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `new-${i}` })));
-  await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
-  const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
-  assert.ok(stopped.every(f => f.ok), `stop frames succeeded: ${JSON.stringify(stopped.find(f => !f.ok))}`);
-  await tick();
-  const sweeps = records.filter(r => r.event === 'session-archive-sweep').slice(beforeStops);
-  assert.ok(sweeps.length > 0, 'stops trigger cleanup');
-  assert.equal(sweeps.length, new Set(sweeps.map(r => r.turn)).size, 'asynchronous stops produce at most one sweep in each event-loop tick');
-});
+test('archive startup batches stops and coalesces event bursts', t => archiveWorkload(t, {
+  items: 16, messages: 16, processes: 8, events: 8,
+}));
 
-test('startup with 256 remembered processes and thousands of messages, then two 100-event protocol bursts, uses a fixed inbox query budget', async t => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-inbox-work-'))), db = join(root, '.cland', 'hub.db');
-  const cleanup = ownDirectory(undefined, root);
-  let stop = async () => {};
-  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
-  await mkdir(join(root, '.cland'), { recursive: true });
-  const seed = new Store(db), ts = new Date().toISOString();
-  seed.createTopic('history', 'Answered history', null, ts);
-  seed.createTopic('requests', 'Replied requests', null, ts);
-  seed.createTopic('replies', 'Explicit replies', null, ts);
-  seed.transaction(() => {
-    for (let i = 0; i < 1500; i++) {
-      seed.record({ id: `report-${i}`, topic: 'history', from: 'aide', fromKind: 'agent', fromRole: 'aide', via: 'session', to: [], text: `Report ${i}`, ts }, [], Date.now());
-      seed.record({ id: `answer-${i}`, topic: 'history', from: 'human', fromKind: 'human', via: 'session', to: [], text: `Answer ${i}`, ts }, [], Date.now());
-    }
-    for (let i = 0; i < 100; i++) {
-      seed.record({ id: `request-${i}`, topic: 'requests', from: 'aide', fromKind: 'agent', fromRole: 'aide', via: 'session', to: [], kind: 'request', request: 'review', subject: 'remembered-0', text: `Request ${i}`, ts }, [], Date.now());
-      seed.record({ id: `reply-${i}`, topic: 'replies', from: 'human', fromKind: 'human', via: 'session', to: [], replyTo: `request-${i}`, text: `Reply ${i}`, ts }, [], Date.now());
-    }
-  });
-  seed.close();
-  const processes = new ProcessTable(db);
-  for (let i = 0; i < 256; i++) processes.put({ name: `remembered-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-${i}`, harnessSessionId: null, startedAt: ts, status: 'stopped' });
-  processes.close();
-
-  let queries = 0, candidateRows = 0, inboxSql = '', topicSql = '';
-  const prepare = DatabaseSync.prototype.prepare;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    const sql = args[0], statement = prepare.apply(this, args);
-    if (sql.includes('order by standing desc')) topicSql = sql;
-    if (sql.startsWith('with latest_messages as')) {
-      queries++;
-      inboxSql = sql;
-      const all = statement.all;
-      t.mock.method(statement, 'all', function(this: typeof statement, ...bindings: Parameters<typeof all>) {
-        const rows = all.apply(this, bindings);
-        candidateRows = rows.length;
-        return rows;
-      });
-    }
-    return statement;
-  });
-  const daemon = await serveProject(root, { log: () => {} });
-  const clients: Array<() => void> = [];
-  stop = async () => { for (const close of clients) close(); await daemon.stop(); };
-  const atServing = queries;
-  t.diagnostic(`startup inbox queries at serving: ${atServing}`);
-  assert.ok(atServing <= 3, `startup recomputed the inbox ${atServing} times for 256 remembered processes`);
-  await eventually('initial inbox publication', () => queries > 0 || undefined);
-  assert.ok(queries <= 3, `startup and its first publication used ${queries} inbox queries`);
-  assert.ok(queries > 0, 'the native tracer saw an actual inbox query');
-  assert.ok(daemon.discovery);
-  const ui = await connectUi(t, daemon.discovery);
-  clients.push(() => ui.close());
-  const snapshot = await ui.request({ type: 'inbox.list' });
-  assert.equal(snapshot.ok, true, snapshot.error);
-  assert.equal((snapshot.value as Inbox).needsYou, 0, 'same-topic answers and cross-topic explicit replies leave no waiting rows');
-  assert.ok(candidateRows <= 3, `a settled snapshot materialized ${candidateRows} retained candidates instead of current topic ends`);
-  const planner = new DatabaseSync(db, { readOnly: true });
-  try {
-    for (const [name, sql] of [['inbox', inboxSql], ['topics', topicSql]]) {
-      assert.ok(sql, `${name} was observed at the protocol boundary`);
-      const plan = prepare.call(planner, `explain query plan ${sql}`).all() as Array<{ detail: string }>;
-      t.diagnostic(`${name} query plan: ${JSON.stringify(plan.map(row => row.detail))}`);
-      assert.ok(!plan.some(row => /^SCAN [mh](?: |$)/.test(row.detail)), `${name} scans retained message history`);
-    }
-  } finally { planner.close(); }
-  const client = pipe(daemon);
-  clients.push(() => client.close());
-  client.send({ type: 'hello', protocol: 2, client: 'ui' });
-  assert.equal(client.frames[0]?.type, 'welcome');
-  await tick();
-  for (let batch = 0; batch < 2; batch++) {
-    const before = queries, frameCount = client.frames.length;
-    client.batch(Array.from({ length: 100 }, (_, i) => ({ type: 'topic.read', id: `read-${batch}-${i}`, topic: 'history', upTo: `answer-${i + batch * 100}` })));
-    const replies = client.frames.slice(frameCount).filter(f => f.type === 'result');
-    assert.equal(replies.length, 100, 'all 100 event-producing writes completed in this input chunk');
-    assert.ok(replies.every(f => f.ok === true));
-    assert.equal(queries, before, 'no full inbox query runs synchronously per event');
-    const started = performance.now();
-    for (let turn = 0; turn < 20; turn++) {
-      client.send({ type: 'topic.read', id: `turn-${batch}-${turn}`, topic: 'history', upTo: `answer-${turn}` });
-      await tick();
-    }
-    const allowance = Math.ceil((performance.now() - started) / 250) + 1;
-    assert.ok(queries - before <= allowance, `cross-turn burst used ${queries - before} inbox rebuilds (budget ${allowance})`);
-    await eventually('coalesced inbox rebuild', () => queries > before || undefined);
-  }
-});
+test('startup with settled retained history coalesces two protocol bursts', t => inboxStartupWorkload(t, {
+  processes: 8, messagePairs: 16, requests: 4, events: 8, turns: 4,
+}));
 
 
 test('durable wait capture retains the original timestamp and archives a request resolved within its publication window', async t => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-inbox-time-'))), records: Array<Record<string, unknown>> = [];
-  const cleanup = ownDirectory(undefined, root);
+  const database = sqliteProbe();
+  const clock = new FakeClock();
+  const root = await tempProject(t, 'cland-inbox-time-'), records: Array<Record<string, unknown>> = [];
   let stop = async () => {};
-  t.after(async () => { try { await stop(); } finally { await cleanup(); } });
-  const daemon = await serveProject(root, { listen: 'never', log: record => records.push(record) });
+  onCleanup(t, () => stop());
+  const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: record => records.push(record) });
   const clients: Array<() => void> = [];
   stop = async () => { for (const close of clients) close(); await daemon.stop(); };
   const human = pipe(daemon), aide = pipe(daemon);
@@ -306,9 +151,11 @@ test('durable wait capture retains the original timestamp and archives a request
   const message = inspector.topicMessages('general', 10).find(m => m.text === 'Wait across a tick');
   assert.ok(message);
   assert.ok(!inspector.inboxWaits().some(w => w.id === message.id), 'the send is committed before its inbox wait is recorded');
+  await clock.advance(250);
   await eventually('persistent request captured', () => inspector.inboxWaits().some(w => w.id === message.id) || undefined);
   assert.equal(inspector.inboxWaits().find(w => w.id === message.id)?.since, message.ts, 'coalesced persistence preserves the actual wait start, rather than recording the recompute time');
   human.send({ type: 'topic.send', id: 'reply-persistent', topic: 'general', replyTo: message.id, text: 'Reviewed' });
+  await clock.advance(250);
   await eventually('persistent request departure', () => inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === message.id && d.reason === 'replied') || undefined);
 
   send('transient', 'Resolved in the same tick');
@@ -317,6 +164,7 @@ test('durable wait capture retains the original timestamp and archives a request
   assert.ok(transient);
   human.send({ type: 'topic.send', id: 'reply-transient', topic: 'general', replyTo: transient.id, text: 'Reviewed immediately' });
   assert.equal(human.frames.find(f => f.id === 'reply-transient')?.ok, true);
+  await clock.advance(250);
   await eventually('transient request departure', () => inspector.inboxDepartures('1970-01-01T00:00:00.000Z').some(d => d.id === transient.id) || undefined);
   assert.ok(!inspector.inboxWaits().some(w => w.id === transient.id));
   assert.equal(inspector.inboxDepartures('1970-01-01T00:00:00.000Z').filter(d => d.id === transient.id && d.reason === 'replied').length, 1, 'a same-tick reply has one durable departure');
@@ -336,7 +184,7 @@ test('an event-producing frame followed immediately by public hub close cancels 
   hub = createHubBase({ secret: 'test', store, log });
   let closed = false;
   t.after(async () => { if (!closed) await hub!.close(); });
-  const client = pipe({ hub });
+  const client = pipe({ dispatcher: hub.dispatcher });
   t.after(() => client.close());
   client.send({ type: 'hello', protocol: 2, client: 'ui' });
   await client.request({ type: 'subscribe', id: 'subscribe' });
@@ -354,17 +202,18 @@ test('an event-producing frame followed immediately by public hub close cancels 
 
 
 test('delivered verifier requests and session.list bursts never scan retained message history', async t => {
-  const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-verifier-work-'))), db = join(root, '.cland', 'hub.db');
-  const cleanup = ownDirectory(undefined, root);
+  const database = sqliteProbe();
+  const clock = new FakeClock();
+  const root = await tempProject(t, 'cland-verifier-work-'), db = join(root, '.cland', 'hub.db');
   await mkdir(join(root, '.cland'), { recursive: true });
-  const seed = new Store(db), ts = new Date().toISOString();
+  const seed = new Store(db), ts = clock.now().toISOString();
   seed.transaction(() => {
-    for (let i = 0; i < 4000; i++) seed.record({ id: `old-${i}`, from: 'old', fromKind: 'agent', via: 'session', to: [], text: 'review request T-1', ts }, [], Date.now());
+    for (let i = 0; i < 300; i++) seed.record({ id: `old-${i}`, from: 'old', fromKind: 'agent', via: 'session', to: [], text: 'review request T-1', ts }, [], Date.now());
   });
   seed.close();
-  const daemon = await serveProject(root, { log: () => {} });
+  const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: () => {} });
   const human = pipe(daemon), verifier = pipe(daemon);
-  t.after(async () => { human.close(); verifier.close(); await daemon.stop(); await cleanup(); });
+  onCleanup(t, async () => { human.close(); verifier.close(); await daemon.stop(); });
   human.send({ type: 'hello', protocol: 2, client: 'ui' });
   await human.request({ type: 'role.set', id: 'role', session: 'verifier', role: 'reviewer' });
   verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
@@ -380,10 +229,10 @@ test('delivered verifier requests and session.list bursts never scan retained me
   table.put({ name: 'verifier', harness: 'codex', role: 'reviewer', model: null, cwd: root, pid: null, harnessId: null, sessionId: 'verifier-id', harnessSessionId: null, startedAt: ts, status: 'running' });
   table.close();
   await human.request({ type: 'subscribe', id: 'subscribe' });
-  const prepare = DatabaseSync.prototype.prepare;
+  const prepare = database.prepare;
   let observing = false, messageReads = 0, pendingReads = 0;
   const scans: string[] = [];
-  t.mock.method(DatabaseSync.prototype, 'prepare', function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
+  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
     const sql = args[0];
     if (observing && /^select|^with/i.test(sql.trim()) && /\b(?:from|join) messages\b/i.test(sql)) {
       messageReads++;

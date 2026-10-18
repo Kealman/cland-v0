@@ -10,7 +10,7 @@ import type { LogFn } from '../log.ts';
 export type StdioEdgeOptions = {
   input: Readable;
   output: Writable;
-  dispatcher: Dispatcher;
+  dispatcher: Pick<Dispatcher, 'open'>;
   log?: LogFn;
   /** The input ended or the conversation closed it: the parent is gone or done. */
   onEnd: () => void;
