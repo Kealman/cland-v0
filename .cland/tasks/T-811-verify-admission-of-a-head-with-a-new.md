@@ -3,7 +3,7 @@ id: T-811
 kind: task
 title: Verify admission of a head with a new test-lint violation takes ~14.5 s on a quiet Mac, near the 15 s CLI deadline (T-788 covers only cached facts)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -13,9 +13,9 @@ blocked_by: []
 regression_of: T-788
 found_by: qa
 topic: null
-branch: null
+branch: t/T-811-verify-admission-of-a-head-with-a-new
 created: 2026-10-18T16:16:11.463Z
-updated: 2026-10-18T16:16:11.463Z
+updated: 2026-10-18T16:16:50.768Z
 ---
 
 ## Summary
