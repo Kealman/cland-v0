@@ -3,7 +3,7 @@ id: T-800
 kind: task
 title: The delivered suite result is cut at about 8 KiB by per-file test-lint tier lines, so the per-tier and tier-share lines never reach the reader
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-506
 branch: t/T-800-the-delivered-suite-result-is-cut-at
 created: 2026-10-18T12:11:23.483Z
-updated: 2026-10-18T13:20:57.256Z
+updated: 2026-10-18T13:21:24.193Z
 ---
 
 ## Summary
@@ -26,10 +26,13 @@ Found by qa-676 in E-676's demo (run qa-2026-10-18-1, criterion C2). Task run 01
 
 - [x] C1. A delivered suite result puts the run summary, the per-tier lines, the tier-share line, the test-lint summary and the budget would-fail lines before any per-file or per-finding detail, and stays within the delivery limit. A T2 report test with a repository-sized manifest and findings proves it, and fails before the fix.
   - done: impl-800 · 2026-10-18T12:48:23.586Z
+  - verified: rev-31 [reviewer] · run rev-20261018-800-final · 2026-10-18T13:21:23.029Z · commit 74570dc5775a1579e6c5c515ef96ceab5e022ff4
 - [x] C2. Per-file `test lint tier` lines and individual lint findings appear only in the log artifact, with one summary line in the message (counts plus the artifact id). Findings that refuse a run are still named in full.
   - done: impl-800 · 2026-10-18T12:22:07.443Z
+  - verified: rev-31 [reviewer] · run rev-20261018-800-final · 2026-10-18T13:21:23.029Z · commit 74570dc5775a1579e6c5c515ef96ceab5e022ff4
 - [x] C3. A dry-run and an integrated run at the fixed head show the same ordering.
   - done: impl-800 · 2026-10-18T12:17:18.565Z
+  - verified: rev-31 [reviewer] · run rev-20261018-800-final · 2026-10-18T13:21:23.029Z · commit 74570dc5775a1579e6c5c515ef96ceab5e022ff4
 
 ## Comments
 
@@ -217,3 +220,46 @@ After clear corrected-source review rev-20261018-800-source-3 / A-5296, submitte
 ### impl-800 · 2026-10-18T13:20:52.007Z
 
 Exact-head droplet retry 7b32bd8e / A-5320 passed at unchanged clean 74570dc5775a1579e6c5c515ef96ceab5e022ff4: 2603 tests, 2595 pass, 0 fail, 8 skipped, hub and Neovim phases complete. Prior cached-provenance failure and both new report regressions are green; no suite-protocol.test.ts tier mismatch in log. Linux droplet lifetime 1826s, cost $0.1268. Awaiting Reviewer final same-head verdict; live restarted-hub/integrated/demo proof remains Coordinator-owned per C3 disposition.
+
+### rev-31 · 2026-10-18T13:21:23.029Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-800-final
+commit: 74570dc5775a1579e6c5c515ef96ceab5e022ff4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-800 final evidence review
+
+Commit: 74570dc5775a1579e6c5c515ef96ceab5e022ff4
+Run: rev-20261018-800-final
+Scope: evidence
+Result: clear
+Standards findings: none.
+Specification findings: none.
+
+The task receipt and origin branch match the unchanged source-3 commit (A-5296). A-5320 / 7b32bd8e-ec8d-4f54-9ed0-9eaaaadbd4c6 is raw exit 0, auto full: 2603 total, 2595 passed, zero failures/cancellations, eight prerequisite skips. Free passed 248/248; machine 1956 with five skips; full Neovim 391 with three skips, completing in 191.36 s. Failure arrays are empty. No runtime tier-mismatch receipts, owned quarantine or owned skip.
+
+Positive-result audit:
+- All 32 ordinary cases in duration-budget seven, tier-report four, check three, dry-run four, protocol ten and selection-report four passed.
+- All three new identities passed 5/5 load repetitions, 15/15.
+- All three cache-recovery compatibility cases passed, including the unchanged 384-byte cached provenance assertion in 3.687038073 s.
+- Admission-cost compatibility and its four nested refusal/diagnostic controls passed, plus its five repetitions.
+- Total audited top-level ordinary identities: 36.
+
+The 377-file lint report fixture delivers 1036 bytes from a 27079-byte log. The 400-missing-baseline overflow fixture delivers fresh 1144 bytes and genuine cached 1325 bytes from a 39862-byte log. Successful assertions establish ordered counts/tiers/share/lint/budget, the detail-count/log-id pointer, complete artifact diagnostics and explicit cached exit 0 with distinct current/original heads, original run and tree. The new T2 fixture emits zero resource mismatches. Existing 384/768-byte selection compatibility, raw artifact detail retention and named lint refusals remain positive.
+
+C1–C3 verified. C3 follows independently read Coordinator 7cb99af1-1d14-4459-8467-47eb9c8cfabd: exact-source real CLI dry-run plus T2 integrated-receipt ordering is ticket evidence. This task result does not claim that the currently running old hub already uses the new formatter. Live proof remains the Coordinator-owned first integrated cover after merge/restart and E-676 C2 demo re-run. No per-item QA or extra task run is required by this review.
+
+Prior A-5290 remains failed old-head evidence. M1 overflow loss, M2 cached provenance truncation and M3 fixture resource leak/cache demotion are resolved and covered by the new source and current completed receipt.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 1826 s, cost $0.1268, peak one-minute load 6.17.
+
+Evidence A-5320: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5320-suite-7b32bd8e-ec8d-4f54-9ed0-9eaaaadbd4c6-auto-at-74570dc.log.
+
+Artifact A-5323.
+
+Criteria: C1 verified, C2 verified, C3 verified.

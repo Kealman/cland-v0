@@ -3,7 +3,7 @@ id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T13:20:22.132Z
+updated: 2026-10-18T13:21:11.730Z
 ---
 
 ## Summary
@@ -36,12 +36,15 @@ Decision 2 keeps two-platform T3 and T4 at stage, epic and release. T4 is where 
 - [x] C1. An occasion run plans every T1–T4 file with `CLAND_TEST_SOAK=1`, and an `all` run plans T1–T3 without it, proved by planning tests.
   - done: impl-714 · 2026-10-18T12:16:51.575Z
   - verified: rev-30 [reviewer] · run rev-20261018-714-final · 2026-10-18T12:44:26.504Z · commit 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
+  - verified: rev-30 [reviewer] · run rev-20261018-714-override-integration-final · 2026-10-18T13:21:10.393Z · commit 580c57a08bedf6cffb15abffc2c2a72b9e557262
 - [x] C2. The load gate at an occasion repeats the identities new since the last green stage run five times, and none older, proved by a load-gate test.
   - done: impl-714 · 2026-10-18T09:29:46.782Z
   - verified: rev-30 [reviewer] · run rev-20261018-714-final · 2026-10-18T12:44:26.504Z · commit 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
+  - verified: rev-30 [reviewer] · run rev-20261018-714-override-integration-final · 2026-10-18T13:21:10.393Z · commit 580c57a08bedf6cffb15abffc2c2a72b9e557262
 - [x] C3. A two-shard stage run's result shows the T4 tier line per shard, proved by a close-run test on the in-process provider.
   - done: impl-714 · 2026-10-18T09:29:47.724Z
   - verified: rev-30 [reviewer] · run rev-20261018-714-final · 2026-10-18T12:44:26.504Z · commit 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
+  - verified: rev-30 [reviewer] · run rev-20261018-714-override-integration-final · 2026-10-18T13:21:10.393Z · commit 580c57a08bedf6cffb15abffc2c2a72b9e557262
 
 ## Blocked by
 
@@ -142,3 +145,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source delta clear, A-5298. Coordinator 3ffcc49b authorized this single merge. Sole resolution retains occasion and requested executor/size/workers signature, incoming override-aware lookup/recovery and task occasion mismatch rejection before reuse. Existing soak/baseline/shard/report and carrier corrections remain. Incoming T-792 tests retain separate platform/override runs and exact retries/reopen; no assertions removed. A-5294 raw 37/37 serial passes, no failures/cancellations/skips; diff check clean. C1–C3 await fresh exact-head droplet; A-5284/A-5285 remain previous-head evidence. No reviewer execution.
+
+### rev-30 · 2026-10-18T13:21:10.393Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-714-override-integration-final
+commit: 580c57a08bedf6cffb15abffc2c2a72b9e557262
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Latest integration final clear, A-5322. A-5319 exact-head full gate passes 2582 tests, zero failed/cancelled, eight prerequisite skips; all hub/Neovim phases finalize. Six affected carriers positively execute 126 identities, shared stage consumers pass, and twelve occasion/override/batch groups pass 60/60 repetitions (including incoming separate-platform and requested-override recovery controls). Zero tier trips and no hard budgets. C1–C3 verified with source A-5298 and retained planning/baseline/shard mapping. Prior failure/correction and previous-head receipts remain disclosed. No reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
