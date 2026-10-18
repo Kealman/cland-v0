@@ -75,14 +75,17 @@ if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
       const receipt = join(options.root, `load-${sequence++}.jsonl`);
       const quarantinePath = `${receipt}.quarantine`;
       const gate = `${receipt}.start`;
-      const env: NodeJS.ProcessEnv = { ...options.env, CLAND_LOAD_GATE_START: gate };
+      const env: NodeJS.ProcessEnv = { ...options.env, CLAND_LOAD_GATE_START: gate, CLAND_TEST_TIMING_RECEIPTS: '0' };
       const tierReceipt = `${receipt}.tiers`;
       if (env.CLAND_TEST_TIER_ASSIGNMENTS) env.CLAND_TEST_TIER_REPORT = tierReceipt;
       delete env.NODE_V8_COVERAGE;
       delete env.CLAND_SUITE_SELECTION;
       delete env.CLAND_SUITE_SELECTION_FILE;
+      // Repetitions share execution receipts with the ordinary phase, but their
+      // fresh reporter identities and disabled timings keep accounting separate.
+      const progress = [`--test-reporter=${fileURLToPath(new URL('./skip-reporter.ts', import.meta.url))}`, '--test-reporter-destination=stdout'];
       const reporters = quarantine ? [`--test-reporter=${fileURLToPath(new URL('./quarantine-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${quarantinePath}`] : [];
-      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
+      const child = spawn(process.execPath, ['--import', bootstrap, ...(env.CLAND_TEST_TIER_ASSIGNMENTS ? ['--import', fileURLToPath(new URL('./tier-bootstrap.mjs', import.meta.url))] : []), '--test', `--test-timeout=${options.timeoutMs}`, `--test-name-pattern=${pattern}`, `--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${receipt}`, ...reporters, ...progress, resolve(options.cwd, event.file)], { cwd: options.root, env, detached: true, stdio: ['ignore', 'inherit', 'inherit'] });
       const done = new Promise<number>((resolve, reject) => {
         child.once('error', reject);
         child.once('exit', (code) => resolve(code ?? 1));

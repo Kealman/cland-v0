@@ -1,5 +1,7 @@
 // T3: real Node runner lifecycle: deadlines and signals reap repetitions before phase-root removal.
 // Real reporter contract uses fixture-local admission leases.
+import { suiteProgress } from '../src/suite-progress.ts';
+import { timingReceipts } from '../src/suite-tier-report.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -35,11 +37,13 @@ test('skipped', {skip: 'fixture platform'}, () => {});`);
       : `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection })});`;
     const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_DIAGNOSTIC_FIXTURE: 'private-fixture-value-720\nprivate-fixture-second-line-720', CLAND_DIAGNOSTIC_COLLISION: 'test', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
     ownProcess(t, execution.child.pid);
+    let output = '';
+    execution.child.stdout?.on('data', chunk => { output += String(chunk); });
     const result = execution.then(
       r => ({ code: 0, output: r.stdout + r.stderr }),
       (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }),
     );
-    return { child: execution.child, result };
+    return { child: execution.child, result, output: () => output };
   };
   const run = (loadGate = false) => start(loadGate).result;
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 0.05, fileSeconds: 60 }, files: {}, tests: {}, allow: {} };
@@ -60,6 +64,9 @@ test('known load', async () => { writeFileSync(journal + '.running', 'yes'); con
   const result = await run(true);
   assert.equal(result.code, 1, result.output);
   assert.match(result.output, /load gate: hub\/test\/fixture.test.ts::stable \[new\]\.\* 5\/5 passed/);
+  const progress = suiteProgress(result.output, 0)!;
+  assert.equal(progress.completed.filter(row => row.scope === 'load-gate' && row.name === 'stable [new].*' && row.outcome === 'pass').length, 5, 'every completed repetition has its own retained receipt');
+  assert.equal(timingReceipts(result.output).filter(row => row.name === 'stable [new].*').length, 1, 'only the ordinary body contributes a timing');
   assert.match(result.output, /✖ load gate: hub\/test\/fixture.test.ts::flaky [0-4]\/5 passed/);
   assert.match(result.output, /suite duration .*load gate extra wall [\d.]+s/);
   const { suiteSummary } = await import('../src/hub/suites.ts');
@@ -302,6 +309,9 @@ writeFileSync(marker, JSON.stringify({pid: process.pid, root: process.env.TMPDIR
       assert.ok(await condition(), 'bounded lifecycle observation');
     };
     await until(async () => (await Promise.all([0, 1].map(identity => readFile(marker + identity, 'utf8').catch(() => '')))).every(Boolean));
+    // Observe the ordinary phase's completion summary separately from the
+    // repetition worker barrier: only repetitions remain held at interruption.
+    await until(() => /ℹ duration_ms /.test(suite.output()));
     const repeated = await Promise.all([0, 1].map(async identity => JSON.parse(await readFile(marker + identity, 'utf8')) as { pid: number; root: string }));
     for (const worker of repeated) ownProcess(t, worker.pid);
     const exited = new Promise<void>(resolve => suite.child.once('exit', () => resolve()));
@@ -317,7 +327,12 @@ writeFileSync(marker, JSON.stringify({pid: process.pid, root: process.env.TMPDIR
       assert.equal(successor.code, 0, successor.output);
       assert.match(successor.output, /taking over stale suite lock/);
     }
-    await suite.result;
+    const stopped = await suite.result;
+    const progress = suiteProgress(stopped.output, 0);
+    assert.deepEqual(progress?.unfinished.map(row => row.name).sort(), ['held repetition 0', 'held repetition 1']);
+    assert.ok(progress!.unfinished.every(row => row.scope === 'load-gate'));
+    assert.deepEqual(progress!.completed.filter(row => row.scope !== 'load-gate').map(row => row.name).sort(), ['held repetition 0', 'held repetition 1']);
+    assert.deepEqual(timingReceipts(stopped.output).map(row => row.name).sort(), ['held repetition 0', 'held repetition 1'], 'repetitions do not add ordinary timings');
     const gone = () => repeated.every(worker => { try { process.kill(worker.pid, 0); return false; } catch (error) { return (error as NodeJS.ErrnoException).code === 'ESRCH'; } });
     await until(gone);
     assert.ok(gone(), 'both exact repeat workers are gone');

@@ -7,7 +7,7 @@ import type { RunRef, RunStatus } from '../../../src/executor/executor.ts';
 import { writeLease, type DropletLease } from '../../../src/executor/droplet/lease.ts';
 import type { PrepareKey } from '../../../src/executor/droplet/prepare.ts';
 
-export type MachineScript = { outcome?: 'green' | 'red' | 'lost' | 'slow'; afterMs?: number; failures?: string[]; log?: string };
+export type MachineScript = { outcome?: 'green' | 'red' | 'lost' | 'slow'; code?: number; afterMs?: number; failures?: string[]; log?: string };
 /** Semantic remote receipts, without shell parsing, SSH or a worker process. */
 export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey, initial: MachineScript = {}) {
   const waits = remoteWaits(clock);
@@ -51,7 +51,7 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
       if (execution.script.outcome === 'lost') return { state: 'lost', code: 1, cause: 'remote machine lost' };
       if (!execution.cancelled && (execution.script.outcome === 'slow' || clock.now().getTime() < execution.started + (execution.script.afterMs ?? 100))) return { state: 'running' };
       execution.finished ??= execution.started + (execution.script.afterMs ?? 100);
-      return { state: 'done', code: execution.cancelled || execution.script.outcome === 'red' ? 1 : 0, finished: new Date(execution.finished).toISOString(), platform: { os: 'linux', arch: 'x64', release: 'scripted', node: key.node, nvim: key.nvim.tag } };
+      return { state: 'done', code: execution.cancelled ? 1 : execution.script.code ?? (execution.script.outcome === 'red' ? 1 : 0), finished: new Date(execution.finished).toISOString(), platform: { os: 'linux', arch: 'x64', release: 'scripted', node: key.node, nvim: key.nvim.tag } };
     },
     async log(lease, offset) {
       record('log', lease);

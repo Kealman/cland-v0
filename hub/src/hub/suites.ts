@@ -1,10 +1,11 @@
+import { suiteProgress, progressLines } from '../suite-progress.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile, rename, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
@@ -55,7 +56,7 @@ export type SuiteJob = {
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   accountingWaitStarted?: string; accountingPending?: boolean;
-  cancelled?: boolean;
+  cancelled?: boolean; interruptedAt?: string; progressReported?: boolean;
   tree?: string | null; finished?: string;
   cached?: { run: string; head: string; tree: string };
   cacheBypass?: string;
@@ -303,9 +304,9 @@ export class Suites {
     if (!job.cancelled) {
       if (job.outcome || job.reported) throw new Error('suite already finished');
       // Persist before signalling: restart, late receipts and reporting retries retain this outcome.
-      job.cancelled = true; job.outcome = { code: 143, cause: 'cancelled' }; this.#save(job);
+      job.cancelled = true; job.interruptedAt ??= this.#clock.now().toISOString(); job.outcome = { code: 143, cause: 'cancelled' }; this.#save(job);
       this.#stopHostGate(job.id);
-      for (const shard of job.shards ?? []) { shard.cancelled = true; shard.outcome ??= job.outcome; this.#stopHostGate(shard.id); }
+      for (const shard of job.shards ?? []) { shard.cancelled = true; shard.interruptedAt ??= job.interruptedAt; shard.outcome ??= job.outcome; this.#stopHostGate(shard.id); }
       this.#save(job);
     }
     void this.#inspectJob(job);
@@ -889,6 +890,7 @@ export class Suites {
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
+      if (job.outcome && job.outcome.code !== 0) job.interruptedAt ??= job.finished ?? this.#clock.now().toISOString();
       if (job.cached && !this.#store.message(`suite:${job.id}`) && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
       }
@@ -901,7 +903,9 @@ export class Suites {
           const health = machineHealthFromLog(await readFile(job.log, 'utf8'));
           if (health) job.health = health;
         }
-        await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
+        // A recovered receipt can already contain the finalized partial results.
+        // Do not replace it with a header-only receipt on a reporting retry.
+        if (!restored) await writeFile(job.result, JSON.stringify({ ...job.outcome, finished: job.finished ?? this.#clock.now().toISOString(), ...(job.platform ? { platform: job.platform } : {}), ...(job.health ? { health: job.health } : {}), ...(job.shardHealth ? { shardHealth: job.shardHealth } : {}) }));
       }
       job.state = 'finished';
       this.#save(job);
@@ -944,6 +948,21 @@ export class Suites {
           }
         }
         job.cleaned = true; this.#save(job);
+      }
+      // Final collection is over before appending derived lines: remote offsets
+      // remain raw byte offsets until the machine has been released.
+      if (remote && !job.cached && !job.progressReported) {
+        const log = await readFile(job.log, 'utf8');
+        const progress = suiteProgress(log, Date.parse(job.interruptedAt ?? job.finished ?? this.#clock.now().toISOString()));
+        if (progress) {
+          const result = JSON.parse(await readFile(job.result, 'utf8'));
+          await writeFile(`${job.result}.progress.tmp`, JSON.stringify({ ...result, progress }), { mode: 0o600 });
+          await rename(`${job.result}.progress.tmp`, job.result);
+          if (job.outcome.code !== 0 && !log.includes('\nsuite interruption ')) {
+            await appendFile(job.log, `\nsuite interruption ${JSON.stringify({ at: job.interruptedAt })}\n${progressLines(progress).join('\n')}\n`);
+          }
+        }
+        job.progressReported = true; this.#save(job);
       }
       if (job.tierPlan?.length && !job.tierReported && !job.cached) {
         const log = await readFile(job.log, 'utf8');

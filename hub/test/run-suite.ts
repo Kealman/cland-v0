@@ -131,6 +131,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       delete env.CLAND_TEST_QUARANTINE;
       delete env.CLAND_TEST_TIER_ASSIGNMENTS;
       delete env.CLAND_TEST_TIER_REPORT;
+      // Timing accounting exists only when this phase has a duration manifest.
+      env.CLAND_TEST_TIMING_RECEIPTS = durationManifest ? '1' : '0';
       if (!root) throw new Error('suite phase root is missing');
       const tierTrips = join(root, 'tier-mismatches.jsonl');
       if (tiers && args.includes('--test')) {
@@ -227,7 +229,7 @@ process.chdir(cwd);`);
           const tests: TestTiming[] = [];
           for (const record of records) {
             if ('overheadMs' in record) budgetOverheadMs += record.overheadMs;
-            else { tests.push(record); observed.push(record); process.stdout.write(`suite timing ${JSON.stringify(record)}\n`); }
+            else { tests.push(record); observed.push(record); }
           }
           const checked = checkDurations(tests, durationManifest, tiers ? Object.fromEntries(tiers) : {});
           regressions.push(...checked.regressions);
