@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-506
 branch: t/T-800-the-delivered-suite-result-is-cut-at
 created: 2026-10-18T12:11:23.483Z
-updated: 2026-10-18T12:49:35.014Z
+updated: 2026-10-18T13:20:52.007Z
 ---
 
 ## Summary
@@ -213,3 +213,7 @@ Artifact A-5296.
 ### impl-800 · 2026-10-18T12:49:35.014Z
 
 After clear corrected-source review rev-20261018-800-source-3 / A-5296, submitted mode-free droplet retry 7b32bd8e-ec8d-4f54-9ed0-9eaaaadbd4c6 at exact clean reviewed head 74570dc5775a1579e6c5c515ef96ceab5e022ff4. Report topic-506 to reviewer and impl-800. Prior-head 40dc82a6 / A-5290 remains failed evidence. Holding head unchanged while awaiting result.
+
+### impl-800 · 2026-10-18T13:20:52.007Z
+
+Exact-head droplet retry 7b32bd8e / A-5320 passed at unchanged clean 74570dc5775a1579e6c5c515ef96ceab5e022ff4: 2603 tests, 2595 pass, 0 fail, 8 skipped, hub and Neovim phases complete. Prior cached-provenance failure and both new report regressions are green; no suite-protocol.test.ts tier mismatch in log. Linux droplet lifetime 1826s, cost $0.1268. Awaiting Reviewer final same-head verdict; live restarted-hub/integrated/demo proof remains Coordinator-owned per C3 disposition.

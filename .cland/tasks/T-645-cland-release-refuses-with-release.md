@@ -3,7 +3,7 @@ id: T-645
 kind: task
 title: cland release refuses with release-version when dev's package.json version differs from the release's
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-504
 branch: t/T-645-cland-release-refuses-with-release
 created: 2026-10-16T16:23:58.697Z
-updated: 2026-10-18T12:57:34.796Z
+updated: 2026-10-18T13:20:41.656Z
 ---
 
 ## Summary
@@ -35,12 +35,16 @@ The version a release tags must be the version its build reports. `cland release
 
 - [x] C1. `cland release --item R-<n> --dry-run` on a test project whose `dev` says 0.1.3 while the item's version is 0.1.4 refuses with `release-version` and names both versions (release-item.test.ts).
   - done: impl-645 · 2026-10-18T11:14:53.568Z
+  - verified: rev-31 [reviewer] · run rev-20261018-645-final · 2026-10-18T13:20:40.215Z · commit 0d5f74a57d376eb4b87a91185b3109621d735b9a
 - [x] C2. The same refusal for `cland release v0.1.4 --dry-run` and for the release without `--dry-run`, and nothing moves: `main`, the tags and the territory are unchanged (release.test.ts).
   - done: impl-645 · 2026-10-18T11:14:54.020Z
+  - verified: rev-31 [reviewer] · run rev-20261018-645-final · 2026-10-18T13:20:40.215Z · commit 0d5f74a57d376eb4b87a91185b3109621d735b9a
 - [x] C3. A bump committed on `dev` to 0.1.4 lets the dry run pass; the bump left uncommitted in the working copy does not.
   - done: impl-645 · 2026-10-18T11:14:54.895Z
-- [ ] C4. A project whose root has no `package.json` previews and releases as before (the existing release tests pass unchanged).
-  - failed: rev-31 [reviewer] · 2026-10-18T12:57:34.796Z · note Exact-head gate timed out with no completed machine compatibility phase; raw handover-process assertion failure also lacks final classification.
+  - verified: rev-31 [reviewer] · run rev-20261018-645-final · 2026-10-18T13:20:40.215Z · commit 0d5f74a57d376eb4b87a91185b3109621d735b9a
+- [x] C4. A project whose root has no `package.json` previews and releases as before (the existing release tests pass unchanged).
+  - done: impl-645 · 2026-10-18T13:20:05.942Z
+  - verified: rev-31 [reviewer] · run rev-20261018-645-final · 2026-10-18T13:20:40.215Z · commit 0d5f74a57d376eb4b87a91185b3109621d735b9a
 - [x] C5. The release skill's step 2 names the bump commit before the dry run.
   - done: impl-645 · 2026-10-18T11:14:55.742Z
   - verified: rev-31 [reviewer] · run rev-20261018-645-source · 2026-10-18T11:15:51.122Z · commit 0d5f74a57d376eb4b87a91185b3109621d735b9a
@@ -127,3 +131,39 @@ Evidence: A-5301, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5301
 Artifact A-5302.
 
 Criteria: C4 failed (Exact-head gate timed out with no completed machine compatibility phase; raw handover-process assertion failure also lacks final classification.).
+
+### rev-31 · 2026-10-18T13:20:40.215Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-645-final
+commit: 0d5f74a57d376eb4b87a91185b3109621d735b9a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-645 final evidence review
+
+Commit: 0d5f74a57d376eb4b87a91185b3109621d735b9a
+Run: rev-20261018-645-final
+Scope: evidence
+Result: clear
+Standards findings: none.
+Specification findings: none.
+
+Task receipt and origin branch match the unchanged source-reviewed commit (A-5231). A-5318 / 9f86c764-24c3-4d69-b8ff-cb937a2831a2 is raw exit 0, auto hub-only with Neovim smoke: 2187 total, 2182 passed, zero failures/cancellations, five prerequisite skips. Free 235/235, machine 1942 passed with five skips, smoke 5/5 in 2.92 s. Failure arrays are empty; no runtime tier-mismatch or owned quarantine.
+
+All 27 ordinary release cases passed: release-item nine, release eighteen. The new item mismatch case passed in 1.427741815 s, version committed/uncommitted preview/publication case in 1.604946804 s, unversioned-key compatibility case in .619083930 s. Each passed five load-gate repetitions, 15/15. Existing absent-package publication, unchanged-ref refusal, item notes/closure, rejected push and pinned receipt/recovery controls remain positive.
+
+C1–C4 verified against these exact-head results and retained source/red evidence; C4's claimant done mark was restored against A-5318. C5 source verification remains current. No automatic version write or real project release was performed by this review.
+
+A-5301 remains a failed timed-out prior attempt, not green evidence. Independently read Coordinator 1fe97fd1 authorizing one same-head retry, c3ba428b distinguishing the raw handover assertion from the timeout, and 8f127e4a filing that flake as T-801 after local 3/3. The retry also passes the handover case in 7.434924789 s. It needs no known-red exception; this is a completed green receipt. The shared timeout-diagnostic follow-up remains separate.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 1272 s, cost $0.0883, peak one-minute load 6.30. Report-only budget/ratchet annotations do not change the raw green result. No per-item QA.
+
+Evidence: A-5318, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5318-suite-9f86c764-24c3-4d69-b8ff-cb937a2831a2-auto-at-0d5f74a.log.
+
+Artifact A-5321.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
