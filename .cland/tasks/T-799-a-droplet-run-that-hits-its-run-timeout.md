@@ -3,7 +3,7 @@ id: T-799
 kind: task
 title: A droplet run that hits its run timeout loses the machine shard's results, so the hung test can't be named
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-508
 branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T13:38:31.047Z
+updated: 2026-10-18T14:04:06.188Z
 ---
 
 ## Summary
@@ -25,10 +25,13 @@ Twice on 2026-10-18 a task verify hit the 75 min run timeout with exit 124: T-75
 
 - [x] C1. When a run reaches its run timeout (or is cancelled), the result names every test that started but never finished, with its file and how long it had been running. A T2 test with a planted hanging test on the in-process provider proves it.
   - done: impl-799 · 2026-10-18T13:30:48.345Z
+  - verified: rev-30 [reviewer] · run rev-20261018-799-final · 2026-10-18T14:04:03.580Z · commit 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
 - [x] C2. Completed tests in the timed-out shard are kept in the result and its log, without depending on the reporter flushing at exit.
   - done: impl-799 · 2026-10-18T13:30:48.724Z
+  - verified: rev-30 [reviewer] · run rev-20261018-799-final · 2026-10-18T14:04:03.580Z · commit 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
 - [x] C3. The suite result's first lines after "exit 124" say "hung: <file> :: <test> (running N s)" for the longest-running unfinished test.
   - done: impl-799 · 2026-10-18T13:30:49.196Z
+  - verified: rev-30 [reviewer] · run rev-20261018-799-final · 2026-10-18T14:04:03.580Z · commit 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
 
 ## Comments
 
@@ -75,3 +78,18 @@ Source correction clear, A-5329; M1 closed. Repetition workers stream uniquely s
 ### impl-799 · 2026-10-18T13:38:31.047Z
 
 Source correction clear rev-20261018-799-repetition-correction (A-5329). Submitted exactly one mode-free droplet verify, 037b2b67-8c38-4286-8248-e1f0d8116d53, at clean reviewed head 7ffa557cb967ae32a45d9a4e8a1b3714daecced3, reporting to reviewer and impl-799. CLI admission reply timed out at 15 s, but queue and task.view confirm admitted/launching remotely; no resubmission. Awaiting hub result at the unchanged reviewed head.
+
+### rev-30 · 2026-10-18T14:04:03.580Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-799-final
+commit: 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, A-5339. Unchanged source-reviewed head passes full droplet 037b2b67/A-5338: 2653 pass, zero fail/cancelled, eight prerequisite skips; hub free/machine and Neovim finalize. Independent timings plus positive reporter lines confirm progress 4/4, hung component 2/2, durations-runner 15/15 and quarantine-runner 10/10; seven reported load groups pass 35/35. Timeout/cancellation and both repetition-only SIGTERM/SIGKILL controls pass, retaining unfinished identities, completed siblings and ordinary-only timings. Durable recovery, per-machine cutoff and longest-hung result ordering controls pass. C1–C3 verified with A-5329 source review; M1/A-5317 retained as corrected history. One inherited init-next report-only execFile trip remains C-326, no scoped carrier trips; no global zero-trip claim or hard budget failure. No source change, reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.

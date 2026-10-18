@@ -3,7 +3,7 @@ id: T-641
 kind: task
 title: cland init refuses a shallow clone with "the territory needs the full history" and the command that fetches it
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-509
 branch: t/T-641-cland-init-refuses-a-shallow-clone-with
 created: 2026-10-16T16:23:57.093Z
-updated: 2026-10-18T13:54:48.693Z
+updated: 2026-10-18T13:57:56.925Z
 ---
 
 ## Summary
@@ -33,10 +33,13 @@ Today a shallow clone fails deep inside the territory step with Git's "shallow u
 
 - [x] C1. `cland init` in a shallow clone exits 1 with a line holding "the territory needs the full history" and `git fetch --unshallow` (init-roots.test.ts, on ticket T-639's shallow clone).
   - done: impl-641 · 2026-10-18T13:06:54.295Z
+  - verified: rev-30 [reviewer] · run rev-20261018-641-final · 2026-10-18T13:57:36.705Z · commit 73857d73ca50497abd8c6e283095d9893560bffe
 - [x] C2. After the refusal the clone is byte-identical to before (ticket T-639's `snapshot`): no `.cland/`, no remote renamed, no file written.
   - done: impl-641 · 2026-10-18T13:06:54.723Z
-- [ ] C3. After `git fetch --unshallow` in the same clone, `cland init` succeeds and the territory holds `dev`.
-  - failed: rev-30 [reviewer] · 2026-10-18T13:33:32.493Z · note A-5325 exact-head gate exits1 on suite-accounting budget.lock deadline; no accepted passing gate despite owned shallow/recovery controls passing.
+  - verified: rev-30 [reviewer] · run rev-20261018-641-final · 2026-10-18T13:57:36.705Z · commit 73857d73ca50497abd8c6e283095d9893560bffe
+- [x] C3. After `git fetch --unshallow` in the same clone, `cland init` succeeds and the territory holds `dev`.
+  - verified: rev-30 [reviewer] · run rev-20261018-641-final · 2026-10-18T13:57:36.705Z · commit 73857d73ca50497abd8c6e283095d9893560bffe
+  - done: impl-641 · 2026-10-18T13:57:56.068Z
 
 ## Comments
 
@@ -91,3 +94,18 @@ Criteria: C3 failed (A-5325 exact-head gate exits1 on suite-accounting budget.lo
 ### impl-641 · 2026-10-18T13:54:27.564Z
 
 Authorized same-head retry 2e327538-64a0-43b2-8027-cdb2f938a428 passed at reviewed 73857d73: 2257 pass, 0 fail, 5 skip, hub-only plus Neovim smoke. A-5336. Linux x64 Node v24.21.0, c-8 lon1, workers 2, lifetime 1324 s, cost $0.0919. Prior unrelated accounting failure (T-802) did not recur. Reviewer receives exact-head receipt directly for final evidence verdict; head unchanged.
+
+### rev-30 · 2026-10-18T13:57:36.705Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-641-final
+commit: 73857d73ca50497abd8c6e283095d9893560bffe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, A-5337. Authorized unchanged-head retry 2e327538/A-5336 exits 0: 2257 pass, 0 fail/cancelled, 5 prerequisite skips; hub phases and Neovim smoke complete. Six init-roots cases positively pass and all six load groups pass 5/5. Positive poisoned-HOME init-machine wrapper (2.146148738s) covers bounded real shallow refusal, unchanged snapshot, same-clone unshallow retry and territory dev recovery through its successful child exit. C1–C3 verified with source A-5311. Prior A-5325/A-5328 failure remains disclosed; primary 6641481b classified it unrelated, filed T-802 and authorized this one retry; the accounting case now passes. One inherited init-next report-only execFile row remains explicitly routed as C-326/A-5327; no owned roots/machine trips. No source change, reviewer execution, new allowance or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.
