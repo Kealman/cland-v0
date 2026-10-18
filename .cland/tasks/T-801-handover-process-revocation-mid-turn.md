@@ -2,8 +2,8 @@
 id: T-801
 kind: task
 title: 'handover-process: "revocation mid-turn…" failed once on a droplet (7.5 s) in an unrelated task run'
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-518
 branch: t/T-801-handover-process-revocation-mid-turn
 created: 2026-10-18T12:59:15.093Z
-updated: 2026-10-18T17:18:43.552Z
+updated: 2026-10-18T18:45:56.715Z
+closed: 2026-10-18T18:45:56.715Z
 ---
 
 ## Summary
@@ -78,3 +79,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged b8322a4c. A-5489/57be29a1 is accepted exit0 with positive handover-process receipt 4.291883532s; full phases finish 2623/2631 pass, 0 fail/cancel, 8 unrelated skips. A-5490 retains primary a8e2b96e C1 disposition: reproduced ordering defect sufficient, most likely historical cause unproven, no 20x loop required. C2 observed barrier/reply-tied assertions pass on Linux. Prior shared refusal and inherited report-only C-326/T-803/budget warnings disclosed. No per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T18:45:56.715Z
+
+Merged 0637a6b151e14e6b1f861527f163a24f43176bf4 onto dev.
