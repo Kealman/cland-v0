@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-515
 branch: t/T-810-worktree-cli-test-ts-hangs
 created: 2026-10-18T16:14:16.762Z
-updated: 2026-10-18T16:18:19.711Z
+updated: 2026-10-18T16:33:23.424Z
 ---
 
 ## Summary
@@ -31,3 +31,7 @@ Four full runs today ended in a machine-phase stall or a 75 min timeout with hub
 ### impl-810 · 2026-10-18T16:18:19.711Z
 
 Baseline reproduction underway: 16 serial macOS passes under an external 180 s hard watchdog. No confirmed hang. T-799 lead reports no historical active-case/await evidence; A-5411 has declaration-ordered starts too. Coordinator decision cad64964 accepts C1 as not reproduced in 50 macOS runs if all stay green, with original attribution explicitly open; C2 will deliver named case/operation deadlines plus 50/50 fixed runs and a green Linux droplet verify.
+
+### impl-810 · 2026-10-18T16:33:23.423Z
+
+Cause found during serial baseline attempts 45/46: first routing case completed body in ~2 s then waited ~120 s in hub teardown. startFreshnessDaemon used bare serveProject without isolated env, inheriting the real provider token and global executor ledger; startup sweep(true) contended on shared state, and Dispatcher.close awaits that startup recovery. Coordinator confirmed concurrent serving-hub/verification ledger contention (T-813), then ordered loop stop. Controller/runner/worker pids 54592, 94843, 94844 were killed and observed gone; 46 baseline attempts completed, attempt 47 interrupted by instruction. Fix replaces routing fixture with projectHub, adds named operation/teardown deadlines, and sanitizes shared worker/CLI executor env. Hostile inherited-token/state regression red before startup then green. 50 patched macOS attempts underway; verify held by Coordinator.

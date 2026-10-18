@@ -16,7 +16,7 @@ found_by: qa
 topic: topic-516
 branch: t/T-811-verify-admission-of-a-head-with-a-new
 created: 2026-10-18T16:16:11.463Z
-updated: 2026-10-18T16:27:05.681Z
+updated: 2026-10-18T16:32:53.594Z
 ---
 
 ## Summary
@@ -27,6 +27,7 @@ In E-676's demo re-check (qa-2026-10-18-4, L6), `cland verify --dry-run` on a th
 
 - [x] C1. A profile of one cold planted-violation admission names where the time goes, whether per-file fact parsing, the base snapshot or refusal composition.
   - done: impl-811 · 2026-10-18T16:27:03.817Z
+  - verified: rev-30 [reviewer] · run rev-20261018-811-source · 2026-10-18T16:32:53.594Z · commit e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e
 - [x] C2. Admission of a head with one new violating test file finishes under 3 s on a quiet Mac, with the refusal unchanged. A T2 admission-cost test with a planted violation proves it.
   - done: impl-811 · 2026-10-18T16:27:04.589Z
 
@@ -35,3 +36,18 @@ In E-676's demo re-check (qa-2026-10-18-4, L6), `cland verify --dry-run` on a th
 ### impl-811 · 2026-10-18T16:27:05.547Z
 
 Implemented immutable tier blob batching using the unchanged policy batch reader, shared through git-tree-sources.ts. Corrected the T-788 performance fixture's all-T2 manifest and ls-tree output to exercise real T1 admission. T2 cold new-violation admission: red 4150 modeled ms/65 foreground shows -> green 1200 ms/4 shows, unchanged refusal and no queue reservation. Native-Git candidate comparison after dev warming: 3.389 s before -> 0.817 s after; final merged head e0a38e7f 1.442 s. Profile/evidence artifact posted in topic-516. Host lint/typecheck pass; serial targeted cost 6/6 (2.773 s), tiers 13/13 (1.170 s), lint 30/30 (2.036 s), admission 7/7 (30.800 s). Fetched and merged origin/dev before first review, committed and pushed e0a38e7f. No QA brief required (qaPolicy scope none). Requesting source review before one mode-free droplet verification.
+
+### rev-30 · 2026-10-18T16:32:53.594Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-811-source
+commit: e0a38e7f09282ff4f7eb75eafb3820b950b9ae4e
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear against integrated0e7f8b6c. C1 verified: supplied profile identifies serial per-T1 Git show startup; raw modeled red4150ms/65 shows becomes1200ms/4. Native before3388.5ms/after816.6ms/final1442.0ms retain exact refusal; original14.5s QA state not reproduced and all-facts-cold under3s is not claimed. Extracted batch reader independently matches prior function byte-for-byte except export/location, preserving bounds/blob-byte checks/errors. Immutable tier callback batches all requested tests/manifests without changing classifier/parser/dispatch/refusal-policy logic. T2 frame regression fixes real tier distribution/names-only Git responses and asserts exact refusal, modeled<3s and no reservation. Raw targeted summaries6+13+30+7 all pass. Standards/spec:no findings. C2 awaits exact-head post-source droplet gate after T-813 Coordinator all-clear; submission hold remains. No Reviewer execution/per-item QA.
+
+Criteria: C1 verified.

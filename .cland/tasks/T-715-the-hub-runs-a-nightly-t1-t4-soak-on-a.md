@@ -3,7 +3,7 @@ id: T-715
 kind: task
 title: The hub runs a nightly T1–T4 soak on a droplet within the daily spend cap and records the coverage map from it
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-522
 branch: t/T-715-the-hub-runs-a-nightly-t1-t4-soak-on-a
 created: 2026-10-16T19:59:44.178Z
-updated: 2026-10-18T16:26:47.418Z
+updated: 2026-10-18T16:33:33.698Z
 ---
 
 ## Summary
@@ -33,10 +33,14 @@ Decision 7: a nightly T4 soak within the daily spend cap (~$0.15–0.25 a day, m
 
 ## Acceptance criteria
 
-- [ ] C1. With a `FakeClock` past the configured time and `dev` changed, the hub submits exactly one soak run, and none when the tree is unchanged, proved by a scheduling test.
-- [ ] C2. A soak whose reservation would exceed the daily cap is skipped with one notice naming the cap, proved by a test with the spend ledger.
-- [ ] C3. A green soak records a coverage map that task selection reads, proved by a selection test.
-- [ ] C4. A red soak posts a quarantine proposal per failing test and leaves the merge queue running, proved by a test.
+- [x] C1. With a `FakeClock` past the configured time and `dev` changed, the hub submits exactly one soak run, and none when the tree is unchanged, proved by a scheduling test.
+  - done: impl-715 · 2026-10-18T16:32:48.135Z
+- [x] C2. A soak whose reservation would exceed the daily cap is skipped with one notice naming the cap, proved by a test with the spend ledger.
+  - done: impl-715 · 2026-10-18T16:32:49.031Z
+- [x] C3. A green soak records a coverage map that task selection reads, proved by a selection test.
+  - done: impl-715 · 2026-10-18T16:32:50.172Z
+- [x] C4. A red soak posts a quarantine proposal per failing test and leaves the merge queue running, proved by a test.
+  - done: impl-715 · 2026-10-18T16:32:50.885Z
 
 ## Comments
 

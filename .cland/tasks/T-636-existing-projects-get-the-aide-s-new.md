@@ -3,7 +3,7 @@ id: T-636
 kind: task
 title: Existing projects get the Aide's new tools once, at the hub's first 0.1.4 start
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-523
 branch: t/T-636-existing-projects-get-the-aide-s-new
 created: 2026-10-16T16:04:12.845Z
-updated: 2026-10-18T16:28:32.786Z
+updated: 2026-10-18T16:33:12.888Z
 ---
 
 ## Summary
@@ -33,8 +33,8 @@ Every existing `roles.toml` lists the Aide's tools explicitly and cland never re
 
 ## Acceptance criteria
 
-- [ ] C1. A hub started on a project whose roles.toml lists the v0.1.3 Aide tools appends the five tools, keeps every other line, writes the mark and posts one Agents notice naming them (frame-protocol test).
-  - failed: rev-30 [reviewer] · 2026-10-18T16:28:32.786Z · note Valid roles needing migration are discarded on publication failure; hub silently uses built-in policy and will not retry until another edit.
+- [x] C1. A hub started on a project whose roles.toml lists the v0.1.3 Aide tools appends the five tools, keeps every other line, writes the mark and posts one Agents notice naming them (frame-protocol test).
+  - done: impl-636 · 2026-10-18T16:30:46.957Z
 - [x] C2. A second start writes nothing, and neither does a start after the human removed one of the added tools again.
   - done: impl-636 · 2026-10-18T16:25:37.913Z
 - [x] C3. A roles.toml without an `[aide.permissions] tools` list, one that already holds the five tools and one that does not parse are left byte-identical, the last with an Agents notice.

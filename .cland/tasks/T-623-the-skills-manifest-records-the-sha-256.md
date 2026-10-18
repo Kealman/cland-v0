@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-525
 branch: t/T-623-the-skills-manifest-records-the-sha-256
 created: 2026-10-16T15:57:48.998Z
-updated: 2026-10-18T16:26:17.364Z
+updated: 2026-10-18T16:31:03.187Z
 ---
 
 ## Summary
@@ -42,9 +42,25 @@ The validation that runs before anything is touched (the mark, the skill names, 
   - done: impl-623 · 2026-10-18T16:26:14.558Z
 - [x] C6. The init code's description of the manifest names neither `skills-lock.json` nor `skills/PATCHES.md` and describes the hashes.
   - done: impl-623 · 2026-10-18T16:26:15.637Z
+  - verified: rev-30 [reviewer] · run rev-20261018-623-source · 2026-10-18T16:31:03.187Z · commit a4f09152705c72fa8154b10dfc58e80b318b8356
 
 ## Comments
 
 ### impl-623 · 2026-10-18T16:21:33.027Z
 
 Implementation started. Seams: init/update output and on-disk manifest in temporary projects; doctor's public skills-manifest check. Existing init.test.ts covers these seams, including invalid-manifest and symlink guards. Following red→green one slice at a time; no live project provisioning.
+
+### rev-30 · 2026-10-18T16:31:03.187Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-623-source
+commit: a4f09152705c72fa8154b10dfc58e80b318b8356
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear. Hash maps and legacy lists share mark/name/path validation; every hash value is validated before skill mutations. Successful/identical-byte writes record source SHA-256; refused updates/removals retain prior ownership/hash, new conflicts remain unowned. Doctor uses shared reader with no array-only consumer. Mixed legacy list retention matches primary0f1cb94c; regression covers later conversion and old-hash preservation. C1–C5 controls retain byte/path/symlink/refusal assertions; A-5426 reports red then init14/14,doctor18/18 and static checks. C6 verified: comments describe curated sources/per-file hashes without retired lock/patch names. Standards/spec:no findings. C1–C5 final verification awaits one exact-head mode-free droplet gate. No Reviewer execution or per-item QA.
+
+Criteria: C6 verified.
