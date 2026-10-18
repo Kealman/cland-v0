@@ -2,8 +2,8 @@
 id: T-723
 kind: task
 title: pid-identity 'a stop whose claude stop fails never SIGTERMs a reused pid' fails with 'database is locked' under load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-474
 branch: t/T-723-pid-identity-a-stop-whose-claude-stop
 created: 2026-10-17T01:06:44.540Z
-updated: 2026-10-18T04:20:57.833Z
+updated: 2026-10-18T04:40:53.181Z
+closed: 2026-10-18T04:40:53.181Z
 ---
 
 ## Summary
@@ -79,3 +80,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4954: final same-head clear, no findings; C2 verified and C1's source mark remains current. A-4953 / 5af6edba exits 0 at reviewed 4ca0e223. All three PID-identity cases have ordinary pass lines and completed timings (Codex 4.869s, Claude 3.737s, OpenCode 4.969s), with no owned skips. Entire task receipt is 2124 reported/2119 passed/0 failed or cancelled/5 outside-owned skips, including smoke 5/5. Together with previously audited ten consecutive Mac whole-file passes at sampled load 9.275–14.819 and source equivalence in A-4948, this establishes C2. Warmups and later companion cap cancellations stay disclosed/excluded. No further source or allowance changes.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T04:40:53.181Z
+
+Merged 19aa700894da2f81cf117c60b7ea4baf664384ce onto dev.
