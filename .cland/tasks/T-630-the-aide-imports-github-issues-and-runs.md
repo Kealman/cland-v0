@@ -2,8 +2,8 @@
 id: T-630
 kind: task
 title: The Aide imports GitHub issues and runs cland push; the import finds the github remote
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-491
 branch: t/T-630-the-aide-imports-github-issues-and-runs
 created: 2026-10-16T16:04:11.801Z
-updated: 2026-10-18T10:02:09.068Z
+updated: 2026-10-18T10:40:11.382Z
+closed: 2026-10-18T10:40:11.382Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ Linux x64 c-8 lon1, Node24.21.0/Neovim0.12.5, workers2, lifetime1570s,cost$0.109
 Artifact A-5177.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T10:40:11.382Z
+
+Merged 42d42c9abcbdc77a66afe6380a4b8ab93869cf35 onto dev.
