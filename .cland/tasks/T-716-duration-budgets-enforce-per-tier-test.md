@@ -3,7 +3,7 @@ id: T-716
 kind: task
 title: "Duration budgets enforce: per-tier test and file budgets fail runs, the T3 ratchet and the T2 wall refuse merges"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-489
 branch: t/T-716-duration-budgets-enforce-per-tier-test
 created: 2026-10-16T19:59:44.270Z
-updated: 2026-10-18T09:44:51.254Z
+updated: 2026-10-18T10:15:59.398Z
 ---
 
 ## Summary
@@ -37,12 +37,16 @@ Decision 3: budgets report for one week after `tiers.json` lands (T-683), then r
 
 - [x] C1. In enforce mode, a planted T2 test at 2.5 s without an allowance fails the run, and with a valid allowance passes, proved by a durations-runner test.
   - done: impl-716 · 2026-10-18T09:32:52.219Z
+  - verified: rev-31 [reviewer] · run rev-20261018-716-final · 2026-10-18T10:15:57.876Z · commit 933b5f16729f6167f2928780715eb75fd66dca71
 - [x] C2. In enforce mode, T3 growth without an allowance and a projected T2 wall over 480 s each refuse with `merge-budget`, proved by merge-gate tests.
   - done: impl-716 · 2026-10-18T09:44:07.322Z
+  - verified: rev-31 [reviewer] · run rev-20261018-716-final · 2026-10-18T10:15:57.876Z · commit 933b5f16729f6167f2928780715eb75fd66dca71
 - [x] C3. The T3 wall refuses only when the base projection is under 900 s and otherwise prints the not-yet-enforced line, proved by a test with two planted manifests.
   - done: impl-716 · 2026-10-18T09:44:07.673Z
+  - verified: rev-31 [reviewer] · run rev-20261018-716-final · 2026-10-18T10:15:57.877Z · commit 933b5f16729f6167f2928780715eb75fd66dca71
 - [x] C4. In report mode, every existing durations and durations-runner test passes unchanged.
   - done: impl-716 · 2026-10-18T09:32:53.726Z
+  - verified: rev-31 [reviewer] · run rev-20261018-716-final · 2026-10-18T10:15:57.877Z · commit 933b5f16729f6167f2928780715eb75fd66dca71
 - [x] C5. `docs/agents/tests.md` describes enforce mode, `merge-budget` and the T3 wall condition.
   - done: impl-716 · 2026-10-18T09:32:54.217Z
   - verified: rev-31 [reviewer] · run rev-20261018-716-source-2 · 2026-10-18T09:44:51.254Z · commit 933b5f16729f6167f2928780715eb75fd66dca71
@@ -118,3 +122,27 @@ Standards: 0 findings. Spec: 0 findings.
 Artifact A-5157.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-18T10:15:57.877Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-716-final
+commit: 933b5f16729f6167f2928780715eb75fd66dca71
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review at unchanged 933b5f16729f6167f2928780715eb75fd66dca71, matching origin and source-2 / A-5157.
+
+Independently audited A-5190 / 1d7c2a6c-d696-445c-a996-986d4dbff96b: auto full, exit 0, 2553 total / 2545 pass / 0 fail / 0 cancelled / 8 prerequisite skips. Hub-free 235/235, hub-machine 1919 pass + 5 skips, Neovim 391 pass + 3 skips; full Neovim completed in 158.90s. Failure identity arrays are empty; no owned quarantine or runtime tier-mismatch receipts.
+
+All 55 ordinary receipts are positive across durations (17), durations-runner (15), durations-runner-budget (3), merge-budget (4), immutable duration-context (4), duration-budget reports (6), tier reports (4) and legacy policy (2). All 12 new identities pass 5/5 load repetitions, 60/60. Exact T2 2.5s/no allowance failure and valid/insufficient caps, separate file allowance/T4 behavior, real reporter enforcement (1.282050639s), T3 ratchet, configured-worker T2 wall, base-T3 conditional wall, new-source estimates, immutable failures/confirmed absence and report-mode compatibility controls all ran.
+
+Linux x64 c-8 lon1, Node24.21.0 / Neovim0.12.5, workers 2, lifetime 1403s, cost $0.0974, peak load 6.13. The live manifest remains report mode by explicit Coordinator direction; report-only overages/ratchet lines in this green run do not switch enforcement or alter its exit. This task supplies the implementation; the Coordinator owns the later seven-day mode switch and allowance hand-off.
+
+C1–C4 execution verified; C5 remains current from source. No known-red exception, additional task run or per-item QA required. Standards: no new findings. Spec: final clear.
+Artifact A-5191.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

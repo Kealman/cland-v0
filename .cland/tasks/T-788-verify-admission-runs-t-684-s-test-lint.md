@@ -3,7 +3,7 @@ id: T-788
 kind: task
 title: verify admission runs T-684's test-lint policy before replying and overruns the CLI's 15 s deadline
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T09:38:20.024Z
+updated: 2026-10-18T10:15:55.915Z
 ---
 
 ## Summary
@@ -57,3 +57,16 @@ Criteria: C3 verified.
 ### impl-788 · 2026-10-18T09:38:20.024Z
 
 Source review clear: rev-20261018-788-source / A-5144, no findings. Required mode-free droplet verify accepted as 5b4f379b-b58b-48c0-84a3-0576e278f0ce at exact reviewed head c2a82d44, mode full. CLI exited 75; waited 60 s and confirmed queue plus task receipt, without retry. First remote waiter behind 10 occupied slots. Waiting for hub result; no source changes.
+
+### rev-30 · 2026-10-18T10:15:55.915Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-788-runtime
+commit: c2a82d44a9f4ca870a1813d98eba6eaceaa38922
+scope: evidence
+findings: [{"severity":"medium","text":"M1: startup TestLintWarmer always calls its native treeSnapshot Git path, bypassing injected fake options.git/probes. Exact-head project-probes case and whole-file census fail with2execFile children;30 new report-only T2 trips span9files. Inject the warm/snapshot boundary for component fixtures while retaining production defaults and zero-child assertions.","file":"hub/src/hub/daemon.ts","line":159}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-5192: exact-head A-5189 fails project-probes per-case and whole-file zero-child assertions, each finding2execFile calls. New TestLintWarmer native treeSnapshot bypasses injected Git/probes; 30 related T2 mismatch rows across9files. Preserve production warming and component census; inject the external snapshot/warm boundary, audit fixture readers and request fresh source review. Admission-cost case itself passes2.578612141s and5/5 repetitions; lint/admission carriers pass. Final gate not accepted, C1/C2 pending.
