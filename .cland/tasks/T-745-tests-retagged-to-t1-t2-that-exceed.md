@@ -2,8 +2,8 @@
 id: T-745
 kind: task
 title: Tests retagged to T1/T2 that exceed their new tier budgets before the budgets turn hard
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-464
 branch: t/T-745-tests-retagged-to-t1-t2-that-exceed
 created: 2026-10-17T17:06:00.092Z
-updated: 2026-10-18T03:06:03.074Z
+updated: 2026-10-18T03:06:12.614Z
+closed: 2026-10-18T03:06:12.614Z
 ---
 
 ## Summary
@@ -150,3 +151,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear under primary52c62b61; A-4906. Independently scanned entire A-4904 Coordinator all-mode run: zero T1/T2 would-fail budget lines and no hard budgets. All13 owned test files/74 cases have completed timings and ordinary pass lines; full100-frame T4 load executes, both T0 guards run in host check, prior owned legacy-key trip rows absent. Full hub+Neovim exit0:2,504passes,zero fail/cancel,eight unrelated prerequisite skips. Source A-4901 and final75 local invocations remain applicable, no source/allowance change. Sole schedule process trip stays T-759; two T3 overages and ratchet refresh have Coordinator dispositions, not hidden as zero-global-warning claims. C1 done present. Primary52c62b61 directs C1/final settlement on this receipt; next integrated cover remains post-merge Coordinator confirmation and is not claimed complete. No findings; C1 verified. No per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T03:06:12.614Z
+
+Merged b2db83a2e90ed9aa31542322f61a9fb62e59365d onto dev.
