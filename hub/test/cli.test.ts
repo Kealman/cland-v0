@@ -6,10 +6,10 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, projectHub, tempProject } from './harness.ts';
 
-const VERSION = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+const VERSION = (JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 const run = (...args: string[]) => cland(process.cwd(), ...args);
 
-test('cland --version prints the version of the hub package', async () => {
+test('cland --version prints the version of the root package', async () => {
   for (const flag of ['--version', '-v']) {
     const r = await run(flag);
     assert.equal(r.code, 0, r.stderr);

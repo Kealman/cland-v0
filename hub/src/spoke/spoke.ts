@@ -32,8 +32,7 @@ import { envelope } from '../adapters/contract.ts';
 import { findDiscovery, readDiscovery } from '../project.ts';
 import { Journal, journalPath } from '../hub/journal.ts';
 import { hasRoleMappedSession } from '../hub/store.ts';
-
-const VERSION = '0.1.0';
+import { VERSION } from '../version.ts';
 
 const TOOLS = [
   { name: 'verify', description: 'With dryRun, return admission and tier projections without queueing. Otherwise submit verification and return immediately; the hub posts one result. Occasion shards integrated dev full close runs: Coordinator stage/epic/release, QA epic. Omit occasion for batch/task runs.', inputSchema: { type: 'object', properties: { dryRun: { type: 'boolean' }, mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'] }, cwd: { type: 'string' }, report: { type: 'string' }, to: { type: 'array', items: { type: 'string' } }, fresh: { type: 'boolean' }, workers: { type: 'integer', minimum: 1 }, size: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' }, executor: { type: 'string', enum: ['local', 'droplet'] }, occasion: { type: 'string', enum: Object.values(VERIFY_OCCASIONS) } }, required: ['cwd'], anyOf: [{ required: ['report'] }, { properties: { dryRun: { const: true } }, required: ['dryRun'] }] } },

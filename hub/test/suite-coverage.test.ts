@@ -1,3 +1,4 @@
+// T3: package capture attributes real hub/spoke/CLI descendant coverage across the hub's lifecycle.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,11 +43,10 @@ test('package capture retains real process coverage and a successful exit beside
   await mkdir(join(root, '.cland/run'), { recursive: true });
   // Copy the production entries so raw V8 URLs name this fixture's own sources.
   // No fake dispatcher, spoke transport or CLI is introduced by this proof.
-  for (const path of ['hub/src', 'hub/bin', 'hub/test/fakes', 'hub/package.json']) await cp(join(repository, path), join(root, path), { recursive: true, filter: path => !path.endsWith('.test.ts') });
+  for (const path of ['hub/src', 'hub/bin', 'hub/test/fakes', 'hub/package.json', 'package.json']) await cp(join(repository, path), join(root, path), { recursive: true, filter: path => !path.endsWith('.test.ts') });
   for (const file of ['harness.ts', 'until.ts', 'tier-cli.ts', 'account-fixture-env.ts', 'cover-quiet.ts', 'hub-resources.ts', 'process-cleanup.ts']) await cp(join(repository, 'hub/test', file), join(root, 'hub/test', file));
   const dependencies = dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!));
   await symlink(dependencies, join(root, 'node_modules'), 'dir');
-  await writeFile(join(root, 'package.json'), '{"type":"module"}');
   const file = 'hub/test/processes.test.ts';
   await writeFile(join(root, file), `
 import test from 'node:test';
@@ -59,6 +59,7 @@ import { tempProject, startDaemon, cland, spawnSpoke, FAKE_CODEX_DIR } from './h
 test('daemon lifecycle and descendant attribution', async t => {
   const root = await tempProject(t);
   const { discovery } = await startDaemon(t, root);
+  assert.equal(discovery.version, JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')).version);
   const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'coverage-spoke' });
   await spoke.call('who');
   await spoke.close();

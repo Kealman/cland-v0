@@ -1,6 +1,5 @@
 {
   "name": "@cland/hub",
-  "version": "0.1.0",
   "private": true,
   "description": "The cland hub: the per-project service sessions talk through, the spoke each session runs, and the cland CLI.",
   "type": "module",

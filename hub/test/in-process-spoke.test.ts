@@ -1,8 +1,18 @@
 // T2: the real spoke's MCP surface and projectHub's real WebSocket, without a child process.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { inProcessSpoke, projectHub, tempProject, waitForAbsence } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+
+test('MCP initialization reports the root package version served by the project hub', { timeout: 5000 }, async t => {
+  const version = (JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'version', role: 'implementer' });
+  assert.deepEqual(spoke.client.getServerVersion(), { name: 'cland', version });
+  assert.equal(discovery.version, version);
+});
 
 test('an in-process role-bearing caller reads a task and delivers channel events', async t => {
   const root = await tempProject(t);

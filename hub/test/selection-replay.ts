@@ -34,7 +34,7 @@ let selectCoverage = coverageSelection;
 try {
   if (selectorRef) {
     scratch = await mkdtemp(join(tmpdir(), 'cland-selection-replay-'));
-    const archive = execFileSync('git', ['archive', selectorRef, 'hub/src', 'hub/package.json'], { maxBuffer: 32 * 1024 * 1024 });
+    const archive = execFileSync('git', ['archive', selectorRef, 'hub/src', 'hub/package.json', 'package.json'], { maxBuffer: 32 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', scratch], { input: archive });
     await symlink(dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!)), join(scratch, 'node_modules'), 'dir');
     const module = join(scratch, 'hub/src/suite-selection.ts');

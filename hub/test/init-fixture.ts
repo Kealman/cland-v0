@@ -11,7 +11,7 @@ import { runInit, runUpdate } from '../src/cli/init.ts';
 import { provision } from '../src/init/provision.ts';
 export const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_SKILLS = join(REPO, '.agents', 'skills');
-export const VERSION = (JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version;
+export const VERSION = (JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
 export function assertNoMachinePath(text: string, machine: string, file: string): void {
   const escaped = machine.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // An absolute path starts outside another path and ends at a component boundary (including a child slash).
@@ -86,5 +86,7 @@ export async function shipped(): Promise<{ names: string[]; files: string[] }> {
 export async function runCli(root: string, command: 'init' | 'update', env: Record<string, string> = {}): Promise<Change[]> {
   const r = await clandWithEnv(root, env, command, '--json');
   assert.equal(r.code, 0, r.stderr);
-  return JSON.parse(r.stdout).changes;
+  const report = JSON.parse(r.stdout) as { version: string; changes: Change[] };
+  assert.equal(report.version, env.CLAND_VERSION_OVERRIDE || VERSION);
+  return report.changes;
 }

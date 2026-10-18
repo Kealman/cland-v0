@@ -954,6 +954,12 @@ version at most 10; task list and hub status within their measured budgets).
 The guard is in the machine shard and also checks command import failures keep
 their existing error lines and exit codes.
 
+The root `package.json` owns cland's version. `src/version.ts` reads it for
+`cland --version`, the spoke's MCP server info, hub discovery and every managed
+mark. `hub/package.json` has no version. `CLAND_VERSION_OVERRIDE` is for tests
+that simulate an update. A release bump is an ordinary commit merged before
+the release's dry run; `cland release` does not write the version.
+
 ## cland init and cland update
 
 `cland init [dir]` prepares a project (`dir`, else the project around the current directory); `cland update [dir]` rewrites what cland manages there to the running version and refuses a folder without `.cland/`. Both need no hub, are idempotent and print one line per path they touched (`--json`: `{root, version, changes: [{path, action, note?}]}`, actions `created`, `updated`, `unchanged`, `kept`, `removed`). A file is written only when its bytes change, so a second `cland init` changes nothing, mtimes included.
