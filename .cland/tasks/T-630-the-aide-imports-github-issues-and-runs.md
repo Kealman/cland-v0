@@ -3,7 +3,7 @@ id: T-630
 kind: task
 title: The Aide imports GitHub issues and runs cland push; the import finds the github remote
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-491
 branch: t/T-630-the-aide-imports-github-issues-and-runs
 created: 2026-10-16T16:04:11.801Z
-updated: 2026-10-18T09:32:43.672Z
+updated: 2026-10-18T10:02:09.068Z
 ---
 
 ## Summary
@@ -35,12 +35,16 @@ The Aide gains `task.import` and `push` (push only, never `release` or `sync`), 
 
 - [x] C1. An Aide imports a fake repository's open issues through the fake `gh` with `cland task import-github` from its shell, in a project whose GitHub remote is named `github`, in a new frame-protocol test.
   - done: impl-630 · 2026-10-18T09:27:44.836Z
+  - verified: rev-31 [reviewer] · run rev-20261018-630-final · 2026-10-18T10:02:07.548Z · commit 9081d7781a7e9490824821b83de437652d96d71b
 - [x] C2. In the same project the Aide's `cland push` from its shell fast-forwards the territory's `dev` to the root's `dev`.
   - done: impl-630 · 2026-10-18T09:27:45.737Z
+  - verified: rev-31 [reviewer] · run rev-20261018-630-final · 2026-10-18T10:02:07.548Z · commit 9081d7781a7e9490824821b83de437652d96d71b
 - [x] C3. An Aide's `cland release` and `cland sync` are still refused, and an Implementer, Reviewer, QA and Lead are refused `task.import` and `push` (permission tests).
   - done: impl-630 · 2026-10-18T09:27:46.332Z
+  - verified: rev-31 [reviewer] · run rev-20261018-630-final · 2026-10-18T10:02:07.548Z · commit 9081d7781a7e9490824821b83de437652d96d71b
 - [x] C4. Without `--repo` the import reads `github` before `origin`, and when neither names a GitHub repository its error names both remotes (CLI tests with the fake `gh`).
   - done: impl-630 · 2026-10-18T09:27:46.915Z
+  - verified: rev-31 [reviewer] · run rev-20261018-630-final · 2026-10-18T10:02:07.548Z · commit 9081d7781a7e9490824821b83de437652d96d71b
 - [x] C5. The shipped Aide clause and the hub README name the import on the human's confirmation and `cland push` after the onboarding's commit.
   - done: impl-630 · 2026-10-18T09:27:47.555Z
   - verified: rev-31 [reviewer] · run rev-20261018-630-source · 2026-10-18T09:32:43.671Z · commit 9081d7781a7e9490824821b83de437652d96d71b
@@ -78,3 +82,25 @@ Standards: 0 findings. Spec: 0 findings.
 Artifact A-5135.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-18T10:02:07.548Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-630-final
+commit: 9081d7781a7e9490824821b83de437652d96d71b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review at unchanged 9081d7781a7e9490824821b83de437652d96d71b, matching origin and source rev-20261018-630-source / A-5135.
+
+Independently audited A-5175 / da87902c-08ed-444b-a9c2-cf28a3bbb616: auto hub-only, exit0,2157 total /2152 pass /0 fail /0 cancelled /5 prerequisite skips. Hub-free226/226, hub-machine1921 pass+5 skips; Neovim smoke5/5 completed3.86s. This is hub plus smoke coverage, not full Neovim. Phase failure identity arrays are empty, with no owned quarantine or runtime tier-mismatch receipts.
+
+All22 ordinary cases in aide-permissions(2), aide-import-cli(2), aide-component(5) and push(13) have positive receipts. Seven added/renamed identities pass5/5 load repetitions,35/35. The new real-Git shell import/publication case passes1.344891736s and retains item provenance, exact territory fast-forward and Aide CLI audit identity for both operations. Role refusals, UI-versus-own-shell boundary, remote precedence/error and resumed publication authorization controls pass. Source C5 documentation continuity remains current.
+
+Linux x64 c-8 lon1, Node24.21.0/Neovim0.12.5, workers2, lifetime1570s,cost$0.1090,peak load5.37. Report-only budget/ratchet diagnostics do not change raw exit0; the one added real-Git case was explicitly authorized in Coordinator8640e148. C1–C4 execution verified; C5 current from source. No known-red exception, additional run or per-item QA required. Standards: no new findings. Spec: final clear.
+Artifact A-5177.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

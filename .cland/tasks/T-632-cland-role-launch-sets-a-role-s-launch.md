@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-492
 branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-18T09:28:24.695Z
+updated: 2026-10-18T09:59:56.126Z
 ---
 
 ## Summary
@@ -38,7 +38,7 @@ updated: 2026-10-18T09:28:24.695Z
 - [x] C1. `cland role launch implementer --harness codex --model gpt-6.1-sol --effort high` writes those keys into `[implementer.launch]`, keeps every other line of roles.toml, and `cland role list` shows them (new CLI test against a temporary project's hub).
   - done: impl-632 · 2026-10-18T09:26:03.657Z
 - [x] C2. `--permissions` writes any value the roles parser takes and `--account <name>` a registered account, and `cland role list` shows each role's account and permissions.
-  - done: impl-632 · 2026-10-18T09:26:06.236Z
+  - done: impl-632 · 2026-10-18T09:59:22.535Z
 - [x] C3. A harness change without `--model` and `--effort` resets the model to the harness's default and the effort to one the new harness takes, and the output names both changes.
   - done: impl-632 · 2026-10-18T09:26:08.563Z
 - [x] C4. An unknown role, an unknown harness, a permissions value the parser refuses and an account not registered for that harness are each refused with their reason, roles.toml unchanged (one test per case).
@@ -68,3 +68,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear, A-5122. Five-flag hub edit uses roles parser/account validation, serialized config work and existing span/atomic writer with before-write identity/authority checks. Immediate parsed snapshot supplies next launches; caller session retains prior launch settings. Harness reset/default output and complete role list inspected; role set path retained. Thirteen T2 cases cover exact edits/refusals/registry/defaults/authority/next-launch and usage. C1–C7 await exact-head droplet evidence. No reviewer execution.
+
+### rev-30 · 2026-10-18T09:57:23.867Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-632-runtime
+commit: b238a11f2ae93db6592cc5ca63bbfa11dc9f14aa
+scope: evidence
+findings: [{"severity":"medium","text":"M1: registering the Codex account before projectHub starts triggers AccountPoller native spawn (#read → #run at accounts/poller.ts:204). All 13 owned T2 cases report this unexpected child; it is outside the CLI helper exemption. Inject/prevent the incidental account probe while retaining registry validation, and prove whole-file unexpected-child census clean.","file":"hub/test/role-launch.test.ts","line":20}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-5170: behavioral gate A-5169 is green (13 ordinary owned cases, 65/65 load repetitions), but every owned T2 case records a native account poller spawn through accounts/poller.ts:204. fixture registers Codex accounts before projectHub startup; this is outside the allowed CLI subject exemption. Correct the fixture/account-read seam, retain registry and role assertions, provide an unexpected-child census, and obtain fresh source review before replacement verify.
+
+Criteria: C2 failed (Registered-account fixture starts native account polling in every new T2 case; isolate that probe before final verification (M1).).
+
+### impl-632 · 2026-10-18T09:59:23.358Z
+
+M1 corrected at 5d21514b: optional account-reading boundary keeps startup poll scheduling and real registry/account checks but prevents native probes in this T2 fixture. Enforced tripwire reproduces 13 spawn rows at prior head; replacement whole-file run has 0 unexpected children and 13/13 passed in 2.156 s. Existing account-poller-clock cases 10/10 green (0.356 s). Host lint/typecheck green. Fresh source review requested before replacement verify; no dev merge.
+
+### rev-30 · 2026-10-18T09:59:56.126Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-632-account-reader-correction
+commit: 5d21514bf6df3b379dd3f02d37fb839b06f94332
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5172: M1/A-5170 source correction clear. Optional AccountReader replaces only external usage reads; production default native/live reader unchanged. Role-launch fixture retains actual registry/account-harness checks and every original assertion. A-5171 enforced-T2 whole-file red/green documents 13 poller trips before, zero unexpected trips after with 13 cases passing. No dev merge/further findings. All C1–C7 runtime verification awaits replacement exact-head droplet gate.

@@ -18,7 +18,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-16T20:00:24.596Z
+updated: 2026-10-18T09:38:05.650Z
 ---
 
 ## Summary
@@ -45,3 +45,12 @@ With entries queued (T-710), the hub needs to turn them into landings: one integ
 ## Blocked by
 
 T-697 (`Suites` on the clock and the in-process provider), T-679 (tiers).
+
+## Comments
+
+### coord · 2026-10-18T09:38:05.650Z
+
+Integration requirement from T-710 and T-716 (coord, 2026-10-18 09:38Z). Queued admission (T-710) intentionally has no merged tree, so preparing and landing a queued candidate here must keep T-716's immutable merge-budget gate:
+- Call `durationBudgetContext(root, {head: mergedTree, base: baseHead, env})` and `checkMergeBudgets(context, workers)` on the merged tree before any checkout or ref change.
+- Propagate `budgetLines`, including the conditional T3-wall deferral and the "estimated (no receipt)" diagnostics for new T3 identities.
+Reusing `territory.squashTask` keeps the gate. A new landing path must invoke the same checks, and a T2 test must show a budget refusal on a queued candidate.

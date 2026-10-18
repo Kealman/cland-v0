@@ -3,7 +3,7 @@ id: T-644
 kind: task
 title: "The root package.json version is cland's only version: --version, the spoke and the managed marks read it"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-497
 branch: t/T-644-the-root-package-json-version-is-cland-s
 created: 2026-10-16T16:23:58.514Z
-updated: 2026-10-18T09:29:56.678Z
+updated: 2026-10-18T10:02:31.444Z
 ---
 
 ## Summary
@@ -34,15 +34,19 @@ Every tag from v0.0.1 to v0.1.3 reports version 0.1.0: `hub/src/version.ts` read
 
 - [x] C1. `cland --version` prints the root `package.json` version (cli.test.ts, whose test reads the root file instead of the hub's).
   - done: impl-644 · 2026-10-18T09:22:48.094Z
+  - verified: rev-31 [reviewer] · run rev-20261018-644-final · 2026-10-18T10:02:30.096Z · commit 73f70fe98bab0fa329d3dce71fc6146cbce62fad
 - [x] C2. A spoke started against a test hub reports the same version in its MCP `initialize` server info (spoke test through `hub/test/harness.ts`).
   - done: impl-644 · 2026-10-18T09:26:30.161Z
+  - verified: rev-31 [reviewer] · run rev-20261018-644-final · 2026-10-18T10:02:30.096Z · commit 73f70fe98bab0fa329d3dce71fc6146cbce62fad
 - [x] C3. `cland init --json` reports that version, and a managed file it writes carries `managed by cland <that version>` (init test).
   - done: impl-644 · 2026-10-18T09:22:51.414Z
+  - verified: rev-31 [reviewer] · run rev-20261018-644-final · 2026-10-18T10:02:30.096Z · commit 73f70fe98bab0fa329d3dce71fc6146cbce62fad
 - [x] C4. No source file under `hub/src` holds a version literal: a test greps for `'0.1.0'` and for reads of `hub/package.json`'s version and finds none.
   - done: impl-644 · 2026-10-18T09:26:35.172Z
   - verified: rev-31 [reviewer] · run rev-20261018-644-source-2 · 2026-10-18T09:29:56.678Z · commit 73f70fe98bab0fa329d3dce71fc6146cbce62fad
 - [x] C5. `hub/package.json` has no `version` key, and `npm install` in the root leaves `package-lock.json` unchanged after the commit.
   - done: impl-644 · 2026-10-18T09:22:56.663Z
+  - verified: rev-31 [reviewer] · run rev-20261018-644-final · 2026-10-18T10:02:30.096Z · commit 73f70fe98bab0fa329d3dce71fc6146cbce62fad
 
 ## Comments
 
@@ -119,3 +123,33 @@ Standards: 0 findings. Spec: 0 findings.
 Artifact A-5130.
 
 Criteria: C4 verified.
+
+### impl-644 · 2026-10-18T10:00:31.821Z
+
+Exact-reviewed-head droplet verification e3723c63-c50e-4f02-b4e1-efe629260507 passed (exit 0) at 73f70fe98bab0fa329d3dce71fc6146cbce62fad. Linux x64, Node v24.21.0, Neovim v0.12.5; 2542 tests / 2534 pass / 8 skipped / 0 failures; suite 1631.14s, droplet lifetime 1718s, cost $0.1193. Mode-free admission selected full because hub/package.json changed. Log A-5173 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5173-suite-e3723c63-c50e-4f02-b4e1-efe629260507-auto-at-73f70fe.log. Reviewer received the result directly; awaiting final verdict without head changes.
+
+### rev-31 · 2026-10-18T10:02:30.096Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-644-final
+commit: 73f70fe98bab0fa329d3dce71fc6146cbce62fad
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review at unchanged 73f70fe98bab0fa329d3dce71fc6146cbce62fad, matching origin and source-2 / A-5130.
+
+Independently audited A-5173 / e3723c63-c50e-4f02-b4e1-efe629260507: auto full, exit 0, 2542 total / 2534 pass / 0 fail / 0 cancelled / 8 prerequisite skips. Hub-free 224/224, hub-machine 1919 pass + 5 skips, Neovim 391 pass + 3 skips; full Neovim completed in 187.32s. All phase failure arrays are empty, with no owned quarantine or runtime tier-mismatch receipts.
+
+All 21 ordinary receipts in CLI (3), in-process spoke (3), init (13), and source-carrier coverage (2) are present and positive. The CLI root-version and MCP/discovery identities each pass 5/5 load repetitions (10/10). Init JSON/managed-mark and override-update controls pass. The previously broken real-process coverage carrier now passes in 5.146450189s; current/historical archived-selector replay remains supporting A-5117 evidence. The host check explicitly runs the corrected lint-version-source guard.
+
+C5: root/workspace package metadata and package-lock.json at this head are byte-identical to 9b808216's post-commit npm-install check recorded in A-5108 (up to date, lock unchanged). Independently confirmed the empty diff for those three files across the correction. Root version is 0.1.3, hub package has no version, lock metadata matches. This reuses unchanged package-specific evidence, not a claim of another npm install at the final head.
+
+Linux x64 c-8 lon1, Node24.21.0 / Neovim0.12.5, workers 2, lifetime 1718s, cost $0.1193, peak load 6.17. Existing report-only diagnostics leave raw exit 0 unchanged. C1/C2/C3/C5 verified; C4 remains current from source. No known-red exception, further task run or per-item QA needed. Coordinator's post-merge install/update of managed marks remains separate.
+
+Standards: no new findings. Spec: final clear.
+Artifact A-5178.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified.

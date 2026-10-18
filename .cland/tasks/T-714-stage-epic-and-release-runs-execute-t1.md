@@ -3,7 +3,7 @@ id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T09:29:47.724Z
+updated: 2026-10-18T09:53:59.969Z
 ---
 
 ## Summary
@@ -49,3 +49,16 @@ T-679 (tiers), T-681 (tier lines).
 ### impl-714 · 2026-10-18T09:27:01.160Z
 
 Implemented occasion T1–T4 planning and soak worker environment, stage-receipt identity load gating, shard tier reporting and tier-aware cache/stage-cover admission. T1 red/green tests prove planner and identity policy; T2 red/green test proves T4 lines per shard. Added a T1 large-selection round trip because the current identity list is ~297 KB, beyond an inline environment value. Typecheck and test lint pass; sequential touched-file checks in progress before dev merge/source review.
+
+### rev-30 · 2026-10-18T09:53:59.969Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-714-source
+commit: f1a03d958bf559d96b1cc56d55233073f4d518d8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5166: source clear, no findings. Audited occasion T1–T4/soak versus ordinary T1–T3, persisted stage-receipt identity baseline through local/droplet/shards/reopen, large-selection file transport, tier-aware cache/stage cover and per-shard T4 summary. C1–C3 remain runtime-dependent and unverified. Per sequencing, wait for authorized T-790 integration and fresh delta review, including ordinary-batch shard filtering, before final droplet verification.

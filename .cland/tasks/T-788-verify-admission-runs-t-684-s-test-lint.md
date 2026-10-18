@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T09:36:21.456Z
+updated: 2026-10-18T09:38:20.024Z
 ---
 
 ## Summary
@@ -53,3 +53,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear,A-5144. Immutable Git blob batching validates byte boundaries/OIDs; bounded path/tier/digest cache returns cloned compact direct facts, not verdicts/ASTs. Disk rereads and existing baseline/refusal comparisons retained. Best-effort dev warmer yields/coalesces and shutdown awaits it; diagnostics only omits report-only graph by default with separate opt-in deadline. Repository-sized socket controls cover margin/foreground responsiveness and identical dry/real committed/disk refusals before reservation. C3 real-repo committed-head CLI/socket receipts A-5124/A-5125 verified at3.66–3.97s (warm isolated production hub). C1/C2 pending exact-head full droplet; no reviewer execution.
 
 Criteria: C3 verified.
+
+### impl-788 · 2026-10-18T09:38:20.024Z
+
+Source review clear: rev-20261018-788-source / A-5144, no findings. Required mode-free droplet verify accepted as 5b4f379b-b58b-48c0-84a3-0576e278f0ce at exact reviewed head c2a82d44, mode full. CLI exited 75; waited 60 s and confirmed queue plus task receipt, without retry. First remote waiter behind 10 occupied slots. Waiting for hub result; no source changes.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T09:36:40.986Z
+updated: 2026-10-18T09:42:56.458Z
 ---
 
 ## Summary
@@ -38,7 +38,7 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 - [x] C2. With `queue = true`, a tracker-and-docs-only task and a human-shell override land at once with today's receipts, proved by merge tests.
   - done: impl-710 · 2026-10-18T09:31:56.291Z
 - [x] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
-  - done: impl-710 · 2026-10-18T09:31:58.113Z
+  - done: impl-710 · 2026-10-18T09:42:08.630Z
 - [x] C4. Entries and their order survive a hub restart, proved by a restart test.
   - done: impl-710 · 2026-10-18T09:32:00.898Z
 - [x] C5. With `queue = false` the existing merge-gate, merge-recovery and merge-checkout tests pass unchanged.
@@ -49,3 +49,31 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 ### impl-710 · 2026-10-18T09:20:40.341Z
 
 Implementation started. Proposed seams sent to supervising Lead for confirmation: projectHub T2 public merge/tool rules and in-process Store reopen for durability. Investigating existing verdict/lane gate and Git fact port; expected no shared suites.ts/suite-candidate.ts/territory.ts edits.
+
+### rev-30 · 2026-10-18T09:41:03.128Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-source
+commit: 4ddb5f37edc939e927e1a588c438c879d637a55d
+scope: full
+findings: [{"severity":"medium","text":"M1: cancellation passes worktrees.serial directly to success-only later(). A queued caller losing current-session/merge authority makes authorize() throw asynchronously, so no result is sent and an unhandled rejection escapes. Convert rejection to a failure frame and add a queued authority-revocation regression that preserves the entry.","file":"hub/src/hub/dispatch.ts","line":947}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source audit A-5150: one medium finding M1. Queued --cancel rechecks authority inside worktrees.serial but passes its rejecting promise directly to later(), without the regular merge path's failure conversion. Role/current-session revocation while waiting produces an unhandled rejection and no result. Preserve the check, return Dispatcher.#failure and cover queued revocation. Remaining queue/bypass/durability/drop source paths audited with no additional findings; exact-head verification awaits corrected source.
+
+Criteria: C3 failed (Queued cancellation can lose its reply and produce an unhandled rejection when authority changes while waiting; see M1/A-5150.).
+
+### rev-30 · 2026-10-18T09:42:56.458Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-source-correction
+commit: 1f2be3de137efb5818b18ce2d9199dc9be9a290b
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5155: M1/A-5150 closed. Cancellation converts asynchronous rejection to a failure frame while preserving the authority recheck. New public-frame regression proves queued authority revocation replies forbidden and retains the entry, with predecessor completion observed before result assertions and unconditional barrier cleanup. Exact two-file correction; no dev merge or further findings. Source clear for fresh exact-head droplet verification; all C1–C5 runtime marks remain pending that evidence.

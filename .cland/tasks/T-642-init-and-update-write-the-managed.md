@@ -3,7 +3,7 @@ id: T-642
 kind: task
 title: Init and update write the managed worktree.bgIsolation = "none" into .claude/settings.json and never touch settings.local.json
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-495
 branch: t/T-642-init-and-update-write-the-managed
 created: 2026-10-16T16:23:58.091Z
-updated: 2026-10-18T09:23:12.424Z
+updated: 2026-10-18T09:48:49.881Z
 ---
 
 ## Summary
@@ -35,12 +35,16 @@ Claude Code 2.1.143 and later refuse a background session's Edit and Write in th
 
 - [x] C1. A fresh project's `.claude/settings.json` holds `"worktree": {"bgIsolation": "none"}` beside the cland hooks (init-settings.test.ts, on the scratch machine of ticket T-639).
   - done: impl-642 · 2026-10-18T09:22:24.267Z
+  - verified: rev-30 [reviewer] · run rev-20261018-642-final · 2026-10-18T09:48:48.241Z · commit 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
 - [x] C2. After a human edit to `"bgIsolation": "worktree"`, `cland update` restores `"none"` and reports the file updated; a second `cland update` reports it unchanged.
   - done: impl-642 · 2026-10-18T09:22:25.204Z
+  - verified: rev-30 [reviewer] · run rev-20261018-642-final · 2026-10-18T09:48:48.242Z · commit 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
 - [x] C3. A project's own hooks, `model` and `worktree.baseRef` survive init and update unchanged beside the managed key.
   - done: impl-642 · 2026-10-18T09:22:26.822Z
+  - verified: rev-30 [reviewer] · run rev-20261018-642-final · 2026-10-18T09:48:48.242Z · commit 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
 - [x] C4. A `.claude/settings.local.json` holding `"bgIsolation": "worktree"` is byte-identical, with the same mtime, after init and update.
   - done: impl-642 · 2026-10-18T09:22:28.129Z
+  - verified: rev-30 [reviewer] · run rev-20261018-642-final · 2026-10-18T09:48:48.242Z · commit 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
 - [x] C5. Demo: in a scratch project, `cland init`, an edit of the key, `cland update` and `git diff .claude/settings.json` show only the key restored.
   - done: impl-642 · 2026-10-18T09:22:28.875Z
   - verified: rev-30 [reviewer] · run rev-20261018-642-source · 2026-10-18T09:23:12.424Z · commit 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
@@ -69,3 +73,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear, A-5109. Shared BG_ISOLATION and mergeWorktree overwrite only bgIsolation, preserving other settings/worktree keys; shared init/update provisioner retains byte/mtime-preserving unchanged path. No local settings path is read/written. Required docs and four filesystem-only T1 controls cover managed value, restoration, preservation and local override. C5 scratch CLI diff/demo A-5106 verified. C1–C4 remain pending accepted exact-head runtime evidence; A-5107 reported red/green/static checks retained. T-643/root update outside scope. No reviewer execution.
 
 Criteria: C5 verified.
+
+### impl-642 · 2026-10-18T09:48:22.397Z
+
+Exact-head droplet verification green: bcf0ffec-515c-4747-9488-add1d2be854c at 90adfa3fb07faaf658c10092afe3b0f8bbec6d85, log A-5158. Linux x64 / Node v24.21.0, c-8 lon1, workers 2, machine lifetime 1245 s, $0.0864. Hub-only diff selection plus Neovim smoke: 2156 tests, 2151 passed, 0 failed, 5 skipped. New T1 init-settings file observed 0.009 s; report-only missing duration baseline is expected until integrated baseline refresh. Reviewer received same-head result directly; awaiting final evidence verdict without changing head.
+
+### rev-30 · 2026-10-18T09:48:48.242Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-642-final
+commit: 90adfa3fb07faaf658c10092afe3b0f8bbec6d85
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5159: exact-head A-5158 / bcf0ffec passes hub plus Neovim smoke, 2151 pass/0 fail/5 outside-scope skips. All four settings cases have ordinary positive receipts and all four load gates pass 5/5; summed owned test seconds 0.009455488, no owned trips. C1–C4 verified; C5 scratch demo/source verification remains current. No findings. Post-merge repository update belongs to Coordinator.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

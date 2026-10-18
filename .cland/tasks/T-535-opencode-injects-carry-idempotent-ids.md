@@ -3,7 +3,7 @@ id: T-535
 kind: task
 title: OpenCode injects carry idempotent ids, and child sessions feed the instrumentation
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T09:35:01.605Z
+updated: 2026-10-18T10:01:59.102Z
 ---
 
 ## Summary
@@ -35,10 +35,13 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/client.ts`, `hu
 
 - [x] C1. A timed-out inject retried at the next idle reaches the fake server once, and a broadcast's recipients each get their own id.
   - done: impl-535 · 2026-10-18T09:26:27.059Z
+  - verified: rev-31 [reviewer] · run rev-20261018-535-final · 2026-10-18T10:01:57.277Z · commit 71bef41d2809d7e5abc91c71922b98fd990367eb
 - [x] C2. A child session's model appears in the sub-agent launch record and its usage adds to the parent's usage record.
   - done: impl-535 · 2026-10-18T09:26:28.464Z
+  - verified: rev-31 [reviewer] · run rev-20261018-535-final · 2026-10-18T10:01:57.277Z · commit 71bef41d2809d7e5abc91c71922b98fd990367eb
 - [x] C3. A child waiting for approval shows its parent session as waiting.
   - done: impl-535 · 2026-10-18T09:33:49.423Z
+  - verified: rev-31 [reviewer] · run rev-20261018-535-final · 2026-10-18T10:01:57.277Z · commit 71bef41d2809d7e5abc91c71922b98fd990367eb
 
 ## Comments
 
@@ -99,3 +102,25 @@ All C1–C3 execution criteria remain pending exact-head post-source-clear mode-
 
 Standards: 0 findings. Spec: 0 findings.
 Artifact A-5143.
+
+### rev-31 · 2026-10-18T10:01:57.277Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-535-final
+commit: 71bef41d2809d7e5abc91c71922b98fd990367eb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review at unchanged 71bef41d2809d7e5abc91c71922b98fd990367eb, matching origin and source-2 / A-5143.
+
+Independently audited A-5174 / b6754a4a-c366-4e59-91bc-aa74d25443f8: auto hub-only, exit0, 2158 total / 2153 pass / 0 fail / 0 cancelled / 5 prerequisite skips. Hub-free224/224, hub-machine1924 pass+5 skips, Neovim smoke5/5 completed3.52s. This is hub plus smoke coverage, not full Neovim. All phase failure identity arrays are empty; no owned quarantine or runtime tier-mismatch receipts.
+
+All14 opencode-native ordinary cases have positive timing receipts. All6 added identities pass5/5 load repetitions,30/30. Owned controls cover lost-response retry with one native admission, stable per-recipient IDs across rename, child model/additive usage with unrelated-child exclusion, aggregate approvals/forms, reconnect restoration, and held snapshot versus newer approval/reply ordering. Main new cases0.182–0.454s; whole owned file3.242s. Prior M1 correction remains unchanged.
+
+Linux x64 c-8 lon1, Node24.21.0/Neovim0.12.5, workers2, lifetime1457s, cost$0.1012, peak load6.87. Report-only diagnostics leave raw exit0 unchanged. C1–C3 verified. No known-red exception, extra run or per-item QA required. Standards: no new findings. Spec: final clear.
+Artifact A-5176.
+
+Criteria: C1 verified, C2 verified, C3 verified.
