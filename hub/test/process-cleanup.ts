@@ -400,9 +400,21 @@ function installSignals(): void {
   installed = true;
   for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => {
     void (async () => {
-      await cleanupOwnedProcesses([...new Map([...recorded, ...ownedPids]).values()]);
+      const seeds = [...new Map([...recorded, ...ownedPids]).values()];
+      await cleanupOwnedProcesses(seeds);
       for (const step of signalDirectoryCleanup) await step();
-      for (const [dir, identity] of directories) { if (!directoryStillOwned(dir, identity)) continue; await rm(dir, { recursive: true, force: true }); }
+      for (const [dir, identity] of directories) {
+        if (!directoryStillOwned(dir, identity)) continue;
+        // SIGTERM can interrupt a raw launch or hub start before its CLI receipt
+        // registers the detached hub. Recover writers by the still-owned root,
+        // not argv or an environment marker, before deleting their project.
+        // Retain original identities even after recorded cleanup: replacement
+        // PIDs and their descendants cannot regain ownership through this root.
+        await cleanupProcesses(dir, seeds, undefined, RUN_ID, undefined, { discover: true });
+      }
+      // A project's hub may also write into the worker's account fixture. Stop
+      // writers in every root before removing even the first directory.
+      for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) await rm(dir, { recursive: true, force: true });
     })().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
   });
 }

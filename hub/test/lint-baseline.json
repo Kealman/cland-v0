@@ -157,6 +157,7 @@
     },
     "hub/test/fake-harness-capabilities.test.ts": {},
     "hub/test/fake-harness.test.ts": {},
+    "hub/test/fixture-worker-lifecycle.test.ts": {},
     "hub/test/follows.test.ts": {
       "startDaemon": 2,
       "spawnSpoke": 1

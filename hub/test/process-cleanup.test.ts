@@ -445,3 +445,33 @@ await cleanupProcesses(root, [seed], () => {}, 'owned-run', []);
  { pid: 420061, parent: 1, group: 420061, started: start, command: 'invoking shell', runId: 'owned-run' }
 ];`), []);
 });
+
+// T3: isolate the worker's real signal handler; the OS rows and signals themselves are synthetic.
+test('signal recovery preserves replacement identities while reaping unrecorded fixture writers', () => {
+  assert.deepEqual(probe(`
+const fs = await import('node:fs');
+const { ownDirectory, ownProcess } = await import(${JSON.stringify(modulePath)});
+const dir = fs.realpathSync(fs.mkdtempSync('/tmp/cland-signal-control-'));
+ownDirectory(undefined, dir);
+rows = [
+ { pid: 420070, parent: process.pid, group: 420070, started: start, command: 'original' },
+ { pid: 420073, parent: process.pid, group: 420073, started: start, command: 'original leader' }
+];
+ownProcess(undefined, 420070);
+ownProcess(undefined, 420073);
+rows = [
+ { pid: 420070, parent: process.pid, group: 420070, started: 'Tue Oct 6 12:00:00 2026', command: 'replacement' },
+ { pid: 420071, parent: 420070, group: 420070, started: 'Tue Oct 6 12:00:00 2026', command: 'replacement child' },
+ { pid: 420072, parent: 1, group: 420072, started: start, command: 'unrecorded hub' },
+ { pid: 420074, parent: 1, group: 420073, started: start, command: 'dead leader child' }
+];
+cwd = rows.map(row => 'p' + row.pid + '\\nn' + dir + '\\n').join('');
+let exited;
+const exit = new Promise(resolve => { exited = resolve; });
+process.exit = code => { exited(code); };
+process.emit('SIGTERM');
+assert.equal(await exit, 143);
+assert.deepEqual(rows.map(row => row.pid), [420070, 420071]);
+assert.equal(fs.existsSync(dir), false);
+`), [{ pid: -420072, signal: 'SIGKILL' }, { pid: 420074, signal: 'SIGKILL' }]);
+});
