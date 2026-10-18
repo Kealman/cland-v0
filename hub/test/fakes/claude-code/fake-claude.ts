@@ -46,9 +46,11 @@
 // Test fixtures set 30 ms turns (adapter polls 50 ms; Claude push trust 100 ms).
 // Direct use retains the 300 ms fallback. To stage a slow turn, pass turnMs to the
 // fixture or set FAKE_CLAUDE_TURN_MS explicitly, with a comment naming the race/behaviour.
+// jobs/<id>.turn-hold replaces that delay with a file-event barrier: create it before submitting
+// a turn, observe `turn held: <turnId>`, remove it to release, then observe `turn released: <turnId>`.
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, watch, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -480,7 +482,20 @@ async function runSession(id: string): Promise<number> {
     await dispatch('turn.start', { text: next.text, turnId }, () => ({ turnId }));
     if (awaitSignals) await drainPosts();
     next.started();
-    await new Promise((r) => setTimeout(r, turnMs));
+    const hold = join(JOBS, `${id}.turn-hold`);
+    if (existsSync(hold)) {
+      await new Promise<void>((resolve) => {
+        const released = () => {
+          if (existsSync(hold)) return;
+          watcher.close();
+          resolve();
+        };
+        const watcher = watch(JOBS, released);
+        log(`turn held: ${turnId}`);
+        released();
+      });
+      log(`turn released: ${turnId}`);
+    } else await new Promise((r) => setTimeout(r, turnMs));
     if (existsSync(join(HOME, 'logged-out')) || existsSync(join(job.configDir, 'logged-out'))) {
       setStatus('idle');
       await runHooks('StopFailure', { error: 'authentication_failed', error_details: 'OAuth token has expired. Please run claude auth login.' });
