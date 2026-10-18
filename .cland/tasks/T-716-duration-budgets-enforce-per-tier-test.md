@@ -2,8 +2,8 @@
 id: T-716
 kind: task
 title: "Duration budgets enforce: per-tier test and file budgets fail runs, the T3 ratchet and the T2 wall refuse merges"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-489
 branch: t/T-716-duration-budgets-enforce-per-tier-test
 created: 2026-10-16T19:59:44.270Z
-updated: 2026-10-18T10:15:59.398Z
+updated: 2026-10-18T12:14:17.271Z
+closed: 2026-10-18T12:14:17.271Z
 ---
 
 ## Summary
@@ -146,3 +147,7 @@ C1–C4 execution verified; C5 remains current from source. No known-red excepti
 Artifact A-5191.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T12:14:17.271Z
+
+Merged 42a30975c5903e9fe9492f67ffcdc78551d60b0f onto dev.
