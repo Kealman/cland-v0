@@ -155,7 +155,8 @@ export async function liveHolderAsync(path: string, startedOf: (pid: number, tim
   return sameProcess(holder, await startedOf(holder.pid, holder.startedUtc === undefined ? undefined : 'UTC')) ? holder : null;
 }
 
-// Creation, stale removal and release all hold the same guard. Its directory is installed nonempty in one
+// Creation and stale removal hold the same guard; synchronous lock release uses it too. Async owners
+// release their own live token through serialized async I/O (see acquireLockAsync). The guard is installed nonempty in one
 // rename. Recovery removes only the dead owner's unique filename, then rmdir (which preserves a successor's
 // nonempty directory). This avoids check/unlink races, including two recoverers and an empty-directory rename.
 type RecordSnapshot = { exists: boolean; holder: LockHolder | null };
@@ -360,22 +361,25 @@ export async function acquireLockAsync(path: string, resumed: Resumed = work => 
       await fs.rm(path, { force: true });
       return false;
     }, deadline);
-    if (acquired) return resumed(() => ({ holder: me, release: async () => {
-      const record = await recordAsync(path, resumed);
-      if (!resumed(() => sameHolder(record.holder, me))) return;
-      try {
-        await guarded(async () => {
-          const current = await recordAsync(path, resumed);
-          if (resumed(() => sameHolder(current.holder, me))) await fs.rm(path, { force: true });
-        }, deadline === undefined ? undefined : Date.now() + 2000);
-      } catch (err) {
-        if (resumed(() => absent(err))) {
-          const current = await recordAsync(path, resumed);
-          if (resumed(() => !current.exists)) return;
-        }
-        resumed(() => { throw err; });
-      }
-    } }));
+    if (acquired) {
+      let releasing: Promise<void> | null = null;
+      let released = false;
+      return resumed(() => ({ holder: me, release: () => {
+        if (released) return Promise.resolve();
+        if (releasing) return releasing;
+        // A live main holder cannot be replaced by a contender. Release its own
+        // token without another guard/probe deadline, using asynchronous I/O.
+        // Join concurrent releases: after unlink a successor can acquire while
+        // this I/O receipt is pending, so this handle must never unlink twice.
+        releasing = (async () => {
+          const record = await recordAsync(path, resumed);
+          if (resumed(() => sameHolder(record.holder, me))) await fs.rm(path, { force: true });
+          resumed(() => { released = true; });
+        })().finally(() => { releasing = null; });
+        // Failed unlink remains retryable, preserving the owner's cleanup duty.
+        return releasing;
+      } }));
+    }
   }
   return resumed(() => { throw new Error(`could not take ${path}: it keeps changing under this process`); });
 }

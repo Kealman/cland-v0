@@ -606,6 +606,11 @@ export class Store implements HygieneMemory {
     this.#db.prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
   }
 
+  /** Finished suites are separate rows, never part of the frequently rewritten active snapshot. */
+  suiteJobHistory(): string[] {
+    return (this.#db.prepare("select value from meta where key glob 'suite-job:*'").all() as Row[]).map(row => row.value as string);
+  }
+
   clearMeta(key: string): void { this.#db.prepare('delete from meta where key = ?').run(key); }
 
   /** A provisional tracker identity kept while its real session renames during failed adoption. */

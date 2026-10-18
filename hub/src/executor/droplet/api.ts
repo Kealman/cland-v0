@@ -72,25 +72,25 @@ export class DigitalOceanApi {
       if (++page > 10000) throw new DigitalOceanError(0, 'response', 'pagination limit reached');
     }
   }
-  async account(): Promise<unknown> { return (await this.#call<{ account: unknown }>('GET', '/account')).account; }
+  async account(deadline?: number): Promise<unknown> { return (await this.#call<{ account: unknown }>('GET', '/account', undefined, deadline)).account; }
   sizes(deadline?: number): Promise<Size[]> { return this.#list('/sizes', 'sizes', deadline); }
   regions(deadline?: number): Promise<Region[]> { return this.#list('/regions', 'regions', deadline); }
   droplets(tag: string, deadline?: number): Promise<Droplet[]> { return this.#list(`/droplets?tag_name=${encodeURIComponent(tag)}`, 'droplets', deadline); }
   keys(deadline?: number): Promise<Key[]> { return this.#list('/account/keys', 'ssh_keys', deadline); }
   async create(input: CreateDroplet, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('POST', '/droplets', input, deadline)).droplet; }
   async droplet(id: number, deadline?: number): Promise<Droplet> { return (await this.#call<{ droplet: Droplet }>('GET', `/droplets/${id}`, undefined, deadline)).droplet; }
-  async importKey(name: string, publicKey: string): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey })).ssh_key; }
+  async importKey(name: string, publicKey: string, deadline?: number): Promise<Key> { return (await this.#call<{ ssh_key: Key }>('POST', '/account/keys', { name, public_key: publicKey }, deadline)).ssh_key; }
   async deleteDroplet(id: number, deadline?: number): Promise<void> { await this.#delete(`/droplets/${id}`, deadline); }
   async deleteKey(id: number, deadline?: number): Promise<void> { await this.#delete(`/account/keys/${id}`, deadline); }
   async dropletAction(id: number, type: 'power_off' | 'snapshot', name?: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/droplets/${id}/actions`, { type, ...(name ? { name } : {}) }, deadline)).action; }
   async action(id: number, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('GET', `/actions/${id}`, undefined, deadline)).action; }
-  actions(): Promise<Action[]> { return this.#list('/actions', 'actions'); }
+  actions(deadline?: number): Promise<Action[]> { return this.#list('/actions', 'actions', deadline); }
   async snapshots(deadline?: number): Promise<SnapshotImage[]> {
     // The snapshots endpoint represents ids as strings; create and image actions use numbers.
     return (await this.#list<SnapshotImage>('/snapshots?resource_type=droplet', 'snapshots', deadline)).map(image => ({ ...image, id: Number(image.id) }));
   }
   async transferImage(id: number, region: string, deadline?: number): Promise<Action> { return (await this.#call<{ action: Action }>('POST', `/images/${id}/actions`, { type: 'transfer', region }, deadline)).action; }
-  async tagImage(id: number, tag: string): Promise<void> { await this.#call('POST', '/tags', { name: tag }); await this.#call('POST', `/tags/${encodeURIComponent(tag)}/resources`, { resources: [{ resource_id: String(id), resource_type: 'image' }] }); }
-  deleteSnapshot(id: number): Promise<void> { return this.#delete(`/snapshots/${id}`); }
+  async tagImage(id: number, tag: string, deadline?: number): Promise<void> { await this.#call('POST', '/tags', { name: tag }, deadline); await this.#call('POST', `/tags/${encodeURIComponent(tag)}/resources`, { resources: [{ resource_id: String(id), resource_type: 'image' }] }, deadline); }
+  deleteSnapshot(id: number, deadline?: number): Promise<void> { return this.#delete(`/snapshots/${id}`, deadline); }
   async #delete(path: string, deadline?: number): Promise<void> { try { await this.#call('DELETE', path, undefined, deadline); } catch (err) { if (!(err instanceof DigitalOceanError) || err.status !== 404) throw err; } }
 }

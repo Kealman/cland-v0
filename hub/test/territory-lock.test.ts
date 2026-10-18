@@ -355,7 +355,7 @@ test('both lock releases are no-ops for an absent file, deleted directory, and r
   }
 });
 
-test('release handles a directory deleted between its ownership check and guard creation in both APIs', async t => {
+test('release handles a directory deleted after its ownership check in both APIs', async t => {
   const fs = (await import('node:fs/promises')).default;
   const syncFs = (await import('node:fs')).default;
   const { syncBuiltinESMExports } = await import('node:module');
@@ -365,9 +365,12 @@ test('release handles a directory deleted between its ownership check and guard 
     const dir = join(root, String(asynchronous)), path = join(dir, 'lock');
     await fs.mkdir(dir);
     const lock = asynchronous ? await acquireLockAsync(path) : acquireLock(path);
-    const mkdir = fs.mkdir, mkdirSync = syncFs.mkdirSync;
-    const asyncMock = t.mock.method(fs, 'mkdir', async (...args: Parameters<typeof fs.mkdir>) => {
-      await fs.rm(dir, { recursive: true }); return mkdir(...args);
+    const rm = fs.rm, mkdirSync = syncFs.mkdirSync;
+    const asyncMock = t.mock.method(fs, 'rm', async (...args: Parameters<typeof fs.rm>) => {
+      // Async release no longer creates a guard: delete its parent immediately
+      // before the ownership-checked unlink instead, retaining the race proof.
+      if (args[0] === path) await rm(dir, { recursive: true });
+      return rm(...args);
     });
     const syncMock = t.mock.method(syncFs, 'mkdirSync', (...args: Parameters<typeof syncFs.mkdirSync>) => {
       syncFs.rmSync(dir, { recursive: true }); return mkdirSync(...args);

@@ -221,6 +221,10 @@ export class Dispatcher {
         options.tracker?.releaseHolds(event.process.sessionId, event.process.name);
         this.#suites?.requesterExited(event.process.sessionId);
       }
+      if (event.type === 'session.role' && event.role !== null) {
+        const sessionId = options.core.store.sessionIdOf(event.session);
+        if (sessionId) this.#suites?.reportPermissionsChanged(sessionId);
+      }
       if (event.type === 'session.cleanup' && event.state === 'settled') options.tracker?.releaseHolds(event.sessionId);
     });
     options.tracker?.onChange(() => {
@@ -267,10 +271,11 @@ export class Dispatcher {
   async close(): Promise<void> {
     this.#closed = true;
     if (this.#dropletTimer) this.#options.core.clock.clearInterval(this.#dropletTimer);
+    const closingDroplets = this.#droplets?.close();
     await this.#dropletReady;
     await this.#dropletWork;
     await this.#demos?.close();
-    await this.#droplets?.close();
+    await closingDroplets;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
     this.#merges?.stop();
@@ -1636,7 +1641,7 @@ export class Dispatcher {
               return { type: 'result' as const, id: frame.id, ok: true as const, value };
             }).catch(error => Dispatcher.#failure(frame.id, error)));
           }
-          return later(frame.type, this.#dropletReady.then(async () => { authorize(); return frame.type === 'executor.status' ? await this.#droplets!.inspect() : await this.#droplets!.reap(authorize); }).then(
+          return later(frame.type, (frame.type === 'executor.status' ? Promise.resolve().then(() => { authorize(); return this.#droplets!.inspect(); }) : this.#dropletReady.then(() => { authorize(); return this.#droplets!.reap(authorize); })).then(
             value => ({ type: 'result' as const, id: frame.id, ok: true, value }), err => Dispatcher.#failure(frame.id, err),
           ));
         }

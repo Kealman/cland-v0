@@ -36,7 +36,7 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
   for (const run of [queue?.holder, ...(queue?.remote ?? []), ...(queue?.waiters ?? [])]) {
     if (run?.kind === 'hand run') flight.push(`run ${run.id ?? 'human'} ${'since' in run ? 'running' : 'queued'} · ${run.session ?? 'human'}`);
   }
-  const jobs: SuiteJob[] = JSON.parse(store.meta('suite-jobs') ?? '[]');
+  const jobs: SuiteJob[] = [...store.suiteJobHistory().map(text => (JSON.parse(text) as { job: SuiteJob }).job).filter(job => !job.reported), ...JSON.parse(store.meta('suite-jobs') ?? '[]')];
   const leases = new Map<string, DropletLease>();
   for (const job of jobs) {
     if (!job.outcome && !job.reported) flight.push(`run ${job.id} ${job.state ?? 'running'} · ${job.actor?.name ?? 'human'}${job.item ? ` · ${job.item}` : ''}`);

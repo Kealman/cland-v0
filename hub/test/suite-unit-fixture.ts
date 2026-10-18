@@ -151,7 +151,18 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     await suites.settled();
     return status(id);
   }
-  async function reopen(jobs?: SuiteJob[]) { await suites.close(); store.close(); store = new Store(database); watchStore(); if (jobs) store.setMeta('suite-jobs', JSON.stringify(jobs)); suites = make(); }
+  async function reopen(jobs?: SuiteJob[]) {
+    await suites.close(); store.close(); store = new Store(database); watchStore();
+    if (jobs) store.transaction(() => {
+      // Explicit seeds replace the entire history; an ordinary reopen retains it.
+      for (const text of store.suiteJobHistory()) {
+        const { job } = JSON.parse(text) as { job: SuiteJob };
+        store.clearMeta(`suite-job:${job.id}`);
+      }
+      store.setMeta('suite-jobs', JSON.stringify(jobs));
+    });
+    suites = make();
+  }
   return { root, clock, api, machine, acquisitions, candidate, logs, notices, shardingNotices, reports, delivered, receipts, when, launch, tick, result, status, finish, reopen, close,
     ownIO(release: () => void) { releases.add(release); },
     get suites() { return suites; }, get store() { return store; }, get config() { return config; },
@@ -159,7 +170,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     beforeInspect(barrier: () => Promise<void>) { inspectBarrier = barrier; },
     configure(source: string) { config = parseConfig(source, 'suite-unit', {}); suites.configure(config); },
     hold(value: boolean, valueHolder: typeof holder = null) { held = value; holder = valueHolder; },
-    async jobs() { return JSON.parse(store.meta('suite-jobs')!) as SuiteJob[]; },
+    async jobs() { return [...store.suiteJobHistory().map(text => (JSON.parse(text) as { job: SuiteJob }).job), ...JSON.parse(store.meta('suite-jobs')!) as SuiteJob[]]; },
     async log(id: string) { return readFile(join(root, '.cland/run/suites', id, 'suite.log'), 'utf8'); },
   };
 }

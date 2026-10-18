@@ -37,6 +37,7 @@ import { occasionSelection } from '../verification-occasion.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  sequence?: number;
   health?: MachineHealth;
   shardHealth?: ShardMachineHealth[];
   hostGate?: HostGate;
@@ -54,6 +55,7 @@ export type SuiteJob = {
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
+  reportFailedPermanently?: boolean;
   artifact: string | null; reported: boolean; error: string | null; cleaned?: boolean;
   accountingWaitStarted?: string; accountingPending?: boolean;
   cancelled?: boolean; interruptedAt?: string; progressReported?: boolean;
@@ -166,6 +168,8 @@ export class Suites {
   #remoteBudget: number;
   #options: SuiteSchedulerOptions;
   readonly #humans = new Map<object, HumanSlot>();
+  readonly #savedJobs = new Map<string, string>();
+  #savedActive = '';
   #lastQueue = '';
   readonly #local: LocalExecutor;
   readonly #droplet: DropletExecutor;
@@ -182,7 +186,12 @@ export class Suites {
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
-    this.#jobs = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
+    const history = store.suiteJobHistory().map(text => JSON.parse(text) as { position: number; job: SuiteJob }).sort((a, b) => a.position - b.position);
+    for (const entry of history) this.#savedJobs.set(entry.job.id, JSON.stringify(entry));
+    const active = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
+    this.#jobs = [...history.map(entry => entry.job).filter(job => !active.some(current => current.id === job.id)), ...active];
+    this.#savedActive = store.meta(KEY) ?? '';
+
     this.#waitMetrics = new VerificationWait(store, this.#jobs, options.projectConfig?.().verification.waitP90TargetMs ?? options.waitP90TargetMs, options.log, options.waitClock ?? this.#clock);
     this.#local = new LocalExecutor(this.#locks(), (lease, worker) => {
       if (this.#closed) return;
@@ -194,7 +203,9 @@ export class Suites {
     }, id => { if (this.#jobs.find(job => job.id === id)?.outcome) throw new Error('suite cancelled before worker admission'); }, options.env, options.compatibility);
     this.#droplet = new DropletExecutor(root, store, options.log, options.env, options.projectConfig, { ...options.dropletServices, clock: this.#clock });
     for (const [index, job] of this.#jobs.entries()) {
-      this.#order.set(job.id, index);
+      job.sequence ??= index;
+      this.#order.set(job.id, job.sequence);
+      if (job.cleaned && job.error?.startsWith('forbidden:')) job.reportFailedPermanently = true;
       job.executor ??= 'local';
       job.state ??= job.outcome || job.reported ? 'finished' : 'running';
       if (job.state !== 'queued' && !job.config && options.projectConfig) job.config = options.projectConfig();
@@ -212,6 +223,7 @@ export class Suites {
         this.#recordTiming(job, completion);
       }
     }
+    this.#jobs.sort((a, b) => a.sequence! - b.sequence!);
     for (const job of this.#jobs) this.#remember(job, false);
     this.#save();
     this.#reaping = this.#local.reap().catch(error => { this.#options.log?.({ event: 'verification-reap-blocked', error: String(error) }); });
@@ -239,11 +251,27 @@ export class Suites {
     this.#save(job);
   }
   #save = (job?: SuiteJob) => {
-    this.#store.setMeta(KEY, JSON.stringify(this.#jobs));
+    if (job && !job.parentRun && !this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
+    const parent = job?.parentRun ? this.#jobs.find(parent => parent.id === job.parentRun) : job;
+    const changed = parent ? [parent] : this.#jobs;
+    const saved = new Map<string, string>();
+    const active = JSON.stringify(this.#jobs.filter(current => current.state !== 'finished'));
+    this.#store.transaction(() => {
+      for (const current of changed) {
+        if (current.state !== 'finished') continue;
+        const value = JSON.stringify({ position: this.#order.get(current.id), job: current });
+        if (this.#savedJobs.get(current.id) === value) continue;
+        this.#store.setMeta(`suite-job:${current.id}`, value);
+        saved.set(current.id, value);
+      }
+      if (active !== this.#savedActive) this.#store.setMeta(KEY, active);
+    });
+    for (const [id, value] of saved) this.#savedJobs.set(id, value);
+    this.#savedActive = active;
     if (job && !job.parentRun) this.#remember(job, true);
   };
   #remember(job: SuiteJob, announce: boolean): void {
-    if (!this.#order.has(job.id)) this.#order.set(job.id, this.#order.size);
+    if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
     const later = (previous: SuiteJob | undefined) => !previous || this.#order.get(job.id)! >= this.#order.get(previous.id)!;
     if (job.item && later(this.#latestItems.get(idNumber(job.item)))) this.#latestItems.set(idNumber(job.item), job);
     if (job.branch && later(this.#latestBranches.get(job.branch))) this.#latestBranches.set(job.branch, job);
@@ -820,13 +848,14 @@ export class Suites {
   #inspectJob(job: SuiteJob): Promise<void> {
     const pending = this.#inspecting.get(job.id);
     if (pending) return pending;
-    if (this.#closed || job.reported || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
+    if (this.#closed || job.reported || job.reportFailedPermanently || this.#launching.has(job.id) || this.#planning.has(job.id)) return Promise.resolve();
     const work = this.#inspect(job).catch(() => { /* saved errors are retried on the next tick */ }).finally(() => { this.#inspecting.delete(job.id); });
     this.#inspecting.set(job.id, work);
     return work;
   }
   async #restoreRemoteResult(job: SuiteJob): Promise<boolean> {
     if (job.executor !== 'droplet') return false;
+    if (job.state === 'finished' && job.finished && job.outcome) return true;
     const text = await readFile(job.result, 'utf8').catch(error => {
       if (error.code === 'ENOENT') return null;
       throw error;
@@ -980,7 +1009,7 @@ export class Suites {
         } catch { await appendFile(job.log, 'budget (report only): unavailable (report read failed)\n'); }
         job.budgetReported = true; this.#save(job);
       }
-      this.#recordTiming(job, !job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : this.#clock.now().toISOString());
+      this.#recordTiming(job, job.completedAt ?? (!job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : this.#clock.now().toISOString()));
       if (job.integrated && !job.parentRun && !job.cover) {
         const cover = deriveCover(job, await readFile(job.log, 'utf8'));
         if (cover) job.cover = cover;
@@ -992,7 +1021,11 @@ export class Suites {
         job.artifact = id; this.#save(job);
       });
       job.reported = true; job.error = null; this.#save(job);
-    } catch (error) { job.error = error instanceof Error ? error.message : String(error); this.#save(job); }
+    } catch (error) {
+      job.error = error instanceof Error ? error.message : String(error);
+      if (job.cleaned && /^forbidden:/.test(job.error)) job.reportFailedPermanently = true;
+      this.#save(job);
+    }
   }
   async #collectLog(job: SuiteJob): Promise<void> {
     if (job.remoteLogStart === undefined) return;
@@ -1004,6 +1037,17 @@ export class Suites {
       await appendFile(job.log, chunk.bytes);
       if (chunk.next - offset < 262144) return;
     }
+  }
+  /** A changed role is new authorization evidence; do not poll a forbidden report. */
+  reportPermissionsChanged(sessionId: string): void {
+    let changed = false;
+    for (const job of this.#jobs) {
+      if (job.actor?.sessionId !== sessionId || !job.reportFailedPermanently) continue;
+      delete job.reportFailedPermanently;
+      job.error = null; changed = true;
+      this.#save(job);
+    }
+    if (changed) void this.#check();
   }
   requesterExited(sessionId: string): void {
     for (const job of this.#jobs) {

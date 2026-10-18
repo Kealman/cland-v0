@@ -1,9 +1,9 @@
 import { realClock, type Clock } from '../../hub/clock.ts';
 // The first per-user cland state: all project hubs reserve against the same ledger.
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
-import { acquireLockWithRetry, type LockProcessTable, type LockRetryTiming } from '../../hub/lock.ts';
+import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type LockRetryTiming } from '../../hub/lock.ts';
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
 
 type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
@@ -45,10 +45,11 @@ function totals(ledger: Ledger, clock: Clock) {
   const spent = ledger.entries.filter(e => e.released?.startsWith(day)).reduce((sum, e) => sum + (e.cost ?? 0), 0);
   return { day, spent, reserved };
 }
-async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, timing?: LockRetryTiming): Promise<T> {
+async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, timing?: LockRetryTiming, maxWaitMs = 60000): Promise<T> {
   const path = spendPath(env);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  const lock = await acquireLockWithRetry(`${path}.lock`, undefined, timing);
+  const clock = timing?.clock ?? realClock;
+  const lock = await acquireLockWithRetry(`${path}.lock`, clock.now().getTime() + maxWaitMs, timing);
   let legacyLock;
   try {
     let ledger = await read(path);
@@ -56,7 +57,13 @@ async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, ti
     if (old && old !== path && await readExisting(old)) {
       // Old hubs still serialize on this lock. Always take new then old, and
       // retain the legacy file until an explicit cleanup after those hubs stop.
-      legacyLock = await acquireLockWithRetry(`${old}.lock`, undefined, timing);
+      const [currentStat, oldStat] = await Promise.all([stat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; }), stat(old)]);
+      // Aliased directories/files must never make the holder wait on itself.
+      if (!currentStat || currentStat.dev !== oldStat.dev || currentStat.ino !== oldStat.ino) {
+        // Never wait for another lock while holding the current ledger. Deferral
+        // unwinds the current lock; the next sweep retries both from scratch.
+        legacyLock = await acquireLockAsync(`${old}.lock`, undefined, Date.now() + 1000, 'UTC', timing?.processes);
+      }
       const legacy = await read(old);
       ledger = reconcile(ledger, legacy);
       await durableJson(path, ledger);
@@ -79,9 +86,9 @@ async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, ti
   }
   finally { try { await legacyLock?.release(); } finally { await lock.release(); } }
 }
-async function load(env: NodeJS.ProcessEnv, timing?: LockRetryTiming): Promise<Ledger> {
+async function load(env: NodeJS.ProcessEnv, timing?: LockRetryTiming, maxWaitMs = 60000): Promise<Ledger> {
   const old = legacyPath(env);
-  return old && old !== spendPath(env) && await readExisting(old) ? locked(ledger => ledger, env, timing) : read(spendPath(env));
+  return old && old !== spendPath(env) && await readExisting(old) ? locked(ledger => ledger, env, timing, maxWaitMs) : read(spendPath(env));
 }
 export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait?: (ms: number) => Promise<void>, processes?: LockProcessTable): Promise<void> {
   await locked(ledger => {
@@ -99,18 +106,22 @@ export async function settleSpend(lease: DropletLease, env: NodeJS.ProcessEnv = 
   await locked(ledger => {
     const entry = ledger.entries.find(e => e.lease === lease.lease);
     if (entry && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
-  }, env, processes ? { processes } : undefined);
+  }, env, processes ? { processes } : undefined, 1000);
 }
-export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable) {
-  return { path: spendPath(env), ...totals(await load(env, { clock, ...(processes ? { processes } : {}) }), clock), cap };
+export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, readOnly = false) {
+  // Status observes atomically published files. Conservative merging is safe
+  // without migration or a lock; only admission needs serialized publication.
+  const old = legacyPath(env);
+  const ledger = readOnly ? reconcile(await read(spendPath(env)), old ? await readExisting(old) ?? { version: 1, entries: [] } : { version: 1, entries: [] }) : await load(env, { clock, ...(processes ? { processes } : {}) });
+  return { path: spendPath(env), ...totals(ledger, clock), cap };
 }
 
 /** Register hubs, including pre-ledger leases, before their first automatic sweep. */
-export async function rememberProject(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<void> {
-  await locked(ledger => { ledger.projects ??= []; if (!ledger.projects.includes(project)) ledger.projects.push(project); }, env, processes ? { processes } : undefined);
+export async function rememberProject(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable, clock: Clock = realClock, wait?: (ms: number) => Promise<void>): Promise<void> {
+  await locked(ledger => { ledger.projects ??= []; if (!ledger.projects.includes(project)) ledger.projects.push(project); }, env, { clock, wait, ...(processes ? { processes } : {}) }, 1000);
 }
 export async function hostLeases(project: string, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<DropletLease[]> {
-  const ledger = await load(env, processes ? { processes } : undefined);
+  const ledger = await load(env, processes ? { processes } : undefined, 1000);
   const projects = [...new Set([project, ...(ledger.projects ?? []), ...ledger.entries.map(e => e.project)])].filter(isAbsolute);
   // An unreadable project is not proof that its keys are orphaned. Fail the sweep safely.
   return (await Promise.all(projects.map(root => readLeases(root)))).flat();

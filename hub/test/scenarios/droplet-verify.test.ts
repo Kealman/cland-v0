@@ -59,8 +59,8 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
     const db = new DatabaseSync(join(f.root, '.cland/hub.db'), { readOnly: true });
     let remoteLogStart: number | undefined;
     try {
-      const row = db.prepare("select value from meta where key = 'suite-jobs'").get() as { value: string };
-      remoteLogStart = (JSON.parse(row.value) as { id: string; remoteLogStart?: number }[]).find(run => run.id === job.id)?.remoteLogStart;
+      const row = db.prepare('select value from meta where key = ?').get(`suite-job:${job.id}`) as { value: string } | undefined;
+      remoteLogStart = row ? (JSON.parse(row.value) as { job: { remoteLogStart?: number } }).job.remoteLogStart : undefined;
     } finally { db.close(); }
     const markers = (text: string) => text.match(/typecheck:[^\r\n]*/g) ?? [];
     receiptDiagnostic = `host receipt mismatch: ${JSON.stringify({ expected: tree, generated: script.match(/typecheck: host gate at ([0-9a-f]{40})/)?.[1], local: markers(log), laterLocal: markers(laterLog), remote: markers(remoteLog), remoteLogStart, localBytes: Buffer.byteLength(log), remoteBytes: Buffer.byteLength(remoteLog) })}`;

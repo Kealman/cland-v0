@@ -6,6 +6,7 @@ import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises'
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
 import { fixture, type ResultMessage } from './suite-fixture.ts';
+import type { SuiteJob } from '../src/hub/suites.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
@@ -248,8 +249,8 @@ test('failure cleanup preserves a live worker whose recorded start identity is u
   const restored = new DatabaseSync(join(f.root, '.cland', 'hub.db'), { readOnly: true });
   try {
     const cleanupError = () => {
-      const value = restored.prepare("select value from meta where key = 'suite-jobs'").get() as { value: string };
-      return (JSON.parse(value.value) as Array<{ id: string; error: string | null }>).find(record => record.id === job.id)?.error;
+      const value = restored.prepare('select value from meta where key = ?').get(`suite-job:${job.id}`) as { value: string } | undefined;
+      return value ? (JSON.parse(value.value) as { job: SuiteJob }).job.error : undefined;
     };
     // Subscribe before reading: cleanup may finish before connection, between the
     // read and the wait, or later. Buffered task events cover the latter two cases.
@@ -274,16 +275,19 @@ test('restart recognizes a committed result even if its run receipt did not sett
   // Storage boundary: reconstruct the checkpoint immediately before the report's receipt update.
   const db = new DatabaseSync(join(f.root, '.cland', 'hub.db'));
   try {
-    const value = db.prepare("select value from meta where key = 'suite-jobs'").get() as { value: string };
-    const jobs = JSON.parse(value.value) as Array<{ reported: boolean; artifact: string | null }>;
-    for (const record of jobs) { record.reported = false; record.artifact = null; }
-    db.prepare("update meta set value = ? where key = 'suite-jobs'").run(JSON.stringify(jobs));
+    const key = `suite-job:${job.id}`;
+    const value = db.prepare('select value from meta where key = ?').get(key) as { value: string } | undefined;
+    assert.ok(value, 'completed report has a durable history row to rewind');
+    const record = JSON.parse(value.value) as { position: number; job: SuiteJob };
+    assert.equal(record.job.reported, true);
+    record.job.reported = false; record.job.artifact = null;
+    db.prepare('update meta set value = ? where key = ?').run(JSON.stringify(record), key);
   } finally { db.close(); }
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
   await eventually('receipt reconciled', async () => {
     const status = await ui.request({ type: 'hub.status' });
-    return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(job => job.reported) ? true : undefined;
+    return (status.value as { suites: Array<{ id: string; reported: boolean }> }).suites.some(record => record.id === job.id && record.reported) ? true : undefined;
   });
   const history = await ui.request({ type: 'topic.history', topic: f.topic });
   assert.equal((history.value as { messages: ResultMessage[] }).messages.filter(m => m.id === `suite:${job.id}`).length, 1);
