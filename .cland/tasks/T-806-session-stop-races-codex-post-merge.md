@@ -2,8 +2,8 @@
 id: T-806
 kind: task
 title: "session-stop-races: Codex post-merge forced stop waits 15 s for the descendant identity probe file under macOS load"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-519
 branch: t/T-806-session-stop-races-codex-post-merge
 created: 2026-10-18T14:13:11.905Z
-updated: 2026-10-18T17:13:39.681Z
+updated: 2026-10-18T18:46:08.064Z
+closed: 2026-10-18T18:46:08.064Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ Linux x64 c-8 lon1, workers2, Node24.21.0/Neovim0.12.5; lifetime1475s,cost$0.102
 Review evidence: A-5478.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T18:46:08.064Z
+
+Merged e9f1e1af9aaeb31b6e40df9006495001635811bb onto dev.
