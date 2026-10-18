@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-520
 branch: t/T-809-nvim-thread-test-generated-live-appends
 created: 2026-10-18T15:41:10.672Z
-updated: 2026-10-18T16:22:03.817Z
+updated: 2026-10-18T16:23:38.966Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ nvim/test/thread.test.ts, "generated live appends, ask evictions and delivery ch
 
 - [ ] C1. The generated-append wait observes the render event or hub frame instead of a 10 s wall-clock screen poll, or the oracle's seeds run against a per-file catalog slice (T-774's mechanism). Every assertion is kept.
 - [ ] C2. The file passes 20/20 serially on macOS plus a green droplet verify on Linux at 2 workers, with its time back under its 23.5 s baseline or the new number recorded.
+
+## Comments
+
+### impl-809 · 2026-10-18T16:23:38.966Z
+
+Baseline whole-file run: 23/23 pass, 28.468 s, oracle 16.527 s. Replaced generated append screen polling with a barrier on the final boundary delivery/queued frame, registered after the synchronous thread consumer. All original render-equivalence assertions retained; explicit rendered-block Live text assertion keeps append-presence coverage. Missing-final-frame mutation fails with 'generated append delivery burst has not landed'; mutation restored. C2's 20 serial whole-file Mac repetitions underway; source review precedes Linux verification.

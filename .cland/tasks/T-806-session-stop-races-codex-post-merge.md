@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-519
 branch: t/T-806-session-stop-races-codex-post-merge
 created: 2026-10-18T14:13:11.905Z
-updated: 2026-10-18T16:19:50.895Z
+updated: 2026-10-18T16:22:56.230Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ hub/test/session-stop-races.test.ts:91, "Codex: post-merge forced stop succeeds 
 ## Acceptance criteria
 
 - [ ] C1. The test waits on an observed event (the probe write or the descendant's exit), or on a FakeClock step, instead of a 15 s wall-clock deadline, keeping every assertion. It passes 20/20 with the machine phase at 4 workers on macOS.
+
+## Comments
+
+### impl-806 · 2026-10-18T16:22:56.230Z
+
+Reproduced the exact 15s probe.json ENOENT timeout using a temporary 16s publication delay (A-5417). Testing an observer armed before stop plus atomic probe publication, retaining the existing T3 lifecycle seam and every assertion.

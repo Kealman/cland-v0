@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-522
 branch: t/T-715-the-hub-runs-a-nightly-t1-t4-soak-on-a
 created: 2026-10-16T19:59:44.178Z
-updated: 2026-10-18T16:22:01.591Z
+updated: 2026-10-18T16:26:47.418Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ Decision 7: a nightly T4 soak within the daily spend cap (~$0.15–0.25 a day, m
 - [ ] C2. A soak whose reservation would exceed the daily cap is skipped with one notice naming the cap, proved by a test with the spend ledger.
 - [ ] C3. A green soak records a coverage map that task selection reads, proved by a selection test.
 - [ ] C4. A red soak posts a quarantine proposal per failing test and leaves the merge queue running, proved by a test.
+
+## Comments
+
+### impl-715 · 2026-10-18T16:26:47.418Z
+
+C1 scheduling red→green recorded (initial 0 !== 1 failure; FakeClock scheduling now passes in 0.22s). Shared ledger cap test passes in 0.07s, including one $0.1 cap notice across reopen and no provider creation. Green dispatch frame test initially failed human !== hub; hub-authored nightly results and published coverage selection now pass in 0.66s. Building C4 proposal/reporting next.

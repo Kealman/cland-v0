@@ -3,8 +3,9 @@ id: T-623
 kind: task
 title: The skills manifest records the SHA-256 of each file as cland wrote it
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 6
 labels:
   - v0.1.4
   - skills
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-525
 branch: t/T-623-the-skills-manifest-records-the-sha-256
 created: 2026-10-16T15:57:48.998Z
-updated: 2026-10-18T16:21:33.028Z
+updated: 2026-10-18T16:26:17.364Z
 ---
 
 ## Summary
@@ -29,12 +30,18 @@ The validation that runs before anything is touched (the mark, the skill names, 
 
 ## Acceptance criteria
 
-- [ ] C1. After `cland init` in a temporary project, every file of every installed skill appears in the manifest with the SHA-256 of its bytes on disk.
-- [ ] C2. After `cland update` with a newer set simulated through `CLAND_SKILLS_SOURCE_OVERRIDE`, every rewritten file's hash in the manifest is the SHA-256 of the new bytes.
-- [ ] C3. A manifest with a malformed hash or a path entry that is neither a list nor a map is reported invalid by `cland update` and `cland doctor`, and nothing is installed, rewritten or removed.
-- [ ] C4. A manifest in the old list form passes `cland doctor`'s skills manifest check and is read by `cland update` without an error.
-- [ ] C5. The existing manifest tests (an invalid manifest deletes nothing, symlinks are never written through) pass against the hashed form, extended with the cases of C3 in the same test file.
-- [ ] C6. The init code's description of the manifest names neither `skills-lock.json` nor `skills/PATCHES.md` and describes the hashes.
+- [x] C1. After `cland init` in a temporary project, every file of every installed skill appears in the manifest with the SHA-256 of its bytes on disk.
+  - done: impl-623 · 2026-10-18T16:26:08.837Z
+- [x] C2. After `cland update` with a newer set simulated through `CLAND_SKILLS_SOURCE_OVERRIDE`, every rewritten file's hash in the manifest is the SHA-256 of the new bytes.
+  - done: impl-623 · 2026-10-18T16:26:10.697Z
+- [x] C3. A manifest with a malformed hash or a path entry that is neither a list nor a map is reported invalid by `cland update` and `cland doctor`, and nothing is installed, rewritten or removed.
+  - done: impl-623 · 2026-10-18T16:26:12.216Z
+- [x] C4. A manifest in the old list form passes `cland doctor`'s skills manifest check and is read by `cland update` without an error.
+  - done: impl-623 · 2026-10-18T16:26:13.859Z
+- [x] C5. The existing manifest tests (an invalid manifest deletes nothing, symlinks are never written through) pass against the hashed form, extended with the cases of C3 in the same test file.
+  - done: impl-623 · 2026-10-18T16:26:14.558Z
+- [x] C6. The init code's description of the manifest names neither `skills-lock.json` nor `skills/PATCHES.md` and describes the hashes.
+  - done: impl-623 · 2026-10-18T16:26:15.637Z
 
 ## Comments
 
