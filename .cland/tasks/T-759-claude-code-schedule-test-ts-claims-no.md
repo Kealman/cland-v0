@@ -3,7 +3,7 @@ id: T-759
 kind: task
 title: "processStartedAsync's ps probe (doctor/report.ts → hub/lock.ts) is reachable from T2 tests: claude-code-schedule and tracker-levels"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-481
 branch: t/T-759-claude-code-schedule-test-ts-claims-no
 created: 2026-10-17T22:05:24.636Z
-updated: 2026-10-18T07:55:07.119Z
+updated: 2026-10-18T08:12:09.707Z
 ---
 
 ## Summary
@@ -29,8 +29,9 @@ Inject the process-start fact into the adapter resume path that this test exerci
 
 ## Acceptance criteria
 
-- [ ] C1. claude-code-schedule.test.ts and tracker-levels.test.ts each pass 5/5 under the enforced runtime tripwire with no child_process trip, and a droplet run's trip report lists neither, with their assertions unchanged.
-  - failed: rev-31 [reviewer] · 2026-10-18T07:55:06.299Z · note Machine phase hangs because the generic compatibility preset masks native runner holders; no completed droplet evidence, restore generic behavior and scope facts to tracker fixture.
+- [x] C1. claude-code-schedule.test.ts and tracker-levels.test.ts each pass 5/5 under the enforced runtime tripwire with no child_process trip, and a droplet run's trip report lists neither, with their assertions unchanged.
+  - done: impl-759 · 2026-10-18T08:11:19.268Z
+  - verified: rev-31 [reviewer] · run rev-20261018-759-final · 2026-10-18T08:12:09.235Z · commit 457425bbc20af68dfef124904cc095a6f8c4954a
 
 ## Comments
 
@@ -149,3 +150,49 @@ Source delta clear at457425bb; C1 remains unverified until fresh ordinary mode-f
 Standards:0 remaining findings. Spec:0 source gaps; C1 runtime pending.
 
 Durable review:A-5082.
+
+### impl-759 · 2026-10-18T08:11:28.814Z
+
+Fresh same-head droplet 9879aa90 at 457425bb passed: 753 total, 751 pass, 0 fail, 2 unrelated skips. A-5089 has all 3 schedule and all 15 tracker-levels final timing receipts and zero tier-mismatch lines. Linux c-8 lon1, 886s lifetime, $0.0615. C1 marked done and final evidence review requested; exact-head audit A-5090. Head frozen per Coordinator; merge waits for hub restart.
+
+### rev-31 · 2026-10-18T08:12:09.235Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-759-final
+commit: 457425bbc20af68dfef124904cc095a6f8c4954a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-759 final exact-head evidence review — clear
+
+Commit:457425bbc20af68dfef124904cc095a6f8c4954a.
+Scope:evidence. Current source:rev-20261018-759-integration-delta /A-5082.
+Read-only audit; no Reviewer execution or edits.
+
+## Standards
+
+No remaining findings. The shared harness is restored to merged dev behavior; tracker-only compatibility facts and adapter process-start injection remain as reviewed, with unchanged assertions and native defaults.
+
+A-5081 current-source enforced Mac5/5 receipts remain applicable: schedule3cases×5 and tracker15cases×5,90passes,0fail/skip/cancel, no tier trip or late asynchronous diagnostic. The native six-case runner-contract comparison A-5079 supplies supporting proof for restoring generic compatibility behavior. Those six cases are not included in the new selected receipt, and are not claimed as such.
+
+## Spec and Linux execution
+
+Independently audited raw A-5089 /9879aa90-9a97-46e1-a898-d6109c07cf3e, recorded passed/exit0 at the exact source-clear and current origin head. Automatic hub-selected selection covers both acceptance files.
+
+All3claude-code-schedule cases execute positively, totaling0.505127813s; all15tracker-levels cases execute positively, totaling7.307263615s. No owned skip. There are zero tier-mismatch lines anywhere in the receipt, so neither acceptance file appears in its trip report.
+
+Overall753tests,751pass,0fail/cancelled,2unrelated prerequisite skips. Raw summaries reconcile as selected hub746pass+2skip and Neovim smoke5pass. Smoke completes3.22s; this is selected hub+smoke, not full package coverage. No known-failure exception is needed.
+
+Linux x64/Node24.21.0/Neovim0.12.5,c-8 lon1,2workers; lifetime886s,cost$0.0615. Failed prior-head7efa2911/A-5076 remains explicitly failed/incomplete and is not reused as green execution evidence. The fresh corrected-head receipt is the final evidence.
+
+## Verdict
+
+Final review clear; verify C1. Both-file enforced Mac5/5, unchanged assertions and exact-head Linux zero-trip execution satisfy the criterion. No additional task run, head change or per-item QA requested.
+Standards:0 findings. Spec:0 remaining gaps.
+
+Durable review:A-5091.
+
+Criteria: C1 verified.
