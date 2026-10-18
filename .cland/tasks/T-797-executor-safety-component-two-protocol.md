@@ -3,7 +3,7 @@ id: T-797
 kind: task
 title: 'executor-safety-component: "two protocol projects reserve against one cap…" times out waiting for the remote result (30 s) on a droplet'
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-513
 branch: t/T-797-executor-safety-component-two-protocol
 created: 2026-10-18T10:16:24.882Z
-updated: 2026-10-18T14:47:20.053Z
+updated: 2026-10-18T14:54:27.429Z
 ---
 
 ## Summary
@@ -25,8 +25,8 @@ hub/test/executor-safety-component.test.ts, "two protocol projects reserve again
 
 - [x] C1. The root cause is named. The Node 25.6.1 reproduction is the first lead: run the file under Node 25 to get a deterministic repro if possible.
   - done: impl-797 · 2026-10-18T14:45:37.617Z
-- [ ] C2. The test waits on an observed event or FakeClock step instead of a 30 s wall-clock deadline, keeping every assertion, and passes 20/20 under both Node 24 and 25.
-  - failed: rev-31 [reviewer] · 2026-10-18T14:47:20.053Z · note Result polling advances shared FakeClock without observing prior scheduler completion, so held I/O can consume the other live run's deadlines.
+- [x] C2. The test waits on an observed event or FakeClock step instead of a 30 s wall-clock deadline, keeping every assertion, and passes 20/20 under both Node 24 and 25.
+  - done: impl-797 · 2026-10-18T14:54:17.849Z
 
 ## Comments
 
@@ -76,3 +76,7 @@ Standards: zero additional findings. Spec: one medium finding.
 Artifact A-5372.
 
 Criteria: C2 failed (Result polling advances shared FakeClock without observing prior scheduler completion, so held I/O can consume the other live run's deadlines.).
+
+### impl-797 · 2026-10-18T14:54:17.833Z
+
+Source M1 addressed at d2c62d803b01a6151acd1d71929cd05e502b02b6: helper drains scheduler + executor sweep completion on both shared hubs before/after each tick; repeats completion pass if a product delay advanced their shared clock. Observation-only Dispatcher.verificationSettled is exposed through projectHub/remote fixture. New held-worker-receipt T2 control proves pending I/O freezes time, no premature report, and completion/report after release; removing joins fails deterministically (A-5373), restored green A-5374. Final whole-file serial20/20 each Node24.21.0/25.6.1 A-5376/A-5377; target40/40 at0.436–0.750s, held control40/40 at0.120–0.184s. Lint/typecheck green A-5378/A-5379. All original11 assertions retained. No dev merge since first review; no verify at rejected head. Revision reasoning A-5375.
