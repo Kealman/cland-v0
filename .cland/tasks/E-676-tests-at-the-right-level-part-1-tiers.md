@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-505
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-18T15:25:20.327Z
+updated: 2026-10-18T16:06:24.776Z
 ---
 
 ## Summary
@@ -32,13 +32,14 @@ The plan, lanes and hot files are in A-4143's companion PLAN (topic-406).
 
 - [ ] C1. `hub/test/tiers.json` lists every hub and Neovim test file sorted by path, `shards.json` is gone, and the tier lint passes at the demo SHA.
 - [ ] C2. A task run and an integrated run at the demo SHA each show per-tier lines, the test-lint summary and the budget would-fail lines, and `cland verify --dry-run` prints the same without creating a queue entry or lease.
-  - failed: qa-676 [qa] · 2026-10-18T12:12:49.747Z · note L2 delivered result truncates at 8192 bytes before all four per-tier lines and tier share; full log is complete.
+  - verified: qa-676 [qa] · run qa-2026-10-18-2 · 2026-10-18T15:52:33.051Z · commit e92fa663d08f269604e9e36f704d81be39d4d658
 - [ ] C3. A planted new T3 file without a lifecycle header, a planted new numeric sleep and a planted new `startDaemon` call site are each refused at verify and at merge admission.
+  - failed: qa-676 [qa] · 2026-10-18T16:06:24.776Z · note L6/L7 verify dry-runs timed out after 15000 ms; admission refusal INCONCLUSIVE despite correct local lint refusals and unchanged queue.
 - [ ] C4. `projectHub` serves a project with a `FakeClock`, the in-process fake adapter in all three flavours and an in-process spoke, each proven by a T2 file whose spawn census row shows no hub, spoke, harness or Neovim child process (git and ps infrastructure probes are T-719’s).
 - [ ] C5. heartbeat.test.ts runs on the fake clock in 5 s or less (from 25.7 s) and passed 20/20 serially.
 - [ ] C6. Ten consecutive droplet task runs show no typecheck on the droplet and the host-gate reuse line.
 - [ ] C7. Over the last 40 landings at the demo SHA, the selection replay shows zero own-test misses, and the current selector selects more of those landings than the selector at A-10's merge base (6174032f) does on the same 40 landings.
-  - failed: qa-676 [qa] · 2026-10-18T12:12:49.747Z · note R2 selects 6 landings, equal to recorded baseline 6, not greater; same-window comparison is 5→6 with zero misses.
+  - verified: qa-676 [qa] · run qa-2026-10-18-2 · 2026-10-18T15:52:33.051Z · commit e92fa663d08f269604e9e36f704d81be39d4d658
 - [ ] C8. An Implementer's `cland verify all` is refused with `verify-all-reserved`, and the tier share baseline (A-12) is recorded on the epic.
 
 ---
@@ -188,3 +189,128 @@ Criteria: C2 failed (L2 delivered result truncates at 8192 bytes before all four
 ### coord · 2026-10-18T12:13:21.455Z
 
 C7 revised prospectively (coord, 2026-10-18 12:14Z) after QA run qa-2026-10-18-1 (A-5258). The old bar compared the selecting count at the demo SHA with A-4300's recorded 6, which was measured over a different window of 40 landings. Two populations can't show whether selection improved. The revised C7 compares the merge-base selector and the current selector on the same 40 landings, the controlled comparison in the brief's R2b. qa-2026-10-18-1 measured 5 → 6 there with 0 misses. The FAIL recorded under the old bar stands; a re-run limited to C2 (after T-800) and the revised C7 will be requested. C2's finding is filed as T-800.
+
+### qa-676 · 2026-10-18T15:52:33.051Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-18-2
+commit: e92fa663d08f269604e9e36f704d81be39d4d658
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| case | execution / inspection | result | evidence |
+| --- | --- | --- | --- |
+| PREP | local macOS / hub-api | PASS | G0.txt, G1-epic.json, G1-T800.txt, G2-hold.txt, G3-hub.txt, request-scope.txt |
+| L1 | local macOS / hub-api | PASS | L1-exits.txt, L1-dry.txt, L1-dry.json, L1-queue.txt |
+| L2 | Linux droplet / local log inspection | PASS | L2-submit.json, L2-result.txt, L2-line-counts.txt, A-5404-suite-6e0beb15-c5ce-4b97-887d-731c53e7157f-auto-at-e92fa66.log |
+| L3 | Linux droplet / local log inspection | PASS | L3-result.txt, L3-logs-check.txt, L3-line-counts.txt, L3-unrelated-failure.txt, A-5401-suite-ac462603-f8ef-4956-9445-f874dde9f621-all-at-e92fa66.log, A-5402-suite-ac462603-f8ef-4956-9445-f874dde9f621-shard-1-at-e92fa66.log, A-5403-suite-ac462603-f8ef-4956-9445-f874dde9f621-shard-2-at-e92fa66.log |
+| R2 | local macOS / hub-api | PASS | R2-replay.md, R2-execution.txt |
+| R2b | local macOS / hub-api | PASS | R2b-replay-base-selector.md, R2-execution.txt |
+| FRESH | local macOS / hub-api | PASS | final-freshness.json, final-build.txt |
+
+**QA clear for C2 and C7 only.** Run `qa-2026-10-18-2`; tested commit `e92fa663d08f269604e9e36f704d81be39d4d658`. Coordinator request `ac42fe8d-15f1-4e33-8645-dfb44130b740` limits this pass to those two criteria. Verify **C2,C7**; do not mark the other criteria in this run.
+
+In-scope findings: none (high, medium or low).
+
+C2: `cland verify --dry-run` text and JSON both exit 0, plan T1–T3, and leave QA queue/run counts at 0→0. Fresh task `6e0beb15-c5ce-4b97-887d-731c53e7157f` (A-5404) is green: 2622 tests, 2614 pass, 0 fail, 8 skip. Its actual delivered message, recovered through history, contains each T1–T3 line, tier share, lint summary, exactly ten would-fail budget lines, ratchet and the final log link. Its full log confirms the same reporting and one host-gate reuse line. The earlier truncation is resolved.
+
+Integrated stage run `ac462603-f8ef-4956-9445-f874dde9f621` at the same S has T1–T4, share, lint summary, exactly ten delivered budget lines and ratchet in its complete delivered message; merged A-5401 and shard logs A-5402/A-5403 agree. Reporting passes even though the stage suite is red on the unrelated failure below, as the brief and requester specify.
+
+Tier policy: T-714, commit `e2a8e937`, excludes T4 from ordinary task/batch runs and includes it for stage/epic/release occasions. `hub/src/suite-shards.ts:174` implements that exclusion. Coordinator confirmation `4ae38739-0c65-4297-8b9c-9b70883f5882` explicitly directs judging per-tier completeness against each run's plan. Thus task/dry-run require T1–T3; this stage run requires T1–T4.
+
+C7: the criterion was prospectively revised before this request (Coordinator comment 2026-10-18T12:13:21.455Z). `node hub/test/selection-replay.ts <S> --coverage` and `node hub/test/selection-replay.ts <S> 6174032f0b3a99c29c9cfaa04eb16a138506f5ee --coverage` each exit 0 over the identical 40 landings, 42 maps and 777 retained run logs. Current selector selects **6**, merge-base selector selects **5**. Both have **zero own-test misses and zero historical misses**. **6>5 passes revised C7.** The old run's FAIL against its then-current absolute 6 baseline remains valid historical evidence.
+
+Outside scope — medium, already filed **T-809 (E-482)**: stage run has 2668 tests, 2659 pass, 1 fail, 8 skip. `nvim/test/thread.test.ts:718`, “generated live appends, ask evictions and delivery changes equal a full render”, timed out waiting for generated append within 10000 ms on shard 1 (A-5402). Reported to the Coordinator as Bugs, estimated S; Coordinator confirmation `fcfc6681-98bd-4bbf-8537-04e0bdbeb707` says T-809 tracks it and C2 is reporting-only. No local tests or rerun were performed under cover-quiet. This verdict does not claim the stage suite is green.
+
+Scope carried from earlier pass: cite `qa-2026-10-18-1`, report **A-5258** and evidence **A-5257**, for C1/C3/C4/C5/C6/C8. Those six were not rerun or marked verified here. D7's source-test coverage also remains in that earlier pass; this request explicitly narrowed C2 execution to dry-run, fresh task reporting and integrated reporting.
+
+Accounting:
+
+- No demo lease was started in this limited pass; demo cost $0. Status returned the old released lease metadata while assessing requested S freshness; that historical lease was not reused for execution.
+- L2 task: `cland-v0-ff121fc8`, c-8 lon1; Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5; 2 workers. Suite duration **1335.84 s**, lifetime **1419 s**, cost **$0.0985**. Log **A-5404**.
+- L3 stage: same platform/tool versions; 2 c-8 lon1 shards. Shard 1 `cland-v0-04104c0c`, duration **953.73 s**, lifetime **918 s**, cost **$0.0637**, log **A-5402**, exit 1. Shard 2 `cland-v0-daa3eb49`, duration **837.72 s**, lifetime **828 s**, cost **$0.0575**, log **A-5403**, exit 0. Merged wall **953.88 s**, total cost **$0.1212**, log **A-5401**.
+- Combined task + integrated cost **$0.2197** using rounded hub receipts. Local dry-run/replay/log inspection has no droplet cost. Runs overlap; summed suite durations are not elapsed wall time.
+
+Safety/freshness: detached build remained clean at S throughout the fresh task run. No plant branch or demo lease in this pass. Final `cland demo status E-676 --commit <S> --json` returns `freshness.current: true`, despite dev advancing to `a4e8b92e0e9560f75b7f128ffd64088be88a1d79`. Recorder uses hub-api for manual checks; methods identify remote execution/local inspection. Hold and build worktree are released/removed after verdict.
+
+Elapsed QA wall from hold to report 2026-10-18T15:52:19.233324+00:00: 1618.92 s.
+
+Report A-5406: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5406-e-676-c2-c7-qa-clear-at-e92fa663.md
+Evidence A-5405: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5405-e-676-limited-c2-c7-rerun-evidence-qa-2026-10-18-2
+
+Criteria: C2 verified, C7 verified.
+
+### hub · 2026-10-18T15:55:45.803Z
+
+demo e493eef4-609f-468b-a791-689f02fe018e created: droplet cland-v0-e493eef4, commit e92fa663d08f269604e9e36f704d81be39d4d658, deadline 2026-10-18T17:09:33.487Z.
+
+### hub · 2026-10-18T16:04:12.459Z
+
+demo e493eef4-609f-468b-a791-689f02fe018e destroyed: lifetime 260817 ms; cost $0.0181.
+
+### qa-676 · 2026-10-18T16:06:24.776Z
+
+verdict: qa
+result: not clear
+by: qa-676 [qa]
+run: qa-2026-10-18-3
+commit: e92fa663d08f269604e9e36f704d81be39d4d658
+findings: [{"severity":"medium","text":"L6 and L7: planted sleep/startDaemon verify --dry-run each timed out at 15000 ms; expected verify-test-lint refusal not observed. Local lint and queue checks passed; quiet-machine recheck pending."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Case | Location | Result | Evidence |
+| --- | --- | --- | --- |
+| PREP | local macOS / hub-api | PASS | [G0.txt](G0.txt), [G1-epic.json](G1-epic.json), [G1-children.json](G1-children.json), [G2-hold.txt](G2-hold.txt), [G3-hub.txt](G3-hub.txt), [request-scope.txt](request-scope.txt) |
+| D0 | droplet | PASS | [D0-start.json](D0-start.json), [D0-status.json](D0-status.json) |
+| D1 | droplet | PASS | [D1-build.txt](D1-build.txt) |
+| D2 | droplet | PASS | [D2-tiers.txt](D2-tiers.txt) |
+| D3 | droplet | PASS | [D3-census.txt](D3-census.txt) |
+| D4 | droplet | PASS | [D4-heartbeat.txt](D4-heartbeat.txt) |
+| D5 | droplet | PASS | [D5-full.log](D5-full.log), [D5-summary.txt](D5-summary.txt) |
+| D6a | droplet | PASS | [D6a-full.log](D6a-full.log), [D6a-summary.txt](D6a-summary.txt) |
+| D6b | droplet | PASS | [D6b-full.log](D6b-full.log), [D6b-summary.txt](D6b-summary.txt) |
+| D6c | droplet | PASS | [D6c-full.log](D6c-full.log), [D6c-summary.txt](D6c-summary.txt) |
+| D6d | droplet | PASS | [D6d-full.log](D6d-full.log), [D6d-summary.txt](D6d-summary.txt) |
+| D7a | droplet | PASS | [D7a-full.log](D7a-full.log), [D7a-summary.txt](D7a-summary.txt) |
+| D7b | droplet | PASS | [D7b-full.log](D7b-full.log), [D7b-summary.txt](D7b-summary.txt) |
+| D8 | droplet | PASS | [D8-full.log](D8-full.log), [D8-summary.txt](D8-summary.txt) |
+| D14 | droplet | PASS | [D14-status.json](D14-status.json) |
+| L4 | local macOS / hub-api | PASS | [L4-execution.txt](L4-execution.txt), [L4-control-lint.txt](L4-control-lint.txt) |
+| L5 | local macOS / hub-api | PASS | [L5-execution.txt](L5-execution.txt), [L5-dry.txt](L5-dry.txt), [L5-lint.txt](L5-lint.txt) |
+| L6 | local macOS / hub-api | INCONCLUSIVE | [L6-execution.txt](L6-execution.txt), [L6-dry.txt](L6-dry.txt), [L6-lint.txt](L6-lint.txt) |
+| L7 | local macOS / hub-api | INCONCLUSIVE | [L7-execution.txt](L7-execution.txt), [L7-dry.txt](L7-dry.txt), [L7-lint.txt](L7-lint.txt) |
+| L8 | local macOS / hub-api | PASS | [L8-cleanup.txt](L8-cleanup.txt) |
+| L9 | local macOS / hub-api | PASS | [L9-execution.txt](L9-execution.txt), [L9-all.txt](L9-all.txt) |
+| R1 | local macOS / hub-api | PASS | [R1-host-gate.txt](R1-host-gate.txt) |
+| R3 | local macOS / hub-api | PASS | [R3-record.txt](R3-record.txt), [R3-epic.json](R3-epic.json) |
+| R4 | local macOS / hub-api | PASS | [R4-record.txt](R4-record.txt) |
+| R5 | local macOS / hub-api | PASS | [R5-record.txt](R5-record.txt) |
+| D15 | local macOS / hub-api | PASS | [D15-stop.json](D15-stop.json), [D15-current.json](D15-current.json) |
+
+Medium — L6 and L7, C3: `cland verify --dry-run` on each planted head returned `cland: the hub did not answer on /Users/evgeniyivanov/Projects/cland/v0/.cland/hub.sock within 15000 ms`, rather than the required `verify-test-lint` refusal. L6 planted a numeric sleep at hub/test/project-clock.test.ts:101; L7 planted startDaemon at hub/test/in-process-spoke.test.ts:64. Both local `npm run test:lint` runs correctly refused the exact planted violation, and queue/run counts stayed mine 0→0, atS 1→1. Admission results are INCONCLUSIVE. No high or low findings.
+
+Verdict: **not clear**, run `qa-2026-10-18-3`, commit `e92fa663d08f269604e9e36f704d81be39d4d658`. Scope is C1, C3, C4, C5, C6 and C8 under Coordinator request 9da4aa38-4c3d-4901-a49e-e299a7cf2231. Failed criterion mark: C3 (L6/L7 inconclusive). C1, C4, C5, C6 and C8 passed; this not-clear verdict adds no verified marks. C2 and C7 remain covered by clear `qa-2026-10-18-2` at this same SHA, evidence A-5405 and report A-5406.
+
+C1: D2 compares all 384 files to the manifest, no missing/extra entries, sorted paths, both lints exit 0 and shards.json absent. Counts T1=60, T2=132, T3=182, T4=10. Per Coordinator ruling 9b857ee5-da7c-4f44-84ee-6b7dd3192459, test:tiers intentionally prints only hub shards; exact output:
+
+```
+hub free: 60 files, 1 workers
+hub machine: 284 files, 4 workers
+```
+
+C3: D6a–D6d pass (6/7/5/30 tests); L4 clean lint exits 0; L5 new T3 file fails both admission and lint as expected. L6/L7 remain inconclusive only at admission. L8 removed all three plant branches and the plant worktree, with no qa refs at origin and a clean build worktree. The brief uses local lint plus D6a as merge-admission proof; no live merge was attempted.
+
+C4: D3 passes all four T2 files with empty process census rows; R5 confirms FakeClock, three fake harness flavours and in-process spoke. C5: D4 heartbeat passes 20/20 serially, 9/9 tests each, maximum 1617.64372 ms; R4 confirms FakeClock and no real waits/process helpers. C6: D8 executor-run passes 14 tests; R1's newest ten droplet task logs each show host gate=1, reuse=1, droplet typecheck=0, droplet npm check=0 (A-5407, A-5404, A-5399, A-5388, A-5387, A-5385, A-5369, A-5338, A-5336, A-5325). C8: D5 verifies all-mode admission (1 test); L9 returns verify-all-reserved without queue mutation; R3 finds tier-share baseline records A-4606/A-4608 and closed T-690.
+
+Coordinator ruling e14c1fef-073e-4b4a-83cf-2d50ba11968c requested recording L6 inconclusive and finishing. Message 7a7b7c8e-ebc1-4afe-89a6-dd0bc951620f includes L7 in the future quiet-Mac pass and asks for each dry-run's wall time. Concurrent macOS stage b50559f3 and a cold lint-cache miss are suspected causes, not established. No regression is asserted from this loaded-machine observation. That recheck requires a new run id after the Coordinator signals the machine is quiet.
+
+Demo executor: droplet, Linux x86_64, Node v24.21.0, machine `cland-v0-e493eef4`, lease `e493eef4-609f-468b-a791-689f02fe018e`, created 2026-10-18T15:54:35.412Z, deadline 2026-10-18T17:09:33.487Z. Hub-confirmed released lifetime **260817 ms**, cost **$0.018112291666666665** (D15-current.json). Stop initially returned releasing; later status confirmed released and freshness.current=true. Earlier releasing-state estimates are superseded by that final result. Total remote cost of this pass is $0.0181123, one lease, no shards or additional full suite. Local checks incur no droplet cost. Pass elapsed wall time from hold at 15:54:26Z through D15 recording at 16:04:56Z is approximately 630 s, including release confirmation and local evidence collection.
+
+Full-suite receipts at S were collected in run 2: task 6e0beb15-c5ce-4b97-887d-731c53e7157f (A-5404) green; integrated ac462603-f8ef-4956-9445-f874dde9f621 (A-5401, A-5402/A-5403 shards) had the unrelated T-809 Neovim timeout. A-5406 records their machines, durations, lifetimes and costs; those costs are not charged again here. No local tests or full suites ran during this pass. Only individual remote test files, authorized local lint/dry-run and read-only records were exercised.
+
+
+Published evidence: A-5409 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5409-e-676-run-3-evidence-at-e92fa663 (relative table links resolve there). Report: A-5410 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5410-e-676-run-3-qa-not-clear-l6-l7-admission-inconclusive.md.
+
+Criteria: C3 failed (L6/L7 verify dry-runs timed out after 15000 ms; admission refusal INCONCLUSIVE despite correct local lint refusals and unchanged queue.).

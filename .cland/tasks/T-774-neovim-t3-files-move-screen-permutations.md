@@ -3,7 +3,7 @@ id: T-774
 kind: task
 title: Neovim T3 files move screen permutations to committed-frame T2 tests (A-4961 group, ~150 s)
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-510
 branch: t/T-774-neovim-t3-files-move-screen-permutations
 created: 2026-10-18T04:49:28.746Z
-updated: 2026-10-18T15:21:25.577Z
+updated: 2026-10-18T15:57:35.850Z
 ---
 
 ## Summary
@@ -35,7 +35,10 @@ Apply the "Neovim" rows of A-4961 using T-709's recorder and fixtures. Keep the 
 - [x] C1. Every "Neovim" row in A-4961 is applied or explicitly kept, with each moved test's title and assertion meaning unchanged, recorded as an audit artifact.
   - done: impl-774 · 2026-10-18T15:15:50.709Z
   - verified: rev-30 [reviewer] · run rev-20261018-774-source · 2026-10-18T15:21:25.577Z · commit a94f8bb6e1afc84c22e3c77c016a1b04b5fde137
-- [ ] C2. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, including the Neovim shard.
+  - verified: rev-30 [reviewer] · run rev-20261018-774-final · 2026-10-18T15:57:34.254Z · commit a94f8bb6e1afc84c22e3c77c016a1b04b5fde137
+- [x] C2. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, including the Neovim shard.
+  - done: impl-774 · 2026-10-18T15:55:47.948Z
+  - verified: rev-30 [reviewer] · run rev-20261018-774-final · 2026-10-18T15:57:34.254Z · commit a94f8bb6e1afc84c22e3c77c016a1b04b5fde137
 
 ## Comments
 
@@ -61,3 +64,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear against integrated dev c7baa5d6. C1 verified: all 27 A-4961 rows mapped, native keeps match primary 19dc76f5 and name specific proofs/follow-up candidates. Reviewed AST assertion audit preserves 291 exact titles/1317 ordered assertions (162 moved,129 kept); independently checked destination title presence and that audit baseline files match integration base. Three body changes preserve assertions while changing client setup or replacing blind waits. Neutral T2 closure and plan view ownership retain native process boundaries. Original 4464 records/24807 nodes unchanged; independently decoded four slices equal main-catalog records. Unknown frames still fail, lazy fallback reads only committed main JSON, maintenance/drift controls retained. Lint debt unchanged at524; empty entries add no tolerance, no allowance/quarantine. A-5395 raw Mac transcripts independently confirm182 serial runs/1843pass/0fail-cancel-skip and >=5 per touched test file. No integrated speedup claimed. Standards/spec: no findings. C2 awaits exact-head mode-free droplet including Neovim after Coordinator lifts submission hold. No Reviewer execution/per-item QA.
 
 Criteria: C1 verified.
+
+### rev-30 · 2026-10-18T15:57:34.254Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-774-final
+commit: a94f8bb6e1afc84c22e3c77c016a1b04b5fde137
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear. A-5407/e609b4ac passes at unchanged A-5398 source-reviewed head:2616 pass,0 fail/cancelled,8 prerequisite skips; hub and full Neovim finalize. Independent timing/positive reporter audit covers27 changed test files plus workbench:238 timing-backed ordinary identities, all positive/no scoped skips;147 scoped load groups pass735/735. C1 remains the reviewed27-row same-title/assertion/native-boundary audit. C2 verified with A-5395 raw Mac182 serial runs/1843passes/0fail-cancel-skip,>=5 per changed test file, plus this exact-head Linux gate. Seven unique scoped report-only duration warnings remain disclosed (thread stress/history/rewrites, events quiet, explorer preferences, shell/thread file totals); no hard gate failure or new allowance. Route remainder for budget follow-up/dedup; no integrated speed target claimed. Four inherited report-only trips remain C-326/T-803, no scoped trips. No source change, Reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified.
