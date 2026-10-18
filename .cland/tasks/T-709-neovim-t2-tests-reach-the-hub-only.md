@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T05:41:43.793Z
+updated: 2026-10-18T06:18:03.502Z
 ---
 
 ## Summary
@@ -38,11 +38,17 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
 
 ## Acceptance criteria
 
-- [ ] C1. No T2 Neovim file or helper it imports reaches a `hub/src` runtime module, proved by `nvimHubImports` over the T2 files returning an empty list.
-- [ ] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
-- [ ] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
+- [x] C1. No T2 Neovim file or helper it imports reaches a `hub/src` runtime module, proved by `nvimHubImports` over the T2 files returning an empty list.
+  - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
+  - done: impl-709 · 2026-10-18T06:17:40.183Z
+- [x] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
+  - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
+  - done: impl-709 · 2026-10-18T06:17:40.811Z
+- [x] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
+  - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
+  - done: impl-709 · 2026-10-18T06:17:41.523Z
 - [ ] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
-  - failed: rev-30 [reviewer] · 2026-10-18T05:41:43.793Z · note The new T2 helper path loses existing cover-quiet refusal before directory allocation and Neovim spawn; preserve actual-entry admission and add a direct control before verification.
+  - failed: rev-30 [reviewer] · 2026-10-18T06:13:00.293Z · note Neutral extraction introduces shared/test-support imports missing from coverage, root/worktree typecheck and archived-selector source carriers; repair those sets and refresh evidence before task verification.
 
 ## Blocked by
 
@@ -72,3 +78,45 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-4996: Standards medium M1 at nvim/test/client.ts:114 (also fixture.ts:34): the T2-only helper path drops the hub harness's cover-quiet admission hook and allocates/spawns before any read-only admission check. Preserve actual-entry protection while retaining the empty hub runtime import closure; add direct refused-before-allocation/spawn proof and coordinate T-747. Spec inspections otherwise positive: 11 T2 import boundaries, producer/live recorder and actual prefix mutation/rewrite/restore, exact 40-landing replay window, and all 256 assertion sites/non-import statements preserved. Parsed 90 whole-file logs/1,095 passes with no failures/cancellations/skips; these do not cover the missing admission path. C4 failed; C1–C3 remain unverified until a clear verdict. New source head requires review before verification.
 
 Criteria: C4 failed (The new T2 helper path loses existing cover-quiet refusal before directory allocation and Neovim spawn; preserve actual-entry admission and add a direct control before verification.).
+
+### impl-709 · 2026-10-18T06:10:30.035Z
+
+Source-review correction pushed at 7dccacff8b0fda2036f2f30114f1d13db8c0f5f6. One Coordinator-authorized dev merge after T-747 landed: 2ebc5bbe. Neutral admission policy/transport/discovery/clock primitives preserve production compatibility exports and typed timeout identity; actual Neovim tempProject/createClient guard before resources through fresh caller-owned promises. T-747 actual-entry controls retained; two direct T2 entry controls added. Updated last40 replay remains zero T2 import-decided selections. T0 pass; 27 whole files×5 serial=135 runs,1300 passes,0 fail/skip,peak1m4.555<15. Durable complete proof A-5009 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5009-t-709-admission-correction-27-files-5-5-and-extraction-audit (README.md). Earlier mutation/QA proof A-4995 retained. Source re-review requested; droplet held until clear.
+
+### rev-30 · 2026-10-18T06:13:00.293Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-admission-correction
+commit: 7dccacff8b0fda2036f2f30114f1d13db8c0f5f6
+scope: full
+findings: [{"severity":"medium","text":"New neutral-root imports are omitted from copied/archive source sets: suite-coverage's package, typecheck.test.ts:19 root/worktree copy+commit, and selection-replay.ts:37 selector archive. Include the dependencies and preserve old-ref replay support.","file":"hub/test/suite-coverage.test.ts","line":45}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-5010: prior admission M1 resolved; actual Neovim entries guard before resources, preserving T-747 caller-owned Promise/timeout identity. One remaining medium M2: new shared/test-support roots are absent from copied-source carriers: suite-coverage.test.ts:45, typecheck.test.ts:19 (copy plus Git seed), selection-replay.ts:37 (archived selector). Their production imports now leave the copied/archive tree; include required roots and retain historical-ref support, then refresh affected evidence and request source review. Independently confirmed mechanical extraction behavior/identities and 135 whole-file logs/1,300 passes; these omit those carriers. Recorder/QA/frame implementation and 256 assertions remain unchanged, source boundary/replay inspection positive. C4 failed; no verification submission until corrected source clear.
+
+Criteria: C4 failed (Neutral extraction introduces shared/test-support imports missing from coverage, root/worktree typecheck and archived-selector source carriers; repair those sets and refresh evidence before task verification.).
+
+### impl-709 · 2026-10-18T06:14:53.172Z
+
+A-5010 source-carrier M2 corrected and pushed at 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63. Both neutral roots copied in suite-coverage; typecheck copies and Git-seeds the same complete project list; selection-replay archives only neutral roots present in selectorRef, preserving old refs. Source-copy audit includes complete-tree carriers and standalone downloader fixture. Existing assertions unchanged. Additional2whole files×5=10runs,15passes,0fail/skip; modern and historical archived selector invocations each5/5; peak1m4.367<15; fresh typecheck/tiers/lint pass. Complete durable A-5011: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5011-t-709-source-carriers-coverage-typecheck-5-5-modern-old-selector-5-5. A-5009 runtime/admission proof unchanged. No further dev merge. Requesting source re-review before droplet.
+
+### rev-30 · 2026-10-18T06:17:16.015Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-carrier-correction
+commit: 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; M1/M2 closed. A-5012 records Standards/Spec review. Coverage and root/worktree typecheck carriers now include both neutral roots, while selector archives conditionally include roots present at each selected ref. Assertions unchanged. A-5011 raw logs independently confirm both affected files whole-file 5/5 (15 aggregate passes, zero failures/cancellations/skips) and modern/historical selector loading 5/5 each. C1/C2/C3 verified from cumulative source, recorder mutation/rewrite proof and last-40 replay; C4 remains unverified pending the exact-head droplet receipt. No reviewer test execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-709 · 2026-10-18T06:18:03.502Z
+
+Source clear rev-20261018-709-carrier-correction / A-5012 at7d8025aef34e8b43b44ecf721b404a7ebbe3ad63; C1–C3 claimant done marks restored with corresponding evidence. Read verify queue (local none, remote2/6) and submitted mode-free droplet1e629b10-ad08-4c50-8f61-050db567eea4 at this exact unchanged clean head, reporttopic-475 to Reviewer,self,Coordinator. C4 awaits its required droplet receipt before claimant done. Idle awaiting hub result.

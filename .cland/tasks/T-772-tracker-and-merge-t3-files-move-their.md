@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-479
 branch: t/T-772-tracker-and-merge-t3-files-move-their
 created: 2026-10-18T04:49:20.866Z
-updated: 2026-10-18T05:45:03.055Z
+updated: 2026-10-18T06:13:04.997Z
 closed: 2026-10-18T05:45:03.055Z
 ---
 
@@ -105,3 +105,7 @@ Criteria: C2 verified.
 ### coord · 2026-10-18T05:45:03.055Z
 
 Merged ac67b3d34bd46b2f4dbb5f389145d649107948f2 onto dev.
+
+### coord · 2026-10-18T06:13:04.997Z
+
+Post-merge correction (coord, 2026-10-18 06:13Z): T-684's lint found that tracker-component.test.ts:131 measures native fs.watch, debounce and reindex latency with wall time. That's a native claim, so it doesn't belong in T2. T-684 moves that one case back into a T3 native tracker file, same title and assertions unchanged, as part of its dev integration.

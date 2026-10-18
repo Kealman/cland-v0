@@ -29,7 +29,7 @@ blocked_by:
 topic: topic-476
 branch: t/T-708-retire-integration-tests-covered-by-a
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-18T05:52:50.458Z
+updated: 2026-10-18T06:23:34.050Z
 ---
 
 ## Summary
@@ -55,8 +55,8 @@ After the class moves (T-691 to T-706) and the scenario set (T-707), many T3 tes
   - done: impl-708 · 2026-10-18T05:12:27.577Z
   - verified: rev-30 [reviewer] · run rev-20261018-708-source-correction · 2026-10-18T05:25:49.829Z · commit 52c5911f2474a0851bda65766e73ad2e1d244fa0
   - verified: rev-30 [reviewer] · run rev-20261018-708-volume-delta · 2026-10-18T05:52:50.458Z · commit 927ce1cfbacd8258c000881071c30b43bc978194
-- [ ] C5. Each touched file in the sessions-and-leads group (A-4961) passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, with every moved test keeping its title and assertion meaning.
-  - failed: rev-30 [reviewer] · 2026-10-18T05:49:42.386Z · note Exact-head A-5000 exits 1 on the moved visibility test's 6.263449173s > 5s hard duration budget; accepted task verification and Neovim completion remain absent.
+- [x] C5. Each touched file in the sessions-and-leads group (A-4961) passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify, with every moved test keeping its title and assertion meaning.
+  - done: impl-708 · 2026-10-18T06:23:34.050Z
 
 ## Comments
 

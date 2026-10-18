@@ -3,7 +3,7 @@ id: T-684
 kind: task
 title: The test lint refuses new T3 files without a lifecycle header, new wall-clock waits and new process-helper call sites
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-477
 branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-18T05:34:58.514Z
+updated: 2026-10-18T06:15:52.596Z
 ---
 
 ## Summary
@@ -35,14 +35,19 @@ Week 1 stops the growth (memo §5.5 step 1): a new test must be T1 or T2 unless 
 
 - [x] C1. A new T3 test file without a lifecycle header is refused at verify and merge with the rule named, and the same file with the header is admitted, proved by admission and merge-gate tests.
   - done: impl-684 · 2026-10-18T04:57:01.679Z
+  - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
 - [x] C2. A new numeric sleep wait in an existing file is refused unless it carries the reasoned marker, and removing one then running the shrink tool lowers the file's baseline count, proved by lint tests.
   - done: impl-684 · 2026-10-18T04:57:02.078Z
+  - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
 - [x] C3. A new `startDaemon` call site in a file without a T3 header is refused, and one in a file with the header is admitted, proved by lint tests.
   - done: impl-684 · 2026-10-18T04:57:02.814Z
+  - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
 - [x] C4. A baseline file whose counts grew is refused by name, proved by a lint test.
   - done: impl-684 · 2026-10-18T04:57:04.458Z
+  - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
 - [x] C5. `until` fails with its `what` text after the load-scaled deadline, proved by a harness unit test, and one existing flaky test file uses it in place of its fixed sleeps with its assertions unchanged in meaning.
   - done: impl-684 · 2026-10-18T04:57:05.627Z
+  - verified: rev-30 [reviewer] · run rev-20261018-684-final · 2026-10-18T06:08:53.513Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
 - [x] C6. `docs/agents/tests.md` documents the refusal rules, the T3 header, the baseline, the shrink tool and `until`.
   - done: impl-684 · 2026-10-18T04:57:07.252Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-source · 2026-10-18T05:05:41.542Z · commit ab93275fc79203cdf2926027f92a6c2752daa509
@@ -91,3 +96,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4992: Standards/Spec delta clear, no findings. Sole change copies until.ts into the process-coverage fixture; its Clock dependency is already in copied hub/src. No original assertion, baseline, policy or allowance changes. Failed parent A-4990 remains disclosed; Coordinator eebb1875 authorizes correction/review/new verification. A-4991's five whole-file logs each pass both tests (10 aggregate passes), with positive package-capture receipts, zero failures/cancellations/skips and peak load 3.435. Current T-747 account module remains in the support list; landing follow-up remains explicit. C6 documentation refreshed; C1–C5 remain unverified until a passing exact-head task receipt. Normal verification may proceed.
 
 Criteria: C6 verified.
+
+### impl-684 · 2026-10-18T05:58:22.667Z
+
+Completed the Coordinator-requested post-landing T-747 fixture dependency check at 8963200c. The landed account-fixture-env.ts import and new hub/src/test-admission.ts dependency are already covered by the fixture copy set. No additional missing module found. Evidence A-5006: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5006-t-684-post-landing-t-747-fixture-dependency-check.md. Read-only inspection only; task head stays clean at reviewed 00c13011 and droplet b3c086e9 continues unchanged.
+
+### impl-684 · 2026-10-18T06:08:14.748Z
+
+Exact reviewed head 00c13011d1df307dc342a0ed727d92c3c895f073 passed droplet b3c086e9-6e0e-4cb7-9e28-d77d2e7b3d48: 2520 passed, 0 failed/cancelled, 8 skipped. Linux x64 c-8 lon1, lifetime 1915 s, cost $0.1330. Relevant lint, until, admission, merge, CLI shrink and repaired coverage fixture cases passed; all six new test identities also passed 5/5 load gates. Evidence A-5007: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5007-suite-b3c086e9-6e0e-4cb7-9e28-d77d2e7b3d48-auto-at-00c1301.log. Final evidence review requested from Reviewer. Source unchanged; T-747 post-landing dependency check completed in A-5006. Failed parent A-4990 remains disclosed with its fixed fixture dependency.
+
+### rev-30 · 2026-10-18T06:08:53.513Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-684-final
+commit: 00c13011d1df307dc342a0ed727d92c3c895f073
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5008: final same-head evidence clear; C1–C5 verified, C6 source verification remains current. A-5007/b3c086e9 exits zero with full hub+Neovim phases: 2,520 pass/0 fail/8 unrelated skips. Audited all seven touched files/62 positive ordinary test receipts and six new identities 5/5 (30/30), covering admission/merge refusals, markers/helpers, baseline/shrink, until deadline/cancellation and retained reconnect identity assertions. No owned skips/trips. Mac A-4967 and repaired coverage A-4991 remain applicable; failed parent A-4990 stays disclosed. A-5006 completes the read-only T-747 dependency follow-up, without claiming combined runtime evidence. Unrelated report-only Claude ps probe remains known T-759. Linux c-8 lon1, 1,915s lifetime, $0.1330; no per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
