@@ -2,8 +2,8 @@
 id: T-640
 kind: task
 title: 'Every cland init ends with "next: cland setup", and --json carries next'
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-507
 branch: t/T-640-every-cland-init-ends-with-next-cland
 created: 2026-10-16T16:23:56.644Z
-updated: 2026-10-18T12:58:53.480Z
+updated: 2026-10-18T13:00:48.324Z
+closed: 2026-10-18T13:00:48.324Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, A-5304. Exact-head A-5303 hub-only plus Neovim smoke passes 2235 tests,0 failures/cancellations,5 prerequisite skips. Both changed files positively execute six ordinary cases, all six groups pass 30/30 repetitions. Fresh/repeated init text/JSON, update/undo omission and stdout-free unsafe-root refusal controls verify C1–C3 with unchanged source A-5281. Zero tier trips and no hard budgets. No reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T13:00:48.324Z
+
+Merged e7bb37af2e898991be62c03f1cd8de7c8e5b2e76 onto dev.
