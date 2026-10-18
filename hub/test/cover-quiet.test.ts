@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, writeFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
 import { connectUi, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { processStarted } from '../src/hub/lock.ts';
@@ -33,8 +34,12 @@ const runner = new URL('./run-suite.ts', import.meta.url).href;
 async function target(t: TestContext, cwd: string, module: string, env: NodeJS.ProcessEnv = {}, code = "console.log('target reached')") {
   const tmp = await tempProject(t);
   const childEnv = { ...process.env, NODE_TEST_CONTEXT: '', TMPDIR: tmp, TMP: tmp, TEMP: tmp, ...env };
+  // Harness imports are pure; request their fixture explicitly. Package-runner
+  // and lease targets retain their own admission boundary under test.
+  const fixtureSetup = module === harness
+    ? `const {tempProject} = await import(${JSON.stringify(harness)}); await tempProject(t);` : '';
   const result = await new Promise<{ code: number; stdout: string; stderr: string }>(resolve => {
-    const child = execFile(process.execPath, ['--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async () => { ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
+    const child = execFile(process.execPath, ['--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
     ownProcess(t, child.pid);
   });
   return { ...result, tmp };
@@ -55,9 +60,15 @@ test('read-only test admission refuses an integrated local cover without joining
   assert.deepEqual((queue.value as { waiters: unknown[] }).waiters, []);
 });
 
-for (const [name, module] of [['hub', harness], ['Neovim', nvimHarness]]) test(`${name} targeted startup exits cover-quiet before creating any fixture`, async t => {
+const stubCommand = JSON.stringify([process.execPath, fileURLToPath(new URL('../../nvim/test/stub-hub.ts', import.meta.url))]);
+const clientStartup = (env: Record<string, string>) => `const {startClient} = await import(${JSON.stringify(nvimHarness)}); await startClient(t, '/must-not-launch-neovim', process.cwd(), ${JSON.stringify(env)}); console.log('target reached');`;
+for (const [name, module, code] of [
+  ['hub', harness, "console.log('target reached')"],
+  ['Neovim', nvimHarness, clientStartup({})],
+  ['Neovim stub', nvimHarness, clientStartup({ CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: stubCommand })],
+]) test(`${name} targeted startup exits cover-quiet before creating any fixture`, async t => {
   const { root } = await cover(t);
-  const result = await target(t, root, module!, external(root));
+  const result = await target(t, root, module!, external(root), code);
   assert.notEqual(result.code, 0);
   assert.match(result.stderr + result.stdout, /cover-quiet.*cover-run/);
   assert.doesNotMatch(result.stdout, /target reached/);
@@ -91,7 +102,7 @@ test('targeted startup passes without a project hub or with an ordinary local ho
   const absent = await target(t, root, harness, external(root));
   assert.equal(absent.code, 0, absent.stderr);
   const ordinary = await cover(t, false);
-  const result = await target(t, ordinary.root, nvimHarness, external(ordinary.root));
+  const result = await target(t, ordinary.root, harness, external(ordinary.root));
   assert.equal(result.code, 0, result.stderr);
 });
 
@@ -140,8 +151,9 @@ test('an integrated local worker protects its cover while admitting its own targ
   // This tiny package borrows the worker lease but does not publish coverage maps.
   await writeFile(join(f.root, 'cover.mjs'), `import {existsSync, writeFileSync} from 'node:fs';
 import {test} from 'node:test';
-await import(${JSON.stringify(harness)});
-test('cover worker', async () => {
+const {tempProject} = await import(${JSON.stringify(harness)});
+test('cover worker', async t => {
+await tempProject(t);
 writeFileSync('.cland/worker-entered', 'yes');
 while (!existsSync('.cland/worker-finish')) await new Promise(r => setTimeout(r, 25));
 writeFileSync('.cland/worker-completed', 'yes');

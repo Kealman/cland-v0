@@ -6,8 +6,7 @@ import type { Clock } from '../src/hub/clock.ts';
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
-import './cover-quiet.ts';
-import './account-fixture-env.ts';
+import { ensureAccountFixture } from './account-fixture-env.ts';
 import { execFile } from 'node:child_process';
 import { clandCliLaunch } from './tier-cli.ts';
 import assert from 'node:assert/strict';
@@ -56,6 +55,7 @@ export function assertFirstLaunchClause(log: string, session: string): void {
 }
 
 export async function startHub(options: Partial<HubOptions> = {}): Promise<Hub> {
+  await ensureAccountFixture();
   return createHub({ port: 0, host: '127.0.0.1', secret: TEST_SECRET, ...options });
 }
 
@@ -106,6 +106,7 @@ export type Session = {
 export const PRESENCE_DEADLINE_MS = 30_000;
 
 async function spokeEnvironment(options: SpokeOptions): Promise<Record<string, string>> {
+  await ensureAccountFixture();
   const env: Record<string, string> = {
     PATH: process.env.PATH ?? '',
     CLAND_SESSION_ID: options.sessionId ?? 'sess-test',
@@ -310,6 +311,7 @@ export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
 
 /** `cland` with `extra` added to its environment: a test hook such as CLAND_TEST_TASK_WRITE_GATE, or a daemon that launches a fake harness. */
 export async function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
+  await ensureAccountFixture();
   if (args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) await isolateVerification(cwd);
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
@@ -333,6 +335,7 @@ export async function clandWithEnv(cwd: string, extra: Record<string, string>, .
 
 /** A fresh project folder under the system temp dir, removed when the test ends (after its daemon is gone). */
 export async function tempProject(t: TestContext, prefix = 'cland-proj-', parent = tmpdir()): Promise<string> {
+  await ensureAccountFixture();
   const root = await realpath(await mkdtemp(join(parent, prefix)));
   ownDirectory(t, root);
   return root;
@@ -357,6 +360,7 @@ export const pidAlive = (pid: number): boolean => {
 
 /** Give every real scratch-hub launch a fixture-local compatibility fence. */
 export async function isolateVerification(root: string): Promise<void> {
+  await ensureAccountFixture();
   // A scratch hub must never inspect or sweep another run's machine-wide leases.
   const configPath = join(root, '.cland', 'config.toml');
   const source = await readFile(configPath, 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
@@ -485,6 +489,7 @@ export type SocketClient = {
 };
 
 export async function connectSocket(path: string): Promise<SocketClient> {
+  await ensureAccountFixture();
   const socket = createConnection(path);
   await new Promise<void>((resolve, reject) => {
     socket.once('connect', resolve);
@@ -657,6 +662,7 @@ export async function flushProjectLogs(t: TestContext, root: string): Promise<vo
 
 /** A UI client on an in-process hub's WebSocket (a client hello works there too), welcomed. */
 export async function connectWsUi(t: TestContext, hub: { url: string }, client = 'ui'): Promise<FrameClient> {
+  await ensureAccountFixture();
   const ws = new WebSocket(hub.url, { headers: { authorization: `Bearer ${TEST_SECRET}` } });
   await new Promise<void>((resolve, reject) => {
     ws.once('open', () => resolve());
@@ -698,6 +704,7 @@ export async function fakeClaude(
   t: TestContext,
   timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
 ): Promise<FakeClaude> {
+  await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
   const cleanupHome = ownDirectory(undefined, home);
   const env = {
@@ -797,6 +804,7 @@ export type FakeCodex = {
 };
 
 export async function fakeCodex(t: TestContext, options: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number; env?: Record<string, string> } = {}): Promise<FakeCodex> {
+  await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
   const cleanupHome = ownDirectory(undefined, home);
   const env = {

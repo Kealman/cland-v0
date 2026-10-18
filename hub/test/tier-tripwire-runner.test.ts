@@ -319,6 +319,9 @@ cp.spawn = (...args) => {
 syncBuiltinESMExports();
 test('non-stub launch', async t => {
   t.after(() => { cp.spawn = guardedSpawn; syncBuiltinESMExports(); });
+  // Admit the shared fixture before the planted spawn violations. Each case
+  // must reach the OS boundary rather than exercising fixture admission.
+  const root = await tempProject(t);
   const cases = {
     socket: { CLAND_HUB_TRANSPORT: 'socket', CLAND_COMMAND: ${JSON.stringify(JSON.stringify([process.execPath, stub]))} },
     command: { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: ${JSON.stringify(JSON.stringify([process.execPath, '-e', '']))} },
@@ -327,7 +330,6 @@ test('non-stub launch', async t => {
   for (const [name, env] of Object.entries(cases)) await t.test(name, async t => {
     launched = undefined;
     try {
-      const root = await tempProject(t);
       await assert.rejects(startClient(t, ${JSON.stringify(bin)}, root, env), /T2 forbids child_process.spawn:/);
     } finally {
       if (launched && !closed) {

@@ -1,6 +1,7 @@
 // The Neovim client's seam: the real client (`nvim --clean -u nvim/init.lua`) headless with `--listen`,
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
 import { isolateVerification } from '../../hub/test/harness.ts';
+import { ensureAccountFixture } from '../../hub/test/account-fixture-env.ts';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp } from 'node:fs/promises';
@@ -108,6 +109,7 @@ return rows`;
  * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
  */
 export async function startClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer' } = {}): Promise<Client> {
+  await ensureAccountFixture();
   const stubOnly = env.CLAND_HUB_TRANSPORT === 'stdio'
     && env.CLAND_COMMAND === JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]);
   if (!env.CLAND_COMMAND) await isolateVerification(root);
