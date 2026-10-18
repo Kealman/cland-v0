@@ -3,7 +3,7 @@ id: T-771
 kind: task
 title: A test-fixture hub outlives its test worker when the worker is SIGTERMed mid-file
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-484
 branch: t/T-771-a-test-fixture-hub-outlives-its-test
 created: 2026-10-18T04:44:16.774Z
-updated: 2026-10-18T07:40:27.090Z
+updated: 2026-10-18T08:06:42.333Z
 ---
 
 ## Summary
@@ -32,6 +32,7 @@ A fixture-started hub dies with its test worker: a process group or a parent-dea
 - [x] C1. A T3 test SIGTERMs a test worker that holds a fixture hub, finds no surviving hub process and no temp project left within the cleanup bound, and fails before the fix.
   - verified: rev-31 [reviewer] · run rev-20261018-771-final · 2026-10-18T07:37:53.706Z · commit 004f53acdc08c32ecde71d737c3c141a6ab724c9
   - done: impl-771 · 2026-10-18T07:38:06.676Z
+  - verified: rev-31 [reviewer] · run rev-20261018-771-final-2 · 2026-10-18T08:06:41.938Z · commit 5601d0cf989c1dbb04bf8e825599b4eac34cd87b
 
 ## Comments
 
@@ -189,3 +190,32 @@ A-5072 raw refreshed transcript independently audited: both complete files5/5,14
 Standards:0 findings. Spec:C1 source design remains established, while its prior execution mark at004f53ac is historical for the new merged head. Source delta clear; leave C1 final verification pending the required ordinary mode-free fresh droplet result. A-5070 remains valid prior-head evidence, not a new-head full-green claim. No extra Mac run or per-item QA requested.
 
 Durable review:A-5073.
+
+### rev-31 · 2026-10-18T08:06:41.938Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-771-final-2
+commit: 5601d0cf989c1dbb04bf8e825599b4eac34cd87b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-771 merged-head final evidence — clear
+
+Commit:5601d0cf989c1dbb04bf8e825599b4eac34cd87b.
+Scope:evidence. Source continuity:rev-20261018-771-integration-delta /A-5073.
+No Reviewer execution or edits.
+
+Independently audited A-5087 /ccc7709b-01a7-4853-ba3a-ee6c655fb36f: passed/exit0, automatic full selection for process-cleanup infrastructure, exact current source-clear/origin head. All29 owned cases execute positively, no owned skip: lifecycle1.481843839s and28process-cleanup cases totaling3.609721400s. Both new lifecycle/ownership-control identities pass5/5 load gates,10/10.
+
+Overall2537tests,2529pass,0fail/cancelled,8prerequisite skips. Phase summaries independently reconcile as hub-free224pass, hub-machine1914pass+5skip, full Neovim391pass+3skip. Neovim completes152.51s. No known-failure exception is required. Linux x64/Node24.21.0/Neovim0.12.5,c-8 lon1,2workers; peak load8.15,lifetime1496s,cost$0.1039.
+
+A-5072's refreshed two-file Mac5/5 (145passes,zero skips/failures/cancellations) and source/red-proof analysis remain current from the delta review. The only task-level change since the prior behavioral proof was the exact lifecycle header and empty lint-baseline entry; the new full receipt establishes the required merged-head execution.
+
+Standards:0 findings. Spec:C1 fully established; final review clear, verify C1 at5601d0cf. Prior004f53ac verdict/run remain historical. No additional run, head change or per-item QA requested.
+
+Durable review:A-5088.
+
+Criteria: C1 verified.
