@@ -39,7 +39,7 @@ Only the way it already does:
 - **The hub, the tracker and the territory** are local. The territory is a Git repository inside `.cland/`, and only `cland release` pushes to GitHub.
 - **The web workbench** is served by the hub on your machine, reachable on your network only when you allow it, and from elsewhere only through your own tunnel or VPN. There is no cland cloud.
 - **Cloud verification** is off by default. When you turn it on, your committed tree goes to a machine in your own DigitalOcean account and the machine is destroyed after the run.
-- **No telemetry.** cland reports nothing to anyone.
+- **No telemetry.** cland reports nothing to anyone. (This website counts visits with GoatCounter, without cookies or personal data; that is the website, not the tool.)
 
 :::caution
 OpenCode's free models may train on the code they see. `cland doctor` warns for every role configured on OpenCode. Use a paid provider for code you cannot share.

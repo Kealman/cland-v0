@@ -8,7 +8,7 @@ import '@fontsource/jetbrains-mono/700.css';
 import '../styles/site.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
-import { SITE } from '../site';
+import { GOATCOUNTER, SITE } from '../site';
 
 interface Props {
   title: string;
@@ -74,6 +74,7 @@ const rss = new URL('/log/rss.xml', site).href;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <script is:inline data-goatcounter={GOATCOUNTER} async src="https://gc.zgo.at/count.js"></script>
   </head>
   <body>
     <SiteHeader home={home} current={current} />
