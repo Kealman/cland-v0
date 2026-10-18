@@ -69,7 +69,8 @@ test('cland init writes the Aide defaults and CLI launches several Aides with no
   const init = await clandWithEnv(root, fake.env, 'init');
   assert.equal(init.code, 0, init.stderr);
   const roles = parseRoles(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'));
-  assert.deepEqual(roles.get('aide'), DEFAULTS.get('aide'));
+  const shipped = DEFAULTS.get('aide')!;
+  assert.deepEqual(roles.get('aide'), { ...shipped, launch: { ...shipped.launch, permissions: 'auto' } });
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });

@@ -1,5 +1,5 @@
-// The `.cland/roles.toml` the hub writes when a project has none (spec 4.4, decision #10). The human edits it;
-// the hub never rewrites an existing file.
+// Shipped role definitions and machine-independent parser fallbacks (spec 4.4, decision #10).
+// template.ts builds new-project files from these definitions and the installed harnesses.
 import { MANAGED_MARK } from '../project.ts';
 import { VERSION } from '../version.ts';
 

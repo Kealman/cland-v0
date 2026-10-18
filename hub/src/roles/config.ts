@@ -7,6 +7,8 @@ import { ROLE_NAMES } from '../names.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
+import { rolesTemplate } from './template.ts';
+import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
 import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Permissions, type Sandbox } from '../adapters/contract.ts';
 
@@ -151,7 +153,7 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null, al
   return out;
 }
 
-/** The built-in defaults: the file cland writes. */
+/** Machine-independent built-in defaults; new-project files use the installed-harness template. */
 export const DEFAULTS: RolesConfig = parseRoles(DEFAULT_ROLES_TOML, new Map());
 BUILT_IN = DEFAULTS;
 
@@ -165,6 +167,7 @@ export const ROLES_REFRESH_MS = 500;
 export class RolesFile implements RolesSource {
   readonly path: string;
   readonly #log: LogFn;
+  readonly #env: NodeJS.ProcessEnv;
   readonly #resumed: Resumed;
   readonly #read: (path: string) => Promise<string>;
   #config: RolesConfig = DEFAULTS;
@@ -175,7 +178,8 @@ export class RolesFile implements RolesSource {
   #stopped = false;
   #freshStamp: string | null = null;
 
-  constructor(path: string, log: LogFn = () => {}, read: (path: string) => Promise<string> = path => readFile(path, 'utf8'), resumed: Resumed = work => work()) {
+  constructor(path: string, log: LogFn = () => {}, read: (path: string) => Promise<string> = path => readFile(path, 'utf8'), resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env) {
+    this.#env = env;
     this.path = path;
     this.#log = log;
     this.#read = read;
@@ -185,7 +189,7 @@ export class RolesFile implements RolesSource {
   /** Load before accepting requests; never replace an existing human-written file. */
   async start(): Promise<void> {
     try {
-      await writeFile(this.path, DEFAULT_ROLES_TOML, { flag: 'wx' });
+      await writeFile(this.path, rolesTemplate(await installedHarnessesAsync(this.#env)), { flag: 'wx' });
       this.#resumed(() => this.#log({ event: 'roles-written', path: this.path }));
     } catch (err) {
       this.#resumed(() => { if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err; });

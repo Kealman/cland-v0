@@ -1,3 +1,4 @@
+import { harnessBinary } from '../doctor/harnesses.ts';
 // The OpenCode adapter (spec 4.3, research `harness-surfaces` §3; built against opencode v2.0.24). OpenCode 2.x
 // runs every session on a server the host can join, so everything goes through that server:
 //
@@ -70,7 +71,7 @@ export type OpenCodeOptions = {
   roleInstructions?: boolean;
   /** Grace before a verified process tree is killed. */
   stopGraceMs?: number;
-  /** The `opencode` executable: `CLAND_OPENCODE_BIN`, else `opencode` on the PATH. */
+  /** The `opencode` executable: `CLAND_OPENCODE_BIN`, PATH, then the installer folders. */
   bin?: string;
   /** How often the servers' pids are checked, ms. */
   pollMs?: number;
@@ -125,7 +126,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#roleInstructions = options.roleInstructions ?? false;
     this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
-    this.#bin = options.bin ?? this.#processEnv.CLAND_OPENCODE_BIN ?? 'opencode';
+    this.#bin = options.bin ?? harnessBinary('opencode', this.#processEnv);
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 30_000;

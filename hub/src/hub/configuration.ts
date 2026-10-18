@@ -8,7 +8,8 @@ import { basename } from 'node:path';
 import { isDeepStrictEqual, promisify } from 'node:util';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../init/config.ts';
 import { DEFAULTS, parseRoles, ROLES_REFRESH_MS, type RolesConfig, type RolesSource } from '../roles/config.ts';
-import { DEFAULT_ROLES_TOML } from '../roles/default-roles.ts';
+import { rolesTemplate } from '../roles/template.ts';
+import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import type { Layout } from '../project.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from './budget.ts';
@@ -60,7 +61,7 @@ export class ProjectConfiguration implements RolesSource {
   status = (): ConfigStatus => ({ ...this.#status });
   async start(): Promise<void> {
     try { this.#idleMinutes = idleMinutes(await readFile(this.layout.config, 'utf8')); } catch { /* startup already reports unreadable config and uses defaults */ }
-    try { await writeFile(this.layout.roles, DEFAULT_ROLES_TOML, { flag: 'wx' }); }
+    try { await writeFile(this.layout.roles, rolesTemplate(await installedHarnessesAsync(this.env)), { flag: 'wx' }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
     let migration: ReturnType<typeof migrateAideTools> | undefined;
     let original: string | undefined;

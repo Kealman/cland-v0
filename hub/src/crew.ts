@@ -19,7 +19,7 @@ export type CrewSource = { get(): CrewConfig; set(key: string, value: unknown, r
 
 export function defaultCrew(): CrewConfig {
   const crew: Record<string, CrewRole> = {};
-  for (const role of CREW_ROLES) crew[role] = { policy: 'per-item', size: null, keep_context: false, stop_after: 'never', subagents: role === 'coordinator' || role === 'lead' };
+  for (const role of CREW_ROLES) crew[role] = { policy: 'per-item', size: null, keep_context: false, stop_after: 'never', subagents: role === 'coordinator' || role === 'lead' || role === 'aide' };
   for (const [role, rule] of Object.entries(crew)) { rule.heartbeat = role === 'coordinator' ? '1h' : 'off'; rule.heartbeatDefault = true; }
   crew.coordinator!.policy = 'singleton'; crew.coordinator!.size = 1;
   crew.implementer!.stop_after = 'merge';

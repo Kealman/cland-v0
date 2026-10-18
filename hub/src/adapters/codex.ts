@@ -1,3 +1,4 @@
+import { harnessBinary } from '../doctor/harnesses.ts';
 // The Codex adapter (spec 4.3, research `harness-surfaces` §2). Codex runs each session on an app-server the hub
 // owns, one per session, and the hub joins it as a client:
 //
@@ -250,7 +251,7 @@ export type CodexOptions = {
   clock?: Clock;
   /** Grace before a verified process tree is killed. */
   stopGraceMs?: number;
-  /** The `codex` executable: `CLAND_CODEX_BIN`, else `codex` on the PATH. */
+  /** The `codex` executable: `CLAND_CODEX_BIN`, PATH, then the installer folders. */
   bin?: string;
   /** How often the app-servers' pids are checked and lost connections re-made, ms. */
   pollMs?: number;
@@ -357,7 +358,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#connect = options.connect ?? (socket => AppServerClient.connect(socket, { client: { name: 'cland_hub', title: 'cland hub', version: VERSION }, timeoutMs: this.#spawnDeadlineMs, connectTimeoutMs: 3000 }));
     this.#processEnv = options.env ?? process.env;
     this.#recoveries = new FailedLaunches(host.log, 1000, host.durableLaunchRecovery);
-    this.#bin = options.bin ?? this.#processEnv.CLAND_CODEX_BIN ?? 'codex';
+    this.#bin = options.bin ?? harnessBinary('codex', this.#processEnv);
     this.#pollMs = options.pollMs ?? 5000;
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;

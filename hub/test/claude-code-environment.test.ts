@@ -11,6 +11,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import type { AdapterHost } from '../src/adapters/contract.ts';
+import { parseRoles } from '../src/roles/config.ts';
+import { rolesTemplate } from '../src/roles/template.ts';
+import { installedHarnesses } from '../src/doctor/harnesses.ts';
 import { FakeClock } from './fake-clock.ts';
 
 test('Claude launch settings defer to either project settings file', { timeout: 2000 }, async t => {
@@ -202,4 +205,29 @@ test('Claude environment composition preserves implicit, pathless, pinned and in
       if (selection === 'pinned account') assert.ok(String(notice.login).includes("account'\\''s directory"), 'remedies quote apostrophes');
     } finally { adapter.close(); }
   }
+});
+
+test('an installer-only Claude selection launches the executable found outside PATH', { timeout: 2000 }, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-claude-installer-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const bin = join(root, '.local/bin/claude');
+  await mkdir(join(root, '.local/bin'), { recursive: true });
+  await writeFile(bin, '', { mode: 0o755 });
+  const env = { HOME: root, XDG_CONFIG_HOME: join(root, 'config'), PATH: '' };
+  const launch = parseRoles(rolesTemplate(installedHarnesses(env))).get('aide')!.launch;
+  assert.equal(launch.harness, 'claude-code');
+  const commands: string[] = [];
+  t.mock.method(cp, 'execFile', (command: string, args: string[], _options: cp.ExecFileOptions, callback: (error: null, stdout: string, stderr: string) => void) => {
+    commands.push(command);
+    queueMicrotask(() => callback(null, args[0] === 'agents' ? '[]' : 'claude attach abcdef12', ''));
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const host: AdapterHost = { root, discoveryFile: join(root, 'hub.json'), node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), agentsMs: 0, env });
+  try {
+    await adapter.spawn({ name: 'aide', cwd: root, role: 'aide', model: launch.model, effort: launch.effort, permissions: launch.permissions });
+    assert.ok(commands.length > 0);
+    assert.ok(commands.every(command => command === bin), `launched ${commands.join(', ')} instead of discovered ${bin}`);
+  } finally { adapter.close(); }
 });

@@ -83,7 +83,7 @@ test('a harness missing from the PATH fails with the fix', async t => {
   const { code, report: r } = await report(root, { ...tools.env, PATH: tools.path('codex') });
   const c = check(r, 'codex');
   assert.equal(c.verdict, 'fail');
-  assert.equal(c.detail, 'not installed: `codex` is not on the PATH');
+  assert.equal(c.detail, 'not installed: `codex` is not on the PATH or in its installer folders');
   assert.match(c.fix ?? '', /install Codex .*or set CLAND_CODEX_BIN to its path/);
   assert.equal(check(r, 'codex auth').verdict, 'fail');
   assert.equal(code, 1);

@@ -1,3 +1,4 @@
+import { harnessBinary } from '../doctor/harnesses.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 // The Claude Code adapter (spec 4.3, research `harness-surfaces` §1). Claude Code has no server a host can
 // join; everything comes from inside each session or from its own CLI:
@@ -100,7 +101,7 @@ export type ClaudeCodeOptions = {
   clock?: Clock;
   /** Process identity fact; production reads the native process start time. */
   processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
-  /** The `claude` executable: `CLAND_CLAUDE_BIN`, else `claude` on the PATH. */
+  /** The `claude` executable: `CLAND_CLAUDE_BIN`, PATH, then the installer folders. */
   bin?: string;
   /** How often the processes' pids are checked (no CLI), ms. */
   pollMs?: number;
@@ -233,7 +234,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#clock = options.clock ?? realClock;
     this.#processEnv = options.env ?? process.env;
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#processEnv));
-    this.#bin = options.bin ?? this.#processEnv.CLAND_CLAUDE_BIN ?? 'claude';
+    this.#bin = options.bin ?? harnessBinary('claude-code', this.#processEnv);
     this.#pollMs = options.pollMs ?? 5000;
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#agentsMs = options.agentsMs ?? 30_000;

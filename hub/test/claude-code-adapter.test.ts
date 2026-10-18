@@ -8,6 +8,7 @@
 // - "after a hub restart": resume across a real hub-process restart, with hooks/mod reconnected.
 // - "Claude unpinned binary launch": stop, native-conversation relaunch and environment frame.
 // Scheduler and signed-out-latch negatives live in claude-code-schedule.test.ts on FakeClock.
+import { setRoleKey } from '../src/roles/editor.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -92,7 +93,7 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   const fake = await fakeClaude(t, { pollMs: 600_000, lateBg: true, awaitSignals: true });
   const { discovery } = await projectHub(t, root, fake.env);
   const rolesFile = join(root, '.cland/roles.toml');
-  await writeFile(rolesFile, (await readFile(rolesFile, 'utf8')).replace('[coordinator.launch]', '[coordinator.launch]\npermissions = "auto"'));
+  await writeFile(rolesFile, setRoleKey(await readFile(rolesFile, 'utf8'), 'coordinator', 'launch', 'permissions', 'auto'));
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
 

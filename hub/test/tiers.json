@@ -213,6 +213,8 @@
     "hub/test/roles-session-refresh.test.ts": "T2",
     "hub/test/roles-snapshot-cli.test.ts": "T3",
     "hub/test/roles-snapshot.test.ts": "T2",
+    "hub/test/roles-template-component.test.ts": "T2",
+    "hub/test/roles-template.test.ts": "T1",
     "hub/test/roles-timing.test.ts": "T3",
     "hub/test/roles.test.ts": "T3",
     "hub/test/routing.test.ts": "T2",

@@ -21,6 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { parse as parseToml } from 'smol-toml';
 import { AppServerClient } from '../src/adapters/codex/app-server.ts';
 import { nativeProjectHub as projectHub, clandWithEnv, connectUi, eventually, killDaemon, pidAlive, spawnSpoke, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { setRoleKey } from '../src/roles/editor.ts';
 import { NO_PS } from './native-process.ts';
 
 const FAKE_CODEX_DIR = fileURLToPath(new URL('./fakes/codex', import.meta.url));
@@ -421,6 +423,9 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
   await mkdir(gitDir, { recursive: true });
   await writeFile(join(worktree, '.git'), `gitdir: ${gitDir}\n`);
   const fake = await fakeCodex(t);
+  // Pin this native policy contract to shipped fallback definitions, independent of installed harnesses.
+  // New-project policy generation is covered by roles-template.test.ts.
+  await writeFile(join(root, '.cland/roles.toml'), DEFAULT_ROLES_TOML);
   const { discovery } = await projectHub(t, root, fake.env);
   const ui = await connectUi(t, discovery);
   // This profile comparison keeps two QA sessions alive across a role-file edit.
@@ -481,13 +486,14 @@ test('Codex launches Implementer and QA with full access, Reviewer read-only, an
 
   // roles.toml is read as it is at each launch: an edit changes the next one, and a relaunch takes it too
   const text = await readFile(file, 'utf8');
-  const profileText = text.replaceAll('sandbox = "danger-full-access"', 'sandbox = "workspace-write"\nnetwork = "local"');
-  const implStart = profileText.indexOf('[implementer.launch]');
-  const implEnd = profileText.indexOf('[implementer.permissions]', implStart);
-  const implLaunch = profileText.slice(implStart, implEnd);
-  const withRoots = profileText.replace(implLaunch, implLaunch + 'writable_roots = ["."]\n\n');
-  const qaLaunch = withRoots.slice(withRoots.indexOf('[qa.launch]'));
-  await writeFile(file, withRoots.replace(qaLaunch, qaLaunch.replace('approval = "never"', 'approval = "on-request"')));
+  let profileText = text;
+  for (const role of ['implementer', 'qa']) {
+    profileText = setRoleKey(profileText, role, 'launch', 'sandbox', 'workspace-write');
+    profileText = setRoleKey(profileText, role, 'launch', 'network', 'local');
+  }
+  profileText = setRoleKey(profileText, 'implementer', 'launch', 'writable_roots', ['.']);
+  profileText = setRoleKey(profileText, 'qa', 'launch', 'approval', 'on-request');
+  await writeFile(file, profileText);
   const qa2 = await started('qa-2', { role: 'qa' });
   // QA's workspace-write profile also grants its runs and evidence directory (T-62)
   const qaProfile = { default_permissions: 'cland', 'permissions.cland': { extends: ':workspace', filesystem: { [join(root, '.cland', 'qa')]: 'write' }, network: localNetwork(root) }, 'features.network_proxy': true };

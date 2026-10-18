@@ -133,13 +133,14 @@ test('crew CLI and protocol validate changes, reload hand edits, and retain the 
   assert.equal(defaults.crew.implementer!.stop_after, 'merge');
   assert.equal(defaults.crew.reviewer!.keep_context, true);
   assert.equal(defaults.crew.aide!.size, null);
-  for (const [role, rule] of Object.entries(defaults.crew)) assert.equal(rule.subagents, role === 'coordinator' || role === 'lead');
+  for (const [role, rule] of Object.entries(defaults.crew)) assert.equal(rule.subagents, role === 'coordinator' || role === 'lead' || role === 'aide');
   const set = await clandWithEnv(root, {}, 'crew', 'set', 'reviewer.size', '2', '--json');
   assert.equal(set.code, 0, set.stderr);
   assert.match((JSON.parse(set.stdout) as View).summary, /rev pool 2/);
   const cliShow = await clandWithEnv(root, {}, 'crew', 'show');
   assert.equal(cliShow.code, 0, cliShow.stderr);
   assert.match(cliShow.stdout, /rev pool 2/);
+  assert.equal(parseCrew(initial).crew.aide!.subagents, true);
   await eventually('crew event reaches UI', () => ui.frames.find(f => f.type === 'crew' && String(f.summary).includes('rev pool 2')));
   const saved = await readFile(path, 'utf8');
   for (const [key, value] of [['reviewer.size', 0], ['reviewer.size', 1.5], ['reviewer.size', '2'], ['reviewer.policy', ['pool']], ['reviewer.policy', 'unknown'], ['qa.size', 2], ['reviewer.keep_context', 'true'], ['implementer.stop_after', 'exit'], ['reviewer.harness', 'codex'], ['unknown.size', 2], ['leads', ['task']], ['leads', ['epic', 'epic']]] as const) {

@@ -293,18 +293,22 @@ for new projects. Existing projects with an explicit tools list must add it.
 
 ### `.cland/roles.toml`
 
-One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default) and how the launched session may act (`approval`, `sandbox`, `writable_roots`, `network`: below), and `[<role>.permissions]` `tools`, the permission list the hub enforces (see Permissions below; a role table without `tools` gets the built-in list). A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The defaults:
+One table per role: `clause` (multi-line text), `skills` (list), `exclusive` (the Coordinator), `[<role>.launch]` with `harness`, `model` and `effort` (`""` is the harness's default) and how the launched session may act (`approval`, `sandbox`, `writable_roots`, `network`: below), and `[<role>.permissions]` `tools`, the permission list the hub enforces (see Permissions below; a role table without `tools` gets the built-in list). A role the file leaves out takes its default; an unknown role or a wrong type makes the file unreadable. The shipped mapping (when all three harnesses are installed):
 
-| Role | Launch defaults | Approval and sandbox | Skills |
+| Role | Launch defaults | Permission policy | Skills |
 | --- | --- | --- | --- |
-| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | none given | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
-| Lead (one per node) | claude-code, `claude-fable-5-1`, effort `max` | none given | handover, merge |
-| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | `never`; `danger-full-access` | implement, tdd, diagnosing-bugs |
+| Coordinator (exclusive) | claude-code, `claude-fable-5-1`, effort `max` | `permissions = "auto"` | wayfinder, to-spec, to-tickets, triage, grilling, code-review, handover |
+| Lead (one per node) | claude-code, `claude-fable-5-1`, effort `max` | `permissions = "auto"` | handover, merge |
+| Implementer | opencode, a free model the server lists (`""`; pin one, e.g. `opencode/big-pickle`) | harness settings | implement, tdd, diagnosing-bugs |
 | Reviewer | codex, `gpt-6.1-sol`, effort `high` | `never`; `read-only` | code-review |
 | QA | codex, `gpt-6-astra`, effort `high` | `never`; `danger-full-access` | diagnosing-bugs |
-| Aide (non-exclusive) | claude-code, the human's configured model (no `model` key; set one to override), effort `max` | `never`; `danger-full-access` | none |
+| Aide (non-exclusive) | claude-code, the human's configured model (no `model` key; set one to override), effort `max` | `permissions = "auto"` | none |
 
-The human decided on 2026-10-09 (T-65) that every session of every harness must be able to do any work its role needs. Implementer and QA therefore default to full access with no approval prompts, the equivalent of Claude Code's auto mode. Reviewer stays read-only with no network.
+`cland init` and a hub starting without `roles.toml` build the same template from installed executables: PATH, `CLAND_CLAUDE_BIN` / `CLAND_CODEX_BIN` / `CLAND_OPENCODE_BIN`, then `~/.local/bin` and `~/.opencode/bin`. An explicit override is authoritative. A role keeps its shipped harness when installed; otherwise it takes the first installed in Claude Code, Codex, OpenCode order. With none found, the shipped mapping is written and init reports the absence. Discovery never runs a harness or reads login secrets.
+
+A role that moves gets `model = ""` and effort `max` on Claude Code, `high` on Codex, or empty on OpenCode. A role that stays keeps its shipped model and effort. Every generated Claude Code launch has `permissions = "auto"`; `skip` requires the human's explicit choice. Every generated Codex launch has `approval = "never"` and its role's sandbox: Reviewer `read-only`, Implementer and Aide `workspace-write`, QA, Coordinator and Lead `danger-full-access`. Coordinator and Lead need full access for cland's git refs, territory, network, hub sockets and session/worktree launches; QA retains the T-65 full-access policy. OpenCode launch tables contain no permissions, approval or sandbox keys.
+
+The header records the canonical installed harness set, without machine paths. `isRolesTemplate(text)` in `src/roles/template.ts` checks exact bytes against the recorded build; edits, unknown stamps and older template versions return false. This lets setup conservatively recognise an untouched template. The parser's built-in fallback for omitted roles or keys remains the shipped mapping on every machine. Init/update preserve existing `roles.toml` and `crew.toml` byte for byte; new crew policy permits Aide sub-agents.
 
 How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). They belong to the role, whatever harness a launch names (the model and effort are the role's harness's only). The Codex adapter applies it as a sandbox (The Codex adapter, below). OpenCode maps it to per-session permission rules at creation (The OpenCode adapter, below). Claude Code uses its own permission settings and the `permissions` launch key.
 

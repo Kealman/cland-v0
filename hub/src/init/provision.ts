@@ -18,7 +18,8 @@ import { Store } from '../hub/store.ts';
 import { GITIGNORE, MANAGED_BY, layout } from '../project.ts';
 import { DEFAULT_CREW_TOML } from '../crew.ts';
 import { RULEBOOK_HEADER } from '../rules/rulebook.ts';
-import { DEFAULT_ROLES_TOML } from '../roles/default-roles.ts';
+import { rolesTemplate } from '../roles/template.ts';
+import { installedHarnesses } from '../doctor/harnesses.ts';
 import { provisionClaudeSettings } from './claude-settings.ts';
 import { provisionConfig } from './config.ts';
 import { isManagedFile, readText, Report, writeIfChanged, type Change } from './files.ts';
@@ -29,6 +30,8 @@ import { provisionTerritory } from '../territory.ts';
 export type ProvisionOptions = {
   /** Where the shipped skills are read from; this repository's `.agents/skills/` unless a test says otherwise. */
   skillsSource?: string;
+  /** Harness discovery is isolated from the host in fixture and setup callers. */
+  env?: NodeJS.ProcessEnv;
   /** Update refreshes an existing territory, but does not opt a project into one. Init does. */
   territory?: boolean;
 };
@@ -48,7 +51,14 @@ export function provision(root: string, options: ProvisionOptions = {}): Change[
   else writeIfChanged(report, l.gitignore, GITIGNORE, ignore);
   provisionConfig(report, l.config, root);
   if (existsSync(l.roles)) report.add(l.roles, 'unchanged', 'written once with the defaults, then the human\'s: cland never rewrites it');
-  else writeIfChanged(report, l.roles, DEFAULT_ROLES_TOML, null);
+  else {
+    const installed = installedHarnesses(options.env ?? process.env);
+    writeIfChanged(report, l.roles, rolesTemplate(installed), null);
+    if (!installed.length) {
+      const change = report.changes.find(change => change.path === '.cland/roles.toml' && change.action === 'created');
+      if (change) change.note = 'no harness was found; wrote the shipped harness mapping';
+    }
+  }
   if (existsSync(l.crew)) report.add(l.crew, 'unchanged', 'project staffing: cland never rewrites it');
   else writeIfChanged(report, l.crew, DEFAULT_CREW_TOML, null);
   if (existsSync(l.rules)) report.add(l.rules, 'unchanged', 'project rulebook: cland never rewrites it');
