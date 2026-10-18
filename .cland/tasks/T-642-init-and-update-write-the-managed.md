@@ -2,8 +2,8 @@
 id: T-642
 kind: task
 title: Init and update write the managed worktree.bgIsolation = "none" into .claude/settings.json and never touch settings.local.json
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-495
 branch: t/T-642-init-and-update-write-the-managed
 created: 2026-10-16T16:23:58.091Z
-updated: 2026-10-18T09:48:49.881Z
+updated: 2026-10-18T10:05:41.404Z
+closed: 2026-10-18T10:05:41.404Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5159: exact-head A-5158 / bcf0ffec passes hub plus Neovim smoke, 2151 pass/0 fail/5 outside-scope skips. All four settings cases have ordinary positive receipts and all four load gates pass 5/5; summed owned test seconds 0.009455488, no owned trips. C1–C4 verified; C5 scratch demo/source verification remains current. No findings. Post-merge repository update belongs to Coordinator.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T10:05:41.404Z
+
+Merged e4f0db1f7441c6fab54c46312bbfacbfa3b60be7 onto dev.
