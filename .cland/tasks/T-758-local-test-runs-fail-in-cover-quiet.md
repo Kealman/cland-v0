@@ -2,8 +2,8 @@
 id: T-758
 kind: task
 title: Local test runs fail in cover-quiet suite.slot admission when the busy hub answers after 3000 ms
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-470
 branch: t/T-758-local-test-runs-fail-in-cover-quiet
 created: 2026-10-17T22:04:51.687Z
-updated: 2026-10-18T04:07:18.251Z
+updated: 2026-10-18T04:07:30.231Z
+closed: 2026-10-18T04:07:30.231Z
 ---
 
 ## Summary
@@ -272,3 +273,7 @@ Standards:0 findings. Spec:0 remaining gaps.
 Durable review: A-4950.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T04:07:30.231Z
+
+Merged d47e8c7784224cb7d724188917fdf91b711ab228 onto dev.
