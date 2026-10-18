@@ -2,8 +2,8 @@
 id: T-641
 kind: task
 title: cland init refuses a shallow clone with "the territory needs the full history" and the command that fetches it
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-509
 branch: t/T-641-cland-init-refuses-a-shallow-clone-with
 created: 2026-10-16T16:23:57.093Z
-updated: 2026-10-18T13:57:56.925Z
+updated: 2026-10-18T14:38:27.671Z
+closed: 2026-10-18T14:38:27.671Z
 ---
 
 ## Summary
@@ -109,3 +110,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, A-5337. Authorized unchanged-head retry 2e327538/A-5336 exits 0: 2257 pass, 0 fail/cancelled, 5 prerequisite skips; hub phases and Neovim smoke complete. Six init-roots cases positively pass and all six load groups pass 5/5. Positive poisoned-HOME init-machine wrapper (2.146148738s) covers bounded real shallow refusal, unchanged snapshot, same-clone unshallow retry and territory dev recovery through its successful child exit. C1–C3 verified with source A-5311. Prior A-5325/A-5328 failure remains disclosed; primary 6641481b classified it unrelated, filed T-802 and authorized this one retry; the accounting case now passes. One inherited init-next report-only execFile row remains explicitly routed as C-326/A-5327; no owned roots/machine trips. No source change, reviewer execution, new allowance or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T14:38:27.671Z
+
+Merged 31bbdb8aa03e2ca94894d604559c01103623239f onto dev.
