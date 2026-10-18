@@ -3,7 +3,7 @@ id: T-645
 kind: task
 title: cland release refuses with release-version when dev's package.json version differs from the release's
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-504
 branch: t/T-645-cland-release-refuses-with-release
 created: 2026-10-16T16:23:58.697Z
-updated: 2026-10-18T11:15:51.122Z
+updated: 2026-10-18T12:57:34.796Z
 ---
 
 ## Summary
@@ -39,8 +39,8 @@ The version a release tags must be the version its build reports. `cland release
   - done: impl-645 · 2026-10-18T11:14:54.020Z
 - [x] C3. A bump committed on `dev` to 0.1.4 lets the dry run pass; the bump left uncommitted in the working copy does not.
   - done: impl-645 · 2026-10-18T11:14:54.895Z
-- [x] C4. A project whose root has no `package.json` previews and releases as before (the existing release tests pass unchanged).
-  - done: impl-645 · 2026-10-18T11:14:55.381Z
+- [ ] C4. A project whose root has no `package.json` previews and releases as before (the existing release tests pass unchanged).
+  - failed: rev-31 [reviewer] · 2026-10-18T12:57:34.796Z · note Exact-head gate timed out with no completed machine compatibility phase; raw handover-process assertion failure also lacks final classification.
 - [x] C5. The release skill's step 2 names the bump commit before the dry run.
   - done: impl-645 · 2026-10-18T11:14:55.742Z
   - verified: rev-31 [reviewer] · run rev-20261018-645-source · 2026-10-18T11:15:51.122Z · commit 0d5f74a57d376eb4b87a91185b3109621d735b9a
@@ -93,3 +93,37 @@ Standards: zero findings. Spec: zero findings.
 Artifact A-5231.
 
 Criteria: C5 verified.
+
+### rev-31 · 2026-10-18T12:57:34.796Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261018-645-runtime-1
+commit: 0d5f74a57d376eb4b87a91185b3109621d735b9a
+scope: evidence
+findings: [{"severity":"medium","text":"Raw machine stream contains a failed handover-process assertion and eventual exit 124; only free-phase counts are complete, so final compatibility evidence is unavailable.","file":".cland/artifacts/A-5301-suite-2b7bf0f0-b25b-4165-9179-aec358916781-auto-at-0d5f74a.log","line":32479}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-645 incomplete runtime evidence review
+
+Commit: 0d5f74a57d376eb4b87a91185b3109621d735b9a
+Run: rev-20261018-645-runtime-1
+Scope: evidence
+Result: not clear
+
+A-5301 / 2b7bf0f0-b25b-4165-9179-aec358916781 matches the source-reviewed head but exits 124. Mode hub-only was selected; the run lasted about 4498.58 seconds before timeout, with no completed machine-phase rollup and no Neovim smoke phase. This receipt cannot verify final release compatibility.
+
+Medium evidence blocker — A-5301:32479: the incomplete machine stream contains an actual failed assertion identity, handover-process.test.ts::revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it (7469.60124 ms), in addition to the eventual timeout. The aggregate 235 passed/zero failed counts and empty structured failure list belong only to the completed free phase; they do not show a zero-failure machine phase. No final machine diagnostics or failure stack is retained in this stream, so neither the timeout cause nor the assertion's classification is established by this review.
+
+Positive retained evidence: all three new T-645 release identities passed their five load-gate repetitions (15/15). Ordinary release cases have start receipts, but no final release timing/completion rollup that establishes all 27 ordinary cases completed successfully. No runtime tier-mismatch receipt was observed. Prior Mac targeted and source evidence remains A-5230/A-5231.
+
+Standards/source assessment remains clear; no new task-source defect is inferred from this incomplete receipt. Runtime compatibility evidence is not clear. C4 fails the required completed compatibility gate; C1–C3 remain unverified, and source-verified C5 stays current. Obtain the lead/Coordinator's failure and timeout disposition before retry; a changed head requires source review first. No blind retry or local diagnosis was run by this Reviewer.
+
+Executor: Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 4572 s, cost $0.3175, peak one-minute load 6.04.
+
+Evidence: A-5301, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5301-suite-2b7bf0f0-b25b-4165-9179-aec358916781-auto-at-0d5f74a.log.
+
+Artifact A-5302.
+
+Criteria: C4 failed (Exact-head gate timed out with no completed machine compatibility phase; raw handover-process assertion failure also lacks final classification.).

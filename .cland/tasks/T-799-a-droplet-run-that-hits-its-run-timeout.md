@@ -3,17 +3,17 @@ id: T-799
 kind: task
 title: A droplet run that hits its run timeout loses the machine shard's results, so the hung test can't be named
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-508
+branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T10:52:38.748Z
+updated: 2026-10-18T12:57:52.261Z
 ---
 
 ## Summary

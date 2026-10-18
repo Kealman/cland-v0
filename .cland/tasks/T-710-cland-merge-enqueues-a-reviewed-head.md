@@ -3,7 +3,7 @@ id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T12:22:42.376Z
+updated: 2026-10-18T12:52:40.361Z
 ---
 
 ## Summary
@@ -36,18 +36,28 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 - [x] C1. With `queue = true`, merging a reviewed code task replies `queued 1`, and `task view` and `cland merge queue` show the entry, proved by a merge test on `projectHub`.
   - done: impl-710 · 2026-10-18T10:16:46.957Z
   - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+  - verified: rev-30 [reviewer] · run rev-20261018-710-integration-final · 2026-10-18T12:49:31.967Z · commit 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+  - verified: rev-30 [reviewer] · run rev-20261018-710-additive-dispatch-final · 2026-10-18T12:52:38.790Z · commit 1b716a04127a5f6db44ba8b266beefdf8ca197b1
 - [x] C2. With `queue = true`, a tracker-and-docs-only task and a human-shell override land at once with today's receipts, proved by merge tests.
   - done: impl-710 · 2026-10-18T09:31:56.291Z
   - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+  - verified: rev-30 [reviewer] · run rev-20261018-710-integration-final · 2026-10-18T12:49:31.967Z · commit 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+  - verified: rev-30 [reviewer] · run rev-20261018-710-additive-dispatch-final · 2026-10-18T12:52:38.790Z · commit 1b716a04127a5f6db44ba8b266beefdf8ca197b1
 - [x] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
   - done: impl-710 · 2026-10-18T09:42:08.630Z
   - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+  - verified: rev-30 [reviewer] · run rev-20261018-710-integration-final · 2026-10-18T12:49:31.967Z · commit 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+  - verified: rev-30 [reviewer] · run rev-20261018-710-additive-dispatch-final · 2026-10-18T12:52:38.790Z · commit 1b716a04127a5f6db44ba8b266beefdf8ca197b1
 - [x] C4. Entries and their order survive a hub restart, proved by a restart test.
   - done: impl-710 · 2026-10-18T09:32:00.898Z
   - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+  - verified: rev-30 [reviewer] · run rev-20261018-710-integration-final · 2026-10-18T12:49:31.967Z · commit 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+  - verified: rev-30 [reviewer] · run rev-20261018-710-additive-dispatch-final · 2026-10-18T12:52:38.790Z · commit 1b716a04127a5f6db44ba8b266beefdf8ca197b1
 - [x] C5. With `queue = false` the existing merge-gate, merge-recovery and merge-checkout tests pass unchanged.
   - done: impl-710 · 2026-10-18T09:32:02.458Z
   - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+  - verified: rev-30 [reviewer] · run rev-20261018-710-integration-final · 2026-10-18T12:49:31.967Z · commit 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+  - verified: rev-30 [reviewer] · run rev-20261018-710-additive-dispatch-final · 2026-10-18T12:52:38.790Z · commit 1b716a04127a5f6db44ba8b266beefdf8ca197b1
 
 ## Comments
 
@@ -142,3 +152,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source delta clear, A-5274. Authorized dev integration retains queue/landed distinction and budgetLines propagation/output. Every immediate queue-bypass landing still uses unchanged incoming squashTask, which checks immutable merged-tree budgets before ref/checkout mutation; no alternate landing path added. Incoming spoke VERSION/diagnostics and fixture admission behavior retained; queue implementation and task queue/policy/Store tests byte-identical to prior reviewed parent. A-5271 six-file serial validation summary reviewed; diff check clean. C1–C5 await fresh exact-head droplet; prior A-5218 green remains historical. No reviewer execution or new allowance.
+
+### rev-30 · 2026-10-18T12:49:31.967Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-integration-final
+commit: 6ddb9aad0774a31f417cb6706bf51dafcc81f908
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear, A-5297. Exact-head A-5295 full gate: 2600 passed,0 failed/cancelled,8 prerequisite skips; hub/Neovim complete. Five queue cases, accepted Store reopen/FIFO proof, reviewed/human docs bypass, defaults and authority/drop controls all positively execute; ten criterion-related groups pass 50/50 repetitions. Unchanged merge gate/recovery/checkout and incoming immutable budget tests pass. Zero tier trips and no hard budgets. C1–C5 verified with source A-5274 and runtime; previous-head receipt remains historical. No reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-18T12:52:38.790Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-additive-dispatch-final
+commit: 1b716a04127a5f6db44ba8b266beefdf8ca197b1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Additive delta/final clear, A-5300. Independent allowlist parse proves exact parent-set union with no duplicates; merge.queue and role.launch handlers/permission mapping retained, no shared dispatch logic changed. Task queue/landing/Store/CLI/test bytes unchanged; incoming role launch/permission/test bytes match dev. Identifiers SESSION_CLI_FRAMES, merge.queue, role.launch, #toolCall, setRoleLaunch, isClientRequest audited. A-5299 matching serial checks: surface3, spoke-identity4, queue5, role-launch13, roles-launch-permissions3, plus lint/typecheck. Coordinator eb138f2f explicitly permits prior A-5295 full-green receipt reuse if additive; confirmed, so C1–C5 refreshed without a new droplet. A-5295 remains transparently parent-head evidence, audited A-5297. No reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

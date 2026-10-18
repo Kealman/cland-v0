@@ -3,7 +3,7 @@ id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T12:44:27.503Z
+updated: 2026-10-18T12:50:42.428Z
 ---
 
 ## Summary
@@ -129,3 +129,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, A-5285. Exact-head A-5284 full gate passes 2523 tests, zero failures/cancellations, eight prerequisite skips; all phases finalize. Six changed files positively execute 121 ordinary identities, all 16 previously failing names now pass, and shared stage/provenance consumers recover. Ten scoped groups pass 50/50 repetitions. Occasion/ordinary planning, last-green-stage identity baseline and large transport, and two-shard T4 report controls verify C1–C3 with source mapping A-5166/A-5232/A-5268. Zero tier trips and no hard budgets. A-5251/A-5254 failure retained; production predicates remain intact. No reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-18T12:50:42.428Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-714-override-integration-delta
+commit: 580c57a08bedf6cffb15abffc2c2a72b9e557262
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5298. Coordinator 3ffcc49b authorized this single merge. Sole resolution retains occasion and requested executor/size/workers signature, incoming override-aware lookup/recovery and task occasion mismatch rejection before reuse. Existing soak/baseline/shard/report and carrier corrections remain. Incoming T-792 tests retain separate platform/override runs and exact retries/reopen; no assertions removed. A-5294 raw 37/37 serial passes, no failures/cancellations/skips; diff check clean. C1–C3 await fresh exact-head droplet; A-5284/A-5285 remain previous-head evidence. No reviewer execution.
