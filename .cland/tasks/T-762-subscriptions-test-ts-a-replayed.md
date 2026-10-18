@@ -3,8 +3,9 @@ id: T-762
 kind: task
 title: "subscriptions.test.ts: a replayed terminal session fact reaches a subscription created for the next launch on a slow droplet"
 state: open
-status: backlog
+status: in progress
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - verification
@@ -14,10 +15,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-471
+branch: t/T-762-subscriptions-test-ts-a-replayed
 created: 2026-10-17T22:57:33.480Z
-updated: 2026-10-17T22:57:33.480Z
+updated: 2026-10-18T03:09:34.097Z
 ---
 
 ## Summary
@@ -30,4 +31,10 @@ The test waits on the hub's receipt that the terminal fact was recorded before i
 
 ## Acceptance criteria
 
-- [ ] C1. The case passes 20/20 under a scripted store delay that reproduces the replay before the fix, with the assertion unchanged.
+- [ ] C1. The A-4824 failure is explained with evidence, and the case passes 20/20 serially at the current dev head (after T-702's T2 migration to an explicit FakeHarness), with the assertion unchanged.
+
+## Comments
+
+### impl-762 · 2026-10-18T03:09:34.097Z
+
+Diagnosis: A-4824 lines 30038–30057 show launched, busy, idle (no stopped/died replay). Historical native fake runs a real resumed prompt turn: setStatus('busy'), UserPromptSubmit, turn.start, then completion; the adapter maps UserPromptSubmit to busy. T-702 (88882dde) already replaces this case with componentHub + explicit FakeHarness + explicit idle; FakeHarness inject/resume do not synthesize busy. Coordinator revised C1 to evidence + 20/20 serial current-dev repeats with unchanged assertion and directed no strengthening. Awaiting macOS stage-window end before repetitions.
