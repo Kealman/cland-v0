@@ -2,8 +2,8 @@
 id: T-791
 kind: task
 title: A verify submitter that disconnects during admission loses its run without any durable receipt
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-770
 topic: topic-500
 branch: t/T-791-a-verify-submitter-that-disconnects
 created: 2026-10-18T09:26:02.167Z
-updated: 2026-10-18T12:07:46.596Z
+updated: 2026-10-18T12:13:22.006Z
+closed: 2026-10-18T12:13:22.006Z
 ---
 
 ## Summary
@@ -209,3 +210,7 @@ Evidence A-5253: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5253-
 Artifact A-5255.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T12:13:22.006Z
+
+Merged da2e9127b539b3ca1627114c6d0250cc19ccc659 onto dev.

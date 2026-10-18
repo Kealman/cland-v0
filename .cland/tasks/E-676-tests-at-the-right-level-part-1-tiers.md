@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-505
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-18T12:12:49.747Z
+updated: 2026-10-18T12:13:21.455Z
 ---
 
 ## Summary
@@ -37,7 +37,7 @@ The plan, lanes and hot files are in A-4143's companion PLAN (topic-406).
 - [ ] C4. `projectHub` serves a project with a `FakeClock`, the in-process fake adapter in all three flavours and an in-process spoke, each proven by a T2 file whose spawn census row shows no hub, spoke, harness or Neovim child process (git and ps infrastructure probes are T-719’s).
 - [ ] C5. heartbeat.test.ts runs on the fake clock in 5 s or less (from 25.7 s) and passed 20/20 serially.
 - [ ] C6. Ten consecutive droplet task runs show no typecheck on the droplet and the host-gate reuse line.
-- [ ] C7. The selection replay over the last 40 landings shows zero own-test misses and more selecting landings than the baseline recorded at A-10's merge base.
+- [ ] C7. Over the last 40 landings at the demo SHA, the selection replay shows zero own-test misses, and the current selector selects more of those landings than the selector at A-10's merge base (6174032f) does on the same 40 landings.
   - failed: qa-676 [qa] · 2026-10-18T12:12:49.747Z · note R2 selects 6 landings, equal to recorded baseline 6, not greater; same-window comparison is 5→6 with zero misses.
 - [ ] C8. An Implementer's `cland verify all` is refused with `verify-all-reserved`, and the tier share baseline (A-12) is recorded on the epic.
 
@@ -184,3 +184,7 @@ Evidence bundle A-5257: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/
 Report A-5258: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5258-e-676-qa-not-clear-c2-summary-truncation-and-c7-threshold.md
 
 Criteria: C2 failed (L2 delivered result truncates at 8192 bytes before all four per-tier lines and tier share; full log is complete.), C7 failed (R2 selects 6 landings, equal to recorded baseline 6, not greater; same-window comparison is 5→6 with zero misses.).
+
+### coord · 2026-10-18T12:13:21.455Z
+
+C7 revised prospectively (coord, 2026-10-18 12:14Z) after QA run qa-2026-10-18-1 (A-5258). The old bar compared the selecting count at the demo SHA with A-4300's recorded 6, which was measured over a different window of 40 landings. Two populations can't show whether selection improved. The revised C7 compares the merge-base selector and the current selector on the same 40 landings, the controlled comparison in the brief's R2b. qa-2026-10-18-1 measured 5 → 6 there with 0 misses. The FAIL recorded under the old bar stands; a re-run limited to C2 (after T-800) and the revised C7 will be requested. C2's finding is filed as T-800.
