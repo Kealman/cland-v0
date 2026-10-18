@@ -1,0 +1,124 @@
+/* cland brand theme for the Starlight docs. */
+
+:root {
+  --sl-font: 'IBM Plex Sans';
+  --sl-font-mono: 'JetBrains Mono';
+  --cland-font-heading: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Dark mode: the workbench palette. */
+:root,
+::backdrop {
+  --sl-color-white: #f3f5f8;
+  --sl-color-gray-1: #d6dbe4;
+  --sl-color-gray-2: #aab3c0;
+  --sl-color-gray-3: #8a94a3;
+  --sl-color-gray-4: #5b6574;
+  --sl-color-gray-5: #222a35;
+  --sl-color-gray-6: #10141b;
+  --sl-color-black: #0b0e14;
+
+  --sl-color-accent-low: #1a160c;
+  --sl-color-accent: #f0b429;
+  --sl-color-accent-high: #f7d27a;
+
+  --sl-color-orange-low: #1a160c;
+  --sl-color-orange: #f0b429;
+  --sl-color-orange-high: #f7d27a;
+  --sl-color-green-low: #12261a;
+  --sl-color-green: #7ddc8a;
+  --sl-color-green-high: #b6efbd;
+
+  --sl-color-text: #c3cad5;
+  --sl-color-text-accent: #f0b429;
+  --sl-color-text-invert: #0b0e14;
+  --sl-color-bg: #0b0e14;
+  --sl-color-bg-nav: #10141b;
+  --sl-color-bg-sidebar: #0e1219;
+  --sl-color-bg-inline-code: #161b24;
+  --sl-color-bg-accent: #f0b429;
+  --sl-color-hairline-light: #2c3644;
+  --sl-color-hairline: #222a35;
+  --sl-color-hairline-shade: #0b0e14;
+  --sl-color-backdrop-overlay: rgba(11, 14, 20, 0.72);
+}
+
+/* Light mode: readable neutrals, amber #c98a04 as the accent. */
+:root[data-theme='light'],
+[data-theme='light'] ::backdrop {
+  --sl-color-white: #0b0e14;
+  --sl-color-gray-1: #1a1f28;
+  --sl-color-gray-2: #2e3542;
+  --sl-color-gray-3: #4f5866;
+  --sl-color-gray-4: #7d8796;
+  --sl-color-gray-5: #c9cfd8;
+  --sl-color-gray-6: #eceff3;
+  --sl-color-gray-7: #f6f7f9;
+  --sl-color-black: #ffffff;
+
+  --sl-color-accent-low: #fbefd2;
+  --sl-color-accent: #c98a04;
+  --sl-color-accent-high: #7a5300;
+
+  --sl-color-orange-low: #fbefd2;
+  --sl-color-orange: #c98a04;
+  --sl-color-orange-high: #7a5300;
+
+  --sl-color-text: #2e3542;
+  /* #c98a04 is too light for body links on white; a darker amber keeps AA contrast. */
+  --sl-color-text-accent: #8f6100;
+  --sl-color-text-invert: #ffffff;
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #f6f7f9;
+  --sl-color-bg-sidebar: #ffffff;
+  --sl-color-bg-inline-code: #eceff3;
+  --sl-color-bg-accent: #c98a04;
+  --sl-color-hairline-light: #e3e7ec;
+  --sl-color-hairline: #d8dde4;
+  --sl-color-hairline-shade: #d8dde4;
+}
+
+/* Headings, code and navigation in JetBrains Mono. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6),
+.sidebar-content .group-label,
+.sidebar-content summary,
+starlight-toc h2,
+mobile-starlight-toc .toggle,
+.pagination-links .link-title {
+  font-family: var(--cland-font-heading);
+  letter-spacing: -0.01em;
+}
+
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 700;
+}
+
+h1#_top {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-content a {
+  font-family: var(--cland-font-heading);
+  font-size: var(--sl-text-sm);
+}
+
+/* The wordmark: a calmer height than the full nav bar. */
+.site-title img {
+  height: 1.75rem;
+  width: auto;
+}
+
+.sl-markdown-content a {
+  text-underline-offset: 0.2em;
+}
+
+.sl-markdown-content code:not(:where(.not-content *)) {
+  border-radius: 4px;
+}

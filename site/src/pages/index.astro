@@ -1,0 +1,1143 @@
+---
+import { Image } from 'astro:assets';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/jetbrains-mono/400.css';
+import '@fontsource/jetbrains-mono/700.css';
+import heroShot from '../assets/screens/hero.png';
+import accountsShot from '../assets/screens/accounts.png';
+
+const title = 'cland: all your subscriptions, one team';
+const description = 'One coding crew across every AI plan you pay for.';
+const site = Astro.site ?? new URL('https://cland.app');
+const canonical = new URL(Astro.url.pathname, site).href;
+const ogImage = new URL('/og.png', site).href;
+
+const GITHUB = 'https://github.com/Kealman/cland-v0';
+const DOCS = '/docs/';
+
+const ROLE = { coord: '#35c4a0', impl: '#b392f0', rev: '#f778ba', qa: '#79c0ff' };
+
+const presets = [
+  {
+    id: 'mixed',
+    label: 'Mixed plans',
+    note: 'Claude, ChatGPT and open models, each where it is strongest.',
+    crew: [
+      { name: 'Coordinator', count: '×1', runs: 'Claude Code · opus', does: 'Plans the release, splits epics into tasks, launches the crew and brings you only the decisions.', c: ROLE.coord },
+      { name: 'Implementers', count: '×3', runs: 'OpenCode · open models', does: 'Each takes one task in its own worktree and works it to a reviewed branch.', c: ROLE.impl },
+      { name: 'Reviewer', count: '×1', runs: 'Codex · gpt', does: "Reads the change with another vendor's eyes and records a verdict.", c: ROLE.rev },
+      { name: 'QA', count: '×1', runs: 'Codex · gpt', does: 'Runs the brief against the real thing and accepts the epic or sends it back.', c: ROLE.qa },
+    ],
+  },
+  {
+    id: 'one',
+    label: 'One subscription',
+    note: 'A single Claude plan: the strong model leads, the faster one does the work.',
+    crew: [
+      { name: 'Coordinator', count: '×1', runs: 'Claude Code · opus', does: 'Plans and leads; the only session that spends the top model.', c: ROLE.coord },
+      { name: 'Implementers', count: '×2', runs: 'Claude Code · sonnet', does: 'Work tasks in parallel, each in its own worktree.', c: ROLE.impl },
+      { name: 'Reviewer', count: '×1', runs: 'Claude Code · sonnet', does: 'Reviews every branch before it can merge.', c: ROLE.rev },
+    ],
+  },
+  {
+    id: 'budget',
+    label: 'Budget',
+    note: 'Frontier model for judgement only; the legwork on free and open models.',
+    crew: [
+      { name: 'Coordinator', count: '×1', runs: 'Claude Code · sonnet', does: 'Plans and decides what goes where.', c: ROLE.coord },
+      { name: 'Implementers', count: '×4', runs: 'OpenCode · free models', does: 'Many cheap hands on small, well-cut tasks.', c: ROLE.impl },
+      { name: 'Reviewer', count: '×1', runs: 'Codex · gpt', does: 'One strong reviewer keeps the bar.', c: ROLE.rev },
+      { name: 'QA', count: '×1', runs: 'OpenCode · open model', does: 'Runs the brief and the checks.', c: ROLE.qa },
+    ],
+  },
+  {
+    id: 'solo',
+    label: 'Just me and one agent',
+    note: 'No crew at all: one implementer and you. Add roles when you need them.',
+    crew: [
+      { name: 'Implementer', count: '×1', runs: 'Codex · gpt', does: 'Works the tasks you rank, one at a time, and asks you when stuck.', c: ROLE.impl },
+    ],
+  },
+];
+
+const installs = [
+  { id: 'mac', label: 'macOS · Homebrew', lines: ['brew install cland'] },
+  { id: 'linux', label: 'Linux · script', lines: ['curl -fsSL https://cland.app/install.sh | sh'] },
+  { id: 'source', label: 'From source', lines: ['git clone https://github.com/Kealman/cland-v0 cland', 'cd cland && npm ci && npm link'] },
+];
+const installTail = ['cd my-project', 'cland init && cland setup'];
+
+const problems = [
+  { h: 'Limits hit one at a time', p: 'Claude runs out in the middle of a task while your ChatGPT plan sits idle.' },
+  { h: 'Every agent works alone', p: 'One terminal per harness, and you are the one copying context between them.' },
+  { h: 'Frontier models do grunt work', p: 'Your best model writes boilerplate and burns the plan you need for the hard parts.' },
+];
+
+const features = [
+  { h: 'The tracker lives in your repo', p: 'Releases, epics and tasks are Markdown files next to your code, versioned with it. Import your GitHub issues in one command.' },
+  { h: 'Plans you approve', p: 'Every epic gets stages, parallel lanes and a QA policy before work starts. You see it and say go.' },
+  { h: 'A gate before every merge', p: "Review and QA verdicts, fresh for the branch's head, or the merge does not happen." },
+  { h: 'Verification for any stack', p: 'Your own check and test commands, on your machine or on cloud runners with a daily spend cap.' },
+  { h: 'Releases from the item', p: 'When the release is accepted, cland tags it, writes the notes and pushes. One command, one answer.' },
+  { h: 'Onboarding by your Aide', p: 'Setup ends in the workbench with your Aide, which studies the project, proposes the crew and drafts the first plan.' },
+];
+
+const faqs = [
+  { q: "Is this allowed by my subscription's terms?", a: 'cland runs the official claude, codex and opencode CLIs under your own logins, exactly as you would by hand. It never reads your tokens to call a provider\'s API, and it never rotates accounts.', open: true },
+  { q: 'Which subscriptions work?', a: 'Whatever the harnesses sign in with: Claude plans for Claude Code, ChatGPT plans for Codex, and every provider OpenCode supports, free and open models included.' },
+  { q: 'Do I need all three harnesses?', a: 'No. With one, the whole crew runs on it. Each one you add widens the team and spreads the load.' },
+  { q: 'Does my code leave my machine?', a: 'Only to the model providers you choose, through their own CLIs. cland has no telemetry. Some free models may train on what they see; cland doctor tells you which.' },
+  { q: 'Neovim or the browser?', a: 'Both, on the same hub. The terminal workbench needs no Neovim experience: cland brings its own, with every key in a palette.' },
+  { q: 'What does it cost?', a: 'Nothing. cland is open source under Apache-2.0. You pay only for the plans you already have.' },
+];
+
+const crewRows = [
+  { mark: '◐', markColor: '#35c4a0', role: 'coordinator', harness: 'Claude Code', model: 'opus' },
+  { mark: '◐', markColor: '#35c4a0', role: 'implementer-1', harness: 'OpenCode', model: 'qwen3-coder' },
+  { mark: '◐', markColor: '#35c4a0', role: 'implementer-2', harness: 'Claude Code', model: 'sonnet' },
+  { mark: '◉', markColor: '#f0b429', role: 'reviewer', harness: 'Codex', model: 'gpt' },
+  { mark: '●', markColor: '#7ddc8a', role: 'qa', harness: 'Codex', model: 'demo passed' },
+];
+
+const wordmarkPath = 'M40.62 37.98A22 22 0 1 0 40.62 74.02M74 6V78M146 34V78M174 78V56A22 22 0 0 1 218 56V78M290 6V78';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0e14" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="cland" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="cland: all your subscriptions, one team" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@cland_app" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav aria-label="Main" class="nav wrap">
+        <a href="#top" aria-label="cland home" class="nav-logo">
+          <svg height="28" viewBox="0 0 296 84" aria-hidden="true"><g fill="none" stroke="#d6dbe4" stroke-width="12" stroke-linecap="round"><path d={wordmarkPath}></path><circle cx="124" cy="56" r="22"></circle><circle cx="268" cy="56" r="22"></circle></g><circle cx="50" cy="56" r="6" fill="#f0b429"></circle></svg>
+        </a>
+        <div class="nav-links">
+          <a href="#how">How it works</a>
+          <a href="#workbench">Workbench</a>
+          <a href="#install">Install</a>
+          <a href="#faq">FAQ</a>
+          <a href={DOCS}>Docs</a>
+        </div>
+        <a href={GITHUB} class="btn btn-ghost btn-nav">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7-6.2-3.6-6.2 3.6 1.4-7L2 9.3l7-.8z"></path></svg>Star on GitHub
+        </a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <div class="eyebrow">OPEN SOURCE · APACHE-2.0 · macOS AND LINUX</div>
+          <h1>All your subscriptions.<br />One team.</h1>
+          <p class="hero-lead">One coding crew across every AI plan you pay for. cland runs Claude Code, Codex and OpenCode together: a strong model leads, cheaper and open models do the legwork, and you make the decisions.</p>
+          <div class="actions">
+            <a href="#install" class="btn btn-primary">Get started</a>
+            <a href="#how" class="btn btn-ghost">How it works</a>
+          </div>
+          <div class="copy-box">
+            <span class="prompt">$</span><code>brew install cland</code>
+            <button type="button" class="copy-btn" data-copy="brew install cland" aria-label="Copy the install command"><span aria-live="polite">Copy</span></button>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div role="img" aria-label="A crew in cland: a coordinator on Claude Code with opus, implementers on OpenCode and Claude Code, a reviewer on Codex, one decision waiting for you" class="crew-window">
+            <div class="crew-titlebar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="crew-title">crew · my-app</span></div>
+            <div class="crew-grid">
+              {crewRows.map((r) => (
+                <>
+                  <span style={`color: ${r.markColor}`}>{r.mark}</span><span class="muted">{r.role}</span><span>{r.harness}</span><span class="muted">{r.model}</span>
+                </>
+              ))}
+            </div>
+            <div class="crew-ask">
+              <div class="ask-head">▲ coordinator asks you</div>
+              <div>Epic "Checkout flow" is planned in 3 stages, 7 tasks. Start it?</div>
+              <div class="muted">1 approve · 2 change the plan · 3 not now</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="The workbench" class="wrap shot-hero">
+        <figure class="shot">
+          <Image
+            src={heroShot}
+            alt="The cland workbench in Neovim, dark theme: on the left the items panel with a release and its epics, in the centre a topic thread with a Coordinator's ask waiting for an answer, and on the right the sessions panel with the plans' limit windows and the live sessions."
+            widths={[640, 960, 1280, 1920, 2400]}
+            sizes="(min-width: 1200px) 1152px, calc(100vw - 48px)"
+            loading="eager"
+          />
+        </figure>
+      </section>
+
+      <section aria-labelledby="problem-h" class="band alt">
+        <div class="wrap stack-40">
+          <h2 id="problem-h">You pay for three AIs.<br />They never work together.</h2>
+          <div class="grid grid-280">
+            {problems.map((x) => (
+              <div class="card card-lg">
+                <div class="card-title-lg">{x.h}</div>
+                <p class="body-muted">{x.p}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="how" aria-labelledby="how-h" class="band">
+        <div class="wrap stack-32">
+          <div class="intro intro-780">
+            <h2 id="how-h">A crew you design</h2>
+            <p class="lead">Choose the roles, how many of each, the harness and model every one runs on, and how work moves between them: lanes, review rules, QA policy, who approves the plan. One hub connects the sessions; one tracker lives in your repo as Markdown. A few crews people run:</p>
+          </div>
+          <div class="tabs" data-tabs>
+            <div role="tablist" aria-label="Example crews" class="tablist">
+              {presets.map((p, i) => (
+                <button type="button" role="tab" class="tab" id={`crew-tab-${p.id}`} aria-controls={`crew-panel-${p.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{p.label}</button>
+              ))}
+            </div>
+            {presets.map((p, i) => (
+              <div role="tabpanel" id={`crew-panel-${p.id}`} aria-labelledby={`crew-tab-${p.id}`} class="tabpanel stack-32" hidden={i !== 0} tabindex="0">
+                <p class="preset-note">{p.note}</p>
+                <div class="grid grid-220">
+                  {p.crew.map((r) => (
+                    <div class="card role-card" style={`border-top-color: ${r.c}`}>
+                      <div class="role-head"><span class="role-name">{r.name}</span><span class="role-count">{r.count}</span></div>
+                      <div class="role-runs">{r.runs}</div>
+                      <p class="role-does">{r.does}</p>
+                    </div>
+                  ))}
+                  <div class="card role-card you-card">
+                    <div class="role-name you-name">You</div>
+                    <div class="role-runs you-runs">with your Aide</div>
+                    <p class="role-does you-does">Approve the plan, answer the asks, accept the release. Your Aide speaks for you when you are away.</p>
+                  </div>
+                  <div class="card role-card own-card">
+                    <div class="role-name">+ your own role</div>
+                    <p class="role-does">A docs writer, a security reviewer, an epic lead. A role is a few lines in <code class="code-inline">.cland/roles.toml</code>.</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="plans-h" class="band alt">
+        <div class="wrap split">
+          <div class="split-copy">
+            <h2 id="plans-h">Get more from every plan you pay for</h2>
+            <p class="lead">See the 5-hour and weekly window of every subscription in one place. Pick the account each role runs on. When a plan runs low, the work moves to the next one: you choose where, in one answer.</p>
+            <ul class="checks">
+              <li><span class="check" aria-hidden="true">✓</span><span>Frontier models only where judgement matters</span></li>
+              <li><span class="check" aria-hidden="true">✓</span><span>Open and free models for the legwork</span></li>
+              <li><span class="check" aria-hidden="true">✓</span><span>Your own logins, the official CLIs, no accounts rotated behind your back</span></li>
+            </ul>
+          </div>
+          <figure class="shot split-shot">
+            <Image
+              src={accountsShot}
+              alt="The cland sessions panel up close: the Accounts block on top shows two plans with their 5-hour and weekly limit windows, and the crew's sessions are listed below with harness, model and account."
+              widths={[560, 800, 1120, 1600]}
+              sizes="(min-width: 1200px) 600px, calc(100vw - 48px)"
+            />
+          </figure>
+        </div>
+      </section>
+
+      <section id="workbench" aria-labelledby="wb-h" class="band">
+        <div class="wrap stack-40">
+          <div class="intro intro-760">
+            <h2 id="wb-h">In the terminal, the browser or your pocket</h2>
+            <p class="lead">Start the crew from Neovim, follow it in the browser, answer an ask from your phone. Every client talks to the same hub, so nothing is lost when you switch.</p>
+          </div>
+          <div class="clients">
+            <figure class="placeholder placeholder-web">
+              <div class="placeholder-label">SCREENSHOT 3 · WEB WORKBENCH · 2400×1500</div>
+              <div class="placeholder-desc placeholder-desc-web">The browser workbench, dark. The rail on the left, the Items explorer in the centre with a release unfolded into epics and tasks, the drawer on the right with an epic's card: progress, plan stage, latest verdict. Inbox badge shows 2.</div>
+            </figure>
+            <figure class="placeholder placeholder-phone">
+              <div class="placeholder-label">SCREENSHOT 4 · PHONE · 1170×2532</div>
+              <div class="placeholder-desc placeholder-desc-phone">The installed phone app: the inbox, with the Coordinator's ask "Start epic Checkout flow?" open as a bottom sheet with Approve and Decline with a reason.</div>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="feat-h" class="band alt">
+        <div class="wrap stack-40">
+          <h2 id="feat-h">Built for shipping, not demos</h2>
+          <div class="grid grid-300">
+            {features.map((f) => (
+              <div class="card feature">
+                <div class="feature-title">{f.h}</div>
+                <p class="body-muted small">{f.p}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="install" aria-labelledby="install-h" class="band">
+        <div class="wrap narrow stack-28">
+          <h2 id="install-h">Get started in two minutes</h2>
+          <div class="tabs" data-tabs>
+            <div role="tablist" aria-label="Install method" class="tablist">
+              {installs.map((t, i) => (
+                <button type="button" role="tab" class="tab" id={`install-tab-${t.id}`} aria-controls={`install-panel-${t.id}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1}>{t.label}</button>
+              ))}
+            </div>
+            {installs.map((t, i) => (
+              <div role="tabpanel" id={`install-panel-${t.id}`} aria-labelledby={`install-tab-${t.id}`} class="tabpanel" hidden={i !== 0} tabindex="0">
+                <div class="terminal">
+                  {[...t.lines, ...installTail].map((line) => (
+                    <div><span class="muted">$ </span>{line}</div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p class="body-muted">Setup finds the harnesses you have, offers the ones you don't, signs you in with their own login commands and opens the workbench with your Aide, who takes it from there.</p>
+          <p class="requirements">macOS or Linux · at least one of Claude Code, Codex, OpenCode · <a href="/docs/quickstart/" class="amber-link">Read the quickstart →</a></p>
+        </div>
+      </section>
+
+      <section id="faq" aria-labelledby="faq-h" class="band alt">
+        <div class="wrap narrow stack-28">
+          <h2 id="faq-h">Questions</h2>
+          <div class="faq">
+            {faqs.map((f) => (
+              <details open={f.open}>
+                <summary>{f.q}</summary>
+                <p class="body-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Start" class="band">
+        <div class="wrap narrow closing">
+          <svg width="72" height="72" viewBox="0 0 512 512" aria-hidden="true"><path d="M370.9 159.6A150 150 0 1 0 370.9 352.4" fill="none" stroke="#d6dbe4" stroke-width="64" stroke-linecap="round"></path><circle cx="406" cy="256" r="32" fill="#f0b429"></circle></svg>
+          <h2>Turn your AIs into a team.</h2>
+          <div class="actions actions-center">
+            <a href="#install" class="btn btn-primary">Get started</a>
+            <a href={GITHUB} class="btn btn-ghost">Star on GitHub</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-row">
+        <svg height="22" viewBox="0 0 296 84" aria-hidden="true"><g fill="none" stroke="#8a94a3" stroke-width="12" stroke-linecap="round"><path d={wordmarkPath}></path><circle cx="124" cy="56" r="22"></circle><circle cx="268" cy="56" r="22"></circle></g><circle cx="50" cy="56" r="6" fill="#f0b429"></circle></svg>
+        <span>All your subscriptions. One team.</span>
+        <div class="footer-links">
+          <a href={DOCS}>Docs</a>
+          <a href={GITHUB}>GitHub</a>
+          <a href="https://x.com/cland_app">X @cland_app</a>
+          <a href="#faq">Apache-2.0</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      // Tab groups: ARIA tabs with roving tabindex and arrow-key navigation.
+      for (const group of document.querySelectorAll<HTMLElement>('[data-tabs]')) {
+        const tabs = Array.from(group.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+        const select = (tab: HTMLButtonElement, focus = false) => {
+          for (const t of tabs) {
+            const on = t === tab;
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.tabIndex = on ? 0 : -1;
+            const panel = document.getElementById(t.getAttribute('aria-controls') ?? '');
+            if (panel) panel.hidden = !on;
+          }
+          if (focus) tab.focus();
+        };
+        tabs.forEach((tab, i) => {
+          tab.addEventListener('click', () => select(tab));
+          tab.addEventListener('keydown', (e) => {
+            let next = -1;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (i + 1) % tabs.length;
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (i - 1 + tabs.length) % tabs.length;
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = tabs.length - 1;
+            if (next < 0) return;
+            e.preventDefault();
+            select(tabs[next], true);
+          });
+        });
+      }
+
+      // Copy-to-clipboard: the label flips to "Copied" for two seconds.
+      for (const btn of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+        const label = btn.querySelector('span') ?? btn;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        btn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(btn.dataset.copy ?? '');
+          } catch {
+            return;
+          }
+          label.textContent = 'Copied';
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            label.textContent = 'Copy';
+          }, 2000);
+        });
+      }
+    </script>
+
+    <style is:global>
+      :root {
+        --ground: #0b0e14;
+        --panel: #10141b;
+        --alt: #0e1219;
+        --border: #222a35;
+        --text: #d6dbe4;
+        --body-muted: #aab3c0;
+        --muted: #8a94a3;
+        --amber: #f0b429;
+        --teal: #35c4a0;
+        --green: #7ddc8a;
+        --dash: #3a4554;
+        --amber-ground: #1a160c;
+        --amber-border: #5a4614;
+        --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+        --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        color-scheme: dark;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 17px;
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+      a {
+        color: var(--text);
+        text-decoration: none;
+      }
+      a:hover {
+        color: var(--amber);
+      }
+      :focus-visible {
+        outline: 2px solid var(--amber);
+        outline-offset: 2px;
+      }
+      code {
+        font-family: var(--mono);
+      }
+      summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+    </style>
+
+    <style>
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+      .narrow {
+        max-width: 900px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .body-muted {
+        margin: 0;
+        color: var(--body-muted);
+      }
+      .small {
+        font-size: 16px;
+      }
+      h1,
+      h2 {
+        margin: 0;
+        font-family: var(--mono);
+      }
+      h1 {
+        font-size: clamp(36px, 6vw, 60px);
+        line-height: 1.08;
+        letter-spacing: -1.5px;
+      }
+      h2 {
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.15;
+        letter-spacing: -0.5px;
+      }
+      .lead {
+        margin: 0;
+        color: var(--body-muted);
+        font-size: 19px;
+      }
+
+      /* Header */
+      .site-header {
+        border-bottom: 1px solid var(--border);
+      }
+      .nav {
+        padding-top: 18px;
+        padding-bottom: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px 28px;
+      }
+      .nav-logo {
+        display: flex;
+        align-items: center;
+      }
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 24px;
+        font-family: var(--mono);
+        font-size: 15px;
+        margin-left: auto;
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 48px;
+        padding: 0 22px;
+        border-radius: 10px;
+        font-family: var(--mono);
+        font-size: 16px;
+        white-space: nowrap;
+      }
+      .btn-primary {
+        background: var(--amber);
+        color: var(--ground);
+        font-weight: 700;
+      }
+      .btn-primary:hover {
+        color: var(--ground);
+        background: #f5c44f;
+      }
+      .btn-ghost {
+        border: 1px solid var(--border);
+      }
+      .btn-nav {
+        height: 44px;
+        padding: 0 16px;
+        font-size: 15px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .actions-center {
+        justify-content: center;
+      }
+
+      /* Hero */
+      .hero {
+        padding-top: 88px;
+        padding-bottom: 56px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 48px;
+        align-items: center;
+      }
+      .hero-copy {
+        flex: 1 1 520px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--teal);
+        letter-spacing: 1px;
+      }
+      .hero-lead {
+        margin: 0;
+        font-size: 20px;
+        color: var(--body-muted);
+        max-width: 560px;
+      }
+      .copy-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        max-width: 460px;
+        padding: 10px 10px 10px 18px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel);
+        font-family: var(--mono);
+        font-size: 16px;
+      }
+      .copy-box .prompt {
+        color: var(--muted);
+      }
+      .copy-box code {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .copy-btn {
+        height: 44px;
+        min-width: 44px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #161a22;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .copy-btn:hover {
+        border-color: var(--amber);
+        color: var(--amber);
+      }
+      .hero-visual {
+        flex: 1 1 420px;
+        min-width: 0;
+      }
+      .crew-window {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--panel);
+        font-family: var(--mono);
+        font-size: 15px;
+        overflow: hidden;
+      }
+      .crew-titlebar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .crew-titlebar .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--border);
+      }
+      .crew-title {
+        margin-left: 8px;
+      }
+      .crew-grid {
+        padding: 18px;
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+        row-gap: 12px;
+        column-gap: 8px;
+      }
+      .crew-grid > span {
+        overflow-wrap: anywhere;
+      }
+      .crew-ask {
+        margin: 0 18px 18px;
+        padding: 14px 16px;
+        border: 1px solid var(--amber-border);
+        border-radius: 10px;
+        background: var(--amber-ground);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .ask-head {
+        color: var(--amber);
+      }
+
+      /* Screenshots */
+      .shot-hero {
+        padding-bottom: 96px;
+      }
+      .shot {
+        margin: 0;
+      }
+      .shot :global(img) {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+
+      /* Bands */
+      .band {
+        border-top: 1px solid var(--border);
+      }
+      .band.alt {
+        background: var(--alt);
+      }
+      .band > .wrap {
+        padding-top: 96px;
+        padding-bottom: 96px;
+      }
+      .stack-40,
+      .stack-32,
+      .stack-28 {
+        display: flex;
+        flex-direction: column;
+      }
+      .stack-40 {
+        gap: 40px;
+      }
+      .stack-32 {
+        gap: 32px;
+      }
+      .stack-28 {
+        gap: 28px;
+      }
+      .intro {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .intro-780 {
+        max-width: 780px;
+      }
+      .intro-760 {
+        max-width: 760px;
+      }
+
+      /* Cards */
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+      .grid-280 {
+        grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+        gap: 20px;
+      }
+      .grid-220 {
+        grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+      }
+      .grid-300 {
+        grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      }
+      .card {
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .card-lg {
+        padding: 28px;
+        border-radius: 14px;
+        gap: 10px;
+      }
+      .card-title-lg {
+        font-family: var(--mono);
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .feature-title {
+        font-family: var(--mono);
+        font-weight: 700;
+      }
+
+      /* Tabs */
+      .tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+      }
+      #install .tabs {
+        gap: 28px;
+      }
+      .tablist {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .tab {
+        height: 44px;
+        padding: 0 18px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 15px;
+        cursor: pointer;
+      }
+      .tab:hover {
+        border-color: #3a4554;
+      }
+      .tab[aria-selected='true'] {
+        border-color: var(--amber);
+        background: var(--amber-ground);
+        color: var(--amber);
+      }
+      .tabpanel[hidden] {
+        display: none;
+      }
+      .preset-note {
+        margin: 0;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 15px;
+      }
+
+      /* Crew cards */
+      .role-card {
+        border-top: 3px solid var(--border);
+      }
+      .role-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .role-name {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 18px;
+      }
+      .role-count {
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .role-runs {
+        font-family: var(--mono);
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .role-does {
+        margin: 0;
+        color: var(--body-muted);
+        font-size: 16px;
+      }
+      .you-card {
+        border-color: var(--amber-border);
+        border-top-color: var(--amber);
+        background: var(--amber-ground);
+      }
+      .you-name {
+        color: var(--amber);
+      }
+      .you-runs {
+        color: #c2a15e;
+      }
+      .you-does {
+        color: var(--text);
+      }
+      .own-card {
+        border: 2px dashed var(--dash);
+        background: transparent;
+        justify-content: center;
+      }
+      .code-inline {
+        color: var(--text);
+      }
+
+      /* Plans */
+      .split {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 48px;
+        align-items: center;
+      }
+      .split-copy {
+        flex: 1 1 420px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .split-shot {
+        flex: 1 1 520px;
+        min-width: 0;
+      }
+      .checks {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-size: 17px;
+      }
+      .checks li {
+        display: flex;
+        gap: 12px;
+      }
+      .check {
+        color: var(--teal);
+        font-family: var(--mono);
+      }
+
+      /* Placeholders (screenshots still to come) */
+      .clients {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: stretch;
+      }
+      .placeholder {
+        min-width: 0;
+        margin: 0;
+        border: 2px dashed var(--dash);
+        border-radius: 14px;
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 28px;
+        text-align: center;
+      }
+      .placeholder-web {
+        flex: 3 1 560px;
+        aspect-ratio: 16 / 10;
+      }
+      .placeholder-phone {
+        flex: 1 1 240px;
+        aspect-ratio: 9 / 19;
+        max-height: 620px;
+        border-radius: 28px;
+        padding: 24px;
+      }
+      .placeholder-label {
+        font-family: var(--mono);
+        font-size: 13px;
+        letter-spacing: 2px;
+        color: var(--amber);
+      }
+      .placeholder-desc {
+        color: var(--body-muted);
+      }
+      .placeholder-desc-web {
+        max-width: 560px;
+        font-size: 16px;
+      }
+      .placeholder-desc-phone {
+        font-size: 15px;
+      }
+
+      /* Install */
+      .terminal {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--panel);
+        padding: 22px 24px;
+        font-family: var(--mono);
+        font-size: 16px;
+        line-height: 1.9;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .requirements {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+        font-family: var(--mono);
+      }
+      .amber-link {
+        color: var(--amber);
+      }
+      .amber-link:hover {
+        text-decoration: underline;
+      }
+
+      /* FAQ */
+      .faq {
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--border);
+      }
+      .faq details {
+        border-bottom: 1px solid var(--border);
+        padding: 20px 0;
+      }
+      .faq summary {
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 18px;
+      }
+      .faq summary:hover {
+        color: var(--amber);
+      }
+      .faq p {
+        margin-top: 12px;
+      }
+
+      /* Closing */
+      .closing {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+        text-align: center;
+      }
+
+      /* Footer */
+      .site-footer {
+        border-top: 1px solid var(--border);
+      }
+      .footer-row {
+        padding-top: 32px;
+        padding-bottom: 32px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px 32px;
+        font-family: var(--mono);
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 24px;
+        margin-left: auto;
+      }
+      .footer-links a {
+        color: var(--muted);
+      }
+      .footer-links a:hover {
+        color: var(--amber);
+      }
+
+      /* Narrow screens */
+      @media (max-width: 600px) {
+        .wrap {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+        .hero {
+          padding-top: 56px;
+          gap: 40px;
+        }
+        .hero-copy {
+          flex-basis: 100%;
+        }
+        .hero-visual,
+        .split-copy,
+        .split-shot {
+          flex-basis: 100%;
+        }
+        .hero-lead {
+          font-size: 18px;
+        }
+        .lead {
+          font-size: 17px;
+        }
+        .band > .wrap {
+          padding-top: 64px;
+          padding-bottom: 64px;
+        }
+        .shot-hero {
+          padding-bottom: 64px;
+        }
+        .crew-window {
+          font-size: 13px;
+        }
+        .crew-grid {
+          padding: 14px;
+          grid-template-columns: 16px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+          column-gap: 6px;
+        }
+        .crew-ask {
+          margin: 0 14px 14px;
+          padding: 12px;
+        }
+        .card,
+        .card-lg {
+          padding: 20px;
+        }
+        .placeholder-web,
+        .placeholder-phone {
+          flex-basis: 100%;
+        }
+        .placeholder-web {
+          aspect-ratio: auto;
+          min-height: 240px;
+        }
+        .placeholder-phone {
+          aspect-ratio: auto;
+          min-height: 360px;
+        }
+        .terminal {
+          padding: 18px;
+          font-size: 14px;
+        }
+        .nav-links {
+          margin-left: 0;
+          order: 3;
+          width: 100%;
+          gap: 6px 18px;
+        }
+        .btn-nav {
+          margin-left: auto;
+        }
+        .footer-links {
+          margin-left: 0;
+        }
+      }
+    </style>
+  </body>
+</html>
