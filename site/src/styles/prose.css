@@ -1,0 +1,147 @@
+/* Long-form text: build-log posts and article pages. */
+
+.prose {
+  font-size: 17px;
+  line-height: 1.7;
+}
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 1.1em 0;
+}
+.prose li + li {
+  margin-top: 0.4em;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.4em;
+}
+.prose li::marker {
+  color: var(--muted);
+}
+.prose h2 {
+  margin: 2.4em 0 0.6em;
+  font-family: var(--mono);
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+}
+.prose h3 {
+  margin: 1.8em 0 0.4em;
+  font-family: var(--mono);
+  font-size: 19px;
+  line-height: 1.3;
+}
+.prose h2 + p,
+.prose h3 + p {
+  margin-top: 0.4em;
+}
+.prose a {
+  color: var(--amber);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+.prose strong {
+  color: #f3f5f8;
+  font-weight: 600;
+}
+.prose code {
+  white-space: nowrap;
+  font-size: 0.88em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: #161b24;
+}
+.prose pre {
+  margin: 1.5em 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel) !important;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.prose pre code {
+  white-space: inherit;
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+.prose blockquote {
+  margin: 1.6em 0;
+  padding: 4px 0 4px 20px;
+  border-left: 3px solid var(--amber);
+  color: var(--text);
+}
+.prose blockquote p {
+  margin: 0.4em 0;
+}
+.prose hr {
+  margin: 2.5em 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1.6em 0;
+  border-collapse: collapse;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.prose th,
+.prose td {
+  padding: 8px 14px 8px 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.prose th {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.prose td:not(:first-child),
+.prose th:not(:first-child) {
+  padding-left: 14px;
+}
+.prose figure:not(.not-prose) {
+  margin: 2em 0;
+}
+.prose figure:not(.not-prose img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.prose figcaption {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .prose {
+    font-size: 16.5px;
+  }
+  .prose h2 {
+    font-size: 21px;
+  }
+  .prose table {
+    font-size: 14px;
+  }
+  .prose th,
+  .prose td {
+    padding-right: 8px;
+  }
+  .prose td:not(:first-child),
+  .prose th:not(:first-child) {
+    padding-left: 8px;
+  }
+}

@@ -97,6 +97,7 @@ export default defineConfig({
         // Cookieless visit counts for the website; see GOATCOUNTER in src/site.ts.
         { tag: 'script', attrs: { 'data-goatcounter': 'https://cland.goatcounter.com/count', async: true, src: 'https://gc.zgo.at/count.js' } },
         { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' } },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/favicon-192.png' } },
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
         { tag: 'meta', attrs: { property: 'og:image', content: `${SITE}/og.png` } },
         { tag: 'meta', attrs: { property: 'og:image:width', content: '1280' } },
