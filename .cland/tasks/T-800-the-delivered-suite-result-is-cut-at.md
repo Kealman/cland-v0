@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-506
 branch: t/T-800-the-delivered-suite-result-is-cut-at
 created: 2026-10-18T12:11:23.483Z
-updated: 2026-10-18T13:21:24.193Z
+updated: 2026-10-18T14:44:16.800Z
 ---
 
 ## Summary
@@ -27,12 +27,15 @@ Found by qa-676 in E-676's demo (run qa-2026-10-18-1, criterion C2). Task run 01
 - [x] C1. A delivered suite result puts the run summary, the per-tier lines, the tier-share line, the test-lint summary and the budget would-fail lines before any per-file or per-finding detail, and stays within the delivery limit. A T2 report test with a repository-sized manifest and findings proves it, and fails before the fix.
   - done: impl-800 · 2026-10-18T12:48:23.586Z
   - verified: rev-31 [reviewer] · run rev-20261018-800-final · 2026-10-18T13:21:23.029Z · commit 74570dc5775a1579e6c5c515ef96ceab5e022ff4
+  - verified: rev-31 [reviewer] · run rev-20261018-800-merge-delta · 2026-10-18T14:44:15.382Z · commit 19527b79c6f447d90dbddd43218d5bde073b1bb6
 - [x] C2. Per-file `test lint tier` lines and individual lint findings appear only in the log artifact, with one summary line in the message (counts plus the artifact id). Findings that refuse a run are still named in full.
   - done: impl-800 · 2026-10-18T12:22:07.443Z
   - verified: rev-31 [reviewer] · run rev-20261018-800-final · 2026-10-18T13:21:23.029Z · commit 74570dc5775a1579e6c5c515ef96ceab5e022ff4
+  - verified: rev-31 [reviewer] · run rev-20261018-800-merge-delta · 2026-10-18T14:44:15.382Z · commit 19527b79c6f447d90dbddd43218d5bde073b1bb6
 - [x] C3. A dry-run and an integrated run at the fixed head show the same ordering.
   - done: impl-800 · 2026-10-18T12:17:18.565Z
   - verified: rev-31 [reviewer] · run rev-20261018-800-final · 2026-10-18T13:21:23.029Z · commit 74570dc5775a1579e6c5c515ef96ceab5e022ff4
+  - verified: rev-31 [reviewer] · run rev-20261018-800-merge-delta · 2026-10-18T14:44:15.382Z · commit 19527b79c6f447d90dbddd43218d5bde073b1bb6
 
 ## Comments
 
@@ -261,5 +264,50 @@ Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 1826 s, c
 Evidence A-5320: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5320-suite-7b32bd8e-ec8d-4f54-9ed0-9eaaaadbd4c6-auto-at-74570dc.log.
 
 Artifact A-5323.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-800 · 2026-10-18T14:42:59.988Z
+
+Coordinator-authorized one-time origin/dev merge completed and pushed at 19527b79c6f447d90dbddd43218d5bde073b1bb6 (parents: reviewed 74570dc5 + dev 2a3aa788). Sole manual resolution is hub/test/suite-dry-run.test.ts; A-5353 contains Git remerge diff. Kept T-714 T1–T3/no-T4/55.556% expectations and T-800 summary-first checks, without a terminal tier-share anchor before later summary lines. Requested serial validation passed: suite-dry-run 4/4 4.780s; suite-protocol 10/10 2.565s; suite-cache-recovery 3/3 26.010s; then lint (199 findings in 108 files) and typecheck passed. Task diff whitespace check clean. Requesting delta review and explicit test-only-resolution disposition per Coordinator; no fresh droplet run submitted.
+
+### rev-31 · 2026-10-18T14:44:15.382Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-800-merge-delta
+commit: 19527b79c6f447d90dbddd43218d5bde073b1bb6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-800 authorized test-only merge delta
+
+Commit: 19527b79c6f447d90dbddd43218d5bde073b1bb6
+Parents: final-reviewed 74570dc5775a1579e6c5c515ef96ceab5e022ff4; dev 2a3aa788
+Run: rev-20261018-800-merge-delta
+Scope: delta
+Result: clear
+
+## Standards
+No findings. Recorded remerge resolution A-5353, combined diff and comparisons against both parents establish that manual conflict resolution is confined to suite-dry-run.test.ts. It preserves T-714's ordinary T1–T3/no-T4 expectations and 55.556% of 900 seconds, while retaining T-800's summary-first ordering assertions, absence of individual lint detail from messages and raw-log detail assertions. Removing the terminal share anchor is required because summaries now follow the tier share. No process, wait, tier declaration or allowance added.
+
+The merge inherits dev product changes automatically; it is not a claim that all product files are byte-identical to the old task head. The task's committed protocol/cached-overflow regression file and budget-summary parser are byte-identical to the reviewed task parent. The automatic suiteSummary combination retains dev's labelled child-tier timings alongside the task priority summary. The task diff against dev remains eight files, with no manual production-source resolution.
+
+Request reports serial merged-head dry-run 4/4 (4.780 s), protocol 10/10 (2.565 s), cache-recovery 3/3 (26.010 s), lint/typecheck green and unchanged 199/108 lint census. Task diff whitespace check is clean. No Reviewer tests run.
+
+## Spec
+No findings. Required report ordering, artifact-only lint detail, bounded fresh/cached delivery with reserved provenance and injected T2 candidate are preserved. Updated dry-run assertions align with inherited T-714 cadence while keeping ordering and log-retention checks.
+
+Independently read Coordinator dbeab01d-8aeb-46eb-9cc6-7978b500394b in topic-506: authorize one dev merge, keep T1–T3 plus summary-first behavior, run the named files serially and merge on delta review if the Reviewer confirms test-only resolution. That condition is satisfied.
+
+C1–C3 verification carries forward at this merged head under this explicit disposition, using prior audited A-5320 / 7b32bd8e (full exit 0; 2595 pass, eight prerequisite skips; full Neovim complete; 36 audited ordinary identities and 15/15 task repetitions) plus merged-source review and fresh targeted checks. The old receipt remains exact-old-head evidence; there is no new exact-merged-head droplet receipt and none is required by this disposition.
+
+C3 live proof remains Coordinator-owned first integrated cover after hub restart and E-676 C2 demo re-run. Origin matches the reviewed merged head. No per-item QA; no remaining finding.
+
+Standards: zero findings. Spec: zero findings.
+
+Artifact A-5361.
 
 Criteria: C1 verified, C2 verified, C3 verified.

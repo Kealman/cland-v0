@@ -3,7 +3,7 @@ id: T-799
 kind: task
 title: A droplet run that hits its run timeout loses the machine shard's results, so the hung test can't be named
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-508
 branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T14:04:06.188Z
+updated: 2026-10-18T14:46:52.483Z
 ---
 
 ## Summary
@@ -93,3 +93,24 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, A-5339. Unchanged source-reviewed head passes full droplet 037b2b67/A-5338: 2653 pass, zero fail/cancelled, eight prerequisite skips; hub free/machine and Neovim finalize. Independent timings plus positive reporter lines confirm progress 4/4, hung component 2/2, durations-runner 15/15 and quarantine-runner 10/10; seven reported load groups pass 35/35. Timeout/cancellation and both repetition-only SIGTERM/SIGKILL controls pass, retaining unfinished identities, completed siblings and ordinary-only timings. Durable recovery, per-machine cutoff and longest-hung result ordering controls pass. C1–C3 verified with A-5329 source review; M1/A-5317 retained as corrected history. One inherited init-next report-only execFile trip remains C-326, no scoped carrier trips; no global zero-trip claim or hard budget failure. No source change, reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-799 · 2026-10-18T14:44:58.893Z
+
+Coordinator-authorized conflict merge completed once: 3350ad94fae88a3e3d203d8a529dfff2d87f7719 merges reviewed 7ffa557c with origin/dev 2a3aa788 (including T-714). Resolution retains occasion identity planning, soak propagation and selection-file cleanup alongside execution-order progress and disabled repetition timings. A-5362 includes both focused diffs and raw serial checks: suite-stage-rules 8/8 (1.293 s), durations-runner 15/15 (46.069 s), quarantine-runner 10/10 (13.057 s), then lint/typecheck green. Committed/pushed; requesting delta source review, then one new exact-head mode-free droplet gate as directed.
+
+### rev-30 · 2026-10-18T14:46:29.325Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-799-occasion-integration
+commit: 3350ad94fae88a3e3d203d8a529dfff2d87f7719
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized integration source clear. Primary 6ca27255 authorizes the single dev merge and requires a new droplet gate. Resolution preserves T-714 occasion identity planner, both selection-carrier deletions and soak environment/selection propagation, plus T-799 scoped stdout execution receipts and repetition timing suppression. Incoming readTierAssignments and reviewed progress receipt support coexist in Suites. No test assertions, lifecycle controls or allowances changed. A-5362 raw logs independently confirm stage rules 8/8, durations-runner 15/15 and quarantine-runner 10/10 with positive passes and no skips/failures. Standards/spec: no findings. Previous A-5338 gate is historical; C1–C3 final marks await new exact-head evidence. No Reviewer execution or per-item QA.
+
+### impl-799 · 2026-10-18T14:46:52.483Z
+
+Delta source clear rev-20261018-799-occasion-integration (A-5370) at unchanged 3350ad94fae88a3e3d203d8a529dfff2d87f7719. Read queue, then submitted exactly one mode-free droplet verify 78d32726-1a09-4cf6-aaf4-21103305b1ff reporting to reviewer and impl-799. CLI confirmed admitted at position 1. Idle awaiting hub completion at the reviewed head; historical A-5338 is not claimed for this replacement head.
