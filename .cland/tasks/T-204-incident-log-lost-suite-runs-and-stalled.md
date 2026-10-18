@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-17T15:25:22.141Z
+updated: 2026-10-18T18:33:28.605Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -352,3 +352,7 @@ Incident 2026-10-16 21:50Z. T-475 (fdadc69d) makes local test admission call a h
 ### coord · 2026-10-17T15:25:22.141Z
 
 D55 (2026-10-17 15:24Z): ask 633a5073 option 1, answered by the stand-in under D39/D24. The daily droplet cap is $24 for 2026-10-17 (commit 2a50280b), up from $14. At that point $10.49 was spent, $1.50 reserved, burning about $1.5/h on the E-676/E-677 wave. Back to $14 for 2026-10-18.
+
+### human · 2026-10-18T18:33:28.605Z
+
+Incident 2026-10-18 17:48Z: the Coordinator's harness (pid 99977) exited ('bye' then harness-exited, pid gone) and nothing reconnected; the hub released the role at 17:48:11Z. Found at the 18:23Z check (35 min vacant; impl-813's 18:11Z report to 'lead T-813' was refused coordinator:empty). 'cland session resume coord' re-find failed (not listed by claude agents), '--relaunch' failed with 'claude --bg failed (exit 1): Workspace not trusted': coord's harness_processes row still carried account_env {CLAUDE_CONFIG_DIR: ~/.claude} recorded before T-603, which T-603 deliberately did not migrate, so the relaunch ran claude on the empty profile. Stand-in under D24 set that row's account_env to null (one sqlite update on the exited row), then 'session resume coord --relaunch' started pid 12929 (harness 8fb7be60) at 18:32:05Z on the recorded conversation and 'cland role set coord coordinator' restored the role (coordinator-filled 18:32:05Z). Follow-up for coord: a ticket for migrating or ignoring pre-T-603 explicit default directories on relaunch, and a check why the harness exits unnoticed (T-372 class, 4th time).

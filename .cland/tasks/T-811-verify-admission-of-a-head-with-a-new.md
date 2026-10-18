@@ -2,8 +2,8 @@
 id: T-811
 kind: task
 title: Verify admission of a head with a new test-lint violation takes ~14.5 s on a quiet Mac, near the 15 s CLI deadline (T-788 covers only cached facts)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: qa
 topic: topic-516
 branch: t/T-811-verify-admission-of-a-head-with-a-new
 created: 2026-10-18T16:16:11.463Z
-updated: 2026-10-18T17:15:23.907Z
+updated: 2026-10-18T18:33:30.778Z
+closed: 2026-10-18T18:33:30.778Z
 ---
 
 ## Summary
@@ -72,3 +73,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged e0a38e7f. A-5481/0778348c full gate passes 2624/2632 ordinary tests, zero fail/cancel, eight unrelated prerequisite skips; full Neovim completes. Cold refusal parent passes 1.527539361s and 5/5 repetitions; all admission-cost nested, tier, lint and admission controls execute. A-5483 distinguishes modeled cost/native Mac profile/host body time and discloses inherited C-326/T-803 report-only warnings. C1/C2 verified; no per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T18:33:30.778Z
+
+Merged 5003a97d78336c18b9d6904db572a8f7aa9e11b1 onto dev.
