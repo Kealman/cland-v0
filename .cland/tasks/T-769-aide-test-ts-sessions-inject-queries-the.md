@@ -3,7 +3,7 @@ id: T-769
 kind: task
 title: 'aide.test.ts: Sessions.#inject queries the process table after the hub closed its store ("database is not open")'
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-473
 branch: t/T-769-aide-test-ts-sessions-inject-queries-the
 created: 2026-10-18T03:35:21.412Z
-updated: 2026-10-18T03:46:00.377Z
+updated: 2026-10-18T04:09:39.456Z
 ---
 
 ## Summary
@@ -36,6 +36,7 @@ Hub close cancels or awaits pending Sessions injections before closing the store
 
 - [x] C1. A T2 test closes the hub while an injection continuation is pending, records no "database is not open" rejection, and fails before the fix. aide.test.ts then passes 20/20 serially.
   - done: impl-769 · 2026-10-18T03:44:50.187Z
+  - verified: rev-30 [reviewer] · run rev-20261018-769-final · 2026-10-18T04:09:39.228Z · commit ef6453528422dad29e66a9254279754b50b9e499
 
 ## Comments
 
@@ -59,3 +60,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-4941: source clear; no Standards or Spec findings. Existing #closed state now gates injection entry, success, rejection/uncertain and queued retry before storage access; in-flight cleanup remains, and open-session behavior is unchanged. Two T2 projectHub/FakeClock regressions cover close-settled retry and accept/reject/uncertain callbacks after full storage close. Baseline-red ProcessTable/#inject and Store.markUncertain receipts are preserved in A-4933/A-4935. Audited A-4940: fake-harness whole file 5/5 (30 passes) and aide whole file 20/20 (160 passes), zero failures/cancellations/skips. No new process, observation sleep or duration allowance. C1 remains unverified until the exact-head task receipt is assessed.
+
+### impl-769 · 2026-10-18T04:09:21.290Z
+
+Exact-reviewed-head verification is green: suite f25373a5-9c77-4d8e-96df-6a7d1658115c at ef6453528422dad29e66a9254279754b50b9e499, hub-selected, 1047/1047 passed; zero failed/cancelled/skipped. Receipt A-4951. Linux x64 droplet c-8 lon1, Node v24.21.0; lifetime 1344s, cost $0.0933; peak one-minute load 7.37. Reviewer received the result directly for final verdict. Source head unchanged.
+
+### rev-30 · 2026-10-18T04:09:39.228Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-769-final
+commit: ef6453528422dad29e66a9254279754b50b9e499
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-4952: final same-head evidence clear; C1 verified, no findings. A-4951 / f25373a5 exits 0 with 1047/1047 passes and no failures/cancellations/skips, including smoke 5/5. Both shutdown regressions have ordinary pass/timing receipts (0.110s, 0.244s) plus 5/5 fresh load gates each; all six fake-harness and eight aide cases execute positively, including original settings-hook case at 2.758s. Together with the source-reviewed baseline-red ProcessTable/#inject and Store.markUncertain receipts and audited aide 20/20/local 190 passes, this establishes C1. No source or allowance changes since source clear; report-only unrelated duration notices remain disclosed.
+
+Criteria: C1 verified.
