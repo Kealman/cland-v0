@@ -1,10 +1,11 @@
+// T2: queue metrics through one CLI rendering proof; reload permutations use the socket edge.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { queueWaitMetrics } from '../src/hub/verification-wait.ts';
 import { Suites, type SuiteJob } from '../src/hub/suites.ts';
 import { Store } from '../src/hub/store.ts';
 import { join } from 'node:path';
-import { tempProject, projectHub, cland } from './harness.ts';
+import { tempProject, projectHub, cland, connectUi } from './harness.ts';
 import type { LogEntry } from '../src/log.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -121,7 +122,8 @@ test('verify queue and hub status expose matching windows, configured target, an
   const store = new Store(join(root, '.cland/hub.db'));
   try { store.setMeta('suite-jobs', JSON.stringify([local, remote, cached])); }
   finally { store.close(); }
-  await projectHub(t, root);
+  const hub = await projectHub(t, root, {}, { probes: 'fake' });
+  const ui = await connectUi(t, hub.discovery);
   const queue = await cland(root, 'verify', 'queue', '--json');
   assert.equal(queue.code, 0, queue.stderr);
   const status = await cland(root, 'hub', 'status', '--json');
@@ -141,7 +143,7 @@ test('verify queue and hub status expose matching windows, configured target, an
   const editedConfig = loadedConfig.replace(/wait_p90_target\s*=\s*"15m"/, 'wait_p90_target="5m"');
   assert.notEqual(editedConfig, loadedConfig);
   await writeFile(configPath, editedConfig);
-  const target = async () => ((JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout) as HubStatus).verification?.metrics.queueWait?.targetP90Ms);
+  const target = async () => (((await ui.request({ type: 'hub.status' })).value as HubStatus).verification?.metrics.queueWait?.targetP90Ms);
   assert.equal(await target(), 900_000, 'metrics use the loaded snapshot until config reload');
   const reloaded = await cland(root, 'hub', 'reload');
   assert.equal(reloaded.code, 0, reloaded.stderr);

@@ -7,7 +7,7 @@ The scripts use `hub/bin/typecheck.ts` to resolve the pinned `typescript7` npm
 alias, including from task worktrees that inherit the root install. This avoids
 the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installed as
 `typescript` because `hub/test/executor.test.ts` and
-`hub/test/tracker-container-source.test.ts` use its compiler API, which 7 does
+`hub/test/lint-tracker-container-source.ts` use its compiler API, which 7 does
 not provide. T-427 records matching diagnostics on both clean projects and
 planted strict-option/import errors before the switch.
 
@@ -17,7 +17,7 @@ Every test has a level, and most belong lower than where they're written today. 
 
 | Tier | What it holds | What it may use | Budget per test |
 | --- | --- | --- | --- |
-| T0 static | typecheck, manifest and test lint | no test process | |
+| T0 static | typecheck, manifest and test lint; deterministic whole-repository source guards | no test process | |
 | T1 unit | pure modules, tracker, store, planners, hub rules in-process | a fake clock and in-memory fakes; no sockets, child processes or real time | 0.5 s |
 | T2 component | a hub served in the test process (`projectHub`) with real socket edges; the CLI as a subprocess only when the CLI itself is the subject | an in-process fake adapter and a fake clock; no `startDaemon`, `spawnSpoke`, fake harness binaries or Neovim (except the stub-hub client below) | 2 s |
 | T3 integration | a curated set of real-process scenarios, plus true process-lifecycle files and one real-binary contract file per harness | anything | 10 s |
@@ -40,6 +40,8 @@ The target strategy is task verification at T0–T2, T3 once per merge batch and
 - Count `startDaemon(`, `spawnSpoke(`, `cland(` and `sleep(` in each new or changed test. For each one, ask which is the frame proof and why a lower tier can't prove the rest.
 - A new file that spawns a process with no lifecycle sentence in its header, or a new wall-clock wait, is a finding of at least medium severity.
 - Don't ask for a full run on a task head. A task verify plus the integrated cover (later, the merge-queue batch) is sufficient evidence.
+
+Deterministic whole-repository source guards run through `npm run test:static`, included in the task host gate’s `npm run test:lint`.
 
 ### Named T3 scenarios
 

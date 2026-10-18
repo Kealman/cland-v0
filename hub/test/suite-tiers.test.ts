@@ -1,10 +1,9 @@
-// T2: in-process manifest/planner tests; no hub or process is started.
+// T1: in-process manifest/planner tests; no hub or process is started.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile, rm, glob } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { hubShards, lintHubShards, packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 
 test('tier manifest covers hub and Neovim without changing package resource phases', async t => {
@@ -114,23 +113,6 @@ test('legacy manifest preserves its recorded phases, targets and worker counts',
   ]);
 });
 
-test('repository full plan places current test files in their declared tier phases', async () => {
-  const root = fileURLToPath(new URL('../../', import.meta.url));
-  const tiers = JSON.parse(await readFile(join(root, 'hub/test/tiers.json'), 'utf8')) as TierManifest;
-  const paths = [];
-  for await (const path of glob(['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd: root })) paths.push(path);
-  assert.deepEqual(Object.keys(tiers.tests), paths.sort());
-  // Retagged and added files follow today's manifest; removed files do not run.
-  // T1 alone is hermetic; T2/T3/T4 retain the machine phase, and Neovim stays one package phase.
-  const hub = Object.keys(tiers.tests).filter(path => path.startsWith('hub/'));
-  const hermetic = (path: string) => { const value = tiers.tests[path]!; return (typeof value === 'string' ? value : value.tier) === 'T1'; };
-  assert.deepEqual(await packageShards(root, 'full', undefined, undefined, { workers: 4 }), [
-    { name: 'hub free', resource: 'free', workers: 1, targets: hub.filter(hermetic) },
-    { name: 'hub machine', resource: 'machine', workers: 4, targets: hub.filter(path => !hermetic(path)) },
-    { name: 'Neovim', resource: 'machine', workers: 4, targets: ['nvim/test/**/*.test.ts'] },
-  ]);
-});
-
 test('tiers take priority over a leftover legacy manifest without masking tier faults', async t => {
   const { root, write } = await fixture(t);
   await writeFile(join(root, 'hub/test/shards.json'), JSON.stringify({ version: 1, tests: {} }));
@@ -150,4 +132,21 @@ test('a package without either manifest keeps its existing Neovim-only plan', as
   assert.deepEqual(await packageShards(root, 'full', undefined, undefined, { workers: 4 }), [
     { name: 'Neovim', resource: 'machine', workers: 4, targets: ['nvim/test/**/*.test.ts'] },
   ]);
+});
+
+test('duration lint uses supplied legacy keys for package planning and rejects unrecorded allowances', async t => {
+  const { root, write } = await fixture(t);
+  await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  const key = 'hub/test/a.test.ts::recorded';
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({
+    version: 1, source: { artifacts: [], commit: 'fixture' },
+    budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {},
+    allow: { [key]: { seconds: 6, owner: 'E-677', legacy: true, reason: 'Recorded before tier budgets.' } },
+  }));
+  const history = { legacyKeys: new Set([key]) };
+  assert.deepEqual((await packageShards(root, 'full', undefined, undefined, { workers: 4, ...history })).map(phase => phase.name), ['hub free', 'Neovim']);
+  await assert.doesNotReject(lintHubShards(root, history));
+  await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), /new duration allowance cannot be legacy/);
 });

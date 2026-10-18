@@ -1,6 +1,6 @@
 // Reporting only: tier projections never participate in a run's exit decision.
 import { glob } from 'node:fs/promises';
-import { packageShards, readTierAssignments, type Tier, type SuiteShard } from './suite-shards.ts';
+import { packageShards, readTierAssignments, type Tier, type SuiteShard, type DurationHistory } from './suite-shards.ts';
 import { readDurationManifest, type TestTiming } from './suite-durations.ts';
 import type { SuiteSelection } from './suite-selection.ts';
 
@@ -10,7 +10,7 @@ const seconds = (n: number) => Number(n.toFixed(3)).toString();
 const budgets: Record<Tier, number | null> = { T1: 120, T2: 480, T3: 900, T4: null };
 
 /** Expand the actual package phases, including smoke, deduplicating planned files. */
-export async function planTierReport(cwd: string, selection: SuiteSelection, workers: number, phases?: SuiteShard[]): Promise<TierPlan> {
+export async function planTierReport(cwd: string, selection: SuiteSelection, workers: number, phases?: SuiteShard[], history: DurationHistory = {}): Promise<TierPlan> {
   const tiers = await readTierAssignments(cwd);
   if (!tiers) return [];
   const manifest = await readDurationManifest(cwd);
@@ -18,7 +18,7 @@ export async function planTierReport(cwd: string, selection: SuiteSelection, wor
   const median = known.length ? known.length % 2 ? known[Math.floor(known.length / 2)]! : (known[known.length / 2 - 1]! + known[known.length / 2]!) / 2 : 1;
   const result: TierPlan = [];
   const seen = new Set<string>();
-  for (const phase of phases ?? await packageShards(cwd, selection.mode, selection.shard, selection, { workers })) {
+  for (const phase of phases ?? await packageShards(cwd, selection.mode, selection.shard, selection, { workers, ...history })) {
     const paths: string[] = [];
     for await (const path of glob(phase.targets, { cwd })) if (!seen.has(path) && tiers.has(path)) { seen.add(path); paths.push(path); }
     for (const tier of ['T1', 'T2', 'T3', 'T4'] as const) {

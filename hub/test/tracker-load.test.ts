@@ -1,3 +1,5 @@
+// T4 load check: measures real request latency with 20 publishing sessions and
+// up to 200,000 retained journal events; the 5 s latency assertion requires a quiet machine.
 // Live-like adapter publications and tracker requests through the real WebSocket edge.
 import test from 'node:test';
 import assert from 'node:assert/strict';

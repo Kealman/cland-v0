@@ -1,3 +1,5 @@
+// T3 integration: cold Neovim process restarts and WinClosed/WinResized event ordering
+// prove preference persistence at the real editor boundary.
 // Persistent preferences at the real Neovim process boundary, with the stub hub on stdio.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';

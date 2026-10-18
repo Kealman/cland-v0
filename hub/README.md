@@ -1696,7 +1696,7 @@ hub project. Both scripts use `hub/bin/typecheck.ts` to resolve the alias from
 local or ancestor installs, including dependency-free task worktrees, because
 both compiler packages provide a `tsc` executable. TypeScript 5.9.3 remains installed
 as `typescript` for the compiler API used by `hub/test/executor.test.ts` and
-`hub/test/tracker-container-source.test.ts`; TypeScript 7 does not provide that
+`hub/test/lint-tracker-container-source.ts`; TypeScript 7 does not provide that
 API. Adoption was gated on matching diagnostic codes, files and lines on both
 clean projects and planted strict-option/import errors (T-427).
 

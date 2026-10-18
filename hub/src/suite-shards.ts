@@ -22,6 +22,8 @@ const LEGACY_MANIFEST = 'hub/test/shards.json';
 export type Tier = 'T1' | 'T2' | 'T3' | 'T4';
 export type TierEntry = Tier | { tier: 'T3'; contract: string } | { tier: 'T3'; scenario: string };
 export type TierManifest = { version: 1; tests: Record<string, TierEntry> };
+// Inject recorded allowance provenance for in-process planners; production reads Git.
+export type DurationHistory = { legacyKeys?: ReadonlySet<string> };
 
 /** All manifest writers use path order, independent of insertion order or locale. */
 export function serializeTierManifest(manifest: TierManifest): string {
@@ -95,8 +97,8 @@ export async function readTierAssignments(cwd: string): Promise<Map<string, Tier
   return tiers;
 }
 
-export async function hubShards(cwd: string, smoke = false, workers?: number): Promise<SuiteShard[]> {
-  await lintDurations(cwd);
+export async function hubShards(cwd: string, smoke = false, workers?: number, history: DurationHistory = {}): Promise<SuiteShard[]> {
+  await lintDurations(cwd, history);
   const entry = await readManifest(cwd);
   const paths = [];
   for await (const path of glob(entry && !entry.legacy ? PATTERNS : HUB_PATTERNS, { cwd })) paths.push(path);
@@ -104,9 +106,9 @@ export async function hubShards(cwd: string, smoke = false, workers?: number): P
 }
 
 /** Only projects with a manifest opt in. Admission also covers dirty test files. */
-export async function lintHubShards(cwd: string): Promise<void> {
-  await lintDurations(cwd);
-  if (await readManifest(cwd)) await hubShards(cwd);
+export async function lintHubShards(cwd: string, history: DurationHistory = {}): Promise<void> {
+  await lintDurations(cwd, history);
+  if (await readManifest(cwd)) await hubShards(cwd, false, undefined, history);
 }
 
 /** Judge the branch's additions, independent of allowances retired later on dev. */
@@ -155,13 +157,13 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
   await classify(paths.filter(path => (legacy ? HUB_PATTERNS : PATTERNS).some(pattern => matchesGlob(path, pattern))), parseManifest(await source(manifestPath), manifestPath), source, false, 4, legacy);
 }
 
-async function lintDurations(cwd: string): Promise<void> {
+async function lintDurations(cwd: string, history: DurationHistory): Promise<void> {
   try {
     const manifest = await readDurationManifest(cwd);
     if (manifest) {
       lintDurationManifest(manifest);
       const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
-      const legacyKeys = await legacyDurationKeys(git);
+      const legacyKeys = history.legacyKeys ?? await legacyDurationKeys(git);
       lintDurationManifest(manifest, { owners: await durationOwners(cwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
     }
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
@@ -169,25 +171,25 @@ async function lintDurations(cwd: string): Promise<void> {
   catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [QUARANTINE_MANIFEST]); }
 }
 
-export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
+export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: DurationHistory & { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
   const workers = options.workers ?? (await suiteLimits(cwd, options.executor)).workers;
   if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
   if (selection) {
-    const shards = await hubShards(cwd, false, workers);
+    const shards = await hubShards(cwd, false, workers, options);
     const known = new Set(shards.flatMap(shard => shard.targets));
     for (const file of selection.files) if (!known.has(file)) throw new ShardManifestError(`unknown explicit hub shard file: ${file}`, [file]);
     return [...shards.map(shard => ({ ...shard, targets: shard.targets.filter(file => selection.files.includes(file)) })).filter(shard => shard.targets.length),
       ...(selection.nvim ? [{ name: 'Neovim', targets: ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers }] : [])];
   }
   if (mode === 'hub-selected') {
-    const shards = await hubShards(cwd, false, workers);
+    const shards = await hubShards(cwd, false, workers, options);
     const known = new Set(shards.flatMap(shard => shard.targets));
     if (!coverage?.tests?.length) throw new ShardManifestError('selected hub tests missing');
     for (const test of coverage.tests) if (!known.has(test)) throw new ShardManifestError(`unknown selected hub test: ${test}`, [test]);
     return [...shards.map(shard => ({ ...shard, name: `${shard.name} selected`, targets: shard.targets.filter(file => coverage.tests!.includes(file)) })).filter(shard => shard.targets.length),
       { name: coverage.nvimFull ? 'Neovim' : coverage.nvimTests ? 'Neovim selected' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : coverage.nvimTests ?? NVIM_SMOKE, resource: 'machine', workers }];
   }
-  return [...await hubShards(cwd, mode === 'nvim-only', workers), { name: coverage?.nvimTests ? 'Neovim selected' : mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: coverage?.nvimTests ?? (mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts']), resource: 'machine', workers }];
+  return [...await hubShards(cwd, mode === 'nvim-only', workers, options), { name: coverage?.nvimTests ? 'Neovim selected' : mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: coverage?.nvimTests ?? (mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts']), resource: 'machine', workers }];
 }
 
 /** Longest-processing-time placement, including Neovim as one indivisible job. */

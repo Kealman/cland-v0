@@ -40,7 +40,14 @@ test('cover CLI enforces role permissions, journals classifications and renders 
   const classify = (note: string) => clandWithEnv(f.root, env, 'verify', 'classify', 'cover-11', 'load-flake', '--note', note, '--json');
   for (const role of ['implementer', 'reviewer', 'qa', 'aide', 'lead']) {
     assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role })).ok, true);
-    const denied = await classify('must not change'); assert.equal(denied.code, 1); assert.match(denied.stderr, /Coordinator|coordinator/);
+    if (role === 'implementer') {
+      // One CLI refusal proves shell attribution; the role table uses the same dispatcher frame.
+      const denied = await classify('must not change');
+      assert.equal(denied.code, 1); assert.match(denied.stderr, /Coordinator|coordinator/);
+    } else {
+      const denied = await f.ui.request({ type: 'suite.classify', suite: 'cover-11', cause: 'load-flake', note: 'must not change', as: { name: 'impl', sessionId: 'cover-cli', shell: true } });
+      assert.equal(denied.ok, false); assert.match(denied.error!, /Coordinator|coordinator/);
+    }
   }
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   assert.equal((await classify('   ')).code, 1);
@@ -65,12 +72,18 @@ test('queue CLI and subscription expose ordered hand-held waiters; reload report
   const f = await seed(t, base => { const { cover: _cover, ...withoutCover } = base; return ['impl', 'other'].map((name, i) => ({ ...withoutCover, id: name, state: 'queued', reported: false, cleaned: false, outcome: null, integrated: false,
     queued: new Date(Date.UTC(2026, 9, 16, 11, i)).toISOString(), actor: { name, sessionId: name, shell: true } } as SuiteJob)); });
   assert.equal((await f.ui.request({ type: 'subscribe' })).ok, true);
-  const check = async () => {
-    const cli = await cland(f.root, 'verify', 'queue', '--json'); assert.equal(cli.code, 0, cli.stderr); const q = JSON.parse(cli.stdout) as VerificationQueue;
+  const check = async (ui = f.ui, cliProof = true) => {
+    let q: VerificationQueue;
+    if (cliProof) {
+      const cli = await cland(f.root, 'verify', 'queue', '--json'); assert.equal(cli.code, 0, cli.stderr);
+      q = JSON.parse(cli.stdout) as VerificationQueue;
+    } else q = (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
     assert.equal(q.holder?.kind, 'hand run'); assert.equal(q.holder?.pid, process.pid); assert.equal(q.holder?.worktree, '/hand/worktree');
     assert.deepEqual(q.waiters.map(w => [w.id, w.position, w.session]), [['impl', 1, 'impl'], ['other', 2, 'other']]);
-    const text = await cland(f.root, 'verify', 'queue'); assert.equal(text.code, 0, text.stderr); assert.match(text.stdout, /local: hand run/); assert.match(text.stdout, /1\. impl.*wait .*ETA unknown/);
-    assert.notEqual((await cland(f.root, 'verify', 'queue', '--fresh')).code, 0);
+    if (cliProof) {
+      const text = await cland(f.root, 'verify', 'queue'); assert.equal(text.code, 0, text.stderr); assert.match(text.stdout, /local: hand run/); assert.match(text.stdout, /1\. impl.*wait .*ETA unknown/);
+      assert.notEqual((await cland(f.root, 'verify', 'queue', '--fresh')).code, 0);
+    }
   };
   await check();
   await f.clock.advance(1000);
@@ -78,7 +91,8 @@ test('queue CLI and subscription expose ordered hand-held waiters; reload report
   const path = join(f.root, '.cland/config.toml'); await writeFile(path, (await readFile(path, 'utf8')) + 'load_gate_workers=3\n');
   const reloaded = await cland(f.root, 'hub', 'reload'); assert.equal(reloaded.code, 0, reloaded.stderr); assert.match(reloaded.stdout, /verification.load_gate_workers/);
   await f.hub.stop(); const next = await projectHub(t, f.root, {}, { clock: f.clock, compatibility: f.compatibility, durationContext: null });
-  await check(); const ui = await connectUi(t, next.discovery);
+  const ui = await connectUi(t, next.discovery);
+  await check(ui, false); // The same queue facts survive reopen; CLI rendering was proved above.
   assert.equal(((await ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters.length, 2);
 });
 

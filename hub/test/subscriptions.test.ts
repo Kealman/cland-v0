@@ -314,9 +314,14 @@ test('events and progress keep one ordered digest across flavour restarts', asyn
         seen = 0;
         await sender.waitForPresence(['coord', 'impl']);
         await idle();
-        const listing = await cland(root, 'subscriptions', '--as', 'coord', '--json');
-        assert.equal(listing.code, 0, listing.stderr);
-        assert.deepEqual(JSON.parse(listing.stdout).subscriptions.filter((s: Subscription) => !s.default), [subscribed.subscription]);
+        let listed: Subscription[];
+        if (harness === FAKE_FLAVOURS[0]) {
+          // One CLI proof; the remaining flavours check the same restored list through the spoke.
+          const listing = await cland(root, 'subscriptions', '--as', 'coord', '--json');
+          assert.equal(listing.code, 0, listing.stderr);
+          listed = JSON.parse(listing.stdout).subscriptions;
+        } else listed = (await peer.call<{ subscriptions: Subscription[] }>('subscriptions', {})).subscriptions;
+        assert.deepEqual(listed.filter(s => !s.default), [subscribed.subscription]);
         assert.equal((await inputLog()).includes(eventText), false, 'restart role clauses leave events held');
       }
       const report = `${prefix} report releases events`;

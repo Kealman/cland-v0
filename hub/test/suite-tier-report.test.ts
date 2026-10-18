@@ -1,8 +1,11 @@
 // T1: tier accounting and run-summary rendering use planted plans and receipts in-process.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tierReport, type TierPlan } from '../src/suite-tier-report.ts';
+import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const plan: TierPlan = [
   { tier: 'T1', files: ['unit'], tests: 2, seconds: 200, projectedWall: 200, workers: 1, missing: 0 },
@@ -37,4 +40,26 @@ test('close-run summary retains the aggregate census after differently ordered s
   assert.equal(summary.split('tier T3:').length - 1, 1);
   assert.ok(summary.indexOf('tier T2:') < summary.indexOf('tier T3:'));
   assert.match(summary, /tier share: T1\+T2 50 % of 1000 s \(T3 400 s, T4 100 s\)$/);
+});
+
+test('tier planning enforces supplied legacy allowance history without a repository', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'tier-history-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, 'hub/test/one.test.ts'), '');
+  await writeFile(join(root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { 'hub/test/one.test.ts': 'T1' } }));
+  await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
+  const key = 'hub/test/one.test.ts::recorded';
+  await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({
+    version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: { 'hub/test/one.test.ts': { seconds: 2, tests: 1 } }, tests: {},
+    allow: { [key]: { seconds: 6, legacy: true, owner: 'E-677', reason: 'Recorded before tier budgets.' } },
+  }));
+  const selection = { mode: 'full' as const, files: [], reason: 'fixture' };
+  const planned = await planTierReport(root, selection, 2, undefined, { legacyKeys: new Set([key]) });
+  assert.deepEqual(planned.map(({ tier, files, tests, seconds }) => ({ tier, files, tests, seconds })), [
+    { tier: 'T1', files: ['hub/test/one.test.ts'], tests: 1, seconds: 2 },
+  ]);
+  await assert.rejects(planTierReport(root, selection, 2, undefined, { legacyKeys: new Set() }), /new duration allowance cannot be legacy/);
 });

@@ -529,7 +529,13 @@ export class Suites {
       let cause: string | undefined;
       if (count < 2) cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${job.config?.verification.shards ?? this.#options.shards ?? 2}`;
       else {
-        const plans = balanceCloseShards((await hubShards(job.cwd)).flatMap(shard => shard.targets), (await readDurationManifest(job.cwd))?.files ?? {}, count);
+        const context = this.#options.durationContext;
+        const baseline = context?.base?.manifest;
+        // Injected context owns allowance provenance too; retained names are timing identities.
+        // Without an injected context, keep the production Git-backed lint path.
+        const history = context === undefined ? {} : { legacyKeys: new Set(Object.entries(baseline?.allow ?? {})
+          .filter(([, entry]) => !baseline?.budget.T1 || entry.legacy).map(([key]) => key)) };
+        const plans = balanceCloseShards((await hubShards(job.cwd, false, undefined, history)).flatMap(shard => shard.targets), (await readDurationManifest(job.cwd))?.files ?? {}, count);
         job.shards ??= plans.map((plan, i) => {
           const id = `${job.id}-shard-${i + 1}`, dir = join(this.#root, '.cland/run/suites', id);
           const { shards: _shards, ...parent } = job;
@@ -537,7 +543,7 @@ export class Suites {
             selection: { mode: 'full', files: plan.files, reason: `close run shard ${i + 1}/${count}`, shard: { files: plan.files, nvim: plan.nvim }, ...(job.selection?.recordCoverage ? { recordCoverage: job.selection.recordCoverage } : {}) },
             log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready') };
         });
-        for (const shard of job.shards) shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4);
+        for (const shard of job.shards) shard.tierPlan = await planTierReport(job.cwd, shard.selection!, job.workers ?? 4, undefined, history);
         this.#save(job);
         try { await this.#droplet.reserveShards(job.shards!.map(shard => shard.id), job.size, job.config); }
         catch (error) { cause = error instanceof Error ? error.message : String(error); }

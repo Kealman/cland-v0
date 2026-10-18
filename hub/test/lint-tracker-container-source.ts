@@ -1,3 +1,5 @@
+// T0 static gate: resolve the production TypeScript graph and scan every production TS/Lua source.
+// Compiler guard self-checks below pin inference/alias handling without a test worker.
 // T-119 source guard: compiler-resolved Kind and default-level literal types survive bindings.
 // Compare both operand types for equality, switch cases and includes/has (receiver element types).
 // In-place array/Set/Map constructions also expose their literals even when inference widens them.
@@ -7,7 +9,6 @@
 // unknown and cast erasure lose literal or Kind types; those residuals remain review matters.
 // Epic literals are forbidden outside the defaults and the fixed verification-occasion declaration.
 // Operational occasion values remain forbidden in tracker Kind operations.
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +18,11 @@ import { EVENT_KINDS } from '../src/protocol.ts';
 import { Ladder } from '../src/tracker/kinds.ts';
 
 const DEFAULT_CONTAINERS = new Ladder().containers;
+
+async function check(name: string, scan: () => void | Promise<void>): Promise<void> {
+  await scan();
+  console.log(`container source lint: ${name}`);
+}
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const config = ts.readConfigFile(join(root, 'hub/tsconfig.json'), ts.sys.readFile);
@@ -126,7 +132,7 @@ async function productionFiles(dir: string): Promise<string[]> {
   return found;
 }
 
-test('container names occur only in defaults, never in compiler-typed Kind operations', async () => {
+await check('container names occur only in defaults, never in compiler-typed Kind operations', async () => {
   const files = (await Promise.all(['hub/src', 'hub/bin', 'nvim/lua'].map(dir => productionFiles(join(root, dir))))).flat();
   const program = ts.createProgram(files.filter(path => path.endsWith('.ts')), options);
   const checker = program.getTypeChecker();
@@ -144,7 +150,7 @@ test('container names occur only in defaults, never in compiler-typed Kind opera
   assert.deepEqual(failures, [], 'container kind literals must come from [tracker] levels');
 });
 
-test('compiler guard follows aliases and inference while preserving operational release vocabulary', () => {
+await check('compiler guard follows aliases and inference while preserving operational release vocabulary', () => {
   const rejected = [
     "new Map([['release', true]]).has(kind);",
     "new Set(['release']).has(kind);",
@@ -231,7 +237,7 @@ test('compiler guard follows aliases and inference while preserving operational 
   assert.ok(checked.at(-1)!.length > 0, 'helpers in the defaults file stay protected');
 });
 
-test('only the operational verification enum declaration is exempt; tracker Kind uses stay protected', () => {
+await check('only the operational verification enum declaration is exempt; tracker Kind uses stay protected', () => {
   const declaration = "export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release' } as const;";
   const cases = [
     { rel: 'hub/src/protocol.ts', text: declaration, allowed: true },
@@ -260,7 +266,7 @@ test('only the operational verification enum declaration is exempt; tracker Kind
   });
 });
 
-test('Lua EventKind declarations match the protocol and cannot hide tracker container operations', () => {
+await check('Lua EventKind declarations match the protocol and cannot hide tracker container operations', () => {
   const rel = 'nvim/lua/cland/event_kinds.lua';
   const declaration = "return { 'session', 'task', 'verdict', 'suite', 'release', 'artifact', 'usage', 'topic', 'heartbeat', 'rule' }";
   assert.deepEqual(luaContainerLiterals(rel, declaration), []);

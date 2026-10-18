@@ -22,6 +22,7 @@
     "benchmark:thread": "CLAND_RENDER_BENCHMARK=1 node --test --test-name-pattern='200 message rewrites' nvim/test/thread.test.ts",
     "test:durations": "node hub/test/durations.ts refresh",
     "check": "npm run typecheck && npm run test:lint",
-    "test:lint": "node hub/test/lint-tests.ts"
+    "test:lint": "node hub/test/lint-tests.ts && npm run test:static",
+    "test:static": "node hub/test/lint-tracker-container-source.ts && node hub/test/lint-repository-tier-plan.ts"
   }
 }

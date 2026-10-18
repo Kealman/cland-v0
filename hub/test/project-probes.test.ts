@@ -1,6 +1,6 @@
 // T2 component: census of imports, projectHub's socket edges and in-process adapters.
 // child_process is observed here, never invoked by the test; native probe coverage stays in T3.
-import test from 'node:test';
+import test, { after, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import cp from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
@@ -8,7 +8,21 @@ import { promisify } from 'node:util';
 import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
-test('projectHub defaults launch, signal and stop every harness with zero child processes', async t => {
+// Keep one observation window across imports and both tests: imported modules may
+// retain a promisified child_process function even after syncBuiltinESMExports.
+let observation: ReturnType<typeof startObservation> | undefined;
+let finishObservation = () => {};
+after(() => finishObservation());
+async function observeChildren(t: TestContext) {
+  const seen = await (observation ??= startObservation());
+  seen.afterCleanup(t, () => {
+    t.diagnostic(`spawn census hub/test/project-probes.test.ts: ${Object.values(seen.census).reduce((sum, count) => sum + count, 0)} child processes (imports, launch, signals, stop, teardown)`);
+    assert.deepEqual(seen.census, {}, 'spawn census row must contain zero children, including imports and cleanup');
+  });
+  return seen;
+}
+
+async function startObservation() {
   const census: Record<string, number> = {};
   const originals = new Map<string, Function>();
   for (const method of ['spawn', 'spawnSync', 'exec', 'execSync', 'execFile', 'execFileSync', 'fork'] as const) {
@@ -27,16 +41,22 @@ test('projectHub defaults launch, signal and stop every harness with zero child 
     Reflect.set(cp, method, wrapped);
   }
   syncBuiltinESMExports();
+  finishObservation = () => {
+    try { assert.deepEqual(census, {}, 'the complete file observation window contains zero children'); }
+    finally { for (const [method, original] of originals) Reflect.set(cp, method, original); syncBuiltinESMExports(); }
+  };
   // Import inside the observation window: eager ps probes count too.
   const { connectUi, projectHub, tempProject } = await import('./harness.ts');
   const { afterCleanup } = await import('./process-cleanup.ts');
-  afterCleanup(t, () => {
-    try {
-      t.diagnostic(`spawn census hub/test/project-probes.test.ts: ${Object.values(census).reduce((sum, count) => sum + count, 0)} child processes (imports, launch, signals, stop, teardown)`);
-      assert.deepEqual(census, {}, 'spawn census row must contain zero children, including imports and cleanup');
-    }
-    finally { for (const [method, original] of originals) Reflect.set(cp, method, original); syncBuiltinESMExports(); }
-  });
+  return { connectUi, projectHub, tempProject, afterCleanup, census };
+}
+
+test('importing the project harness starts zero child processes', async t => {
+  await observeChildren(t);
+});
+
+test('projectHub defaults launch, signal and stop every harness with zero child processes', async t => {
+  const { connectUi, projectHub, tempProject } = await observeChildren(t);
   const root = await tempProject(t);
   const clock = new FakeClock();
   const hub = await projectHub(t, root, {}, { clock });
