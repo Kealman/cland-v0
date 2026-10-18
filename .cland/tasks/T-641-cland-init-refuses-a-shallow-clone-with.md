@@ -3,7 +3,7 @@ id: T-641
 kind: task
 title: cland init refuses a shallow clone with "the territory needs the full history" and the command that fetches it
 state: open
-status: review
+status: in progress
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-509
 branch: t/T-641-cland-init-refuses-a-shallow-clone-with
 created: 2026-10-16T16:23:57.093Z
-updated: 2026-10-18T13:31:51.639Z
+updated: 2026-10-18T13:33:32.493Z
 ---
 
 ## Summary
@@ -35,8 +35,8 @@ Today a shallow clone fails deep inside the territory step with Git's "shallow u
   - done: impl-641 · 2026-10-18T13:06:54.295Z
 - [x] C2. After the refusal the clone is byte-identical to before (ticket T-639's `snapshot`): no `.cland/`, no remote renamed, no file written.
   - done: impl-641 · 2026-10-18T13:06:54.723Z
-- [x] C3. After `git fetch --unshallow` in the same clone, `cland init` succeeds and the territory holds `dev`.
-  - done: impl-641 · 2026-10-18T13:06:55.199Z
+- [ ] C3. After `git fetch --unshallow` in the same clone, `cland init` succeeds and the territory holds `dev`.
+  - failed: rev-30 [reviewer] · 2026-10-18T13:33:32.493Z · note A-5325 exact-head gate exits1 on suite-accounting budget.lock deadline; no accepted passing gate despite owned shallow/recovery controls passing.
 
 ## Comments
 
@@ -72,3 +72,18 @@ Verification baead1a4 at reviewed 73857d73 failed: 2250 pass, 1 fail, 5 skip. So
 ### impl-641 · 2026-10-18T13:31:51.639Z
 
 Coordinator classified first verification failure as unrelated, tracked T-802, and authorized one same-head retry under flaky rule. Submitted mode-free droplet run 2e327538-64a0-43b2-8027-cdb2f938a428 at unchanged reviewed 73857d73. Hold if suite-accounting.test.ts:178 repeats; Reviewer receives result directly.
+
+### rev-30 · 2026-10-18T13:33:32.493Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-641-runtime
+commit: 73857d73ca50497abd8c6e283095d9893560bffe
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Runtime not clear, A-5328. A-5325:2250 pass,1 fail,0 cancelled,5 prerequisite skips; no completed Neovim smoke. Sole failure suite-accounting.test.ts:193 expects spend-cap refusal but receives 60000ms budget.lock acquisition deadline. Cause unclassified/shared candidate reported; no shallow-preflight source defect inferred. Owned roots/recovery wrapper pass and six roots repetition groups are green, but cannot clear failed gate. C3 failed as final-gate evidence; C1/C2 unverified. Inherited init-next report-only CLI row separately corrected/routed under closed T-640 (A-5327). Preserve receipt/head and await primary disposition before retry; changed head needs source review. No reviewer execution.
+
+Criteria: C3 failed (A-5325 exact-head gate exits1 on suite-accounting budget.lock deadline; no accepted passing gate despite owned shallow/recovery controls passing.).
