@@ -407,7 +407,7 @@ export type ProjectHubOptions = {
 
 /** Default project fixture: fake harnesses and probes, with production discovery and socket edges.
  * Explicit adapters and facts take precedence. Hub process lifecycle assertions use startDaemon. */
-export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void> }> {
+export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
   const env: NodeJS.ProcessEnv = {};
@@ -459,7 +459,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
       };
     }),
   };
-  return { fakes, discovery: daemon.discovery, dispatcher, stopped: daemon.stopped, stop: () => daemon.stop() };
+  return { fakes, discovery: daemon.discovery, dispatcher, stopped: daemon.stopped, stop: () => daemon.stop(), verificationSettled: () => resources.run(() => daemon.hub.dispatcher.verificationSettled()) };
 }
 
 /** T3 native contracts/lifecycle: explicitly retain production adapters and Git/ps probes.

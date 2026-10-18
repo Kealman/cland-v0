@@ -172,5 +172,9 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
     const failure = (await messages(id, client))[0]; if (failure) throw new Error(failure.text);
     return;
   });
-  return { candidate, durationContext, clock, waits: machine.waits, machine, dependencies, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
+  const verificationSettled = () => {
+    assert.ok('verificationSettled' in daemon, 'verification I/O receipts require an in-process hub');
+    return daemon.verificationSettled();
+  };
+  return { candidate, durationContext, clock, waits: machine.waits, machine, dependencies, verificationSettled, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }

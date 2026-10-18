@@ -164,11 +164,12 @@ test('provider list awaits cannot turn a concurrently acquired droplet or key in
 
 
 // Fallback policy consumes a completed local executor receipt; worker execution is T3.
-function localReceipts(t: TestContext) {
+function localReceipts(t: TestContext, beforeReceipt?: () => Promise<void>) {
   t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
   t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
   const completed = new Set<string>();
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
+    await beforeReceipt?.();
     await writeFile(run.result, JSON.stringify({ code: 0, finished: new Date('2026-10-16T12:00:00Z').toISOString() }));
     completed.add(run.id);
   });
@@ -209,6 +210,55 @@ test('all remote admission refusals persist a local job, one warn notice and one
   assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
 });
 
+// Each step follows the previous scheduler/sweep completion receipt. Topic reads
+// alone cannot admit time: persistence may still be pending on either shared hub.
+async function scriptedResult(f: Awaited<ReturnType<typeof fixture>>, id: string, peers = [f]) {
+  const settled = async () => {
+    let before: number;
+    do {
+      before = f.clock.now().getTime();
+      for (const peer of peers) await drive(peer, peer.verificationSettled());
+      // A product-requested delay on a later peer can admit work on an earlier one.
+    } while (f.clock.now().getTime() !== before);
+  };
+  return eventually('scripted suite report', async () => {
+    await settled();
+    const prior = (await f.messages(id))[0];
+    if (prior) return prior;
+    await f.clock.advance(1000);
+    await settled();
+    return (await f.messages(id))[0];
+  });
+}
+
+test('scripted report steps freeze time while an admitted worker receipt is held', async t => {
+  const receipt = Promise.withResolvers<void>();
+  let entered = false;
+  localReceipts(t, () => { entered = true; return receipt.promise; });
+  const f = await fixture(t, { machine: 'scripted', executor: 'local' });
+  onCleanup(t, () => receipt.resolve());
+  const launching = f.launch();
+  await eventually('worker receipt is held', () => entered ? true : undefined);
+  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  const id = status.suites![0]!.id;
+  const settle = f.verificationSettled;
+  let joined = false, completed = false;
+  t.mock.method(f, 'verificationSettled', async () => { joined = true; await settle(); completed = true; });
+  const before = f.clock.now().getTime();
+  const reporting = scriptedResult(f, id);
+  try {
+    assert.equal(joined, true, 'report driver joins admitted scheduler I/O before stepping');
+    // A native socket round trip progresses I/O while the scheduler remains held.
+    assert.equal((await f.ui.request({ type: 'suite.queue' })).ok, true);
+    assert.equal(completed, false);
+    assert.equal(f.clock.now().getTime(), before);
+    assert.deepEqual(await f.messages(id), []);
+  } finally { receipt.resolve(); await Promise.allSettled([launching, reporting]); }
+  await launching;
+  assert.match((await reporting).text, /Executor local/);
+  assert.equal(completed, true);
+});
+
 test('two protocol projects reserve against one cap and confirmed release replaces the reservation', async t => {
   const localDone = localReceipts(t);
   const state = await tempProject(t, 'shared-spend-');
@@ -221,8 +271,7 @@ test('two protocol projects reserve against one cap and confirmed release replac
   await drive(second, eventually('fallback is durably local', async () => { const status = (await second.ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(job => job.id === refused.id)?.executor === 'local' ? true : undefined; }));
   await second.clock.advance(1000);
   await drive(second, eventually('refused project local completion receipt', async () => { await second.ui.request({ type: 'suite.queue' }); return localDone(refused.id) ? true : undefined; }));
-  await second.clock.advance(1000);
-  assert.match((await second.result(refused.id)).text, /Executor local/);
+  assert.match((await scriptedResult(second, refused.id, [first, second])).text, /Executor local/);
   const history = JSON.stringify((await second.ui.request({ type: 'topic.history', topic: second.topic })).value);
   assert.match(history, /daily spend cap \$0.063 reached/);
   assert.equal(second.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
@@ -232,8 +281,7 @@ test('two protocol projects reserve against one cap and confirmed release replac
   await drive(first, eventually('release stays reserved', async () => (await lease(first.root)).value.state === 'releasing' ? true : undefined));
   assert.equal((await ledger(state)).entries[0]!.cost, null);
   first.api.faults.deleteError = 0;
-  await first.clock.advance(1000);
-  await drive(first, first.result(run.id));
+  await scriptedResult(first, run.id, [first, second]);
   const entry = (await ledger(state)).entries[0]!;
   assert.ok(entry.cost! > 0 && entry.cost! < entry.reservation);
   const status = (await second.ui.request({ type: 'executor.status' })).value as { spend: { path: string; spent: number; reserved: number; cap: number } };

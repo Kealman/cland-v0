@@ -254,6 +254,15 @@ export class Dispatcher {
     }
   }
 
+  /** Join admitted verification I/O without admitting another scheduler tick. */
+  async verificationSettled(): Promise<void> {
+    await this.#dropletReady;
+    do {
+      await this.#dropletWork;
+      await this.#suites?.settled();
+    } while (this.#dropletWork);
+  }
+
   async close(): Promise<void> {
     this.#closed = true;
     if (this.#dropletTimer) this.#options.core.clock.clearInterval(this.#dropletTimer);
