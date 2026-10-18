@@ -1,6 +1,9 @@
 ---
 name: to-spec
 description: "Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed."
+metadata:
+  origin: "mattpocock/skills skills/engineering/to-spec at 5c89081d; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "model-invocable (Init); cland update fallback (T-620); Codex invocation follows frontmatter (T-621)"
 ---
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.

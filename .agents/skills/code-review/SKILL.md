@@ -1,6 +1,9 @@
 ---
 name: code-review
 description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+metadata:
+  origin: "mattpocock/skills skills/engineering/code-review at 3da8c011; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "hub review requests (T-143, T-178, T-108 QA C9); criteria verdicts (T-156); review before verify (D25, T-322); verdict scope (T-332); findings with severity (T-477); cland update fallback (T-620); test levels (D53)"
 ---
 
 Two-axis review of the diff between `HEAD` and a fixed point the user supplies:

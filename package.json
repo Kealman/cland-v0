@@ -24,7 +24,7 @@
     "test:durations": "node hub/test/durations.ts refresh",
     "check": "npm run typecheck && npm run test:lint",
     "test:lint": "npm run test:static && node hub/test/lint-tests.ts",
-    "test:static": "node hub/test/lint-tracker-container-source.ts && node hub/test/lint-repository-tier-plan.ts && node hub/test/lint-version-source.ts",
+    "test:static": "node hub/test/lint-tracker-container-source.ts && node hub/test/lint-repository-tier-plan.ts && node hub/test/lint-version-source.ts && node hub/test/lint-skill-provenance.ts",
     "test:nvim-fixtures": "node hub/test/record-nvim-frames.ts"
   }
 }

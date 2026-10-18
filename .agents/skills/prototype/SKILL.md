@@ -1,6 +1,9 @@
 ---
 name: prototype
 description: Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like.
+metadata:
+  origin: "mattpocock/skills skills/engineering/prototype at 32165827; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "none"
 ---
 
 # Prototype

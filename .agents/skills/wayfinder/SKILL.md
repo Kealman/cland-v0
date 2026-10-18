@@ -1,6 +1,9 @@
 ---
 name: wayfinder
 description: Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear.
+metadata:
+  origin: "mattpocock/skills skills/engineering/wayfinder at 8295b8e1; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "model-invocable (Init); cland update fallback (T-620); Codex invocation follows frontmatter (T-621)"
 ---
 
 A loose idea has arrived, too big for one agent session, and wrapped in fog: the way from here to the **destination** isn't visible yet. Wayfinding is about finding that way, not charging at the destination. This skill charts the way as a **shared map** on the repo's issue tracker, then works its **decision tickets** (questions whose resolution is a decision, not slices of a build to execute) one at a time until the route is clear.

@@ -1,6 +1,9 @@
 ---
 name: writing-for-agents
 description: Writing documents for agents. Use when creating or editing skills, or modifying AGENTS.md or CLAUDE.md.
+metadata:
+  origin: "mattpocock/skills skills/productivity/writing-for-agents at 32165827; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "none"
 ---
 
 Reference for writing any document an agent consumes: a skill, an `AGENTS.md` / `CLAUDE.md`, a doc reached by a pointer. The packaging differs; the writing does not: the same levers make each one predictable, since the agent takes the same _process_ every run rather than producing the same output.

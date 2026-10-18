@@ -1,6 +1,9 @@
 ---
 name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
+metadata:
+  origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53)"
 ---
 
 Implement the work described by the user in the spec or tickets.

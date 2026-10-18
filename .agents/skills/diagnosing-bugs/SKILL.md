@@ -1,6 +1,9 @@
 ---
 name: diagnosing-bugs
 description: Diagnosis loop for hard bugs and performance regressions. Use when the user says "diagnose"/"debug this", or reports something broken/throwing/failing/slow.
+metadata:
+  origin: "mattpocock/skills skills/engineering/diagnosing-bugs at f3fc5632; MIT, Copyright (c) 2026 Matt Pocock"
+  changes: "none"
 ---
 
 # Diagnosing Bugs
