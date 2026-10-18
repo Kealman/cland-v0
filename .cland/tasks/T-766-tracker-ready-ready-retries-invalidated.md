@@ -2,8 +2,8 @@
 id: T-766
 kind: task
 title: tracker-ready "ready retries invalidated preparations with bounded backoff" hangs 15 s when the fake clock's pending timer isn't the retry
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -19,7 +19,8 @@ regression_of: T-703
 topic: topic-468
 branch: t/T-766-tracker-ready-ready-retries-invalidated
 created: 2026-10-18T01:59:29.077Z
-updated: 2026-10-18T02:08:39.115Z
+updated: 2026-10-18T02:08:46.220Z
+closed: 2026-10-18T02:08:46.220Z
 ---
 
 ## Summary
@@ -69,3 +70,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; A-4896. Independently audited exact-head A-4895 run59a28467: all nine tracker-ready cases have completed timings; retry case has explicit ordinary pass at0.712717459s (26899/26925). Selected hub17/17 and Neovim smoke5/5 complete,22/22 overall,0fail/cancel/skip, exit0, no hard budgets or scoped trips. Source A-4893 remains current: planted timer retained, bounded retry/backoff assertions unchanged, exact old-loop timeout A-4888 and local50/50 case plus5/5 whole-file passes audited. Actual Mac load2.77–4.06 accepted explicitly under primary3a10b125; no literal8–12 measurement claim. C1 done present, head unchanged. No findings; C1 verified. No per-item QA.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T02:08:46.220Z
+
+Merged ea3ac43721d64ae58fa7af412b4fd08cdb31f8f7 onto dev.
