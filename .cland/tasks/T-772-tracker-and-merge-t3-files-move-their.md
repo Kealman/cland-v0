@@ -2,8 +2,8 @@
 id: T-772
 kind: task
 title: Tracker and merge T3 files move their rule tests to T2 under the same titles (A-4961 group, ~133 s)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-479
 branch: t/T-772-tracker-and-merge-t3-files-move-their
 created: 2026-10-18T04:49:20.866Z
-updated: 2026-10-18T05:44:55.576Z
+updated: 2026-10-18T05:45:03.055Z
+closed: 2026-10-18T05:45:03.055Z
 ---
 
 ## Summary
@@ -100,3 +101,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4999: final same-head evidence clear; C2 verified, C1 source verification remains current. A-4997/f3c91a4b passes with 2,129 pass/0 fail/5 unrelated prerequisite skips. Independently checked all 21 touched files/168 owned ordinary test receipts, all 123 moved destination titles and all 45 load gates 5/5 (225/225). Mac A-4972 plus corrected clock/consumer A-4978 remains applicable. Two report-only ps-probe receipts are explicitly disclosed, not a zero-trip claim: primary Coordinator 5fcaa29a assigns both to broadened T-759 and says they do not block T-772; addendum A-4998 preserves this. No source/head change. Linux c-8 lon1, 1,723s lifetime, $0.1197. No per-item QA.
 
 Criteria: C2 verified.
+
+### coord · 2026-10-18T05:45:03.055Z
+
+Merged ac67b3d34bd46b2f4dbb5f389145d649107948f2 onto dev.
