@@ -166,6 +166,8 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
     let readyId: string | null = null;
     let disrupt = 0;
     const attempts: number[] = [];
+    let releaseWrite: (() => void) | undefined;
+    onCleanup(t, () => releaseWrite?.());
     const { RequestGuard } = await import('../src/hub/budget.ts');
     const guard = new RequestGuard({ now: () => clock, log: r => records.push(r) });
     const tracker = new Tracker({ watch: () => ({ close() {} }), git: async args => {
@@ -196,7 +198,18 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
         },
         writeFile: async (path, text) => {
           await files.writeFile(path, text);
-          if (mode === 'retry' && fail && text.includes('status: ready\n')) { attempts.push(time.now().getTime()); disrupt = 2; }
+          if (mode === 'retry' && fail && text.includes('status: ready\n')) {
+            attempts.push(time.now().getTime());
+            disrupt = 2;
+            if (attempts.length === 1) {
+              // An unrelated timer is pending before this write completes and the retry is
+              // scheduled. One 50 ms advance must not be mistaken for a completed retry.
+              await new Promise<void>(resolve => {
+                releaseWrite = resolve;
+                time.setTimeout(resolve, 100);
+              });
+            }
+          }
         },
       },
     });
@@ -231,17 +244,20 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
       assert.deepEqual(records.filter(r => r.event === 'slow-request').map(r => [r.tool, r.phase, r.ms]), [['tracker.ready', 'resumed', 300]], JSON.stringify({ clock, slowOpen, slowAdmission, armRead }));
     } else {
       await eventually('first ready attempt', () => attempts.length === 1 || undefined);
+      const advanceUntilAttempt = (retry: number) => eventually('ready retry completed', async () => {
+        if (attempts.length === retry + 1) return true;
+        // Pending timers can belong to other work, and retry scheduling follows async I/O.
+        // Keep driving the clock until the attempt itself is observed.
+        if (time.pending > 0) await time.advance(Math.min(25 * 2 ** retry, 1000));
+        return attempts.length === retry + 1 || undefined;
+      });
       for (let i = 1; i < 4; i++) {
-        await eventually('retry scheduled', () => time.pending > 0 || undefined);
-        await time.advance(Math.min(25 * 2 ** i, 1000));
-        await eventually('ready retry completed', () => attempts.length === i + 1 || undefined);
+        await advanceUntilAttempt(i);
       }
       assert.ok(attempts.length <= 4, `unbounded retries: ${attempts.length}`);
       assert.ok(attempts.every((at, i) => i === 0 || at - attempts[i - 1]! >= 40), 'every retry backs off');
       for (let i = 4; i < 10; i++) {
-        await eventually('retry scheduled', () => time.pending > 0 || undefined);
-        await time.advance(Math.min(25 * 2 ** i, 1000));
-        await eventually('retry completed', () => attempts.length === i + 1 || undefined);
+        await advanceUntilAttempt(i);
       }
       await eventually('retry limit recorded', () => records.some(r => r.event === 'task-ready-paused') || undefined);
       await time.advance(1100); // Beyond the maximum readiness retry backoff.
