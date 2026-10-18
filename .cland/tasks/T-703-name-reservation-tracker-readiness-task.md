@@ -2,8 +2,8 @@
 id: T-703
 kind: task
 title: Name reservation, tracker readiness, task migration, inbox load and the ask chain run in T1 and T2 with shared fixtures
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -20,7 +20,8 @@ blocked_by:
 topic: topic-466
 branch: t/T-703-name-reservation-tracker-readiness-task
 created: 2026-10-16T19:59:37.302Z
-updated: 2026-10-18T01:25:42.977Z
+updated: 2026-10-18T01:25:51.513Z
+closed: 2026-10-18T01:25:51.513Z
 ---
 
 ## Summary
@@ -232,3 +233,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear; A-4883. Independently audited A-4882 run b888f346: all seven owned files/110 cases pass with ordinary lines and timing receipts, all 27 owned gates pass 5/5 (135/135), zero scoped trips or hard budgets. All16 native-boundary cases pass. All18 orphan cases pass, specifically deleted-project clean exit at 1.818797555s (ordinary line29567/timing32860), so T-765 SIGKILL does not recur. Original A-4878 failure and primary ce468d59 conditional ownership remain disclosed; no claim its cause is resolved. Full hub+Neovim exits zero: 2,504 passes, zero fail/cancel, eight unrelated prerequisite skips. Current Linux T1–T3 sum49.622350215s, T4 excluded; measured Mac59.308244s remains C1 proof under f2a64db9, dev baselines untouched. Source A-4881, complete884 assertion map and matched local file evidence remain applicable. C5 done restored in a8bdd8c2. No findings; C1–C5 verified. No per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T01:25:51.513Z
+
+Merged 662bc979b03ec3a0ed191a79ac9cd383f8fd0d97 onto dev.
