@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T09:26:44.461Z
+updated: 2026-10-18T09:30:05.293Z
 ---
 
 ## Summary

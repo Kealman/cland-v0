@@ -3,7 +3,7 @@ id: T-792
 kind: task
 title: Active verify deduplication ignores the executor, so a stage's local macOS run returns the active droplet run
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-770
-topic: null
-branch: null
+topic: topic-501
+branch: t/T-792-active-verify-deduplication-ignores-the
 created: 2026-10-18T09:28:59.283Z
-updated: 2026-10-18T09:28:59.283Z
+updated: 2026-10-18T09:29:47.594Z
 ---
 
 ## Summary

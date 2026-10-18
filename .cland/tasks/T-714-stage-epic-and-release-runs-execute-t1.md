@@ -5,6 +5,7 @@ title: Stage, epic and release runs execute T1 to T4 on both platforms, with the
 state: open
 status: in progress
 size: S
+criterion_seq: 3
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T09:27:01.160Z
+updated: 2026-10-18T09:29:47.724Z
 ---
 
 ## Summary
@@ -32,9 +33,12 @@ Decision 2 keeps two-platform T3 and T4 at stage, epic and release. T4 is where 
 
 ## Acceptance criteria
 
-- [ ] C1. An occasion run plans every T1–T4 file with `CLAND_TEST_SOAK=1`, and an `all` run plans T1–T3 without it, proved by planning tests.
-- [ ] C2. The load gate at an occasion repeats the identities new since the last green stage run five times, and none older, proved by a load-gate test.
-- [ ] C3. A two-shard stage run's result shows the T4 tier line per shard, proved by a close-run test on the in-process provider.
+- [x] C1. An occasion run plans every T1–T4 file with `CLAND_TEST_SOAK=1`, and an `all` run plans T1–T3 without it, proved by planning tests.
+  - done: impl-714 · 2026-10-18T09:29:45.453Z
+- [x] C2. The load gate at an occasion repeats the identities new since the last green stage run five times, and none older, proved by a load-gate test.
+  - done: impl-714 · 2026-10-18T09:29:46.782Z
+- [x] C3. A two-shard stage run's result shows the T4 tier line per shard, proved by a close-run test on the in-process provider.
+  - done: impl-714 · 2026-10-18T09:29:47.724Z
 
 ## Blocked by
 

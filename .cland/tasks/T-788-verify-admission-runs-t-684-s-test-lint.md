@@ -3,7 +3,7 @@ id: T-788
 kind: task
 title: verify admission runs T-684's test-lint policy before replying and overruns the CLI's 15 s deadline
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T09:10:16.545Z
+updated: 2026-10-18T09:29:26.714Z
 ---
 
 ## Summary
@@ -32,3 +32,7 @@ Since the 08:58Z hub restart (pid 18334) put T-684's admission lint live, both m
 ### impl-788 · 2026-10-18T09:10:16.545Z
 
 Initial git fetch origin, npm run test:lint and npm run typecheck passed. C1 first at specified T2 suite.start seam using projectHub, repository-sized manifest and deterministic Git call cost; retain C2 pre-reservation refusal.
+
+### impl-788 · 2026-10-18T09:29:11.985Z
+
+Implementation committed/pushed at c2a82d44 after merging origin/dev. Batched Git blob reads, bounded digest-keyed compact direct facts and startup/dev-move background warming; pre-reservation refusals unchanged. Default dry-run keeps admission/direct census, moves report-only graph behind --diagnostics with120s deadline (normal15s). C3 3/3 committed-head real-repo CLI/socket dry-runs:3.972s/3.662s/3.692s. Evidence A-5102(red), A-5103(profile), A-5124(receipts), A-5125(runner), source-review evidence artifact. Lint/typecheck and targeted files pass. Preparing review; no full verify submitted yet.

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-489
 branch: t/T-716-duration-budgets-enforce-per-tier-test
 created: 2026-10-16T19:59:44.270Z
-updated: 2026-10-18T09:19:41.358Z
+updated: 2026-10-18T09:29:42.265Z
 ---
 
 ## Summary
@@ -49,3 +49,7 @@ T-683 (per-tier budgets, report mode), T-679 merged seven days before the mode s
 ### coord · 2026-10-17T01:52:35.917Z
 
 Coordinator decision (D53 detail), 2026-10-17 01:53Z: the existing duration allowances in hub/test/durations.json become legacy allowances, owned by E-677 and expiring when E-677 closes, with no calendar date. Reasons and seconds are kept. New allowances keep the 7-day expiry with an open owner ticket. Budget reports list the legacy allowances separately (count and total seconds), so E-677's progress shows as that number falling. T-716's enforcement exempts legacy allowances until E-677 closes. Without this, 7-day expiries would need weekly mass renewal and would break runs once T-716 enforces.
+
+### impl-716 · 2026-10-18T09:29:42.265Z
+
+Implemented report/enforce duration switch without changing durations.json or legacy allowance policy (Coordinator decision). T1 red/green evidence covers a known T2 receipt at 2.5 s, exact allowance cap, file allowance and T4; merge policy covers T3 growth, T2 wall by workers, T3 base wall 2640/900/899 s, and 10 s new-source estimates per Coordinator direction. Added a real reporter enforcement contract. Typecheck passes; targeted durations.test.ts passes 17/17 in 5.88 s. Remaining local files and review preparation in progress.

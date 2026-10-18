@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-497
 branch: t/T-644-the-root-package-json-version-is-cland-s
 created: 2026-10-16T16:23:58.514Z
-updated: 2026-10-18T09:28:41.844Z
+updated: 2026-10-18T09:29:56.678Z
 ---
 
 ## Summary
@@ -40,6 +40,7 @@ Every tag from v0.0.1 to v0.1.3 reports version 0.1.0: `hub/src/version.ts` read
   - done: impl-644 · 2026-10-18T09:22:51.414Z
 - [x] C4. No source file under `hub/src` holds a version literal: a test greps for `'0.1.0'` and for reads of `hub/package.json`'s version and finds none.
   - done: impl-644 · 2026-10-18T09:26:35.172Z
+  - verified: rev-31 [reviewer] · run rev-20261018-644-source-2 · 2026-10-18T09:29:56.678Z · commit 73f70fe98bab0fa329d3dce71fc6146cbce62fad
 - [x] C5. `hub/package.json` has no `version` key, and `npm install` in the root leaves `package-lock.json` unchanged after the commit.
   - done: impl-644 · 2026-10-18T09:22:56.663Z
 
@@ -90,3 +91,31 @@ Standards:2 medium findings. Spec:C4 guard and copied-source integration partial
 Durable review:A-5113.
 
 Criteria: C4 failed (The guard misses nested relative reads of hub/package.json; resolve package references per source file and add the nested negative control.), C2 failed (Copied/archived real-source consumers omit the new root package version, breaking coverage discovery/MCP and archived selector imports.).
+
+### rev-31 · 2026-10-18T09:29:56.678Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-644-source-2
+commit: 73f70fe98bab0fa329d3dce71fc6146cbce62fad
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fresh source review at 73f70fe98bab0fa329d3dce71fc6146cbce62fad on t/T-644-the-root-package-json-version-is-cland-s. Fixed base 226bd904a90b269e80b3faa5b514a0ea2f367fff. Correction diff against 9b808216 independently inspected; production behavior unchanged. No Reviewer test execution.
+
+## Standards
+No findings. The deterministic version guard runs through test:static. Its planted inputs exercise flat and nested package-path resolution without starting processes. Existing process coverage proof retains its assertions and now declares its T3 lifecycle purpose. No added waits or allowances.
+
+## Spec
+No findings remain. Prior M1/C4 is resolved: quoted package references resolve relative to the containing source file, with negative controls for hub/src/version.ts ../package.json and hub/src/spoke/spoke.ts ../../package.json, and positive root-reference controls. Prior M2/C2 is resolved: suite-coverage copies the actual root package.json and checks the resulting discovery version; archived selectors carry root metadata too. The other partial compiler carrier already includes root package.json; the suite-selection list is a selection-input table, not a source carrier.
+
+Root version 0.1.3 and lock metadata agree; hub/package.json no longer owns a version. Shared VERSION supplies the CLI, spoke, discovery and managed marks, retaining the test override. Release documentation states the ordinary pre-dry-run version commit.
+
+Evidence inspected: A-5117 records controlled pre-fix coverage startup and archive ENOENT failures, corrected coverage 2/2 in 4.049s, current and historical archived-selector replay, and typecheck/static/lint success. Earlier targeted CLI/spoke/init and post-commit npm install lock-stability reports in A-5108 remain applicable to unchanged behavior. C4 is source-established. C1/C2/C3/C5 await final exact-head verification evidence; no full-green claim or per-item QA requirement.
+
+Standards: 0 findings. Spec: 0 findings.
+Artifact A-5130.
+
+Criteria: C4 verified.

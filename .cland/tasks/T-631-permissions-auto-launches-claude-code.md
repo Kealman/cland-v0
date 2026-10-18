@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-493
 branch: t/T-631-permissions-auto-launches-claude-code
 created: 2026-10-16T16:04:11.937Z
-updated: 2026-10-18T09:25:38.832Z
+updated: 2026-10-18T09:29:25.879Z
 ---
 
 ## Summary
@@ -45,9 +45,36 @@ Which roles the template puts on `auto` is the template ticket's. The fake Claud
   - done: impl-631 · 2026-10-18T09:24:54.731Z
 - [x] C5. A roles.toml with an unknown `permissions` value is refused with a message naming `""`, `auto` and `skip` (parser test), and the template's header comment documents `auto`.
   - done: impl-631 · 2026-10-18T09:25:01.392Z
+  - verified: rev-31 [reviewer] · run rev-20261018-631-source · 2026-10-18T09:29:25.879Z · commit 93cbc99ab3e4ff3238e60dbfcade39d61861c6e3
 
 ## Comments
 
 ### impl-631 · 2026-10-18T09:22:14.775Z
 
 Parser RED: auto rejected, unknown-value message omitted ""/auto, template omitted auto. GREEN after enum/parser/header changes. CLI-boundary RED: auto launch lacked --permission-mode; GREEN after argv support, table covers auto/skip/null/absent on launch, fresh/native-conversation spawn and relaunch. T2 policy test will cover current roles.toml on fresh resume and relaunch; rediscovery-only resume starts no process.
+
+### rev-31 · 2026-10-18T09:29:25.879Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-631-source
+commit: 93cbc99ab3e4ff3238e60dbfcade39d61861c6e3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source review at 93cbc99ab3e4ff3238e60dbfcade39d61861c6e3, fixed base 226bd904a90b269e80b3faa5b514a0ea2f367fff. Read-only review; no tests run by Reviewer.
+
+## Standards
+No findings. New parser tests are T1; adapter argv and current-role dispatch tests use in-process T2 seams with bounded test deadlines. Existing native harness contracts supply the process proofs without added launches. No new waits, allowances or role default changes.
+
+## Spec
+No findings. Parser accepts auto/skip/empty with the requested diagnostic and template documentation. Claude's shared #launch builder emits mutually exclusive flags for initial launch, native-conversation spawn and relaunch. Sessions refreshes roles before fresh resume/relaunch and builds current LaunchPolicy. Codex and OpenCode adapter behavior is unchanged; existing contract assertions now run with permissions=auto. The argv table covers auto, skip, null and absent settings; the component test changes roles.toml between operations to detect cached policy.
+
+Evidence inspected: A-5114 targeted-file results and reported typecheck/lint. C5 is source-established. C1–C4 remain pending post-source-clear exact-head task verification; this is not a final execution verdict. No per-item QA required.
+
+Standards: 0 findings. Spec: 0 findings.
+Artifact A-5127.
+
+Criteria: C5 verified.
