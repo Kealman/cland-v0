@@ -2,8 +2,8 @@
 id: T-535
 kind: task
 title: OpenCode injects carry idempotent ids, and child sessions feed the instrumentation
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T10:01:59.102Z
+updated: 2026-10-18T10:39:50.953Z
+closed: 2026-10-18T10:39:50.953Z
 ---
 
 ## Summary
@@ -124,3 +125,7 @@ Linux x64 c-8 lon1, Node24.21.0/Neovim0.12.5, workers2, lifetime1457s, cost$0.10
 Artifact A-5176.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T10:39:50.953Z
+
+Merged 96535b340c163eb9d8f2e7b267924af5950f5e8a onto dev.
