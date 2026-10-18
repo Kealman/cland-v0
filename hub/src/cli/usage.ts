@@ -34,7 +34,7 @@ export const QA_USAGE = `  --headless --qa <case.lua> [--out <dir>] [--hub stdio
                   else they are printed inline. --hub: the hub the case runs against, whatever it names
 `;
 
-export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the one around the current directory) for cland: .cland/,
+export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the current directory) for cland: .cland/,
                   skills, docs/agents/, AGENTS.md's block, hooks and local git territory; idempotent (--json)
                   --undo restores the territory's remotes/root branch; --force discards territory-only refs
   update [dir]    rewrite what cland manages in an initialised project to this version; nothing else

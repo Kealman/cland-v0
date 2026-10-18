@@ -53,7 +53,9 @@ test('an initialized non-worktree child remains its own project beside a running
   const { discovery } = await projectHub(t, parent, {}, { clock: new FakeClock(), harnesses: 'fake' });
   ok(await cland(parent, 'task', 'create', '--size', 'M', 'Parent item'));
   const child = join(parent, 'child');
-  await mkdir(child);
+  // Init refuses a target discovered as its parent; mark this fixture's
+  // independent project boundary before provisioning it (T-609).
+  await mkdir(join(child, '.cland'), { recursive: true });
   ok(await captureCli(write => runInit([child, '--json'], parent, write)));
 
   const idle = await cland(child, 'hub', 'status', '--json');

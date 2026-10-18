@@ -1,6 +1,7 @@
 // `cland init [dir]` and `cland update [dir]` (spec 4.9): provision a project, or refresh what cland manages in it
 // after a version change. Both are idempotent and need no hub; see `src/init/provision.ts` for the managed set.
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, realpathSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import type { Change } from '../init/files.ts';
 import { CLAND_DIR, projectRoot } from '../project.ts';
@@ -44,8 +45,12 @@ async function run(command: 'init' | 'update', args: string[], cwd: string, writ
   if (args.some((a) => a.startsWith('--') && !['--json', '--undo', '--force'].includes(a)) || (command === 'update' && (undo || force)) || (force && !undo)) throw new Error(`usage: cland ${command} [dir] [--json]${command === 'init' ? ' [--undo [--force]]' : ''}`);
   const [dir, extra] = args.filter((a) => !a.startsWith('--'));
   if (extra !== undefined) throw new Error(`usage: cland ${command} [dir]`);
-  const root = dir === undefined ? projectRoot(cwd) : resolve(cwd, dir);
-  if (!existsSync(root) || !statSync(root).isDirectory()) throw new Error(`${root} is not a directory`);
+  const target = resolve(cwd, dir ?? '.');
+  if (!existsSync(target) || !statSync(target).isDirectory()) throw new Error(`${target} is not a directory`);
+  const root = realpathSync(target);
+  const discovered = realpathSync(projectRoot(root));
+  if (discovered !== root) throw new Error(`cland ${command} refuses target ${target}: discovered project root ${discovered}; run it in that root explicitly`);
+  if (root === realpathSync(homedir())) throw new Error(`cland ${command} refuses HOME as a project root: ${target}`);
   if (command === 'update' && !existsSync(resolve(root, CLAND_DIR))) throw new Error(`${root} has no ${CLAND_DIR}/: run \`cland init\` first`);
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);

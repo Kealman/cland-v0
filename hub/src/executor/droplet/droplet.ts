@@ -113,7 +113,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     const lifetime = testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env);
     const reservation = Math.max(60000, lifetime) / 3600000 * selected.price_hourly;
-    const { spent, reserved, cap } = await inspectSpend(config.verification.dailySpendUsd, this.#env, this.clock);
+    const { spent, reserved, cap } = await inspectSpend(config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
     if (spent + reserved + reservation > cap) throw new Error(`daily spend cap $${cap} reached`);
   }
 
@@ -303,7 +303,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       const token = Boolean(this.#env.DIGITALOCEAN_TOKEN);
       const all = await readLeases(this.root);
       const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ...(l.attention ? { attention: l.attention } : {}), ageMs: this.clock.now().getTime() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await (this.dependencies.host ?? processHost).watchdogAlive(l, this.#env) })));
-      const spend = await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env, this.clock);
+      const spend = await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
       const todayCostUsd = spend.spent;
       let taggedDroplets: number | null = null;
       let providerError: string | undefined;
@@ -379,7 +379,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       if (!droplet.tags.includes('cland')) continue;
       // Acquire persists ownership before its provider mutation. Read it after
       // the provider list (and after any previous deletion awaits), never before.
-      const known = await hostLeases(this.root, this.#env);
+      const known = await hostLeases(this.root, this.#env, this.dependencies.processes);
       // A renamed/retagged known resource is an identity refusal, not an
       // orphan. Keep it for operator attention even after its deadline.
       if (known.some(lease => lease.state !== 'released' && lease.resource === droplet.id && !matchesLease(droplet, lease))) continue;
@@ -403,7 +403,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     }
     const deletedKeys: number[] = [];
     for (const key of await api.keys()) {
-      const known = await hostLeases(this.root, this.#env);
+      const known = await hostLeases(this.root, this.#env, this.dependencies.processes);
       // Provider lists and lease updates can observe opposite sides of a rename.
       if (known.some(lease => liveLease(lease, this.clock) && (lease.keyName === key.name || lease.keyId === key.id))) continue;
       const legacy = key.name.startsWith(`cland-${projectName(config.name)}-`);
