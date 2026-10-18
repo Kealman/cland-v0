@@ -2,8 +2,8 @@
 id: T-770
 kind: task
 title: "`cland verify` exits 1 on a 15 s hub-socket timeout even though the hub accepted the run, inviting a duplicate submission"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-483
 branch: t/T-770-cland-verify-exits-1-on-a-15-s-hub
 created: 2026-10-18T03:49:21.322Z
-updated: 2026-10-18T07:50:31.670Z
+updated: 2026-10-18T07:50:54.311Z
+closed: 2026-10-18T07:50:54.311Z
 ---
 
 ## Summary
@@ -103,3 +104,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear, A-5078. A-5077 auto/hub-only exit-zero run 12dbcb21: 2138 passes, zero failures/cancellations, five prerequisite skips, Neovim smoke complete. All four submission cases plus eleven suite cases have positive ordinary receipts; four submission load gates pass5/5 (20 repetitions), no scoped skip/trip. Original-title lifecycle case preserves reused-id/no-second-run and changed-head/mode refusals with reviewed cleanup. C1 verified, claimant done restored. A-5021 before-fix red, A-5050 contract failure and A-5058 cleanup finding retained; A-5065 source clear current.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T07:50:54.311Z
+
+Merged bbdff4dd75481f21702581df92ff1e470b16cccb onto dev.
