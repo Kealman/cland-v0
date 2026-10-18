@@ -2,8 +2,8 @@
 id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T13:21:11.730Z
+updated: 2026-10-18T13:21:36.354Z
+closed: 2026-10-18T13:21:36.354Z
 ---
 
 ## Summary
@@ -160,3 +161,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Latest integration final clear, A-5322. A-5319 exact-head full gate passes 2582 tests, zero failed/cancelled, eight prerequisite skips; all hub/Neovim phases finalize. Six affected carriers positively execute 126 identities, shared stage consumers pass, and twelve occasion/override/batch groups pass 60/60 repetitions (including incoming separate-platform and requested-override recovery controls). Zero tier trips and no hard budgets. C1–C3 verified with source A-5298 and retained planning/baseline/shard mapping. Prior failure/correction and previous-head receipts remain disclosed. No reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-18T13:21:36.354Z
+
+Merged e2a8e93736e28c62ebb3404cb6fd18a730dc3df4 onto dev.
