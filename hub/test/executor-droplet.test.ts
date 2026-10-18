@@ -282,9 +282,13 @@ test('restart discovers an interrupted create by name and retries an unconfirmed
   api.faults.deleteError = 429;
   const { discovery } = await startDaemon(t, root, env);
   const ui = await connectUi(t, discovery);
-  const initial = await ui.request({ type: 'executor.status' });
-  assert.equal(initial.ok, true, initial.error);
-  assert.equal((initial.value as { leases: { state: string }[] }).leases[0]!.state, 'releasing');
+  // Since T-813 executor.status answers while startup reconcile is still running, so wait for
+  // reconcile to move the interrupted create to releasing instead of reading the first answer.
+  await eventually('startup reconcile marks the interrupted create releasing', async () => {
+    const status = await ui.request({ type: 'executor.status' });
+    assert.equal(status.ok, true, status.error);
+    return (status.value as { leases: { state: string }[] }).leases[0]?.state === 'releasing' ? true : undefined;
+  });
   api.faults.deleteError = 0;
   await eventually('hub timer confirms release', async () => {
     const result = await clandWithEnv(root, {}, 'executor', 'status', '--json');
