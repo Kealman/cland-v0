@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-509
 branch: t/T-641-cland-init-refuses-a-shallow-clone-with
 created: 2026-10-16T16:23:57.093Z
-updated: 2026-10-18T13:31:05.112Z
+updated: 2026-10-18T13:31:51.639Z
 ---
 
 ## Summary
@@ -68,3 +68,7 @@ Source clear rev-20261018-641-source at 73857d73 (A-5311), no findings. Submitte
 ### impl-641 · 2026-10-18T13:31:05.112Z
 
 Verification baead1a4 at reviewed 73857d73 failed: 2250 pass, 1 fail, 5 skip. Sole failure suite-accounting.test.ts:178 parallel-acquire spend cap test received budget.lock 60000 ms acquisition deadline rather than cap refusal. Shared-defect candidate reported to lead; holding diagnosis/head pending Coordinator disposition. T-641 roots cases and init-machine recovery self-test passed on Linux (0.318 s roots total; 1.944 s machine wrapper). Receipt A-5325; c-8 lon1 lifetime 1276 s, cost $0.0886.
+
+### impl-641 · 2026-10-18T13:31:51.639Z
+
+Coordinator classified first verification failure as unrelated, tracked T-802, and authorized one same-head retry under flaky rule. Submitted mode-free droplet run 2e327538-64a0-43b2-8027-cdb2f938a428 at unchanged reviewed 73857d73. Hold if suite-accounting.test.ts:178 repeats; Reviewer receives result directly.
