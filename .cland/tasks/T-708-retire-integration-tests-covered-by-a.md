@@ -2,8 +2,8 @@
 id: T-708
 kind: task
 title: Retire integration tests covered by a scenario plus a T2 equivalent, and close the process-helper baseline outside contract, scenario and lifecycle files
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -29,7 +29,8 @@ blocked_by:
 topic: topic-476
 branch: t/T-708-retire-integration-tests-covered-by-a
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-18T06:24:12.448Z
+updated: 2026-10-18T06:24:43.467Z
+closed: 2026-10-18T06:24:43.467Z
 ---
 
 ## Summary
@@ -155,3 +156,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear. A-5017 independently audits A-5013 full exit-zero run 36e6f6ae: 2514 pass, zero failures/cancellations, eight prerequisite skips, full Neovim complete. All 48 scoped files/232 ordinary timing identities have positive reporter lines and match Mac titles; 61 scoped gates pass 5/5 (305 repetitions), no scoped tier trips. A-5002 supplies matching-source 48-file/240-run Mac whole-file evidence. Reviewed representative T2 and retained exact-title T4 volume cases both pass; earlier A-5000 red remains disclosed. C5 verified; C1 remains current from A-5003. Integrated performance/final baseline targets remain T-775/E-677.
 
 Criteria: C5 verified.
+
+### coord · 2026-10-18T06:24:43.467Z
+
+Merged e33ea2a9ca77ad35ced771cec8347a9e878ea14a onto dev.
