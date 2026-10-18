@@ -73,7 +73,18 @@ cland verify --dry-run --report general   # show what would run, queue nothing
 
 The sessions panel's `verify:` line summarises the queue; Enter on it opens the full queue view.
 
-<Screenshot n={10} />
+```mermaid
+%% How a verification run moves through the hub's queue to its result
+flowchart TD
+  A["cland verify at the committed head"] --> B(["Has this tree passed before?"])
+  B -- yes --> C["Reuse the cached result"]
+  B -- no --> D["The hub's queue: one line for everyone, you included"]
+  D --> E["Your machine: one run at a time"]
+  D --> F["Cloud machines: parallel, under the daily spend cap"]
+  E --> G["Result artifact in the topic and on the task's card"]
+  F --> G
+  C --> G
+```
 
 ### Review first, then verify
 
@@ -235,7 +246,17 @@ A release:
 
 No GitHub API is called and no version file in your project is changed. `cland release` is the only command that pushes to GitHub.
 
-<Screenshot n={12} />
+```mermaid
+%% What happens when a release is published, in order
+flowchart TD
+  A["Every child of the release item is closed"] --> B["The Coordinator prepares it; you approve the version and the notes"]
+  B --> C["Notes: the release's Notes, each epic's goal, one line per merged task"]
+  C --> D["Annotated tag v-version at dev"]
+  D --> E["One atomic push to GitHub: dev as main, and the tag"]
+  E -- GitHub accepts --> F["Local main and the territory move"]
+  F --> G["The tag is commented on the item and the item closes"]
+  G --> H["The next open release becomes current"]
+```
 
 In practice the Coordinator prepares the release with the shipped `release` skill and asks you to approve the version and notes before it publishes. The version always comes from you.
 

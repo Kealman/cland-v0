@@ -22,13 +22,13 @@ const list: Screen[] = [
   {
     n: 1,
     file: 'hero.png',
-    size: '2880×1675',
+    size: '2881×1675',
     desc: 'The cland workbench in Neovim, dark theme: on the left the items panel with a release and its epics, in the centre a topic thread with a Coordinator\'s ask waiting for an answer, and on the right the sessions panel with the plans\' limit windows and the live sessions.',
   },
   {
     n: 2,
     file: 'accounts.png',
-    size: '1600×1200',
+    size: '1601×1200',
     desc: 'The cland sessions panel up close: the Accounts block on top shows two plans with their 5-hour and weekly limit windows, and the crew\'s sessions are listed below with harness, model and account.',
   },
   {
@@ -46,62 +46,44 @@ const list: Screen[] = [
   {
     n: 5,
     file: 'explorer.png',
-    size: '2400×1500',
+    size: '2940×1716',
     desc: 'The terminal workbench, dark, with the explorer in the centre: the current release unfolded into its epics and their tasks (status glyph, id, title, claim, criteria fraction on each row), and below it the folded roots Categories (Bugs, Tech debt, Follow-ups, Ideas, with counts), Unscheduled and Other releases. On the right, the card of the task under the cursor: its summary, status, size, parent path, the acceptance criteria with their marks, the latest verdict and the branch.',
   },
   {
     n: 6,
     file: 'inbox.png',
-    size: '2400×1500',
+    size: '1377×800',
     desc: 'The inbox full width in the terminal workbench (Space N): Asks and approvals first, with the Coordinator\'s ask unfolded to its numbered options and the free-answer hint; then Plan approvals with one epic plan waiting, Requests with one QA request, and Messages. Every row shows how long it has waited. Below the sections, the events line counting new events since your last look.',
   },
   {
     n: 7,
     file: 'attach.png',
-    size: '2400×1500',
+    size: '2934×1683',
     desc: 'The terminal workbench with an Implementer\'s Claude Code session attached in the centre: the harness\'s own interface exactly as Claude Code draws it, mid-task in the task\'s worktree. The sessions panel on the right has that session selected and expanded: role, harness, model, account and state busy.',
   },
   {
     n: 8,
     file: 'plan.png',
-    size: '2400×1500',
+    size: '2917×1677',
     desc: 'The plan view of an epic in the terminal workbench (gp on the epic): the stages in order, each with its parallel lanes of tasks and the stage\'s QA policy (scope and when), the stage in work marked, and the approve key shown because plan approval is the human\'s.',
   },
   {
     n: 9,
     file: 'task-card.png',
-    size: '2400×1500',
+    size: '2252×1683',
     desc: 'The explorer with the card of a task at ready: status ready, size, parent path; every acceptance criterion with its done mark from the Implementer and its verified mark from the Reviewer, with the run id and the commit; the latest verdict, review clear, with its scope; the branch and the latest cland verify result, passed.',
-  },
-  {
-    n: 10,
-    file: 'verify-queue.png',
-    size: '2400×1500',
-    desc: 'The verification queue view (Enter on the sessions panel\'s verify line): the local run in progress with its task and elapsed time, two runs on cloud machines with their size and region, and the runs waiting with their admission estimate.',
   },
   {
     n: 11,
     file: 'artifact.png',
-    size: '2400×1500',
+    size: '1851×1200',
     desc: 'The web workbench with a topic thread in the drawer: the Coordinator\'s message with an HTML artifact rendered inline in its sandboxed frame (a short report with a table), its artifact chip and id A-n above it, and the composer below.',
-  },
-  {
-    n: 12,
-    file: 'release.png',
-    size: '2400×1500',
-    desc: 'A terminal running cland release --item R-1 --dry-run: the release notes it would publish (the release\'s Notes, each epic with its one-line goal, one line per merged task) and the refs: the tag v0.1.0 at dev, and dev pushed as GitHub main.',
   },
   {
     n: 13,
     file: 'topics.png',
-    size: '2400×1500',
+    size: '1600×1200',
     desc: 'The terminal workbench with the topics panel on the right (groups needs you, open and closed, with unread badges) and a task\'s topic in the centre: the Coordinator\'s brief, a folded run of agent-to-agent messages shown as one line such as "impl-42 → rev-1 · 4 messages", a review verdict, and an ask with numbered options. The composer sits under the thread.',
-  },
-  {
-    n: 14,
-    file: 'agents-topic.png',
-    size: '2400×1500',
-    desc: 'The Agents topic in the terminal workbench (Space L): the read-only record of agent-to-agent messages, review requests and verdict reports between sessions, and session lifecycle events (launched, stopped, role assigned), each with its time and sender in the role\'s colour.',
   },
 ];
 

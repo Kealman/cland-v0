@@ -31,7 +31,14 @@ const [w, h] = screen.size.split('×').map(Number);
 <figure class:list={['cland-shot', 'not-content', { 'cland-shot-frame': frame }, className]}>
   {
     image ? (
-      <Image src={image} alt={screen.desc} widths={[480, 800, 1200, 1600, 2400].filter((x) => x <= image.width)} sizes={sizes} loading={eager ? 'eager' : 'lazy'} />
+      <Image
+        src={image}
+        alt={screen.desc}
+        widths={[480, 800, 1200, 1600, 2400].filter((x) => x <= image.width)}
+        sizes={sizes}
+        loading={eager ? 'eager' : 'lazy'}
+        style={frame ? undefined : `max-width: min(100%, ${Math.round(image.width / 2)}px)`}
+      />
     ) : (
       <div class="cland-shot-placeholder" style={`--shot-ratio: ${w} / ${h}`} role="img" aria-label={`Screenshot ${n} to come: ${screen.desc}`}>
         <div class="cland-shot-label">
@@ -58,9 +65,12 @@ const [w, h] = screen.size.split('×').map(Number);
     margin: 1.5rem 0;
     min-width: 0;
   }
+  /* Any size works: an image keeps its own aspect ratio and is never drawn wider than
+     half its pixel width (a 2x screenshot at its real size), so a cropped panel stays sharp. */
   .cland-shot :global(img) {
     display: block;
     width: 100%;
+    margin-inline: auto;
     height: auto;
     border: 1px solid var(--shot-border);
     border-radius: 12px;

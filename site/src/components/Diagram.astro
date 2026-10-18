@@ -1,0 +1,14 @@
+---
+// A Mermaid diagram rendered to SVG at build time, for .astro pages (the landing).
+// Docs pages use a ```mermaid code block instead; both go through renderDiagram.
+import { renderDiagram } from '../plugins/mermaid.mjs';
+
+interface Props {
+  code: string;
+  class?: string;
+}
+
+const { code, class: className } = Astro.props;
+---
+
+<div class:list={['cland-diagram-box', className]} set:html={renderDiagram(code)} />
