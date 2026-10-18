@@ -422,6 +422,7 @@
     "nvim/test/inbox-sections.test.ts": "T2",
     "nvim/test/item-prefixes.test.ts": "T3",
     "nvim/test/items.test.ts": "T3",
+    "nvim/test/launcher-component.test.ts": "T2",
     "nvim/test/layers-component.test.ts": "T2",
     "nvim/test/layers.test.ts": "T3",
     "nvim/test/needs-you.test.ts": "T3",

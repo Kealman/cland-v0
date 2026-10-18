@@ -2,7 +2,8 @@
   "version": 1,
   "source": {
     "artifacts": [
-      "A-5074"
+      "A-5074",
+      "A-5578"
     ],
     "commit": "b27f71f4bfc16bea228ef55c5d2f79248535b658"
   },
@@ -1406,6 +1407,10 @@
     "nvim/test/items.test.ts": {
       "seconds": 9.692727,
       "tests": 5
+    },
+    "nvim/test/launcher-component.test.ts": {
+      "seconds": 2.360845,
+      "tests": 8
     },
     "nvim/test/layers.test.ts": {
       "seconds": 9.040455,

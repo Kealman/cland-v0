@@ -8,7 +8,7 @@
 -- starts the session in the item's task worktree, made first when missing, and gives it the item's claim.
 --
 -- Insert mode throughout: Tab and Shift+Tab move between fields, C-n and C-p cycle the choices of the role
--- and harness fields and fetch the model choices from the hub, Enter launches, Esc or C-c cancels.
+-- and harness fields; focusing model fetches its completion from the hub. Enter launches, Esc or C-c cancels.
 local api = vim.api
 local state = require('cland.state')
 
@@ -128,7 +128,7 @@ local function draw(f)
     end
   end
   local lines = { { { '', 'ClandDim' } } }
-  local msg = f.message
+  local msg = f.message or (row == index_of('model') and f.model_hint)
   if not msg and v.role == '' then
     msg = { text = 'no role: the hub refuses its spoke until one is assigned (cland role set)', group = 'ClandAmber' }
   elseif not msg then
@@ -140,7 +140,8 @@ local function draw(f)
     end
   end
   if msg then
-    for _, l in ipairs(require('cland.panels').wrap(msg.text, f.width - 2)) do
+    local wrapped = msg == f.model_hint and { msg.text } or require('cland.panels').wrap(msg.text, f.width - 2)
+    for _, l in ipairs(wrapped) do
       lines[#lines + 1] = { { ' ' .. l, msg.group } }
     end
   end
@@ -261,15 +262,6 @@ local function submit(f)
   end)
 end
 
-local function move(f, d)
-  sync(f)
-  local row = api.nvim_win_get_cursor(f.win)[1]
-  row = (row - 1 + d) % #M.FIELDS + 1
-  local line = api.nvim_buf_get_lines(f.buf, row - 1, row, false)[1] or ''
-  api.nvim_win_set_cursor(f.win, { row, #line })
-  draw(f)
-end
-
 local function model_frame(f)
   local v = values(f)
   local def = state.role_def(v.role)
@@ -280,6 +272,58 @@ local function model_frame(f)
     frame.account = launch.account
   end
   return frame
+end
+
+-- A request belongs to one visit to the model field. Leaving it invalidates even a late answer.
+local function offer_models(f)
+  if M.cur ~= f or api.nvim_win_get_cursor(f.win)[1] ~= index_of('model') or vim.fn.mode() ~= 'i' then return end
+  if f.model_choices and #f.model_choices > 0 then
+    vim.fn.complete(1, f.model_choices)
+  end
+end
+
+local function focus(f)
+  local row = api.nvim_win_get_cursor(f.win)[1]
+  if row == f.focus_row then return end
+  f.focus_row = row
+  f.model_visit = (f.model_visit or 0) + 1
+  f.model_choices = nil
+  f.model_hint = nil
+  if row ~= index_of('model') then return end
+  local visit = f.model_visit
+  local frame = model_frame(f)
+  local client = require('cland').client
+  if not (client and client:connected()) then
+    f.model_hint = { text = 'models: not connected to the hub', group = 'ClandAmber' }
+    return draw(f)
+  end
+  client:request(frame, function(err, value)
+    if M.cur ~= f or visit ~= f.model_visit or not vim.deep_equal(frame, model_frame(f)) then return end
+    local models = value and value.models or {}
+    if err or #models == 0 then
+      f.model_hint = { text = 'models: ' .. (err and tostring(err):gsub('[\r\n]+', ' ') or 'the hub returned no models'), group = 'ClandAmber' }
+      return draw(f)
+    end
+    local choices = {}
+    -- Preserve the catalog order within each group, putting the harness default first.
+    for _, default in ipairs({ true, false }) do
+      for _, model in ipairs(models) do
+        if (model.default == true) == default then choices[#choices + 1] = model.id end
+      end
+    end
+    f.model_choices = choices
+    offer_models(f)
+  end)
+end
+
+local function move(f, d)
+  sync(f)
+  local row = api.nvim_win_get_cursor(f.win)[1]
+  row = (row - 1 + d) % #M.FIELDS + 1
+  local line = api.nvim_buf_get_lines(f.buf, row - 1, row, false)[1] or ''
+  api.nvim_win_set_cursor(f.win, { row, #line })
+  focus(f)
+  draw(f)
 end
 
 local function cycle(f, d)
@@ -297,29 +341,6 @@ local function cycle(f, d)
     api.nvim_win_set_cursor(f.win, { row, #nxt })
     sync(f)
     draw(f)
-  end
-  if key == 'model' then
-    if f.models_loading then return end
-    local client = require('cland').client
-    if not client then return end
-    local frame = model_frame(f)
-    local original = values(f).model
-    f.models_loading = true
-    client:request(frame, function(err, value)
-      f.models_loading = false
-      if M.cur ~= f or not vim.deep_equal(frame, model_frame(f)) then return end
-      if err then
-        f.message = { text = tostring(err):gsub('\n', ' '), group = 'ClandRed' }
-        return draw(f)
-      end
-      if api.nvim_win_get_cursor(f.win)[1] ~= row or values(f).model ~= original then return end
-      local choices = {}
-      for _, model in ipairs(value and value.models or {}) do choices[#choices + 1] = model.id end
-      choices[#choices + 1] = ''
-      f.message = nil
-      choose(choices)
-    end)
-    return
   end
   local choices = key == 'role' and role_choices() or (key == 'harness' and M.HARNESSES or nil)
   if choices then choose(choices) end
@@ -343,6 +364,7 @@ function M.open(opts)
   local f = { width = width, seen = {}, prev = api.nvim_get_current_win() }
   f.buf = api.nvim_create_buf(false, true)
   vim.bo[f.buf].bufhidden = 'wipe'
+  vim.bo[f.buf].completeopt = 'menu,menuone,noselect,noinsert'
   vim.b[f.buf].cland_role = 'launcher'
   api.nvim_buf_set_lines(f.buf, 0, -1, false, { opts.name or '', opts.role or '', '', '', state.S.root ~= '' and state.S.root or vim.fn.getcwd(), '', opts.item or '', opts.brief or '' })
   f.win = api.nvim_open_win(f.buf, true, {
@@ -355,8 +377,10 @@ function M.open(opts)
   vim.wo[f.win].cursorline = false
   M.cur = f
   sync(f)
-  local function map(lhs, fn)
-    require('cland.actions').map({ 'i', 'n' }, lhs, fn, { buffer = f.buf, nowait = true })
+  local function map(lhs, fn, builtin)
+    require('cland.actions').map({ 'i', 'n' }, lhs, fn, {
+      buffer = f.buf, nowait = true, completion = { native = builtin },
+    })
   end
   map('<CR>', function()
     submit(f)
@@ -373,12 +397,17 @@ function M.open(opts)
   map('<Up>', function()
     move(f, -1)
   end)
-  map('<C-n>', function()
-    cycle(f, 1)
-  end)
-  map('<C-p>', function()
-    cycle(f, -1)
-  end)
+  for _, choice in ipairs({ { '<C-n>', 1 }, { '<C-p>', -1 } }) do
+    map(choice[1], function()
+      if api.nvim_win_get_cursor(f.win)[1] == index_of('model') then
+        offer_models(f)
+      else
+        cycle(f, choice[2])
+      end
+    end, function()
+      return api.nvim_win_get_cursor(f.win)[1] == index_of('model') and vim.fn.pumvisible() == 1
+    end)
+  end
   map('<Esc>', M.close)
   map('<C-c>', M.close)
   -- the fields are fixed: no line is added or joined
@@ -392,7 +421,7 @@ function M.open(opts)
     return api.nvim_win_get_cursor(0)[2] < #line and '<Del>' or ''
   end, { buffer = f.buf, expr = true, replace_keycodes = true })
   f.group = api.nvim_create_augroup('cland.launcher', { clear = true })
-  api.nvim_create_autocmd({ 'TextChangedI', 'TextChanged' }, {
+  api.nvim_create_autocmd({ 'TextChangedI', 'TextChangedP', 'TextChanged' }, {
     group = f.group,
     buffer = f.buf,
     callback = function()
@@ -413,11 +442,12 @@ function M.open(opts)
       end
     end,
   })
-  api.nvim_create_autocmd('CursorMovedI', {
+  api.nvim_create_autocmd({ 'CursorMovedI', 'CursorMoved', 'InsertEnter', 'CompleteDone' }, {
     group = f.group,
     buffer = f.buf,
     callback = function()
       if M.cur == f then
+        focus(f)
         draw(f)
       end
     end,

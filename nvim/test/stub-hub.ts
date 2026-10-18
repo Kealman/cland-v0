@@ -54,6 +54,8 @@ export type Scenario = {
   tracker?: { levels: string[]; ladder?: string[][]; prefixes?: Record<string, string> };
   /** How `session.launch` answers: absent, it adds an idle running process; a string refuses with it. */
   launchError?: string;
+  /** Optional models.list catalog, including an empty or non-default-first answer. */
+  models?: Array<{ id: string; default: boolean }>;
   /** How `session.stop` answers: absent, it marks the process stopped; a string refuses with it. */
   stopError?: string;
   resumeReason?: string;
@@ -348,7 +350,7 @@ function answer(f: Frame) {
       return ok(f.id, { found: true, process: p, role: p.role, claim: null, notes: scenario.resumeNotes ?? [] });
     }
     case 'models.list':
-      return ok(f.id, { harness: f.harness, account: f.account ?? null, models: [{ id: `${f.harness}-listed-default`, default: true }, { id: `${f.harness}-listed-other`, default: false }], source: 'stub catalog', probedAt: now(), cached: false });
+      return ok(f.id, { harness: f.harness, account: f.account ?? null, models: scenario.models ?? [{ id: `${f.harness}-listed-default`, default: true }, { id: `${f.harness}-listed-other`, default: false }], source: 'stub catalog', probedAt: now(), cached: false });
     case 'role.list':
       return ok(f.id, { roles: scenario.roles ?? DEFAULT_ROLES, coordinator: scenario.coordinator ?? null });
     case 'hub.status': {

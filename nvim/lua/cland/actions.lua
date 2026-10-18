@@ -167,6 +167,21 @@ function M.map(modes, lhs, rhs, opts)
   for _, mode in ipairs(modes_of(modes)) do
     assert(vim.tbl_contains(modes_of(declared.modes), mode), 'unregistered mode for ' .. a.id .. ': ' .. mode)
   end
+  -- A completion-aware action finishes the native popup before its continuation runs.
+  -- `completion.native` may keep a completion key native (for example C-n/C-p).
+  local completion = opts.completion
+  opts.completion = nil
+  if completion then
+    assert(not opts.expr, 'completion actions supply their own expression mapping')
+    local plug = '<Plug>(cland-action-' .. a.id:gsub('[<>]', '') .. ')'
+    vim.keymap.set(modes, plug, rhs, { buffer = buf, nowait = opts.nowait })
+    rhs = function()
+      if completion.native and completion.native() then return lhs end
+      return (vim.fn.pumvisible() == 1 and '<C-y>' or '') .. plug
+    end
+    opts.expr = true
+    opts.replace_keycodes = true
+  end
   opts.desc = 'cland: ' .. a.title
   vim.keymap.set(modes, declared.lhs, rhs, opts)
   bindings[a.id] = bindings[a.id] or {}
