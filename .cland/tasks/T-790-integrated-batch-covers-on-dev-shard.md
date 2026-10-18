@@ -2,8 +2,8 @@
 id: T-790
 kind: task
 title: Integrated batch covers on dev shard across two droplets, like stage close runs
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-499
 branch: t/T-790-integrated-batch-covers-on-dev-shard
 created: 2026-10-18T09:20:05.013Z
-updated: 2026-10-18T10:44:55.627Z
+updated: 2026-10-18T11:07:39.952Z
+closed: 2026-10-18T11:07:39.952Z
 ---
 
 ## Summary
@@ -148,3 +149,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5217: exact-head A-5215 passes hub plus Neovim smoke, 2149 pass/0 fail/5 prerequisite skips. All13 carrier identities and20/20 current new repetitions pass, zero owned trips. Coordinator clause and restored duration identity both pass; no hard budgets. C1/C2 verified, C3 remains current. Earlier failed receipts retained; no findings.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T11:07:39.952Z
+
+Merged bdd0cf54935e98ee910f76f79a9d4a5552f8d9a9 onto dev.
