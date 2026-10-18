@@ -14,6 +14,56 @@ import { git, ok, json, project, merged, clean, collaborator } from './release-s
 
 const snapshot = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n---\n');
 
+// T3: native Git commit selection and unchanged refs prove the publication boundary; no hub process starts.
+test('release checks the committed dev package version before preview or publication', { timeout: 5_000 }, async t => {
+  const { root, github, territory, ui } = await project(t, undefined, undefined, true);
+  const path = join(root, 'package.json');
+  await writeFile(path, '{"version":"0.1.3"}\n');
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'Record package version');
+  const before = snapshot(root, territory, github);
+  // An uncommitted bump must not change the version of the build selected from dev.
+  await writeFile(path, '{"version":"0.1.4"}\n');
+  const status = git(root, 'status', '--porcelain');
+  for (const flags of [['--dry-run'], []]) {
+    const refused = await cland(root, 'release', 'v0.1.4', ...flags);
+    assert.notEqual(refused.code, 0);
+    assert.match(refused.stderr, /release-version: dev's package.json says 0\.1\.3, the release is v0\.1\.4/);
+    assert.match(refused.stderr, /commit the bump on dev, merge it, then preview again/);
+    assert.equal(snapshot(root, territory, github), before);
+    assert.equal(await readFile(path, 'utf8'), '{"version":"0.1.4"}\n');
+    assert.equal(git(root, 'status', '--porcelain'), status);
+    await assert.rejects(readFile(join(root, '.cland', 'release.tmp')), { code: 'ENOENT' });
+  }
+  git(root, 'add', 'package.json');
+  git(root, 'commit', '-qm', 'Bump package to 0.1.4');
+  const bumped = snapshot(root, territory, github);
+  const preview = await ui.request({ type: 'release', version: 'v0.1.4', dryRun: true });
+  assert.equal(preview.ok, true, preview.error);
+  assert.equal((preview.value as { commit: string }).commit, git(root, 'rev-parse', 'dev'));
+  assert.equal(snapshot(root, territory, github), bumped);
+  assert.equal(git(root, 'status', '--porcelain'), '');
+});
+
+// T3: native Git publication remains available for a package without a version.
+test('release permits a package without a version key', { timeout: 5_000 }, async t => {
+  const { root, github, territory, ui } = await project(t, undefined, undefined, true);
+  await writeFile(join(root, 'package.json'), '{"private":true}\n');
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'Record unversioned package');
+  const dev = git(root, 'rev-parse', 'dev');
+  const preview = await ui.request({ type: 'release', version: 'v0.1.4', dryRun: true });
+  assert.equal(preview.ok, true, preview.error);
+  const released = await ui.request({ type: 'release', version: 'v0.1.4' });
+  assert.equal(released.ok, true, released.error);
+  for (const repo of [root, territory, github]) {
+    assert.equal(git(repo, 'rev-parse', 'main'), dev);
+    assert.equal(git(repo, 'rev-parse', 'v0.1.4^{}'), dev);
+  }
+  assert.equal(await readFile(join(root, 'package.json'), 'utf8'), '{"private":true}\n');
+  assert.equal(git(root, 'status', '--porcelain'), '');
+});
+
 test('release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits', async (t) => {
   const { root, github, territory, ui } = await project(t, undefined, undefined, true);
   const refuses = async (args: string[], message: RegExp, direct = false) => {

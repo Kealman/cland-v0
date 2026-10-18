@@ -29,6 +29,25 @@ async function create(ui: Awaited<ReturnType<typeof dispatcherUi>>, title: strin
 
 const refs = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n');
 
+// T3: native Git refs and committed package metadata at the item release boundary; no hub process starts.
+test('item release refuses a dev package version different from its version', { timeout: 5_000 }, async t => {
+  const { root, github, territory, ui } = await project(t);
+  const item = await create(ui, 'Next release', '--kind', 'release', '--version', '0.1.4');
+  const path = join(root, 'package.json');
+  await writeFile(path, '{"version":"0.1.3"}\n');
+  git(root, 'add', '.');
+  git(root, 'commit', '-qm', 'Record release plan and package version');
+  const before = refs(root, territory, github);
+  const source = await readFile(join(root, item.path), 'utf8');
+  const refused = await cland(root, 'release', '--item', item.id, '--dry-run');
+  assert.notEqual(refused.code, 0);
+  assert.match(refused.stderr, /release-version: dev's package.json says 0\.1\.3, the release is v0\.1\.4/);
+  assert.equal(refs(root, territory, github), before);
+  assert.equal(await readFile(join(root, item.path), 'utf8'), source);
+  assert.equal(await readFile(path, 'utf8'), '{"version":"0.1.3"}\n');
+  assert.equal(git(root, 'status', '--porcelain'), '');
+});
+
 test('release from an item refuses a missing version through the protocol and CLI without changing refs or the item', async t => {
   const { root, github, territory, ui } = await project(t);
   const item = await create(ui, 'Next release', '--kind', 'release');

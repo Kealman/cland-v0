@@ -118,6 +118,18 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     try { resumed(authorize); await finish(root, prior, resumed, env); return resumed(() => result(prior)); }
     catch (err) { return resumed(() => ({ ...result(prior), followUp: { step: 'local refs', error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } })); }
   }
+  // Read the pinned build, never an uncommitted bump in the checkout. Published
+  // receipt recovery above finishes its original build even if dev has moved on.
+  const packagePath = await git(root, ['ls-tree', '--name-only', state.dev, '--', 'package.json'], undefined, undefined, env);
+  if (packagePath) {
+    const text = await git(root, ['show', `${state.dev}:package.json`], undefined, undefined, env);
+    resumed(() => {
+      const pkg = JSON.parse(text) as { version?: unknown } | null;
+      if (pkg && Object.hasOwn(pkg, 'version') && pkg.version !== name.slice(1)) {
+        throw new ReleaseError('release-version', `dev's package.json says ${pkg.version}, the release is ${name}: commit the bump on dev, merge it, then preview again`);
+      }
+    });
+  }
   const localTag = await ref(root, `refs/tags/${name}`, env);
   resumed(() => { if (localTag || github.tags.has(`refs/tags/${name}`)) throw new ReleaseError('release-tag', `${name} already exists`); });
   if (!await ancestor(root, state.main, state.dev, env)) throw new ReleaseError('release-state', 'main is not an ancestor of dev; run `cland sync`');
