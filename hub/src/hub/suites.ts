@@ -3,7 +3,7 @@ import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
 import { spawn, type ChildProcess } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile, writeFile, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards } from '../suite-shards.ts';
@@ -48,6 +48,7 @@ export type SuiteJob = {
   workers?: number; fallbackWorkers?: number; size?: string;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
+  submissionKey?: string;
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
   pid: number | null; started: string | null; outcome: { code: number; cause: string } | null;
@@ -77,6 +78,8 @@ type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
 const KEY = 'suite-jobs';
+// Hub-derived: callers cannot accidentally rotate the key when retrying a lost reply.
+const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode'>, head: string): string => createHash('sha256').update(JSON.stringify([input.actor?.sessionId ?? 'human', input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
@@ -305,14 +308,14 @@ export class Suites {
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     const config = this.#options.projectConfig?.();
     const settings = { ...this.#options };
     const executor = input.executor ?? settings.executor ?? 'local';
@@ -328,8 +331,11 @@ export class Suites {
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
     const workers = input.workers ?? limits.workers;
-    const identity = input.actor?.sessionId ?? 'human';
-    if (!input.dryRun && this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
+    if (!input.dryRun && this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'))) {
+      // A retry needs only the current head, not another expensive candidate inspection.
+      const existing = this.#existingSubmission(input, await this.#candidate.head(input.cwd), authorize);
+      if (existing) return existing;
+    }
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     const { head, branch, selection, tree, tierPlan, budgetBase } = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
@@ -347,6 +353,8 @@ export class Suites {
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
         lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...budgetLines, ...testLintReport(await lintTests(input.cwd))] };
     }
+    const existing = this.#existingSubmission(input, head, authorize);
+    if (existing) return existing;
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
     const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size, cacheExecutor, input.occasion) : undefined;
@@ -357,11 +365,9 @@ export class Suites {
     // recorded only by a capable runner on a clean integrated full dev run.
     if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !cached && (await readFile(join(input.cwd, 'hub/test/run-suite.ts'), 'utf8').catch(() => '')).includes('reduceCoverage')) selection.recordCoverage = { head, tree, run: id };
     authorize();
-    // Recheck after I/O: concurrent submissions cannot both reserve a session.
-    if (this.#jobs.some(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -388,11 +394,20 @@ export class Suites {
     if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during submission; submit verification again');
     authorize();
     if (this.#closed) throw new Error('hub is closing');
-    if (this.#jobs.some(j => this.#active(j) && (j.actor?.sessionId ?? 'human') === identity)) throw new Error('this session already has a suite queued or running');
+    // No await between the last identity fence and persistence: overlapping retries join one run.
+    const concurrent = this.#existingSubmission(input, head, authorize);
+    if (concurrent) return concurrent;
     this.#jobs.push(job); this.#save(job);
     if (!job.cached && executor === 'droplet' && (!this.#env.DIGITALOCEAN_TOKEN || !tree)) this.#fallback(job, !this.#env.DIGITALOCEAN_TOKEN ? 'DIGITALOCEAN_TOKEN is required' : 'dirty worktree cannot be bundled for droplet');
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
+  }
+  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode'>, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
+    authorize();
+    const active = this.#jobs.find(job => this.#active(job) && (job.actor?.sessionId ?? 'human') === (input.actor?.sessionId ?? 'human'));
+    if (!active) return null;
+    if ((active.submissionKey ?? submissionKey(active, active.head)) !== submissionKey(input, head)) throw new Error('this session already has a suite queued or running');
+    return { reused: true, id: active.id, pid: active.pid, topic: active.topic, position: active.state === 'queued' ? this.#ordered().findIndex(job => job.id === active.id) + 1 : 1, ...(active.cached ? { cached: active.cached } : {}) };
   }
   /** Targeted tests inspect the machine fence without joining or changing it. */
   async checkSlot(lease?: { pid: number; started: string; token: string }): Promise<{ admitted: true }> {

@@ -1,3 +1,4 @@
+// T3: detached suite workers outlive their CLI and survive hub restart.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +8,7 @@ import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, te
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
-import { ownProcess } from './process-cleanup.ts';
+import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
@@ -20,14 +21,55 @@ import { cacheRepository, humanRunnerFixture } from './suite-support.ts';
 
 
 test('suite CLI exits before its worker, posts one artifact-backed result as caller, and rejects duplicate active runs', async t => {
-  // Artificial work: leave the package running while the caller exits and duplicate admission is refused.
-  const f = await fixture(t, 'node -e "setTimeout(()=>{console.log(\'ℹ tests 2\\nℹ pass 2\\nℹ fail 0\')},1200)"');
+  // T3: the detached worker stays behind a file barrier while its CLI exits;
+  // duplicate policy also has T2 coverage in verify-submission.test.ts.
+  const f = await fixture(t, `${fileBarrierCommand} && node -e "console.log('ℹ tests 2\\nℹ pass 2\\nℹ fail 0')"`);
+  const git = await cacheRepository(f);
+  await writeFile(join(f.root, '.git/info/exclude'), 'finish\n');
+  const submittedHead = await git('rev-parse', 'HEAD');
+  // Release on every exit path, before owned-process cleanup and directory removal.
+  onCleanup(t, () => writeFile(join(f.root, 'finish'), 'ready'));
   const job = await f.launch();
+  // The launch reply may have no PID. Observe and own the admitted worker before
+  // any assertion can strand the barrier; ownProcess waits for its group to exit.
+  await f.workerPid(job.id);
   assert.equal(job.position, 1);
   assert.equal((await f.results()).length, 0, 'caller exited while package command is still running');
-  const duplicate = await clandWithEnv(f.root, f.env, 'suite', '--report', f.topic, '--to', 'rev');
-  assert.notEqual(duplicate.code, 0);
-  assert.match(duplicate.stderr, /already has a suite/);
+  await eventually('held package test started', async () => {
+    const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+    return log.includes('$ npm test') ? true : undefined;
+  });
+  const oneActiveRun = async () => {
+    const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+    assert.equal(queue.holder?.id, job.id);
+    assert.deepEqual(queue.waiters, [], 'no second verification run is queued');
+    assert.deepEqual(queue.remote, []);
+  };
+  for (const row of [
+    { mode: 'auto', changeHead: false, reused: true },
+    { mode: 'hub', changeHead: false, reused: false },
+    { mode: 'auto', changeHead: true, reused: false },
+  ]) {
+    if (row.changeHead) {
+      await writeFile(join(f.root, 'next-head.txt'), 'different head');
+      await git('add', 'next-head.txt'); await git('commit', '-m', 'advance head while original worker is active');
+    }
+    const duplicate = await clandWithEnv(f.root, f.env, 'suite', row.mode, '--report', f.topic, '--to', 'rev');
+    if (row.reused) {
+      assert.equal(duplicate.code, 0, duplicate.stderr);
+      assert.equal(duplicate.stdout.trim(), `already queued/running: ${job.id}; no new run`);
+    } else {
+      assert.notEqual(duplicate.code, 0);
+      assert.match(duplicate.stderr, /this session already has a suite queued or running/);
+    }
+    await oneActiveRun();
+  }
+  assert.equal((await f.results()).length, 0, 'concurrency assertions precede releasing the worker');
+  // Restore this fixture's submitted candidate before the worker's final head/tree fence.
+  await git('checkout', '--detach', submittedHead);
+  await writeFile(join(f.root, 'finish'), 'ready');
+  const completion = await eventually('worker completion receipt', async () => readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8').then(text => JSON.parse(text), () => undefined));
+  assert.equal(completion.code, 0);
   const result = await eventually('suite completion', async () => (await f.results())[0]);
   assert.equal(result.id, `suite:${job.id}`);
   assert.equal(result.from, 'impl'); assert.equal(result.fromRole, 'implementer');

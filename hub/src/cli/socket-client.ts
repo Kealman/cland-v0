@@ -6,7 +6,15 @@ import type { Discovery } from '../project.ts';
 import { sessionOf } from './actor.ts';
 import { realClock, type Clock } from '../hub/clock.ts';
 
-export class HubTimeout extends Error {}
+export class HubTimeout extends Error {
+  readonly timeoutMs: number;
+  readonly requestSent: boolean;
+  constructor(message: string, timeoutMs: number, requestSent = false) {
+    super(message);
+    this.timeoutMs = timeoutMs;
+    this.requestSent = requestSent;
+  }
+}
 
 /** One request over the socket; rejects on a refusal, an error result, a closed socket or the timeout. */
 export function askHub(d: Pick<Discovery, 'socket' | 'secret'>, type: ClientRequest['type'], timeoutMs = 3000): Promise<unknown> {
@@ -28,6 +36,7 @@ export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { ty
     const id = randomUUID();
     let buffer = '';
     let settled = false;
+    let requestSent = false;
     const done = (err: Error | null, value?: unknown) => {
       if (settled) return;
       settled = true;
@@ -36,7 +45,7 @@ export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { ty
       if (err) reject(err);
       else resolve(value);
     };
-    const timer = clock.setTimeout(() => done(new HubTimeout(`the hub did not answer on ${d.socket} within ${timeoutMs} ms`)), timeoutMs);
+    const timer = clock.setTimeout(() => done(new HubTimeout(`the hub did not answer on ${d.socket} within ${timeoutMs} ms`, timeoutMs, requestSent)), timeoutMs);
     socket.setEncoding('utf8');
     socket.on('connect', () => {
       const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, secret: d.secret, client: 'cli' };
@@ -49,7 +58,9 @@ export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { ty
         const frame = parseFrame(buffer.slice(0, nl));
         buffer = buffer.slice(nl + 1);
         if (!frame) continue;
-        if (frame.type === 'welcome') socket.write(`${JSON.stringify({ ...request, id })}\n`);
+        if (frame.type === 'welcome') {
+          socket.write(`${JSON.stringify({ ...request, id })}\n`, error => { if (!error) requestSent = true; });
+        }
         else if (frame.type === 'error') done(new Error(`the hub refused: ${String(frame.message)}`));
         else if (frame.type === 'result' && frame.id === id) {
           if (frame.ok === true) done(null, frame.value);

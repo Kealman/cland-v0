@@ -1,13 +1,16 @@
 // Full suites are hub-owned jobs: the CLI only submits the run and exits.
 import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
-import { askHubFrame } from './socket-client.ts';
+import { askHubFrame, HubTimeout } from './socket-client.ts';
+import { realClock, type Clock } from '../hub/clock.ts';
 import { isVerifyOccasion, type VerificationQueue } from '../protocol.ts';
 
 import { SUITE_USAGE } from './usage.ts';
 export { SUITE_USAGE } from './usage.ts';
 
-export async function runSuiteCommand(args: string[], cwd = process.cwd()): Promise<number> {
+export async function runSuiteCommand(args: string[], cwd = process.cwd(), options: { clock?: Clock; env?: NodeJS.ProcessEnv; out?: (text: string) => void; err?: (text: string) => void } = {}): Promise<number> {
+  const out = options.out ?? ((text: string) => { process.stdout.write(text); });
+  const ask = (d: Parameters<typeof askHubFrame>[0], frame: Parameters<typeof askHubFrame>[1], timeoutMs = 3000) => askHubFrame(d, frame, timeoutMs, options.env ?? process.env, options.clock ?? realClock);
   const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
     'dry-run': { type: 'boolean' }, note: { type: 'string' }, workers: { type: 'string' }, size: { type: 'string' }, occasion: { type: 'string' }, executor: { type: 'string' }, report: { type: 'string' }, to: { type: 'string', multiple: true }, all: { type: 'boolean' }, fresh: { type: 'boolean' }, json: { type: 'boolean' }, help: { type: 'boolean', short: 'h' },
   } });
@@ -16,13 +19,13 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   if (values.size !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values.size)) throw new Error('--size must be a nonempty slug');
   if (values.executor !== undefined && values.executor !== 'local' && values.executor !== 'droplet') throw new Error('--executor must be local or droplet');
   if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be stage, epic or release');
-  if (values.help) { process.stdout.write(SUITE_USAGE); return 0; }
+  if (values.help) { out(SUITE_USAGE); return 0; }
   if (positionals[0] === 'classify') {
     if (positionals.length !== 3 || !positionals[1]?.trim() || positionals[2] !== 'load-flake' || !values.note?.trim() || values['dry-run'] !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-    const result = await askHubFrame(d, { type: 'suite.classify', suite: positionals[1], cause: 'load-flake', note: values.note }) as { id: string; cover: import('../protocol.ts').CoverRecord };
-    process.stdout.write((values.json ? JSON.stringify(result) : `cover ${result.id}: ${result.cover.status} · ${result.cover.cause} (derived ${result.cover.derivedCause}); ${result.cover.classification!.note}`) + '\n');
+    const result = await ask(d, { type: 'suite.classify', suite: positionals[1], cause: 'load-flake', note: values.note }) as { id: string; cover: import('../protocol.ts').CoverRecord };
+    out((values.json ? JSON.stringify(result) : `cover ${result.id}: ${result.cover.status} · ${result.cover.cause} (derived ${result.cover.derivedCause}); ${result.cover.classification!.note}`) + '\n');
     return 0;
   }
   if (values.note !== undefined) throw new Error('--note requires verify classify');
@@ -30,7 +33,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
     if (positionals.length !== 1 || values['dry-run'] !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-    const q = await askHubFrame(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
+    const q = await ask(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
     const duration = (ms: number | null) => ms === null ? 'unknown' : `${Math.ceil(ms / 1000)}s`;
     const lines = [`local: ${q.holder ? `${q.holder.kind === 'hand run' && q.holder.session !== 'human' ? 'hand run' : q.holder.session}${q.holder.occasion ? ` · occasion ${q.holder.occasion}` : ''} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · since ${q.holder.since ?? 'unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
       `local fallback: ${q.localFallback ?? true}`,
@@ -47,15 +50,15 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
         }
       }
     }
-    process.stdout.write((values.json ? JSON.stringify(q) : lines.join('\n')) + '\n');
+    out((values.json ? JSON.stringify(q) : lines.join('\n')) + '\n');
     return 0;
   }
   if (positionals[0] === 'cancel') {
     if (positionals.length > 2 || values['dry-run'] !== undefined || values.report !== undefined || values.to !== undefined || values.all !== undefined || values.fresh !== undefined || values.executor !== undefined || values.occasion !== undefined || values.workers !== undefined || values.size !== undefined) throw new Error(SUITE_USAGE.trim());
     const d = readDiscovery(hubDiscovery(cwd));
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-    const result = await askHubFrame(d, { type: 'suite.cancel', ...(positionals[1] ? { suite: positionals[1] } : {}) }, 15000) as { id: string; topic: string; cancelled: true };
-    process.stdout.write((values.json ? JSON.stringify(result) : `suite ${result.id} cancellation requested; result in ${result.topic}`) + '\n');
+    const result = await ask(d, { type: 'suite.cancel', ...(positionals[1] ? { suite: positionals[1] } : {}) }, 15000) as { id: string; topic: string; cancelled: true };
+    out((values.json ? JSON.stringify(result) : `suite ${result.id} cancellation requested; result in ${result.topic}`) + '\n');
     return 0;
   }
   const requested = positionals[0] ?? 'auto';
@@ -63,11 +66,18 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd()): Prom
   const mode = values.all ? 'all' : requested;
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
-  const result = await askHubFrame(d, { type: 'suite.start', mode, cwd, dryRun: values['dry-run'] ?? false, ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000) as { id: string; pid: number | null; topic: string; position: number; cached?: { run: string; head: string; tree: string } } | import('../suite-tier-report.ts').SuiteDryRun;
+  const result = await ask(d, { type: 'suite.start', mode, cwd, dryRun: values['dry-run'] ?? false, ...(workers !== undefined ? { workers } : {}), ...(values.size ? { size: values.size } : {}), ...(values.occasion ? { occasion: values.occasion } : {}), fresh: values.fresh ?? false, ...(values.executor ? { executor: values.executor } : {}), report: values.report, ...(values.to ? { to: values.to } : {}) }, 15000).catch(error => {
+    if (!(error instanceof HubTimeout) || !error.requestSent || values['dry-run']) throw error;
+    const err = options.err ?? ((text: string) => { process.stderr.write(text); });
+    err(`cland: submission sent; no reply within ${error.timeoutMs / 1000} s; check \`cland verify queue\` before resubmitting\n`);
+    return null;
+  }) as { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: { run: string; head: string; tree: string } } | import('../suite-tier-report.ts').SuiteDryRun | null;
+  // Like AdmissionTimeout, this temporary infrastructure outcome is not a failed run.
+  if (result === null) return 75;
   if ('dryRun' in result) {
-    process.stdout.write((values.json ? JSON.stringify(result) : `verification dry-run · head ${result.head} · ${result.executor} · ${result.workers} workers\n${result.lines.join('\n')}`) + '\n');
+    out((values.json ? JSON.stringify(result) : `verification dry-run · head ${result.head} · ${result.executor} · ${result.workers} workers\n${result.lines.join('\n')}`) + '\n');
     return 0;
   }
-  process.stdout.write((values.json ? JSON.stringify(result) : `suite ${result.id}${result.cached ? ` cached from ${result.cached.run} at ${result.cached.head} tree ${result.cached.tree};` : ' submitted;'} worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
+  out((values.json ? JSON.stringify(result) : result.reused ? `already queued/running: ${result.id}; no new run` : `suite ${result.id}${result.cached ? ` cached from ${result.cached.run} at ${result.cached.head} tree ${result.cached.tree};` : ' submitted;'} worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
   return 0;
 }

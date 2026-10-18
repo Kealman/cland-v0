@@ -376,6 +376,16 @@ One result sums counts, labels failures by shard, and includes each machine, siz
 
 Before requesting review, fetch and merge `origin/dev` into the task branch, then commit and push the head to review. Request source review first. Only after a clear source verdict, run `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. The Reviewer settles the final verdict when the same-head result arrives; source-only criteria may be verified earlier, while run-dependent criteria stay unverified until then. The CLI prints the run id, worker PID (null while queued) and hub queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact.
 
+If the CLI writes a submission but receives no reply within 15 seconds, it exits
+75 with ``submission sent; no reply within 15 s; check `cland verify queue` before resubmitting``.
+This is an unconfirmed submission, not a failed run. Check the queue first. The
+hub persists an idempotency key for the session, worktree, head and requested
+mode: retrying while that run is queued or running returns the same run id and prints
+`already queued/running: <id>; no new run` (`reused: true` in JSON).
+After a terminal run, ordinary cache and `--fresh` rules apply, so a red run can
+receive another receipt. Dry-run and pre-write timeouts retain their ordinary
+failure outcome because they did not submit a run.
+
 `cland verify` uses the project's `[verification] executor` (`local` by default).
 `--executor local|droplet` overrides it for one run; use `--executor local` on a
 macOS host for a macOS-only question or when the human asks. The result's executor
