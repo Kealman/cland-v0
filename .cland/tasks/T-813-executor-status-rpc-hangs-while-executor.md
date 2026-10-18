@@ -2,8 +2,8 @@
 id: T-813
 kind: task
 title: executor status RPC hangs while executor reconcile or lease recovery is deferred
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-526
 branch: t/T-813-executor-status-rpc-hangs-while-executor
 created: 2026-10-18T16:28:28.718Z
-updated: 2026-10-18T18:45:17.609Z
+updated: 2026-10-18T18:45:44.488Z
+closed: 2026-10-18T18:45:44.488Z
 ---
 
 ## Summary
@@ -217,3 +218,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 805d888b. Independently audited A-5517/1086fe94: full hub + Neovim, 2640 pass/2648 total, zero fail/cancelled, eight prerequisite skips; 17 owned ordinary controls and 85/85 repetitions pass. Previously failing native async-release, history/recovery and late-create/key cleanup controls all pass. Combined 930-job status is 2.593 ms, serving 341.710 ms, active snapshot two bytes with history retained. A-5523 records both axes, C1–C5 mapping, inherited report-only trips and all prior failures; no live-hub rollout claim. No outstanding findings; per-item QA none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-18T18:45:44.488Z
+
+Merged c80a4798d61a727ed027626bc92b44c94883587e onto dev.
