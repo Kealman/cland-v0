@@ -3,7 +3,7 @@ id: T-632
 kind: task
 title: cland role launch sets a role's launch fields, and cland role list shows them all
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-492
 branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-18T12:17:07.036Z
+updated: 2026-10-18T12:43:33.513Z
 ---
 
 ## Summary
@@ -39,30 +39,37 @@ updated: 2026-10-18T12:17:07.036Z
   - done: impl-632 · 2026-10-18T09:26:03.657Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.185Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 - [x] C2. `--permissions` writes any value the roles parser takes and `--account <name>` a registered account, and `cland role list` shows each role's account and permissions.
   - done: impl-632 · 2026-10-18T09:59:22.535Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.185Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 - [x] C3. A harness change without `--model` and `--effort` resets the model to the harness's default and the effort to one the new harness takes, and the output names both changes.
   - done: impl-632 · 2026-10-18T09:26:08.563Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.185Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 - [x] C4. An unknown role, an unknown harness, a permissions value the parser refuses and an account not registered for that harness are each refused with their reason, roles.toml unchanged (one test per case).
   - done: impl-632 · 2026-10-18T09:26:11.903Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.185Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 - [x] C5. The human, the Coordinator and an Aide may run it from their shells, while a Lead, an Implementer, a Reviewer and QA are refused and the refusal shows in Agents (frame-protocol test).
   - done: impl-632 · 2026-10-18T09:26:13.229Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.186Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 - [x] C6. The next `cland session launch --role <role>` uses the new fields without a hub restart, and the output says they apply from the role's next launch (test with the fake harnesses).
   - done: impl-632 · 2026-10-18T09:26:14.214Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.186Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 - [x] C7. `cland role set` still assigns roles to sessions, and the usage text lists `role launch` with its five flags.
   - done: impl-632 · 2026-10-18T09:26:15.027Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
   - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
+  - verified: rev-30 [reviewer] · run rev-20261018-632-admission-final · 2026-10-18T12:43:31.186Z · commit 4b851f6ab5240c305d12c372c0b8f15968de280e
 
 ## Comments
 
@@ -178,3 +185,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source delta clear, A-5265. Coordinator-authorized additional dev merge resolves only serveProject option declaration, retaining AccountReader, lintWarmer and incoming selectSuite. All forwarding/lifecycle paths remain; incoming captured-identity admission behavior and admission-close test source are preserved. Task editor/CLI/account-reader implementation and both task tests are byte-identical to prior final-reviewed parent. A-5260 serial validation summary reviewed; no allowance or quarantine changes, own diff check clean. C1–C7 await fresh exact-head droplet gate; A-5250/A-5252 are prior-head history. No reviewer execution.
+
+### rev-30 · 2026-10-18T12:43:31.186Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-632-admission-final
+commit: 4b851f6ab5240c305d12c372c0b8f15968de280e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at latest merged head, A-5283. A-5282 full gate: 2605 passed,0 failed/cancelled,8 prerequisite skips; all hub/Neovim phases finalize. All 13 owned role-launch cases positively execute and 65/65 repetitions pass. Retained role, account-reader clock/native, admission-close and verify-submission carriers pass. Zero tier-mismatch rows anywhere and no hard budget failures. C1–C7 verified with source A-5265 and unchanged criterion mapping. Previous-head receipts remain historical. No reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

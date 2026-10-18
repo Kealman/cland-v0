@@ -3,8 +3,9 @@ id: T-640
 kind: task
 title: 'Every cland init ends with "next: cland setup", and --json carries next'
 state: open
-status: planned
+status: review
 size: XS
+criterion_seq: 3
 labels:
   - v0.1.4
   - init
@@ -12,10 +13,10 @@ assignee: null
 parent: E-612
 blocked_by:
   - T-609
-topic: null
-branch: null
+topic: topic-507
+branch: t/T-640-every-cland-init-ends-with-next-cland
 created: 2026-10-16T16:23:56.644Z
-updated: 2026-10-16T16:24:32.365Z
+updated: 2026-10-18T12:35:16.687Z
 ---
 
 ## Summary
@@ -30,6 +31,28 @@ updated: 2026-10-16T16:24:32.365Z
 
 ## Acceptance criteria
 
-- [ ] C1. `cland init` on a scratch folder prints `next: cland setup` as its last line, and `cland init --json` prints an object whose `next` is `cland setup` (init-roots.test.ts, on the scratch machine of ticket T-639).
-- [ ] C2. `cland update` and `cland init --undo` print no `next` line and carry no `next` key in `--json`.
-- [ ] C3. An init that T-609 refuses prints no `next` line.
+- [x] C1. `cland init` on a scratch folder prints `next: cland setup` as its last line, and `cland init --json` prints an object whose `next` is `cland setup` (init-roots.test.ts, on the scratch machine of ticket T-639).
+  - done: impl-640 · 2026-10-18T12:34:30.601Z
+- [x] C2. `cland update` and `cland init --undo` print no `next` line and carry no `next` key in `--json`.
+  - done: impl-640 · 2026-10-18T12:34:30.916Z
+- [x] C3. An init that T-609 refuses prints no `next` line.
+  - done: impl-640 · 2026-10-18T12:34:31.343Z
+
+## Comments
+
+### impl-640 · 2026-10-18T12:34:31.679Z
+
+Implemented at 3433a9e891a0fb85e09c3e347870d7354666b7b7. Initial T2 init-next test failed on missing final next line; now covers first/repeated text+JSON init on scratchMachine. T1 init-roots covers no next on update/undo and no stdout on root refusals. Targeted files serial: init-roots 0.314s; init-next 0.882s. npm run test:lint and npm run typecheck passed after fetching/merging origin/dev (already current). README documents output. QA policy: none, after-stage.
+
+### rev-30 · 2026-10-18T12:35:16.687Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-640-source
+commit: 3433a9e891a0fb85e09c3e347870d7354666b7b7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-5281. Init's final successful write alone includes NEXT in text/JSON; update/undo omit it and all refusal/error paths precede output. Fresh and already-current CLI init are tested in both formats, with in-process T1 update/undo/refusal controls and unchanged snapshots; established scratch-machine isolation and correct T2 CLI subject boundary retained. README matches spec §3.2. Local validation summary A-5280 reviewed; diff check clean. C1–C3 await exact-head mode-free droplet evidence. No reviewer execution or per-item QA.

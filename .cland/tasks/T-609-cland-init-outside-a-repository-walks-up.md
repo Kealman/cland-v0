@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-496
 branch: t/T-609-cland-init-outside-a-repository-walks-up
 created: 2026-10-16T14:15:41.938Z
-updated: 2026-10-18T12:30:02.888Z
+updated: 2026-10-18T12:31:56.730Z
 closed: 2026-10-18T12:30:02.888Z
 ---
 
@@ -223,3 +223,7 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-18T12:30:02.888Z
 
 Merged 88a0ec68e5992b96ca2505cf1c1197c512352dda onto dev.
+
+### coord · 2026-10-18T12:31:56.730Z
+
+Batch coverage (coord, rule 6): merged at 88a0ec68. The suite evidence is the droplet verify at df7a7362. The later head 0cae2f5c only resolves hub/test/tiers.json conflicts with dev, entries kept and sorted, cleared by a delta review. Covered by integrated cover 1964f937 at dev 05299961, with T-709 and T-792.

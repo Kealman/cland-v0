@@ -3,7 +3,7 @@ id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T12:19:04.627Z
+updated: 2026-10-18T12:44:27.503Z
 ---
 
 ## Summary
@@ -35,10 +35,13 @@ Decision 2 keeps two-platform T3 and T4 at stage, epic and release. T4 is where 
 
 - [x] C1. An occasion run plans every T1–T4 file with `CLAND_TEST_SOAK=1`, and an `all` run plans T1–T3 without it, proved by planning tests.
   - done: impl-714 · 2026-10-18T12:16:51.575Z
+  - verified: rev-30 [reviewer] · run rev-20261018-714-final · 2026-10-18T12:44:26.504Z · commit 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
 - [x] C2. The load gate at an occasion repeats the identities new since the last green stage run five times, and none older, proved by a load-gate test.
   - done: impl-714 · 2026-10-18T09:29:46.782Z
+  - verified: rev-30 [reviewer] · run rev-20261018-714-final · 2026-10-18T12:44:26.504Z · commit 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
 - [x] C3. A two-shard stage run's result shows the T4 tier line per shard, proved by a close-run test on the in-process provider.
   - done: impl-714 · 2026-10-18T09:29:47.724Z
+  - verified: rev-30 [reviewer] · run rev-20261018-714-final · 2026-10-18T12:44:26.504Z · commit 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
 
 ## Blocked by
 
@@ -111,3 +114,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source correction clear, A-5268; M1/M2 closed. Three test carriers only, no dev merge or production predicate relaxation. Ordinary CLI/MCP/report expectations now exactly T1–T3/900s/55.556% with no T4 line and existing budget/census/mutation controls retained; remote fixture guard explicitly proves ordinary exclusion and occasion inclusion. Historical stage receipts now carry stage/soak/loadGate on both platforms; provenance/publication/ancestry and ordinary-cover rejection controls remain. Independently parsed A-5264: original 16 failures reproduced; fixed serial six-file run 124/124, no fail/cancel/skip. C1–C3 await fresh exact-head droplet; A-5251/A-5254 retained. No reviewer execution.
+
+### rev-30 · 2026-10-18T12:44:26.505Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-714-final
+commit: 9ac7d4e9ae3eb037531bc4e9921eef6e86da255c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, A-5285. Exact-head A-5284 full gate passes 2523 tests, zero failures/cancellations, eight prerequisite skips; all phases finalize. Six changed files positively execute 121 ordinary identities, all 16 previously failing names now pass, and shared stage/provenance consumers recover. Ten scoped groups pass 50/50 repetitions. Occasion/ordinary planning, last-green-stage identity baseline and large transport, and two-shard T4 report controls verify C1–C3 with source mapping A-5166/A-5232/A-5268. Zero tier trips and no hard budgets. A-5251/A-5254 failure retained; production predicates remain intact. No reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
