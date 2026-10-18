@@ -17,6 +17,7 @@
   <a href="https://cland.app">Website</a> ·
   <a href="https://cland.app/docs/">Docs</a> ·
   <a href="https://cland.app/docs/quickstart/">Quickstart</a> ·
+  <a href="https://discord.gg/Ssv3YFcA8Z">Discord</a> ·
   <a href="https://x.com/cland_app">X</a>
 </p>
 

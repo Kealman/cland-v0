@@ -2,6 +2,7 @@
 
 export const SITE = 'https://cland.app';
 export const GITHUB = 'https://github.com/Kealman/cland-v0';
+export const DISCORD = 'https://discord.gg/Ssv3YFcA8Z';
 export const DOCS = '/docs/';
 export const TAGLINE = 'One coding crew across every AI plan you pay for.';
 

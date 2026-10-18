@@ -6,6 +6,7 @@ import clandMermaid from './src/plugins/mermaid.mjs';
 
 const SITE = 'https://cland.app';
 const GITHUB = 'https://github.com/Kealman/cland-v0';
+const DISCORD = 'https://discord.gg/Ssv3YFcA8Z';
 
 // Docs pages are written separately; list only the ones that exist so a
 // missing page never breaks the build. Slug `docs` is docs/index.md.
@@ -61,7 +62,10 @@ export default defineConfig({
         replacesTitle: true,
       },
       favicon: '/favicon.svg',
-      social: [{ icon: 'github', label: 'GitHub', href: GITHUB }],
+      social: [
+        { icon: 'github', label: 'GitHub', href: GITHUB },
+        { icon: 'discord', label: 'Discord', href: DISCORD },
+      ],
       // Adds a "Log" link to the build log beside the social icons.
       components: { SocialIcons: './src/components/starlight/SocialIcons.astro' },
       editLink: {},
