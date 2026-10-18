@@ -3,7 +3,7 @@ id: T-761
 kind: task
 title: test:tiers refuses a duration allowance owned by a task, so a merge can't make dev's manifest invalid
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - verification
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-514
+branch: t/T-761-test-tiers-refuses-a-duration-allowance
 created: 2026-10-17T22:53:23.993Z
-updated: 2026-10-18T07:19:20.230Z
+updated: 2026-10-18T14:30:29.125Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ The static gate (`npm run test:tiers`, in T0) refuses an allowance whose owner i
 ## Acceptance criteria
 
 - [ ] C1. A T1 test feeds test:tiers's manifest check an allowance owned by an open task, gets a refusal naming the line and saying an epic owner is required, and fails before the fix.
+
+## Comments
+
+### impl-761 · 2026-10-18T14:30:29.125Z
+
+T1 regression written at lintHubShards (test:tiers manifest seam), before implementation. It requires task-owner refusal with owner line, allowance key and parent epic E-482. Cover-quiet blocks the first red run; no tests run. git fetch origin plus test:lint and typecheck passed.

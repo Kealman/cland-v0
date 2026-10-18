@@ -3,7 +3,7 @@ id: T-802
 kind: task
 title: "suite-accounting: parallel spend reservations hit the budget.lock 60 s deadline instead of the cap refusal, once on a droplet after T-609's two-ledger locking"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-482
 blocked_by: []
 regression_of: T-609
-topic: null
-branch: null
+topic: topic-512
+branch: t/T-802-suite-accounting-parallel-spend
 created: 2026-10-18T13:31:26.640Z
-updated: 2026-10-18T13:31:26.640Z
+updated: 2026-10-18T14:33:12.420Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ In T-641's droplet verify baead1a4 (A-5325, head 73857d73, init-only diff), hub/
 
 - [ ] C1. The cause is named: lock ordering between budget.lock and the two ledgers' locks under parallel acquires, or a clock mismatch in the deadline.
 - [ ] C2. Parallel acquirers at the cap get the cap refusal, never a lock-deadline error, proved 50/50 by a T1/T2 test with injected concurrency and FakeClock.
+
+## Comments
+
+### impl-802 · 2026-10-18T14:33:12.420Z
+
+Source investigation: suite-accounting sets CLAND_EXECUTOR_STATE, so the failing scenario never takes the legacy spend lock. budget.lock is released before reserveSpend; lock native deadlines are translated using Date.now. Prepared controlled native-publication/concurrent-clock-driver regression plus fifty parallel at-cap acquirers. No local tests run while cover-quiet remains active. Initial test:lint and typecheck passed.

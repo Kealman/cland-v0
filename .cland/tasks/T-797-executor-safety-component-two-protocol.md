@@ -3,17 +3,17 @@ id: T-797
 kind: task
 title: 'executor-safety-component: "two protocol projects reserve against one cap…" times out waiting for the remote result (30 s) on a droplet'
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-513
+branch: t/T-797-executor-safety-component-two-protocol
 created: 2026-10-18T10:16:24.882Z
-updated: 2026-10-18T10:16:24.882Z
+updated: 2026-10-18T14:29:40.927Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ hub/test/executor-safety-component.test.ts, "two protocol projects reserve again
 
 - [ ] C1. The root cause is named. The Node 25.6.1 reproduction is the first lead: run the file under Node 25 to get a deterministic repro if possible.
 - [ ] C2. The test waits on an observed event or FakeClock step instead of a 30 s wall-clock deadline, keeping every assertion, and passes 20/20 under both Node 24 and 25.
+
+## Comments
+
+### impl-797 · 2026-10-18T14:29:40.927Z
+
+Initial read: recorded droplet symptom confirmed in A-5185 (remote result: not within 30000 ms). Node 24.21.0 and Node 25.6.1 are installed. No local tests run while cover-quiet holds. Baseline git fetch origin, npm run test:lint and npm run typecheck passed; task branch initially matches origin/dev. Reproduction/diagnosis loop resumes after the Coordinator posts cover-quiet lifted.

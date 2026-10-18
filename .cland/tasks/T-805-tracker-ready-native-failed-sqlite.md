@@ -3,17 +3,17 @@ id: T-805
 kind: task
 title: 'tracker-ready-native: "failed SQLite identity adoption…" asserts the injected failure right after presence, before adoption has run (macOS under load)'
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-511
+branch: t/T-805-tracker-ready-native-failed-sqlite
 created: 2026-10-18T13:55:15.045Z
-updated: 2026-10-18T13:55:15.045Z
+updated: 2026-10-18T14:28:17.746Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ hub/test/tracker-ready-native.test.ts:481 failed in E-678's macOS stage run 262d
 ## Acceptance criteria
 
 - [ ] C1. The test waits on an observed adoption attempt (failures ≥ 1, through the existing eventually helper or an adoption event) before its assertions, keeping every assertion. It passes 20/20 under a planted delay of the adoption step.
+
+## Comments
+
+### impl-805 · 2026-10-18T14:28:17.746Z
+
+Inspecting existing adoption-failure test; will prove the race with controlled adoption delay, retain all assertions, and wait on failures >= 1. Local test execution held until cover-quiet lifted.
