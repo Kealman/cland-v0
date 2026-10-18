@@ -2,8 +2,8 @@
 id: T-534
 kind: task
 title: "roles.toml launch policy maps onto OpenCode session rules, with #variant, effort and the session.moved watch"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-503
 branch: t/T-534-roles-toml-launch-policy-maps-onto
 created: 2026-10-15T20:59:19.230Z
-updated: 2026-10-18T12:04:56.489Z
+updated: 2026-10-18T12:13:39.084Z
+closed: 2026-10-18T12:13:39.084Z
 ---
 
 ## Summary
@@ -96,3 +97,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, A-5249. Exact-head A-5248 passes full hub/Neovim: 2572 passed, zero failures/cancellations, eight prerequisite skips. All four changed files positively execute 35 ordinary cases with no scoped skip; seven added identities pass 35/35 load repetitions. Authenticated policy readback, variant precedence/warnings, launch journal unsupported network/rules and upward moved-session warning are covered; existing native/adapter regressions pass. Zero tier-mismatch rows anywhere and no hard budget failure. C1–C4 verified with unchanged source A-5234 mapping and these runtime receipts. No reviewer execution, new allowances or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T12:13:39.084Z
+
+Merged 1294b2d28f0a29219cf23daf556f9c244ef2c7d8 onto dev.
