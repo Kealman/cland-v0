@@ -1,0 +1,135 @@
+---
+// Evergreen articles written in Markdown under src/pages/ (layout: ../layouts/ArticleLayout.astro).
+// The frontmatter carries the page's search title, its lead and an optional FAQ for structured data.
+import SiteLayout from './SiteLayout.astro';
+import { DISCORD, DOCS, GITHUB, SITE, formatDate, isoDate } from '../site';
+import '../styles/prose.css';
+
+interface Props {
+  frontmatter: {
+    /** The visible headline. */
+    title: string;
+    /** The <title> for search results; falls back to the headline. */
+    metaTitle?: string;
+    description: string;
+    lead: string;
+    eyebrow?: string;
+    /** YYYY-MM-DD of the last real change; YAML reads it as a Date. */
+    updated: string | Date;
+    faq?: { q: string; a: string }[];
+  };
+}
+
+const { frontmatter: fm } = Astro.props;
+// A bare YYYY-MM-DD is a calendar day in UTC; anything else (a Date, an ISO string) parses as is.
+const updated = /^\d{4}-\d{2}-\d{2}$/.test(String(fm.updated)) ? new Date(`${fm.updated}T00:00:00Z`) : new Date(fm.updated);
+const url = new URL(Astro.url.pathname, SITE).href;
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: fm.title,
+    description: fm.description,
+    dateModified: isoDate(updated),
+    url,
+    image: `${SITE}/og.png`,
+    author: { '@type': 'Organization', name: 'cland', url: SITE },
+    publisher: { '@type': 'Organization', name: 'cland', url: SITE },
+  },
+  ...(fm.faq?.length
+    ? [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: fm.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+        },
+      ]
+    : []),
+];
+---
+
+<SiteLayout title={fm.metaTitle ?? `${fm.title} · cland`} description={fm.description} ogType="article" jsonLd={jsonLd}>
+  <article class="wrap article">
+    <header class="article-head">
+      {fm.eyebrow && <div class="eyebrow">{fm.eyebrow}</div>}
+      <h1>{fm.title}</h1>
+      <p class="article-lead">{fm.lead}</p>
+      <p class="article-meta">Updated <time datetime={isoDate(updated)}>{formatDate(updated)}</time></p>
+    </header>
+
+    <div class="prose">
+      <slot />
+      {
+        fm.faq?.length && (
+          <>
+            <h2 id="faq">Questions</h2>
+            {fm.faq.map((f) => (
+              <>
+                <h3>{f.q}</h3>
+                <p>{f.a}</p>
+              </>
+            ))}
+          </>
+        )
+      }
+    </div>
+
+    <footer class="article-foot">
+      <a href={DOCS} class="btn btn-primary">Read the docs</a>
+      <a href={GITHUB} class="btn btn-ghost">Source on GitHub</a>
+      <a href={DISCORD} class="btn btn-ghost">Join the Discord</a>
+    </footer>
+  </article>
+</SiteLayout>
+
+<style>
+  .wrap.article {
+    max-width: calc(68ch + 48px);
+    padding-top: 64px;
+    padding-bottom: 96px;
+  }
+  .article-head {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 32px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: clamp(28px, 4.2vw, 40px);
+    line-height: 1.15;
+    letter-spacing: -0.8px;
+  }
+  .article-lead {
+    margin: 0;
+    font-size: 19px;
+    color: var(--body-muted);
+  }
+  .article-meta {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .article-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 56px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+  @media (max-width: 600px) {
+    .wrap.article {
+      max-width: none;
+      padding-top: 40px;
+      padding-bottom: 64px;
+    }
+    .article-lead {
+      font-size: 17px;
+    }
+  }
+</style>
