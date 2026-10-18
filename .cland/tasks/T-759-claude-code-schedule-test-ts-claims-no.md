@@ -1,10 +1,11 @@
 ---
 id: T-759
 kind: task
-title: claude-code-schedule.test.ts claims no native processes but its known-PID resume spawns ps through processStartedAsync
+title: "processStartedAsync's ps probe (doctor/report.ts → hub/lock.ts) is reachable from T2 tests: claude-code-schedule and tracker-levels"
 state: open
 status: backlog
-size: XS
+size: S
+criterion_seq: 1
 labels:
   - verification
   - hub
@@ -15,7 +16,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T22:05:24.636Z
-updated: 2026-10-17T22:05:24.636Z
+updated: 2026-10-18T05:43:31.144Z
 ---
 
 ## Summary
@@ -28,4 +29,10 @@ Inject the process-start fact into the adapter resume path that this test exerci
 
 ## Acceptance criteria
 
-- [ ] C1. claude-code-schedule.test.ts passes 5/5 under the enforced runtime tripwire with no child_process trip, with its assertions unchanged.
+- [ ] C1. claude-code-schedule.test.ts and tracker-levels.test.ts each pass 5/5 under the enforced runtime tripwire with no child_process trip, and a droplet run's trip report lists neither, with their assertions unchanged.
+
+## Comments
+
+### coord · 2026-10-18T05:43:27.786Z
+
+Second case (coord, 2026-10-18 05:43Z): T-772's droplet run f3c91a4b (A-4997) shows the same report-only T2 child_process.spawn trip in tracker-levels.test.ts, "reserved or malformed configured levels produce a notice and keep the default ladder", through doctor/report.ts → hub/lock.ts processStartedAsync. The Mac run with the tripwire enforced was clean, so the trip is environment-dependent. Fix the root: inject the process-start fact at the lock and doctor seam for fixtures, the way T-751 did for the droplet and spend locks, so no T2 test reaches it. C1 covers both files.

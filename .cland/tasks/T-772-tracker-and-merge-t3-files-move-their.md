@@ -3,7 +3,7 @@ id: T-772
 kind: task
 title: Tracker and merge T3 files move their rule tests to T2 under the same titles (A-4961 group, ~133 s)
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 2
 labels:
@@ -18,7 +18,7 @@ blocked_by: []
 topic: topic-479
 branch: t/T-772-tracker-and-merge-t3-files-move-their
 created: 2026-10-18T04:49:20.866Z
-updated: 2026-10-18T05:13:17.378Z
+updated: 2026-10-18T05:44:55.576Z
 ---
 
 ## Summary
@@ -34,7 +34,9 @@ Apply the "Tracker and merge" rows of A-4961 exactly: same-title moves to the li
 - [x] C1. Every "Tracker and merge" row in A-4961 is applied or explicitly kept, with each moved test's title and assertion meaning unchanged, recorded as an audit artifact.
   - done: impl-772 · 2026-10-18T05:12:01.376Z
   - verified: rev-30 [reviewer] · run rev-20261018-772-source-correction · 2026-10-18T05:12:34.104Z · commit a67f4f6aa0a91ad514c40529acce2cb352d8a4da
-- [ ] C2. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+- [x] C2. Each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
+  - done: impl-772 · 2026-10-18T05:44:05.785Z
+  - verified: rev-30 [reviewer] · run rev-20261018-772-final · 2026-10-18T05:44:55.340Z · commit a67f4f6aa0a91ad514c40529acce2cb352d8a4da
 
 ## Comments
 
@@ -79,3 +81,22 @@ Criteria: C1 verified.
 ### impl-772 · 2026-10-18T05:13:17.378Z
 
 Reviewer clock finding corrected in a67f4f6a; source clear rev-20261018-772-source-correction, A-4979, C1 verified. A-4978 adds red/green and affected-file 5/5 evidence. Exact-head diff-selected droplet verification submitted: f3c91a4b-7b92-4965-9790-3678e059f127 in topic-479. Awaiting result before completing C2.
+
+### impl-772 · 2026-10-18T05:44:06.020Z
+
+Exact-head droplet f3c91a4b passed at a67f4f6a: hub-only exit 0, 2129 pass/0 fail/5 unrelated skips; all 21 touched files have Linux receipts and all 45 load-gate identities pass 5/5. Linux c-8 lon1, 1723 s lifetime, $0.1197. Log A-4997; audit addendum A-4998. Two report-only ps-probe trips include tracker-levels and existing claude-code-schedule; Coordinator identifies known T-759 shared root and explicitly says it does not block T-772. C2 marked done; requested final same-head Reviewer evidence verdict. No source changes.
+
+### rev-30 · 2026-10-18T05:44:55.340Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-772-final
+commit: a67f4f6aa0a91ad514c40529acce2cb352d8a4da
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-4999: final same-head evidence clear; C2 verified, C1 source verification remains current. A-4997/f3c91a4b passes with 2,129 pass/0 fail/5 unrelated prerequisite skips. Independently checked all 21 touched files/168 owned ordinary test receipts, all 123 moved destination titles and all 45 load gates 5/5 (225/225). Mac A-4972 plus corrected clock/consumer A-4978 remains applicable. Two report-only ps-probe receipts are explicitly disclosed, not a zero-trip claim: primary Coordinator 5fcaa29a assigns both to broadened T-759 and says they do not block T-772; addendum A-4998 preserves this. No source/head change. Linux c-8 lon1, 1,723s lifetime, $0.1197. No per-item QA.
+
+Criteria: C2 verified.
