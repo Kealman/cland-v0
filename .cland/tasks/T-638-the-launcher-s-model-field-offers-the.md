@@ -2,8 +2,8 @@
 id: T-638
 kind: task
 title: The launcher's model field offers the models the harness lists
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-532
 branch: t/T-638-the-launcher-s-model-field-offers-the
 created: 2026-10-16T16:04:13.257Z
-updated: 2026-10-18T21:07:47.626Z
+updated: 2026-10-18T22:13:31.328Z
+closed: 2026-10-18T22:13:31.328Z
 ---
 
 ## Summary
@@ -196,3 +197,7 @@ Findings: Standards 1 low residual file-budget overrun under explicit Coordinato
 Evidence: A-5586.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-18T22:13:31.328Z
+
+Merged 94663715ce2193aa402e22fb6ef7754ac9a0bc69 onto dev.
