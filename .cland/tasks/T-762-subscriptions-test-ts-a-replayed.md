@@ -2,8 +2,8 @@
 id: T-762
 kind: task
 title: "subscriptions.test.ts: a replayed terminal session fact reaches a subscription created for the next launch on a slow droplet"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-471
 branch: t/T-762-subscriptions-test-ts-a-replayed
 created: 2026-10-17T22:57:33.480Z
-updated: 2026-10-18T03:39:00.166Z
+updated: 2026-10-18T03:39:12.899Z
+closed: 2026-10-18T03:39:12.899Z
 ---
 
 ## Summary
@@ -59,3 +60,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-4934: no Standards or Spec findings. Primary Coordinator ba5c8576 authorizes this no-code evidence item and Coordinator closure. A-4824 actual list adds busy, not a terminal stopped/died replay; historical native fake resume can emit genuine busy through turn-start, while terminal checkpoint/subscription fan-out are synchronous. Merged T-702 explicitly controls FakeHarness idle and does not call busy/turn. Final deepEqual assertion remains unchanged. Audited A-4930 at current-dev/branch head 37c4921c: exactly 20/20 serial positive case receipts, all exit 0, zero failures/cancellations/skips; invocation wall 0.420–0.778s, median 0.527s, total 11.286s, recorded load 6.06–6.16. No source delta, new implementation or merge is proposed; C1 verified.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T03:39:12.899Z
+
+Merged f886b694eeec4670327e135509d32784ffce3179 onto dev.
