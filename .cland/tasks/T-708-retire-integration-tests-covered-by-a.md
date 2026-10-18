@@ -3,7 +3,7 @@ id: T-708
 kind: task
 title: Retire integration tests covered by a scenario plus a T2 equivalent, and close the process-helper baseline outside contract, scenario and lifecycle files
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -28,7 +28,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:37.845Z
-updated: 2026-10-17T12:27:15.613Z
+updated: 2026-10-18T04:40:38.851Z
 ---
 
 ## Summary
