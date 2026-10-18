@@ -3,7 +3,7 @@ id: T-799
 kind: task
 title: A droplet run that hits its run timeout loses the machine shard's results, so the hung test can't be named
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-508
 branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T13:18:03.266Z
+updated: 2026-10-18T13:31:13.178Z
 ---
 
 ## Summary
@@ -23,12 +23,12 @@ Twice on 2026-10-18 a task verify hit the 75 min run timeout with exit 124: T-75
 
 ## Acceptance criteria
 
-- [ ] C1. When a run reaches its run timeout (or is cancelled), the result names every test that started but never finished, with its file and how long it had been running. A T2 test with a planted hanging test on the in-process provider proves it.
-  - failed: rev-30 [reviewer] · 2026-10-18T13:18:03.266Z · note A running repetition has no streamed execution start/finish, so interrupted results cannot name every unfinished test.
+- [x] C1. When a run reaches its run timeout (or is cancelled), the result names every test that started but never finished, with its file and how long it had been running. A T2 test with a planted hanging test on the in-process provider proves it.
+  - done: impl-799 · 2026-10-18T13:30:48.345Z
 - [x] C2. Completed tests in the timed-out shard are kept in the result and its log, without depending on the reporter flushing at exit.
-  - done: impl-799 · 2026-10-18T13:14:00.513Z
-- [ ] C3. The suite result's first lines after "exit 124" say "hung: <file> :: <test> (running N s)" for the longest-running unfinished test.
-  - failed: rev-30 [reviewer] · 2026-10-18T13:18:03.266Z · note A repetition-only timeout produces no corresponding longest hung-test line after exit124.
+  - done: impl-799 · 2026-10-18T13:30:48.724Z
+- [x] C3. The suite result's first lines after "exit 124" say "hung: <file> :: <test> (running N s)" for the longest-running unfinished test.
+  - done: impl-799 · 2026-10-18T13:30:49.196Z
 
 ## Comments
 
@@ -50,3 +50,11 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Source not clear, A-5317. One medium integration gap M1; implementer 93b2b407 confirms and is correcting it, no verification submitted. Phase execution order, envelope identity, atomic remote persistence/recovery and cancellation/child cutoff paths otherwise have no finding. A-5312 targeted/native evidence reviewed, but phase-only controls do not cover repetition workers. C1/C3 failed; C2 remains unverified. Replacement committed head needs fresh source review before verification. No reviewer execution.
 
 Criteria: C1 failed (A running repetition has no streamed execution start/finish, so interrupted results cannot name every unfinished test.), C3 failed (A repetition-only timeout produces no corresponding longest hung-test line after exit124.).
+
+### impl-799 · 2026-10-18T13:30:49.609Z
+
+M1 corrected at pushed head 7ffa557cb967ae32a45d9a4e8a1b3714daecced3. A-5324 retains the controlled repetition-only red/green proof, five completed repetition receipts, canonical file-envelope handling, and separate ordinary timing accounting. T1 suite-progress 4/4 (0.300 s), T2 suite-hung-component 2/2 (0.739 s), full T3 durations-runner 15/15 (30.331 s), quarantine-runner 7/7 (8.955 s); final lint/typecheck green. Native reporter control retains four bodies/four matching timings. Brief cover-quiet respected; full changed-file validation resumed only after lift. No post-review dev merge and no verification submitted.
+
+### impl-799 · 2026-10-18T13:31:13.178Z
+
+Validation count correction: quarantine-runner passed 10/10 tests, not 7/7. The A-5324 README and copied log already record 10 tests accurately; exit 0 and the measured 8.955 s are unchanged.
