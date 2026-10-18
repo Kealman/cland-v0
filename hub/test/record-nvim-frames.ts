@@ -24,7 +24,9 @@ export async function refresh(files: string[], retain = false, slice = false): P
     for (const file of files) {
       if (loadavg()[0]! >= 15) throw new Error('fixture refresh needs one-minute load below 15');
       await writeFile(path, '');
-      await run(file, { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_NVIM_RECORDINGS_PATH: path });
+      // Record the extended oracle inputs too: integrated soak runs must replay
+      // beyond the ordinary plan, and a full refresh replaces the catalog.
+      await run(file, { ...process.env, CLAND_TEST_SOAK: '1', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_NVIM_RECORDINGS_PATH: path });
       const keys = new Set<string>();
       for (const line of (await readFile(path, 'utf8')).split('\n').filter(Boolean)) {
         const r = JSON.parse(line) as Recording;

@@ -768,6 +768,15 @@ test('generated live appends, ask evictions and delivery changes equal a full re
     const c = await start(t, { messages: { general: messages.slice(0, seed === 1 ? 200 : 200 + seed) } }, 'UTC', false);
     await c.lua(`vim.o.columns=${seed % 2 ? 80 : 120}`);
     await c.waitScreen(s => s.includes('Body'), 'generated history');
+    // T2 client/frame seam: this handler follows the thread's synchronous
+    // delivery handler, so the last frame acknowledges the entire render burst.
+    await c.lua(`
+      require('cland').client:on('delivery',function(event)
+        if event.topic=='general' and event.message==_G.oracle_boundary and event.stage=='queued' then
+          _G.oracle_delivered=true
+        end
+      end)
+    `);
     const compare = async (label: string) => {
       const incremental = normalise(await c.lua<Snapshot>(snapshot));
       await c.lua(`
@@ -817,16 +826,27 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       };
       const boundary = await c.lua<string>(`
         local t=require('cland.views').topic('general').thread
-        for _,m in ipairs(t.messages) do if m.fromKind=='human' then return m.id end end
+        _G.oracle_delivered=false
+        for _,m in ipairs(t.messages) do
+          if m.fromKind=='human' then _G.oracle_boundary=m.id; return m.id end
+        end
       `);
-      await c.control({ emits: [
+      const receipt = await c.control({ emits: [
         { type: 'message', topic: { id: 'general', title: 'General' }, message: append },
         { type: 'delivery', topic: 'general', message: append.id, stage: step % 2 === 0 ? 'injected' : 'delivered' },
         { type: 'delivery', topic: 'general', message: boundary, stage: 'injected' },
         { type: 'delivery', topic: 'general', message: boundary, stage: 'queued' },
       ] });
-      // Flush through RPC and compare both presentations of the same retained messages.
-      await c.waitScreen(s => s.includes(`Live ${seed}/${step}`), 'generated append');
+      assert.equal(receipt.ok, true, `seed ${seed}, append ${step}: ${receipt.error}`);
+      // Observe the final delivery, including both updates to the retained
+      // boundary message, before comparing both presentations. Screen visibility
+      // is unrelated to whether the incremental render has consumed the burst.
+      assert.ok(await c.lua<boolean>(`
+        assert(vim.wait(5000,function() return _G.oracle_delivered end), 'generated append delivery burst has not landed')
+        local id,text=...
+        local block=require('cland.views').topic('general').thread.block_of[id]
+        return block and table.concat(block.lines,'\\n'):find(text,1,true)~=nil or false
+      `, append.id, `Live ${seed}/${step}`), 'generated append is rendered');
       await compare(`seed ${seed}, live append ${step}: incremental presentation equals full render`);
     }
   }
