@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-477
 branch: t/T-684-the-test-lint-refuses-new-t3-files
 created: 2026-10-16T19:59:28.259Z
-updated: 2026-10-18T06:24:57.105Z
+updated: 2026-10-18T06:34:57.180Z
 ---
 
 ## Summary
@@ -52,6 +52,7 @@ Week 1 stops the growth (memo §5.5 step 1): a new test must be T1 or T2 unless 
   - done: impl-684 · 2026-10-18T04:57:07.252Z
   - verified: rev-30 [reviewer] · run rev-20261018-684-source · 2026-10-18T05:05:41.542Z · commit ab93275fc79203cdf2926027f92a6c2752daa509
   - verified: rev-30 [reviewer] · run rev-20261018-684-coverage-delta · 2026-10-18T05:34:58.514Z · commit 00c13011d1df307dc342a0ed727d92c3c895f073
+  - verified: rev-30 [reviewer] · run rev-20261018-684-integration-delta · 2026-10-18T06:34:57.180Z · commit 405bbe90de50e99a27017ab49d2120f6ff459c44
 
 ## Comments
 
@@ -123,3 +124,18 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-684 · 2026-10-18T06:24:51.215Z
 
 Coordinator-authorized origin/dev integration completed and pushed at bb465000cf88d4f5ac25cb487cdb1020ca8a2d8d (merge d098f160, dev d550c948). Clock conflict retains both until cases and FakeClock drain-horizon regression; lazy harness auto-merge retained. Per Coordinator, corrected T-772 tiering by restoring the unchanged native latency assertion case from tracker-component.test.ts to T3 tracker.test.ts. Shrink has zero count increases and retires 33 daemon, 43 spoke and 3 wait sites. Fixed first-freeze history reference exposed by the advanced merge base, with red/green Git-backed regression rejecting seed inflation/later growth. T0 checks and 55 serial whole-file runs across 11 files green, peak load 4.660. Evidence A-5018: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5018-t-684-authorized-integration-baseline-shrink-and-55-serial-receipts. Delta review requested before fresh exact-head droplet run.
+
+### rev-30 · 2026-10-18T06:34:57.180Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-684-integration-delta
+commit: 405bbe90de50e99a27017ab49d2120f6ff459c44
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5037. Authorized integrations retain both clock regression groups, lazy fixture admission, T-708 hygiene peers and until reconnect assertions. Native watcher exact title/assertion body restored to T3; only fixture setup changes. First-publication fix validates original freeze before retaining it through dev movement; new Git regression covers inflated seeds, immutable history and later growth. Independently checked no per-file/category baseline increases (363 current paths). A-5030: eleven files whole-file 5/5, 420 aggregate passes, zero failures/cancellations/skips. C6 verified; C1–C5 await fresh exact-head droplet evidence. Prior A-5007 green belongs to old head only; A-4990 red retained.
+
+Criteria: C6 verified.

@@ -3,8 +3,9 @@ id: T-770
 kind: task
 title: "`cland verify` exits 1 on a 15 s hub-socket timeout even though the hub accepted the run, inviting a duplicate submission"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - bug
   - hub
@@ -13,10 +14,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
+topic: topic-483
 branch: t/T-770-cland-verify-exits-1-on-a-15-s-hub
 created: 2026-10-18T03:49:21.322Z
-updated: 2026-10-18T06:27:34.546Z
+updated: 2026-10-18T06:36:15.022Z
 ---
 
 ## Summary
@@ -29,4 +30,24 @@ When the request was written but no reply came, the verify CLI says so: "submiss
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test with a hub that accepts a verify request but delays its reply past the CLI deadline gets the distinct "sent, unconfirmed" exit and message, and resubmitting returns the same run id. The test fails before the fix.
+- [x] C1. A T2 test with a hub that accepts a verify request but delays its reply past the CLI deadline gets the distinct "sent, unconfirmed" exit and message, and resubmitting returns the same run id. The test fails before the fix.
+  - done: impl-770 · 2026-10-18T06:32:31.378Z
+
+## Comments
+
+### impl-770 · 2026-10-18T06:31:23.227Z
+
+C1 red-before-fix evidence published as A-5021. The T2 public CLI/socket test now passes, including queued/running retries, changed-head/mode separation, terminal-red resubmission, pre-write timeout, dry-run timeout and overlapping retries. Hub derives and persists the idempotency key from session identity, cwd, head and mode; active reuse avoids full candidate reinspection. Exit 75 matches T-758's temporary infrastructure outcome.
+
+### rev-30 · 2026-10-18T06:36:15.022Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-770-source
+commit: 8db896cf846089840db3a4e24fee1459ee7bbd78
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear, A-5041 (Standards/Spec). Sent non-dry-run deadline returns 75 and queue guidance; pre-write/dry-run remain ordinary errors. Hub-derived persisted session/cwd/head/mode identity reuses active jobs with authorization/head checks and a final synchronous reservation fence. Terminal red remains resubmittable per Coordinator ca61a476. Four T2 cases cover accepted deadline, queued/running/fresh reuse, changed key refusal, terminal red, pre-write/dry-run controls and overlap. C1 remains unverified pending exact-head droplet evidence. A-5021 red and A-5029 reported checks retained; no reviewer execution.
