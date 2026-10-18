@@ -2,8 +2,8 @@
 id: T-750
 kind: task
 title: projectHub defaults to fake harnesses and fake probes; native probes become opt-in
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-459
 branch: t/T-750-projecthub-defaults-to-fake-harnesses
 created: 2026-10-17T18:44:08.555Z
-updated: 2026-10-18T02:04:07.583Z
+updated: 2026-10-18T02:04:16.230Z
+closed: 2026-10-18T02:04:16.230Z
 ---
 
 ## Summary
@@ -167,3 +168,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final integrated evidence clear; A-4892. Independently audited A-4889: exact original34 R1 files/175 cases positively execute,32files zero trips; every mapped native test file executes. Only four report-only execFile rows remain through legacyDurationKeys: suite-tiers repository planner (27323) and three suite-close-component identities (31881–31883), each named in A-4892. Prior T-751 fixture exception d5a3a80c and T-745 propagation ownership207c3db3/bac79924 establish residual scope; no zero-total-trip claim. T-751 probe/lock and T-752 duration-reader rows all clear. Full hub+Neovim exits zero:2,505passes,0fail/cancel,8 unrelated prerequisite skips; no hard budgets. Three moved/new load gates pass5/5. Current89-entry caller map, source A-4885 and independently audited local61outputs/541passes plus original paired Mac evidence remain applicable. Branch unchanged; C1/C2 done present. No findings; C1/C2 verified. No per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T02:04:16.230Z
+
+Merged 6303686bd5ba8e805ea8dbca3286374932d1f645 onto dev.
