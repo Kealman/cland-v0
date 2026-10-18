@@ -7,14 +7,16 @@
 // `../.agents/skills` (Claude Code, Codex and OpenCode all see one set). A project that already has its own
 // `.claude/skills/` folder keeps it and gets one symlink per cland skill in it instead. `.agents/skills/.cland-manifest.json`
 // records what cland installed, file by file, with the SHA-256 of the bytes cland wrote. Earlier manifests
-// list paths without hashes and remain readable. `cland update` refreshes those files; a skill folder the
-// manifest does not list is the project's own and is never written.
+// list paths without hashes and remain readable. `cland update` compares the whole skill with its install hashes:
+// an untouched copy is refreshed, an edited copy is kept whole. A skill folder the manifest does not list is
+// the project's own and is never written.
 //
 // The manifest is trusted only once validated (review of #39): it carries the mark, each skill name is
 // `[a-z0-9-]+`, each hash is 64 lowercase hex characters, and each path is relative, with no empty, `.` or `..`
 // segment, resolving inside `.agents/skills/<name>/`. A manifest failing any of that is reported, and nothing is installed, rewritten or
-// removed. Ownership is per file: a file the previous manifest did not list, on disk where a newer cland ships one,
-// is the human's: kept, reported as a conflict, never adopted. Nothing is written or removed through a symlink
+// removed. A file added, changed or deleted in the project keeps the entire hashed skill and its original hashes;
+// a project copy matching the current shipped skill adopts its hashes. Legacy path lists retain per-file ownership
+// until migrated. Nothing is written or removed through a symlink
 // (`files.ts`). Skill files need no "managed by cland" mark of their own: the manifest's mark covers every file it lists.
 import { createHash } from 'node:crypto';
 import { lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmdirSync, rmSync, symlinkSync } from 'node:fs';
@@ -34,6 +36,32 @@ export type ManifestFiles = string[] | Record<string, string>;
 export type Manifest = { managed: string; skills: Record<string, ManifestFiles> };
 
 const paths = (files: ManifestFiles): string[] => Array.isArray(files) ? files : Object.keys(files);
+const hashBytes = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
+
+/** Compare complete skill copies, including their file sets. */
+function sameHashes(a: Record<string, string> | null, b: Record<string, string>): boolean {
+  return a !== null && Object.keys(a).length === Object.keys(b).length && Object.entries(b).every(([rel, hash]) => a[rel] === hash);
+}
+
+/** Inspect the project's whole skill without following links or ignoring added entries. */
+function installedHashes(report: Report, dir: string): Record<string, string> | null {
+  if (exists(dir) !== 'dir') return null;
+  const hashes: Record<string, string> = Object.create(null) as Record<string, string>;
+  const walk = (sub: string): boolean => {
+    for (const e of readdirSync(join(dir, sub), { withFileTypes: true })) {
+      const rel = sub ? join(sub, e.name) : e.name;
+      if (e.isSymbolicLink()) {
+        refuseSymlink(report, join(dir, rel));
+        return false;
+      }
+      if (e.isDirectory()) { if (!walk(rel)) return false; }
+      else if (e.isFile()) hashes[rel] = hashBytes(readFileSync(join(dir, rel)));
+      else return false;
+    }
+    return true;
+  };
+  return walk('') ? hashes : null;
+}
 
 /** A skill's name, as a manifest may list it: one folder of `.agents/skills/`. */
 export const SKILL_NAME = /^[a-z0-9-]+$/;
@@ -150,7 +178,7 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
     return [];
   }
   const previous = read.kind === 'ok' ? read.manifest.skills : {};
-  const manifest: Manifest = { managed: `${MANAGED_BY} — cland update rewrites the skills listed here; a skill folder not listed is the project's own`, skills: {} };
+  const manifest: Manifest = { managed: `${MANAGED_BY} — cland update refreshes untouched skills listed here and keeps edited ones; a skill folder not listed is the project's own`, skills: {} };
   for (const name of shippedSkills(source)) {
     const dir = join(target, name);
     const before = Object.hasOwn(previous, name) ? previous[name] : undefined;
@@ -164,11 +192,31 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       if (before !== undefined) manifest.skills[name] = before;
       continue;
     }
+    const files = filesUnder(join(source, name));
+    if (before !== undefined && !Array.isArray(before) && exists(dir) !== null) {
+      const shipped = Object.fromEntries(files.map(rel => [rel, hashBytes(readFileSync(join(source, name, rel)))]));
+      const installed = installedHashes(report, dir);
+      if (sameHashes(installed, shipped)) {
+        report.add(dir, 'unchanged');
+        manifest.skills[name] = shipped;
+        continue;
+      }
+      if (!sameHashes(installed, before)) {
+        report.add(dir, 'kept', `edited in the project${sameHashes(before, shipped) ? '' : '; cland ships a newer version'}`);
+        manifest.skills[name] = before;
+        continue;
+      }
+    }
     const owned = new Map<string, string | undefined>();
     const retain = (rel: string) => owned.set(rel, Array.isArray(before) ? undefined : before?.[rel]);
     const beforePaths = before === undefined ? [] : paths(before);
     let wrote = false;
-    const files = filesUnder(join(source, name));
+    // Clear obsolete paths first: a release can replace a file with a directory or vice versa.
+    for (const rel of beforePaths) {
+      if (files.includes(rel)) continue;
+      if (removeFile(report, join(dir, rel), target)) wrote = true;
+      else retain(rel);
+    }
     for (const rel of files) {
       const to = join(dir, rel);
       const had = beforePaths.includes(rel);
@@ -195,12 +243,6 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       }
       owned.set(rel, hash);
       wrote = true;
-    }
-    // files an earlier version installed that this one no longer ships
-    for (const rel of beforePaths) {
-      if (files.includes(rel)) continue;
-      if (removeFile(report, join(dir, rel), target)) wrote = true;
-      else retain(rel);
     }
     report.add(dir, wrote ? (before !== undefined ? 'updated' : 'created') : 'unchanged');
     // A refused legacy path has no hash to carry forward. Keep its skill in the

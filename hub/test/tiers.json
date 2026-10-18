@@ -132,6 +132,8 @@
     "hub/test/init-process.test.ts": "T3",
     "hub/test/init-roots.test.ts": "T1",
     "hub/test/init-settings.test.ts": "T1",
+    "hub/test/init-skills-report.test.ts": "T2",
+    "hub/test/init-skills-update.test.ts": "T1",
     "hub/test/init.test.ts": "T3",
     "hub/test/item-lead.test.ts": "T2",
     "hub/test/journal-async.test.ts": "T3",

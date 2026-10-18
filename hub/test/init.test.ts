@@ -515,39 +515,6 @@ test('provisioning never writes through a symlink: a managed file, AGENTS.md or 
   assert.deepEqual(changed(was, await tree(outside)), [], 'nothing outside the projects changed');
 });
 
-test('a file of the human\'s inside a managed skill is never adopted: a later release shipping that path reports a conflict and keeps it', async (t) => {
-  const root = await tempProject(t, 'cland-update-conflict-');
-  const v1 = await tempProject(t, 'cland-skills-v1-');
-  await mkdir(join(v1, 'tdd'));
-  await writeFile(join(v1, 'tdd', 'SKILL.md'), 'tdd v1\n');
-  await run(root, 'init', { CLAND_SKILLS_SOURCE_OVERRIDE: v1 });
-  await writeFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'ours\n');
-
-  // the next release ships tdd/NOTES.md
-  const v2 = await tempProject(t, 'cland-skills-v2-');
-  await mkdir(join(v2, 'tdd'));
-  await writeFile(join(v2, 'tdd', 'SKILL.md'), 'tdd v2\n');
-  await writeFile(join(v2, 'tdd', 'NOTES.md'), 'cland notes\n');
-  const manifestOf = async () => (JSON.parse(await readFile(join(root, '.agents', 'skills', '.cland-manifest.json'), 'utf8')) as { skills: Record<string, Record<string, string>> }).skills;
-  for (let i = 0; i < 2; i++) {
-    const changes = await run(root, 'update', { CLAND_SKILLS_SOURCE_OVERRIDE: v2 });
-    const c = changes.find((x) => x.path === '.agents/skills/tdd/NOTES.md');
-    assert.equal(c?.action, 'kept', `run ${i + 1}`);
-    assert.match(c?.note ?? '', /conflict/);
-    assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'ours\n');
-    assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'SKILL.md'), 'utf8'), 'tdd v2\n');
-    const installed = await tree(join(root, '.agents', 'skills', 'tdd'));
-    installed.delete('NOTES.md');
-    assert.deepEqual((await manifestOf()).tdd, Object.fromEntries(installed), 'updated hash; conflict not adopted');
-  }
-  // the human removes theirs: cland's is installed and managed from then on
-  await rm(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'));
-  await run(root, 'update', { CLAND_SKILLS_SOURCE_OVERRIDE: v2 });
-  assert.equal(await readFile(join(root, '.agents', 'skills', 'tdd', 'NOTES.md'), 'utf8'), 'cland notes\n');
-  assert.deepEqual((await manifestOf()).tdd, Object.fromEntries(await tree(join(root, '.agents', 'skills', 'tdd'))));
-});
-
-
 test('init and update merge async sub-agent hooks while keeping user hooks', async t => {
   const root = await tempProject(t);
   await gitRepo(root);
