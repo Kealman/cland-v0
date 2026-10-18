@@ -3,7 +3,7 @@ id: T-709
 kind: task
 title: Neovim T2 tests reach the hub only through recorded protocol frames, so hub edits stop selecting them
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 4
 labels:
@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T11:31:28.161Z
+updated: 2026-10-18T11:48:17.284Z
 ---
 
 ## Summary
@@ -45,6 +45,7 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
   - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+  - verified: rev-30 [reviewer] · run rev-20261018-709-admission-sharding-delta · 2026-10-18T11:47:05.464Z · commit 1abdc29aafb2fc1861445419dc3ed0064c918e95
 - [x] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.811Z
@@ -52,6 +53,7 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
   - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+  - verified: rev-30 [reviewer] · run rev-20261018-709-admission-sharding-delta · 2026-10-18T11:47:05.464Z · commit 1abdc29aafb2fc1861445419dc3ed0064c918e95
 - [x] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:41.523Z
@@ -59,6 +61,7 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
   - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+  - verified: rev-30 [reviewer] · run rev-20261018-709-admission-sharding-delta · 2026-10-18T11:47:05.464Z · commit 1abdc29aafb2fc1861445419dc3ed0064c918e95
 - [x] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - done: impl-709 · 2026-10-18T11:28:16.575Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-final · 2026-10-18T11:31:27.645Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
@@ -278,3 +281,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear, A-5236. A-5235 / a621ea5f exits 0 at unchanged reviewed head: 2549 passes, zero failures/cancellations, eight prerequisite skips; all full phases finalize. Independently confirmed all 12 T2 Neovim files / 58 ordinary cases positively pass with no scoped skips/trips, all 40 Neovim files execute, all 19 changed test carriers execute, and 16 scoped load groups pass 80/80 repetitions. Zero tier-mismatch rows and no hard budget failures. Cumulative Mac and source evidence remains applicable as detailed in A-5236; C1–C3 remain current under A-5139. A-5221 timeout / A-5222 not-clear retained without causal reclassification; Coordinator 23e48fc8 authorized this sole unchanged-head retry, and T-799 owns future hang identification. Coordinator ba9ca17f's merge hold until hub restart remains separate and unchanged. No reviewer execution or per-item QA.
 
 Criteria: C4 verified.
+
+### impl-709 · 2026-10-18T11:45:51.562Z
+
+Coordinator e9572c7c authorized one dev merge after gate conflict. Pushed clean1abdc29aafb2fc1861445419dc3ed0064c918e95, incorporating dev54657bf8. Four keep-both resolutions: shared/test-support plus T-788 infrastructure paths; archived selector rootpackage+conditionalneutralroots; coverage rootpackage+neutralroots+until; static version lint+test:nvim-fixtures. npm install passes with no tracked changes. A-5241 retains source patch/provenance and serial requested checks: suite-selection94,coverage2,admission-cost5,recorder6 =>107passes/0fail-cancel-skip,peak1m7.391; modern/historical archived selectors load; separate exact40 at54657 gives12T2,emptyclosure,0import-decidedT2. Fresh fetch+lint, typecheck and tiers pass. No fixture/allowance/quarantine/assertion changes. Prior finalA-5236+greenA-5235 cover old5f only; new delta review then exact-head droplet required. Hub refused non-review status edit; no workaround; next permitted review transition follows ready source.
+
+### rev-30 · 2026-10-18T11:47:05.464Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-admission-sharding-delta
+commit: 1abdc29aafb2fc1861445419dc3ed0064c918e95
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5242. Authorized keep-both resolutions retain neutral-root and incoming explicit infrastructure selection, root package plus conditional neutral-root archives, complete coverage dependencies/assertions, version static lint and fixture refresh. Incoming sharding implementation byte-identical to dev; task-owned shared/test-support/Neovim sources unchanged. A-5241 raw logs confirm 107 passes across four serial files with no failures/cancellations/skips; current/historical selector archives load. Exact-40 replay independently matches pinned first-parent landing order, 12 T2 files/empty hub closure/zero import-decided T2 selections. C1–C3 verified from refreshed/cumulative proof; C4 remains pending fresh merged-head droplet. Prior A-5235 green and A-5221 timeout remain historical. Submission hold lifted by Coordinator 0c906928; no reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-709 · 2026-10-18T11:48:17.284Z
+
+Resolution source clear rev-20261018-709-admission-sharding-delta/A-5242 at1abdc29aafb2fc1861445419dc3ed0064c918e95. Fresh fetch+gated lint passes(A-5243), tree unchanged/clean. Read suite queue and submitted one mode-free droplet via CLI: d94b92f3-8560-473e-b8b5-75d91a275b39, accepted exit0/projectposition1, to Reviewer,self,Coordinator in topic475. No timeout/retry. Current C4 awaits new-head full receipt; earlier full greenA-5235/finalA-5236 remain historical. Idle awaiting hub result.

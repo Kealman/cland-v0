@@ -3,7 +3,7 @@ id: T-534
 kind: task
 title: "roles.toml launch policy maps onto OpenCode session rules, with #variant, effort and the session.moved watch"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-503
 branch: t/T-534-roles-toml-launch-policy-maps-onto
 created: 2026-10-15T20:59:19.230Z
-updated: 2026-10-18T11:26:35.832Z
+updated: 2026-10-18T12:04:56.489Z
 ---
 
 ## Summary
@@ -48,12 +48,16 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/client.ts`; the
 
 - [x] C1. A launch for each row of the policy table creates a session whose rules, read back from the fake server, match the table in hub/README.md.
   - done: impl-534 · 2026-10-18T11:23:08.454Z
+  - verified: rev-30 [reviewer] · run rev-20261018-534-final · 2026-10-18T12:04:55.195Z · commit 9c9032302d7f600be38c19a774d8f341d4cf8db7
 - [x] C2. `provider/model#variant` reaches the server as the model and the variant, effort selects a matching variant or warns, and an explicit variant wins over effort.
   - done: impl-534 · 2026-10-18T11:23:08.846Z
+  - verified: rev-30 [reviewer] · run rev-20261018-534-final · 2026-10-18T12:04:55.195Z · commit 9c9032302d7f600be38c19a774d8f341d4cf8db7
 - [x] C3. The launch record lists the rules applied and every field without a counterpart, network included.
   - done: impl-534 · 2026-10-18T11:23:09.238Z
+  - verified: rev-30 [reviewer] · run rev-20261018-534-final · 2026-10-18T12:04:55.195Z · commit 9c9032302d7f600be38c19a774d8f341d4cf8db7
 - [x] C4. A planted `session.moved` out of the item's worktree raises a warn-level event to the session's lead.
   - done: impl-534 · 2026-10-18T11:23:09.544Z
+  - verified: rev-30 [reviewer] · run rev-20261018-534-final · 2026-10-18T12:04:55.195Z · commit 9c9032302d7f600be38c19a774d8f341d4cf8db7
 
 ## Comments
 
@@ -73,3 +77,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5234: full source clear, no findings. Audited E-424 table mapping/D8 paths, catalog and explicit variants, durable effective policy records/capability gap, watched movement boundary and supervising-lead warning projection. T1/T2 HTTP/frame tests preserve native default contracts; reported enforced T2 checks clean. C1–C4 runtime verification pending exact-head droplet evidence. Preserve Coordinator submission hold until hub-restarted notice.
+
+### impl-534 · 2026-10-18T12:04:22.071Z
+
+Exact-reviewed-head droplet verification d553f4ad passed at 9c903230: 2580 tests, 2572 pass, 8 skip, 0 fail; Linux x64 / Node 24.21.0 / Neovim 0.12.5. Auto selected full because adapters/contract.ts changed. New tests passed five load repetitions. Durable log A-5248. Head unchanged; final Reviewer evidence verdict pending.
+
+### rev-30 · 2026-10-18T12:04:55.195Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-534-final
+commit: 9c9032302d7f600be38c19a774d8f341d4cf8db7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, A-5249. Exact-head A-5248 passes full hub/Neovim: 2572 passed, zero failures/cancellations, eight prerequisite skips. All four changed files positively execute 35 ordinary cases with no scoped skip; seven added identities pass 35/35 load repetitions. Authenticated policy readback, variant precedence/warnings, launch journal unsupported network/rules and upward moved-session warning are covered; existing native/adapter regressions pass. Zero tier-mismatch rows anywhere and no hard budget failure. C1–C4 verified with unchanged source A-5234 mapping and these runtime receipts. No reviewer execution, new allowances or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

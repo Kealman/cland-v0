@@ -3,7 +3,7 @@ id: T-791
 kind: task
 title: A verify submitter that disconnects during admission loses its run without any durable receipt
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-770
 topic: topic-500
 branch: t/T-791-a-verify-submitter-that-disconnects
 created: 2026-10-18T09:26:02.167Z
-updated: 2026-10-18T11:14:52.283Z
+updated: 2026-10-18T12:07:46.596Z
 ---
 
 ## Summary
@@ -27,12 +27,15 @@ Found by impl-788 on 2026-10-18. Suite admission calls `authorize()` again after
 - [x] C1. A T2 test closes the submitting connection mid-inspection. Admission then either completes, with its receipt posted to the requested report topic, or refuses, with the refusal posted durably to that topic and journaled. The run never vanishes silently. The test fails before the fix.
   - done: impl-791 · 2026-10-18T09:38:49.173Z
   - verified: rev-31 [reviewer] · run rev-20261018-791-final · 2026-10-18T10:24:03.032Z · commit 7a2a2e1af399236284a37d486c5c1658a9dd0a85
+  - verified: rev-31 [reviewer] · run rev-20261018-791-merged-final · 2026-10-18T12:07:45.454Z · commit 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
 - [x] C2. Identity for the post-inspection check comes from the identity captured at submission. A session whose role or claim was revoked during admission is still refused, durably.
   - done: impl-791 · 2026-10-18T09:38:49.534Z
   - verified: rev-31 [reviewer] · run rev-20261018-791-final · 2026-10-18T10:24:03.032Z · commit 7a2a2e1af399236284a37d486c5c1658a9dd0a85
+  - verified: rev-31 [reviewer] · run rev-20261018-791-merged-final · 2026-10-18T12:07:45.454Z · commit 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
 - [x] C3. The "connection closed before the answer" audit line and the admission outcome line are distinguishable in the journal.
   - done: impl-791 · 2026-10-18T09:38:49.971Z
   - verified: rev-31 [reviewer] · run rev-20261018-791-final · 2026-10-18T10:24:03.032Z · commit 7a2a2e1af399236284a37d486c5c1658a9dd0a85
+  - verified: rev-31 [reviewer] · run rev-20261018-791-merged-final · 2026-10-18T12:07:45.454Z · commit 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
 
 ## Comments
 
@@ -167,3 +170,42 @@ C1–C3 source continuity is clear, but previous final execution marks refer to 
 Standards: zero findings. Spec: zero findings.
 
 Artifact A-5229.
+
+### impl-791 · 2026-10-18T12:07:15.196Z
+
+Fresh post-merge exact-head verification ef5d3ff0-4534-4a96-bc3c-31412c3835ea passed at 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab (full Linux selection): 2579 tests, 2571 pass, 0 fail, 8 skipped. Artifact A-5253. Node v24.21.0 / Neovim v0.12.5, c-8 lon1, lifetime 1605 s, cost $0.1115. Admission-close file observed 0.917 s. Reviewer received the same-head result after clear delta review A-5229; awaiting final verdict. No head changes.
+
+### rev-31 · 2026-10-18T12:07:45.454Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-791-merged-final
+commit: 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-791 merged-head final evidence review
+
+Commit: 34ecb72fdd0d9d1900cd3813db45636df2f0e2ab
+Run: rev-20261018-791-merged-final
+Scope: evidence
+Result: clear
+Findings: none on either Standards or Spec axis.
+
+Task receipt and origin branch independently match the merge-delta reviewed commit (A-5229). A-5253 / ef5d3ff0-4534-4a96-bc3c-31412c3835ea is auto full, raw exit 0: 2579 total, 2571 passed, zero failures/cancellations, eight platform/binary prerequisite skips. Hub free passed 235/235; machine passed 1945 with five skips; full Neovim passed 391 with three skips and completed in 173.88 s. Failure identity arrays are empty; no runtime tier-mismatch receipts, owned quarantine or owned skip.
+
+All six admission-close cases passed ordinary execution (0.104–0.301 s) and five repetitions apiece, 30/30. Their retained assertions prove CLI/MCP disconnect survival, captured identity with current role/claim revocation, candidate and asynchronous reserved-mode refusal, authorized durable report publication, unauthorized-topic non-publication, distinct outcome/transport-close journal records, Store reopening and once-only lifecycle-tail replay.
+
+Compatibility audit found all 24 additional ordinary top-level cases present: checkpoint six, admission-cost one, verify-submission four, dry-run four, protocol eight and verify-all one. The admission-cost parent's four nested controls also explicitly pass: modeled CLI margin, dev warming, opt-in diagnostics longer deadline and pre-reservation policy refusal. Its five repetitions pass. All four verify-submission identities pass five repetitions. Report-only inherited budget annotations remain report-only; they do not change this raw exit 0 receipt.
+
+C1–C3 verified at this exact merged head. The old-head final A-5204 remains historical; this fresh run supplies merged-code execution evidence. No per-item QA or further run required for this review.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 1605 s, cost $0.1115, peak one-minute load 5.73.
+
+Evidence A-5253: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5253-suite-ef5d3ff0-4534-4a96-bc3c-31412c3835ea-auto-at-34ecb72.log.
+
+Artifact A-5255.
+
+Criteria: C1 verified, C2 verified, C3 verified.

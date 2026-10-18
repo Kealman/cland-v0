@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-492
 branch: t/T-632-cland-role-launch-sets-a-role-s-launch
 created: 2026-10-16T16:04:12.070Z
-updated: 2026-10-18T10:25:02.614Z
+updated: 2026-10-18T12:06:50.349Z
 ---
 
 ## Summary
@@ -38,24 +38,31 @@ updated: 2026-10-18T10:25:02.614Z
 - [x] C1. `cland role launch implementer --harness codex --model gpt-6.1-sol --effort high` writes those keys into `[implementer.launch]`, keeps every other line of roles.toml, and `cland role list` shows them (new CLI test against a temporary project's hub).
   - done: impl-632 · 2026-10-18T09:26:03.657Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 - [x] C2. `--permissions` writes any value the roles parser takes and `--account <name>` a registered account, and `cland role list` shows each role's account and permissions.
   - done: impl-632 · 2026-10-18T09:59:22.535Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 - [x] C3. A harness change without `--model` and `--effort` resets the model to the harness's default and the effort to one the new harness takes, and the output names both changes.
   - done: impl-632 · 2026-10-18T09:26:08.563Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 - [x] C4. An unknown role, an unknown harness, a permissions value the parser refuses and an account not registered for that harness are each refused with their reason, roles.toml unchanged (one test per case).
   - done: impl-632 · 2026-10-18T09:26:11.903Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 - [x] C5. The human, the Coordinator and an Aide may run it from their shells, while a Lead, an Implementer, a Reviewer and QA are refused and the refusal shows in Agents (frame-protocol test).
   - done: impl-632 · 2026-10-18T09:26:13.229Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 - [x] C6. The next `cland session launch --role <role>` uses the new fields without a hub restart, and the output says they apply from the role's next launch (test with the fake harnesses).
   - done: impl-632 · 2026-10-18T09:26:14.214Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 - [x] C7. `cland role set` still assigns roles to sessions, and the usage text lists `role launch` with its five flags.
   - done: impl-632 · 2026-10-18T09:26:15.027Z
   - verified: rev-30 [reviewer] · run rev-20261018-632-final · 2026-10-18T10:25:00.148Z · commit 5d21514bf6df3b379dd3f02d37fb839b06f94332
+  - verified: rev-30 [reviewer] · run rev-20261018-632-merge-final · 2026-10-18T12:06:48.204Z · commit 05f750eb2dd9c97a233d8084c05efc4fe1610889
 
 ## Comments
 
@@ -120,5 +127,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5206: exact-head A-5205 passes full hub/Neovim, 2546 pass/0 fail/8 outside-scope skips. All13 owned ordinary cases and65/65 repetitions pass; zero owned tier trips, so M1 does not recur. Retained account-poller-clock10/10 and native poller6/6 also pass. All C1–C7 verified from source mapping plus clean runtime receipts; no hard budgets or findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### impl-632 · 2026-10-18T11:40:18.894Z
+
+Coordinator-authorized merge-conflict recovery: merged origin/dev 54657bf8 once, pushed 05f750eb. Both AccountReader and lintWarmer/scheduleTips injections retained; startup warmer and account-reader forwarding retained. Five affected files tested individually (role-launch enforced tripwire 13/13, zero trips; verify-submission 4/4; roles-component 4/4; account-poller-clock 10/10; suite-admission-cost 5/5). Host test:lint/typecheck pass. Delta source review precedes one exact-head droplet verify.
+
+### rev-30 · 2026-10-18T11:41:21.519Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-632-merge-delta
+commit: 05f750eb2dd9c97a233d8084c05efc4fe1610889
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-5240. Authorized single dev merge preserves AccountReader forwarding and incoming lintWarmer injection/default fake probe, startup/dev-tip requests, scheduleTips and cleanup. Task role-launch implementation, account-reader seam and both task tests remain byte-identical to prior final-reviewed parent; integrated configuration/dispatch/protocol/usage retain both sides. No allowances added; own delta diff check clean. A-5239 local validation summary reviewed. All C1–C7 require fresh merged-head runtime evidence before final verification; prior A-5205 remains historical. No reviewer execution.
+
+### rev-30 · 2026-10-18T12:06:48.204Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-632-merge-final
+commit: 05f750eb2dd9c97a233d8084c05efc4fe1610889
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear, A-5252. Exact-head A-5250 full gate passes 2580 tests, zero failures/cancellations, eight prerequisite skips; all hub/Neovim phases finalize. All 13 role-launch cases positively execute and 65/65 repetitions pass, covering C1–C7 with unchanged source mapping A-5240. Retained account poller clock/native cases, role component and warmer/admission carriers also pass. Zero tier-mismatch rows anywhere and no hard budgets; incidental native polling does not recur. Prior-head green remains historical. No reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

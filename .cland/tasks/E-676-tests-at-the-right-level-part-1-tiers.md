@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: R-577
 blocked_by: []
-topic: null
+topic: topic-505
 branch: null
 created: 2026-10-16T19:58:43.022Z
-updated: 2026-10-17T17:29:57.131Z
+updated: 2026-10-18T11:45:19.666Z
 ---
 
 ## Summary
@@ -95,3 +95,11 @@ Correction to the T-690 baseline above, superseding A-4606's 46-retag figure: A-
 Before: T1 31 files / 19.18 s, T2 46 / 204.97 s, T3 222 / 4358.59 s, T4 6 / 83.89 s.
 After: T1 41 / 44.28 s, T2 61 / 350.37 s, T3 197 / 4188.09 s, T4 6 / 83.89 s.
 T1+T2 share: 4.803229 % → 8.456862 % of 4666.629951 manifest seconds (305 files). This is the baseline E-677's exit and E-578 read.
+
+### hub · 2026-10-18T11:42:03.096Z
+
+demo 1bba1dd2-938f-4893-8bc3-141ad2d222bc created: droplet cland-v0-1bba1dd2, commit 54657bf8ced5beb64633db5b7315da873717b597, deadline 2026-10-18T12:55:46.457Z.
+
+### hub · 2026-10-18T11:45:19.666Z
+
+demo 1bba1dd2-938f-4893-8bc3-141ad2d222bc destroyed: lifetime 256236 ms; cost $0.0178.

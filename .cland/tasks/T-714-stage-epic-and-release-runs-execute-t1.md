@@ -3,7 +3,7 @@ id: T-714
 kind: task
 title: Stage, epic and release runs execute T1 to T4 on both platforms, with the load gate for tests new since the last stage
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-490
 branch: t/T-714-stage-epic-and-release-runs-execute-t1
 created: 2026-10-16T19:59:43.897Z
-updated: 2026-10-18T11:16:20.768Z
+updated: 2026-10-18T12:07:46.988Z
 ---
 
 ## Summary
@@ -33,8 +33,8 @@ Decision 2 keeps two-platform T3 and T4 at stage, epic and release. T4 is where 
 
 ## Acceptance criteria
 
-- [x] C1. An occasion run plans every T1–T4 file with `CLAND_TEST_SOAK=1`, and an `all` run plans T1–T3 without it, proved by planning tests.
-  - done: impl-714 · 2026-10-18T09:29:45.453Z
+- [ ] C1. An occasion run plans every T1–T4 file with `CLAND_TEST_SOAK=1`, and an `all` run plans T1–T3 without it, proved by planning tests.
+  - failed: rev-30 [reviewer] · 2026-10-18T12:07:46.988Z · note Exact-head A-5251 exits1 with 16 failures: stale ordinary T4 expectations and historical stage-cover fixtures lacking required soak; no complete Neovim phase.
 - [x] C2. The load gate at an occasion repeats the identities new since the last green stage run five times, and none older, proved by a load-gate test.
   - done: impl-714 · 2026-10-18T09:29:46.782Z
 - [x] C3. A two-shard stage run's result shows the T4 tier line per shard, proved by a close-run test on the in-process provider.
@@ -79,3 +79,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5232: authorized T-790/dev integration source clear, no findings. Ordinary sharding excludes T4 paths and all T4 timing weights; occasions retain them. Sentinel test preserves reservation/accounting/cleanup and proves ordinary files balance without T4; stage T4 lines remain covered. T-788/planner merge resolutions intact, prior transport/policy files unchanged. C1–C3 runtime pending. Preserve Coordinator hold: verify only after source clear AND hub-restarted notice; E-676 merge hold separate.
+
+### rev-30 · 2026-10-18T12:07:46.988Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-714-runtime
+commit: 6ec6b8ee73a1cd3c3eaa05ad43aa23f179df11a4
+scope: evidence
+findings: [{"severity":"medium","text":"M1: ordinary dry-run/report expectations still demand T4 and the old 1000s denominator; suite-selection.test.ts:575 likewise expects T4 fixture self-tests without occasion soak. A-5251 has three failures from these stale consumers. Align ordinary T1–T3 expectations while preserving occasion-positive and reporting/selection assertions.","file":"hub/test/suite-dry-run.test.ts","line":59},{"severity":"medium","text":"M2: seeded historical full receipts omit selection.soak, now required by Suites.stageCover at suites.ts:258. Both platform receipts become ineligible; 13 planned-stage/stage-QA/scenario failures wait for cover or advancement. Refresh the fixture to the new occasion contract while retaining provenance and ordinary-cover rejection checks.","file":"hub/test/stage-cover-fixture.ts","line":18}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Runtime not clear, A-5254. A-5251 exits1: 2141 pass,16 fail,0 cancelled,5 prerequisite skips. M1 accounts for three ordinary-population expectation failures; M2 accounts for 13 stage cover/advancement failures. Correct M2 source citation is stage-cover-fixture.ts:18 (selection field; artifact adjacent-line citation is off by one). Focused planner/baseline/shard tests and ten associated 5/5 groups pass, but failed full gate cannot clear runtime criteria. C1 failed; C2/C3 remain unverified. Preserve receipt, correct carriers without weakening assertions, obtain fresh source review before replacement verification. Zero tier trips; no reviewer execution.
+
+Criteria: C1 failed (Exact-head A-5251 exits1 with 16 failures: stale ordinary T4 expectations and historical stage-cover fixtures lacking required soak; no complete Neovim phase.).
