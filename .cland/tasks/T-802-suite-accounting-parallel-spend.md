@@ -2,8 +2,8 @@
 id: T-802
 kind: task
 title: "suite-accounting: parallel spend reservations hit the budget.lock 60 s deadline instead of the cap refusal, once on a droplet after T-609's two-ledger locking"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-512
 branch: t/T-802-suite-accounting-parallel-spend
 created: 2026-10-18T13:31:26.640Z
-updated: 2026-10-18T15:09:22.730Z
+updated: 2026-10-18T15:09:43.679Z
+closed: 2026-10-18T15:09:43.679Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear. A-5385/1b140d88 passes at unchanged reviewed head: 2245 pass, zero fail/cancelled, five prerequisite skips; hub phases and Neovim smoke complete. Independent positive timing/reporter audit confirms clock 10/10, accounting 10/10, spend 10/10 and admission-lock 4/4. New clock control 0.007133358s and fifty-acquirer control 4.879818045s each pass 5/5 load repetitions. Fifty exact cap refusals, frozen fake time during native publication, and final provider/lease state remain asserted. C1–C2 verified with source A-5366. New case fits approved 8s E-482 allowance; no hard gate failure. Four inherited report-only trips remain C-326/T-803, none in audited carriers; no global zero claim. No source change, Reviewer execution or per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T15:09:43.679Z
+
+Merged d7a14cf8e12ff0ca9642f9e7c6a554f5fdafe2e8 onto dev.
