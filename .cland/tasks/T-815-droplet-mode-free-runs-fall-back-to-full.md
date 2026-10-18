@@ -2,8 +2,8 @@
 id: T-815
 kind: task
 title: Droplet mode-free runs fall back to full when fetching origin dev fails
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-528
 branch: t/T-815-droplet-mode-free-runs-fall-back-to-full
 created: 2026-10-18T18:33:03.914Z
-updated: 2026-10-18T19:40:55.454Z
+updated: 2026-10-18T21:58:09.923Z
+closed: 2026-10-18T21:58:09.923Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged c14d40f5. Independently audited authorized replacement A-5547/32ba8e5d: full hub+Neovim, 2638 pass/2646 total, zero fail/cancelled, eight prerequisite skips. Seven fetch/header controls pass ordinary plus35 repetitions; touched carriers4/4,5/5,95/95 positive. Prior failed items-panel case now positive. A-5549 records both axes, Coordinator T-817 disposition, retained A-5536/A-5537 failure and inherited report-only diagnostics. C1–C2 verified; C2 claimant done mark remains for claimant restoration. No findings or per-item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-18T21:58:09.923Z
+
+Merged c17d67604d5d5fadd661252a8172a1c4d497ae44 onto dev.
