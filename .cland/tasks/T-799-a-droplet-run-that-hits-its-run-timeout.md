@@ -3,7 +3,7 @@ id: T-799
 kind: task
 title: A droplet run that hits its run timeout loses the machine shard's results, so the hung test can't be named
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-508
 branch: t/T-799-a-droplet-run-that-hits-its-run-timeout
 created: 2026-10-18T10:52:38.748Z
-updated: 2026-10-18T14:46:52.483Z
+updated: 2026-10-18T15:17:41.724Z
 ---
 
 ## Summary
@@ -26,12 +26,18 @@ Twice on 2026-10-18 a task verify hit the 75 min run timeout with exit 124: T-75
 - [x] C1. When a run reaches its run timeout (or is cancelled), the result names every test that started but never finished, with its file and how long it had been running. A T2 test with a planted hanging test on the in-process provider proves it.
   - done: impl-799 · 2026-10-18T13:30:48.345Z
   - verified: rev-30 [reviewer] · run rev-20261018-799-final · 2026-10-18T14:04:03.580Z · commit 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
+  - verified: rev-30 [reviewer] · run rev-20261018-799-integration-final · 2026-10-18T15:12:00.025Z · commit 3350ad94fae88a3e3d203d8a529dfff2d87f7719
+  - verified: rev-30 [reviewer] · run rev-20261018-799-summary-composition · 2026-10-18T15:17:40.623Z · commit be6741ba45d654a1fb42d44d5ef4b2d5e7c2e853
 - [x] C2. Completed tests in the timed-out shard are kept in the result and its log, without depending on the reporter flushing at exit.
   - done: impl-799 · 2026-10-18T13:30:48.724Z
   - verified: rev-30 [reviewer] · run rev-20261018-799-final · 2026-10-18T14:04:03.580Z · commit 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
+  - verified: rev-30 [reviewer] · run rev-20261018-799-integration-final · 2026-10-18T15:12:00.025Z · commit 3350ad94fae88a3e3d203d8a529dfff2d87f7719
+  - verified: rev-30 [reviewer] · run rev-20261018-799-summary-composition · 2026-10-18T15:17:40.623Z · commit be6741ba45d654a1fb42d44d5ef4b2d5e7c2e853
 - [x] C3. The suite result's first lines after "exit 124" say "hung: <file> :: <test> (running N s)" for the longest-running unfinished test.
   - done: impl-799 · 2026-10-18T13:30:49.196Z
   - verified: rev-30 [reviewer] · run rev-20261018-799-final · 2026-10-18T14:04:03.580Z · commit 7ffa557cb967ae32a45d9a4e8a1b3714daecced3
+  - verified: rev-30 [reviewer] · run rev-20261018-799-integration-final · 2026-10-18T15:12:00.025Z · commit 3350ad94fae88a3e3d203d8a529dfff2d87f7719
+  - verified: rev-30 [reviewer] · run rev-20261018-799-summary-composition · 2026-10-18T15:17:40.623Z · commit be6741ba45d654a1fb42d44d5ef4b2d5e7c2e853
 
 ## Comments
 
@@ -114,3 +120,37 @@ Authorized integration source clear. Primary 6ca27255 authorizes the single dev 
 ### impl-799 · 2026-10-18T14:46:52.483Z
 
 Delta source clear rev-20261018-799-occasion-integration (A-5370) at unchanged 3350ad94fae88a3e3d203d8a529dfff2d87f7719. Read queue, then submitted exactly one mode-free droplet verify 78d32726-1a09-4cf6-aaf4-21103305b1ff reporting to reviewer and impl-799. CLI confirmed admitted at position 1. Idle awaiting hub completion at the reviewed head; historical A-5338 is not claimed for this replacement head.
+
+### rev-30 · 2026-10-18T15:12:00.025Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-799-integration-final
+commit: 3350ad94fae88a3e3d203d8a529dfff2d87f7719
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integration final evidence clear. A-5387/78d32726 passes at unchanged A-5370 source-reviewed head: 2615 pass, zero fail/cancelled, eight prerequisite skips; hub and full Neovim finalize. Independent timings and positive reporter audit confirms progress 4/4, hung component 2/2, durations-runner 15/15, quarantine-runner 10/10 and stage rules 8/8. Twelve carrier groups pass 60/60 repetitions. Both repetition-only signal controls positively pass alongside timeout/cancellation, durable completed receipts and ordinary-only timing controls; incoming occasion planner/cache/override cases pass. C1–C3 refreshed. Four inherited report-only trips remain C-326/T-803, none scoped; no global zero claim or hard gate failure. Prior gate remains historical. No source change, Reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-799 · 2026-10-18T15:16:40.305Z
+
+Coordinator-authorized one-time merge with dev c7baa5d6 completed and pushed as be6741ba45d654a1fb42d44d5ef4b2d5e7c2e853 (first parent reviewed/gated 3350ad94). dispatch.ts composes T-800 summary-first bounded priority delivery with T-799 interruption lines in mandatory headers before optional detail. Existing T2 timeout strengthened with oversized metadata: T-800-only composition red 0/2; combined green 2/2. All 40 serial tests pass: hung 2/2 .679 s, progress 4/4 .243 s, protocol 10/10 2.035 s, selection-report 4/4 14.959 s, cache-recovery 3/3 16.236 s, recovery 6/6 19.241 s, suite 11/11 28.424 s. Then lint/typecheck/whitespace clean. A-5396 contains raw proofs and focused diffs against both parents. Delta review requested to confirm composition-only condition; no new droplet run submitted during hold.
+
+### rev-30 · 2026-10-18T15:17:40.623Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-799-summary-composition
+commit: be6741ba45d654a1fb42d44d5ef4b2d5e7c2e853
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Composition-only delta clear. Primary 56019bd9 authorizes this merge and explicitly permits prior gate reuse when composition-only; condition met. Dispatch retains T-800 summary-first/bounded priority/cache delivery and T-799 interruption lines immediately after exit in all headers. Receipt producers, persistence/cutoffs, executor and runners are unchanged; core task reporter/parser files match prior parent byte-for-byte. Strengthened existing T2 timeout forces bounded delivery; red 0/2 before header composition, green 2/2 after. A-5396 raw summaries and positive lines confirm all forty serial regression cases pass, zero skips/failures. C1–C3 refreshed with prior full green A-5387/A-5389 under explicit exception; no new droplet needed. Coordinator merge/restart and submission holds remain in force. No findings, Reviewer execution or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified.

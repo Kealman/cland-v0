@@ -3,7 +3,7 @@ id: T-761
 kind: task
 title: test:tiers refuses a duration allowance owned by a task, so a merge can't make dev's manifest invalid
 state: open
-status: review
+status: ready
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-514
 branch: t/T-761-test-tiers-refuses-a-duration-allowance
 created: 2026-10-17T22:53:23.993Z
-updated: 2026-10-18T14:44:54.228Z
+updated: 2026-10-18T15:12:44.178Z
 ---
 
 ## Summary
@@ -31,6 +31,7 @@ The static gate (`npm run test:tiers`, in T0) refuses an allowance whose owner i
 
 - [x] C1. A T1 test feeds test:tiers's manifest check an allowance owned by an open task, gets a refusal naming the line and saying an epic owner is required, and fails before the fix.
   - done: impl-761 · 2026-10-18T14:43:51.812Z
+  - verified: rev-31 [reviewer] · run rev-20261018-761-final · 2026-10-18T15:12:43.754Z · commit 39bc9862593cfba04eefcb6ba5e6a012813805f0
 
 ## Comments
 
@@ -115,3 +116,38 @@ Source clear with no remaining findings. C1 awaits the exact-head post-source-cl
 Standards: zero findings. Spec: zero findings.
 
 Artifact A-5363.
+
+### rev-31 · 2026-10-18T15:12:43.755Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261018-761-final
+commit: 39bc9862593cfba04eefcb6ba5e6a012813805f0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-761 final exact-head evidence review
+
+Commit: 39bc9862593cfba04eefcb6ba5e6a012813805f0
+Run: rev-20261018-761-final
+Scope: evidence
+Result: clear
+Task findings: none on Standards or Spec axes.
+
+Task receipt and origin branch match source-2 / A-5363. A-5388 / b5e9279b-8963-4f85-adbe-2136a5bc0360 is raw exit 0, auto full: 2619 total, 2611 passed, zero failures/cancellations, eight prerequisite skips. Free 278/278, machine 1961 passed with five skips, full Neovim 372 with three skips completed in 180.51 s. Structured test failure arrays are empty.
+
+Independently audited all 22 ordinary identities in suite-tiers thirteen, duration-budget six and runner-budget three. The open-task refusal with exact structural owner line and epic guidance passed in .014681155 s. The open epic/release/category/old-prefix and closed-container transition case passed in .042358700 s. Both new owner controls passed five repetitions each (10/10); all other audited compatibility identities are positive. No owned skip, quarantine entry or resource mismatch.
+
+C1 verified using these exact-head results plus retained original missing-rejection red A-5347 and reason-value wrong-line red A-5358. Structural source-location correction and owner kind/state behavior remain current; no remaining task issue or per-item QA.
+
+Disclosure: the overall log contains four report-only T2 child-process receipts in unchanged tests outside this task: init-next.test.ts through init-machine.ts, and three suite-close-component cases through existing legacyDurationKeys Git inspection. Those fixture files are byte-identical to the fixed dev parent. They do not make the raw run red in its report-only mode and do not affect the task's owner controls. Reported separately to lead T-761 as Bugs / S for filing/deduplication; this review does not claim zero global resource diagnostics. No task scope expansion or shared fix attempted.
+
+Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, two workers; lifetime 1528 s, cost $0.1061, peak one-minute load 7.85.
+
+Evidence A-5388: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5388-suite-b5e9279b-8963-4f85-adbe-2136a5bc0360-auto-at-39bc986.log.
+
+Artifact A-5390.
+
+Criteria: C1 verified.
