@@ -8,6 +8,15 @@ import type { Resumed } from '../hub/budget.ts';
 
 const HARNESSES = ['claude-code', 'codex', 'opencode'];
 
+const AIDE_TOOLS_MARK = '# cland: aide-tools-0.1.4 migrated';
+const AIDE_TOOLS = ['session.launch', 'session.stop', 'session.resume', 'task.import', 'push'];
+const OLD_AIDE_RESTRICTION = '- You cannot ask the human, resolve a topic\'s wait, launch, stop or resume sessions, merge, hand over a role, release, sync or `cland push`: the Coordinator owns those operations.';
+const NEW_AIDE_LINES = [
+  '- On the human\'s word, launch, stop and resume sessions of any role, the Coordinator first of all: use `session.launch` or `cland session launch | stop | resume` from your shell. Say what you will launch before doing it. During a build the Coordinator keeps the crew\'s staffing, so launch only when the human asks.',
+  '- On the human\'s confirmation, import an existing project\'s open GitHub issues with `cland task import-github`. After committing the onboarding\'s work on root `dev`, publish it with `cland push` from your own shell.',
+  '- You cannot ask the human, resolve a topic\'s wait, merge, hand over a role, release or sync: the Coordinator owns those operations.',
+];
+
 type Statement = { start: number; end: number; equals: number; comment: number };
 
 /** Logical TOML lines: strings, arrays and inline tables can span physical lines. */
@@ -63,6 +72,62 @@ function keyPath(source: string): string[] {
     path.push(key); value = child;
   }
   return path;
+}
+
+/** The one-time 0.1.4 edit. Only explicit grants opt in; the mark respects later human removals.
+ * Source spans keep comments, existing grant order and all unrelated bytes intact.
+ * Invalid files throw before an edit is returned, so startup can defer without writing.
+ */
+export function migrateAideTools(text: string): { text: string; added: string[]; customClause: boolean } {
+  parseRoles(text);
+  const doc = parse(text) as { aide?: { permissions?: { tools?: string[] } } };
+  const tools = doc.aide?.permissions?.tools;
+  const unchanged = { text, added: [], customClause: false };
+  if (!tools) return unchanged;
+  const lines = statements(text);
+  const headers = lines.flatMap((line, index) => text.slice(line.start, line.end).trimStart().startsWith('[')
+    ? [{ index, path: keyPath(text.slice(line.start, line.end)).join('.') }] : []);
+  const header = headers.find(h => h.path === 'aide.permissions');
+  if (!header) return unchanged;
+  const end = headers.find(h => h.index > header.index)?.index ?? lines.length;
+  const body = lines.slice(header.index + 1, end);
+  if (body.some(line => text.slice(line.start, line.end).trim() === AIDE_TOOLS_MARK)) return unchanged;
+  const added = AIDE_TOOLS.filter(tool => !tools.includes(tool));
+  if (!added.length) return unchanged;
+  const grants = body.find(line => line.equals >= 0 && keyPath(`${text.slice(line.start, line.equals)}=0`).join('.') === 'tools');
+  if (!grants) return unchanged;
+  const newline = text.match(/\r?\n/)?.[0] ?? '\n';
+  // Locate the closing array bracket before its trailing comment. In a parsed logical
+  // statement it follows all strings and interior comments, even ones containing ].
+  const close = text.lastIndexOf(']', grants.comment >= 0 ? grants.comment - 1 : grants.end - 1);
+  // A comma at the beginning of the inserted line works with an existing last value
+  // or its trailing comment. A parsed probe distinguishes an existing trailing comma.
+  const prefix = text.slice(grants.equals + 1, close);
+  let separator = '';
+  if (tools.length) {
+    try { parse(`tools = ${prefix}\n"send"]`); }
+    catch { separator = ','; }
+  }
+  const at = lines[header.index]!.end;
+  const edits = [
+    { start: close, end: close, value: `${separator}${added.map(tool => JSON.stringify(tool)).join(',')}` },
+    { start: at, end: at, value: (text[at - 1] === '\n' ? '' : newline) + AIDE_TOOLS_MARK + newline },
+  ];
+  // Only the Aide's actual clause statement can be changed, never another role,
+  // a comment or a header-looking line embedded in somebody else's clause.
+  const aide = headers.find(h => h.path === 'aide');
+  const aideEnd = aide ? headers.find(h => h.index > aide.index)?.index ?? lines.length : 0;
+  const clause = aide && lines.slice(aide.index + 1, aideEnd).find(line => line.equals >= 0
+    && keyPath(`${text.slice(line.start, line.equals)}=0`).join('.') === 'clause');
+  const source = clause ? text.slice(clause.start, clause.end) : '';
+  const oldLine = source.split(/\r?\n/).find(line => line === OLD_AIDE_RESTRICTION);
+  if (clause && oldLine) {
+    edits.push({ start: clause.start, end: clause.end, value: source.split(/(\r?\n)/).map(line => line === OLD_AIDE_RESTRICTION ? NEW_AIDE_LINES.join(newline) : line).join('') });
+  }
+  let result = text;
+  for (const edit of edits.sort((a, b) => b.start - a.start)) result = result.slice(0, edit.start) + edit.value + result.slice(edit.end);
+  parseRoles(result);
+  return { text: result, added, customClause: !oldLine };
 }
 
 /** Set one key, retaining its spacing and trailing comment unless a replacement comment is supplied.

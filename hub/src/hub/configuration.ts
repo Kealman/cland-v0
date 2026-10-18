@@ -14,6 +14,7 @@ import type { LogFn } from '../log.ts';
 import type { Resumed } from './budget.ts';
 import { setConfigValue } from '../init/config-set.ts';
 import { setRoleLaunch, type LaunchFields, type RoleLaunchResult } from '../roles/launch.ts';
+import { migrateAideTools, writeRolesFile } from '../roles/editor.ts';
 
 // These owners establish timers, storage or compatibility machinery at startup.
 const STARTUP_FIELDS = ['name', 'sessions', 'visibility', 'tracker', 'artifacts', 'hygiene'] as const;
@@ -61,8 +62,31 @@ export class ProjectConfiguration implements RolesSource {
     try { this.#idleMinutes = idleMinutes(await readFile(this.layout.config, 'utf8')); } catch { /* startup already reports unreadable config and uses defaults */ }
     try { await writeFile(this.layout.roles, DEFAULT_ROLES_TOML, { flag: 'wx' }); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
-    try { this.#roles = parseRoles(await readFile(this.layout.roles, 'utf8')); }
-    catch (error) { this.log({ event: 'roles-unreadable', path: this.layout.roles, error: String(error), keeping: 'the defaults' }); }
+    let migration: ReturnType<typeof migrateAideTools> | undefined;
+    let original: string | undefined;
+    try {
+      original = await readFile(this.layout.roles, 'utf8');
+      migration = migrateAideTools(original);
+    }
+    catch (error) {
+      this.log({ event: 'roles-unreadable', path: this.layout.roles, error: String(error), keeping: 'the defaults' });
+      this.log({ event: 'aide-tools-migration', path: this.layout.roles, text: `roles.toml: the Aide tools migration waits for a valid file at the next hub start; the file was left unchanged: ${String(error)}` });
+    }
+    if (migration && original !== undefined) {
+      if (migration.added.length) {
+        try { await writeRolesFile(this.layout.roles, original, migration.text); }
+        catch (error) {
+          // A valid policy must never become DEFAULTS because its optional migration
+          // failed, including a concurrent edit rejected by the atomic writer.
+          const message = `roles.toml: Aide tools migration could not be published; hub startup stopped to preserve the human's role policy: ${String(error)}`;
+          this.log({ event: 'aide-tools-migration-failed', path: this.layout.roles, error: String(error), text: message });
+          throw new Error(message, { cause: error });
+        }
+        this.log({ event: 'aide-tools-migration', path: this.layout.roles, added: migration.added,
+          text: `roles.toml: added ${migration.added.join(', ')} to the Aide's tools. A running Aide gets them only at its next launch, since role tools are fixed at launch.${migration.customClause ? ' The custom Aide clause was kept; review it for the new launch, stop, resume, import and push permissions.' : ' Updated the shipped v0.1.3 Aide clause.'}` });
+      }
+      this.#roles = parseRoles(migration.text);
+    }
     this.#stamp = await this.#fileStamp(this.layout.roles);
     this.#attemptStamp = this.#stamp;
     this.log({ event: 'roles-loaded', path: this.layout.roles, launch: Object.fromEntries([...this.#roles].map(([role, definition]) => [role, definition.launch])) });

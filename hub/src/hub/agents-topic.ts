@@ -28,6 +28,8 @@ const roleName = (role: string | null): string => (role ? (ROLE_LABELS[role] ?? 
 export function lifecycleNotice(entry: LogEntry, label: (name: string) => string): TopicNotice | null {
   const session = str(entry.session);
   switch (entry.event) {
+    case 'aide-tools-migration':
+      return { kind: 'aide-tools-migration', text: String(entry.text), detail: { file: entry.path, added: entry.added ?? [] } };
     case 'task-plan-changed':
       return { kind: 'plan', text: `${String(entry.id)}: plan changed by ${String(entry.by)}${entry.reason ? `: ${String(entry.reason)}` : ''}`, detail: { item: entry.id, by: entry.by, previous: entry.previous, plan: entry.plan, ...(entry.reason ? { reason: entry.reason } : {}) } };
     case 'task-plan-approved':

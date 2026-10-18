@@ -1,10 +1,11 @@
+// T1: source-preserving roles edits through the public editor and atomic writer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseRoles } from '../src/roles/config.ts';
-import { setRoleKey, writeRolesFile } from '../src/roles/editor.ts';
+import { migrateAideTools, setRoleKey, writeRolesFile } from '../src/roles/editor.ts';
 
 test('setting a launch key replaces only its value and preserves the human file bytes', () => {
   const before = '# human file\r\n[aide.launch] # launch\r\n  model  =  "old#model"  # keep me\r\nharness = "codex"\r\neffort = "high"\r\n\r\n[reviewer.launch]\r\nharness = "codex"';
@@ -77,4 +78,29 @@ test('the writer atomically replaces the file and refuses a change made after it
   assert.deepEqual(await readdir(root), ['roles.toml'], 'no temporary files survive either outcome');
   await assert.rejects(writeRolesFile(path, newer, '[aide.launch]\nharness = "unknown"\n'), /aide\.launch\.harness/);
   assert.equal(await readFile(path, 'utf8'), newer, 'invalid candidates never reach the human file');
+});
+
+test('the Aide migration retains multiline grant comments regardless of table order', () => {
+  const restriction = '- You cannot ask the human, resolve a topic\'s wait, launch, stop or resume sessions, merge, hand over a role, release, sync or `cland push`: the Coordinator owns those operations.';
+  const role = `[aide]\nclause = '''\n${restriction}\n'''\n`;
+  const launch = '[aide.launch]\nharness = "codex"\n';
+  const permissions = '["aide" . \'permissions\'] # my grants\n"tools" = [\n  "who", # keep ] and # marks\n  "session.stop",\n] # end tools\n';
+  for (const text of [role + launch + permissions, permissions + launch + role]) {
+    const migration = migrateAideTools(text);
+    assert.deepEqual(migration.added, ['session.launch', 'session.resume', 'task.import', 'push']);
+    assert.equal(migration.customClause, false);
+    assert.ok(migration.text.includes('  "who", # keep ] and # marks\n  "session.stop",\n'));
+    assert.ok(migration.text.includes('] # end tools\n'));
+    assert.ok(!parseRoles(migration.text).get('aide')!.clause.includes(restriction));
+    assert.deepEqual(parseRoles(migration.text).get('aide')!.permissions.tools, ['who', 'session.stop', 'session.launch', 'session.resume', 'task.import', 'push']);
+  }
+});
+
+test('the Aide migration preserves custom clauses and CRLF bytes', () => {
+  const before = '# custom file\r\n[aide]\r\nclause = """\r\n[aide.permissions]\r\n# cland: aide-tools-0.1.4 migrated\r\nMy own restriction.\r\n"""\r\n[aide.launch]\r\nharness = "codex"\r\n[aide.permissions] # real grants\r\ntools = ["who"] # keep\r\n';
+  const expected = '# custom file\r\n[aide]\r\nclause = """\r\n[aide.permissions]\r\n# cland: aide-tools-0.1.4 migrated\r\nMy own restriction.\r\n"""\r\n[aide.launch]\r\nharness = "codex"\r\n[aide.permissions] # real grants\r\n# cland: aide-tools-0.1.4 migrated\r\ntools = ["who","session.launch","session.stop","session.resume","task.import","push"] # keep\r\n';
+  const migration = migrateAideTools(before);
+  assert.equal(migration.text, expected);
+  assert.equal(migration.customClause, true);
+  assert.equal(migrateAideTools(expected).text, expected);
 });

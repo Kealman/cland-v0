@@ -28,6 +28,7 @@
     "hub/test/aide-claims.test.ts": "T3",
     "hub/test/aide-component.test.ts": "T2",
     "hub/test/aide-import-cli.test.ts": "T2",
+    "hub/test/aide-migration.test.ts": "T2",
     "hub/test/aide-permissions.test.ts": "T1",
     "hub/test/aide.test.ts": "T3",
     "hub/test/artifact-cli.test.ts": "T3",
