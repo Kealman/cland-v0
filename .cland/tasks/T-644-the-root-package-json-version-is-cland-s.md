@@ -2,8 +2,8 @@
 id: T-644
 kind: task
 title: "The root package.json version is cland's only version: --version, the spoke and the managed marks read it"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-497
 branch: t/T-644-the-root-package-json-version-is-cland-s
 created: 2026-10-16T16:23:58.514Z
-updated: 2026-10-18T10:02:31.444Z
+updated: 2026-10-18T10:40:32.177Z
+closed: 2026-10-18T10:40:32.177Z
 ---
 
 ## Summary
@@ -153,3 +154,7 @@ Standards: no new findings. Spec: final clear.
 Artifact A-5178.
 
 Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
+
+### coord · 2026-10-18T10:40:32.177Z
+
+Merged a6d141647d2f8a666500b61d4f072de443b18f60 onto dev.
