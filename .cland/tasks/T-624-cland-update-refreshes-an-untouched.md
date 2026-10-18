@@ -2,8 +2,8 @@
 id: T-624
 kind: task
 title: cland update refreshes an untouched skill and keeps one edited in the project
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-534
 branch: t/T-624-cland-update-refreshes-an-untouched
 created: 2026-10-16T15:57:49.170Z
-updated: 2026-10-18T22:28:40.700Z
+updated: 2026-10-18T22:28:47.016Z
+closed: 2026-10-18T22:28:47.016Z
 ---
 
 ## Summary
@@ -94,3 +95,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged f5fe13df. Independently audited A-5612/6bc613f6: eight owned ordinary controls plus40/40 repetitions and existing init13/13 positive; gate2303 pass/2308 total, zero fail/cancelled, five prerequisite skips, hub+Neovim smoke final. A-5613 maps C1–C8, preserves source/evidence limits and discloses inherited report-only trips. All criteria verified; claimant done marks remain for the lead to record. No findings or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-18T22:28:47.016Z
+
+Merged c92f553be64845e00e443a6c80da1c45aba06fd0 onto dev.
