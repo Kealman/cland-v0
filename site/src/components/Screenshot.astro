@@ -1,0 +1,146 @@
+---
+// A screenshot by its number in src/screens.ts: the image once its file exists in
+// src/assets/screens/, otherwise a placeholder with the number, the target size and
+// the description. Works on the landing (site tokens) and in the docs (Starlight's
+// colours, dark and light), in .astro and .mdx files:
+//
+//   import Screenshot from '../../../components/Screenshot.astro';
+//   <Screenshot n={5} />
+import { Image } from 'astro:assets';
+import { findImage, getScreen } from '../screens';
+
+interface Props {
+  n: number;
+  /** A caption under the image or placeholder. */
+  caption?: string;
+  /** Fixed 16:10 frame, for screenshots that sit side by side (the landing carousel). */
+  frame?: boolean;
+  /** Load the image early, when it is above the fold. */
+  eager?: boolean;
+  /** The image's `sizes`; the default fits the docs column. */
+  sizes?: string;
+  class?: string;
+}
+
+const { n, caption, frame = false, eager = false, sizes = '(min-width: 1200px) 760px, calc(100vw - 32px)', class: className } = Astro.props;
+const screen = getScreen(n);
+const image = findImage(screen);
+const [w, h] = screen.size.split('×').map(Number);
+---
+
+<figure class:list={['cland-shot', 'not-content', { 'cland-shot-frame': frame }, className]}>
+  {
+    image ? (
+      <Image src={image} alt={screen.desc} widths={[480, 800, 1200, 1600, 2400].filter((x) => x <= image.width)} sizes={sizes} loading={eager ? 'eager' : 'lazy'} />
+    ) : (
+      <div class="cland-shot-placeholder" style={`--shot-ratio: ${w} / ${h}`} role="img" aria-label={`Screenshot ${n} to come: ${screen.desc}`}>
+        <div class="cland-shot-label">
+          SCREENSHOT {n} · {screen.size}
+        </div>
+        <p class="cland-shot-desc">{screen.desc}</p>
+        <div class="cland-shot-file">src/assets/screens/{screen.file}</div>
+      </div>
+    )
+  }
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  /* Docs colours first (Starlight sets them for dark and light), the landing's tokens as fallbacks. */
+  .cland-shot {
+    --shot-border: var(--sl-color-hairline-light, var(--border, #222a35));
+    --shot-dash: var(--sl-color-gray-4, var(--dash, #3a4554));
+    /* A parent may set --cland-shot-ground to match its own background. */
+    --shot-ground: var(--cland-shot-ground, var(--sl-color-gray-6, var(--panel, #10141b)));
+    --shot-label: var(--sl-color-text-accent, var(--amber, #f0b429));
+    --shot-text: var(--sl-color-gray-2, var(--body-muted, #aab3c0));
+    --shot-faint: var(--sl-color-gray-3, var(--muted, #8a94a3));
+    margin: 1.5rem 0;
+    min-width: 0;
+  }
+  .cland-shot :global(img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--shot-border);
+    border-radius: 12px;
+    background: #0b0e14;
+  }
+  .cland-shot-placeholder {
+    aspect-ratio: var(--shot-ratio);
+    max-height: 640px;
+    margin-inline: auto;
+    border: 2px dashed var(--shot-dash);
+    border-radius: 12px;
+    background: var(--shot-ground);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px 28px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .cland-shot-label {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--shot-label);
+  }
+  .cland-shot-desc {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--shot-text);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .cland-shot-file {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    color: var(--shot-faint);
+    overflow-wrap: anywhere;
+  }
+  .cland-shot figcaption {
+    margin-top: 0.6rem;
+    color: var(--shot-faint);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+
+  /* A fixed frame: images letterbox, placeholders fill it. */
+  .cland-shot-frame {
+    margin: 0;
+  }
+  .cland-shot-frame :global(img),
+  .cland-shot-frame .cland-shot-placeholder {
+    aspect-ratio: 16 / 10;
+    max-height: none;
+    width: 100%;
+  }
+  .cland-shot-frame :global(img) {
+    object-fit: contain;
+    background: var(--shot-ground);
+  }
+
+  /* A phone-shaped placeholder stays narrow in a wide column. */
+  .cland-shot-placeholder[style*='1170 / 2532'] {
+    max-width: 320px;
+    border-radius: 28px;
+  }
+
+  @media (max-width: 600px) {
+    .cland-shot-placeholder {
+      aspect-ratio: auto;
+      min-height: 220px;
+      padding: 20px 18px;
+    }
+    .cland-shot-frame .cland-shot-placeholder {
+      aspect-ratio: auto;
+      min-height: 260px;
+    }
+    .cland-shot-desc {
+      font-size: 14px;
+    }
+  }
+</style>

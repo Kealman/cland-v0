@@ -5,12 +5,25 @@ sidebar:
   order: 9
 ---
 
+import Screenshot from '../../../components/Screenshot.astro';
+
 Work reaches GitHub in three steps. A task is verified and reviewed on its branch, merged onto `dev` through the merge gate, and released from `dev` to GitHub `main` with a tag.
 
+```mermaid
+flowchart TB
+  %% From a task branch to GitHub: review, verification and QA when the plan requires it, the merge gate, dev in the territory, then cland release to GitHub main with a tag.
+  branch["Task branch<br/>in its own worktree"]
+  checks["Review, cland verify<br/>and QA when the plan asks"]
+  gate["Merge gate"]
+  dev["dev<br/>in the territory"]
+  rel["cland release"]
+  gh["GitHub main<br/>tagged vX.Y.Z"]
+  branch --> checks -->|clear, criteria verified| gate -->|ready| dev --> rel --> gh
+  classDef out stroke:var(--cland-diagram-accent)
+  class gh out
 ```
- task branch ──review──verify──QA?──▶ merge gate ──▶ dev ──▶ cland release ──▶ github main + vX.Y.Z
- (worktree)                                         (territory)
-```
+
+A not-clear verdict sends the work back to its branch: a fix makes a new head, and the new head needs a new review and a new run.
 
 ## Verification for any stack
 
@@ -59,6 +72,8 @@ cland verify --dry-run --report general   # show what would run, queue nothing
 ```
 
 The sessions panel's `verify:` line summarises the queue; Enter on it opens the full queue view.
+
+<Screenshot n={10} />
 
 ### Review first, then verify
 
@@ -148,6 +163,10 @@ When a task's verdicts are in, the hub decides whether it can land. It requires:
 
 When everything holds, the hub sets the task to `ready` and tells the lead. A not-clear verdict or a failed criterion sends it back to `in progress`.
 
+<Screenshot n={9} />
+
+The criteria and their marks are part of the item: see [Acceptance criteria](/docs/items/#acceptance-criteria).
+
 ## Merging
 
 ```sh
@@ -215,6 +234,8 @@ A release:
 4. Only after GitHub accepts it, moves your local `main` and the territory, comments the tag on the release item and closes it. The next open release becomes current.
 
 No GitHub API is called and no version file in your project is changed. `cland release` is the only command that pushes to GitHub.
+
+<Screenshot n={12} />
 
 In practice the Coordinator prepares the release with the shipped `release` skill and asks you to approve the version and notes before it publishes. The version always comes from you.
 

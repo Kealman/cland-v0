@@ -49,7 +49,7 @@ OpenCode's free models may train on the code they see. `cland doctor` warns for 
 
 No. The workbench runs in Neovim, but cland ships its own pinned Neovim with a clean configuration and its own keys. Space opens everything (`␣n` the inbox, `␣s` the sessions, `␣p` the palette), `␣?` lists every key, and the palette shows the key of every action. You type messages in a composer like any chat box.
 
-If you would rather not use a terminal UI at all, use the [web workbench](/docs/web-and-phone/) in a browser. Neovim users get a few extras: attaching to a harness's terminal, and answering Claude Code's in-TUI approvals.
+If you would rather not use a terminal UI at all, use the [web workbench](/docs/web-and-phone/) in a browser. Neovim users get a few extras: [attaching to a harness's terminal](/docs/sessions/#attach-to-a-session), and answering Claude Code's in-TUI approvals.
 
 ## What does it cost?
 
@@ -66,14 +66,15 @@ tmux gives you several terminals. cland gives you a team:
 
 - **Roles with enforced permissions.** A Reviewer cannot edit, an Implementer cannot merge, only the Coordinator asks you. The hub checks every call.
 - **Real state.** cland knows whether each session is busy, idle or waiting for you from the harness itself, not from what the model says.
-- **Messages without you in the middle.** Sessions talk through the hub, in topics you can read. You are not the copy-paste bus.
+- **The harness is still there.** Every session is the real CLI in its own interface. [Attach to it](/docs/sessions/) and type, whenever you want.
+- **Messages without you in the middle.** Sessions talk through the hub, in [topics](/docs/topics/) you can read. You are not the copy-paste bus.
 - **A tracker and a merge gate.** Every task has a branch, a worktree, acceptance criteria and verdicts. Nothing reaches `dev` without a clear review and verified criteria.
 - **One inbox.** Every decision waiting on you, from every session, in one list, answerable with one key from the terminal or your phone.
 - **Limits and accounts in view.** Each session's account and each account's windows on one screen.
 
 ## Can I bring my own tracker?
 
-cland's tracker is the crew's only source of work: one Markdown file per item, committed with your code. You can import your GitHub issues into it:
+cland's [tracker](/docs/items/) is the crew's only source of work: one Markdown file per item, committed with your code. You can import your GitHub issues into it:
 
 ```sh
 cland task import-github

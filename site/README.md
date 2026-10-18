@@ -30,6 +30,8 @@ npm run preview   # serve the built dist/ locally
 | `src/log.ts` | `getPosts()` (newest first) and the post URLs. |
 | `src/content/docs/docs/*.md` | The documentation, served by Starlight under `/docs/`. `docs/index.md` is the Introduction at `/docs/`. |
 | `src/content.config.ts` | The content collections: Starlight's `docs` and the build log's `log`. |
+| `src/components/Screenshot.astro`, `src/screens.ts` | Screenshots by number, on the landing and in the docs (`.mdx`). A screenshot whose file is in `src/assets/screens/` shows as an image; otherwise it shows a placeholder with its number, target size and description. [SCREENSHOTS.md](SCREENSHOTS.md) is the list still to make. |
+| `src/plugins/mermaid.mjs` | Renders ```` ```mermaid ```` blocks in the docs to inline SVG at build time with `beautiful-mermaid`: no browser in CI, no script in the page. The colours are the `--cland-diagram-*` properties in `starlight.css`, so diagrams follow the dark and light theme. |
 | `src/components/starlight/SocialIcons.astro` | A Starlight override that adds the "Log" link beside the GitHub icon in the docs header. |
 | `astro.config.mjs` | Site URL, Starlight options and the sidebar. The sidebar lists only the docs pages that exist. |
 | `src/styles/starlight.css` | The brand theme for the docs: colours for dark and light mode, JetBrains Mono for headings and navigation, IBM Plex Sans for body text. |
@@ -39,6 +41,19 @@ npm run preview   # serve the built dist/ locally
 Brand sources (colours, logo, social images) are in `docs/brand/` at the repository root. Fonts are self-hosted through `@fontsource`; the site makes no requests to Google Fonts.
 
 There is no `src/content/docs/index.md` on purpose: Starlight must not claim `/`, which belongs to the landing page.
+
+## Screenshots and diagrams
+
+- **Screenshots.** [SCREENSHOTS.md](SCREENSHOTS.md) lists every screenshot the site uses: its number, file name, size, pages and what it must show. Save a file under its listed name in `src/assets/screens/` and rebuild; the placeholder becomes the image everywhere. In a docs page (rename it to `.mdx` first), add one with:
+
+  ```mdx
+  import Screenshot from '../../../components/Screenshot.astro';
+
+  <Screenshot n={5} />
+  ```
+
+  A new screenshot gets its entry in `src/screens.ts` and in SCREENSHOTS.md.
+- **Diagrams.** Write a flow, a lifecycle or an architecture as a ```` ```mermaid ```` block, not as box-drawing characters. Flowcharts and state diagrams work; prefer top-down layouts (`flowchart TB`) so they stay readable on a phone, where a wide diagram scrolls inside its box. The first `%%` comment line is the diagram's accessible description. `classDef x stroke:var(--cland-diagram-accent)` marks a node in the brand's amber.
 
 ## Add a build log post
 

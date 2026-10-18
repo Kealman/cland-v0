@@ -24,7 +24,7 @@ The hub outlives the workbench: closing Neovim or the browser leaves the crew wo
 
 A **harness** is an agent CLI that cland runs: Claude Code, Codex or OpenCode.
 
-A **session** is one running instance of a harness, with its own history and working state. It has a name such as `impl-42` or `rev-1`, and at most one role. The hub launches sessions, delivers messages into them and knows their state from the harness itself: `busy`, `idle`, `waiting for human`, `waiting for approval`. It never relies on the model's own report.
+A **session** is one running instance of a harness, with its own history and working state. It has a name such as `impl-42` or `rev-1`, and at most one role. The hub launches sessions, delivers messages into them and knows their state from the harness itself: `busy`, `idle`, `waiting for human`, `waiting for approval`. It never relies on the model's own report. Every session runs its harness's own interface, and you can attach to it and type into it: see [Sessions and harness access](/docs/sessions/).
 
 Each session runs under an **account**: one of your harness logins. See [Accounts and limits](/docs/accounts/).
 
@@ -51,63 +51,19 @@ The **crew** is the project's staffing policy, in `.cland/crew.toml`: which role
 
 ## Items
 
-An **item** is an entry in the project's tracker: one Markdown file in `.cland/tasks/`, committed with the work. Every item has an id, a title, a state (open or closed), labels, an assignee, a parent and blocking edges.
+An **item** is an entry in the project's tracker: one Markdown file in `.cland/tasks/`, committed with the work. The kinds are release (`R-`), category (`C-`), epic (`E-`), spec (`S-`), task (`T-`), question (`Q-`) and map (`M-`); which container holds which is the configurable **container ladder**. The number is the identity: `T-17`, `E-17` and `17` find the same item.
 
-| Kind | Prefix | What it is |
-| --- | --- | --- |
-| Release | `R-` | A versioned set of epics shipped together. Has a `version`. |
-| Epic | `E-` | A larger feature, broken into tasks, with a plan. |
-| Task | `T-` | One unit of work for one Implementer. |
-| Question | `Q-` | A decision or research question. |
-| Map | `M-` | A set of open questions charted before a plan exists. |
-| Spec | `S-` | A specification. |
-| Category | `C-` | A container for loose work: Bugs, Tech debt, Follow-ups, Ideas. |
+A **task** also has a **status** (`backlog`, `planned`, `in progress`, `review`, `qa`, `ready`, `done`) that the hub moves, a **size** (`XS` to `L`), a **rank** among its siblings (the lowest is next) and **acceptance criteria**, each marked done, verified or failed.
 
-The number is the identity; the prefix follows the kind. `T-17`, `E-17` and `17` all find the same item.
+The tracker is the crew's only source of work. See [Items and the tracker](/docs/items/) for the kinds, the ladder, categories, criteria, the explorer and the GitHub import.
 
-A **task** also has:
+## Topics, asks and the inbox
 
-- a **status**: `backlog`, `planned`, `in progress`, `review`, `qa`, `ready` or `done`. The hub moves it on claims, verdicts and merges;
-- a **size**: `XS`, `S`, `M` or `L`, set by whoever files it;
-- a **rank** among its siblings. The lowest rank is next. Moving an item to the top is how you make it a priority;
-- **acceptance criteria**, each with a stable id (`C1`, `C2`) and marks: done by the Implementer, verified by a Reviewer or QA, or failed with a note.
+A **topic** is a thread in your chat with the crew, with a status (`open`, `waiting for human`, `waiting for agent`, `closed`) and at most one bound task or epic. **General** is the standing topic for free conversation with the Coordinator; the **Agents topic** is the read-only record of agent-to-agent messages and session lifecycle events. Your messages go to the Coordinator unless you mention a role or a session.
 
-The tracker is the crew's only source of work. Use it from the shell with `cland task`:
+An **ask** is a decision question with numbered options. Asks travel up the chain of leads, and only the Coordinator asks you. A **request** asks you for an act: a review, a QA run or taking over a role. The **inbox** holds only what needs you now; everything else goes to the **events view**. Every message, session, item and artifact sits in a **layer**: now, watch, background or archive.
 
-```sh
-cland task list --under R-1
-cland task view T-42
-cland task create "Parse the config file" --size S --parent E-3
-```
-
-You rarely need to: tell the Coordinator what you want and it files the items. In the workbench the explorer is read-only on purpose: its one action is a message to the Coordinator about the selected items.
-
-## Topics and threads
-
-A **topic** is a thread in your chat with the crew. It has a title, a status (`open`, `waiting for human`, `waiting for agent`, `closed`) and at most one bound task or epic.
-
-- **General** is the standing topic for free conversation with the Coordinator.
-- **Agents** is the read-only record of agent-to-agent messages and session lifecycle events.
-- Each task or epic can have its own topic. Closing the item closes its topic.
-
-Your messages go to the Coordinator unless you mention someone: `@reviewer`, `@qa` or a session name such as `@impl-42`. A mentioned session may answer you in that topic.
-
-Runs of agent-to-agent messages fold into one line ("impl-42 → rev-1 · 4 messages"), so a thread shows what matters to you first.
-
-## Asks, requests and the inbox
-
-An **ask** is a decision question with numbered options and room for a free answer. Asks travel up the chain of leads: an Implementer's question goes to its epic's Lead or the Coordinator, each lead answers or forwards it one level, and only the Coordinator asks you. An open ask keeps its topic waiting.
-
-A **request** asks you for an act: a review, a QA run or taking over a role.
-
-The **inbox** holds only what needs you now, in four sections:
-
-1. Asks and approvals: questions, and command approvals a harness waits on.
-2. Plan approvals: epic plans waiting for you, when you approve plans.
-3. Requests to you.
-4. Messages to you.
-
-The "needs you" count in the top bar is the inbox count. Everything else (verdicts, launches, merges) goes to the **events view**, newest first.
+See [Topics and the inbox](/docs/topics/).
 
 ## Plans and approval
 
