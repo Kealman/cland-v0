@@ -2,11 +2,34 @@
 import { parse } from 'smol-toml';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
 import { ROLE_NAMES } from '../names.ts';
+import { CLAND_DIR } from '../project.ts';
 import { parseRoles } from './config.ts';
 import type { Resumed } from '../hub/budget.ts';
 
 const HARNESSES = ['claude-code', 'codex', 'opencode'];
+
+/** Setup writes this trailing comment on [aide.launch] harness after the human chooses. */
+export const CHOSEN = "# the human's favourite, chosen in cland setup";
+
+/** Read setup's mark without changing the file or preventing open on invalid roles. */
+export async function projectSetUp(root: string): Promise<boolean> {
+  try {
+    const text = await readFile(join(root, CLAND_DIR, 'roles.toml'), 'utf8');
+    parseRoles(text);
+    let table = '';
+    for (const line of statements(text)) {
+      const source = text.slice(line.start, line.end);
+      if (source.trimStart().startsWith('[')) table = keyPath(source).join('.');
+      else if (table === 'aide.launch' && line.equals >= 0
+        && keyPath(`${text.slice(line.start, line.equals)}=0`).join('.') === 'harness') {
+        return line.comment >= 0 && text.slice(line.comment, line.end).trim() === CHOSEN;
+      }
+    }
+    return false;
+  } catch { return false; }
+}
 
 const AIDE_TOOLS_MARK = '# cland: aide-tools-0.1.4 migrated';
 const AIDE_TOOLS = ['session.launch', 'session.stop', 'session.resume', 'task.import', 'push'];

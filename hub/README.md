@@ -1111,6 +1111,15 @@ Run from a project's root, or anywhere inside it. A linked Git worktree resolves
 
 Commands contacting an existing hub (`hub status`, `hub stop`, `hub unmute`, `task`, `session`, `role`, `inbox`, `topic answer`, `hook`) read `CLAND_HUB_FILE` when set, from any current directory; otherwise they read the resolved project's `.cland/hub.json`. `hub start` and `hub serve` start the resolved project's own hub. `init`, `update` and `doctor` resolve the project from the cwd too, unless an explicit directory is given. Tracker writes go through the selected hub into its root's `.cland/tasks`, which is the main worktree's `.cland/tasks` for a linked worktree; the worktree's copy is never written by these commands.
 
+Before starting the hub, `cland open` prints `next: cland setup` once on stderr
+when the project is initialized but not set up, then opens the workbench as usual
+and returns the launcher's exit code. `projectSetUp(root)` and `CHOSEN`, exported
+from `src/roles/editor.ts`, define setup's mark: the trailing comment
+`# the human's favourite, chosen in cland setup` on `[aide.launch]`'s `harness`
+line in `.cland/roles.toml`. Setup writes that comment with the human's choice;
+the default roles remain unmarked. A missing, unmarked or malformed file counts
+as not set up; malformed roles do not block open, and the hub reports them as usual.
+
 | Command | What it does |
 | --- | --- |
 | `cland` / `cland open [dir] [nvim args…]` | Requires a project with `.cland/`; otherwise prints `not a cland project: run cland init` to stderr and exits 1 without starting a hub or writing anything. HOME is never a project, including when it holds legacy `~/.cland/` state. Applies the check to `dir` when supplied. Runs `cland hub start` (quietly; its output is shown only when it fails), then the Neovim workbench on the project's root, from any directory inside the project, and exits with its status. `CLAND_LAUNCHER` names another launcher. The workbench is described in `nvim/README.md`. |

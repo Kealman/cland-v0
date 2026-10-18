@@ -1,11 +1,36 @@
 // T1: source-preserving roles edits through the public editor and atomic writer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseRoles } from '../src/roles/config.ts';
-import { migrateAideTools, setRoleKey, writeRolesFile } from '../src/roles/editor.ts';
+import { CHOSEN, migrateAideTools, projectSetUp, setRoleKey, writeRolesFile } from '../src/roles/editor.ts';
+
+test('project setup requires the chosen harness comment in valid roles TOML', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-project-setup-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, '.cland'));
+  const path = join(root, '.cland', 'roles.toml');
+  assert.equal(await projectSetUp(root), false, 'missing roles');
+  for (const [text, expected] of [
+    ['[aide.launch]\nharness = "codex"\n', false],
+    ['[aide.launch]\nharness = "codex" # the human\'s favourite, chosen in cland setup\n', true],
+    ['[aide.launch]\nharness = "codex" # the human\'s favourite, chosen in cland setup\nbroken = [\n', false],
+    ['[aide.launch]\nharness = 3 # the human\'s favourite, chosen in cland setup\n', false],
+    ['[qa.launch]\nharness = "codex" # the human\'s favourite, chosen in cland setup\n', false],
+    ['[aide.launch]\n# the human\'s favourite, chosen in cland setup\nharness = "codex"\n', false],
+    ['[aide.launch]\nharness = "codex"\nmodel = "gpt-5" # the human\'s favourite, chosen in cland setup\n', false],
+    ['[aide]\nclause = \'\'\'\n[aide.launch]\nharness = "codex" # the human\'s favourite, chosen in cland setup\n\'\'\'\n[aide.launch]\nharness = "codex"\n', false],
+    ['["aide" . \'launch\']\r\n"harness" = \'codex\'  # the human\'s favourite, chosen in cland setup\r\n', true],
+  ] as const) {
+    await writeFile(path, text);
+    assert.equal(await projectSetUp(root), expected, text);
+    assert.equal(await readFile(path, 'utf8'), text, 'the predicate never edits roles');
+  }
+  await writeFile(path, setRoleKey('[aide.launch]\nharness = "codex"\n', 'aide', 'launch', 'harness', 'claude-code', CHOSEN));
+  assert.equal(await projectSetUp(root), true, 'setup can write the exported mark through the editor');
+});
 
 test('setting a launch key replaces only its value and preserves the human file bytes', () => {
   const before = '# human file\r\n[aide.launch] # launch\r\n  model  =  "old#model"  # keep me\r\nharness = "codex"\r\neffort = "high"\r\n\r\n[reviewer.launch]\r\nharness = "codex"';

@@ -8,6 +8,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CLAND_DIR, projectRoot } from '../project.ts';
+import { projectSetUp } from '../roles/editor.ts';
 import { runHub } from './hub.ts';
 
 import { OPEN_USAGE } from './usage.ts';
@@ -27,6 +28,7 @@ export async function runOpen(args: string[], cwd: string = process.cwd()): Prom
     process.stderr.write('not a cland project: run cland init\n');
     return 1;
   }
+  if (!await projectSetUp(root)) process.stderr.write('next: cland setup\n');
   let said = '';
   const io = { out: (s: string) => void (said += s), err: (s: string) => void (said += s) };
   const started = await runHub(['start'], root, io);

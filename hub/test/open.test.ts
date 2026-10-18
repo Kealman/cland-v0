@@ -6,8 +6,9 @@ import assert from 'node:assert/strict';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { CHOSEN, setRoleKey } from '../src/roles/editor.ts';
 import { ensureAccountFixture } from './account-fixture-env.ts';
-import { isolateVerification, killDaemon, readDiscovery } from './harness.ts';
+import { isolateVerification, killDaemon, projectHub, readDiscovery } from './harness.ts';
 import { emptyFolder, initializedProject, initIn, scratchMachine, snapshot, unbornRepo } from './init-machine.ts';
 
 async function openMachine(t: TestContext) {
@@ -90,9 +91,40 @@ test('cland open refuses folders beneath legacy HOME state', async t => {
   }
 });
 
+// T2: the CLI opens an initialized project against an in-process hub; no hub lifecycle assertion.
+test('cland open hints at unfinished setup before launching on the root', async t => {
+  const machine = await openMachine(t);
+  const { root, subfolder } = await initializedProject(machine);
+  await projectHub(t, root, {
+    HOME: machine.home,
+    XDG_CONFIG_HOME: machine.env.XDG_CONFIG_HOME!,
+    XDG_DATA_HOME: machine.env.XDG_DATA_HOME!,
+    XDG_STATE_HOME: machine.env.XDG_STATE_HOME!,
+    XDG_CACHE_HOME: machine.env.XDG_CACHE_HOME!,
+  });
+  const launcher = join(machine.home, 'fake-launcher');
+  await writeFile(launcher, '#!/bin/sh\nprintf "launched:%s:%s:%s\\n" "$PWD" "$1" "$2" >&2\nexit 3\n');
+  await chmod(launcher, 0o755);
+  machine.env.CLAND_LAUNCHER = launcher;
+
+  const result = await initIn(machine, subfolder, 'open', '.', '+Cland');
+  assert.equal(result.code, 3, result.stderr);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, `next: cland setup\nlaunched:${root}:${root}:+Cland\n`);
+
+  const roles = join(root, '.cland', 'roles.toml');
+  await writeFile(roles, setRoleKey(await readFile(roles, 'utf8'), 'aide', 'launch', 'harness', 'codex', CHOSEN));
+  const chosen = await initIn(machine, root, 'open', '.', '+Cland');
+  assert.equal(chosen.code, 3, chosen.stderr);
+  assert.equal(chosen.stdout, '');
+  assert.equal(chosen.stderr, `launched:${root}:${root}:+Cland\n`);
+});
+
 test('cland open from a subdirectory starts the project hub, then the launcher on the project root', async (t) => {
   const machine = await openMachine(t);
   const { root } = await initializedProject(machine);
+  // Malformed roles still allow hub startup; open leaves reporting the file to the hub.
+  await writeFile(join(root, '.cland', 'roles.toml'), '[aide.launch]\nharness = [\n');
   await isolateVerification(root);
   const sub = join(root, 'src', 'deep');
   await mkdir(sub, { recursive: true });
@@ -106,6 +138,7 @@ test('cland open from a subdirectory starts the project hub, then the launcher o
   const d = await readDiscovery(root).catch(() => null);
   if (d) t.after(() => killDaemon(d.pid));
   assert.equal(r.code, 3, `the launcher's exit code is cland's: ${r.stderr}`);
+  assert.equal(r.stderr, 'next: cland setup\n');
   assert.ok(d, 'the hub runs');
   assert.deepEqual((await readFile(record, 'utf8')).trim().split('\n'), [root, root, '+Cland']);
 
