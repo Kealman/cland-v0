@@ -9,7 +9,7 @@
 //            url (`harnessId`) and the session's id (`harnessSessionId`, `ses_…`).
 //   attach   the OpenCode TUI as a client of that server, on that session, in its directory: `opencode --server <url> --session <id> <cwd>`,
 //            with the password read from its file into `OPENCODE_PASSWORD` (never on the command line).
-//   inject   `POST /api/session/{id}/prompt {text, delivery}`: `steer` while the session runs a turn, `queue`
+//   inject   `POST /api/session/{id}/prompt {id, text, delivery}`: `steer` while the session runs a turn, `queue`
 //            otherwise. The server's reply is the durably admitted inbox item: that is the confirmation.
 //   state    the event stream `GET /api/event` (`./opencode/state.ts`), one subscription per server, with a
 //            snapshot (`/api/session/active`, pending permissions and forms) each time it (re)connects; the
@@ -21,14 +21,14 @@
 import { accountEnvironment, accountPrefix, clandOpenCodeDatabase, openCodeDatabase } from '../accounts/registry.ts';
 import { continueWith, wait, untimed } from './continuations.ts';
 import type { Resumed } from '../hub/worktrees.ts';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, renameSync } from 'node:fs';
 import { FailedLaunches, LaunchFiles } from './launch-files.ts';
 import { dirname } from 'node:path';
 import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 import { addUsage } from './usage.ts';
 import { envelope, envelopeIds, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type ResumeResult, type SpawnRequest } from './contract.ts';
-import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef, type PermissionRequest } from './opencode/client.ts';
+import { formatModel, KNOWN_GOOD_FREE_MODELS, OpenCodeClient, parseModel, pickFreeModel, type ModelRef, type PermissionRequest, type ServerEvent } from './opencode/client.ts';
 import { prepareFiles, readPassword, serverFiles, startServer, type ServerFiles } from './opencode/server.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { SessionTracker, type Change } from './opencode/state.ts';
@@ -92,7 +92,7 @@ const pidAlive = (pid: number): boolean => {
 };
 
 /** One watched session: its server's client, the event subscription, and what the stream says. */
-type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
+type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
 
 export class OpenCodeAdapter implements HarnessAdapter {
   readonly harness = OPENCODE;
@@ -290,7 +290,9 @@ export class OpenCodeAdapter implements HarnessAdapter {
     const tracker = this.#watched.get(p.sessionId)?.tracker;
     // during a turn the message steers it (at the next step boundary); otherwise it is queued as the next turn
     const delivery = (message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) ? 'queue' : tracker?.running ? 'steer' : 'queue';
-    const admitted = await client.prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs);
+    // Keep the native admission identity stable across lost replies and distinct for broadcast recipients.
+    const id = `msg_${createHash('sha256').update(JSON.stringify([message.id, p.sessionId])).digest('hex')}`;
+    const admitted = await client.prompt(p.harnessSessionId, envelope(message, topic), delivery, this.#injectTimeoutMs, id);
     if (!admitted?.id) throw new Error('the server admitted no inbox item');
     this.#host.log({ event: 'opencode-prompt', session: p.name, id: message.id, inbox: admitted.id, delivery });
   }
@@ -326,7 +328,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#host.log({ event: 'opencode-no-password', session: p.name });
       return;
     }
-    const w: Watch = { process: p, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
+    const w: Watch = { process: p, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children: new Map(), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
     this.#watched.set(p.sessionId, w);
     void this.#subscribe(w);
     if (!this.#timer) {
@@ -355,15 +357,20 @@ export class OpenCodeAdapter implements HarnessAdapter {
       this.#usage.set(w.process.sessionId, addUsage(this.#usage.get(w.process.sessionId), change.usage));
       this.#host.usageChanged?.(w.process.sessionId);
     }
-    if (change.state) this.#host.signal(w.process.sessionId, { state: change.state, source: 'sse', at, ...(change.approvalCommand !== undefined ? { approvalCommand: change.approvalCommand } : {}) });
+    if (change.state) {
+      const trackers = [w.tracker, ...w.children.values()];
+      const permission = trackers.find(t => t.permissions.size)?.permissions.values().next().value;
+      const state = permission ? 'waiting for approval' : trackers.some(t => t.forms.size) ? 'waiting for human' : trackers.some(t => t.running) ? 'busy' : 'idle';
+      this.#host.signal(w.process.sessionId, { state, source: 'sse', at, ...(permission?.approvalCommand !== undefined ? { approvalCommand: permission.approvalCommand } : {}) });
+    }
   }
 
-  #describePermission(w: Watch, request: PermissionRequest): void {
-    const pending = w.tracker.permissions.get(request.id);
+  #describePermission(w: Watch, request: PermissionRequest, tracker = w.tracker): void {
+    const pending = tracker.permissions.get(request.id);
     if (!pending) return;
-    void w.client.approvalCommand(w.tracker.sessionId, request).then(command => {
+    void w.client.approvalCommand(tracker.sessionId, request).then(command => {
       if (this.#watched.get(w.process.sessionId) !== w) return;
-      this.#apply(w, w.tracker.describePermission(pending, command), Date.now());
+      this.#apply(w, tracker.describePermission(pending, command), Date.now());
     });
   }
 
@@ -371,13 +378,21 @@ export class OpenCodeAdapter implements HarnessAdapter {
   async #subscribe(w: Watch): Promise<void> {
     let failures = 0;
     while (!this.#closed && this.#watched.get(w.process.sessionId) === w) {
+      let streamCurrent = true;
+      let snapshotEvents: ServerEvent[] | null = [];
       try {
         await w.client.events(
           (e) => {
+            snapshotEvents?.push(e);
             // An admission can queue the next turn: only delivered inbox items fed this execution.
             const d = e.data ?? {};
             if (e.type === 'session.created' && d.parentID === w.tracker.sessionId) {
               const model = d.model as ModelRef | undefined;
+              if (typeof d.sessionID === 'string' && !w.children.has(d.sessionID)) {
+                const child = new SessionTracker(d.sessionID);
+                if (model && typeof model.id === 'string' && typeof model.providerID === 'string') child.model = formatModel(model);
+                w.children.set(d.sessionID, child);
+              }
               this.#host.signal(w.process.sessionId, { source: 'sse', at: e.created ?? Date.now(), subagent: {
                 ...(typeof d.sessionID === 'string' ? { id: d.sessionID } : {}),
                 ...(typeof d.agent === 'string' ? { type: d.agent } : {}),
@@ -393,21 +408,40 @@ export class OpenCodeAdapter implements HarnessAdapter {
                 w.inbox.delete(d.inboxID);
               }
             }
+            const form = d.form as { sessionID?: string } | undefined;
+            const sid = typeof d.sessionID === 'string' ? d.sessionID : form?.sessionID;
+            const child = sid ? w.children.get(sid) : undefined;
+            if (child) {
+              const change = child.apply(e);
+              // A child's model and execution boundaries belong to that child, not the parent turn.
+              this.#apply(w, { ...(change.usage ? { usage: change.usage } : {}), ...(change.state ? { state: change.state } : {}) }, e.created ?? Date.now());
+              if (e.type === 'permission.asked' && typeof d.id === 'string') this.#describePermission(w, { ...d, id: d.id }, child);
+            }
             this.#apply(w, w.tracker.apply(e), e.created ?? Date.now());
             if (e.type === 'permission.asked' && d.sessionID === w.tracker.sessionId && typeof d.id === 'string') this.#describePermission(w, { ...d, id: d.id });
           },
           () => {
             failures = 0;
             // the stream is live-only: what it missed comes from a snapshot taken once it is open
-            w.client
-              .snapshot(w.tracker.sessionId)
-              .then((s) => {
-                this.#apply(w, w.tracker.reset(s), Date.now());
-                for (const permission of s.permissions) this.#describePermission(w, permission);
+            Promise.all([w.tracker, ...w.children.values()].map(async tracker => ({ tracker, snapshot: await w.client.snapshot(tracker.sessionId) })))
+              .then(snapshots => {
+                if (!streamCurrent || this.#watched.get(w.process.sessionId) !== w || w.abort.signal.aborted) return;
+                // Publish the whole family together: a parent's idle snapshot must not briefly clear
+                // a child's approval and trigger delivery retries before that child's snapshot arrives.
+                for (const { tracker, snapshot } of snapshots) tracker.reset(snapshot);
+                // SSE stays live while HTTP snapshots are in flight. Replay only tracker state:
+                // usage, launch records and turn completion were already published on arrival.
+                for (const event of snapshotEvents ?? []) for (const { tracker } of snapshots) tracker.apply(event);
+                snapshotEvents = null;
+                this.#apply(w, { state: w.tracker.state() }, Date.now());
+                for (const { tracker } of snapshots) for (const permission of tracker.permissions.values()) this.#describePermission(w, permission.request, tracker);
                 // the stream is back: what failed to inject while it was down is retried, state change or not
                 this.#host.reconnected?.(w.process.sessionId);
               })
-              .catch((err: unknown) => this.#host.log({ event: 'opencode-snapshot-failed', session: w.process.name, error: err instanceof Error ? err.message : String(err) }));
+              .catch((err: unknown) => {
+                snapshotEvents = null;
+                this.#host.log({ event: 'opencode-snapshot-failed', session: w.process.name, error: err instanceof Error ? err.message : String(err) });
+              });
           },
           w.abort.signal,
         );
@@ -416,12 +450,15 @@ export class OpenCodeAdapter implements HarnessAdapter {
         failures++;
         if (failures === 1) this.#host.log({ event: 'opencode-events-failed', session: w.process.name, error: err instanceof Error ? err.message : String(err) });
       }
+      streamCurrent = false;
+      snapshotEvents = null;
       if (w.abort.signal.aborted) return;
       // The stream is volatile: an execution may have finished while disconnected. None of its inputs
       // can safely be attributed to the next observed execution, including queued inbox items.
       w.turnMessages.clear();
       w.inbox.clear();
       w.tracker.forget();
+      for (const child of w.children.values()) child.forget();
       // a stream that ends with its server is a crash, not a reconnect
       if (w.process.pid !== null && !pidAlive(w.process.pid)) {
         this.#gone(w, `pid ${w.process.pid} is gone`);

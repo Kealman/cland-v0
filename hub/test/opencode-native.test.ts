@@ -4,9 +4,122 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { scriptedOpenCode } from './fakes/scripted-opencode.ts';
 import { eventually } from './harness.ts';
+import type { Message, SessionUsage } from '../src/protocol.ts';
 
 const command = 'touch approved && echo done';
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+
+test('new child approval events take precedence over held reconnect snapshots', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.start();
+  f.native.emit('session.created', { sessionID: 'child', parentID: f.native.session });
+  for (const wasPending of [false, true]) {
+    f.native.children.set('child', { running: true, permissions: wasPending ? [{ id: 'approval', action: 'edit' }] : [], forms: [] });
+    f.native.holdPermissionSession = 'child';
+    const before = f.native.reconnected;
+    f.native.endStream();
+    await eventually('child snapshot captured and held', async () => { await f.clock.advance(100); return f.native.permissionSnapshots.length === 1 || undefined; });
+    f.native.emit(wasPending ? 'permission.replied' : 'permission.asked', {
+      sessionID: 'child', ...(wasPending ? { requestID: 'approval', reply: 'once' } : { id: 'approval', action: 'edit' }),
+    });
+    await f.native.releasePermissionSnapshots();
+    await eventually('family snapshot reconciliation completed', () => f.native.reconnected > before || undefined);
+    assert.equal((await f.row()).state, wasPending ? 'busy' : 'waiting for approval');
+  }
+});
+
+test('broadcast recipients have distinct stable OpenCode admission ids', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const message: Message = { id: 'broadcast-id', from: 'coord', fromKind: 'agent', via: 'session', to: ['impl', 'other'], text: 'broadcast input', ts: '2026-10-18T09:00:00Z' };
+  const other = { ...f.process, sessionId: 'other-recipient', harnessSessionId: 'other-native-session' };
+  for (const process of [f.process, other, { ...f.process, name: 'renamed' }, other]) await f.adapter.inject(process, message, null);
+  const admissions = f.native.prompts.filter(p => p.text.includes('broadcast input'));
+  assert.equal(admissions.length, 2);
+  assert.notEqual(admissions[0]!.id, admissions[1]!.id);
+  assert.ok(admissions.every(p => /^msg_[a-f0-9]+$/.test(p.id)));
+  assert.equal(f.native.promptAttempts.filter(p => p.text.includes('broadcast input')).length, 4);
+});
+
+test('a known child approval is restored from its own reconnect snapshot', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.start();
+  f.native.emit('session.created', { sessionID: 'child', parentID: f.native.session });
+  f.native.emit('permission.asked', { sessionID: 'child', id: 'pending', action: 'edit' });
+  await f.records();
+  const mark = f.markStates();
+  f.native.children.set('child', { running: true, permissions: [{ id: 'pending', action: 'edit' }], forms: [] });
+  await f.reconnect();
+  assert.equal((await f.row()).state, 'waiting for approval');
+  assert.ok(f.ui.frames.slice(mark).filter(e => e.type === 'session.state').every(e => e.state === 'waiting for approval'), 'snapshot recovery never temporarily unblocks a waiting child');
+  f.native.children.set('child', { running: false, permissions: [], forms: [] });
+  await f.reconnect();
+  assert.equal((await f.row()).state, 'busy');
+  assert.equal((await f.row()).approvalCommand, undefined);
+});
+
+test('child approvals hold the parent waiting until every child is unblocked', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.start();
+  for (const sessionID of ['child-a', 'child-b']) {
+    f.native.emit('session.created', { sessionID, parentID: f.native.session });
+    f.native.emit('session.execution.started', { sessionID });
+    f.native.emit('permission.asked', { sessionID, id: 'shared-id', action: 'edit' });
+  }
+  await f.records();
+  assert.equal((await f.row()).state, 'waiting for approval');
+  f.native.emit('permission.replied', { sessionID: 'child-a', requestID: 'shared-id', reply: 'once' });
+  f.native.emit('session.execution.succeeded', { sessionID: 'child-a' });
+  f.native.emit('form.created', { form: { id: 'parent-form', sessionID: f.native.session } });
+  await f.records();
+  assert.equal((await f.row()).state, 'waiting for approval', 'another child approval outranks the parent form');
+  f.native.emit('session.execution.succeeded', { sessionID: 'child-b' });
+  await f.records();
+  assert.equal((await f.row()).state, 'waiting for human');
+  f.native.emit('form.replied', { id: 'parent-form' });
+  await f.records();
+  assert.equal((await f.row()).state, 'busy');
+  assert.equal((await f.row()).approvalCommand, undefined);
+});
+
+test('child steps contribute model-attributed usage to the parent session', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.emit('session.step.started', { model: { providerID: 'opencode', id: 'parent' } });
+  f.native.emit('session.step.ended', { tokens: { input: 10, output: 4 }, cost: 0.125 });
+  f.native.emit('session.created', { sessionID: 'unrelated', parentID: 'other-parent', model: { providerID: 'opencode', id: 'ignored' } });
+  f.native.emit('session.step.ended', { sessionID: 'unrelated', tokens: { input: 9000 } });
+  f.native.emit('session.created', { sessionID: 'child', parentID: f.native.session, agent: 'explore', model: { providerID: 'opencode', id: 'child-model' } });
+  f.native.emit('session.step.started', { sessionID: 'child', model: { providerID: 'opencode', id: 'child-model' } });
+  f.native.emit('session.step.ended', { sessionID: 'child', tokens: { input: 3, output: 2, reasoning: 1, cache: { read: 5, write: 7 } }, cost: 0.25 });
+  // A later parent report is an ordering receipt for all preceding child SSE events.
+  f.native.emit('session.step.ended', { tokens: { input: 1, output: 1 }, cost: 0 });
+  await f.clock.advance(1000);
+  const usageFrame = await f.ui.waitFor(e => e.type === 'session.usage' && (e.usage as SessionUsage).last?.inputTokens === 1);
+  const launches = (await f.records()).filter(e => e.event === 'subagent-launched');
+  assert.deepEqual(launches.map(e => ({ id: (e as { agentId?: string }).agentId, model: (e as { model?: string }).model })), [{ id: 'child', model: 'opencode/child-model' }]);
+  assert.deepEqual((usageFrame.usage as SessionUsage).total, {
+    totalTokens: 33, inputTokens: 14, outputTokens: 7, reasoningTokens: 1, cacheReadTokens: 5, cacheWriteTokens: 7, cost: 0.375,
+  });
+  const list = (await f.ui.request({ type: 'session.list' })).value as { processes: Array<{ model: string }> };
+  assert.equal(list.processes[0]!.model, 'opencode/parent');
+});
+
+test('an admitted OpenCode prompt with a lost response is retried once at idle', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  f.native.start();
+  f.native.losePromptResponse = true;
+  assert.equal((await f.coord.call<{ ok: boolean }>('send', { to: ['impl'], text: 'admit before timeout' })).ok, true);
+  const failed = await eventually('timeout receipt', async () => (await f.log()).split('\n').filter(Boolean)
+    .map(line => JSON.parse(line) as { event: string; id?: string }).find(r => r.event === 'inject-unconfirmed'));
+  assert.ok(failed.id);
+  f.markStates(); await f.idle();
+  await f.ui.waitFor(e => e.type === 'delivery' && e.message === failed.id && e.stage === 'injected');
+  const admissions = f.native.prompts.filter(p => p.text.includes('admit before timeout'));
+  assert.equal(admissions.length, 1, 'the retried input reuses its first admission');
+  const attempts = f.native.promptAttempts.filter(p => p.text.includes('admit before timeout'));
+  assert.equal(attempts.length, 2);
+  assert.match(attempts[0]!.id!, /^msg_[a-f0-9]+$/);
+  assert.equal(attempts[1]!.id, attempts[0]!.id);
+});
 
 test('shell approval exposes the referenced command and clears metadata between episodes', async t => {
   const f = await scriptedOpenCode(t);

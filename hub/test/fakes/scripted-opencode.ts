@@ -21,7 +21,12 @@ export class ScriptedOpenCode {
   session = '';
   running = false;
   permissions: PermissionRequest[] = [];
+  readonly children = new Map<string, { running: boolean; permissions: PermissionRequest[]; forms: string[] }>();
+  holdPermissionSession: string | undefined;
+  readonly permissionSnapshots: Array<{ response: ReturnType<typeof deferred<unknown>>; data: PermissionRequest[] }> = [];
   readonly prompts: Array<{ id: string; text: string; delivery: string; running: boolean }> = [];
+  readonly promptAttempts: Array<{ id?: string; text: string; delivery: string }> = [];
+  losePromptResponse = false;
   readonly lookups: Array<ReturnType<typeof deferred<unknown>>> = [];
   holdMessages = false;
   failPut = false;
@@ -47,18 +52,35 @@ export class ScriptedOpenCode {
     { type: 'tool', id: 'tool-edit', name: 'edit', state: { status: 'completed', input: { command: 'private-edit-command' } } },
   ] } }; }
   request(method: string, path: string, body?: unknown): unknown {
-    if (path === '/api/session/active') return { data: this.running ? { [this.session]: {} } : {} };
-    if (path.endsWith('/permission')) return { data: this.permissions };
-    if (path.endsWith('/form')) return { data: [] };
+    if (path === '/api/session/active') return { data: Object.fromEntries([
+      ...(this.running ? [[this.session, {}]] : []),
+      ...[...this.children].filter(([, s]) => s.running).map(([id]) => [id, {}]),
+    ]) };
+    const sid = decodeURIComponent(path.split('/')[3] ?? '');
+    if (path.endsWith('/permission')) {
+      const data = structuredClone(sid === this.session ? this.permissions : this.children.get(sid)?.permissions ?? []);
+      if (sid !== this.holdPermissionSession) return { data };
+      const response = deferred<unknown>();
+      this.permissionSnapshots.push({ response, data });
+      return response.promise;
+    }
+    if (path.endsWith('/form')) return { data: (this.children.get(sid)?.forms ?? []).map(id => ({ id })) };
     if (path.includes('/message/')) {
       if (!this.holdMessages) return this.message();
       const response = deferred<unknown>(); this.lookups.push(response); return response.promise;
     }
     if (path.endsWith('/prompt')) {
-      const input = body as { text: string; delivery: string };
+      const input = body as { id?: string; text: string; delivery: string };
+      this.promptAttempts.push(input);
+      const existing = input.id && this.prompts.find(p => p.id === input.id);
+      if (existing) return { data: { id: existing.id } };
       const prompt = { id: `inbox-${this.prompts.length}`, ...input, running: this.running };
       this.prompts.push(prompt);
       this.emit('session.inbox.enqueued', { inboxID: prompt.id, item: { payload: { text: input.text } } });
+      if (this.losePromptResponse) {
+        this.losePromptResponse = false;
+        throw new DOMException('Admission response lost', 'TimeoutError');
+      }
       return { data: { id: prompt.id } };
     }
     if (path.endsWith('/instructions/entries/cland-role')) {
@@ -86,6 +108,12 @@ export class ScriptedOpenCode {
     const pending = this.lookups.splice(0);
     for (const lookup of pending) lookup.resolve(this.message());
     await Promise.all(pending.map(lookup => lookup.promise));
+  }
+  async releasePermissionSnapshots() {
+    this.holdPermissionSession = undefined;
+    const pending = this.permissionSnapshots.splice(0);
+    for (const { response, data } of pending) response.resolve({ data });
+    await Promise.all(pending.map(({ response }) => response.promise));
   }
 }
 

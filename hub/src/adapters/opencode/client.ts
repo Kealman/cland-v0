@@ -87,8 +87,8 @@ export class OpenCodeClient {
   }
 
   /** `POST /api/session/{id}/prompt`: the server's reply is the admitted inbox item (`msg_…`). */
-  async prompt(sessionId: string, text: string, delivery: 'steer' | 'queue', timeoutMs: number): Promise<{ id: string; delivery?: string }> {
-    return (await this.request<{ data: { id: string; delivery?: string } }>('POST', `/api/session/${encodeURIComponent(sessionId)}/prompt`, { text, delivery }, timeoutMs)).data;
+  async prompt(sessionId: string, text: string, delivery: 'steer' | 'queue', timeoutMs: number, id?: string): Promise<{ id: string; delivery?: string }> {
+    return (await this.request<{ data: { id: string; delivery?: string } }>('POST', `/api/session/${encodeURIComponent(sessionId)}/prompt`, { ...(id ? { id } : {}), text, delivery }, timeoutMs)).data;
   }
 
   /** What the server says the session is doing now: running, and its pending permission requests and forms. */
