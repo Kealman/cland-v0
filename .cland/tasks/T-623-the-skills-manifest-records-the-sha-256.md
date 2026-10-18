@@ -2,8 +2,8 @@
 id: T-623
 kind: task
 title: The skills manifest records the SHA-256 of each file as cland wrote it
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-525
 branch: t/T-623-the-skills-manifest-records-the-sha-256
 created: 2026-10-16T15:57:48.998Z
-updated: 2026-10-18T16:57:33.367Z
+updated: 2026-10-18T20:06:27.727Z
+closed: 2026-10-18T20:06:27.727Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged a4f09152. A-5468/0df0f0a9 is accepted exit0: 329/330 ordinary passes, zero failures/cancellations, one unrelated OpenCode prerequisite skip; hub selected phases and Neovim smoke complete. All 14 init and 18 doctor identities positively execute, owned legacy/hash control is 5/5, all 17 reported gate groups pass. A-5469 maps C1–C6 and discloses inherited C-326 report-only trip plus budget warnings. No new findings or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-18T20:06:27.727Z
+
+Merged 5b518a4038cba738f26f776893779147a6a23df6 onto dev.
