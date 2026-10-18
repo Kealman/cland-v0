@@ -123,6 +123,7 @@
     "hub/test/inbox-workload.test.ts": "T2",
     "hub/test/init-config.test.ts": "T1",
     "hub/test/init-machine.test.ts": "T3",
+    "hub/test/init-next.test.ts": "T2",
     "hub/test/init-process.test.ts": "T3",
     "hub/test/init-roots.test.ts": "T1",
     "hub/test/init-settings.test.ts": "T1",

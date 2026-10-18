@@ -962,6 +962,8 @@ the release's dry run; `cland release` does not write the version.
 
 ## cland init and cland update
 
+Successful `cland init` reports end with `next: cland setup`, including when every managed part is already current. Its `--json` object includes `"next": "cland setup"` beside `root`, `version` and `changes`. `cland update`, `cland init --undo` and refused init attempts omit the next step.
+
 `cland init [dir]` prepares a project (`dir`, else the project around the current directory); `cland update [dir]` rewrites what cland manages there to the running version and refuses a folder without `.cland/`. Both need no hub, are idempotent and print one line per path they touched (`--json`: `{root, version, changes: [{path, action, note?}]}`, actions `created`, `updated`, `unchanged`, `kept`, `removed`). A file is written only when its bytes change, so a second `cland init` changes nothing, mtimes included.
 
 Managed files and blocks carry `managed by cland <version>`. A file or hook without that mark is the project's own and is reported as `kept`, except that the project's `.claude/settings.json` receives the cland hooks and managed `worktree.bgIsolation` key below. The vendored skill files are the exception: they carry no mark of their own (they are upstream's text, byte for byte); the manifest's mark covers every file it lists.

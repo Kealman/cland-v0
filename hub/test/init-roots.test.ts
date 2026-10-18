@@ -1,4 +1,4 @@
-// T1: init/update reject unsafe roots before provisioning, using only scratch filesystem markers.
+// T1: init/update root refusals and non-territory update/undo reports use scratch filesystem markers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
@@ -21,6 +21,7 @@ test('init/update refuse an ancestor root without changing the scratch machine',
       const cwd = args.length ? machine.root : folder;
       const result = await captureCli(write => command(args, cwd, write));
       assert.equal(result.code, 1, 'an ancestor must never be provisioned');
+      assert.equal(result.stdout, '', 'a refusal emits no report or next step');
       assert.ok(result.stderr.includes(folder), result.stderr);
       assert.ok(result.stderr.includes(machine.home), result.stderr);
       assert.deepEqual(await snapshot(machine.root), before, 'refusal writes nothing, including outside the target');
@@ -40,6 +41,7 @@ test('init/update refuse HOME through a directory alias', { timeout: 5000 }, asy
     for (const args of [[], [machine.home], [alias]]) {
       const result = await captureCli(write => command(args, machine.home, write));
       assert.equal(result.code, 1);
+      assert.equal(result.stdout, '', 'a refusal emits no report or next step');
       assert.match(result.stderr, /HOME/);
       assert.deepEqual(await snapshot(machine.root), before);
     }
@@ -61,6 +63,7 @@ test('init/update reject repository subfolders and linked worktrees', { timeout:
       for (const args of [[], [target]]) {
         const result = await captureCli(write => command(args, target, write));
         assert.equal(result.code, 1);
+        assert.equal(result.stdout, '', 'a refusal emits no report or next step');
         assert.ok(result.stderr.includes(target), result.stderr);
         assert.ok(result.stderr.includes(root), result.stderr);
         assert.deepEqual(await snapshot(machine.root), before);
@@ -80,4 +83,19 @@ test('update accepts an explicit project root through an alias from a subfolder'
   assert.equal(result.code, 0, result.stderr);
   assert.equal(JSON.parse(result.stdout).root, root);
   assert.deepEqual(await snapshot(machine.root, { except: root }), before);
+});
+
+test('update and init undo omit the next step from their reports', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const root = await filesFolder(machine);
+  await mkdir(join(root, '.cland'));
+  // No territory: update and undo exercise report output without running Git.
+  for (const [command, args] of [[runUpdate, []], [runInit, ['--undo']]] as const) {
+    for (const format of [[], ['--json']]) {
+      const result = await captureCli(write => command([...args, ...format], root, write));
+      assert.equal(result.code, 0, result.stderr);
+      if (format.includes('--json')) assert.equal(Object.hasOwn(JSON.parse(result.stdout), 'next'), false);
+      else assert.doesNotMatch(result.stdout, /^next:/m);
+    }
+  }
 });

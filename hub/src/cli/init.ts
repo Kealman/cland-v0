@@ -11,6 +11,8 @@ import { provisionAgentsMd } from '../init/instructions.ts';
 
 export { INIT_USAGE } from './usage.ts';
 
+const NEXT = 'cland setup';
+
 function describe(changes: Change[], root: string, command: string): string {
   const lines = [`cland ${command} ${VERSION} in ${root}`];
   const shown = changes.filter((c) => c.action !== 'unchanged' || c.path.startsWith('.cland/territory.git'));
@@ -55,7 +57,8 @@ async function run(command: 'init' | 'update', args: string[], cwd: string, writ
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
   const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory: command === 'init' || existsSync(territoryPath(root)) });
-  write(json ? `${JSON.stringify({ root, version: VERSION, changes })}\n` : `${describe(changes, root, command)}\n`);
+  const next = command === 'init' && !undo ? NEXT : undefined;
+  write(json ? `${JSON.stringify({ root, version: VERSION, changes, next })}\n` : `${describe(changes, root, command)}${next ? `\nnext: ${next}` : ''}\n`);
   return 0;
 }
 
