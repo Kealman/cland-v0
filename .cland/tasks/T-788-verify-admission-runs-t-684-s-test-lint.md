@@ -3,7 +3,7 @@ id: T-788
 kind: task
 title: verify admission runs T-684's test-lint policy before replying and overruns the CLI's 15 s deadline
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T10:22:42.041Z
+updated: 2026-10-18T10:45:54.704Z
 ---
 
 ## Summary
@@ -24,11 +24,16 @@ Since the 08:58Z hub restart (pid 18334) put T-684's admission lint live, both m
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test measures `suite.start` admission against a manifest the size of the repository's and shows the reply arriving inside the CLI deadline with margin. It fails before the fix.
-- [ ] C2. The lint verdict still refuses a violating head before any queue slot or droplet is reserved, and the refusal still reaches the submitter with the same findings.
-- [ ] C3. `cland verify --dry-run` on this repository answers within the deadline.
+- [x] C1. A T2 test measures `suite.start` admission against a manifest the size of the repository's and shows the reply arriving inside the CLI deadline with margin. It fails before the fix.
+  - done: impl-788 · 2026-10-18T10:45:33.938Z
+  - verified: rev-30 [reviewer] · run rev-20261018-788-final · 2026-10-18T10:45:53.849Z · commit 7846a50038c57174832897b0865e37f0a19b2443
+- [x] C2. The lint verdict still refuses a violating head before any queue slot or droplet is reserved, and the refusal still reaches the submitter with the same findings.
+  - done: impl-788 · 2026-10-18T10:45:34.631Z
+  - verified: rev-30 [reviewer] · run rev-20261018-788-final · 2026-10-18T10:45:53.849Z · commit 7846a50038c57174832897b0865e37f0a19b2443
+- [x] C3. `cland verify --dry-run` on this repository answers within the deadline.
   - verified: rev-30 [reviewer] · run rev-20261018-788-source · 2026-10-18T09:36:21.456Z · commit c2a82d44a9f4ca870a1813d98eba6eaceaa38922
   - verified: rev-30 [reviewer] · run rev-20261018-788-warmer-correction · 2026-10-18T10:20:27.492Z · commit 7846a50038c57174832897b0865e37f0a19b2443
+  - done: impl-788 · 2026-10-18T10:45:35.440Z
 
 ## Comments
 
@@ -94,3 +99,22 @@ Criteria: C3 verified.
 ### impl-788 · 2026-10-18T10:22:42.041Z
 
 M1 source correction clear: rev-20261018-788-warmer-correction / A-5201. Replacement required full mode-free droplet verify accepted as e415a0fe-cf64-4325-bdde-4ca72ea455a0 at exact reviewed head 7846a500. CLI exited 75; waited 60 s and confirmed launching task receipt and remote acquiring state, without retry. Awaiting hub result with unchanged branch.
+
+### impl-788 · 2026-10-18T10:44:49.407Z
+
+Replacement exact-head full droplet verification e415a0fe is green at 7846a500: A-5216, Linux x64/Node 24.21.0/Neovim 0.12.5, 2,540 passed, 0 failed, 8 skipped. Hub free, hub machine and Neovim all completed. Droplet lifetime 1,351 s, cost $0.0938. Awaiting Reviewer's final same-head evidence verdict; branch unchanged.
+
+### rev-30 · 2026-10-18T10:45:53.849Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-788-final
+commit: 7846a50038c57174832897b0865e37f0a19b2443
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5219: exact-head A-5216 passes full hub/Neovim, 2540 pass/0 fail/8 prerequisite skips. Owned admission carrier and nested deadline/warming/diagnostics/refusal controls pass plus5/5 repetitions. Former project-probes census failures resolved; zero warmer trip rows, no owned trips or hard budgets. C1/C2 verified; C3 exact-head dry-run proof remains current. Claimant done marks restored. No findings.
+
+Criteria: C1 verified, C2 verified.

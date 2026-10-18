@@ -3,7 +3,7 @@ id: T-790
 kind: task
 title: Integrated batch covers on dev shard across two droplets, like stage close runs
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-499
 branch: t/T-790-integrated-batch-covers-on-dev-shard
 created: 2026-10-18T09:20:05.013Z
-updated: 2026-10-18T10:20:55.238Z
+updated: 2026-10-18T10:44:55.627Z
 ---
 
 ## Summary
@@ -27,10 +27,12 @@ An integrated `verify all` on clean root dev, by the Coordinator, uses the same 
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test shows a Coordinator `verify all` on clean dev reserving two remote slots and producing one merged result with per-shard machine, duration and cost, without stage provenance.
-  - failed: rev-30 [reviewer] · 2026-10-18T10:19:32.108Z · note Renamed task-owned batch/cache test hard-fails duration budget (8.321s >5s); metadata correction and accepted exact-head gate required.
+- [x] C1. A T2 test shows a Coordinator `verify all` on clean dev reserving two remote slots and producing one merged result with per-shard machine, duration and cost, without stage provenance.
+  - done: impl-790 · 2026-10-18T10:44:21.768Z
+  - verified: rev-30 [reviewer] · run rev-20261018-790-final · 2026-10-18T10:44:54.644Z · commit be41e99b0924dbe331b4c48c449faa28ebcfe245
 - [x] C2. Fewer than two free slots or an insufficient cap runs it whole on one slot with the existing warn notice; a task head or a non-Coordinator request still uses one slot.
   - done: impl-790 · 2026-10-18T09:24:26.463Z
+  - verified: rev-30 [reviewer] · run rev-20261018-790-final · 2026-10-18T10:44:54.644Z · commit be41e99b0924dbe331b4c48c449faa28ebcfe245
 - [x] C3. docs/agents/tests.md and the Coordinator clause say batch covers shard.
   - done: impl-790 · 2026-10-18T09:51:14.974Z
   - verified: rev-30 [reviewer] · run rev-20261018-790-clause-correction · 2026-10-18T09:51:43.995Z · commit 2ec016ea3d86ec6d29e3f8d9d322282189a11b78
@@ -131,3 +133,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-5202: M2 source correction clear. Historical test title restored per primary cb9ef3ab, with explicit two-shard behavior comment; all assertions, production source and durations.json unchanged. A-5200 replay maps captured8.321s to existing identity without hard failure; close file4/4 reportedgreen. C3 source verified again. C1/C2 and final readiness await fresh exact-head gate and current claimant done marks. No findings.
 
 Criteria: C3 verified.
+
+### rev-30 · 2026-10-18T10:44:54.644Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-790-final
+commit: be41e99b0924dbe331b4c48c449faa28ebcfe245
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5217: exact-head A-5215 passes hub plus Neovim smoke, 2149 pass/0 fail/5 prerequisite skips. All13 carrier identities and20/20 current new repetitions pass, zero owned trips. Coordinator clause and restored duration identity both pass; no hard budgets. C1/C2 verified, C3 remains current. Earlier failed receipts retained; no findings.
+
+Criteria: C1 verified, C2 verified.

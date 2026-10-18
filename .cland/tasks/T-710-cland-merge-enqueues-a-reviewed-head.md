@@ -3,7 +3,7 @@ id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T10:17:24.172Z
+updated: 2026-10-18T10:46:26.438Z
 ---
 
 ## Summary
@@ -35,14 +35,19 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 
 - [x] C1. With `queue = true`, merging a reviewed code task replies `queued 1`, and `task view` and `cland merge queue` show the entry, proved by a merge test on `projectHub`.
   - done: impl-710 · 2026-10-18T10:16:46.957Z
+  - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
 - [x] C2. With `queue = true`, a tracker-and-docs-only task and a human-shell override land at once with today's receipts, proved by merge tests.
   - done: impl-710 · 2026-10-18T09:31:56.291Z
+  - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
 - [x] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
   - done: impl-710 · 2026-10-18T09:42:08.630Z
+  - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
 - [x] C4. Entries and their order survive a hub restart, proved by a restart test.
   - done: impl-710 · 2026-10-18T09:32:00.898Z
+  - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
 - [x] C5. With `queue = false` the existing merge-gate, merge-recovery and merge-checkout tests pass unchanged.
   - done: impl-710 · 2026-10-18T09:32:02.458Z
+  - verified: rev-30 [reviewer] · run rev-20261018-710-final · 2026-10-18T10:46:24.213Z · commit 0b70662f62863acaa65d33c0852d21ce6b2d11a5
 
 ## Comments
 
@@ -105,3 +110,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-5194: M2 source correction clear, exact one-line DOCUMENTED_TOOLS update; four exact consumer assertions preserved and independently audited. Actual resolved SHA is 0b70662f62863acaa65d33c0852d21ce6b2d11a5; request/A-5193 full SHA was malformed and needs labeling correction. No source findings. Coordinator e4e7e155 classifies separate timeout as T-797 and authorizes one second droplet receipt; C1–C5 final verification awaits that gate.
+
+### impl-710 · 2026-10-18T10:45:56.927Z
+
+Exact reviewed head 0b70662f62863acaa65d33c0852d21ce6b2d11a5 now has green full Linux droplet receipt 8f66df5b / A-5218: 2549 tests, 2541 pass, 0 fail, 8 skip; hub and Neovim suites complete. All five queue cases plus the reviewed-docs immediate-landing case passed their 5/5 load gates (30/30 owned repetitions); slowest queue case 1.175s. Census M2 correction and queued cancellation M1 remain in this unchanged clean head. Coordinator-authorized T-797 second receipt is green; awaiting Reviewer final criterion/verdict settlement.
+
+### rev-30 · 2026-10-18T10:46:24.213Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-710-final
+commit: 0b70662f62863acaa65d33c0852d21ce6b2d11a5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-5220: exact-head A-5218 passes full hub/Neovim, 2541 pass/0 fail/8 prerequisite skips. Queue5/5, Store18/18, policy13/13, all unchanged merge-gate/recovery/checkout and corrected surface carriers pass. Eight new owned groups pass40/40 repetitions; no owned trips/hard budgets. T-797 timeout case passes0.583s. All C1–C5 verified, including Coordinator-approved Store reopen seam for C4. No findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
