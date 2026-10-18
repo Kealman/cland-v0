@@ -15,6 +15,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
   verify cancel [<suite id>] [--json]
                   cancel your active suite (human: any explicit id); post its cancelled result
   verify --dry-run      print admission, selection and tier projections without queueing (--report optional)
+  verify --dry-run --diagnostics   also compute report-only reachability (up to 120 s)
   verify queue [--json]
                   show local holder, remote runs, executor waiters, waits, admission ETA and recent timing metrics
   verify classify <run> load-flake --note <text> [--json]

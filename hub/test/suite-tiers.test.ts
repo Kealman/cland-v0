@@ -5,6 +5,11 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { hubShards, lintHubShards, packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
+import { chooseSuiteMode } from '../src/suite-selection.ts';
+
+test('verification admission infrastructure selects the full suite', () => {
+  for (const path of ['hub/src/test-lint-policy.ts', 'hub/src/hub/suite-candidate.ts']) assert.equal(chooseSuiteMode([path]), 'full', path);
+});
 
 test('tier manifest covers hub and Neovim without changing package resource phases', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-tiers-'));

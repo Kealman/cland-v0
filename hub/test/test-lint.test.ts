@@ -4,13 +4,27 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { lintTests, lintTestSource, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
+import { lintTests, lintTestSource, testLintFacts, testLintReport, touchesMachineResources } from '../src/test-lint.ts';
 
 // Shared planted source inputs are data, never executed by these tests.
 const sources = JSON.parse(await readFile(new URL('./fixtures/test-lint-sources.json', import.meta.url), 'utf8')) as Record<string, string>;
 const input = (name: string): string => { assert.equal(typeof sources[name], 'string', name); return sources[name]!; };
 
 const file = 'hub/test/planted.test.ts';
+
+test('direct facts keep source, path and tier separate from caller mutations', () => {
+  const source = 'sleep(10);';
+  const facts = testLintFacts(file, source, 'T1');
+  facts.result.findings.length = 0;
+  facts.calls.push({ file, line: 99, rule: 'tier-process', message: 'poison' });
+  const fresh = testLintFacts(file, source, 'T1');
+  assert.ok(fresh.result.findings.some(f => f.rule === 'wall-clock-wait'));
+  assert.ok(!fresh.calls.some(f => f.message === 'poison'));
+  assert.deepEqual(testLintFacts(file, '// clean', 'T1').result.findings, []);
+  assert.ok(testLintFacts('hub/test/other.test.ts', source, 'T1').result.findings.every(f => f.file === 'hub/test/other.test.ts'));
+  assert.equal(testLintFacts(file, source, 'T2').result.tier, 'T2');
+  assert.ok(testLintFacts(file, '// T3: process fixture\n', { tier: 'T3', contract: 'fixture' }).lifecycle);
+});
 
 async function lintFixture(t: import('node:test').TestContext, planted: Record<string, string>) {
   const directory = await mkdtemp(join(tmpdir(), 'cland-lint-imports-'));
@@ -57,6 +71,7 @@ test('reachable diagnostics leave direct qualification and admission findings un
   const [result] = await lintTests(root);
   const source = await readFile(join(root, 'hub/test/component.test.ts'), 'utf8');
   const direct = lintTestSource('hub/test/component.test.ts', source, 'T1');
+  assert.deepEqual(await lintTests(root, { reachable: false }), [direct], 'omitting diagnostics preserves every direct finding and qualifying tier');
   assert.equal(result?.qualifies, 'T2');
   assert.deepEqual(result?.findings, direct.findings);
   assert.equal(result?.qualifies, direct.qualifies);

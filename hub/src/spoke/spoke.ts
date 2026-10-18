@@ -35,7 +35,7 @@ import { hasRoleMappedSession } from '../hub/store.ts';
 import { VERSION } from '../version.ts';
 
 const TOOLS = [
-  { name: 'verify', description: 'With dryRun, return admission and tier projections without queueing. Otherwise submit verification and return immediately; the hub posts one result. Occasion shards integrated dev full close runs: Coordinator stage/epic/release, QA epic. Omit occasion for batch/task runs.', inputSchema: { type: 'object', properties: { dryRun: { type: 'boolean' }, mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'] }, cwd: { type: 'string' }, report: { type: 'string' }, to: { type: 'array', items: { type: 'string' } }, fresh: { type: 'boolean' }, workers: { type: 'integer', minimum: 1 }, size: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' }, executor: { type: 'string', enum: ['local', 'droplet'] }, occasion: { type: 'string', enum: Object.values(VERIFY_OCCASIONS) } }, required: ['cwd'], anyOf: [{ required: ['report'] }, { properties: { dryRun: { const: true } }, required: ['dryRun'] }] } },
+  { name: 'verify', description: 'With dryRun, return admission and tier projections without queueing; diagnostics opts into the slower report-only reachability graph. Otherwise submit verification and return immediately; the hub posts one result. Occasion shards integrated dev full close runs: Coordinator stage/epic/release, QA epic. Omit occasion for batch/task runs.', inputSchema: { type: 'object', properties: { dryRun: { type: 'boolean' }, diagnostics: { type: 'boolean' }, mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'] }, cwd: { type: 'string' }, report: { type: 'string' }, to: { type: 'array', items: { type: 'string' } }, fresh: { type: 'boolean' }, workers: { type: 'integer', minimum: 1 }, size: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' }, executor: { type: 'string', enum: ['local', 'droplet'] }, occasion: { type: 'string', enum: Object.values(VERIFY_OCCASIONS) } }, required: ['cwd'], anyOf: [{ required: ['report'] }, { properties: { dryRun: { const: true } }, required: ['dryRun'] }] } },
   { name: 'merge', description: 'Land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' } }, required: ['item'] } },
   {
     name: 'artifact.create',
@@ -350,7 +350,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
           return text({ ok: true, ...value });
         }
         case 'verify': {
-          const value = await hub.request({ ...args, type: 'suite.start', mode: args.mode ?? 'auto' } as Omit<import('../protocol.ts').SuiteStart, 'id'>, 15_000) as Record<string, unknown>;
+          const value = await hub.request({ ...args, type: 'suite.start', mode: args.mode ?? 'auto' } as Omit<import('../protocol.ts').SuiteStart, 'id'>, args.diagnostics === true ? 120_000 : 15_000) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'merge': {

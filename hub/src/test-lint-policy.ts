@@ -3,6 +3,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { setImmediate as yieldToRequests } from 'node:timers/promises';
+import type { LogFn } from './log.ts';
 import type { TierManifest } from './suite-shards.ts';
 import { testLintFacts, type TestLintFinding } from './test-lint.ts';
 
@@ -89,17 +91,113 @@ async function snapshot(source: Source): Promise<Snapshot> {
   const [tiers, baseline] = await Promise.all([optional(source, TIERS), optional(source, LINT_BASELINE)]);
   return { source, ...(tiers ? { manifest: JSON.parse(tiers) } : {}), ...(baseline ? { baseline: JSON.parse(baseline) } : {}) };
 }
+/** Read the manifest's blobs in one process, preserving byte boundaries and Git errors. */
+async function treeSources(cwd: string, tree: string, files: string[], env?: NodeJS.ProcessEnv): Promise<Source> {
+  const wanted = new Set(files);
+  const listing = (await promisify(execFile)('git', ['ls-tree', '-r', '-z', '--full-tree', tree], { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
+  const entries = listing.split('\0').filter(Boolean).flatMap(record => {
+    const tab = record.indexOf('\t');
+    const [, kind, oid] = record.slice(0, tab).split(' ');
+    const file = record.slice(tab + 1);
+    return kind === 'blob' && wanted.has(file) ? [{ file, oid: oid! }] : [];
+  });
+  const sources = new Map<string, string>();
+  if (entries.length) {
+    const output = await new Promise<Buffer>((resolve, reject) => {
+      const child = execFile('git', ['cat-file', '--batch'], { cwd, env, encoding: 'buffer', timeout: 30_000, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => error ? reject(error) : resolve(stdout));
+      child.stdin!.on('error', reject);
+      child.stdin!.end(entries.map(entry => entry.oid).join('\n') + '\n');
+    });
+    let offset = 0;
+    for (const entry of entries) {
+      const end = output.indexOf(10, offset);
+      const [oid, kind, sizeText] = output.subarray(offset, end).toString('ascii').split(' ');
+      const size = Number(sizeText);
+      if (end < offset || oid !== entry.oid || kind !== 'blob' || !Number.isSafeInteger(size) || size < 0 || end + 1 + size >= output.length || output[end + 1 + size] !== 10) throw new Error(`invalid Git blob response: ${entry.file}`);
+      sources.set(entry.file, output.subarray(end + 1, end + 1 + size).toString('utf8'));
+      offset = end + 1 + size + 1;
+    }
+    if (offset !== output.length) throw new Error('unexpected trailing Git blob response');
+  }
+  return async file => {
+    const source = sources.get(file);
+    if (source === undefined) throw Object.assign(new Error(`missing Git source: ${file}`), { code: 'ENOENT' });
+    return source;
+  };
+}
+async function treeSnapshot(cwd: string, tree: string, env?: NodeJS.ProcessEnv): Promise<Snapshot> {
+  const value = await snapshot(async file => (await promisify(execFile)('git', ['show', `${tree}:${file}`], { cwd, env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout);
+  let sources: Promise<Source> | undefined;
+  return { ...value, source: async file => {
+    sources ??= treeSources(cwd, tree, Object.keys(value.manifest?.tests ?? {}), env);
+    return (await sources)(file);
+  } };
+}
+
+/** Best-effort preparation, never an admission verdict. Coalesce dev moves and
+ * yield before each file so startup and foreground requests remain responsive. */
+export class TestLintWarmer {
+  #pending: string | null = null;
+  #warming: string | null = null;
+  #warmed: string | null = null;
+  #closed = false;
+  #work: Promise<void> | null = null;
+  readonly #cwd: string;
+  readonly #env: NodeJS.ProcessEnv;
+  readonly #log: LogFn;
+  constructor(cwd: string, env: NodeJS.ProcessEnv, log: LogFn = () => {}) {
+    this.#cwd = cwd; this.#env = env; this.#log = log;
+  }
+  request(head: string | null): void {
+    if (this.#closed || !head || head === this.#warmed) return;
+    if (head === this.#warming) { this.#pending = null; return; }
+    this.#pending = head;
+    this.#work ??= this.#drain().finally(() => {
+      this.#work = null;
+      if (this.#pending && !this.#closed) this.request(this.#pending);
+    });
+  }
+  async #drain(): Promise<void> {
+    while (!this.#closed && this.#pending) {
+      const head = this.#pending;
+      this.#pending = null;
+      this.#warming = head;
+      try {
+        await yieldToRequests();
+        if (this.#closed) return;
+        const value = await treeSnapshot(this.#cwd, head, this.#env);
+        const entries = Object.entries(value.manifest?.tests ?? {});
+        let completed = true;
+        for (const [file, entry] of entries) {
+          const text = await value.source!(file);
+          await yieldToRequests();
+          if (this.#closed || this.#pending) { completed = false; break; }
+          testLintFacts(file, text, entry);
+        }
+        if (completed && !this.#closed) {
+          this.#warmed = head;
+          this.#log({ event: 'test-lint-warmed', head, files: entries.length });
+        }
+      } catch (error) { if (!this.#closed) this.#log({ event: 'test-lint-warm-failed', head, error: String(error) }); }
+      finally { this.#warming = null; }
+    }
+  }
+  async close(): Promise<void> {
+    this.#closed = true;
+    this.#pending = null;
+    await this.#work;
+  }
+}
 /** Both gates judge the same immutable sources; dirty admission also judges disk. */
 export async function testLintPolicy(cwd: string, options: { tree?: string; head?: string; base?: string; env?: NodeJS.ProcessEnv } = {}): Promise<LintRefusal[]> {
   const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, env: options.env, maxBuffer: 16 * 1024 * 1024, timeout: 30_000 })).stdout.trimEnd();
-  const at = (tree: string): Source => file => git(['show', `${tree}:${file}`]);
   let baseRef: string | undefined;
   try { baseRef = await git(['merge-base', options.base ?? 'origin/dev', options.head ?? 'HEAD']); }
   catch { try { baseRef = await git(['rev-parse', options.head ?? 'HEAD']); } catch { /* standalone fixture */ } }
   try {
     const [current, base] = await Promise.all([
-      snapshot(options.tree ? at(options.tree) : file => readFile(join(cwd, file), 'utf8')),
-      (options.base ?? baseRef) ? snapshot(at(options.base ?? baseRef!)) : Promise.resolve({} as Snapshot),
+      options.tree ? treeSnapshot(cwd, options.tree, options.env) : snapshot(file => readFile(join(cwd, file), 'utf8')),
+      (options.base ?? baseRef) ? treeSnapshot(cwd, options.base ?? baseRef!, options.env) : Promise.resolve({} as Snapshot),
     ]);
     if (!current.manifest) return base.baseline ? [{ file: TIERS, line: 1, rule: 'lint-baseline', message: 'tier manifest must not be removed while lint baseline is frozen' }] : [];
     if (!base.baseline && current.baseline) {
@@ -108,10 +206,10 @@ export async function testLintPolicy(cwd: string, options: { tree?: string; head
       // do not silently derive a new allowance from the advanced merge base.
       const introduced = (await git(['log', '--reverse', '--format=%H', '--diff-filter=A', options.head ?? 'HEAD', '--', LINT_BASELINE]).catch(() => '')).split('\n').find(Boolean);
       if (introduced) {
-        const frozen = await snapshot(at(introduced));
+        const frozen = await treeSnapshot(cwd, introduced, options.env);
         if (!frozen.manifest || !frozen.baseline) return [{ file: LINT_BASELINE, line: 1, rule: 'lint-baseline', message: 'original freeze requires a tier manifest and baseline' }];
         const parent = await git(['rev-parse', `${introduced}^`]).catch(() => introduced);
-        const before = await snapshot(at(parent));
+        const before = await treeSnapshot(cwd, parent, options.env);
         // Validate the seed against its own original debt before trusting it.
         // A root commit seeds from its sources; an inflated seed still refuses.
         const invalid = await checkTestLint({ manifest: frozen.manifest, source: frozen.source!, baseline: frozen.baseline,

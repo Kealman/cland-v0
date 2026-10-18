@@ -121,12 +121,20 @@ members. Allowed seams and wait reasons do not suppress reachable resources.
 It caches module analysis, export slices and resolution for one lint run; cycles
 retain all resources. Declaration-only type imports/exports, external packages
 and data imports are not followed. Resource diagnostics name the import chain and
-location. `test:lint` lists every resource path; verification dry runs summarize
+location. `test:lint` lists every resource path; diagnostic dry runs summarize
 resource kinds and show one highest-tier path per file to fit the protocol frame.
-They never
-change the direct-source `qualifies` value or policy findings used by admission
-and the tier lint gate. The qualifying tier never automatically retags a file.
-The legacy hermetic manifest admission still checks each test's own source only.
+They never change the direct-source `qualifies` value or policy findings used by
+admission and the tier lint gate. The qualifying tier never automatically retags
+a file. The legacy hermetic manifest admission checks each test's own source only.
+
+The default dry-run keeps all refusal-relevant checks but omits the report-only
+reachability graph. Use `cland verify --dry-run --diagnostics` (or MCP `verify`
+with `dryRun: true, diagnostics: true`) to include it, with a separate 120-second
+request deadline. The default admission deadline remains 15 seconds. Direct
+facts are cached by path, source digest and tier entry, bounded to 1024 compact
+records without compiler ASTs. After startup and each observed dev-tip move,
+the hub warms dev's facts in the background, yielding between files; admission
+still reads current disk sources and judges each baseline independently.
 
 Neovim files that use only `nvim/test/stub-hub.ts` may use the documented
 `startClient` headless Neovim launch at T2. This exception covers that client

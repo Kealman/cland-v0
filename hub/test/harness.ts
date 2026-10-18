@@ -378,6 +378,9 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  /** Snapshot warming is independent of the tracker's injected Git facts. */
+  lintWarmer?: Pick<import('../src/test-lint-policy.ts').TestLintWarmer, 'request' | 'close'>;
+  scheduleTips?: import('../src/tracker/freshness.ts').TipSchedule;
   /** Projection shutdown tests control all immediates; an extra journal sink would wait on their barrier. */
   processLog?: false;
   journalOpen?: NonNullable<NonNullable<Parameters<typeof serveProject>[1]>['journalOpen']>;
@@ -421,6 +424,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // No infrastructure child processes in T2. Native contracts opt in explicitly;
   // callers can override individual facts without restoring the other native probes.
   const probes = options.probes !== 'native' ? {
+    lintWarmer: { request: () => {}, close: async () => {} },
     git: async () => null,
     readBase: async () => null,
     hasTerritory: async () => false,

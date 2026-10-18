@@ -519,7 +519,7 @@ export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIO
 export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
   return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);
 }
-export type SuiteStart = { type: 'suite.start'; dryRun?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
+export type SuiteStart = { type: 'suite.start'; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 /** Read-only targeted-test admission; never reserves a human queue position. */
 export type SuiteSlotCheck = { type: 'suite.slot'; id: string; check: true; lease?: { pid: number; started: string; token: string } };
@@ -808,7 +808,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'suite.forced':
       return ['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':
-      return (f.workers === undefined || typeof f.workers === 'number' && Number.isSafeInteger(f.workers) && f.workers > 0) && (f.size === undefined || typeof f.size === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(f.size)) && (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && (f.dryRun === undefined || typeof f.dryRun === 'boolean') && typeof f.cwd === 'string' && (typeof f.report === 'string' || f.dryRun === true && f.report === undefined) && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+      return (f.diagnostics === undefined || typeof f.diagnostics === 'boolean' && (!f.diagnostics || f.dryRun === true)) && (f.workers === undefined || typeof f.workers === 'number' && Number.isSafeInteger(f.workers) && f.workers > 0) && (f.size === undefined || typeof f.size === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(f.size)) && (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && (f.dryRun === undefined || typeof f.dryRun === 'boolean') && typeof f.cwd === 'string' && (typeof f.report === 'string' || f.dryRun === true && f.report === undefined) && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'suite.classify':

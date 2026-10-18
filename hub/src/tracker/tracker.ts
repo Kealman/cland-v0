@@ -315,7 +315,7 @@ export class Tracker {
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { onDevTip?: (head: string | null) => void; clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     this.#clock = options.clock ?? realClock;
     this.#parse = options.parse ?? parseItem;
     this.#watch = options.watch ?? watchFolder;
@@ -369,7 +369,7 @@ export class Tracker {
       ...(options.tipCheckMs !== undefined ? { intervalMs: options.tipCheckMs } : {}),
       ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}),
       settled: (ids) => ids.forEach((id) => { this.#announce(id, true); this.#scheduleReady(id); this.#schedulePlannedFor(id); }),
-      tipsMoved: () => this.#tipsMoved(),
+      tipsMoved: () => { this.#tipsMoved(); options.onDevTip?.(this.#fresh.tip('dev')); },
     });
   }
 

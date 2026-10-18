@@ -1,6 +1,7 @@
 // Syntax-only test analysis; the policy module decides which findings refuse admission.
 import type ts from 'typescript';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { readFile, realpath } from 'node:fs/promises';
 import { posix, join, relative, resolve, extname } from 'node:path';
 import type { Tier, TierEntry, TierManifest } from './suite-shards.ts';
@@ -450,13 +451,27 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
 
 /** Analyze one source without reading its imports; lintTests adds the local graph. */
 export function lintTestSource(file: string, text: string, entry: TierEntry): TestLintFile {
-  return analyzeTestSource(file, text, entry).result;
+  return testLintFacts(file, text, entry).result;
 }
 
+type DirectFacts = Pick<ModuleAnalysis, 'result' | 'calls' | 'lifecycle'>;
+// Keep compact facts, never compiler programs/ASTs. Digests cover dirty sources
+// as well as immutable blobs; path and tier entry affect the findings too.
+const directFacts = new Map<string, DirectFacts>();
+const DIRECT_FACT_LIMIT = 1024;
 /** Direct policy facts share the lexical binding analysis used by the report. */
-export function testLintFacts(file: string, text: string, entry: TierEntry) {
+export function testLintFacts(file: string, text: string, entry: TierEntry): DirectFacts {
+  const key = JSON.stringify([file, entry, createHash('sha256').update(text).digest('hex')]);
+  const cached = directFacts.get(key);
+  if (cached) {
+    directFacts.delete(key); directFacts.set(key, cached);
+    return structuredClone(cached);
+  }
   const { result, calls, lifecycle } = analyzeTestSource(file, text, entry);
-  return { result, calls, lifecycle };
+  const facts = { result, calls, lifecycle };
+  directFacts.set(key, facts);
+  if (directFacts.size > DIRECT_FACT_LIMIT) directFacts.delete(directFacts.keys().next().value!);
+  return structuredClone(facts);
 }
 
 /** Hermetic admission uses the same import/call analysis as the tier report. */
@@ -464,11 +479,13 @@ export function touchesMachineResources(file: string, text: string): boolean {
   return lintTestSource(file, text, 'T1').qualifies !== 'T1';
 }
 
-export async function lintTests(cwd: string): Promise<TestLintFile[]> {
+export async function lintTests(cwd: string, options: { reachable?: boolean } = {}): Promise<TestLintFile[]> {
   let manifest: TierManifest;
   try { manifest = JSON.parse(await readFile(join(cwd, 'hub/test/tiers.json'), 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []; throw error; }
   const root = await realpath(cwd);
+  if (options.reachable === false) return Promise.all(Object.entries(manifest.tests).sort(([a], [b]) => a.localeCompare(b))
+    .map(async ([file, entry]) => lintTestSource(file, await readFile(join(root, file), 'utf8'), entry)));
   // Cache syntax/binding analysis per module and slices per requested export.
   // Cache direct edges, not partial closures: cycles retain all resource evidence.
   const modules = new Map<string, Promise<ModuleAnalysis>>();

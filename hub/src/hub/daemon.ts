@@ -38,6 +38,7 @@ import { agentsRecord, replayAgentsRecord } from './agents-topic.ts';
 import { idleNotifyMs } from './inbox.ts';
 import { RequestGuard } from './budget.ts';
 import { jsonLinesLog } from '../log.ts';
+import { TestLintWarmer } from '../test-lint-policy.ts';
 
 /**
  * Whether the hub binds its listeners (the WebSocket for spokes, the Unix socket for the UI and the CLI):
@@ -63,7 +64,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -155,7 +156,9 @@ export async function serveProject(root: string, options: { compatibility?: impo
   } catch (error) { await closeLogs(); lock.release(); throw error; }
   let failStorage!: () => void;
   const storageFailed = new Promise<void>(resolve => { failStorage = resolve; });
-  const tracker = new Tracker({ clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
+  const lintWarmer = options.lintWarmer ?? new TestLintWarmer(root, env, log);
+  let devTip: string | null = null;
+  const tracker = new Tracker({ onDevTip: head => { devTip = head; if (!starting) lintWarmer.request(head); }, clock, ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), now: () => clock.now(), env, git: options.git ?? gitIn(root, env), ...(options.readBase ? { readBase: options.readBase } : {}), onStorageFatal: operation => {
     if (starting || stopping) return;
     // Freeze admission and native/index continuations before yielding or announcing the failure.
     void tracker.stop({ stalled: operation });
@@ -297,6 +300,7 @@ export async function serveProject(root: string, options: { compatibility?: impo
         await attempt(() => hub.dispatcher.close());
         await attempt(() => adapters?.close());
         await attempt(() => tracker.stop());
+        await attempt(() => lintWarmer.close());
         await attempt(() => crew.stop());
         await attempt(() => agents.attach(null));
         await attempt(() => hub.close());
@@ -343,6 +347,7 @@ export async function serveProject(root: string, options: { compatibility?: impo
   if (ws === null || edge === null) {
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
+    lintWarmer.request(devTip);
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
@@ -361,6 +366,7 @@ export async function serveProject(root: string, options: { compatibility?: impo
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
+  lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock);
   hub.dispatcher.useAccountPoller(accountPoller);
   void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
