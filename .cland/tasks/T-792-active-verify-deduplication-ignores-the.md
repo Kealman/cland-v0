@@ -2,8 +2,8 @@
 id: T-792
 kind: task
 title: Active verify deduplication ignores the executor, so a stage's local macOS run returns the active droplet run
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-770
 topic: topic-501
 branch: t/T-792-active-verify-deduplication-ignores-the
 created: 2026-10-18T09:28:59.283Z
-updated: 2026-10-18T10:29:58.249Z
+updated: 2026-10-18T12:29:49.956Z
+closed: 2026-10-18T12:29:49.956Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear; no findings. A-5208 records independent audit of exact-head A-5207 / 7147d96b: exit 0, 2149 passed, zero failed/cancelled, five prerequisite skips; hub-only plus green Neovim smoke. All ten ordinary stage/submission cases passed, including distinct executor requests and scheduler recovery; both new identities passed 5/5 repetitions. No tier mismatch or owned quarantine. C1 verified; C2 source verification remains current at this unchanged commit.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-18T12:29:49.956Z
+
+Merged c2d3b64ecfe278f7603af791c37d05e5e926a44e onto dev.
