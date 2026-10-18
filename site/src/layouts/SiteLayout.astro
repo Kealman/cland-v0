@@ -22,6 +22,8 @@ interface Props {
   /** For an article: its publication date. */
   published?: Date;
   imageAlt?: string;
+  /** Structured data (schema.org JSON-LD) for this page. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
 const {
@@ -32,6 +34,7 @@ const {
   ogType = 'website',
   published,
   imageAlt = 'cland: all your subscriptions, one team',
+  jsonLd,
 } = Astro.props;
 const site = Astro.site ?? new URL(SITE);
 const canonical = new URL(Astro.url.pathname, site).href;
@@ -70,6 +73,7 @@ const rss = new URL('/log/rss.xml', site).href;
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
   </head>
   <body>
     <SiteHeader home={home} current={current} />

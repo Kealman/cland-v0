@@ -10,7 +10,7 @@
 <h3 align="center">All your subscriptions. One team.</h3>
 
 <p align="center">
-  One coding crew across every AI plan you pay for.
+  Open-source crew runner: Claude Code, Codex and OpenCode as one coding crew on the subscriptions you already pay for.
 </p>
 
 <p align="center">

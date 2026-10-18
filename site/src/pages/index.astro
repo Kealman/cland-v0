@@ -4,13 +4,32 @@ import SiteLayout from '../layouts/SiteLayout.astro';
 import PostCard from '../components/PostCard.astro';
 import Screenshot from '../components/Screenshot.astro';
 import Diagram from '../components/Diagram.astro';
-import { DISCORD, GITHUB, TAGLINE } from '../site';
+import { CATEGORY, DISCORD, GITHUB, SITE } from '../site';
 import { getPosts } from '../log';
 import heroShot from '../assets/screens/hero.png';
 import accountsShot from '../assets/screens/accounts.png';
 
-const title = 'cland: all your subscriptions, one team';
-const description = TAGLINE;
+const title = 'cland: open-source crew runner for Claude Code, Codex and OpenCode';
+const description =
+  'Run Claude Code, Codex and OpenCode as one coding crew on the AI subscriptions you already pay for. A strong model leads, cheaper models build, you decide.';
+const org = { '@type': 'Organization', '@id': `${SITE}/#org`, name: 'cland', url: SITE, logo: `${SITE}/apple-touch-icon.png`, sameAs: [GITHUB, 'https://x.com/cland_app', DISCORD] };
+const jsonLd = [
+  { '@context': 'https://schema.org', ...org },
+  { '@context': 'https://schema.org', '@type': 'WebSite', name: 'cland', url: SITE, description: CATEGORY, publisher: { '@id': `${SITE}/#org` } },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareSourceCode',
+    name: 'cland',
+    description: CATEGORY,
+    url: SITE,
+    codeRepository: GITHUB,
+    license: 'https://www.apache.org/licenses/LICENSE-2.0',
+    programmingLanguage: 'TypeScript',
+    runtimePlatform: 'Node.js',
+    keywords: 'Claude Code, Codex, OpenCode, AI coding agents, multi-agent orchestration, software factory',
+    author: { '@id': `${SITE}/#org` },
+  },
+];
 const latestPosts = (await getPosts()).slice(0, 3);
 
 const ROLE = { coord: '#35c4a0', impl: '#b392f0', rev: '#f778ba', qa: '#79c0ff' };
@@ -184,10 +203,10 @@ const crewRows = [
 ];
 ---
 
-<SiteLayout title={title} description={description} home>
+<SiteLayout title={title} description={description} home jsonLd={jsonLd}>
   <section class="hero wrap">
     <div class="hero-copy">
-      <div class="eyebrow">OPEN SOURCE · APACHE-2.0 · macOS AND LINUX</div>
+      <div class="eyebrow">OPEN-SOURCE CREW RUNNER · APACHE-2.0 · macOS AND LINUX</div>
       <h1>All your subscriptions.<br />One team.</h1>
       <p class="hero-lead">One coding crew across every AI plan you pay for. cland runs Claude Code, Codex and OpenCode together: a strong model leads, cheaper and open models do the legwork, and you make the decisions.</p>
       <div class="actions">
