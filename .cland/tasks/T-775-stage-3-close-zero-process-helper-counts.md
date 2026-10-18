@@ -3,7 +3,7 @@ id: T-775
 kind: task
 title: "Stage-3 close: zero process-helper counts outside contract, scenario and T3-header files, and measure T3 seconds and hub starts"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -22,7 +22,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-18T04:49:35.780Z
-updated: 2026-10-18T15:58:30.149Z
+updated: 2026-10-18T20:04:46.127Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-637
 kind: task
 title: A new project's roles.toml is built from the installed harnesses, Claude Code roles on auto, and the Aide gets sub-agents
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:04:13.028Z
-updated: 2026-10-16T16:04:14.566Z
+updated: 2026-10-18T20:04:45.661Z
 ---
 
 ## Summary

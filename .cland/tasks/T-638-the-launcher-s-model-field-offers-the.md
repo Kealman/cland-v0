@@ -3,7 +3,7 @@ id: T-638
 kind: task
 title: The launcher's model field offers the models the harness lists
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:04:13.257Z
-updated: 2026-10-16T16:04:14.805Z
+updated: 2026-10-18T20:04:45.697Z
 ---
 
 ## Summary

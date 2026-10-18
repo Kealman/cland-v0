@@ -3,7 +3,7 @@ id: T-646
 kind: task
 title: cland init makes an empty folder a repository whose first commit is cland's files, then the territory, ending on a clean dev
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -17,7 +17,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:23:59.380Z
-updated: 2026-10-16T16:24:10.839Z
+updated: 2026-10-18T20:04:45.745Z
 ---
 
 ## Summary

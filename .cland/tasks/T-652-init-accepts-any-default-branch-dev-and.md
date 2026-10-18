@@ -3,7 +3,7 @@ id: T-652
 kind: task
 title: "Init accepts any default branch: dev and the territory start from it, and the territory records it"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:24:00.971Z
-updated: 2026-10-16T16:24:13.305Z
+updated: 2026-10-18T20:04:45.989Z
 ---
 
 ## Summary

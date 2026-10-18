@@ -3,7 +3,7 @@ id: T-647
 kind: task
 title: A folder with the project's own files and a repository without commits get the same first commit, and the human's files stay as they were
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:23:59.744Z
-updated: 2026-10-16T16:24:11.277Z
+updated: 2026-10-18T20:04:45.804Z
 ---
 
 ## Summary

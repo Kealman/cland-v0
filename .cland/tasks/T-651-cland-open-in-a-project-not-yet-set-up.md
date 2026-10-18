@@ -3,7 +3,7 @@ id: T-651
 kind: task
 title: 'cland open in a project not yet set up prints "next: cland setup" and opens the workbench as usual'
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:24:00.577Z
-updated: 2026-10-16T16:24:12.963Z
+updated: 2026-10-18T20:04:46.084Z
 ---
 
 ## Summary

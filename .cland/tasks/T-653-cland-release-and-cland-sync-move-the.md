@@ -3,7 +3,7 @@ id: T-653
 kind: task
 title: cland release and cland sync move the territory's recorded default branch, not a hard-coded main
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:24:02.732Z
-updated: 2026-10-16T16:24:13.691Z
+updated: 2026-10-18T20:04:46.020Z
 ---
 
 ## Summary

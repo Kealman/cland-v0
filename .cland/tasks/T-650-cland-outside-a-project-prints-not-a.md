@@ -3,7 +3,7 @@ id: T-650
 kind: task
 title: 'cland outside a project prints "not a cland project: run cland init" and starts no hub'
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T16:24:00.374Z
-updated: 2026-10-16T16:24:12.586Z
+updated: 2026-10-18T20:04:46.053Z
 ---
 
 ## Summary

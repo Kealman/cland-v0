@@ -3,7 +3,7 @@ id: T-712
 kind: task
 title: "A red batch is bisected by failing file: the culprit is refused with merge-bisected, the rest land, a culprit-less repeat proposes quarantine"
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:43.692Z
-updated: 2026-10-16T20:00:12.045Z
+updated: 2026-10-18T20:04:46.162Z
 ---
 
 ## Summary
