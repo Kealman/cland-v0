@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-498
 branch: t/T-535-opencode-injects-carry-idempotent-ids
 created: 2026-10-15T20:59:19.616Z
-updated: 2026-10-18T09:30:05.293Z
+updated: 2026-10-18T09:34:31.500Z
 ---
 
 ## Summary
@@ -38,10 +38,38 @@ Code: `hub/src/adapters/opencode.ts`, `hub/src/adapters/opencode/client.ts`, `hu
 - [x] C2. A child session's model appears in the sub-agent launch record and its usage adds to the parent's usage record.
   - done: impl-535 · 2026-10-18T09:26:28.464Z
 - [x] C3. A child waiting for approval shows its parent session as waiting.
-  - done: impl-535 · 2026-10-18T09:26:33.580Z
+  - done: impl-535 · 2026-10-18T09:33:49.423Z
 
 ## Comments
 
 ### impl-535 · 2026-10-18T09:23:48.807Z
 
 TDD progress: lost-response admission regression failed with two native admissions and now passes with stable per-message/per-session msg_ ids. Child usage regression failed with parent-only totals and now passes; child-approval aggregation regression failed with parent busy and now passes at the existing T2 scripted transport seam. Adding recipient isolation and reconnect coverage before review.
+
+### rev-31 · 2026-10-18T09:31:20.899Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261018-535-source-1
+commit: 5ba696ca58f06bb4a498d02a3a443b7648459b31
+scope: full
+findings: [{"severity":"medium","text":"Unconditional family snapshot resets overwrite newer child SSE approval/reply events; preserve event ordering and add held-response controls.","file":"hub/src/adapters/opencode.ts","line":428}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Source review at 5ba696ca58f06bb4a498d02a3a443b7648459b31, fixed base 226bd904a90b269e80b3faa5b514a0ea2f367fff. Scope full; read-only review without running tests.
+
+## Standards
+No findings. Five new controls use the existing T2 scripted HTTP/SSE boundary, in-process hub/spokes and FakeClock, with 2s test deadlines. No added processes, wall-clock sleeps, allowances or shared contract changes.
+
+## Spec
+Medium M1 — hub/src/adapters/opencode.ts:423–429 (C3): family snapshot application can overwrite newer child SSE state. The subscription starts asynchronous snapshots while its onEvent callback continues mutating the same trackers. After all responses resolve, tracker.reset(snapshot) unconditionally replaces those mutations. A known child's snapshot can capture no approvals, then permission.asked marks it waiting, then release of an older held response clears the pending approval and signals busy/idle. Watch/abort checks at line 425 do not establish event ordering. The symmetric stale-pending snapshot can restore an approval already answered. The new reconnect test uses immediate snapshots and does not cover either ordering.
+
+Preserve events received after snapshot admission (or otherwise establish an explicit reconciliation boundary), and add a held-response control retaining both the newer approval and its later reply. A new source review is required before verification.
+
+C1 source path uses stable SHA-256 ids over message id and cland session identity, including rename-stable recipient isolation; its lost-response test retains one admission and two attempts. C2 routes known-child usage into parent totals while keeping child model/execution boundaries separate, with unrelated-child exclusion. Neither establishes a final runtime verdict without post-clear verification. A-5119 targeted results inspected.
+
+Standards: 0 findings. Spec: 1 medium finding.
+Artifact A-5131.
+
+Criteria: C3 failed (An older held reconnect snapshot can overwrite a newer child permission event and falsely unblock the parent.).

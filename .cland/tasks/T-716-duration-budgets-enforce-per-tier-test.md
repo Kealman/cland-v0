@@ -3,8 +3,9 @@ id: T-716
 kind: task
 title: "Duration budgets enforce: per-tier test and file budgets fail runs, the T3 ratchet and the T2 wall refuse merges"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -17,7 +18,7 @@ blocked_by:
 topic: topic-489
 branch: t/T-716-duration-budgets-enforce-per-tier-test
 created: 2026-10-16T19:59:44.270Z
-updated: 2026-10-18T09:29:42.265Z
+updated: 2026-10-18T09:32:54.622Z
 ---
 
 ## Summary
@@ -34,11 +35,16 @@ Decision 3: budgets report for one week after `tiers.json` lands (T-683), then r
 
 ## Acceptance criteria
 
-- [ ] C1. In enforce mode, a planted T2 test at 2.5 s without an allowance fails the run, and with a valid allowance passes, proved by a durations-runner test.
-- [ ] C2. In enforce mode, T3 growth without an allowance and a projected T2 wall over 480 s each refuse with `merge-budget`, proved by merge-gate tests.
-- [ ] C3. The T3 wall refuses only when the base projection is under 900 s and otherwise prints the not-yet-enforced line, proved by a test with two planted manifests.
-- [ ] C4. In report mode, every existing durations and durations-runner test passes unchanged.
-- [ ] C5. `docs/agents/tests.md` describes enforce mode, `merge-budget` and the T3 wall condition.
+- [x] C1. In enforce mode, a planted T2 test at 2.5 s without an allowance fails the run, and with a valid allowance passes, proved by a durations-runner test.
+  - done: impl-716 · 2026-10-18T09:32:52.219Z
+- [x] C2. In enforce mode, T3 growth without an allowance and a projected T2 wall over 480 s each refuse with `merge-budget`, proved by merge-gate tests.
+  - done: impl-716 · 2026-10-18T09:32:52.754Z
+- [x] C3. The T3 wall refuses only when the base projection is under 900 s and otherwise prints the not-yet-enforced line, proved by a test with two planted manifests.
+  - done: impl-716 · 2026-10-18T09:32:53.262Z
+- [x] C4. In report mode, every existing durations and durations-runner test passes unchanged.
+  - done: impl-716 · 2026-10-18T09:32:53.726Z
+- [x] C5. `docs/agents/tests.md` describes enforce mode, `merge-budget` and the T3 wall condition.
+  - done: impl-716 · 2026-10-18T09:32:54.217Z
 
 ## Blocked by
 

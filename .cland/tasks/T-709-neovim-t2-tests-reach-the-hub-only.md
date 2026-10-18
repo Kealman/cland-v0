@@ -23,7 +23,7 @@ blocked_by:
 topic: topic-475
 branch: t/T-709-neovim-t2-tests-reach-the-hub-only
 created: 2026-10-16T19:59:37.953Z
-updated: 2026-10-18T09:29:27.754Z
+updated: 2026-10-18T09:34:07.432Z
 ---
 
 ## Summary
@@ -44,18 +44,21 @@ Hub edits force Neovim tests because they import hub code (memo §3.6; report-st
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.284Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
+  - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
 - [x] C2. The recorder test fails on a planted frame change in the hub and passes after the fixture rewrite, proved by a test.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:40.811Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
+  - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
 - [x] C3. The selection replay over the last 40 landings shows `nvim test import` deciding no T2 Neovim selection, recorded on this item.
   - verified: rev-30 [reviewer] · run rev-20261018-709-carrier-correction · 2026-10-18T06:17:16.015Z · commit 7d8025aef34e8b43b44ecf721b404a7ebbe3ad63
   - done: impl-709 · 2026-10-18T06:17:41.523Z
   - verified: rev-30 [reviewer] · run rev-20261018-709-integration-delta · 2026-10-18T06:50:11.285Z · commit 72570ce02e551afdad7af00cbbdb4cb9a6fa3316
   - verified: rev-30 [reviewer] · run rev-20261018-709-gated-lint-delta · 2026-10-18T07:26:15.365Z · commit 5629976a93d667c352ee1c3e85d486322aa933b3
   - verified: rev-30 [reviewer] · run rev-20261018-709-timestamp-correction · 2026-10-18T08:37:05.822Z · commit 5a9c087938682350ff3ba30b6b856f6c47b1c859
+  - verified: rev-30 [reviewer] · run rev-20261018-709-transport-delta · 2026-10-18T09:34:07.432Z · commit 5f552d2c5731a2a6ff5dcdf19020f01143d30847
 - [x] C4. An audit shows every Neovim T2 test's assertions unchanged in meaning, and each touched file passes 5/5 serially as a whole file on the Mac and once in the task's droplet verify.
   - done: impl-709 · 2026-10-18T09:29:27.754Z
 
@@ -207,5 +210,24 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source correction clear, A-5094. Occurrence-bound timestamps remove equality-dependent keys while preserving wire restoration/UUID identity. Control client rejects close/refusal with named request; stub reports projection failure and remains usable. Red-first canonical/socket/actual-client controls reviewed. A-5093 raw96 whole-file runs/804 passes, no failure/cancel/skip;4464 corpus keys independently recomputed,24807 nodes decoded; actual production-prefix drift red/rewrite/restoration green. Original assertions retained, empty T2 baseline entry only, exact40 landing window matches. C1/C2/C3 verified; C4 awaits corrected-head droplet after restart hold lifts. A-5083 cancellation retained; no reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-709 · 2026-10-18T09:33:20.691Z
+
+Accepted full droplet b633487b/A-5120 at5a9c0879:2543/2551pass,8prerequisite skips,0fail/cancel; all12T2Neovimfiles/58cases pass, full-inbox0.636s. C4 claimant done restored from A-5120+A-5093/cumulative Mac proof. Coordinator cfbe0843 authorized one origin/dev merge for the T-770 socket-client conflict; merge5f552d2c5731a2a6ff5dcdf19020f01143d30847 incorporates dev23244cfa and is pushed clean. Mechanical resolution retains exact incoming HubTimeout/request-write completion semantics in shared transport, existing hub exports, and incoming suite exit75. Four exact comparisons pass. A-5137 contains resolution patch, full search inventories (45 affected API/string tests;353 broad added-line identifier tests), required verify-submission whole file4/4, fetched-origin lint and typecheck. Coordinator bfcba854 replaces batch waiver with fresh droplet after resolution-only delta review; no broad local loop or5/5 stress under load. New delta review requested next; prior green does not clear merged head.
+
+### rev-30 · 2026-10-18T09:34:07.432Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-709-transport-delta
+commit: 5f552d2c5731a2a6ff5dcdf19020f01143d30847
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Resolution source clear, A-5139. Independently exact-compared incoming HubTimeout class/askHubFrame (only ClientHello annotation erased), unchanged hub compatibility exports, and byte-identical incoming suite CLI. Shared transport retains requestSent/timeoutMs/write completion and class identity without hub imports. A-5137 raw verify-submission4/4; static gates/search inventories retained under Coordinator bfcba854's narrow-local/fresh-droplet validation decision. C1–C3 current from cumulative proof; C4 awaits fresh exact-head droplet. Prior A-5120 green remains historical, no waived rerun assumed.
 
 Criteria: C1 verified, C2 verified, C3 verified.

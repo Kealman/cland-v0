@@ -14,7 +14,7 @@ regression_of: T-684
 topic: topic-487
 branch: t/T-788-verify-admission-runs-t-684-s-test-lint
 created: 2026-10-18T09:09:07.078Z
-updated: 2026-10-18T09:29:26.714Z
+updated: 2026-10-18T09:34:23.358Z
 ---
 
 ## Summary

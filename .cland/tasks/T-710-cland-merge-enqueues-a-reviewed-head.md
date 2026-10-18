@@ -3,8 +3,9 @@ id: T-710
 kind: task
 title: cland merge enqueues a reviewed head into a hub-owned merge queue, behind [merge] queue
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-488
 branch: t/T-710-cland-merge-enqueues-a-reviewed-head
 created: 2026-10-16T19:59:43.498Z
-updated: 2026-10-18T09:20:40.341Z
+updated: 2026-10-18T09:32:04.406Z
 ---
 
 ## Summary
@@ -32,11 +33,16 @@ Decision 1: a hub-owned merge queue lands reviewed heads in batches of up to thr
 
 ## Acceptance criteria
 
-- [ ] C1. With `queue = true`, merging a reviewed code task replies `queued 1`, and `task view` and `cland merge queue` show the entry, proved by a merge test on `projectHub`.
-- [ ] C2. With `queue = true`, a tracker-and-docs-only task and a human-shell override land at once with today's receipts, proved by merge tests.
-- [ ] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
-- [ ] C4. Entries and their order survive a hub restart, proved by a restart test.
-- [ ] C5. With `queue = false` the existing merge-gate, merge-recovery and merge-checkout tests pass unchanged.
+- [x] C1. With `queue = true`, merging a reviewed code task replies `queued 1`, and `task view` and `cland merge queue` show the entry, proved by a merge test on `projectHub`.
+  - done: impl-710 · 2026-10-18T09:31:55.192Z
+- [x] C2. With `queue = true`, a tracker-and-docs-only task and a human-shell override land at once with today's receipts, proved by merge tests.
+  - done: impl-710 · 2026-10-18T09:31:56.291Z
+- [x] C3. A head change, a not-clear verdict, an item close and `--cancel` each drop the entry with `merge-queue-dropped` and the reason, proved by tests.
+  - done: impl-710 · 2026-10-18T09:31:58.113Z
+- [x] C4. Entries and their order survive a hub restart, proved by a restart test.
+  - done: impl-710 · 2026-10-18T09:32:00.898Z
+- [x] C5. With `queue = false` the existing merge-gate, merge-recovery and merge-checkout tests pass unchanged.
+  - done: impl-710 · 2026-10-18T09:32:02.458Z
 
 ## Comments
 
