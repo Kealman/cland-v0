@@ -402,7 +402,14 @@ manifest test targets and load-gate repetitions. T3/T4 workers retain their nati
 APIs. T1 reports child-process starts and socket listen/connect
 entry points (including HTTP, HTTPS, TLS and fetch through the shared net boundary); T2 reports child-process starts. The documented `cland` and
 `clandWithEnv` helpers exempt only their synchronous CLI launch in T2. Calling the
-same CLI directly is still a mismatch. In Neovim T2 workers, `startClient` also
+same CLI directly is still a mismatch. The `clandCliLaunch` boundary also admits
+exactly two shipped CLI subjects: `/bin/sh .agents/skills/qa/qa-record.sh …` and
+`node --import hub/test/v01-migration-cli-preload.ts hub/bin/migrate-v01-release.ts …`.
+Commands and entry paths are resolved against the worker cwd; the migration
+preload is mandatory. This closed set grants only the synchronous `execFile`
+launch, with no permission for altered entries, other process APIs or async
+descendants. Incidental executable discovery uses filesystem PATH facts.
+In Neovim T2 workers, `startClient` also
 exempts only its synchronous `spawn` with the exact headless client arguments.
 A direct lookalike, altered arguments, a different process API or async work
 outside that launch still trips; native Git/ps probes and fake harness binaries

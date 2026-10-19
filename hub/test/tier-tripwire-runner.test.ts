@@ -346,3 +346,42 @@ test('non-stub launch', async t => {
   assert.deepEqual(trips(result.output).map(({ name, resource }) => ({ name, resource })), ['socket', 'command', 'default'].map(name => ({ name: `non-stub launch > ${name}`, resource: 'child_process.spawn' })));
   assert.match(result.output, /pass 4/);
 });
+
+// T3 runner contract: real CLI subprocesses prove the closed subject exception;
+// altered entries and async descendants must still fail before native startup.
+test('QA recorder and migration CLI subjects require exact synchronous launch boundaries', async t => {
+  const record = fileURLToPath(new URL('../../.agents/skills/qa/qa-record.sh', import.meta.url));
+  const migration = fileURLToPath(new URL('../bin/migrate-v01-release.ts', import.meta.url));
+  const preload = fileURLToPath(new URL('./v01-migration-cli-preload.ts', import.meta.url));
+  const run = await fixture(t, { subjects: { tier: 'T2', source: `
+import test from 'node:test'; import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process'; import { promisify } from 'node:util';
+import { clandCliLaunch } from ${JSON.stringify(cliBoundary)};
+const exec = promisify(execFile);
+const recorder = [${JSON.stringify(record)}];
+const migration = ['--import', ${JSON.stringify(preload)}, ${JSON.stringify(migration)}];
+test('accepted recorder', async () => {
+  await assert.rejects(clandCliLaunch(() => exec('/bin/sh', recorder)), error => error.code === 64 && /qa-record:/.test(error.stderr));
+});
+test('accepted migration', async () => {
+  await assert.rejects(clandCliLaunch(() => exec(process.execPath, migration)), error => error.code === 1 && /migration refused:/.test(error.stderr));
+});
+test('altered recorder entry', async () => {
+  assert.throws(() => clandCliLaunch(() => exec('/bin/sh', [recorder[0] + '.near-miss'])), /T2 forbids child_process.execFile/);
+  process.exitCode = 0;
+});
+test('altered migration preload', async () => {
+  assert.throws(() => clandCliLaunch(() => exec(process.execPath, ['--import', migration[1] + '.near-miss', migration[2]])), /T2 forbids child_process.execFile/);
+  process.exitCode = 0;
+});
+test('async recorder descendant', async () => {
+  await assert.rejects(clandCliLaunch(async () => { await Promise.resolve(); return exec('/bin/sh', recorder); }), /T2 forbids child_process.execFile/);
+  process.exitCode = 0;
+});` } });
+  const result = await run('enforce');
+  assert.equal(result.code, 1, result.output);
+  assert.deepEqual(trips(result.output).map(row => row.name), [
+    'altered recorder entry', 'altered migration preload', 'async recorder descendant',
+  ]);
+  assert.match(result.output, /pass 5/);
+});

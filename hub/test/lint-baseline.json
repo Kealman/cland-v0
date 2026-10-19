@@ -422,10 +422,8 @@
     "hub/test/shared-defects-report.test.ts": {},
     "hub/test/shared-defects.test.ts": {},
     "hub/test/skills-invocation.test.ts": {},
-    "hub/test/skills-qa.test.ts": {
-      "startDaemon": 3,
-      "spawnSpoke": 3
-    },
+    "hub/test/skills-qa-catalogue.test.ts": {},
+    "hub/test/skills-qa.test.ts": {},
     "hub/test/skills-tracker-jq.test.ts": {},
     "hub/test/skills-tracker.test.ts": {},
     "hub/test/spawn-census.test.ts": {},
@@ -447,12 +445,9 @@
     "hub/test/suite-accounting.test.ts": {},
     "hub/test/suite-admission-close.test.ts": {},
     "hub/test/suite-admission-cost.test.ts": {},
-    "hub/test/suite-admission.test.ts": {
-      "startDaemon": 1
-    },
-    "hub/test/suite-cache-recovery.test.ts": {
-      "startDaemon": 1
-    },
+    "hub/test/suite-admission-native.test.ts": {},
+    "hub/test/suite-admission.test.ts": {},
+    "hub/test/suite-cache-recovery.test.ts": {},
     "hub/test/suite-cache.test.ts": {},
     "hub/test/suite-cancel.test.ts": {
       "startDaemon": 3,
@@ -489,9 +484,8 @@
       "wall-clock-wait": 1
     },
     "hub/test/suite-scheduling.test.ts": {},
-    "hub/test/suite-selection-report.test.ts": {
-      "spawnSpoke": 1
-    },
+    "hub/test/suite-selection-component.test.ts": {},
+    "hub/test/suite-selection-report.test.ts": {},
     "hub/test/suite-selection.test.ts": {},
     "hub/test/suite-stage-cover.test.ts": {},
     "hub/test/suite-stage-rules.test.ts": {},
@@ -574,9 +568,7 @@
       "wall-clock-assertion": 1
     },
     "hub/test/typecheck.test.ts": {},
-    "hub/test/v01-migration.test.ts": {
-      "startDaemon": 1
-    },
+    "hub/test/v01-migration.test.ts": {},
     "hub/test/verdict-commit-component.test.ts": {},
     "hub/test/verdict-commit.test.ts": {
       "wall-clock-wait": 1,

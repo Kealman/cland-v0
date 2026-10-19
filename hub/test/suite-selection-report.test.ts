@@ -1,89 +1,53 @@
+// T3: native package-runner processes transport coverage capture and failing selected-test exit receipts.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { clandWithEnv, eventually, spawnSpoke } from './harness.ts';
-import { fixture } from './suite-fixture.ts';
+import { clandWithEnv, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { writeSuiteFixture, type ResultMessage } from './suite-fixture.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
-import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
+import type { HubStatus } from '../src/protocol.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { cacheRepository } from './suite-support.ts';
 import { onCleanup } from './process-cleanup.ts';
-
-test('auto suite reports the fetched diff decision and transports it to the package; --all forces full', async t => {
-  const f = await fixture(t, 'node -e "console.log(process.env.CLAND_SUITE_SELECTION)"');
-  const exec = promisify(execFile);
-  const git = async (...args: string[]) => exec('git', args, { cwd: f.root });
-  const remote = join(f.root, 'origin.git');
-  await git('init', '--initial-branch=dev');
-  await git('config', 'user.name', 'Suite report test'); await git('config', 'user.email', 'suite@example.invalid');
-  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\nsuite.lock*\n');
-  await git('add', '.'); await git('commit', '-m', 'base');
-  await git('init', '--bare', remote); await git('remote', 'add', 'origin', remote); await git('push', 'origin', 'dev');
-  await git('checkout', '-b', 't/T-214');
-  await mkdir(join(f.root, 'hub', 'src', 'tracker'), { recursive: true });
-  await writeFile(join(f.root, 'hub', 'src', 'tracker', 'tracker.ts'), '// package-local change');
-  await git('add', '.'); await git('commit', '-m', 'hub change');
-  await f.launch('auto');
-  const reduced = await eventually('auto result', async () => (await f.results())[0]);
-  assert.match(reduced.text, /mode hub-only; all paths outside nvim\/; coverage map missing; deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
-  const log = await readFile(reduced.artifacts[0]!.path, 'utf8');
-  assert.match(log, /"mode":"hub-only","files":\["hub\/src\/tracker\/tracker.ts"\]/);
-  const reserved = await f.spoke.call<{ ok: boolean; code: string; error: string }>('verify', { mode: 'all', cwd: f.root, report: f.topic, to: ['rev'] });
-  assert.equal(reserved.ok, false);
-  assert.equal(reserved.code, 'verify-all-reserved');
-  assert.match(reserved.error, /mode hub-only/);
-  assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
-  assert.equal(((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.length, 1, 'MCP refusal creates no suite');
-  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
-  await f.launch('--all');
-  const full = await eventually('forced full result', async () => (await f.results())[1]);
-  assert.match(full.text, /mode full; --all \/ all forces full/);
-  assert.match(full.text, /deciding files \["hub\/src\/tracker\/tracker.ts"\]/);
-});
-
-for (const cap of [768, 384]) {
-test(`a broad deciding-file list publishes once below the ${cap}-byte cap and stays complete in the log`, async t => {
-  const f = await fixture(t, 'node -e "process.exit(0)"', undefined, `[hygiene]\nmax_text_bytes = ${cap}\n`);
-  const exec = promisify(execFile);
-  const git = async (...args: string[]) => exec('git', args, { cwd: f.root });
-  const remote = join(f.root, 'origin.git');
-  await git('init', '--initial-branch=dev');
-  await git('config', 'user.name', 'Suite report test'); await git('config', 'user.email', 'suite@example.invalid');
-  await writeFile(join(f.root, '.gitignore'), '.cland/\norigin.git/\nsuite.lock*\n');
-  await git('add', '.'); await git('commit', '-m', 'base');
-  await git('init', '--bare', remote); await git('remote', 'add', 'origin', remote); await git('push', 'origin', 'dev');
-  await git('checkout', '-b', 't/T-214');
-  await mkdir(join(f.root, 'nvim', 'test'), { recursive: true });
-  const names = Array.from({ length: 150 }, (_, n) => `nvim/test/${String(n).padStart(3, '0')}-${'界'.repeat(40)}.test.ts`);
-  for (const name of names) await writeFile(join(f.root, name), '// local test');
-  await f.launch('auto');
-  const result = await eventually('bounded report publication', async () => (await f.results())[0]);
-  assert.ok(Buffer.byteLength(result.text, 'utf8') <= cap);
-  assert.match(result.text, /mode nvim-only/);
-  assert.match(result.text, /all paths under nvim\//);
-  assert.match(result.text, /full list in log/);
-  assert.ok(!result.text.includes('�'));
-  assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
-  const log = await readFile(result.artifacts[0]!.path, 'utf8');
-  assert.ok(names.every(name => log.includes(name)), 'every deciding path remains in the log');
-  await eventually('bounded report settled', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
-    return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(job => job.reported) ? true : undefined;
-  });
-  assert.equal((await f.results()).length, 1);
-});
-}
 
 test('integrated dev verify publishes a portable function map once; task verify never captures', async t => {
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
-  const f = await fixture(t, 'node hub/test/run-suite.ts');
-  const git = await cacheRepository(f);
+  const root = await tempProject(t, 'cland-suite-coverage-native-');
+  await writeSuiteFixture(root, 'node hub/test/run-suite.ts');
+  const hub = await projectHub(t, root);
+  const ui = await connectUi(t, hub.discovery, 'cli');
+  await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' });
+  await ui.request({ type: 'role.set', session: 'rev', role: 'reviewer' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: 'suite-caller', role: 'implementer' });
+  await impl.waitForPresence(['impl']);
+  const made = await ui.request({ type: 'task.create', size: 'M', title: 'coverage', assignee: 'impl' });
+  const item = (made.value as { item: { id: string } }).item.id;
+  const madeTopic = await ui.request({ type: 'topic.create', title: 'Coverage', item });
+  const topic = (madeTopic.value as { topic: { id: string } }).topic.id;
+  const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'suite-caller' };
+  const f = { root, ui, topic,
+    results: async () => {
+      const history = await ui.request({ type: 'topic.history', topic });
+      return (history.value as { messages: ResultMessage[] }).messages.filter(m => m.text.startsWith('suite result '));
+    },
+    launch: async (mode: string) => {
+      const response = await clandWithEnv(root, env, 'verify', mode, '--report', topic, '--to', 'rev', '--to', 'impl', '--json');
+      assert.equal(response.code, 0, response.stderr);
+      return JSON.parse(response.stdout) as { id: string };
+    },
+  };
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
+  await git('init', '--initial-branch=dev');
+  await git('config', 'user.name', 'Coverage contract'); await git('config', 'user.email', 'coverage@example.invalid');
+  await writeFile(join(root, '.gitignore'), '.cland/\norigin.git/\nsuite.lock*\n');
+  await git('add', '.'); await git('commit', '-m', 'candidate');
+  await git('init', '--bare', join(root, 'origin.git')); await git('remote', 'add', 'origin', join(root, 'origin.git'));
+  await git('push', 'origin', 'dev');
   await git('checkout', 'dev');
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
   await mkdir(join(f.root, 'hub/src/hub'), { recursive: true });
@@ -95,7 +59,7 @@ test('integrated dev verify publishes a portable function map once; task verify 
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(['hub/test/covered.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/scenarios/workbench.test.ts'].map(file => [file, 'T3'])) }));
   await git('add', '.'); await git('commit', '-m', 'coverage fixture'); await git('push', 'origin', 'dev');
   const head = await git('rev-parse', 'HEAD');
-  const coord = await spawnSpoke({ discover: true, cwd: f.root, name: 'coord', sessionId: 'coverage-coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'coord', sessionId: 'coverage-coord', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   const launched = await clandWithEnv(f.root, { CLAND_SESSION_NAME: 'coord', CLAND_SESSION_ID: 'coverage-coord' }, 'verify', 'all', '--fresh', '--report', f.topic, '--to', 'rev', '--json');
   assert.equal(launched.code, 0, launched.stderr);
