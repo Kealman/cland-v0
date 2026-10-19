@@ -2,8 +2,8 @@
 id: T-626
 kind: task
 title: A manifest without hashes gets one last overwrite with a warning on the first cland update
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-538
 branch: t/T-626-a-manifest-without-hashes-gets-one-last
 created: 2026-10-16T15:57:49.714Z
-updated: 2026-10-19T00:07:01.564Z
+updated: 2026-10-19T00:07:07.198Z
+closed: 2026-10-19T00:07:07.198Z
 ---
 
 ## Summary
@@ -114,3 +115,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged6eadffd0. A-5662/2b82f20d accepted hub-selected gate:347 pass,zero fail/cancel,one unrelated OpenCode prerequisite skip; Neovim smoke complete. All46 relevant ordinary cases pass; corrected legacy carrier and three new/expanded identities20/20 repetitions green. A-5663 maps C1–C7 with retained v0.1.3 demo, both axes and one inherited C-326 report-only trip. Verified all, no findings; prior failed gate retained.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-19T00:07:07.198Z
+
+Merged 93aaa91634d3d4ec40d93463962616edef69e340 onto dev.
