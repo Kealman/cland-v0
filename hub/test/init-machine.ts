@@ -7,9 +7,9 @@ import { dirname, join, resolve } from 'node:path';
 import type { TestContext } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CliResult } from './harness.ts';
-import { ownDirectory } from './process-cleanup.ts';
+import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
 
-export type InitMachine = { root: string; home: string; env: NodeJS.ProcessEnv };
+export type InitMachine = { root: string; home: string; env: NodeJS.ProcessEnv; context: TestContext };
 export type SpendEntry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
 export type SpendLedger = { version: 1; entries: SpendEntry[]; projects?: string[] };
 
@@ -20,7 +20,7 @@ export async function scratchMachine(t: TestContext, { identity }: { identity: b
   const env: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(process.env)) {
     // Clear all Git overrides, including injected config, worktrees, templates and identities.
-    if (!/^(CLAND_|GIT_|EMAIL$)/.test(key)) env[key] = value;
+    if (!/^(CLAND_|GIT_|EMAIL$|DIGITALOCEAN_|DO_|OPENAI_|ANTHROPIC_|CLAUDE_|CODEX_|OPENCODE_)/.test(key)) env[key] = value;
   }
   Object.assign(env, {
     HOME: home,
@@ -30,28 +30,46 @@ export async function scratchMachine(t: TestContext, { identity }: { identity: b
     XDG_CACHE_HOME: join(home, '.cache'),
     GIT_CONFIG_GLOBAL: join(home, '.gitconfig'),
     GIT_CONFIG_NOSYSTEM: '1',
+    DIGITALOCEAN_TOKEN: '',
+    CLAUDE_CONFIG_DIR: join(home, '.claude'),
+    CODEX_HOME: join(home, '.codex'),
   });
-  for (const dir of [home, env.XDG_CONFIG_HOME!, env.XDG_DATA_HOME!, env.XDG_STATE_HOME!, env.XDG_CACHE_HOME!]) await mkdir(dir, { recursive: true });
+  for (const dir of [home, env.XDG_CONFIG_HOME!, env.XDG_DATA_HOME!, env.XDG_STATE_HOME!, env.XDG_CACHE_HOME!, env.CLAUDE_CONFIG_DIR!, env.CODEX_HOME!]) await mkdir(dir, { recursive: true });
   await writeFile(env.GIT_CONFIG_GLOBAL!, `[commit]\n\tgpgsign = false\n${identity ? '[user]\n\tname = Init Test\n\temail = init@example.test\n' : ''}`);
-  return { root, home, env };
+  return { root, home, env, context: t };
 }
 
-function run(machine: InitMachine, cwd: string, command: string, args: string[]): Promise<CliResult> {
-  return new Promise((resolve, reject) => {
-    execFile(command, args, { cwd, env: machine.env, encoding: 'utf8', timeout: 30_000 }, (error, stdout, stderr) => {
-      if (error && typeof error.code !== 'number') reject(error);
-      else resolve({ code: error ? error.code as number : 0, stdout, stderr });
-    });
+/** Run a scratch command owned through cancellation, process reaping and close/result drainage. */
+export function commandIn(machine: InitMachine, cwd: string, command: string, args: string[]): Promise<CliResult> {
+  const result = Promise.withResolvers<CliResult>();
+  const child = execFile(command, args, { cwd, env: machine.env, signal: machine.context.signal, encoding: 'utf8', timeout: 30_000 }, (error, stdout, stderr) => {
+    if (error && typeof error.code !== 'number') result.reject(error);
+    else result.resolve({ code: error ? error.code as number : 0, stdout, stderr });
   });
+  const closed = new Promise<void>(resolve => child.once('close', () => resolve()));
+  const stop = ownProcess(machine.context, child.pid);
+  // Register before returning: cancellation can tear down a test without awaiting its body.
+  beforeDirectories(machine.context, async () => {
+    await stop(); // The shared owner bounds exit/reaping, including descendants.
+    const deadline = AbortSignal.timeout(5000);
+    const expired = Promise.withResolvers<never>();
+    const timeout = () => expired.reject(new Error('scratch command did not close and settle after stop'));
+    deadline.addEventListener('abort', timeout, { once: true });
+    try { await Promise.race([Promise.allSettled([closed, result.promise]), expired.promise]); }
+    finally { deadline.removeEventListener('abort', timeout); }
+  });
+  // Rejections still reach the caller; observe them here if cancellation abandons its await.
+  void result.promise.catch(() => {});
+  return result.promise;
 }
 
 /** Like clandWithEnv, accepts the complete CLI arguments, e.g. 'init', '--json' or 'update'. */
 export function initIn(machine: InitMachine, folder: string, ...args: string[]): Promise<CliResult> {
-  return run(machine, folder, process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), ...args]);
+  return commandIn(machine, folder, process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), ...args]);
 }
 
 export function gitIn(machine: InitMachine, folder: string, ...args: string[]): Promise<CliResult> {
-  return run(machine, folder, 'git', args);
+  return commandIn(machine, folder, 'git', args);
 }
 
 async function git(machine: InitMachine, folder: string, ...args: string[]): Promise<void> {

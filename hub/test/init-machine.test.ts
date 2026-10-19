@@ -18,9 +18,11 @@ if (process.env.CLAND_INIT_MACHINE_SELFTEST !== '1') {
     await writeFile(join(host, '.gitconfig'), '[user]\nname = Host\nemail = host@example.invalid\n[commit]\ngpgsign = true\n');
     await writeFile(join(host, 'keep'), 'host content\n');
     const before = await snapshot(host);
-    const env: NodeJS.ProcessEnv = { ...process.env, HOME: host, XDG_CONFIG_HOME: host, XDG_DATA_HOME: host, XDG_STATE_HOME: host,
+    const isolated = await scratchMachine(t, { identity: false });
+    const env: NodeJS.ProcessEnv = { ...isolated.env, HOME: host, XDG_CONFIG_HOME: host, XDG_DATA_HOME: host, XDG_STATE_HOME: host,
       GIT_CONFIG_GLOBAL: join(host, '.gitconfig'), GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'user.email', GIT_CONFIG_VALUE_0: 'injected@example.invalid',
       GIT_AUTHOR_NAME: 'Host', GIT_AUTHOR_EMAIL: 'author@example.invalid', GIT_COMMITTER_NAME: 'Host', GIT_COMMITTER_EMAIL: 'committer@example.invalid', EMAIL: 'host@example.invalid',
+      DIGITALOCEAN_TOKEN: 'poison-provider', OPENAI_API_KEY: 'poison-account', CODEX_HOME: host, CLAUDE_CONFIG_DIR: host, OPENCODE_AUTH_JSON: 'poison-account',
       CLAND_INIT_MACHINE_SELFTEST: '1' };
     delete env.NODE_TEST_CONTEXT;
     const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
@@ -40,15 +42,18 @@ if (process.env.CLAND_INIT_MACHINE_SELFTEST !== '1') {
     assert.equal(email.code, 1);
     assert.equal(email.stdout, '');
     assert.equal((await gitIn(machine, folder, 'config', 'commit.gpgsign')).stdout.trim(), 'false');
-    for (const key of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'EMAIL', 'GIT_CONFIG_COUNT']) assert.equal(machine.env[key], undefined, key);
-    const receipt = join(machine.root, 'home-observed');
-    const probe = join(machine.root, 'probe.mjs');
-    await writeFile(probe, `import assert from 'node:assert/strict';\nimport { writeFileSync } from 'node:fs';\nassert.equal(process.env.HOME, ${JSON.stringify(machine.home)});\nfor (const key of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME']) assert.ok(process.env[key].startsWith(process.env.HOME + '/'));\nwriteFileSync(${JSON.stringify(receipt)}, 'observed');\n`);
-    machine.env.NODE_OPTIONS = `--import=${pathToFileURL(probe).href}`;
-    const result = await initIn(machine, folder, 'init', '--json');
+    for (const key of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'EMAIL', 'GIT_CONFIG_COUNT', 'OPENAI_API_KEY', 'OPENCODE_AUTH_JSON']) assert.equal(machine.env[key], undefined, key);
+    assert.equal(machine.env.DIGITALOCEAN_TOKEN, '');
+    assert.equal(machine.env.CLAUDE_CONFIG_DIR, join(machine.home, '.claude'));
+    assert.equal(machine.env.CODEX_HOME, join(machine.home, '.codex'));
+    const identified = await scratchMachine(t, { identity: true });
+    const receipt = join(identified.root, 'home-observed');
+    const probe = join(identified.root, 'probe.mjs');
+    await writeFile(probe, `import assert from 'node:assert/strict';\nimport { writeFileSync } from 'node:fs';\nassert.equal(process.env.HOME, ${JSON.stringify(identified.home)});\nfor (const key of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME']) assert.ok(process.env[key].startsWith(process.env.HOME + '/'));\nwriteFileSync(${JSON.stringify(receipt)}, 'observed');\n`);
+    identified.env.NODE_OPTIONS = `--import=${pathToFileURL(probe).href}`;
+    const result = await initIn(identified, await emptyFolder(identified), 'init', '--json');
     assert.equal(result.code, 0, result.stderr);
     assert.equal(await readFile(receipt, 'utf8'), 'observed', 'the actual cland process observed HOME');
-    const identified = await scratchMachine(t, { identity: true });
     assert.equal((await gitIn(identified, await emptyFolder(identified), 'config', 'user.email')).stdout.trim(), 'init@example.test');
     assert.equal((await gitIn(identified, identified.home, 'config', 'user.name')).stdout.trim(), 'Init Test');
     assert.equal((await gitIn(identified, identified.home, 'config', 'commit.gpgsign')).stdout.trim(), 'false');

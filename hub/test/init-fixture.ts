@@ -9,6 +9,7 @@ import { clandWithEnv } from './harness.ts';
 import { captureCli } from './cli-in-process.ts';
 import { runInit, runUpdate } from '../src/cli/init.ts';
 import { provision } from '../src/init/provision.ts';
+import { INIT_GIT_IDENTITY, withInitGitIdentity } from './git-identity-fixture.ts';
 export const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_SKILLS = join(REPO, '.agents', 'skills');
 export const VERSION = (JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -32,6 +33,10 @@ export async function gitRepo(root: string): Promise<void> {
 }
 
 export async function run(root: string, command: 'init' | 'update', env: Record<string, string> = {}): Promise<Change[]> {
+  return withInitGitIdentity(() => runWithIdentity(root, command, env));
+}
+
+async function runWithIdentity(root: string, command: 'init' | 'update', env: Record<string, string>): Promise<Change[]> {
   // Version is a module constant: the old-release fixture needs a fresh module graph.
   if (env.CLAND_VERSION_OVERRIDE) return runCli(root, command, env);
   if (env.CLAND_SKILLS_SOURCE_OVERRIDE) return provision(root, { skillsSource: env.CLAND_SKILLS_SOURCE_OVERRIDE, territory: command === 'init' });
@@ -84,7 +89,7 @@ export async function shipped(): Promise<{ names: string[]; files: string[] }> {
 }
 
 export async function runCli(root: string, command: 'init' | 'update', env: Record<string, string> = {}): Promise<Change[]> {
-  const r = await clandWithEnv(root, env, command, '--json');
+  const r = await clandWithEnv(root, { ...INIT_GIT_IDENTITY, ...env }, command, '--json');
   assert.equal(r.code, 0, r.stderr);
   const report = JSON.parse(r.stdout) as { version: string; changes: Change[] };
   assert.equal(report.version, env.CLAND_VERSION_OVERRIDE || VERSION);

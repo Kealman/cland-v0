@@ -11,6 +11,7 @@ import { runInit } from '../src/cli/init.ts';
 import { captureCli } from './cli-in-process.ts';
 import { FakeClock } from './fake-clock.ts';
 import { caseDeadlines } from './case-deadlines.ts';
+import { withInitGitIdentity } from './git-identity-fixture.ts';
 
 const ok = (r: CliResult): CliResult => {
   assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
@@ -60,7 +61,7 @@ test('an initialized non-worktree child remains its own project beside a running
   // Init refuses a target discovered as its parent; mark this fixture's
   // independent project boundary before provisioning it (T-609).
   await wait('create directory', () => mkdir(join(child, '.cland'), { recursive: true }));
-  ok(await wait('initialize independent child project', () => captureCli(write => runInit([child, '--json'], parent, write))));
+  ok(await wait('initialize independent child project', () => withInitGitIdentity(() => captureCli(write => runInit([child, '--json'], parent, write)))));
 
   const idle = await wait('CLI hub status --json', () => cland(child, 'hub', 'status', '--json'));
   assert.equal(idle.code, 1, idle.stdout);

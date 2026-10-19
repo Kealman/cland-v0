@@ -995,7 +995,9 @@ The project hooks are for a Claude Code session started by hand, and do nothing 
 
 ### Local git territory
 
-In a Git project, `cland init` creates the local bare repository `.cland/territory.git`, renames an existing `origin` to `github` (including branch upstreams), and makes the territory `origin`. Without an existing origin, it adds only the territory; a non-Git folder gets no territory and the report says so. If both `origin` and `github` already exist, it refuses before changing either: rename the existing `github` first. An unrelated repository already at the territory path is also refused.
+In an empty folder outside any repository, `cland init` runs `git init -b main`, provisions its managed files, and commits them as `Initial commit: cland init`, with the managed paths listed in the commit body. Git must already have an identity configured. The commit respects `.cland/.gitignore`, excluding volatile state, and disables commit hooks and signing for that command. Init then seeds the territory's `main` and `dev` from this one commit and switches the clean root to `dev`. The report names `.git` and the first commit; running init again makes no commit and reports nothing to change. `cland update` never creates a repository or a commit.
+
+In a Git project, `cland init` creates the local bare repository `.cland/territory.git`, renames an existing `origin` to `github` (including branch upstreams), and makes the territory `origin`. Without an existing origin, it adds only the territory; a non-Git folder with project files gets no territory and the report says so. If both `origin` and `github` already exist, it refuses before changing either: rename the existing `github` first. An unrelated repository already at the territory path is also refused.
 
 All effective origin fetch and push destinations must point to the territory. Re-running init repairs extra URLs or push overrides on an existing territory origin; doctor reports them as failures. Git URL rewrite rules that still redirect the repaired URLs outside the territory are refused and must be fixed in Git config.
 

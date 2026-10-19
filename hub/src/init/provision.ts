@@ -26,6 +26,7 @@ import { isManagedFile, readText, Report, writeIfChanged, type Change } from './
 import { provisionAgentsMd, provisionClaudeMd, provisionDocs } from './instructions.ts';
 import { provisionClaudeSkills, provisionSkills, SKILLS_SOURCE } from './skills.ts';
 import { provisionTerritory } from '../territory.ts';
+import { commitClandFiles, createRepository, foldReport } from './repository.ts';
 
 export type ProvisionOptions = {
   /** Where the shipped skills are read from; this repository's `.agents/skills/` unless a test says otherwise. */
@@ -34,6 +35,8 @@ export type ProvisionOptions = {
   env?: NodeJS.ProcessEnv;
   /** Update refreshes an existing territory, but does not opt a project into one. Init does. */
   territory?: boolean;
+  /** Only init may create a repository and its first commit; update never does. */
+  repository?: boolean;
 };
 
 export const TASKS_KEEP = `# ${MANAGED_BY}: keeps .cland/tasks/ in git until it holds an item\n`;
@@ -42,6 +45,7 @@ export const TASKS_KEEP = `# ${MANAGED_BY}: keeps .cland/tasks/ in git until it 
 export function provision(root: string, options: ProvisionOptions = {}): Change[] {
   const report = new Report(root);
   const l = layout(root);
+  const createdRepository = options.territory !== false && options.repository !== false && createRepository(report, root);
   mkdirSync(l.dir, { recursive: true });
   if (options.territory !== false) provisionTerritory(report, root);
 
@@ -85,5 +89,11 @@ export function provision(root: string, options: ProvisionOptions = {}): Change[
   provisionAgentsMd(report, root);
   provisionClaudeMd(report, root);
   provisionClaudeSettings(report, root);
+  if (createdRepository) {
+    commitClandFiles(report, root);
+    const again = new Report(root);
+    provisionTerritory(again, root);
+    foldReport(report, again);
+  }
   return report.changes;
 }

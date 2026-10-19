@@ -9,6 +9,7 @@ import { clandWithEnv, tempProject, type CliResult } from './harness.ts';
 import { runInit, runUpdate } from '../src/cli/init.ts';
 import { runDoctor } from '../src/cli/doctor.ts';
 import { captureCli } from './cli-in-process.ts';
+import { INIT_GIT_IDENTITY, withInitGitIdentity } from './git-identity-fixture.ts';
 
 const git = (root: string, ...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
@@ -17,9 +18,9 @@ const ok = (r: CliResult): CliResult => {
 };
 type Change = { path: string; action: string; note?: string };
 const init = async (root: string, ...args: string[]): Promise<Change[]> =>
-  JSON.parse(ok(await captureCli(write => runInit([...args, '--json'], root, write))).stdout).changes;
+  withInitGitIdentity(async () => JSON.parse(ok(await captureCli(write => runInit([...args, '--json'], root, write))).stdout).changes);
 const initCli = async (root: string, ...args: string[]): Promise<Change[]> =>
-  JSON.parse(ok(await clandWithEnv(root, {}, 'init', ...args, '--json')).stdout).changes;
+  JSON.parse(ok(await clandWithEnv(root, INIT_GIT_IDENTITY, 'init', ...args, '--json')).stdout).changes;
 
 async function fixture(t: Parameters<typeof tempProject>[0], remote = true) {
   const root = await tempProject(t, 'cland-territory-');
@@ -208,6 +209,7 @@ test('projects without a remote get only origin; non-Git folders get a note and 
   await init(root, '--undo');
   assert.equal(git(root, 'remote'), '');
   const folder = await tempProject(t);
+  await writeFile(join(folder, 'README.md'), 'The human\'s non-Git project\n');
   const report = await init(folder);
   assert.match(report.find((c) => c.path === '.cland/territory.git')?.note ?? '', /not a git repository/);
   const agents = await readFile(join(folder, 'AGENTS.md'), 'utf8');

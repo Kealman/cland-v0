@@ -63,7 +63,7 @@ async function run(command: 'init' | 'update', args: string[], cwd: string, writ
   if (!undo && territory && isShallow(root)) throw new Error(`cland ${command}: the territory needs the full history: run git fetch --unshallow, then cland ${command} again`);
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
-  const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory });
+  const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory, repository: command === 'init' });
   const next = command === 'init' && !undo ? NEXT : undefined;
   write(json ? `${JSON.stringify({ root, version: VERSION, changes, next })}\n` : `${describe(changes, root, command)}${next ? `\nnext: ${next}` : ''}\n`);
   return 0;

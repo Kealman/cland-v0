@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { cland, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, flushProjectLogs, nativeProjectHub as projectHub, spawnSpoke, tempProject } from './harness.ts';
 import { DEFAULTS, parseRoles } from '../src/roles/config.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
+import { INIT_GIT_IDENTITY } from './git-identity-fixture.ts';
 
 test('an Aide launches any role through its tool and runs launch, stop and resume in its own shell', async t => {
   const root = await tempProject(t);
@@ -66,7 +67,7 @@ test('an Aide launches any role through its tool and runs launch, stop and resum
 test('cland init writes the Aide defaults and CLI launches several Aides with no model override', async t => {
   const root = await tempProject(t);
   const fake = await fakeClaude(t);
-  const init = await clandWithEnv(root, fake.env, 'init');
+  const init = await clandWithEnv(root, { ...fake.env, ...INIT_GIT_IDENTITY }, 'init');
   assert.equal(init.code, 0, init.stderr);
   const roles = parseRoles(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'));
   const shipped = DEFAULTS.get('aide')!;
