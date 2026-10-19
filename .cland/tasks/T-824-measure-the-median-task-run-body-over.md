@@ -2,8 +2,8 @@
 id: T-824
 kind: task
 title: Measure the median task-run body over the first 20 droplet task runs after T-713
-state: open
-status: in progress
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-603
 branch: t/T-824-measure-the-median-task-run-body-over
 created: 2026-10-19T01:56:44.318Z
-updated: 2026-10-19T15:24:23.104Z
+updated: 2026-10-19T15:25:53.645Z
+closed: 2026-10-19T15:25:53.645Z
 ---
 
 ## Summary
@@ -24,8 +25,9 @@ The post-merge measurement split from T-713's C5: after T-713 lands, the median 
 
 ## Acceptance criteria
 
-- [ ] C1. The median task-run body over the first 20 droplet task runs after T-713 went live is measured against the 8-minute target on c-8 at workers 2; the run ids, per-run bodies and the median are recorded on this item (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
-  - failed: rev-31 [reviewer] · 2026-10-19T14:57:20.107Z · note First20 eligible droplet task runs have median775.045s > required480s; arithmetic and cohort confirmed. C1 remains unchecked/unverified.
+- [x] C1. The median task-run body over the first 20 droplet task runs after T-713 went live is measured against the 8-minute target on c-8 at workers 2; the run ids, per-run bodies and the median are recorded on this item (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
+  - done: impl-824 · 2026-10-19T15:24:46.988Z
+  - verified: rev-31 [reviewer] · run rev-20261019-824-final-d65 · 2026-10-19T15:25:30.549Z · commit 998f417800d017b856c3ec7d5418a83e3a33b86d
 
 ## Comments
 
@@ -74,3 +76,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-6114 confirms evidence accuracy. Read-only durable job-history selection exactly matches all20 cohort ids, includes both failed attempts and retries, excludes occasions/child shards/cache hits and correctly identifies the next eligible run. All20 original artifact hashes, single suite-duration lines/numbers and admission→original-artifact operands match runs.json; Linux c-8/workers2 provenance confirmed. Decimal middle values774.59/775.50 produce775.045s; upper-envelope middle values885.811/886.129 produce885.970s. Primary Coordinator6c760996 accepts the operational remote-body metric and separate upper envelope, with host-check/publication boundary limitation disclosed. C1 is unmet, left unchecked and not verified; task verdict not clear reflects the failed480s target, not faulty evidence. No code changes or Reviewer suite runs; no replacement cohort/rerun needed.
 
 Criteria: C1 failed (First20 eligible droplet task runs have median775.045s > required480s; arithmetic and cohort confirmed. C1 remains unchecked/unverified.).
+
+### rev-31 · 2026-10-19T15:25:30.549Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-824-final-d65
+commit: 998f417800d017b856c3ec7d5418a83e3a33b86d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear under revised C1/D65; A-6145 records the acceptance change and unchanged negative measurement. Independently read Coordinator045385a5/current criterion: measure and record against target, carry miss to v0.2 E-880; achieving480s is no longer this item's gate. A-6104/A-6114 independently audited first20 cohort, original hashes/duration lines and provenance remain unchanged. Median775.045s from774.59/775.50; miss295.045s (61.468%) retained. Separate admission→artifact median885.970s from885.811/886.129; remote-body versus literal host-check/collection timing limitation disclosed. Revised C1 verified because measurement/table/comparison are recorded, not because target was reached. Supersedes rev-20261019-824-evidence's old-gate not-clear outcome without changing evidence or running suites. No remaining findings under current scope.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-19T15:25:53.645Z
+
+Merged 0ae8402af0ac6857db15e3abfbfd45062f9cfeb2 onto dev.
