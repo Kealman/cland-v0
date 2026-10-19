@@ -172,7 +172,7 @@ test('board and all-tree batch folds preserve each other through round trips', {
   await c.waitScreen(s => s.includes('all ·') && s.includes('▸ ○ R-228') && !s.includes('Row 318'), 'board open preserves all close');
 });
 
-test('release versions appear once in the scope, all tree, top bar and item header', { skip }, async t => {
+test('release versions appear once in settled scope, all-tree, top-bar and item-header frames', { skip }, async t => {
   let shared: Awaited<ReturnType<typeof start>> | undefined;
   for (const [title, version, heading, kind = 'release', id = 'R-228'] of [
     ['Working with items', '0.1.2', 'R-228 0.1.2 Working with items'],
@@ -195,15 +195,21 @@ test('release versions appear once in the scope, all tree, top bar and item head
         await c.lua("require('cland.items').set_filter('board'); vim.api.nvim_set_current_win(vim.fn.bufwinid(require('cland.panels').buf('items')))");
       }
       if (kind === 'release') shared = c;
-      const screen = await c.waitScreen(s => s.includes('board ·') && s.split('\n')[0]!.includes(heading), 'release scope');
+      // Filter/top-bar titles can update before the scheduled panel render.
+      // Wait for the rows each assertion reads, not just the new view's title.
+      const screen = await c.waitScreen(s => s.includes('board ·') && s.split('\n')[0]!.includes(heading)
+        && s.split('\n').slice(1).some(row => row.split('│')[0]!.trim().startsWith(heading + ' ')), 'release scope');
       assert.ok(screen.split('\n')[0]!.includes(heading), 'top bar: ' + screen.split('\n')[0]);
       assert.ok(screen.split('\n').slice(1).some(row => row.split('│')[0]!.trim().startsWith(heading + ' ')), 'scope header: ' + screen);
       await c.input('6');
-      const tree = await c.waitScreen(s => s.includes('all · 2 items'), 'all tree');
+      const tree = await c.waitScreen(s => s.includes('all · 2 items')
+        && s.split('\n').some(row => row.split('│')[0]!.includes('○ ' + heading))
+        && s.includes('E-269 Prefixes and categories'), 'all tree');
       assert.ok(tree.split('\n').some(row => row.split('│')[0]!.includes('○ ' + heading)), 'tree: ' + tree);
       assert.ok(tree.includes('E-269 Prefixes and categories'), 'other kinds keep their titles');
       await c.input(`:Cland view item ${id}<CR>`);
-      const item = await c.waitScreen(s => s.includes(`${id} · item`) && s.includes(`.cland/tasks/${id}-release.md`), 'release item view');
+      const item = await c.waitScreen(s => s.includes(`${id} · item`) && s.includes(`.cland/tasks/${id}-release.md`)
+        && s.split('\n').slice(1).some(row => row.split('│')[1]?.trim() === heading), 'release item view');
       assert.ok(item.split('\n').slice(1).some(row => row.split('│')[1]?.trim() === heading), 'item header: ' + item);
       if (title === 'v0.1.1' || title === '0.1.0') {
         assert.ok(!item.includes(`${version} ${title}`), 'a version-only title is never repeated');
