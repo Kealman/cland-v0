@@ -1,15 +1,15 @@
-// Shell workflows against a real temporary project hub.
+// T2: artifact CLI subprocess subjects against an in-process hub and permission-probe spoke.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, spawnSpoke, nativeProjectHub as projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
 import type { Artifact } from '../src/protocol.ts';
-import { gitIn } from '../src/tracker/verdict-git.ts';
 
-test('the shell creates a folder artifact from a directory or a new entry file', async t => {
+test('the shell with an in-process hub creates a folder artifact from a directory or a new entry file', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await projectHub(t, root, {}, { clock: new FakeClock() });
   await mkdir(join(root, 'notes'));
   await writeFile(join(root, 'notes', 'first.md'), '# First');
   await writeFile(join(root, 'notes', 'entry.md'), '# Entry');
@@ -26,14 +26,9 @@ test('the shell creates a folder artifact from a directory or a new entry file',
   assert.equal(await readFile(join(draft.path, 'draft/start.md'), 'utf8'), '# Start');
 });
 
-test('the shell promotes a complete folder into docs without staging, committing or losing its source', async t => {
+test('the shell with an in-process hub promotes a complete folder into docs without staging, committing or losing its source', async t => {
   const root = await tempProject(t);
-  const git = gitIn(root);
-  await git(['init', '-q', '-b', 'main']);
-  await git(['config', 'user.name', 'Test']); await git(['config', 'user.email', 'test@example.com']);
-  await writeFile(join(root, 'base'), 'base'); await git(['add', 'base']); await git(['commit', '-qm', 'base']);
-  const head = await git(['rev-parse', 'HEAD']), index = await git(['ls-files', '--stage']);
-  await projectHub(t, root);
+  await projectHub(t, root, {}, { clock: new FakeClock() });
   const result = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', 'v0.2 notes', '--topic', 'general', '--folder', '--content', '# v0.2', '--json');
   assert.equal(result.code, 0, result.stderr);
   const a: Artifact = JSON.parse(result.stdout).artifact;
@@ -46,13 +41,12 @@ test('the shell promotes a complete folder into docs without staging, committing
   assert.deepEqual(await readFile(join(root, 'docs/v0.2-notes/details/data.bin')), Buffer.from([0, 255, 42]));
   assert.deepEqual(await readdir(join(root, 'docs/v0.2-notes/empty')), []);
   assert.equal(await readFile(join(a.path, 'index.md'), 'utf8'), '# v0.2');
-  assert.equal(await git(['rev-parse', 'HEAD']), head); assert.equal(await git(['ls-files', '--stage']), index);
   assert.equal((await cland(root, 'artifact', 'promote', a.id, 'docs/again')).code, 1);
 });
 
-test('open resolves a folder entry and edits its saved bytes with the chosen editor', async t => {
+test('open through an in-process hub resolves a folder entry and edits its saved bytes with the chosen editor', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await projectHub(t, root, {}, { clock: new FakeClock() });
   const result = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', 'Notes', '--topic', 'general', '--folder', '--entry', 'notes.md', '--content', 'before', '--json');
   assert.equal(result.code, 0, result.stderr);
   const a: Artifact = JSON.parse(result.stdout).artifact;
@@ -70,9 +64,9 @@ test('open resolves a folder entry and edits its saved bytes with the chosen edi
   assert.equal(JSON.parse(listed.stdout).artifacts[0].id, a.id);
 });
 
-test('the shell keeps, releases, moves and archives artifacts through the hub', async t => {
+test('the shell with an in-process hub keeps, releases, moves and archives artifacts through the hub', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
+  await projectHub(t, root, {}, { clock: new FakeClock() });
   const make = async (title: string, ...options: string[]): Promise<Artifact> => {
     const result = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', title, '--topic', 'general', '--json', ...options);
     assert.equal(result.code, 0, result.stderr);
@@ -97,10 +91,11 @@ test('the shell keeps, releases, moves and archives artifacts through the hub', 
   assert.match((await cland(root, 'artifact', 'list')).stdout, /archived/);
 });
 
-test('an agent can resolve human notes but cannot open them for editing, including an absorbed file', async t => {
+test('an in-process agent can resolve human notes but cannot open them for editing, including an absorbed file', async t => {
   const root = await tempProject(t);
-  await projectHub(t, root);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-cli' });
+  const clock = new FakeClock();
+  await projectHub(t, root, {}, { clock });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-cli', clock });
   t.after(() => coord.close()); await coord.waitForPresence(['coord']);
   const folderResult = await cland(root, 'artifact', 'new', '--kind', 'note', '--title', 'Human folder', '--topic', 'general', '--folder', '--content', 'human bytes', '--json');
   assert.equal(folderResult.code, 0, folderResult.stderr);

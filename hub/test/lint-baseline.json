@@ -31,10 +31,8 @@
     "hub/test/agents-checkpoint.test.ts": {},
     "hub/test/agents-filters.test.ts": {},
     "hub/test/agents-journal.test.ts": {},
-    "hub/test/aide-claims.test.ts": {
-      "startDaemon": 1,
-      "spawnSpoke": 2
-    },
+    "hub/test/aide-claims-lifecycle.test.ts": {},
+    "hub/test/aide-claims.test.ts": {},
     "hub/test/aide-component.test.ts": {},
     "hub/test/aide-import-cli.test.ts": {},
     "hub/test/aide-permissions.test.ts": {},
@@ -42,9 +40,8 @@
       "spawnSpoke": 1,
       "fakeClaude": 3
     },
-    "hub/test/artifact-cli.test.ts": {
-      "spawnSpoke": 1
-    },
+    "hub/test/artifact-cli-lifecycle.test.ts": {},
+    "hub/test/artifact-cli.test.ts": {},
     "hub/test/artifact-delete.test.ts": {},
     "hub/test/artifact-folders.test.ts": {},
     "hub/test/artifact-lifecycle.test.ts": {},
@@ -183,10 +180,9 @@
     "hub/test/hook-bridge-doctor.test.ts": {},
     "hub/test/human-routing.test.ts": {},
     "hub/test/hygiene.test.ts": {},
-    "hub/test/import-github.test.ts": {
-      "wall-clock-wait": 1,
-      "startDaemon": 2
-    },
+    "hub/test/import-github-lifecycle.test.ts": {},
+    "hub/test/import-github-unit.test.ts": {},
+    "hub/test/import-github.test.ts": {},
     "hub/test/in-process-spoke.test.ts": {},
     "hub/test/inbox-actions.test.ts": {
       "wall-clock-assertion": 1
