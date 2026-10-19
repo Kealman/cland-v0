@@ -3,7 +3,7 @@ id: T-626
 kind: task
 title: A manifest without hashes gets one last overwrite with a warning on the first cland update
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-538
 branch: t/T-626-a-manifest-without-hashes-gets-one-last
 created: 2026-10-16T15:57:49.714Z
-updated: 2026-10-18T23:58:13.367Z
+updated: 2026-10-19T00:07:01.564Z
 ---
 
 ## Summary
@@ -33,18 +33,25 @@ No table of past releases' hashes ships. A manifest already in the hashed form n
 
 - [x] C1. In a temporary project whose manifest is in the old list form, with one listed skill edited, `cland update` rewrites that skill to cland's copy and the report has exactly one warning line about the overwrite, naming the skills whose copies differed from cland's so their edits can be recovered from git.
   - done: impl-626 · 2026-10-18T23:28:11.219Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 - [x] C2. The same update removes a listed skill cland no longer ships, edited or not, and writes the manifest with a hash for every file.
   - done: impl-626 · 2026-10-18T23:28:11.650Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 - [x] C3. A second `cland update`, after an edit to another skill and with a newer set simulated, keeps that skill and reports "edited in the project", with no warning line.
   - done: impl-626 · 2026-10-18T23:28:12.001Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 - [x] C4. `cland update --json` carries the warning on the manifest's entry in the first run and not in the second.
   - done: impl-626 · 2026-10-18T23:28:12.429Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 - [x] C5. The update tests cover C1 to C4 with a hand-written old-form manifest and `CLAND_SKILLS_SOURCE_OVERRIDE`.
   - done: impl-626 · 2026-10-18T23:28:12.766Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 - [x] C6. Demo: a scratch project initialised by the v0.1.3 tag's `cland init`, then updated by this branch's `cland update`, shows the warning once and a hashed manifest afterwards.
   - done: impl-626 · 2026-10-18T23:28:13.193Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 - [x] C7. `cland doctor` warns on a manifest in the old list form and names `cland update` as the fix, proved by a doctor test.
   - done: impl-626 · 2026-10-18T23:57:40.617Z
+  - verified: rev-30 [reviewer] · run rev-20261019-626-final · 2026-10-19T00:06:59.125Z · commit 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
 
 ## Comments
 
@@ -92,3 +99,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Correction source clear at6eadffd0. M1 resolved: existing legacy doctor carrier asserts warn plus update fix, then ok after migration; all subsequent hash/refused-path/symlink controls unchanged. Pinned consumer audit finds no other stale legacy-ok expectation. A-5653 records both axes, reported host checks and retained failure/demo evidence. All C1–C7 await accepted exact-head replacement runtime; no findings.
+
+### rev-30 · 2026-10-19T00:06:59.125Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-626-final
+commit: 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged6eadffd0. A-5662/2b82f20d accepted hub-selected gate:347 pass,zero fail/cancel,one unrelated OpenCode prerequisite skip; Neovim smoke complete. All46 relevant ordinary cases pass; corrected legacy carrier and three new/expanded identities20/20 repetitions green. A-5663 maps C1–C7 with retained v0.1.3 demo, both axes and one inherited C-326 report-only trip. Verified all, no findings; prior failed gate retained.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

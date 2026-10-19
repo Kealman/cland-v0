@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-539
 branch: t/T-646-cland-init-makes-an-empty-folder-a
 created: 2026-10-16T16:23:59.380Z
-updated: 2026-10-19T00:02:01.338Z
+updated: 2026-10-19T00:06:32.795Z
 ---
 
 ## Summary
@@ -40,9 +40,9 @@ Today an empty folder stops with "main has no commit yet: create main, then run 
 ## Acceptance criteria
 
 - [x] C1. `cland init` in an empty folder leaves exactly one commit (`git log --oneline --all`), whose tree holds only `AGENTS.md`, `.cland/`, `.agents/`, `.claude/` and `docs/agents/` paths (init-first-commit.test.ts).
-  - done: impl-646 · 2026-10-19T00:01:48.771Z
+  - done: impl-646 · 2026-10-19T00:06:15.619Z
 - [x] C2. Afterwards `git status --porcelain` is empty, `git branch --show-current` prints `dev`, and `main` and `dev` point at that commit.
-  - done: impl-646 · 2026-10-19T00:01:49.230Z
+  - done: impl-646 · 2026-10-19T00:06:15.987Z
 - [x] C3. The territory exists with `main` and `dev` at that commit, its HEAD is `dev`, and `origin/HEAD` in the root is `origin/dev`.
   - done: impl-646 · 2026-10-18T23:56:51.991Z
 - [x] C4. A second `cland init` makes no commit and reports nothing to change.
@@ -99,3 +99,71 @@ Findings: Standards 1 medium; Spec 2 medium.
 Evidence: A-5654.
 
 Criteria: C1 failed (Directory-wide staging can commit non-provisioned user files; the CLI proof also lacks owned child cancellation/drain before root cleanup.), C2 failed (Explicitly allowed .DS_Store stays untracked and prevents the second territory pass from switching to clean dev.).
+
+### rev-31 · 2026-10-19T00:02:57.789Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-source-2
+commit: 87dedc052f7602eb6baee14fe727e38f93ac572b
+scope: full
+findings: [{"severity":"medium","text":"Created/updated report paths can be whole refreshed skill directories; recursive ls-files still stages an unlisted private leaf in a legacy-managed skill.","file":"hub/src/init/repository.ts","line":30}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-646 corrected source review: not clear
+
+Head: 87dedc052f7602eb6baee14fe727e38f93ac572b
+Base: 4b196c6208da89a4852be654cd05acd9978de83f
+Correction comparison: bbddf4c4 → 87dedc05. Scope: full; no dev merge.
+
+## Standards
+
+The previous cleanup finding is addressed in source: scratch commands carry t.signal, immediately register PID ownership and register pre-directory stop plus bounded close/result drainage. The new T3 lifecycle control waits for the held writer's socket receipt, cancels the inner test, observes PID-gone and settled command result while its root exists, then checks removal. The lifecycle header/tier names the real-process reason. Reported host lint/typecheck and touched-file timings are retained in A-5656; post-source task execution remains pending.
+
+The .DS_Store finding is also addressed: the symlink-aware writer appends a root-local exclude, with a regression retaining metadata while asserting it is absent from HEAD and clean dev is selected.
+
+## Spec
+
+M1 (medium), hub/src/init/repository.ts:30: filtering report entries by created/updated still accepts directory entries. provisionSkills reports the whole skill directory at skills.ts:251. A valid legacy manifest owning a shipped skill's SKILL.md, with an unlisted private.md in that same directory, follows the legacy refresh path and retains private.md; the directory is reported updated. Recursive ls-files under that directory then stages the private file despite no cland leaf ownership. This is the prior C1 managed-only boundary finding, narrowed to an updated directory. The new sibling custom-skill/private-doc cases do not cover it. Use an explicit validated owned/written leaf set and retain a control for an extra file inside a refreshed managed skill.
+
+Implementer confirmed no further leaf filter exists in 17a0908f and will add that control before a new review request. No verification at this head.
+
+C1 failed for the remaining managed-only commit gap. C2–C7 remain unverified pending corrected source and exact-head execution. Original first-commit/tree/territory/hook/update assertions are retained; no per-item QA.
+
+Findings: Standards 0 remaining; Spec 1 medium.
+
+Evidence: A-5658.
+
+Criteria: C1 failed (A refreshed skill's directory report still permits an unlisted private file into the first commit; filter exact owned/written leaves.).
+
+### rev-31 · 2026-10-19T00:05:51.896Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-source-3
+commit: 08eb210728f49997824e1cbb22649dccc41cc597
+scope: full
+findings: [{"severity":"medium","text":"Selector omits unchanged managed leaves, leaving admitted pre-provisioned roots dirty on main; an empty path list instead lets ls-files select all untracked files.","file":"hub/src/init/repository.ts","line":31}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+# T-646 source review: incomplete managed set
+
+Head: 08eb210728f49997824e1cbb22649dccc41cc597
+Fixed base: 4b196c6208da89a4852be654cd05acd9978de83f
+Correction comparison: 87dedc05 → 08eb2107. Scope: full; no dev merge.
+
+Standards: no additional finding. The exact skill-manifest leaf expansion, kept-path exclusions, file/symlink check and literal Git pathspecs address the refreshed-directory private-file finding. The new legacy tdd control checks the owned SKILL.md is committed while unlisted private.md is preserved and absent from HEAD. The earlier .DS_Store and cancellation ownership fixes remain intact.
+
+Spec M1 (medium), hub/src/init/repository.ts:31: the managed selector includes only created/updated report entries, omitting unchanged managed files already present in an admitted non-Git folder. When some files are newly generated, those unchanged managed files stay untracked and the final clean check leaves main instead of dev (C2). With an entirely empty selector, ls-files with no path operands instead selects every untracked file, potentially adopting private files (C1). An empty selected candidate list must likewise not fall through to a broad Git operation. Select the complete owned leaf set, including unchanged owned outputs, and explicitly guard empty selectors/candidates.
+
+Implementer confirmed the missing guarantees in 30c79c75 and will add a previously-provisioned/no-Git control plus an empty-report negative control. A-5659 establishes the refreshed-skill correction, but does not cover these remaining branches.
+
+Result: not clear; fail C1/C2. C3–C7 remain unverified pending corrected source and exact-head verification. No verify at this head, no dev merge requested, no per-item QA.
+
+Findings: Standards 0; Spec 1 medium.
+
+Evidence: A-5660.
+
+Criteria: C1 failed (An empty managed selector expands ls-files to all untracked files; explicit empty guards are missing.), C2 failed (Unchanged managed outputs are omitted from the first commit and stay untracked, preventing clean dev.).

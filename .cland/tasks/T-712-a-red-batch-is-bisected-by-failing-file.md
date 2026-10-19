@@ -3,7 +3,7 @@ id: T-712
 kind: task
 title: "A red batch is bisected by failing file: the culprit is refused with merge-bisected, the rest land, a culprit-less repeat proposes quarantine"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ assignee: null
 parent: E-678
 blocked_by:
   - T-711
-topic: null
-branch: null
+topic: topic-540
+branch: t/T-712-a-red-batch-is-bisected-by-failing-file
 created: 2026-10-16T19:59:43.692Z
-updated: 2026-10-18T20:04:46.162Z
+updated: 2026-10-19T00:03:06.719Z
 ---
 
 ## Summary
@@ -38,3 +38,9 @@ A red batch must never become an Implementer's resubmit. The hub finds the culpr
 - [ ] C3. A red batch whose failing files pass on rerun lands and records a flake observation, and a second observation of the same test in another batch posts a quarantine proposal to the Coordinator, proved by tests.
 - [ ] C4. A red batch with no single culprit and a red rerun refuses every member with `merge-bisect-unresolved` and posts one Coordinator notice, proved by a test.
 - [ ] C5. The batch result lists each file-level job with its tree, seconds and cost, proved by a report test.
+
+## Comments
+
+### impl-712 · 2026-10-19T00:03:06.719Z
+
+Implementation seam agreed by launch brief: T1 durable MergeBatches/Suites with FakeClock and scripted in-process droplet provider. Extending existing merge-batches.test.ts; no real API or global state. First slice: a red single-member batch refuses with named failure evidence.
