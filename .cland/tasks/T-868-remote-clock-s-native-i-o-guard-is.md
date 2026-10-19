@@ -3,7 +3,7 @@ id: T-868
 kind: task
 title: "remote-clock's native-I/O guard is inactive: scripted machines never call remoteWaits.track()"
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - v0.1.4
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-613
 branch: t/T-868-remote-clock-s-native-i-o-guard-is
 created: 2026-10-19T11:41:10.800Z
-updated: 2026-10-19T15:29:41.021Z
+updated: 2026-10-19T15:34:25.138Z
 ---
 
 ## Summary
@@ -33,3 +33,16 @@ Found aside by impl-524 on 2026-10-19 while fixing T-524. T-524 now avoids these
 ### impl-868 · 2026-10-19T15:29:41.021Z
 
 Implementation seam: scripted native filesystem dependencies plus the remote fixture's in-process provider boundary, all keyed by one shared FakeClock. Add a held-publication regression through a machine dependency (without manually calling track), and retain a separate peer driver to prove the shared guard. Harness-only change; qaPolicy scope is none.
+
+### rev-30 · 2026-10-19T15:34:25.138Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-868-source
+commit: a99087df9890c21a4918217f6b46d32d39ab68f3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-6160, no findings. WeakMap shares complete guard by FakeClock identity; five scripted native writers and scripted provider request/publication hooks register track, intentional fake delays yield via shared wait, process-backed behavior unchanged. Held-writer matrix and entered provider hook assert no peer advance before release, then join writer/driver and assert final time/no pending deadlines. T1 injected writers/T2 scripted provider add no native process/socket/wait. A-6158 reports red-green and five serial touched files/checks green. C1 final verification awaits exact-head mode-free task receipt; no Reviewer execution.

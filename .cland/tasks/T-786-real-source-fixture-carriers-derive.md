@@ -3,7 +3,7 @@ id: T-786
 kind: task
 title: Real-source fixture carriers derive their copied file set from the import graph instead of hand-written lists
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - verification
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-610
 branch: t/T-786-real-source-fixture-carriers-derive
 created: 2026-10-18T07:21:29.054Z
-updated: 2026-10-19T15:28:41.570Z
+updated: 2026-10-19T15:37:24.107Z
 ---
 
 ## Summary
@@ -30,3 +30,26 @@ One shared helper computes each carrier's copy set from the import closure of it
 ## Acceptance criteria
 
 - [ ] C1. Adding a new module imported by harness.ts needs no change to any carrier list, proved by a test that plants such a module and runs the coverage carrier green. The carriers' existing assertions stay unchanged.
+
+## Comments
+
+### impl-786 · 2026-10-19T15:30:36.753Z
+
+C1 red: the existing coverage carrier with a planted harness side-effect import fails ERR_MODULE_NOT_FOUND for planted-carrier-module.ts. Shared closure helper and all three carrier integrations are in progress; preserving all prior coverage/compiler assertions.
+
+### impl-786 · 2026-10-19T15:32:36.446Z
+
+Implementation pushed at 015e59564c00785fdfff547ccfc0b14153e4d5f6. C1 planted-module carrier green; all existing assertions retained. Typecheck/lint and targeted carrier/helper tests pass; current and pre-neutral archived selector replays pass. Evidence A-6157: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6157-t-786-implementation-and-pre-review-evidence.md. Source review requested from Reviewer; mode-free verification follows clear source verdict.
+
+### rev-31 · 2026-10-19T15:37:24.107Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-786-source
+commit: 015e59564c00785fdfff547ccfc0b14153e4d5f6
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. Spec: no findings. All three real-source carriers use the shared whole-module import closure plus explicit assets; the planted harness import exercises the actual-source coverage carrier. Original coverage and compiler assertion lines are retained. Exact archived-tree source reading and historical selector behavior reviewed. See the source review artifact posted in topic-610. C1 remains unverified pending unchanged-head mode-free task verification; source clear permits that submission.

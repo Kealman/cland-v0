@@ -3,7 +3,7 @@ id: T-793
 kind: task
 title: The MCP verify tool publishes a generic object schema and refuses a missing field with only "invalid verify request"
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-612
 branch: t/T-793-the-mcp-verify-tool-publishes-a-generic
 created: 2026-10-18T09:29:02.859Z
-updated: 2026-10-19T15:28:52.594Z
+updated: 2026-10-19T15:33:18.946Z
 ---
 
 ## Summary
@@ -31,3 +31,20 @@ On 2026-10-18 impl-634 called the cland MCP `verify` tool with `{executor, repor
 ### impl-793 · 2026-10-19T15:28:52.594Z
 
 Implementing the public MCP verify schema, claimed-worktree cwd default and field-specific validation. T2 coverage will exercise the published MCP tool and in-process hub dispatcher before any suite is enqueued.
+
+### impl-793 · 2026-10-19T15:32:20.678Z
+
+Source ready at 8f2ed8d44b6d03629f2a234f296af0c3048c4644; review requested. C2 T2 names in hub/test/verify-tool.test.ts: “MCP verify publishes described inputs with an optional claimed-worktree cwd”; “MCP verify defaults cwd to the claimed item worktree before admission”; “MCP verify names missing or invalid fields before enqueue”. All pass; typecheck and adjacent targeted tests pass. Evidence A-6156 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6156-t-793-implementation-and-pre-enqueue-evidence.md.
+
+### rev-30 · 2026-10-19T15:33:18.946Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-793-source
+commit: 8f2ed8d44b6d03629f2a234f296af0c3048c4644
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-6159, no findings. Described MCP schema matches admission; undefined cwd derives from caller's live open-task claim, explicit cwd retained. Shared suiteStartIssues names malformed fields and cross-field diagnostics requirement; null mode no longer silently defaults. Existing authorization/occasion/report behavior retained. T2 public-tool tests inspect schema, prove claimed-worktree/default versus override and malformed-field errors with empty queues; injected candidate Git/FakeClock, no executor/native child/wait. A-6156 reports all four touched host files and checks green. C1/C2 complete verification awaits exact-head mode-free receipt; no Reviewer execution.

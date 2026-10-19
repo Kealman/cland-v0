@@ -1,0 +1,43 @@
+---
+id: T-883
+kind: task
+title: Fourteen T2 cases run 2.0–2.9 s against the 2 s T2 budget
+state: open
+status: backlog
+size: S
+labels:
+  - needs-triage
+  - v0.1.4
+assignee: null
+parent: C-216
+blocked_by: []
+topic: null
+branch: null
+created: 2026-10-19T15:38:56.097Z
+updated: 2026-10-19T15:38:56.097Z
+---
+
+## Summary
+
+T-879's same-head receipt (A-6161, audited in A-6167) shows fourteen T2 cases between 2.0 s and 2.9 s against the 2 s T2 budget, reported only by the legacy gate. Found aside by rev-31 on 2026-10-19 while reviewing T-879. The roles-editor T1 row is T-875's, and the onboarding native-push trips are T-877's.
+
+## Cases
+
+- hub/test/tracker-rank.test.ts::the high migration ranks singleton groups, including closed items, and a rerun writes nothing 2.892 s > 2 s (T2)
+- hub/test/config-reload-component.test.ts::hub reload publishes config and roles together and retains both after either file fails 2.86 s > 2 s (T2)
+- hub/test/verdict-commit-component.test.ts::review scope is required through CLI and MCP, indexed and announced, while QA carries none 2.792 s > 2 s (T2)
+- hub/test/tracker-component.test.ts::a verdict comment is stored in the file with its header and is queryable through the index 2.736 s > 2 s (T2)
+- nvim/test/events-quiet.test.ts::events keys, warning/dim presentation, independent mutes, last look and cold persistence 2.683 s > 2 s (T2)
+- hub/test/tracker-component.test.ts::task list queries the index with state, label, kind, assignee filters 2.564 s > 2 s (T2)
+- hub/test/tracker-levels.test.ts::renamed top-level metadata survives restart; an empty ladder refuses former containers with a notice 2.519 s > 2 s (T2)
+- nvim/test/vboard.test.ts::release versions appear once in the scope, all tree, top bar and item header 2.431 s > 2 s (T2)
+- hub/test/task-card-component.test.ts::hub closes after a hand reopen replace retained closed times, while already-closed retries keep them 2.27 s > 2 s (T2)
+- hub/test/tracker-component.test.ts::edit, close and link change the file; bad references are refused 2.216 s > 2 s (T2)
+- nvim/test/explorer-component.test.ts::invalid explorer preferences reset alone and are reported while other ui.json keys survive 2.215 s > 2 s (T2)
+- nvim/test/thread.test.ts::delayed initial history preserves focused composer modes and an unfocused composer 2.19 s > 2 s (T2)
+- hub/test/task-plan.test.ts::a two-stage plan is written by CLI, shown by MCP and view JSON, changed and journalled 2.149 s > 2 s (T2)
+- hub/test/crew.test.ts::crew set observes the session role boundary from CLI 2.053 s > 2 s (T2)
+
+## Acceptance criteria
+
+- [ ] C1. Each listed case runs within the 2 s T2 budget in a mode-free task verify. A case that cannot is given an exact-key allowance with a written reason, owned by an open epic, or moves to T3 under the tier-move rule with its assertions kept. The receipt shows no report-only budget line for any of them.
