@@ -2,7 +2,10 @@
   "version": 1,
   "source": {
     "artifacts": [
-      "A-6297"
+      "A-6297",
+      "A-6792",
+      "A-6796",
+      "A-6795"
     ],
     "commit": "1d81bd6e7457f83699249bd3d13f6d604fa50de7"
   },
@@ -38,6 +41,10 @@
     "hub/src/hub/hygiene.test.ts": {
       "seconds": 0.025046,
       "tests": 6
+    },
+    "hub/src/hub/priority.test.ts": {
+      "seconds": 0.001858,
+      "tests": 2
     },
     "hub/src/hub/store.test.ts": {
       "seconds": 0.262359,
@@ -123,6 +130,10 @@
       "seconds": 1.620494,
       "tests": 6
     },
+    "hub/test/aide-claims-lifecycle.test.ts": {
+      "seconds": 2.793044,
+      "tests": 3
+    },
     "hub/test/aide-claims.test.ts": {
       "seconds": 9.683919,
       "tests": 3
@@ -146,6 +157,10 @@
     "hub/test/aide.test.ts": {
       "seconds": 21.127015,
       "tests": 3
+    },
+    "hub/test/artifact-cli-lifecycle.test.ts": {
+      "seconds": 0.524016,
+      "tests": 1
     },
     "hub/test/artifact-cli.test.ts": {
       "seconds": 6.37583,
@@ -206,6 +221,10 @@
     "hub/test/claude-code-schedule.test.ts": {
       "seconds": 0.613095,
       "tests": 3
+    },
+    "hub/test/claude-code-sessions-lifecycle.test.ts": {
+      "seconds": 11.257304,
+      "tests": 6
     },
     "hub/test/claude-code-sessions.test.ts": {
       "seconds": 34.030772,
@@ -299,6 +318,14 @@
       "seconds": 26.322718,
       "tests": 5
     },
+    "hub/test/dev-t3-search-component.test.ts": {
+      "seconds": 1.729709,
+      "tests": 2
+    },
+    "hub/test/dev-t3-search.test.ts": {
+      "seconds": 0.308913,
+      "tests": 4
+    },
     "hub/test/doctor-cli.test.ts": {
       "seconds": 7.271701,
       "tests": 3
@@ -319,6 +346,10 @@
       "seconds": 0.301844,
       "tests": 2
     },
+    "hub/test/durations-refresh.test.ts": {
+      "seconds": 0.047633,
+      "tests": 3
+    },
     "hub/test/durations-runner-budget.test.ts": {
       "seconds": 0.005138,
       "tests": 3
@@ -330,6 +361,10 @@
     "hub/test/durations.test.ts": {
       "seconds": 3.461008,
       "tests": 17
+    },
+    "hub/test/edges-component.test.ts": {
+      "seconds": 0.20299,
+      "tests": 1
     },
     "hub/test/edges.test.ts": {
       "seconds": 4.662349,
@@ -353,6 +388,10 @@
     },
     "hub/test/executor-admission.test.ts": {
       "seconds": 0.05812,
+      "tests": 1
+    },
+    "hub/test/executor-contract.test.ts": {
+      "seconds": 0.023943,
       "tests": 1
     },
     "hub/test/executor-deadline.test.ts": {
@@ -435,6 +474,10 @@
       "seconds": 1.668191,
       "tests": 1
     },
+    "hub/test/follows-native.test.ts": {
+      "seconds": 0.359955,
+      "tests": 2
+    },
     "hub/test/follows.test.ts": {
       "seconds": 11.273658,
       "tests": 11
@@ -442,6 +485,10 @@
     "hub/test/freshness.test.ts": {
       "seconds": 2.435579,
       "tests": 8
+    },
+    "hub/test/handover-integrity-component.test.ts": {
+      "seconds": 0.701288,
+      "tests": 3
     },
     "hub/test/handover-integrity.test.ts": {
       "seconds": 10.656628,
@@ -467,6 +514,14 @@
       "seconds": 2.85847,
       "tests": 1
     },
+    "hub/test/hub-priority.test.ts": {
+      "seconds": 0.214994,
+      "tests": 1
+    },
+    "hub/test/hub-status-component.test.ts": {
+      "seconds": 0.304578,
+      "tests": 3
+    },
     "hub/test/human-routing.test.ts": {
       "seconds": 0.290343,
       "tests": 6
@@ -474,6 +529,14 @@
     "hub/test/hygiene.test.ts": {
       "seconds": 4.195261,
       "tests": 8
+    },
+    "hub/test/import-github-lifecycle.test.ts": {
+      "seconds": 0.212067,
+      "tests": 1
+    },
+    "hub/test/import-github-unit.test.ts": {
+      "seconds": 0.001038,
+      "tests": 1
     },
     "hub/test/import-github.test.ts": {
       "seconds": 9.090232,
@@ -631,6 +694,10 @@
       "seconds": 0.004225,
       "tests": 4
     },
+    "hub/test/merge-checkout-lifecycle.test.ts": {
+      "seconds": 5.006846,
+      "tests": 1
+    },
     "hub/test/merge-checkout.test.ts": {
       "seconds": 20.514045,
       "tests": 6
@@ -654,6 +721,10 @@
     "hub/test/merge-queue.test.ts": {
       "seconds": 3.47623,
       "tests": 12
+    },
+    "hub/test/merge-recovery-native.test.ts": {
+      "seconds": 26.690948,
+      "tests": 8
     },
     "hub/test/merge-recovery.test.ts": {
       "seconds": 31.393327,
@@ -683,9 +754,45 @@
       "seconds": 1.568264,
       "tests": 9
     },
+    "hub/test/nvim-agents-filters-rules.test.ts": {
+      "seconds": 0.497601,
+      "tests": 2
+    },
+    "hub/test/nvim-artifacts-rules.test.ts": {
+      "seconds": 1.16916,
+      "tests": 7
+    },
+    "hub/test/nvim-crew-rules.test.ts": {
+      "seconds": 0.471002,
+      "tests": 1
+    },
     "hub/test/nvim-fixture-boundary.test.ts": {
       "seconds": 0.275933,
       "tests": 7
+    },
+    "hub/test/nvim-frame-consumers.test.ts": {
+      "seconds": 0.020814,
+      "tests": 3
+    },
+    "hub/test/nvim-inbox-requests-rules.test.ts": {
+      "seconds": 0.774541,
+      "tests": 1
+    },
+    "hub/test/nvim-item-prefixes-rules.test.ts": {
+      "seconds": 0.781887,
+      "tests": 1
+    },
+    "hub/test/nvim-items-rules.test.ts": {
+      "seconds": 1.90445,
+      "tests": 5
+    },
+    "hub/test/nvim-needs-you-rules.test.ts": {
+      "seconds": 0.799509,
+      "tests": 3
+    },
+    "hub/test/nvim-sessions-rules.test.ts": {
+      "seconds": 0.666715,
+      "tests": 4
     },
     "hub/test/open.test.ts": {
       "seconds": 5.497826,
@@ -779,6 +886,10 @@
       "seconds": 0.364374,
       "tests": 3
     },
+    "hub/test/project-hub-lifecycle.test.ts": {
+      "seconds": 4.145885,
+      "tests": 4
+    },
     "hub/test/project-hub.test.ts": {
       "seconds": 11.88357,
       "tests": 5
@@ -807,6 +918,10 @@
       "seconds": 6.862161,
       "tests": 9
     },
+    "hub/test/release-t3-component.test.ts": {
+      "seconds": 0.590474,
+      "tests": 1
+    },
     "hub/test/release.test.ts": {
       "seconds": 48.196802,
       "tests": 21
@@ -826,6 +941,10 @@
     "hub/test/request-guard.test.ts": {
       "seconds": 5.423825,
       "tests": 12
+    },
+    "hub/test/resilience-component.test.ts": {
+      "seconds": 0.241465,
+      "tests": 8
     },
     "hub/test/resilience.test.ts": {
       "seconds": 9.163935,
@@ -858,6 +977,10 @@
     "hub/test/roles-editor.test.ts": {
       "seconds": 1.291539,
       "tests": 13
+    },
+    "hub/test/roles-harnesses.test.ts": {
+      "seconds": 0.008706,
+      "tests": 3
     },
     "hub/test/roles-launch-permissions.test.ts": {
       "seconds": 0.004487,
@@ -939,6 +1062,10 @@
       "seconds": 4.410653,
       "tests": 2
     },
+    "hub/test/scenarios/setup.test.ts": {
+      "seconds": 13.864401,
+      "tests": 1
+    },
     "hub/test/scenarios/stage-close.test.ts": {
       "seconds": 5.676241,
       "tests": 1
@@ -963,6 +1090,10 @@
       "seconds": 3.090819,
       "tests": 8
     },
+    "hub/test/session-async-processes-lifecycle.test.ts": {
+      "seconds": 3.223537,
+      "tests": 2
+    },
     "hub/test/session-async-processes.test.ts": {
       "seconds": 6.922952,
       "tests": 5
@@ -973,6 +1104,10 @@
     },
     "hub/test/session-brief.test.ts": {
       "seconds": 5.154746,
+      "tests": 2
+    },
+    "hub/test/session-cwd.test.ts": {
+      "seconds": 0.064888,
       "tests": 2
     },
     "hub/test/session-events-component.test.ts": {
@@ -995,6 +1130,10 @@
       "seconds": 0.838475,
       "tests": 6
     },
+    "hub/test/session-launch-lifecycle.test.ts": {
+      "seconds": 3.600154,
+      "tests": 1
+    },
     "hub/test/session-launch.test.ts": {
       "seconds": 6.83133,
       "tests": 2
@@ -1010,6 +1149,10 @@
     "hub/test/session-resume-component.test.ts": {
       "seconds": 1.81061,
       "tests": 3
+    },
+    "hub/test/session-resume-lifecycle.test.ts": {
+      "seconds": 5.637125,
+      "tests": 1
     },
     "hub/test/session-resume.test.ts": {
       "seconds": 8.503177,
@@ -1031,6 +1174,10 @@
       "seconds": 1.498968,
       "tests": 5
     },
+    "hub/test/setup-accounts.test.ts": {
+      "seconds": 0.049456,
+      "tests": 8
+    },
     "hub/test/setup-cli.test.ts": {
       "seconds": 0.762585,
       "tests": 7
@@ -1043,9 +1190,25 @@
       "seconds": 0.075433,
       "tests": 10
     },
+    "hub/test/setup-handover.test.ts": {
+      "seconds": 0.046949,
+      "tests": 9
+    },
+    "hub/test/setup-hub-component.test.ts": {
+      "seconds": 0.148531,
+      "tests": 1
+    },
+    "hub/test/setup-hub.test.ts": {
+      "seconds": 0.085489,
+      "tests": 7
+    },
     "hub/test/setup-machine.test.ts": {
       "seconds": 11.42698,
       "tests": 1
+    },
+    "hub/test/setup-project-kind.test.ts": {
+      "seconds": 0.007856,
+      "tests": 2
     },
     "hub/test/setup-prompter.test.ts": {
       "seconds": 0.016782,
@@ -1075,6 +1238,10 @@
       "seconds": 4.50749,
       "tests": 14
     },
+    "hub/test/skills-qa-catalogue.test.ts": {
+      "seconds": 0.042922,
+      "tests": 5
+    },
     "hub/test/skills-qa.test.ts": {
       "seconds": 12.089281,
       "tests": 16
@@ -1086,6 +1253,10 @@
     "hub/test/skills-tracker.test.ts": {
       "seconds": 0.820219,
       "tests": 7
+    },
+    "hub/test/source-fixture.test.ts": {
+      "seconds": 0.006621,
+      "tests": 2
     },
     "hub/test/spawn-census.test.ts": {
       "seconds": 0.597473,
@@ -1110,6 +1281,18 @@
     "hub/test/stage-qa.test.ts": {
       "seconds": 52.464876,
       "tests": 11
+    },
+    "hub/test/startup-deadline-component.test.ts": {
+      "seconds": 0.035529,
+      "tests": 4
+    },
+    "hub/test/startup-diagnostic.test.ts": {
+      "seconds": 0.001517,
+      "tests": 2
+    },
+    "hub/test/startup-ready-component.test.ts": {
+      "seconds": 0.244237,
+      "tests": 2
     },
     "hub/test/startup-smoke.test.ts": {
       "seconds": 9.209217,
@@ -1142,6 +1325,10 @@
     "hub/test/suite-admission-cost.test.ts": {
       "seconds": 3.725067,
       "tests": 2
+    },
+    "hub/test/suite-admission-native.test.ts": {
+      "seconds": 0.775261,
+      "tests": 1
     },
     "hub/test/suite-admission-responsive.test.ts": {
       "seconds": 0.167374,
@@ -1187,6 +1374,10 @@
       "seconds": 13.475299,
       "tests": 3
     },
+    "hub/test/suite-command.test.ts": {
+      "seconds": 0.005649,
+      "tests": 1
+    },
     "hub/test/suite-cover.test.ts": {
       "seconds": 0.22026,
       "tests": 9
@@ -1223,9 +1414,17 @@
       "seconds": 1.053798,
       "tests": 3
     },
+    "hub/test/suite-landed-load.test.ts": {
+      "seconds": 0.197629,
+      "tests": 2
+    },
     "hub/test/suite-load-diagnostics.test.ts": {
       "seconds": 0.007112,
       "tests": 4
+    },
+    "hub/test/suite-log-backfill.test.ts": {
+      "seconds": 2.361834,
+      "tests": 3
     },
     "hub/test/suite-persistence.test.ts": {
       "seconds": 0.357686,
@@ -1275,6 +1474,10 @@
       "seconds": 0.167366,
       "tests": 5
     },
+    "hub/test/suite-selection-component.test.ts": {
+      "seconds": 0.715809,
+      "tests": 3
+    },
     "hub/test/suite-selection-fetch.test.ts": {
       "seconds": 0.522802,
       "tests": 4
@@ -1303,6 +1506,10 @@
       "seconds": 0.383879,
       "tests": 8
     },
+    "hub/test/suite-summary.test.ts": {
+      "seconds": 0.005096,
+      "tests": 4
+    },
     "hub/test/suite-task-selection.test.ts": {
       "seconds": 1.098331,
       "tests": 7
@@ -1322,6 +1529,10 @@
     "hub/test/suite-wait-metrics.test.ts": {
       "seconds": 0.969267,
       "tests": 5
+    },
+    "hub/test/suite-worker-cause.test.ts": {
+      "seconds": 0.001538,
+      "tests": 2
     },
     "hub/test/suite.test.ts": {
       "seconds": 45.545561,
@@ -1361,6 +1572,10 @@
     },
     "hub/test/task-size.test.ts": {
       "seconds": 2.446771,
+      "tests": 3
+    },
+    "hub/test/task-worktrees-lifecycle.test.ts": {
+      "seconds": 11.942383,
       "tests": 3
     },
     "hub/test/task-worktrees.test.ts": {
@@ -1479,6 +1694,10 @@
       "seconds": 3.522342,
       "tests": 5
     },
+    "hub/test/tracker-summary.test.ts": {
+      "seconds": 0.043938,
+      "tests": 1
+    },
     "hub/test/tracker.test.ts": {
       "seconds": 7.913964,
       "tests": 5
@@ -1538,6 +1757,10 @@
     "hub/test/verify-submission.test.ts": {
       "seconds": 0.8444,
       "tests": 4
+    },
+    "hub/test/verify-tool.test.ts": {
+      "seconds": 0.434574,
+      "tests": 3
     },
     "hub/test/visibility-component.test.ts": {
       "seconds": 2.330918,
@@ -1731,6 +1954,10 @@
       "seconds": 0.740368,
       "tests": 1
     },
+    "nvim/test/sessions-lifecycle.test.ts": {
+      "seconds": 5.502739,
+      "tests": 1
+    },
     "nvim/test/sessions.test.ts": {
       "seconds": 19.865132,
       "tests": 5
@@ -1780,6 +2007,8 @@
     "hub/src/hub/hygiene.test.ts::the loop breaker mutes a pair past the threshold for the mute time, whichever direction talks": 0.000431,
     "hub/src/hub/hygiene.test.ts::the rate limit counts a session's sends in a sliding window and names when it frees": 0.001858,
     "hub/src/hub/hygiene.test.ts::the size cap refuses an oversized send and truncates oversized human text with the original length": 0.000455,
+    "hub/src/hub/priority.test.ts::an unavailable priority probe leaves niceness unknown": 0.000721,
+    "hub/src/hub/priority.test.ts::startup priority warns only for positive niceness": 0.001137,
     "hub/src/hub/store.test.ts::a human message held for a vacant role goes to the session that takes the role, and its stage follows the ack": 0.012043,
     "hub/src/hub/store.test.ts::a sessions table written by an older hub gains the status and role columns in place and keeps its rows": 0.026567,
     "hub/src/hub/store.test.ts::an ordinary topic can be renamed and deleted with its messages; a standing one cannot": 0.016443,
@@ -1944,9 +2173,15 @@
     "hub/test/agents-journal.test.ts::an agent-to-agent message in another topic is referenced in Agents (sender, addressees, topic, message id), its text not repeated": 0.096584,
     "hub/test/agents-journal.test.ts::hygiene refusals are typed: the size cap and the rate limit refuse the send itself, with code, rule and reason": 0.05064,
     "hub/test/agents-journal.test.ts::lifecycle events land in Agents as notices with kinds — role assignment and revocation, a claim and its release, a session start and stop — and no tool-level noise does": 0.459278,
+    "hub/test/aide-claims-lifecycle.test.ts::a refused self-qa leaves native Git refs and the worktree branch intact": 0.635116,
+    "hub/test/aide-claims-lifecycle.test.ts::a refused self-review leaves native Git refs and the worktree branch intact": 0.555673,
+    "hub/test/aide-claims-lifecycle.test.ts::native Git creates and reuses the Aide worktree before publishing its reviewed merge": 1.602255,
     "hub/test/aide-claims.test.ts::an Aide claim creates its worktree, makes it the lead, and lands through independent review": 4.153836,
     "hub/test/aide-claims.test.ts::an Aide claimant cannot supply its own qa after becoming a verifier": 2.541826,
     "hub/test/aide-claims.test.ts::an Aide claimant cannot supply its own review after becoming a verifier": 2.988257,
+    "hub/test/aide-claims.test.ts::an in-process Aide claim is idempotent and routes lead messages through independent review": 0.429368,
+    "hub/test/aide-claims.test.ts::an in-process Aide claimant cannot supply its own qa after becoming a verifier": 0.23271,
+    "hub/test/aide-claims.test.ts::an in-process Aide claimant cannot supply its own review after becoming a verifier": 0.157157,
     "hub/test/aide-component.test.ts::Aide defaults are non-exclusive, use the human model, and grant exactly the specified tools": 0.003805,
     "hub/test/aide-component.test.ts::Aide tracker, topics, artifacts and named sends work; crew operations name the refusing rule": 1.463083,
     "hub/test/aide-component.test.ts::a Reviewer becoming an Aide drops queued broadcasts and their digest members but keeps named deliveries": 0.15243,
@@ -1966,11 +2201,17 @@
     "hub/test/aide.test.ts::a fake Claude Aide keeps answering when a settings hook exits without reading stdin": 2.537552,
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": 13.932113,
     "hub/test/aide.test.ts::cland init writes the Aide defaults and CLI launches several Aides with no model override": 4.65735,
+    "hub/test/artifact-cli-lifecycle.test.ts::artifact CLI promotion leaves native Git HEAD and index untouched": 0.524016,
     "hub/test/artifact-cli.test.ts::an agent can resolve human notes but cannot open them for editing, including an absorbed file": 2.620693,
+    "hub/test/artifact-cli.test.ts::an in-process agent can resolve human notes but cannot open them for editing, including an absorbed file": 1.336163,
     "hub/test/artifact-cli.test.ts::open resolves a folder entry and edits its saved bytes with the chosen editor": 0.855789,
+    "hub/test/artifact-cli.test.ts::open through an in-process hub resolves a folder entry and edits its saved bytes with the chosen editor": 0.630618,
     "hub/test/artifact-cli.test.ts::the shell creates a folder artifact from a directory or a new entry file": 0.491904,
     "hub/test/artifact-cli.test.ts::the shell keeps, releases, moves and archives artifacts through the hub": 1.507368,
     "hub/test/artifact-cli.test.ts::the shell promotes a complete folder into docs without staging, committing or losing its source": 0.900076,
+    "hub/test/artifact-cli.test.ts::the shell with an in-process hub creates a folder artifact from a directory or a new entry file": 0.386337,
+    "hub/test/artifact-cli.test.ts::the shell with an in-process hub keeps, releases, moves and archives artifacts through the hub": 0.928766,
+    "hub/test/artifact-cli.test.ts::the shell with an in-process hub promotes a complete folder into docs without staging, committing or losing its source": 0.431705,
     "hub/test/artifact-delete.test.ts::deleting a folder notifies old-topic moved chips and leaves promoted project files alone": 0.103484,
     "hub/test/artifact-delete.test.ts::deleting an absorbed id removes only its moved file and preserves its deleted chip after restart": 0.294213,
     "hub/test/artifact-delete.test.ts::only the human can delete artifact bytes; the index and topic chip retain the deletion": 0.302954,
@@ -2083,6 +2324,12 @@
     "hub/test/claude-code-schedule.test.ts::Claude discovery and watch share the default schedule across adapter restart; unknown-pid stop ends the watch": 0.013544,
     "hub/test/claude-code-schedule.test.ts::a signed-out Claude directory stays quiet across store reopen and recovers only on explicit success": 0.502904,
     "hub/test/claude-code-schedule.test.ts::an expired --bg launch latches a directory once without discovery or retry calls": 0.096647,
+    "hub/test/claude-code-sessions-lifecycle.test.ts::a held Claude hook is reaped before fixture removal after a pre-release failure": 0.060462,
+    "hub/test/claude-code-sessions-lifecycle.test.ts::a message the spoke accepted during the launch is injected once the launch's early bridge and SessionStart are in": 2.645224,
+    "hub/test/claude-code-sessions-lifecycle.test.ts::a stop whose `claude stop` fails falls back to SIGTERM and stops the session": 2.139203,
+    "hub/test/claude-code-sessions-lifecycle.test.ts::Claude process resume never adopts another session that reuses the pid: no identity match, no resume": 3.161659,
+    "hub/test/claude-code-sessions-lifecycle.test.ts::signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start": 0.537046,
+    "hub/test/claude-code-sessions-lifecycle.test.ts::stop kills a Claude Code process that ignores SIGTERM and waits for its exit": 2.71371,
     "hub/test/claude-code-sessions.test.ts::Claude process resume never adopts another session that reuses the pid: no identity match, no resume": 2.926645,
     "hub/test/claude-code-sessions.test.ts::a held Claude hook is reaped before fixture removal after a pre-release failure": 0.069546,
     "hub/test/claude-code-sessions.test.ts::a late SessionStart does not revive a session whose process is gone": 1.68068,
@@ -2091,7 +2338,13 @@
     "hub/test/claude-code-sessions.test.ts::a signal from an earlier launch under the same name changes nothing of the process that replaced it": 3.944423,
     "hub/test/claude-code-sessions.test.ts::a stop whose `claude stop` fails falls back to SIGTERM and stops the session": 3.061456,
     "hub/test/claude-code-sessions.test.ts::an idle that comes while an inject waits for its confirmation retries it once that inject gave up": 4.970473,
+    "hub/test/claude-code-sessions.test.ts::in-process Claude failures retain sender attribution across delayed prompt starts": 0.251699,
+    "hub/test/claude-code-sessions.test.ts::in-process Claude injection remembers an idle received before its rejection": 0.158906,
+    "hub/test/claude-code-sessions.test.ts::in-process Claude SessionStart leaves an exited session inactive": 0.068144,
+    "hub/test/claude-code-sessions.test.ts::in-process Claude signal order drops an older Stop arriving after the next turn start regardless of elapsed time": 0.246844,
+    "hub/test/claude-code-sessions.test.ts::in-process Claude signals cannot replace a newer launch identity": 0.089713,
     "hub/test/claude-code-sessions.test.ts::late Claude start and StopFailure hooks keep failure notes with their own turn sender": 5.929189,
+    "hub/test/claude-code-sessions.test.ts::renaming an in-process Claude session preserves a pending input confirmation": 0.149832,
     "hub/test/claude-code-sessions.test.ts::signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start": 2.838937,
     "hub/test/claude-code-sessions.test.ts::stop kills a Claude Code process that ignores SIGTERM and waits for its exit": 2.56643,
     "hub/test/cli-identity.test.ts::a launched session cannot borrow another identity with `--as`: neither the human nor the Coordinator, it stays itself": 3.303098,
@@ -2114,6 +2367,7 @@
     "hub/test/clock.test.ts::realClock preserves cancellation with Node mocked timeout and interval timers": 0.00096,
     "hub/test/clock.test.ts::remote clock waits for concurrent native work before spending a lock retry deadline": 0.006065,
     "hub/test/clock.test.ts::resolveClock requires a complete clock instead of a bare timestamp callback": 0.000222,
+    "hub/test/clock.test.ts::scripted native publications block peer clock drivers until their receipt completes": 0.008147,
     "hub/test/clock.test.ts::until names the unmet condition at one load-scaled deadline": 0.00112,
     "hub/test/clock.test.ts::until returns on its observation and cancels the deadline": 0.000665,
     "hub/test/close-shards.test.ts::close shards balance largest hub files first, use median for unknowns and place Neovim on the lightest hub shard": 0.011907,
@@ -2174,6 +2428,7 @@
     "hub/test/cover-quiet.test.ts::hub targeted startup exits cover-quiet before creating any fixture": 0.935368,
     "hub/test/cover-quiet.test.ts::inherited cover workers and the human override pass targeted startup": 1.613888,
     "hub/test/cover-quiet.test.ts::read-only test admission refuses an integrated local cover without joining the queue": 0.21373,
+    "hub/test/cover-quiet.test.ts::release worker admits its cover lease before isolated scratch startup": 3.434357,
     "hub/test/cover-quiet.test.ts::targeted startup passes without a project hub or with an ordinary local holder": 2.299953,
     "hub/test/crew-launch.test.ts::Implementer handoff retains or resets native context across flavours": 0.635889,
     "hub/test/crew-launch.test.ts::Reviewer pool handoffs enforce admission and retention policy across flavours": 1.123336,
@@ -2229,14 +2484,27 @@
     "hub/test/demo.test.ts::demo recorder failures persist diagnostics and keep remote captures for recovery": 5.926577,
     "hub/test/demo.test.ts::demo run timeout destroys the machine through the watchdog even with the hub gone": 3.980001,
     "hub/test/demo.test.ts::the demo recorder runs a headless case remotely and retains captures and executor accounting locally": 4.24689,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run files one Bug with live last-claimant delivery": 1.062956,
+    "hub/test/dev-t3-search-component.test.ts::red periodic run reports a passing rerun as a flake without filing": 0.666753,
+    "hub/test/dev-t3-search.test.ts::a reopened probe observes its admitted worker receipt without another checkout or run": 0.151889,
+    "hub/test/dev-t3-search.test.ts::probe proof rejects skipped, interrupted and incomplete execution": 0.121557,
+    "hub/test/dev-t3-search.test.ts::search bisects each failing file and excludes pre-existing failures across restart": 0.01994,
+    "hub/test/dev-t3-search.test.ts::search reports unavailable evidence without blame and still recognizes red-head flakes": 0.015527,
     "hub/test/doctor-cli.test.ts::a probe that never answers is cut at its deadline: the lock probe and a harness both, and their whole process group is killed": 3.457523,
     "hub/test/doctor-cli.test.ts::doctor CLI renders healthy text and JSON with exit 0": 2.612077,
     "hub/test/doctor-cli.test.ts::doctor CLI reports a startable no-hub warning with exit 0": 1.202101,
+    "hub/test/doctor-harness-probe.test.ts::doctor requires only the project role harnesses": 0.007402,
+    "hub/test/doctor-harness-probe.test.ts::gh is required only with the named github remote": 0.003684,
     "hub/test/doctor-harness-probe.test.ts::OpenCode login counts stored credentials and excludes environment connections": 0.000611,
     "hub/test/doctor-harness-probe.test.ts::OpenCode majors leave compatibility to the adapter behaviour check": 0.000396,
     "hub/test/doctor-harness-probe.test.ts::a harness with no readable version fails detection": 0.000513,
     "hub/test/doctor-harness-probe.test.ts::each shared harness probe reports its found version as information": 0.003105,
+    "hub/test/doctor-harness-probe.test.ts::unused signed-out harnesses provide informational login commands": 0.001535,
+    "hub/test/doctor-harness-probe.test.ts::without role requirements only a machine with no harness installed fails a harness row": 0.001864,
     "hub/test/doctor-isolation.test.ts::doctor --fix under one fixture root preserves another deleted-project hub": 3.419653,
+    "hub/test/doctor.test.ts::a Claude-only project succeeds without other harnesses or GitHub tooling": 0.20457,
+    "hub/test/doctor.test.ts::doctor warns for every role and unknown skill while accepting project-owned skills": 0.092053,
+    "hub/test/doctor.test.ts::doctor without a role file needs any one installed harness": 0.072981,
     "hub/test/doctor.test.ts::Neovim not at the pinned version, or missing": 0.126985,
     "hub/test/doctor.test.ts::a broken skills symlink fails with the fix": 0.164763,
     "hub/test/doctor.test.ts::a harness missing from the PATH fails with the fix": 0.147418,
@@ -2254,6 +2522,9 @@
     "hub/test/doctor.test.ts::the managed hooks or AGENTS.md block removed: named failures, fixed by cland update": 0.135811,
     "hub/test/duration-legacy.test.ts::duration lint preserves untouched legacy allowances after dev removes them": 0.17315,
     "hub/test/duration-legacy.test.ts::duration lint refuses new legacy allowances against divergent dev history": 0.128694,
+    "hub/test/durations-refresh.test.ts::ordinary empty-file completions prune the last baseline identity": 0.010683,
+    "hub/test/durations-refresh.test.ts::partial logs refresh each observed file without erasing other tiers": 0.030576,
+    "hub/test/durations-refresh.test.ts::unobserved allowances retain their provenance without a timing baseline": 0.006374,
     "hub/test/durations-runner-budget.test.ts::duration mode validation preserves omitted and explicit report modes": 0.000805,
     "hub/test/durations-runner-budget.test.ts::enforce mode requires a separate file allowance and leaves T4 unbounded": 0.000376,
     "hub/test/durations-runner-budget.test.ts::runner duration decision fails a known T2 test at 2.5 seconds until a valid allowance covers it": 0.003957,
@@ -2289,11 +2560,21 @@
     "hub/test/durations.test.ts::refresh prunes tests absent from the newest log and creates a reason placeholder for over-budget files": 0.385084,
     "hub/test/durations.test.ts::refresh takes per-test medians, sums file test-time, preserves reasons and removes deleted tests": 0.259275,
     "hub/test/durations.test.ts::refresh updates known slow baselines without adding TODOs but a new test inside their file still needs a reason": 0.254309,
+    "hub/test/edges-component.test.ts::the Unix socket reads a near-limit frame and the next one from a single write; a line or a remainder over the limit closes": 0.20299,
     "hub/test/edges.test.ts::`serve --stdio --no-listen` binds nothing and serves the UI over stdio": 0.828358,
     "hub/test/edges.test.ts::in a sandbox that forbids listening, `serve --stdio` still serves the UI over stdio, holding the lock and writing no hub.json": 0.001069,
     "hub/test/edges.test.ts::the Unix socket reads a near-limit frame and the next one from a single write; a line or a remainder over the limit closes": 1.331212,
     "hub/test/edges.test.ts::when one listener cannot bind, `serve --stdio` closes the other and goes on over stdio alone": 0.810869,
     "hub/test/edges.test.ts::while a daemon serves the project, `serve --stdio` refuses with a clear error and leaves the daemon alone": 1.690841,
+    "hub/test/epic-close.test.ts::a failed demo reopens a closed epic without a task status (in-process)": 0.143906,
+    "hub/test/epic-close.test.ts::a hand-written QA header cannot close an epic or replace a deleted hub verdict (in-process)": 0.13304,
+    "hub/test/epic-close.test.ts::epic close names missing QA and criteria, and succeeds with all verified in the current QA run (in-process)": 0.971843,
+    "hub/test/epic-close.test.ts::epic close rechecks dev after the temporary write before publication (in-process)": 0.088785,
+    "hub/test/epic-close.test.ts::epic demo freshness retains intervening rename/revert conflicts and rejects commits off dev (in-process)": 0.091407,
+    "hub/test/epic-close.test.ts::epic QA at a named ancestor survives unrelated dev moves and refuses surface edits (in-process)": 0.339919,
+    "hub/test/epic-close.test.ts::epic QA must be clear, written by QA through the hub, and fresh on its surfaces (in-process)": 0.27014,
+    "hub/test/epic-close.test.ts::only the human shell may override epic QA; the reason and unmet criteria are journalled (in-process)": 0.449324,
+    "hub/test/epic-close.test.ts::open children block even a clear epic verdict or human override; releases retain their close path (in-process)": 0.519628,
     "hub/test/epic-close.test.ts::QA verifies a container definition of done by id; fail clears marks without inventing task status": 1.29443,
     "hub/test/epic-close.test.ts::a failed demo reopens a closed epic without a task status": 0.654009,
     "hub/test/epic-close.test.ts::a hand-written QA header cannot close an epic or replace a deleted hub verdict": 0.638869,
@@ -2304,10 +2585,15 @@
     "hub/test/epic-close.test.ts::epic demo freshness retains intervening rename/revert conflicts and rejects commits off dev": 0.810773,
     "hub/test/epic-close.test.ts::only the human shell may override epic QA; the reason and unmet criteria are journalled": 1.278175,
     "hub/test/epic-close.test.ts::open children block even a clear epic verdict or human override; releases retain their close path": 1.058672,
+    "hub/test/epic-close.test.ts::QA verifies a container definition of done by id; fail clears marks without inventing task status (in-process)": 0.687078,
     "hub/test/epic-close.test.ts::reimporting an existing planning container cannot bypass QA or erase unverified criteria": 1.828859,
+    "hub/test/epic-close.test.ts::reimporting an existing planning container cannot bypass QA or erase unverified criteria (in-process)": 0.410354,
     "hub/test/epic-close.test.ts::renamed planning containers retain QA close/edit gates, dev verdict attribution and freshness": 1.339843,
+    "hub/test/epic-close.test.ts::renamed planning containers retain QA close/edit gates, dev verdict attribution and freshness (in-process)": 0.570049,
     "hub/test/epic-close.test.ts::status-driven conversion of a planning container cannot bypass QA or open-child checks": 1.513604,
+    "hub/test/epic-close.test.ts::status-driven conversion of a planning container cannot bypass QA or open-child checks (in-process)": 0.300155,
     "hub/test/epic-close.test.ts::task.edit cannot close an epic around the QA gate": 0.66035,
+    "hub/test/epic-close.test.ts::task.edit cannot close an epic around the QA gate (in-process)": 0.127461,
     "hub/test/events-quiet.test.ts::hub stop cancels deferred journal projections before closing the inbox process provider": 0.075655,
     "hub/test/events-quiet.test.ts::hub stop cancels deferred session work before closing its databases": 0.060557,
     "hub/test/events-quiet.test.ts::pending plan approvals, asks and waiting messages stay in the inbox; follow-up approval events may show": 0.151189,
@@ -2325,6 +2611,8 @@
     "hub/test/executor-admission-lock.test.ts::remote admission survives executor lock contention beyond the old deadline": 0.324001,
     "hub/test/executor-admission-lock.test.ts::remote admission survives spend lock contention beyond the old deadline": 0.455698,
     "hub/test/executor-admission.test.ts::remote admission refusal causes retain their reason and clean up resources": 0.05812,
+    "hub/test/executor-admission.test.ts::scripted provider native hooks block a peer clock driver until publication completes": 0.015003,
+    "hub/test/executor-contract.test.ts::the executor contract has nine operations and no backend-specific identifiers": 0.023943,
     "hub/test/executor-deadline.test.ts::an inner rejection preserves the caller deadline provenance": 0.000218,
     "hub/test/executor-deadline.test.ts::an inner rejection preserves the phase deadline provenance": 0.000286,
     "hub/test/executor-deadline.test.ts::an inner rejection preserves the transport deadline provenance": 0.000666,
@@ -2420,6 +2708,11 @@
     "hub/test/fake-harness.test.ts::projectHub drives fake harness lifecycle and delivery outcomes across flavours": 0.426744,
     "hub/test/fake-harness.test.ts::serveProject releases its listeners and lock after adapter startup or cleanup failure": 0.179763,
     "hub/test/fixture-worker-lifecycle.test.ts::SIGTERM of a fixture worker reaps its detached hub before removing the temp project": 1.668191,
+    "hub/test/follows-native.test.ts::epic merge surfaces use the owning Git environment for both history and changed paths": 0.139859,
+    "hub/test/follows-native.test.ts::epic merge surfaces use trailers and retain rename and deletion paths exactly": 0.220096,
+    "hub/test/follows.test.ts::a clear hub demo verdict releases the injected merge hold": 0.187573,
+    "hub/test/follows.test.ts::a not clear hub demo verdict releases the injected merge hold": 0.210829,
+    "hub/test/follows.test.ts::CLI and in-process MCP maintain canonical follows independently of blockers": 1.300986,
     "hub/test/follows.test.ts::CLI and MCP set and remove canonical follows independently of blockers": 2.644545,
     "hub/test/follows.test.ts::a clear hub demo verdict releases the merge hold": 0.899122,
     "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": 0.932643,
@@ -2430,7 +2723,13 @@
     "hub/test/follows.test.ts::final surface lookup revalidates a concurrent verdict change before publication": 0.910289,
     "hub/test/follows.test.ts::follow becomes met on the last merge and blocks only overlapping follower merges": 1.235969,
     "hub/test/follows.test.ts::follows rejects cycles, non-epic endpoints and kind changes that break edges": 0.437342,
+    "hub/test/follows.test.ts::in-process follows rejects cycles, non-epic endpoints and invalid kind changes": 0.091755,
+    "hub/test/follows.test.ts::injected final surface lookup revalidates a concurrent follows change before publication": 0.253548,
+    "hub/test/follows.test.ts::injected final surface lookup revalidates a concurrent verdict change before publication": 0.232251,
+    "hub/test/follows.test.ts::injected landings satisfy follows and hold only overlapping follower merges": 0.24682,
+    "hub/test/follows.test.ts::plain task view shows follows met after reopening the tracker store": 0.499417,
     "hub/test/follows.test.ts::plain task view shows follows met after the last merge across a hub restart": 1.694156,
+    "hub/test/follows.test.ts::predecessor closure releases the injected merge hold and satisfies an empty epic": 0.203066,
     "hub/test/freshness.test.ts::Git not answering a verdict write is a typed refusal naming what it could not resolve, and nothing is written": 0.073967,
     "hub/test/freshness.test.ts::a branch the last tip read did not hold is unknown, not stale, until a later read settles it": 0.118251,
     "hub/test/freshness.test.ts::a read that finds a new question with the cache warm and the worker idle starts no git: the work is queued": 0.134666,
@@ -2439,6 +2738,9 @@
     "hub/test/freshness.test.ts::freshness stop drains an active worker before resolving": 0.001118,
     "hub/test/freshness.test.ts::scheduled tip reads cannot starve a foreground refresh when Git is slower than the poll cadence": 0.001526,
     "hub/test/freshness.test.ts::task.list and task.view start no git process; freshness arrives from the cache, then follows a branch that moves": 2.006202,
+    "hub/test/handover-integrity-component.test.ts::a role moved on again before its receiver ever connected: the first holder's claims still follow it to the end of the chain": 0.240983,
+    "hub/test/handover-integrity-component.test.ts::a role moved to a name no session holds yet: its claims follow when a session takes that name": 0.33702,
+    "hub/test/handover-integrity-component.test.ts::a second handover keeps what waited for the first holder: the role state recognises every holder in the chain": 0.123285,
     "hub/test/handover-integrity.test.ts::a hub that dies between a handover's commit and its claims finishes the move at its next start: the role, the notices and the claims, once": 3.181995,
     "hub/test/handover-integrity.test.ts::a role moved on again before its receiver ever connected: the first holder's claims still follow it to the end of the chain": 2.767809,
     "hub/test/handover-integrity.test.ts::a role moved to a name no session holds yet: its claims follow when a session takes that name": 2.465458,
@@ -2458,6 +2760,10 @@
     "hub/test/heartbeat.test.ts::the digest includes running and queued runs and ages timeouts and ended runs without results": 0.035426,
     "hub/test/heartbeat.test.ts::watched review and ready transitions wait a full interval even when a hand edit retains an old updated date": 0.272988,
     "hub/test/hook-bridge-doctor.test.ts::doctor lists and ends only own bridges with missing hub files, preserving existing and ambiguous paths": 2.85847,
+    "hub/test/hub-priority.test.ts::inherited low priority appears in the startup log and CLI diagnostics": 0.214994,
+    "hub/test/hub-status-component.test.ts::full status retains a large fragmented response": 0.241463,
+    "hub/test/hub-status-component.test.ts::inspect and start recognise a serving hub without collecting slow status": 0.045379,
+    "hub/test/hub-status-component.test.ts::status preserves liveness when full status collection times out": 0.017736,
     "hub/test/human-routing.test.ts::a delivery dropped past the TTL moves the stage, and the UI hears it": 0.035073,
     "hub/test/human-routing.test.ts::a known roleless session addressed beside the vacant coordinator role, back as coordinator, clears both deliveries with one ack": 0.037094,
     "hub/test/human-routing.test.ts::a replacement coordinator gets the human message alone: the offline previous holder is not an addressee": 0.117006,
@@ -2472,10 +2778,15 @@
     "hub/test/hygiene.test.ts::a socket that misses two heartbeats is closed and the spoke reconnects with a fresh hello": 3.074033,
     "hub/test/hygiene.test.ts::an oversized message is refused with the size, and nothing is delivered": 0.036552,
     "hub/test/hygiene.test.ts::two agents in a reply loop are muted for the mute time in both directions, and the count starts afresh after it": 0.083718,
+    "hub/test/import-github-lifecycle.test.ts::import-github refuses a native Git project when no hub is running": 0.212067,
+    "hub/test/import-github-unit.test.ts::an issue kind follows its labels as the own-tracker template files them": 0.001038,
     "hub/test/import-github.test.ts::an imported comment cannot forge a comment header or a verdict, even behind leading whitespace": 2.123222,
     "hub/test/import-github.test.ts::an issue kind follows its labels as the own-tracker template files them": 0.000924,
     "hub/test/import-github.test.ts::import-github needs a running hub, and a GitHub repository to read": 3.405325,
+    "hub/test/import-github.test.ts::import-github preserves imported structure and updates through an in-process hub": 0.941939,
+    "hub/test/import-github.test.ts::import-github with an in-process hub explains missing repository selection and GitHub read failures": 0.246557,
     "hub/test/import-github.test.ts::import-github writes items with parents, blockers, comments and the issue reference; a re-run is a no-op; a change updates in place": 3.560761,
+    "hub/test/import-github.test.ts::in-process imports prevent forged comment headers and verdicts behind leading whitespace": 0.40949,
     "hub/test/in-process-spoke.test.ts::MCP initialization reports the root package version served by the project hub": 0.158809,
     "hub/test/in-process-spoke.test.ts::an in-process role-bearing caller reads a task and delivers channel events": 0.145431,
     "hub/test/in-process-spoke.test.ts::closing an in-process channel disposes pending waits without exiting its host": 0.089969,
@@ -2513,12 +2824,14 @@
     "hub/test/init-categories.test.ts::repeat init preserves the item count and category bytes": 0.116232,
     "hub/test/init-categories.test.ts::update provisioning leaves a project without categories": 0.048938,
     "hub/test/init-config.test.ts::merge queue defaults off and round-trips an explicitly enabled boolean": 0.001358,
+    "hub/test/init-config.test.ts::setup account declines reject malformed names": 0.000357,
     "hub/test/init-config.test.ts::setup declines round-trip and reject unknown harness ids": 0.002008,
     "hub/test/init-config.test.ts::this repository enables the merge batch queue while new projects keep it off": 0.000926,
     "hub/test/init-config.test.ts::tracker config accepts peer levels and rejects malformed, duplicate and colliding kind names": 0.000668,
     "hub/test/init-config.test.ts::update keeps setup declines when refreshing the managed config": 0.009014,
     "hub/test/init-config.test.ts::verification commands default empty and refuse non-string values": 0.00088,
     "hub/test/init-config.test.ts::verification commands retain literal shell syntax through the config template": 0.001633,
+    "hub/test/init-config.test.ts::verification settings writer preserves command permutations verbatim": 0.037863,
     "hub/test/init-first-commit.test.ts::a folder with project files receives only cland files in its first commit": 1.021992,
     "hub/test/init-first-commit.test.ts::a root .DS_Store stays out of the first commit on clean dev": 0.844747,
     "hub/test/init-first-commit.test.ts::a second init preserves the first commit and reports nothing to change": 1.476415,
@@ -2583,7 +2896,12 @@
     "hub/test/init.test.ts::init writes tracker levels and update preserves a changed or empty ladder": 0.973619,
     "hub/test/init.test.ts::legacy skill lists migrate only when every retained file has a known hash": 0.059614,
     "hub/test/init.test.ts::provisioning never writes through a symlink: a managed file, AGENTS.md or a parent folder that is a link is kept, its target untouched": 1.493388,
+    "hub/test/inject-stalled.test.ts::a reconnect starts a fresh retry episode after an earlier missing-bridge failure": 0.160183,
+    "hub/test/inject-stalled.test.ts::an hour of failed idle retries backs off with one log per pending message": 0.362596,
+    "hub/test/inject-stalled.test.ts::an idle predating an in-flight inject cannot queue a retry across clock domains": 0.134567,
     "hub/test/inject-stalled.test.ts::confirmation before the threshold cancels the unconfirmed-inject notice": 0.214479,
+    "hub/test/inject-stalled.test.ts::explicit retry of an uncertain delivery clears its earlier failure backoff": 0.185513,
+    "hub/test/inject-stalled.test.ts::reconnect bypasses backoff even during an in-flight failure": 0.3252,
     "hub/test/inject-stalled.test.ts::sustained unconfirmed injection raises one routed notice per session episode": 0.790812,
     "hub/test/item-lead.test.ts::Reviewer reports resolve to the item claimant; unclaimed reports resolve to the Coordinator": 0.296694,
     "hub/test/item-lead.test.ts::a human claim falls back to Coordinator and item addressing preserves ordinary send permissions": 0.072271,
@@ -2610,6 +2928,7 @@
     "hub/test/journal-async.test.ts::daemon stop releases its project lock even when the journal cannot flush": 0.188498,
     "hub/test/journal-async.test.ts::the daemon shares journal continuation costs with dispatch counters shown by hub.status": 0.484289,
     "hub/test/journal-flush.test.ts::a log drain barrier waits, drains again on repetition, and times out while ordinary status stays responsive": 0.028882,
+    "hub/test/journal-flush.test.ts::synchronous control exceptions return failed results and the same connection keeps serving": 0.027783,
     "hub/test/journal-subagents.test.ts::sub-agent lookups use restored and incrementally appended rows without reopening the journal": 0.02,
     "hub/test/launch-admission.test.ts::a launch failing at bad cwd releases its admission reservation": 0.010312,
     "hub/test/launch-admission.test.ts::a launch failing at fresh read releases its admission reservation": 0.010307,
@@ -2671,10 +2990,13 @@
     "hub/test/merge-batches.test.ts::a test-budget-only red pair refuses the member isolated by failing-file reruns": 0.097203,
     "hub/test/merge-batches.test.ts::an aborted original with partial failures holds before diagnostic admission across reopen": 0.026423,
     "hub/test/merge-batches.test.ts::an exit-zero skipped rerun refuses the unresolved batch": 0.062777,
+    "hub/test/merge-batches.test.ts::batch and periodic failing-file selections round-trip to exactly the requested package files": 0.346935,
     "hub/test/merge-batches.test.ts::batch comparison uses the immediate merge allowlist and names the forcing commit": 0.001587,
     "hub/test/merge-batches.test.ts::batch failing-file selections round-trip to exactly the requested package files": 0.346965,
     "hub/test/merge-batches.test.ts::batch load gate repeats only new T3 identities": 0.000273,
     "hub/test/merge-batches.test.ts::batch repeat proof rejects nonpassing or incomplete failure identities": 0.032078,
+    "hub/test/merge-batches.test.ts::batch runs configured tiers default and lands on green": 0.055925,
+    "hub/test/merge-batches.test.ts::batch runs configured tiers T1 and lands on green": 0.059957,
     "hub/test/merge-batches.test.ts::code dev movement rebuilds the green candidate": 0.032983,
     "hub/test/merge-batches.test.ts::diagnostic identity failure holds the batch with omission and Git evidence": 0.048643,
     "hub/test/merge-batches.test.ts::diagnostic result retains every file job tree with seconds and provider cost": 0.061647,
@@ -2683,6 +3005,7 @@
     "hub/test/merge-batches.test.ts::landing refusal drops its member and rebuilds the remainder for new evidence": 0.031562,
     "hub/test/merge-batches.test.ts::leave-one-out preparation uses the original integration base when dev has moved": 0.000639,
     "hub/test/merge-batches.test.ts::merge batch configuration preserves defaults and explicit wait policy": 0.001971,
+    "hub/test/merge-batches.test.ts::merge batches form and land while periodic culprit search awaits its runner": 0.091324,
     "hub/test/merge-batches.test.ts::reopening during a batch run resumes it without duplicate landings": 0.024494,
     "hub/test/merge-batches.test.ts::reopening during diagnosis resumes the collected file sequence without duplicate jobs": 0.071746,
     "hub/test/merge-batches.test.ts::three queued heads run once on a single candidate before landing FIFO": 0.215907,
@@ -2735,14 +3058,26 @@
     "hub/test/merge-queue.test.ts::reviewed code is queued without landing and visible through task view and queue": 0.110791,
     "hub/test/merge-queue.test.ts::startup preserves the durable queue when branch enumeration omits a live ref": 0.419661,
     "hub/test/merge-queue.test.ts::the production batch Git adapter preserves whitespace in unknown paths": 0.003408,
+    "hub/test/merge-recovery-native.test.ts::a published receipt remains landed when local rollback succeeds, and retry repairs the root ref and tree": 2.254587,
+    "hub/test/merge-recovery-native.test.ts::a rejected push with failed rollback remains landed and retry restores the root tree before publication completes": 3.14771,
+    "hub/test/merge-recovery-native.test.ts::deferred cleanup keeps the task branch and worktree if its tip moved after landing": 2.660647,
+    "hub/test/merge-recovery-native.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": 3.132076,
+    "hub/test/merge-recovery-native.test.ts::native worktree and branch cleanup failures remain landed and retry safely": 2.37421,
+    "hub/test/merge-recovery-native.test.ts::restart after local ref movement but before territory push republishes the prepared commit without another squash": 4.742706,
     "hub/test/merge-recovery.test.ts::a close write failure reports merged follow-up failure; retry closes and prunes without a second commit": 4.636518,
     "hub/test/merge-recovery.test.ts::a failed external log sink still returns the landed commit and retries only follow-ups": 0.498657,
     "hub/test/merge-recovery.test.ts::a published receipt remains landed when local rollback succeeds, and retry repairs the root ref and tree": 1.770509,
     "hub/test/merge-recovery.test.ts::a rejected push with failed rollback remains landed and retry restores the root tree before publication completes": 4.018719,
     "hub/test/merge-recovery.test.ts::a verdict whose session changes role while Git resolves uses the role and permissions at its write": 0.438007,
+    "hub/test/merge-recovery.test.ts::component fixture drains cancelled socket startup before removing its root": 0.034046,
+    "hub/test/merge-recovery.test.ts::component fixture drains startup and close failures before removing its root": 0.059115,
     "hub/test/merge-recovery.test.ts::deferred cleanup keeps the task branch and worktree if its tip moved after landing": 4.286555,
     "hub/test/merge-recovery.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": 4.520955,
     "hub/test/merge-recovery.test.ts::foreground merge freshness fan-out after Git is measured as a resumed 400 ms stretch": 0.790601,
+    "hub/test/merge-recovery.test.ts::in-process release and topic closure failures retry only remaining merge steps": 0.22909,
+    "hub/test/merge-recovery.test.ts::in-process verdict writes use the role held after injected Git resolves": 0.120801,
+    "hub/test/merge-recovery.test.ts::injected merge freshness fan-out is measured as a resumed 400 ms stretch": 0.240188,
+    "hub/test/merge-recovery.test.ts::injected merge logging failures retain the landed commit and retry only follow-ups": 0.09731,
     "hub/test/merge-recovery.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": 2.582777,
     "hub/test/merge-recovery.test.ts::restart after local ref movement but before territory push republishes the prepared commit without another squash": 4.393667,
     "hub/test/merge-recovery.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": 3.456362,
@@ -2831,6 +3166,16 @@
     "hub/test/names.test.ts::a spoke refused name-in-use runs generated while the holder lives, and gets its name again once the holder is gone": 0.496834,
     "hub/test/names.test.ts::an unnamed spoke keeps its accepted name across reconnects, even to a hub that lost its memory": 0.087152,
     "hub/test/names.test.ts::rename claims a new name under the rules, and the old name stops resolving": 0.053286,
+    "hub/test/nvim-agents-filters-rules.test.ts::a session named loop excludes another pair’s loop metadata in live entries, frames and spoke history": 0.156593,
+    "hub/test/nvim-agents-filters-rules.test.ts::Agents item and session histories retain claims, releases and bound-topic notices": 0.341008,
+    "hub/test/nvim-artifacts-rules.test.ts::an agent artifact keeps its placement after reopening the store": 0.244359,
+    "hub/test/nvim-artifacts-rules.test.ts::artifact CLI creates diagram and page files without changing source bytes": 0.351687,
+    "hub/test/nvim-artifacts-rules.test.ts::closed-topic artifacts retain deleted-file metadata on store reopen": 0.12768,
+    "hub/test/nvim-artifacts-rules.test.ts::Coordinator artifacts publish in Agents": 0.08448,
+    "hub/test/nvim-artifacts-rules.test.ts::moved artifact ids resolve after reopening their index": 0.075429,
+    "hub/test/nvim-artifacts-rules.test.ts::promoting an artifact writes its project file": 0.194176,
+    "hub/test/nvim-artifacts-rules.test.ts::prompt sending delivers the saved bytes to the Coordinator": 0.091349,
+    "hub/test/nvim-crew-rules.test.ts::sessions header follows crew CLI and hand edits, retaining the last good summary on refusal and refresh": 0.471002,
     "hub/test/nvim-fixture-boundary.test.ts::T2 Neovim import closures contain no hub runtime or harness": 0.056683,
     "hub/test/nvim-fixture-boundary.test.ts::a per-file catalog retains complete requested frames and refuses a missing recording": 0.000985,
     "hub/test/nvim-fixture-boundary.test.ts::a planted hub frame change fails recorder drift until the fixtures are rewritten": 0.005564,
@@ -2838,6 +3183,23 @@
     "hub/test/nvim-fixture-boundary.test.ts::an unmatched recording names its operation and protocol request": 0.199222,
     "hub/test/nvim-fixture-boundary.test.ts::recordings bind transient paths and times while retaining their original wire values": 0.012166,
     "hub/test/nvim-fixture-boundary.test.ts::timestamp occurrences keep the same key across coincident and adjacent clock ticks": 0.000741,
+    "hub/test/nvim-frame-consumers.test.ts::full refresh follows lazy imports through a cyclic helper graph": 0.003526,
+    "hub/test/nvim-frame-consumers.test.ts::full refresh ignores comment mentions of the stub filename": 0.001483,
+    "hub/test/nvim-frame-consumers.test.ts::full refresh includes a helper-only fixture consumer": 0.015805,
+    "hub/test/nvim-inbox-requests-rules.test.ts::the chip equals cland inbox before and after an Aide review request is replied to": 0.774541,
+    "hub/test/nvim-item-prefixes-rules.test.ts::old ids in topics, inbox and journal open migrated items through a reopened store": 0.781887,
+    "hub/test/nvim-items-rules.test.ts::an injected Lead launch claims its epic": 0.276335,
+    "hub/test/nvim-items-rules.test.ts::changed Git facts stale hub verdicts while retaining file provenance": 0.45132,
+    "hub/test/nvim-items-rules.test.ts::closed container and task state survives tracker projection": 0.201211,
+    "hub/test/nvim-items-rules.test.ts::configured kinds receive canonical ids in tracker snapshots": 0.109828,
+    "hub/test/nvim-items-rules.test.ts::the tracker indexes hand-written files and saved titles within one second": 0.865756,
+    "hub/test/nvim-needs-you-rules.test.ts::needs-you chip and both inbox views agree: defaults with events": 0.380159,
+    "hub/test/nvim-needs-you-rules.test.ts::needs-you chip and both inbox views agree: events raised to Now": 0.221055,
+    "hub/test/nvim-needs-you-rules.test.ts::needs-you chip and both inbox views agree: responses in Watch, Background and Archive with Now events": 0.198295,
+    "hub/test/nvim-sessions-rules.test.ts::hard-limit account marks and their clearance are pushed by the injected adapter host": 0.106752,
+    "hub/test/nvim-sessions-rules.test.ts::source windows preserve severity and named/default identity through session signals": 0.076491,
+    "hub/test/nvim-sessions-rules.test.ts::verifier hold release preserves an independent item claim": 0.381014,
+    "hub/test/nvim-sessions-rules.test.ts::weekly account readings are published through pushes without re-reading the UI snapshot": 0.102458,
     "hub/test/open.test.ts::cland open from a subdirectory starts the project hub, then the launcher on the project root": 2.260321,
     "hub/test/open.test.ts::cland open hints at unfinished setup before launching on the root": 1.541903,
     "hub/test/open.test.ts::cland open refuses a scratch folder without writing or launching": 0.98262,
@@ -2929,27 +3291,51 @@
     "hub/test/plan-approval-reload.test.ts::config set gates plans created before or after a live approval change": 0.76215,
     "hub/test/plan-approval-reload.test.ts::hub reload applies approval while a QA default edit retains the last good gate": 0.632433,
     "hub/test/plan-approval.test.ts::approval none is the default; no-plan and broken-plan approvals refuse": 0.887743,
+    "hub/test/plan-approval.test.ts::approval none is the default; no-plan and broken-plan approvals refuse (in-process)": 0.124874,
     "hub/test/plan-approval.test.ts::draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives restart": 6.78549,
+    "hub/test/plan-approval.test.ts::draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives store reopen (in-process)": 1.269361,
     "hub/test/plan-approval.test.ts::the inbox sees a refused plan recover when its missing child is created": 1.109104,
+    "hub/test/plan-approval.test.ts::the inbox sees a refused plan recover when its missing child is created (in-process)": 0.282545,
     "hub/test/plan-gate.test.ts::interrupted migration keeps retired fallback warnings in files, retry response and journal across restart": 3.524952,
+    "hub/test/plan-gate.test.ts::interrupted migration keeps retired fallback warnings in files, retry response and journal across store reopen (in-process)": 0.541144,
     "hub/test/plan-gate.test.ts::migration preserves plan QA overrides, reports fallback ids and retires labels idempotently": 1.544777,
+    "hub/test/plan-gate.test.ts::migration preserves plan QA overrides, reports fallback ids and retires labels idempotently (in-process)": 0.554235,
+    "hub/test/plan-gate.test.ts::plan fixture queue uses injected compatibility facts instead of native owner probes (in-process)": 0.036135,
     "hub/test/plan-gate.test.ts::plan overrides and QA-specific criteria invalidate ready; reviewer marks cannot replace QA": 2.575462,
+    "hub/test/plan-gate.test.ts::plan overrides and QA-specific criteria invalidate ready; reviewer marks cannot replace QA (in-process)": 0.492726,
     "hub/test/plan-gate.test.ts::stage affected/per-item: ready agrees with merge": 1.557407,
+    "hub/test/plan-gate.test.ts::stage affected/per-item: ready agrees with merge (in-process)": 0.218916,
     "hub/test/plan-gate.test.ts::stage full/after-stage: ready agrees with merge": 1.38391,
+    "hub/test/plan-gate.test.ts::stage full/after-stage: ready agrees with merge (in-process)": 0.202506,
     "hub/test/plan-gate.test.ts::stage full/per-item: ready agrees with merge": 1.55156,
+    "hub/test/plan-gate.test.ts::stage full/per-item: ready agrees with merge (in-process)": 0.233053,
     "hub/test/plan-gate.test.ts::stage none/per-item: ready agrees with merge": 1.884667,
+    "hub/test/plan-gate.test.ts::stage none/per-item: ready agrees with merge (in-process)": 0.367998,
     "hub/test/plan-gate.test.ts::tool and hand-edited ancestor moves recheck descendant ready under the new default": 1.711006,
+    "hub/test/plan-gate.test.ts::tool and hand-edited ancestor moves recheck descendant ready under the new default (in-process)": 0.506999,
+    "hub/test/planned-stage.test.ts::a hand status save during a deferred planned write wins and stays through later recomputes (in-process)": 0.720072,
+    "hub/test/planned-stage.test.ts::a late in-place save after the publication hash read retains its status and source (in-process)": 0.119158,
+    "hub/test/planned-stage.test.ts::an indexed refused candidate recovers when its containing feature is reparented (in-process)": 0.18181,
     "hub/test/planned-stage.test.ts::CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across restart": 3.588273,
     "hub/test/planned-stage.test.ts::a hand status save during a deferred planned write wins and stays through later recomputes": 1.139948,
     "hub/test/planned-stage.test.ts::a late in-place save after the publication hash read retains its status and source": 0.224834,
     "hub/test/planned-stage.test.ts::an indexed refused candidate recovers when its containing feature is reparented": 0.215657,
+    "hub/test/planned-stage.test.ts::CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across store reopen (in-process)": 0.972877,
     "hub/test/planned-stage.test.ts::closed epic stages read closed without task writes; reopening restores derived stages": 0.691606,
+    "hub/test/planned-stage.test.ts::closed epic stages read closed without task writes; reopening restores derived stages (in-process)": 0.488985,
     "hub/test/planned-stage.test.ts::landing stage one advances stage two": 3.366643,
+    "hub/test/planned-stage.test.ts::landing stage one advances stage two (in-process)": 0.631771,
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA": 5.84233,
+    "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA (in-process)": 0.675755,
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA with platform receipts bound after startup checks": 3.828962,
+    "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA with platform receipts bound after startup checks (in-process)": 0.494678,
     "hub/test/planned-stage.test.ts::pending approval moves nothing; approval moves backlog tasks and journals one subscribed status event each": 1.356486,
+    "hub/test/planned-stage.test.ts::pending approval moves nothing; approval moves backlog tasks and journals one subscribed status event each (in-process)": 0.593044,
+    "hub/test/planned-stage.test.ts::plan fixture drains startup failure, held cancellation and close failure before root removal (in-process)": 0.067071,
     "hub/test/planned-stage.test.ts::stage landing and ten close frames keep a fixed query budget with unrelated items and plans": 5.013735,
+    "hub/test/planned-stage.test.ts::stage landing and ten close frames keep a fixed query budget with unrelated items and plans (in-process)": 1.339956,
     "hub/test/planned-stage.test.ts::valid hand plans and offline plan changes move only newly joined current-stage tasks": 2.771393,
+    "hub/test/planned-stage.test.ts::valid hand plans and offline plan changes move only newly joined current-stage tasks (in-process)": 0.176304,
     "hub/test/prepare-key.test.ts::absent prepare parts compare as none and become stale only when added or removed": 0.000402,
     "hub/test/prepare-key.test.ts::four-part prepare keys retain the existing snapshot hash": 0.003531,
     "hub/test/prepared-project.test.ts::prepared projects own their refs, index, config, hooks, worktrees, objects and hub state": 4.827133,
@@ -2982,6 +3368,7 @@
     "hub/test/process-cleanup.test.ts::owned teardown preserves failures while disposing every resource and directory": 0.123125,
     "hub/test/process-cleanup.test.ts::owned teardown stops a live tracker before removing its project": 0.285716,
     "hub/test/process-cleanup.test.ts::recorded cleanup verifies seeds and descendants without machine-wide inspection": 0.129117,
+    "hub/test/process-cleanup.test.ts::scratch-root cleanup preserves a historical PID reused outside the fixture and stops its current writers": 0.117933,
     "hub/test/process-cleanup.test.ts::signal recovery preserves replacement identities while reaping unrecorded fixture writers": 0.137227,
     "hub/test/process-cleanup.test.ts::the phase sweep captures an owned group member born after discovery without a second machine listing": 0.13034,
     "hub/test/process-started.test.ts::a failed identity batch provides no proof and the next read retries": 0.082668,
@@ -3000,11 +3387,16 @@
     "hub/test/project-clock.test.ts::projectHub delivers a heartbeat only after its clock reaches the interval": 0.162899,
     "hub/test/project-clock.test.ts::projectHub drops store-and-forward delivery after the injected TTL": 0.094549,
     "hub/test/project-clock.test.ts::projectHub forgets remembered presence status after the injected TTL": 0.106926,
+    "hub/test/project-hub-lifecycle.test.ts::nativeProjectHub: CLI, spoke, Unix socket and WebSocket share the project": 0.853317,
+    "hub/test/project-hub-lifecycle.test.ts::projectHub cleanup detects a timer retained during a direct dispatcher request": 0.886576,
+    "hub/test/project-hub-lifecycle.test.ts::projectHub cleanup fails when a hub timer is deliberately retained": 0.853473,
+    "hub/test/project-hub-lifecycle.test.ts::startDaemon: CLI, spoke, Unix socket and WebSocket share the project": 1.552519,
     "hub/test/project-hub.test.ts::nativeProjectHub: CLI, spoke, Unix socket and WebSocket share the project": 1.104421,
     "hub/test/project-hub.test.ts::projectHub cleanup detects a timer retained during a direct dispatcher request": 1.07161,
     "hub/test/project-hub.test.ts::projectHub cleanup fails when a hub timer is deliberately retained": 1.103926,
     "hub/test/project-hub.test.ts::startDaemon: CLI, spoke, Unix socket and WebSocket share the project": 2.213352,
     "hub/test/project-hub.test.ts::two project hubs keep their adapter timing environments independent": 6.390261,
+    "hub/test/project-hub.test.ts::two project hubs keep their adapter timing environments independent under injected scheduling": 0.29541,
     "hub/test/project-probes.test.ts::importing the project harness starts zero child processes": 0.494301,
     "hub/test/project-probes.test.ts::projectHub defaults launch, signal and stop every harness with zero child processes": 0.299634,
     "hub/test/prompt-races.test.ts::artifact creation rechecks its topic after deferred file preparation and frees its id on refusal": 0.017665,
@@ -3026,6 +3418,7 @@
     "hub/test/push.test.ts::push refuses pending landed merge or checkout recovery but permits a fully rolled-back preparation": 0.436589,
     "hub/test/push.test.ts::record and lock-release failures after publication report successful push with follow-up; retry remains idempotent": 0.243366,
     "hub/test/push.test.ts::rejected publication, pending recovery and wrong checkout leave all refs and root work untouched; retry publishes": 1.16277,
+    "hub/test/push.test.ts::the onboarding Aide pushes its committed dev to the territory through its own shell": 0.608825,
     "hub/test/quarantine-runner.test.ts::a parent admission timeout cannot attach its earlier failed child to a later quarantined pass": 0.578925,
     "hub/test/quarantine-runner.test.ts::a process crash remains red even after a quarantined test failed": 0.795844,
     "hub/test/quarantine-runner.test.ts::a quarantined failure still runs, reports separately and leaves the run green": 0.570688,
@@ -3047,6 +3440,7 @@
     "hub/test/release-item.test.ts::lock cleanup failure after item closure retains the receipt for a same-item retry": 0.710452,
     "hub/test/release-item.test.ts::release from an item names non-release items, mismatched versions and open descendants": 0.358994,
     "hub/test/release-item.test.ts::release from an item refuses a missing version through the protocol and CLI without changing refs or the item": 0.200232,
+    "hub/test/release-t3-component.test.ts::release dry-run and publication require green T3 at the pinned release tree": 0.590474,
     "hub/test/release.test.ts::a fully rolled-back merge preparation does not prevent sync or a later merge": 2.729288,
     "hub/test/release.test.ts::a lost successful GitHub push reply recovers from its receipt even after the unreferenced tag object is pruned": 2.151832,
     "hub/test/release.test.ts::a rejected atomic GitHub push retains main and tags and reports the remote hook message": 2.02651,
@@ -3058,6 +3452,7 @@
     "hub/test/release.test.ts::only the human and the Coordinator shell release; Implementer, Reviewer and QA shells cannot impersonate them": 4.419035,
     "hub/test/release.test.ts::post-merge topic discussion permits CLI sync without reviving the task or its worktree": 2.117901,
     "hub/test/release.test.ts::release checks the committed dev package version before preview or publication": 1.454127,
+    "hub/test/release.test.ts::release consumes genuine verification tree receipts across committed tracker and rulebook changes": 1.540696,
     "hub/test/release.test.ts::release permits a package without a version key": 0.548957,
     "hub/test/release.test.ts::release publishes the recorded master default without creating main": 2.168917,
     "hub/test/release.test.ts::release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits": 3.877361,
@@ -3094,6 +3489,14 @@
     "hub/test/request-guard.test.ts::session stop: 200 ms publication plus 200 ms lifecycle work after an adapter await is timed once as resumed": 0.456529,
     "hub/test/request-guard.test.ts::session stop: 400 ms publication after an adapter await is timed once as resumed": 0.458053,
     "hub/test/request-guard.test.ts::waiting for async Git is a slow-answer with its own counter, without a slow-request": 0.222307,
+    "hub/test/resilience-component.test.ts::a first frame that is not a hello, or not a frame at all, is refused as bad-hello": 0.014283,
+    "hub/test/resilience-component.test.ts::a hello with another protocol version is refused with the fix named": 0.023343,
+    "hub/test/resilience-component.test.ts::a hub that takes the connection but never welcomes it is left at the welcome deadline, and the spoke reconnects": 0.003719,
+    "hub/test/resilience-component.test.ts::a request the hub never answers fails at its deadline instead of hanging the tool call": 0.009534,
+    "hub/test/resilience-component.test.ts::a spoke acks every deliver and hands a message re-sent under the same id to its session once": 0.087453,
+    "hub/test/resilience-component.test.ts::a spoke whose heartbeats go unanswered closes the connection and reconnects": 0.019029,
+    "hub/test/resilience-component.test.ts::a spoke with the wrong secret keeps running and its tools say the secret was refused": 0.067079,
+    "hub/test/resilience-component.test.ts::hello is answered by welcome with the name and the presence table; an unknown request type is a failed result, not a close": 0.017025,
     "hub/test/resilience.test.ts::a first frame that is not a hello, or not a frame at all, is refused as bad-hello": 0.023627,
     "hub/test/resilience.test.ts::a hello with another protocol version is refused with the fix named": 0.042507,
     "hub/test/resilience.test.ts::a hub that takes the connection but never welcomes it is left at the welcome deadline, and the spoke reconnects": 0.844724,
@@ -3130,6 +3533,7 @@
     "hub/test/roles-component.test.ts::Coordinator is exclusive: a second assignment is refused with the reason; clearing the only holder raises the vacancy in one event": 0.848058,
     "hub/test/roles-component.test.ts::a session with no role is refused at hello; the role the human assigns delivers its clause, and every reconnect delivers it again": 0.554211,
     "hub/test/roles-component.test.ts::crew clauses describe category filing and the Aide speaking for the human": 0.291578,
+    "hub/test/roles-component.test.ts::role clauses and launch instructions omit unavailable skills and retain project-owned skills": 0.174997,
     "hub/test/roles-component.test.ts::roles.toml: approval, sandbox, writable_roots and network of a launch are parsed, defaulted and checked (T-48)": 0.007597,
     "hub/test/roles-editor.test.ts::a launch value can be cleared and its trailing comment explicitly replaced or removed": 0.000567,
     "hub/test/roles-editor.test.ts::a missing key is inserted inside its table and a missing launch table follows the role tables": 0.000522,
@@ -3144,6 +3548,9 @@
     "hub/test/roles-editor.test.ts::the Aide migration retains multiline grant comments regardless of table order": 0.003239,
     "hub/test/roles-editor.test.ts::the writer atomically replaces the file and refuses a change made after its caller read it": 0.007781,
     "hub/test/roles-editor.test.ts::tools gains grants in caller order and replaces the complete multiline value": 0.000428,
+    "hub/test/roles-harnesses.test.ts::no roles file requires no particular harness or account lookup": 0.000142,
+    "hub/test/roles-harnesses.test.ts::omitted role launch harnesses take the built-in defaults": 0.000245,
+    "hub/test/roles-harnesses.test.ts::role harness requirements include named accounts but exclude unused accounts": 0.008319,
     "hub/test/roles-launch-permissions.test.ts::roles accept auto, skip and the harness permission settings": 0.002806,
     "hub/test/roles-launch-permissions.test.ts::the template explains auto permission mode in its header": 0.000268,
     "hub/test/roles-launch-permissions.test.ts::unknown permission values name all three accepted settings": 0.001413,
@@ -3223,11 +3630,16 @@
     "hub/test/session-archive.test.ts::migration retains old stopped rows without reading the journal, and name reuse clears archive metadata": 0.006621,
     "hub/test/session-archive.test.ts::prune CLI and Coordinator tool delete only old archived records and retain the journal": 0.575385,
     "hub/test/session-archive.test.ts::prune compares stop age even for recently archived rows, keeps young and unarchived rows, and rejects invalid durations": 0.376717,
+    "hub/test/session-async-processes-lifecycle.test.ts::production CLI with file-backed stderr sends request audits through the async file logger": 1.091181,
+    "hub/test/session-async-processes-lifecycle.test.ts::session launch, list, resume, relaunch and stop spawn no synchronous process": 2.132356,
     "hub/test/session-async-processes.test.ts::claim-conflict cleanup counts harness-ended logging as one resumed slow request": 1.719978,
+    "hub/test/session-async-processes.test.ts::in-process claim-race cleanup logs one resumed slow request for harness completion": 0.057247,
+    "hub/test/session-async-processes.test.ts::in-process dispatch avoids synchronous filesystem and process calls for allowed or refused requests": 0.236269,
     "hub/test/session-async-processes.test.ts::production CLI with file-backed stderr sends request audits through the async file logger": 1.123407,
     "hub/test/session-async-processes.test.ts::session launch, list, resume, relaunch and stop spawn no synchronous process": 2.113926,
     "hub/test/session-async-processes.test.ts::session stop counts post-await harness-ended logging as resumed work": 1.718322,
     "hub/test/session-async-processes.test.ts::shared permission gate, read/refusal dispatch and audit logging use no synchronous filesystem or process calls": 0.247319,
+    "hub/test/session-async-processes.test.ts::stopping an in-process session projects post-await harness logging into status request counters": 0.028195,
     "hub/test/session-brief-component.test.ts::a launch brief follows welcome and clause, uses ordinary stages, and is not recreated on reconnect or restart": 0.18414,
     "hub/test/session-brief-component.test.ts::a launch brief survives a hub restart before its first hello and is delivered in the first input once": 0.040565,
     "hub/test/session-brief-component.test.ts::a launch refused by brief publication cannot feed its brief to a successful same-name retry": 0.023097,
@@ -3236,6 +3648,8 @@
     "hub/test/session-brief-component.test.ts::an unacknowledged brief retries after the current clause without the superseded launch role": 0.086334,
     "hub/test/session-brief.test.ts::a brief accepted in the native first turn before hello stays injected after a hub restart": 0.081333,
     "hub/test/session-brief.test.ts::a brief cancellation error cannot skip the owned-process stop after a watch refusal": 5.073413,
+    "hub/test/session-cwd.test.ts::Codex diagnoses a missing cwd before probing its binary": 0.007118,
+    "hub/test/session-cwd.test.ts::relaunch refuses a removed cwd with a fresh launch suggestion only for an open item": 0.05777,
     "hub/test/session-events-component.test.ts::presence events follow hello, status, role, rename and the last spoke leaving": 0.103462,
     "hub/test/session-events.test.ts::process rows publish launch, model, role, rename, exit and stop; usage bursts publish latest totals per session": 8.216243,
     "hub/test/session-events.test.ts::rename before the spoke welcome waits; after welcome its process event survives a held transport": 0.460516,
@@ -3252,8 +3666,11 @@
     "hub/test/session-launch-component.test.ts::explicit and preassigned roles compose a clause before a one-time brief": 0.191614,
     "hub/test/session-launch-component.test.ts::folder entries and absorbed-file ids resolve launch briefs on the SpawnRequest": 0.124928,
     "hub/test/session-launch-component.test.ts::launch resolves an artifact brief at launch and refuses an unknown artifact before starting a harness": 0.242316,
+    "hub/test/session-launch-lifecycle.test.ts::a Coordinator launches an Implementer with a launch brief exactly once after its role clause, without inherited launch environment (explicit role)": 3.600154,
     "hub/test/session-launch.test.ts::a Coordinator launches an Implementer with a launch brief exactly once after its role clause, without inherited launch environment (explicit role)": 3.705138,
     "hub/test/session-launch.test.ts::cland session launch forwards text and artifact briefs": 3.126192,
+    "hub/test/session-launch.test.ts::in-process launch carries the Implementer clause and brief exactly once": 0.237584,
+    "hub/test/session-launch.test.ts::launch CLI resolves text and artifact briefs through an injected harness": 0.33211,
     "hub/test/session-model.test.ts::first reported model is journalled once for explicit and default launches across flavours": 0.410426,
     "hub/test/session-model.test.ts::live, fresh and native resume journal their launch model across flavours": 0.337875,
     "hub/test/session-model.test.ts::model changes journal once with their launch identity across flavours": 0.15336,
@@ -3272,6 +3689,8 @@
     "hub/test/session-resume-component.test.ts::native and fresh resumes report unavailable claims, closed work, exclusive roles and holds": 1.350808,
     "hub/test/session-resume.test.ts::a refused Codex resume offers and launches fresh with its recorded artifact id brief": 4.103667,
     "hub/test/session-resume.test.ts::a stopped Claude Implementer resumes its conversation, role and item claim and receives its clause again": 4.39951,
+    "hub/test/session-resume.test.ts::in-process Claude resume restores role, item claim and clause": 0.296106,
+    "hub/test/session-resume.test.ts::refused in-process Codex resume offers a fresh conversation with its artifact brief": 0.379876,
     "hub/test/session-stop-races-cleanup.test.ts::held stop cleanup survives assertion failure and test-runner cancellation": 3.077361,
     "hub/test/session-stop-races-component.test.ts::manual stops remain stopped across graceful and forced completion": 0.421618,
     "hub/test/session-stop-races.test.ts::Codex: manual forced stop succeeds when a captured descendant exits before its final identity probe": 2.272379,
@@ -3285,6 +3704,14 @@
     "hub/test/session-usage.test.ts::relaunch and harness exit each retain exactly one final snapshot across flavours": 0.190925,
     "hub/test/session-usage.test.ts::stop captures pending usage before publication and leaves quiet sessions silent across flavours": 0.221517,
     "hub/test/session-usage.test.ts::usage bursts coalesce while a changed limit journals independently across flavours": 0.153761,
+    "hub/test/setup-accounts.test.ts::a malformed registry fails untouched before reading a profile": 0.002066,
+    "hub/test/setup-accounts.test.ts::Claude status shows email and organisation only for signed-in profiles": 0.000383,
+    "hub/test/setup-accounts.test.ts::Codex identity ends its one app-server process group on return or failure (C6)": 0.003104,
+    "hub/test/setup-accounts.test.ts::Codex identity initialization timeout still ends its process group": 0.002274,
+    "hub/test/setup-accounts.test.ts::default directories and the hub environment never become Claude entries (C1 C4)": 0.006078,
+    "hub/test/setup-accounts.test.ts::Enter declines a new account and the next run reports the remembered name (C2)": 0.013804,
+    "hub/test/setup-accounts.test.ts::no-accounts reads nothing and nonterminal yes leaves the registry absent (C5)": 0.004216,
+    "hub/test/setup-accounts.test.ts::only separate signed-in directories are offered and appended without identity data (C1 C3 C4)": 0.017531,
     "hub/test/setup-cli.test.ts::setup --install codex runs without a terminal or question": 0.007488,
     "hub/test/setup-cli.test.ts::setup JSON explicit installer reserves stdout for its report": 0.003345,
     "hub/test/setup-cli.test.ts::setup JSON is one report on stdout with nonterminal narration on stderr": 0.038065,
@@ -3292,11 +3719,14 @@
     "hub/test/setup-cli.test.ts::setup keeps the explicit root and rejects discovered parents or extra flags": 0.0045,
     "hub/test/setup-cli.test.ts::setup refuses HOME through the CLI and its usage appears in help": 0.418302,
     "hub/test/setup-cli.test.ts::setup retains the CLI root spelling for Codex trust": 0.005905,
+    "hub/test/setup-favourite.test.ts::a Claude-only template gets the Codex aide sandbox when Codex becomes the favourite": 0.08566,
     "hub/test/setup-favourite.test.ts::a marked installed favourite reruns ok without asking or changing bytes": 0.005701,
     "hub/test/setup-favourite.test.ts::a single installed harness is chosen without a question with its own launch defaults": 0.010837,
     "hub/test/setup-favourite.test.ts::an explicit favourite leaves missing trust open without yes": 0.004281,
     "hub/test/setup-favourite.test.ts::an explicit install can supply the favourite selected in the same JSON setup run": 0.004579,
     "hub/test/setup-favourite.test.ts::choosing Codex changes only the three aide launch lines and marks setup complete": 0.020977,
+    "hub/test/setup-favourite.test.ts::choosing Codex preserves every explicit aide sandbox choice": 0.301977,
+    "hub/test/setup-favourite.test.ts::choosing Codex updates the aide launch defaults and marks setup complete": 0.021124,
     "hub/test/setup-favourite.test.ts::ending input at the favourite question cancels setup without a write": 0.002537,
     "hub/test/setup-favourite.test.ts::invalid roles fail with repair guidance without changing the file": 0.00456,
     "hub/test/setup-favourite.test.ts::nonterminal detection and unavailable explicit choices leave roles untouched": 0.004136,
@@ -3305,15 +3735,45 @@
     "hub/test/setup-favourite.test.ts::yes uses the first installed choice and explicit harness overrides a marked favourite": 0.004524,
     "hub/test/setup-flow.test.ts::a declined installer persists across setup runs until an explicit install": 0.018393,
     "hub/test/setup-flow.test.ts::a missing project stops setup before probing harnesses": 0.000777,
+    "hub/test/setup-flow.test.ts::a signed-out login offers exactly one retry and the fresh result decides failure": 0.007592,
     "hub/test/setup-flow.test.ts::all steps ok exits zero and points to cland; installer folders explain PATH": 0.003111,
+    "hub/test/setup-flow.test.ts::Claude Code and Codex login inherit the launch profile unchanged": 0.009633,
+    "hub/test/setup-flow.test.ts::Claude Code login uses a fresh check to decide done after the terminal command": 0.003667,
     "hub/test/setup-flow.test.ts::install rebuilds only the exact roles template for the installed set": 0.026686,
     "hub/test/setup-flow.test.ts::installing Codex uses the terminal runner and its re-check decides done or fail": 0.014254,
+    "hub/test/setup-flow.test.ts::login commands preserve the probed executable for explicit harness overrides": 0.007467,
+    "hub/test/setup-flow.test.ts::login probe errors retain their detail with the exact login command": 0.00521,
     "hub/test/setup-flow.test.ts::login probe-error hints preserve their instruction prose": 0.001753,
     "hub/test/setup-flow.test.ts::no installed harness makes every installer open; one installed makes missing ones skip": 0.001897,
     "hub/test/setup-flow.test.ts::nonterminal detection and --yes never install or record a decline": 0.00392,
+    "hub/test/setup-flow.test.ts::OpenCode login defaults to No and uses cland database after creating its folder": 0.004031,
+    "hub/test/setup-flow.test.ts::setup keeps an installer open when a role requires the missing harness": 0.002918,
+    "hub/test/setup-flow.test.ts::setup login requirements follow the project roles": 0.002616,
     "hub/test/setup-flow.test.ts::setup reports project, harnesses and installed logins in order without asking": 0.00269,
+    "hub/test/setup-flow.test.ts::signed-out Codex unused by any role has only a skip line without a login offer": 0.003268,
     "hub/test/setup-flow.test.ts::the first installed harness makes missing alternatives optional in the final report": 0.001952,
+    "hub/test/setup-flow.test.ts::without a terminal login reports exact commands without running even with yes": 0.005443,
+    "hub/test/setup-flow.test.ts::yes in a terminal still asks the login question and a decline skips with the command": 0.003021,
+    "hub/test/setup-handover.test.ts::--attach prints the hub command before pausing and only runs it after Enter": 0.000537,
+    "hub/test/setup-handover.test.ts::a failed launcher prints the attach alternative before the closing line": 0.000329,
+    "hub/test/setup-handover.test.ts::an attach failure still prints the stop and workbench hints": 0.000656,
+    "hub/test/setup-handover.test.ts::closing commands use this entry when PATH names another checkout or has no cland": 0.002285,
+    "hub/test/setup-handover.test.ts::Ctrl+D at the attach pause leaves the Aide running without a terminal child": 0.000285,
+    "hub/test/setup-handover.test.ts::each interactive handover opens the workbench on aide-1 before one closing line": 0.002604,
+    "hub/test/setup-handover.test.ts::no terminal, no-aide or no running Aide ends with the open hint without handover": 0.000393,
+    "hub/test/setup-handover.test.ts::setup CLI hands over after the summary on each run, including --attach": 0.03956,
+    "hub/test/setup-handover.test.ts::without an override the handover uses the pinned workbench launcher": 0.0003,
+    "hub/test/setup-hub-component.test.ts::setup launches aide-1 through the real hub with the onboarding brief": 0.148531,
+    "hub/test/setup-hub.test.ts::a running Aide is reused; a stopped Aide resumes its conversation": 0.001156,
+    "hub/test/setup-hub.test.ts::failures retain the startup log tail or equivalent session recovery command": 0.004005,
+    "hub/test/setup-hub.test.ts::no-aide skips both steps; nonterminal policy permits only a yes hub start": 0.001814,
+    "hub/test/setup-hub.test.ts::nonterminal setup detects a running hub and Aide without writes or launches": 0.001042,
+    "hub/test/setup-hub.test.ts::project-kind classification excludes cland paths and macOS metadata": 0.000433,
+    "hub/test/setup-hub.test.ts::starts the hub then launches the favourite with the exact empty-project onboarding brief": 0.00827,
+    "hub/test/setup-hub.test.ts::the ordered setup flow reruns without starting another hub or Aide": 0.068769,
     "hub/test/setup-machine.test.ts::setup machine keeps inherited harness state untouched": 11.42698,
+    "hub/test/setup-project-kind.test.ts::an unavailable Git inventory falls back to root entries without counting .git": 0.003587,
+    "hub/test/setup-project-kind.test.ts::project kind counts untracked project files and excludes ignored files": 0.004269,
     "hub/test/setup-prompter.test.ts::choose accepts a number or value, defaults on Enter and repeats invalid answers": 0.001451,
     "hub/test/setup-prompter.test.ts::confirm accepts yes or no, defaults on Enter and repeats invalid answers": 0.005233,
     "hub/test/setup-prompter.test.ts::end of input cancels the active question and every later question": 0.003834,
@@ -3353,6 +3813,12 @@
     "hub/test/skills-onboarding.test.ts::the onboarding Aide sets human epic plan approval through the config CLI": 0.333145,
     "hub/test/skills-onboarding.test.ts::the onboarding command check rejects unknown commands and config keys": 0.000807,
     "hub/test/skills-onboarding.test.ts::the onboarding tour has eight stages ending with Look now": 0.001393,
+    "hub/test/skills-qa-catalogue.test.ts::default QA roles include the skill and matching self-contained briefs": 0.013024,
+    "hub/test/skills-qa-catalogue.test.ts::QA aside policy routes findings to the Coordinator and Bugs category": 0.001794,
+    "hub/test/skills-qa-catalogue.test.ts::QA briefs resolve the build at the current tip and block mismatched requests": 0.001442,
+    "hub/test/skills-qa-catalogue.test.ts::QA skill documents recovery and both evidence directory failures": 0.000939,
+    "hub/test/skills-qa-catalogue.test.ts::shipped QA cases declare complete ordered catalogue headers": 0.025723,
+    "hub/test/skills-qa.test.ts::QA filing CLI creates aside findings under the Bugs category": 0.529742,
     "hub/test/skills-qa.test.ts::QA findings outside the tested item are filed into Bugs by the Coordinator": 1.429214,
     "hub/test/skills-qa.test.ts::a brief of two cases: runs.jsonl gets one full line per case, a BLOCKED case makes the verdict not clear and names it, the item shows it": 3.007501,
     "hub/test/skills-qa.test.ts::a line that cannot be serialized is never appended: exit 70, the outcome and the captures named on stderr, the captures kept": 1.026648,
@@ -3361,6 +3827,17 @@
     "hub/test/skills-qa.test.ts::a verdict that fails after the lines are appended leaves the lines; the verdict is written again with the same run, and the cases are not rerun": 3.14049,
     "hub/test/skills-qa.test.ts::every shipped case opens with its catalogue header: id (the file name), title, preconditions, expected, since, regression": 0.010366,
     "hub/test/skills-qa.test.ts::ids that could leave the evidence tree or name nothing are refused before anything is written": 0.164371,
+    "hub/test/skills-qa.test.ts::QA partial recovery retains only the good line and names each loss": 0.116888,
+    "hub/test/skills-qa.test.ts::QA recorder names temporary evidence and the rescue session": 0.185804,
+    "hub/test/skills-qa.test.ts::QA recorder preserves spaces and glob characters in evidence paths": 0.347977,
+    "hub/test/skills-qa.test.ts::QA recorder preserves two case receipts and publishes their blocked verdict": 0.979432,
+    "hub/test/skills-qa.test.ts::QA recorder prints an unwritable rescue receipt and refuses bad arguments": 0.059338,
+    "hub/test/skills-qa.test.ts::QA recorder rejects unsafe identifiers before writing evidence": 0.291669,
+    "hub/test/skills-qa.test.ts::QA recovery directory failure preserves all source captures and receipts": 0.017576,
+    "hub/test/skills-qa.test.ts::QA recovery rejects failed jq extraction instead of accepting empty output": 0.183453,
+    "hub/test/skills-qa.test.ts::QA recovery verifies each copied capture before appending its rewritten receipt": 0.098985,
+    "hub/test/skills-qa.test.ts::QA serialization failure preserves captures without appending a line": 0.215801,
+    "hub/test/skills-qa.test.ts::QA verdict retry preserves recorded cases without rerunning them": 0.814041,
     "hub/test/skills-qa.test.ts::recover: a copy that fails, a capture that is missing, a conflicting file and a line of another run each leave that line out, name it, keep the sources and exit 73; the good line is still appended": 0.080027,
     "hub/test/skills-qa.test.ts::recover: a jq that fails where its empty output would read as \"nothing to do\" (the case, the evidence list, the rewrite) loses that line: exit 73, named, nothing copied or appended": 0.076467,
     "hub/test/skills-qa.test.ts::recover: every capture is copied and verified before its line is appended, with the evidence paths rewritten into the durable tree; sources stay": 0.067118,
@@ -3378,6 +3855,8 @@
     "hub/test/skills-tracker.test.ts::to-spec and to-tickets keep the source spec a leaf while wiring ticket blocking edges": 0.264323,
     "hub/test/skills-tracker.test.ts::tracker and vendored skills defer category filing to the Categories contract": 0.008884,
     "hub/test/skills-tracker.test.ts::triage: the attention buckets through `task list`, the roles applied through `task edit`": 0.181221,
+    "hub/test/source-fixture.test.ts::fixture copies the whole import closure of its entries plus non-import assets": 0.005782,
+    "hub/test/source-fixture.test.ts::fixture refuses an incomplete local import closure": 0.000839,
     "hub/test/spawn-census.test.ts::a sandbox denying census log writes preserves child stdout, exit and spawns": 0.002313,
     "hub/test/spawn-census.test.ts::census records all spawn methods once, attributes helpers and grandchildren, and compares aggregates": 0.59516,
     "hub/test/spoke-identity.test.ts::a blank session name and a role request do not bind a spoke to the discovered hub": 0.070949,
@@ -3405,6 +3884,14 @@
     "hub/test/stage-qa.test.ts::stage closure follows dev ancestry: later descendants stay closed, rollback opens, restoration closes": 4.031584,
     "hub/test/stage-qa.test.ts::stage receipt hashes remain compatible with legacy parent ids": 6.520729,
     "hub/test/stage-qa.test.ts::stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks": 5.354405,
+    "hub/test/startup-deadline-component.test.ts::CLI autostart honors the operator window at the incident retry while explicit start bypasses it": 0.004572,
+    "hub/test/startup-deadline-component.test.ts::hub start names this attempt's pending step before killing a child at its deadline": 0.021169,
+    "hub/test/startup-deadline-component.test.ts::hub start preserves a child logging startup progress past 15 seconds until it serves": 0.006454,
+    "hub/test/startup-deadline-component.test.ts::hub start stops a child only after a full inactivity deadline following its last progress": 0.003334,
+    "hub/test/startup-diagnostic.test.ts::startup diagnostic handles absent and partial startup logs": 0.000213,
+    "hub/test/startup-diagnostic.test.ts::startup diagnostic keeps the pending step and storage context past unrelated log noise": 0.001304,
+    "hub/test/startup-ready-component.test.ts::hub start reports the serving hub while its startup ready check holds tracker storage": 0.180091,
+    "hub/test/startup-ready-component.test.ts::startup logs the persisted suite-jobs byte size before restoring suites": 0.064146,
     "hub/test/startup-smoke.test.ts::a planted listening startup hang fails the smoke within its bound and names the last log event": 6.017806,
     "hub/test/startup-smoke.test.ts::a pre-discovery startup hang stops its daemon before removing the fixture": 3.191411,
     "hub/test/store-and-forward.test.ts::a delivery stays queued until the spoke acks it: an unacked message is sent again on the next connect, an acked one never": 0.036451,
@@ -3459,7 +3946,14 @@
     "hub/test/suite-admission-close.test.ts::mcp admission records its outcome after mid-inspection close (role)": 0.114918,
     "hub/test/suite-admission-cost.test.ts::cold suite.start refuses a new violating file inside the three-second admission budget": 1.582077,
     "hub/test/suite-admission-cost.test.ts::suite.start admission over a repository-sized manifest": 2.14299,
+    "hub/test/suite-admission-native.test.ts::the first lint baseline keeps its freeze when dev moves debt before publication": 0.775261,
     "hub/test/suite-admission-responsive.test.ts::status and cancellation reply before a held compatibility inspection completes": 0.167374,
+    "hub/test/suite-admission.test.ts::admission refuses unclassified sources without consuming queue slots": 0.815767,
+    "hub/test/suite-admission.test.ts::candidate capture after change refuses head races before queue admission": 0.09627,
+    "hub/test/suite-admission.test.ts::candidate capture before change refuses head races before queue admission": 0.099881,
+    "hub/test/suite-admission.test.ts::item cards expose cancelled receipts after queued null fields": 0.137467,
+    "hub/test/suite-admission.test.ts::item cards expose failed receipts after queued null fields": 0.136258,
+    "hub/test/suite-admission.test.ts::item verification cards survive completion, cache reuse and store reopen": 1.155788,
     "hub/test/suite-admission.test.ts::the first lint baseline keeps its freeze when dev moves debt before publication": 0.393325,
     "hub/test/suite-admission.test.ts::verify card exposes cancelled by item, with queued results left null": 0.97172,
     "hub/test/suite-admission.test.ts::verify card exposes failed by item, with queued results left null": 2.227636,
@@ -3469,7 +3963,10 @@
     "hub/test/suite-admission.test.ts::verify refuses every unclassified hub test before reserving a queue slot, then admits classifications": 5.929363,
     "hub/test/suite-cache-recovery.test.ts::a bounded cached report retains both heads, original run and candidate tree": 2.642673,
     "hub/test/suite-cache-recovery.test.ts::a package subdirectory cannot borrow root-tree cache evidence for different npm scripts": 4.253722,
+    "hub/test/suite-cache-recovery.test.ts::cache reopen preserves mode keys and failure invalidation": 0.6004,
     "hub/test/suite-cache-recovery.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": 14.769652,
+    "hub/test/suite-cache-recovery.test.ts::cached report preserves both heads and its original candidate provenance": 0.205347,
+    "hub/test/suite-cache-recovery.test.ts::package candidate trees keep different npm scripts out of the root cache": 0.336949,
     "hub/test/suite-cache.test.ts::a fresh attempt cancelled by head change preserves the original green cache evidence": 0.027151,
     "hub/test/suite-cache.test.ts::a fresh attempt cancelled by requester preserves the original green cache evidence": 0.025543,
     "hub/test/suite-cache.test.ts::cache expiry still applies when candidate inspection was held across its deadline": 0.020053,
@@ -3498,6 +3995,7 @@
     "hub/test/suite-close-component.test.ts::a Coordinator integrated batch reserves two shards without stage provenance": 0.339208,
     "hub/test/suite-close-component.test.ts::a batch sharding fallback publishes one warning frame and one whole-run result": 0.239644,
     "hub/test/suite-close-component.test.ts::a failed shard fails one merged result with its label and no automatic rerun": 0.348603,
+    "hub/test/suite-close-component.test.ts::another project stage close skips sharding and runs once without a check": 0.242452,
     "hub/test/suite-close-component.test.ts::cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend": 0.283186,
     "hub/test/suite-close-component.test.ts::task heads and non-Coordinator batches keep one remote slot": 0.284873,
     "hub/test/suite-close-component.test.ts::two-shard stage result shows each shard T4 tier line": 0.882442,
@@ -3507,6 +4005,7 @@
     "hub/test/suite-close.test.ts::integrated remote close collects each map before release and publishes their function union": 6.41923,
     "hub/test/suite-close.test.ts::occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result": 6.070346,
     "hub/test/suite-close.test.ts::occasion refuses stale origin/dev proof when the required fresh fetch fails": 0.985723,
+    "hub/test/suite-command.test.ts::non-npm command signal diagnostic uses stack-neutral wording": 0.005649,
     "hub/test/suite-cover.test.ts::a recovered queued cover records requester death before admission": 0.018463,
     "hub/test/suite-cover.test.ts::budget-only integrated cover records the duration identities rather than a test failure": 0.017759,
     "hub/test/suite-cover.test.ts::cancelled integrated cover records explicit cancellation": 0.016471,
@@ -3517,6 +4016,7 @@
     "hub/test/suite-cover.test.ts::recovered covers distinguish timeouts, worker head cancellations, mixed failures and green outcomes": 0.025941,
     "hub/test/suite-cover.test.ts::suite status lists the last ten integrated covers by completion, excluding tasks and pending runs": 0.035133,
     "hub/test/suite-coverage-selection.test.ts::an old ancestor map selects translated hunks and reports its age, but unmappable hunks still fall back": 0.003361,
+    "hub/test/suite-coverage-selection.test.ts::tier command coverage combines attribution at one admitted tree": 0.000998,
     "hub/test/suite-coverage-selection.test.ts::top-level insertions select every covering test in the file and name the widening": 0.01232,
     "hub/test/suite-coverage-selection.test.ts::untested function edits select the other covering tests in that file, with empty files falling back": 0.004955,
     "hub/test/suite-coverage.test.ts::coverage receipts follow owner start times when a pid is reused, independent of test order": 0.021445,
@@ -3549,10 +4049,15 @@
     "hub/test/suite-hung-component.test.ts::cancellation keeps unfinished identities at the cancellation time through cleanup": 0.172347,
     "hub/test/suite-hung-component.test.ts::run timeout retains completed results beside every unfinished test": 0.408732,
     "hub/test/suite-hung-component.test.ts::soak deadline reports zero failures before its short in-flight test": 0.472719,
+    "hub/test/suite-landed-load.test.ts::only completed reported task greens backfill retained pre-upgrade proofs": 0.102967,
+    "hub/test/suite-landed-load.test.ts::task load proofs become known only after their exact head lands on dev": 0.094662,
     "hub/test/suite-load-diagnostics.test.ts::load diagnostics redact environment values and labelled command lines": 0.001052,
     "hub/test/suite-load-diagnostics.test.ts::load diagnostics redact multiline invocations and escaped environment values while retaining frames": 0.000261,
     "hub/test/suite-load-diagnostics.test.ts::load diagnostics retain assertions and causes without arbitrary error properties": 0.001725,
     "hub/test/suite-load-diagnostics.test.ts::the reporter receipt redacts multiline command tails and escaped environment values": 0.004074,
+    "hub/test/suite-log-backfill.test.ts::cached and stage admissions share derived evidence from several 20 MB logs": 1.035157,
+    "hub/test/suite-log-backfill.test.ts::command excerpts and sequential shard copying bound heap on 50 MB output": 1.098405,
+    "hub/test/suite-log-backfill.test.ts::concurrent admissions stream each retained log once and reuse durable proofs": 0.228272,
     "hub/test/suite-persistence.test.ts::930 finished jobs migrate out of the hot snapshot and survive reopening": 0.296693,
     "hub/test/suite-persistence.test.ts::a changed authorization retries a forbidden report once": 0.014305,
     "hub/test/suite-persistence.test.ts::cleanup-blocked terminal cards wait for the persisted error checkpoint": 0.014757,
@@ -3655,6 +4160,9 @@
     "hub/test/suite-scheduling.test.ts::priority admits integrated dev first, then item rank, preserving the queue through restart": 0.038517,
     "hub/test/suite-scheduling.test.ts::verify queues a second requester without a waiting worker (configured budget 1)": 0.058951,
     "hub/test/suite-scheduling.test.ts::verify queues a second requester without a waiting worker (configured budget 2)": 0.023249,
+    "hub/test/suite-selection-component.test.ts::candidate selection reaches execution and explains the reserved all-mode refusal": 0.389633,
+    "hub/test/suite-selection-component.test.ts::selection report respects the 384-byte cap with a complete durable path list": 0.167255,
+    "hub/test/suite-selection-component.test.ts::selection report respects the 768-byte cap with a complete durable path list": 0.158921,
     "hub/test/suite-selection-fetch.test.ts::failed fetch uses the last known dev only with a candidate merge base": 0.111955,
     "hub/test/suite-selection-fetch.test.ts::failed fetch with no known dev remains full and carries its cause": 0.098271,
     "hub/test/suite-selection-fetch.test.ts::selection failure retains bounded stderr with secrets and URLs redacted": 0.000681,
@@ -3764,8 +4272,14 @@
     "hub/test/suite-soak-component.test.ts::nightly skips with one cap notice when another project holds shared spend": 0.023066,
     "hub/test/suite-soak-component.test.ts::nightly trims repetitions to the manifest projection before creating its machine": 0.027077,
     "hub/test/suite-soak-component.test.ts::occasions keep T4 load tests in the base phase without parallel repetitions": 0.136503,
+    "hub/test/suite-soak-component.test.ts::periodic dev T3 posts a hub-owned structured red result to the Coordinator": 0.213694,
+    "hub/test/suite-soak-component.test.ts::periodic T3 obeys the shared daily cap without changing the merge queue": 0.811852,
     "hub/test/suite-soak-component.test.ts::red soak proposes each unchanged failing identity while a batch can still run": 0.534656,
+    "hub/test/suite-soak-component.test.ts::unavailable periodic merge range still publishes its result and permits the next run": 0.483946,
     "hub/test/suite-soak.test.ts::nightly submits once after UTC time and skips an unchanged candidate across restart": 0.10295,
+    "hub/test/suite-soak.test.ts::periodic dev T3 waits two hours, skips unchanged dev and survives restart without overlap": 0.088697,
+    "hub/test/suite-soak.test.ts::periodic T2/T3 failures reach Bug filing through the culprit search": 0.141683,
+    "hub/test/suite-soak.test.ts::periodic T3 configuration round-trips duration and disable settings": 0.003166,
     "hub/test/suite-soak.test.ts::soak configuration validates UTC HH:MM and preserves empty disable on render": 0.004372,
     "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": 19.405915,
     "hub/test/suite-stage-rules.test.ts::a T1 to T3 batch green cannot supply an occasion cache or stage cover": 0.029742,
@@ -3776,11 +4290,16 @@
     "hub/test/suite-stage-rules.test.ts::occasion load gate repeats only identities absent from the last green stage": 0.089071,
     "hub/test/suite-stage-rules.test.ts::occasion roles allow Coordinator closes and only QA epic closes": 0.000797,
     "hub/test/suite-stage-rules.test.ts::occasions require integrated dev, full selection and a fresh fetch at the admitted head": 0.0178,
+    "hub/test/suite-summary.test.ts::a completed project test reports success without a failure excerpt": 0.000223,
+    "hub/test/suite-summary.test.ts::a failed command without node counts reports its exit and last 20 output lines": 0.003775,
+    "hub/test/suite-summary.test.ts::command-like stdout stays in the failed command output tail": 0.00022,
+    "hub/test/suite-summary.test.ts::node counts keep the existing summary even after a failed command": 0.000878,
     "hub/test/suite-task-selection.test.ts::a Neovim task still proves all T1 while running only Neovim T2": 0.032265,
     "hub/test/suite-task-selection.test.ts::a task coverage fallback widens T2 without admitting T3 or T4": 0.184004,
     "hub/test/suite-task-selection.test.ts::hosting project queue policy protects admission from a candidate-local opt-in": 0.213278,
     "hub/test/suite-task-selection.test.ts::integrated dev, explicit all and occasions retain process coverage": 0.252989,
     "hub/test/suite-task-selection.test.ts::npm test preserves the legacy entry point plan for every supplied selection": 0.026698,
+    "hub/test/suite-task-selection.test.ts::per-tier commands preserve the repository task file plan": 0.009565,
     "hub/test/suite-task-selection.test.ts::queue-disabled projects retain process coverage on task branches": 0.05919,
     "hub/test/suite-task-selection.test.ts::task cadence plans all T1 plus selected T2 from the repository manifest": 0.329907,
     "hub/test/suite-tier-report.test.ts::close-run summary retains the aggregate census after differently ordered shard tiers": 0.000478,
@@ -3788,7 +4307,9 @@
     "hub/test/suite-tier-report.test.ts::planner history defaults to Git unless a duration snapshot is injected": 0.011355,
     "hub/test/suite-tier-report.test.ts::run summary carries tier counts, observed test-seconds and manifest share": 0.003663,
     "hub/test/suite-tier-report.test.ts::task evidence names deferred T3 with the current merge queue state": 0.000533,
+    "hub/test/suite-tier-report.test.ts::task reports defer T3 to dev occasions when batch tiers omit it": 0.000191,
     "hub/test/suite-tier-report.test.ts::tier planning enforces supplied legacy allowance history without a repository": 0.271662,
+    "hub/test/suite-tiers.test.ts::occasions preserve their tier and load policies": 0.285113,
     "hub/test/suite-tiers.test.ts::T1 retains the hermetic source check in each package": 0.092847,
     "hub/test/suite-tiers.test.ts::a package without either manifest keeps its existing Neovim-only plan": 0.003517,
     "hub/test/suite-tiers.test.ts::duration lint uses supplied legacy keys for package planning and rejects unrecorded allowances": 0.022477,
@@ -3815,10 +4336,16 @@
     "hub/test/suite-wait-metrics.test.ts::queue wait target defaults, validates positive durations and survives config rendering": 0.003948,
     "hub/test/suite-wait-metrics.test.ts::queue wait windows separate effective executors and exclude cache hits and unadmitted cancellations": 0.002901,
     "hub/test/suite-wait-metrics.test.ts::verify queue and hub status expose matching windows, configured target, and cache counts": 0.913701,
+    "hub/test/suite-worker-cause.test.ts::worker receipt preserves inherited-pipe cleanup cause before a failed compatibility sweep": 0.00134,
+    "hub/test/suite-worker-cause.test.ts::worker receipt reports a compatibility cleanup failure without a primary cause": 0.000198,
     "hub/test/suite.test.ts::a muted named recipient keeps the single result pending across restart until all recipients can receive it": 5.136917,
     "hub/test/suite.test.ts::a muted suite report follows its moved log after unmute and publishes once": 3.161102,
+    "hub/test/suite.test.ts::another stack integrated occasion fetches dev proof and executes configured tiers": 1.099932,
+    "hub/test/suite.test.ts::another stack verifies green locally then reports a planted shell failure": 4.221668,
     "hub/test/suite.test.ts::failure cleanup preserves a live worker whose recorded start identity is unavailable": 4.745489,
     "hub/test/suite.test.ts::hub restart recovers a worker that outlives it, without replaying the result": 6.513783,
+    "hub/test/suite.test.ts::legacy task verify executes its whole test with the merge queue off": 2.180259,
+    "hub/test/suite.test.ts::Python command stubs execute the recorded task and batch plans": 2.114614,
     "hub/test/suite.test.ts::restart recognizes a committed result even if its run receipt did not settle": 5.338541,
     "hub/test/suite.test.ts::revoked report permissions hold the result until restored, without a duplicate": 2.203089,
     "hub/test/suite.test.ts::submission requires caller artifact and send permissions before spawning": 1.058415,
@@ -3897,14 +4424,24 @@
     "hub/test/task-size.test.ts::CLI tasks require a size while other kinds refuse it": 1.339954,
     "hub/test/task-size.test.ts::item size and regression fields round-trip and legacy files stay readable": 0.014592,
     "hub/test/task-size.test.ts::real spoke and CLI validate regression targets and publish indexed task fields": 1.092225,
+    "hub/test/task-worktrees-lifecycle.test.ts::cland worktree prune shows a closed item's unmerged commits and removes its worktree and branch only after y; a session's shell is refused": 3.791208,
+    "hub/test/task-worktrees-lifecycle.test.ts::the territory's cland.taskBase decides the base branch over dev (cland's own repository starts from main until T-59)": 1.101428,
     "hub/test/task-worktrees.test.ts::a release, epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why": 3.505304,
+    "hub/test/task-worktrees.test.ts::claim CLI displays the injected container worktree refusal": 0.269987,
     "hub/test/task-worktrees.test.ts::cland session launch --item starts the Implementer in the worktree with the claim taken over from the Coordinator; its Claude Code refuses a worktree of its own": 6.344994,
     "hub/test/task-worktrees.test.ts::cland worktree prune shows a closed item's unmerged commits and removes its worktree and branch only after y; a session's shell is refused": 3.924101,
     "hub/test/task-worktrees.test.ts::configured container worktree refusals choose an article from the kind": 0.948177,
+    "hub/test/task-worktrees.test.ts::item launch policy measures the post-Git branch-link subscriber as resumed work": 0.043167,
+    "hub/test/task-worktrees.test.ts::item launch policy uses its injected worktree and refuses cwd or conflicting ownership": 0.122975,
     "hub/test/task-worktrees.test.ts::session.launch with an item: a synchronous branch-link subscriber after Git is timed once as resumed": 0.350538,
+    "hub/test/task-worktrees.test.ts::task worktree policy links creation once and reuses the territory result on reclaim": 0.138288,
     "hub/test/task-worktrees.test.ts::the first claim of an open task makes t/T-<n>-<slug> at dev and its worktree, writes branch: and tells Agents; later claims reuse both": 2.64795,
     "hub/test/task-worktrees.test.ts::the spoke's session.launch with item launches in the worktree; item with cwd or another session's claim is refused": 4.812597,
     "hub/test/task-worktrees.test.ts::the territory's cland.taskBase decides the base branch over dev (cland's own repository starts from main until T-59)": 1.181211,
+    "hub/test/task-worktrees.test.ts::worktree list policy measures its post-Git projection once across interleaved inbox reads": 0.036113,
+    "hub/test/task-worktrees.test.ts::worktree policy keeps ineligible claims without creating a branch": 0.091873,
+    "hub/test/task-worktrees.test.ts::worktree policy propagates the territory base or missing-ref refusal without releasing ownership": 0.046226,
+    "hub/test/task-worktrees.test.ts::worktree policy uses configured container articles without Git operations": 0.034983,
     "hub/test/task-worktrees.test.ts::worktree.list: its work after the Git reads is timed as phase resumed (a slow one is logged once)": 0.34859,
     "hub/test/termination-ownership.test.ts::doctors from different projects end one deleted hub and its fake harness tree once": 9.422937,
     "hub/test/termination-ownership.test.ts::session stop and doctor share one termination owner and report the tree once": 4.634369,
@@ -3931,6 +4468,7 @@
     "hub/test/territory-cli.test.ts::undo refuses unique work under every custom origin fetch destination before mutation": 0.898265,
     "hub/test/territory-cli.test.ts::undo restores the recorded master default": 1.608848,
     "hub/test/territory-cli.test.ts::undo restores the remotes, upstream and main, keeps dev, and reinstates the non-territory instructions": 0.703166,
+    "hub/test/territory-cli.test.ts::update preserves a legacy territory origin recorded under a symlinked parent": 0.523395,
     "hub/test/territory-cli.test.ts::update refreshes territory instructions but leaves a Git project without a territory opted out": 0.45407,
     "hub/test/territory-lock.test.ts::a failed main-lock read is preserved as failure, never absence or stale ownership": 0.004655,
     "hub/test/territory-lock.test.ts::a fresh nonempty guard installed in a dead-owner removal gap survives the recoverer’s rmdir": 0.03932,
@@ -3982,7 +4520,9 @@
     "hub/test/test-lint.test.ts::resource words in reporter data stay T1": 0.006457,
     "hub/test/test-lint.test.ts::runtime imports follow helpers while erased types and source data stay inert": 0.016215,
     "hub/test/test-lint.test.ts::servers bound at construction require socket admission": 0.024868,
+    "hub/test/test-lint.test.ts::shrinking a retired spawnSpoke allowance refuses a planted call in an existing T2 file": 0.001078,
     "hub/test/test-lint.test.ts::spoke readiness source qualifies for T2 because its WebSocketServer binds a port": 0.078165,
+    "hub/test/test-lint.test.ts::T4 lifecycle headers exempt process helpers while preserving wait and tier rules": 0.003336,
     "hub/test/test-lint.test.ts::tier rules locate process imports and calls while accepting in-process collaborators": 0.009548,
     "hub/test/test-lint.test.ts::transitive cycles retain resource evidence for each importing test": 0.013153,
     "hub/test/test-lint.test.ts::unbound server constructors and inert socket text stay T1": 0.015446,
@@ -3991,6 +4531,7 @@
     "hub/test/thread-seed-plan.test.ts::thread oracle plans retain both widths and every phase": 0.0021,
     "hub/test/tier-context.test.ts::older Node keeps file-only attribution with one missing-API warning": 0.001217,
     "hub/test/tier-context.test.ts::resource calls query the current nested test or identify file setup": 0.000222,
+    "hub/test/tier-tripwire-runner.test.ts::QA recorder and migration CLI subjects require exact synchronous launch boundaries": 0.824726,
     "hub/test/tier-tripwire-runner.test.ts::T1 and T2 workers name spawned tests while fake probes and the CLI helper stay clean": 2.290011,
     "hub/test/tier-tripwire-runner.test.ts::T1 traps real socket entry points for net, HTTP, HTTPS and TLS": 1.288474,
     "hub/test/tier-tripwire-runner.test.ts::a caught enforced trip remains nonzero even if the test resets the worker exit code": 1.30978,
@@ -4188,12 +4729,16 @@
     "hub/test/tracker-status.test.ts::review rechecks a revoked grant after file I/O and leaves status and claim intact": 0.052739,
     "hub/test/tracker-status.test.ts::review rechecks the live claim after its queue await, even when the caller keeps its role": 0.917722,
     "hub/test/tracker-status.test.ts::review rechecks the live claim after its write await, even when the caller keeps its role": 0.868975,
+    "hub/test/tracker-summary.test.ts::list summaries omit import metadata and bookkeeping frontmatter available in view": 0.043938,
     "hub/test/tracker.test.ts::a hand edit landing while the hub is writing the same item is overwritten, and the hub logs the conflict": 0.530586,
     "hub/test/tracker.test.ts::a hand edit of an item file is re-indexed within a second": 1.528627,
     "hub/test/tracker.test.ts::a hub write and a hand edit at the same time: the last writer wins and the hub logs it": 3.302293,
     "hub/test/tracker.test.ts::task commands with no hub running fail with a clear error and do not start one": 0.404633,
     "hub/test/tracker.test.ts::where the folder cannot be watched the hub polls: a hand edit of an item and of roles.toml are still picked up": 2.147825,
     "hub/test/typecheck.test.ts::typecheck resolves pinned compilers in roots and linked worktrees": 2.919684,
+    "hub/test/v01-migration.test.ts::migration CLI creates the exact release and parents only the eleven v0.1 epics": 0.522025,
+    "hub/test/v01-migration.test.ts::migration CLI refuses duplicate releases before changing any items": 0.373227,
+    "hub/test/v01-migration.test.ts::migration CLI reuses the open release without rewriting migrated items": 0.372058,
     "hub/test/v01-migration.test.ts::the v0.1 migration creates once, reuses the open release on rerun and refuses duplicate matches before writing": 6.42185,
     "hub/test/verdict-commit-component.test.ts::an existing hub database upgrades additively and legacy verdicts remain file evidence": 0.871151,
     "hub/test/verdict-commit-component.test.ts::item review headers round-trip all scopes and preserve unscoped legacy bytes": 0.009077,
@@ -4213,9 +4758,18 @@
     "hub/test/verdict-findings.test.ts::invalid findings refuse atomically and text headers carry findings through restart and evidence checks": 1.508538,
     "hub/test/verdict-findings.test.ts::verdict headers preserve findings, derive counts and leave legacy counts unknown": 0.020882,
     "hub/test/verification-commands.test.ts::a different resolved command cannot reuse the same candidate tree green": 0.018916,
+    "hub/test/verification-commands.test.ts::candidate whole-test precedence keeps root tiers from replacing its test": 0.009341,
+    "hub/test/verification-commands.test.ts::cland runner presence and capabilities are resolved from the candidate": 0.068154,
+    "hub/test/verification-commands.test.ts::other-stack admission records task and batch tier plans through a reopen": 0.040436,
     "hub/test/verification-commands.test.ts::other-stack fixture keeps caller shell commands without a package or runner": 0.002225,
+    "hub/test/verification-commands.test.ts::other-stack occasions admit all tier commands without runner manifests": 0.029905,
+    "hub/test/verification-commands.test.ts::recorded commands compose configured batch tiers with periodic T3": 0.047209,
+    "hub/test/verification-commands.test.ts::regular-file ancestors mean this candidate has no cland runner": 0.004027,
     "hub/test/verification-commands.test.ts::submission retains recorded commands through store reopen after config changes": 0.041172,
     "hub/test/verification-commands.test.ts::this repository names its check and one test command for every mode": 0.044303,
+    "hub/test/verification-commands.test.ts::this repository names its tier commands for every mode": 0.093551,
+    "hub/test/verification-commands.test.ts::tier command plans pin task, batch, integrated and occasion cadence": 0.000811,
+    "hub/test/verification-commands.test.ts::tier resolution combines candidate commands with root defaults": 0.003231,
     "hub/test/verification-commands.test.ts::verification refuses a project with no configured test": 0.002507,
     "hub/test/verification-commands.test.ts::verification resolves each command from the candidate before the hub root": 0.019716,
     "hub/test/verification-tree.test.ts::candidate hashing observes an overlapping dirty source change": 0.644932,
@@ -4242,8 +4796,13 @@
     "hub/test/verify-all.test.ts::explicit all is reserved before verification queue admission": 1.980061,
     "hub/test/verify-submission.test.ts::a dry-run timeout never claims a verification was submitted": 0.11692,
     "hub/test/verify-submission.test.ts::an accepted verify submission times out as unconfirmed and safely retries the active run": 0.478229,
+    "hub/test/verify-submission.test.ts::other-stack CLI refuses cland phases while accepting default and all": 0.152949,
+    "hub/test/verify-submission.test.ts::other-stack verify submits a full project test without cland planning": 0.276526,
     "hub/test/verify-submission.test.ts::overlapping verify retries reserve one active run": 0.137408,
     "hub/test/verify-submission.test.ts::verify never calls an unwritten request a sent submission": 0.111843,
+    "hub/test/verify-tool.test.ts::MCP verify defaults cwd to the claimed item worktree before admission": 0.14753,
+    "hub/test/verify-tool.test.ts::MCP verify names missing or invalid fields before enqueue": 0.09945,
+    "hub/test/verify-tool.test.ts::MCP verify publishes described inputs with an optional claimed-worktree cwd": 0.187594,
     "hub/test/visibility-component.test.ts::D17 verdicts and deaths carry warn severity in events and the event log, never needing the human": 0.618279,
     "hub/test/visibility-component.test.ts::artifact creation chips follow keep and unkeep in frames, history and restart": 0.277928,
     "hub/test/visibility-component.test.ts::artifact placement keeps the author role at publication across a later role change and restart": 0.043861,
@@ -4267,6 +4826,8 @@
     "nvim/test/account-poll.test.ts::sessions-panel openings send account.poll once; redraws and closing do not": 0.454164,
     "nvim/test/agents-filters.test.ts::a session named loop excludes another pair’s loop metadata in live entries, frames and spoke history": 1.92644,
     "nvim/test/agents-filters.test.ts::f completes items and sessions, filters history and live notices; F clears; L opens from an item or session row": 2.420266,
+    "nvim/test/agents-filters.test.ts::recorded Agents frames exclude another pair’s loop metadata from a loop session": 0.263384,
+    "nvim/test/agents-filters.test.ts::recorded Agents history supports completion, live filters, clearing and shortcuts": 0.579194,
     "nvim/test/artifact-browser-component.test.ts::a refused ordinary send restores artifacts when an ask was armed while its reply was pending": 0.54987,
     "nvim/test/artifact-browser.test.ts::Artifacts browser creates v0.2 notes, saves two folder files in place and attaches the folder with s": 1.881303,
     "nvim/test/artifact-browser.test.ts::artifact pin and mute keys share hub layers with the thread, palette and browser": 0.790186,
@@ -4286,13 +4847,24 @@
     "nvim/test/artifacts.test.ts::moving an already-open prompt rebinds its editable buffer before the next save": 0.303731,
     "nvim/test/artifacts.test.ts::p in a topic artifact list promotes it and updates the list and picker marks": 0.379447,
     "nvim/test/artifacts.test.ts::prompt drafts are editable full buffers, survive hub events, reopen, and send saved text": 0.712968,
+    "nvim/test/artifacts.test.ts::recorded frames: a draft moved while disconnected resolves and rebinds on reconnect before saving": 0.517776,
+    "nvim/test/artifacts.test.ts::recorded frames: artifact chip opens editable Mermaid source and the browser renderer, topic list and picker open artifacts": 0.538329,
+    "nvim/test/artifacts.test.ts::recorded frames: Coordinator artifacts in Agents open from the log and its topic list": 0.294532,
+    "nvim/test/artifacts.test.ts::recorded frames: folder chips open their entry and old moved-file chips open inside the folder": 0.312965,
+    "nvim/test/artifacts.test.ts::recorded frames: keeping an agent artifact updates the thread and palette across unkeep and reconnect": 0.515383,
+    "nvim/test/artifacts.test.ts::recorded frames: moving an already-open prompt rebinds its editable buffer before the next save": 0.368903,
+    "nvim/test/artifacts.test.ts::recorded frames: p in a topic artifact list promotes it and updates the list and picker marks": 0.283181,
+    "nvim/test/artifacts.test.ts::recorded frames: prompt drafts are editable full buffers, survive hub events, reopen, and send saved text": 0.42996,
+    "nvim/test/artifacts.test.ts::recorded frames: topic lists follow archive events and lists and pickers mark retained entries whose files were deleted": 0.449202,
     "nvim/test/artifacts.test.ts::topic lists follow archive events and lists and pickers mark retained entries whose files were deleted": 2.533239,
     "nvim/test/client-component.test.ts::Shift+Enter inserts a newline in the composer; Enter sends both lines as one message": 0.456271,
     "nvim/test/client-component.test.ts::nothing loads from the user configuration: every sourced script is the bundled runtime or nvim/": 0.097994,
+    "nvim/test/client-component.test.ts::workbench autostart waits for the recorded operator restart window before invoking the CLI": 0.396114,
     "nvim/test/client.test.ts::a stale hub.json (its hub killed, its socket gone) makes the client start a hub after a few failed connects": 4.763503,
     "nvim/test/client.test.ts::the client follows its hub through a restart and keeps the thread": 3.296577,
     "nvim/test/client.test.ts::the client spawns `cland hub serve --stdio` as its child when asked, and speaks the same frames": 1.261063,
     "nvim/test/client.test.ts::with no hub running, the client starts the project hub and connects to it": 1.534779,
+    "nvim/test/crew.test.ts::recorded frames: sessions header follows crew CLI and hand edits, retaining the last good summary on refusal and refresh": 0.274591,
     "nvim/test/crew.test.ts::sessions header follows crew CLI and hand edits, retaining the last good summary on refusal and refresh": 2.318185,
     "nvim/test/criteria-component.test.ts::hub marks drive item glyphs, authors and notes; legacy checked boxes stay open at 80 and 120 columns": 0.476806,
     "nvim/test/criteria-component.test.ts::verdict thread shows structured verified and failed criteria, including notes and clear report marks": 0.413477,
@@ -4391,6 +4963,7 @@
     "nvim/test/inbox-actions.test.ts::panel: r replies to the selected row, d declines or reads one row, A toggles the seven-day archive": 0.730717,
     "nvim/test/inbox-actions.test.ts::r gives a free ask answer and failed row replies retain their draft and target": 0.575248,
     "nvim/test/inbox-actions.test.ts::r on a message arms its exact reply, sending archives it as answered; empty inbox keeps the archive line": 0.560526,
+    "nvim/test/inbox-requests.test.ts::recorded frames: the chip equals cland inbox before and after an Aide review request is replied to": 0.237828,
     "nvim/test/inbox-requests.test.ts::the chip equals cland inbox before and after an Aide review request is replied to": 2.73332,
     "nvim/test/inbox-sections.test.ts::a rejected control projection reports the operation and leaves the control peer usable": 0.444916,
     "nvim/test/inbox-sections.test.ts::full inbox shows four now sections, folds five rows and expands only the selected ask or command": 0.484866,
@@ -4398,8 +4971,15 @@
     "nvim/test/inbox-sections.test.ts::waiting ages advance on the local clock with no inbox request or hub frame": 5.430579,
     "nvim/test/item-prefixes.test.ts::gI on a legacy reference opens the canonical epic and only kind prefixes are item tokens": 0.437424,
     "nvim/test/item-prefixes.test.ts::old ids in topics, inbox and journal open migrated items through a restarted real hub and gI": 2.941101,
+    "nvim/test/item-prefixes.test.ts::recorded canonical epics resolve legacy item tokens through gI": 0.278589,
+    "nvim/test/item-prefixes.test.ts::recorded migrated categories open from old thread references": 0.242645,
     "nvim/test/items.test.ts::against a real hub: the tree, the map grouping, the item view and the board from hand-written item files; a hand edit shows within a second; e edits the file and a save re-indexes": 1.876466,
     "nvim/test/items.test.ts::configured containers with no children show container counts in the panel and stay outside board cards": 0.987423,
+    "nvim/test/items.test.ts::recorded configured containers show counts without entering board cards": 0.293496,
+    "nvim/test/items.test.ts::recorded item frames render trees, map groups, details, board and edited files": 0.585511,
+    "nvim/test/items.test.ts::recorded item trees render closed titles in the done colour": 0.314544,
+    "nvim/test/items.test.ts::recorded Lead claims appear in epic rows, item fields and session rows": 0.270485,
+    "nvim/test/items.test.ts::recorded verdict frames retain commit, stale colour and provenance": 0.288681,
     "nvim/test/items.test.ts::the all tree keeps closed container and task titles in the done colour": 1.154323,
     "nvim/test/items.test.ts::the epic row, item fields and sessions panel show its launched Lead": 2.439024,
     "nvim/test/items.test.ts::the item view shows verdict commits, red stale marks, and file-only provenance": 1.360806,
@@ -4431,6 +5011,9 @@
     "nvim/test/needs-you.test.ts::needs-you chip and both inbox views agree: defaults with events": 5.88385,
     "nvim/test/needs-you.test.ts::needs-you chip and both inbox views agree: events raised to Now": 5.877801,
     "nvim/test/needs-you.test.ts::needs-you chip and both inbox views agree: responses in Watch, Background and Archive with Now events": 5.301017,
+    "nvim/test/needs-you.test.ts::recorded frames: needs-you chip and both inbox views agree: defaults with events": 0.704405,
+    "nvim/test/needs-you.test.ts::recorded frames: needs-you chip and both inbox views agree: events raised to Now": 0.643771,
+    "nvim/test/needs-you.test.ts::recorded frames: needs-you chip and both inbox views agree: responses in Watch, Background and Archive with Now events": 0.662505,
     "nvim/test/nvim-path.test.ts::a linked worktree with no Neovim of its own uses the one cached in the main worktree, and downloads nothing": 0.350321,
     "nvim/test/nvim-path.test.ts::an empty download lock (its writer died before the pid) is stale after a grace: the resolver takes it over": 0.62505,
     "nvim/test/nvim-path.test.ts::nvim-path.ts prints the binary from a path with a space, # and %": 0.118611,
@@ -4524,9 +5107,14 @@
     "nvim/test/session-archive.test.ts::d archives a stopped Aide, A fetches its archive, r restores it, and live/unlaunched rows refuse d": 0.66957,
     "nvim/test/session-archive.test.ts::more shows the latest 20 stopped rows by stop time and the archived count without fetching the archive": 0.575682,
     "nvim/test/session-resume.test.ts::r resumes stopped rows with an outcome, offers f/n/Esc, and Resume session is in the palette and Keys": 0.740368,
+    "nvim/test/sessions-lifecycle.test.ts::Claude Code, Codex and OpenCode sessions launched from the UI show in the panel with live state, attach on Enter, and a killed one turns unknown with the death in the hub log": 5.502739,
     "nvim/test/sessions.test.ts::Claude Code, Codex and OpenCode sessions launched from the UI show in the panel with live state, attach on Enter, and a killed one turns unknown with the death in the hub log": 5.545824,
     "nvim/test/sessions.test.ts::accounts open above verification, show a fake Codex weekly window and follow pushes without re-reading": 4.210067,
     "nvim/test/sessions.test.ts::hard limits show red account names and reset or until-cleared text; clearing removes the mark by push": 4.165752,
+    "nvim/test/sessions.test.ts::recorded account pushes update weekly windows and preserve saved folds": 0.486111,
+    "nvim/test/sessions.test.ts::recorded hard-limit pushes show and clear account marks": 0.31362,
+    "nvim/test/sessions.test.ts::recorded session rows show verifier holds and retain claims after release": 0.2928,
+    "nvim/test/sessions.test.ts::recorded source windows preserve severity, local resets, stale age and wrapping": 0.264644,
     "nvim/test/sessions.test.ts::source windows keep severity, local resets and stale age, wrap at 30 columns and leave default sessions unnamed": 3.95909,
     "nvim/test/sessions.test.ts::the sessions item column shows verifier holds and returns to free on release": 1.984399,
     "nvim/test/shell-component.test.ts::2 on an ask row answers with option 2: topic.answer goes out, the row leaves and the count drops; d on an ask does nothing": 0.428998,
