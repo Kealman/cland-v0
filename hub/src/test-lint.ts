@@ -286,7 +286,10 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
       resource(node, localHelper || cliCall(node) ? 2 : 3, 'child process');
       if (node.arguments.some(arg => contains(arg, n => ts.isStringLiteralLike(n) && (/^(?:hub|startDaemon)$/.test(n.text) || /(?:hub\/bin\/cland|hub\/src\/hub\/daemon|fakes\/(?:codex|claude-code|opencode))/.test(n.text))))) resource(node, 3, 'spawned hub or harness binary');
     }
-    if (['sleep', 'pause', 'delay', 'setTimeout', 'setInterval'].includes(name) && !fakeTimer(node)) {
+    // Prompter.pause(message) reads a line, rather than waiting on a clock. Keep
+    // bare/helper pauses and numeric method pauses in the timer census.
+    const timerPause = name === 'pause' && (ts.isIdentifier(node.expression) || b && harness(b.module) || numeric(node.arguments[0]));
+    if ((timerPause || ['sleep', 'delay', 'setTimeout', 'setInterval'].includes(name)) && !fakeTimer(node)) {
       requireTier(2);
       // A reason suppresses the wait policy finding, never the resource tier.
       resources.push({ node, line: lineOf(node), level: 2, description: 'wall-clock timer' });

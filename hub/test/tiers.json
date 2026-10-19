@@ -285,6 +285,7 @@
     "hub/test/session-stop-races-component.test.ts": "T2",
     "hub/test/session-stop-races.test.ts": "T3",
     "hub/test/session-usage.test.ts": "T2",
+    "hub/test/setup-prompter.test.ts": "T3",
     "hub/test/shared-defects-report.test.ts": "T3",
     "hub/test/shared-defects.test.ts": "T1",
     "hub/test/skills-invocation.test.ts": "T1",

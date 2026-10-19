@@ -465,6 +465,25 @@ test('wall-clock waits and elapsed assertions require a reason on their line', (
   assert.ok(lintTestSource(file, input('quotedReasonMarker'), 'T2').findings.length);
 });
 
+test('prompter pause methods stay hermetic while timer pauses require T2', () => {
+  for (const source of ["prompter.pause('Press Enter');", 'prompter.pause(message);']) {
+    assert.equal(lintTestSource(file, source, 'T1').qualifies, 'T1', source);
+    assert.equal(touchesMachineResources(file, source), false, source);
+  }
+  for (const source of [
+    'pause(50);',
+    'pause(duration);',
+    "import { pause } from './harness.ts'; pause(duration);",
+    "import * as harness from './harness.ts'; harness.pause(duration);",
+    "import { setTimeout as pause } from 'node:timers/promises'; pause(duration);",
+    'timer.pause(50);',
+  ]) {
+    assert.equal(lintTestSource(file, source, 'T1').qualifies, 'T2', source);
+    assert.equal(touchesMachineResources(file, source), true, source);
+  }
+  assert.ok(lintTestSource(file, 'pause(50);', 'T2').findings.some(f => f.rule === 'wall-clock-wait'));
+});
+
 test('FakeClock receivers and source literals stay hermetic without hiding real timers', () => {
   const fake = input('fakeClock');
   assert.equal(touchesMachineResources(file, fake), false);
