@@ -1,6 +1,7 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import { FakeClock } from './fake-clock.ts';
 import { test } from 'node:test';
+import { EventEmitter, once } from 'node:events';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -19,7 +20,10 @@ async function holders(ui: FrameClient, role: string): Promise<string[]> {
 }
 
 async function component(t: import('node:test').TestContext, root: string, options: { failSpawn?: boolean } = {}) {
-  const hub = await projectHub(t, root);
+  const events = new EventEmitter<{ 'refused-role': [Record<string, unknown>] }>();
+  const hub = await projectHub(t, root, {}, { log: entry => {
+    if (entry.event === 'refused-role') events.emit('refused-role', entry);
+  } });
   const fake = hub.fakes.codex!;
   const peers = new Map<string, import('./harness.ts').Session>();
   const attach = async (process: import('../src/adapters/contract.ts').HarnessProcess, launchToken?: string) => {
@@ -46,7 +50,7 @@ async function component(t: import('node:test').TestContext, root: string, optio
     return result;
   };
   const crash = async (name: string) => { await peers.get(name)?.close(); fake.crash(name); };
-  return { ...hub, fake, peers, crash };
+  return { ...hub, fake, peers, crash, events };
 }
 
 test('a Coordinator remembered past the queue TTL that reconnects after another took the role is refused it; the UI learns', async (t) => {
@@ -178,9 +182,18 @@ test('a renamed session keeps its revocation: its process-table row follows the 
   await f.peers.get('coord')!.close();
   f.fake.crash('boss');
   await eventually('exited', async () => ((await processes(ui)).find((p) => p.name === 'boss')?.status === 'exited' ? true : undefined));
-  const resumed = await ui.request({ type: 'session.resume', session: 'boss', relaunch: true }, 30_000);
+  // Resume acknowledges the adapter, not the new spoke's hello. Observe the refusal
+  // before flushing its asynchronous log sink; a loaded relaunch can exceed 15 s.
+  const refusal = once(f.events, 'refused-role', { signal: AbortSignal.timeout(30_000) });
+  const [resumed, [refused]] = await Promise.all([
+    ui.request({ type: 'session.resume', session: 'boss', relaunch: true }, 30_000),
+    refusal,
+  ]);
   assert.equal(resumed.ok, true, resumed.error);
-  await eventually('the relaunched spoke refused', async () => ((await hubLog(root)).includes('"event":"refused-role","name":"boss"') ? true : undefined));
+  assert.equal(refused.name, 'boss');
+  assert.equal(refused.sessionId, (launched.value as { process: Harness }).process.sessionId);
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.match(await hubLog(root), /"event":"refused-role","name":"boss"/);
   const status = (await ui.request({ type: 'hub.status' })).value as { sessions: Array<{ name: string }>; coordinator: string | null };
   assert.equal(status.coordinator, null);
   assert.ok(!status.sessions.some((s) => s.name === 'boss'));
