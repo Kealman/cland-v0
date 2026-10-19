@@ -13,7 +13,7 @@ import { lintTests, testLintReport } from '../test-lint.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext } from '../suite-duration-budget.ts';
-import { baselineTimings, durationBudgetContext } from '../suite-duration-context.ts';
+import { baselineTimings, durationBudgetContext, durationHistory } from '../suite-duration-context.ts';
 import { readDurationManifest } from '../suite-durations.ts';
 import type { ProjectConfig } from '../init/config.ts';
 import { suiteLimits } from '../suite-limits.ts';
@@ -406,7 +406,7 @@ export class Suites {
       : occasionSelection(admitted, input.occasion);
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (input.occasion && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
-    const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
+    const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     if (input.occasion === 'soak') selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
     if (input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 
@@ -640,12 +640,7 @@ export class Suites {
       let cause: string | undefined;
       if (count < 2) cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${job.config?.verification.shards ?? this.#options.shards ?? 2}`;
       else {
-        const context = this.#options.durationContext;
-        const baseline = context?.base?.manifest;
-        // Injected context owns allowance provenance too; retained names are timing identities.
-        // Without an injected context, keep the production Git-backed lint path.
-        const history = context === undefined ? {} : { legacyKeys: new Set(Object.entries(baseline?.allow ?? {})
-          .filter(([, entry]) => !baseline?.budget.T1 || entry.legacy).map(([key]) => key)) };
+        const history = durationHistory(this.#options.durationContext);
         const tiers = job.selection?.soak ? null : await readTierAssignments(job.cwd);
         const included = (file: string) => tiers?.get(file) !== 'T4';
         const files = (await hubShards(job.cwd, false, undefined, history)).flatMap(shard => shard.targets).filter(included);

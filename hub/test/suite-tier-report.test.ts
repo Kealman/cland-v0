@@ -1,6 +1,7 @@
 // T1: tier accounting and run-summary rendering use planted plans and receipts in-process.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { durationHistory } from '../src/suite-duration-context.ts';
 import { planTierReport, tierReport, taskTierEvidence, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -42,7 +43,7 @@ test('close-run summary retains the aggregate census after differently ordered s
   assert.match(summary, /tier share: T1\+T2 50 % of 1000 s \(T3 400 s, T4 100 s\)$/);
 });
 
-test('tier planning enforces supplied legacy allowance history without a repository', async t => {
+async function durationFixture(t: test.TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'tier-history-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, 'hub/test'), { recursive: true });
@@ -57,11 +58,38 @@ test('tier planning enforces supplied legacy allowance history without a reposit
     allow: { [key]: { seconds: 6, legacy: true, owner: 'E-677', reason: 'Recorded before tier budgets.' } },
   }));
   const selection = { mode: 'full' as const, files: [], reason: 'fixture' };
+  return { root, key, selection };
+}
+
+test('tier planning enforces supplied legacy allowance history without a repository', async t => {
+  const { root, key, selection } = await durationFixture(t);
   const planned = await planTierReport(root, selection, 2, undefined, { legacyKeys: new Set([key]) });
   assert.deepEqual(planned.map(({ tier, files, tests, seconds }) => ({ tier, files, tests, seconds })), [
     { tier: 'T1', files: ['hub/test/one.test.ts'], tests: 1, seconds: 2 },
   ]);
   await assert.rejects(planTierReport(root, selection, 2, undefined, { legacyKeys: new Set() }), /new duration allowance cannot be legacy/);
+});
+
+test('planner history defaults to Git unless a duration snapshot is injected', async t => {
+  const { root, key, selection } = await durationFixture(t);
+  assert.deepEqual(durationHistory(undefined), {}, 'no injected snapshot leaves the Git reader enabled');
+  assert.deepEqual(durationHistory(null), { legacyKeys: new Set() }, 'explicitly unavailable history never reads Git');
+  const manifest = {
+    version: 1 as const, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: {}, tests: {}, allow: { [key]: { seconds: 6, legacy: true as const, owner: 'E-677', reason: 'Recorded allowance.' } },
+  };
+  const context = { manifest, tiers: {}, base: { manifest, tiers: {}, retained: [], sources: {} } };
+  const baseline = { ...manifest, allow: { ...manifest.allow, expiring: { seconds: 1, reason: 'New allowance.' } } };
+  assert.deepEqual(durationHistory({ ...context, base: { ...context.base, manifest: baseline } }).legacyKeys,
+    new Set([key, 'expiring']), 'the original schema predates explicit legacy flags');
+  assert.deepEqual(durationHistory({ ...context, base: { ...context.base,
+    manifest: { ...baseline, budget: { ...baseline.budget, T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 } } } } }).legacyKeys,
+    new Set([key]), 'after migration only explicitly legacy allowances survive');
+  const planned = await planTierReport(root, selection, 2, undefined, durationHistory(context));
+  assert.deepEqual(planned.map(row => row.files), [['hub/test/one.test.ts']]);
+  await assert.rejects(planTierReport(root, selection, 2, undefined, durationHistory({ ...context,
+    base: { ...context.base, manifest: { ...manifest, allow: {} }, retained: [key] } })), /new duration allowance cannot be legacy/);
+  assert.deepEqual(durationHistory({ manifest, tiers: {} }), { legacyKeys: new Set() });
 });
 
 test('task evidence names deferred T3 with the current merge queue state', () => {

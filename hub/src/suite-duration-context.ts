@@ -4,8 +4,17 @@ import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { DURATION_MANIFEST, type DurationManifest, type TestTiming } from './suite-durations.ts';
-import { TIER_MANIFEST, type Tier, type TierManifest } from './suite-shards.ts';
+import { TIER_MANIFEST, type Tier, type TierManifest, type DurationHistory } from './suite-shards.ts';
 import type { DurationBudgetContext, SourceTestIdentity } from './suite-duration-budget.ts';
+
+/** An injected snapshot owns allowance provenance; absent injection keeps the Git reader. */
+export function durationHistory(context: DurationBudgetContext | null | undefined): DurationHistory {
+  if (context === undefined) return {};
+  const baseline = context?.base?.manifest;
+  // Retained timing identities are not allowance provenance.
+  return { legacyKeys: new Set(Object.entries(baseline?.allow ?? {})
+    .filter(([, entry]) => !baseline?.budget.T1 || entry.legacy).map(([key]) => key)) };
+}
 
 export class DurationInspectionError extends Error {
   constructor(operation: string) { super(`duration inspection failed: ${operation}`); }
