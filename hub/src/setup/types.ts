@@ -15,10 +15,12 @@ export type SetupMachine = {
 };
 
 /** Every step receives the same policy. yes accepts harmless defaults only;
- * Without a terminal only explicitly requested installers may run.
+ * Without a terminal, installers need --install and harmless writes such as trust need --yes.
  */
 export type SetupOptions = {
   root: string;
+  /** The absolute spelling passed to the CLI, retained for Codex remote attach trust. */
+  rootSpelling?: string;
   env: NodeJS.ProcessEnv;
   interactive: boolean;
   yes: boolean;

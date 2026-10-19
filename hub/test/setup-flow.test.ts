@@ -1,12 +1,26 @@
-// T1: setup actions and reports on an in-memory machine; no processes, terminal or disk writes.
+// T1: setup actions and reports on an in-memory machine; no processes or terminal; scratch trust configs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { setup } from '../src/setup/runner.ts';
 import type { SetupMachine } from '../src/setup/types.ts';
 import { scriptedPrompter } from './setup-prompter.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 import { CHOSEN, setRoleKey } from '../src/roles/editor.ts';
+
+function scratch(t: test.TestContext, trusted = true): string {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'cland-setup-')));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  if (trusted) {
+    writeFileSync(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));
+    mkdirSync(join(root, '.codex'));
+    writeFileSync(join(root, '.codex/config.toml'), `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`);
+  }
+  return root;
+}
 
 const machine: SetupMachine = {
   read: async () => null,
@@ -20,13 +34,14 @@ const machine: SetupMachine = {
   ] }),
 };
 
-test('installing Codex uses the terminal runner and its re-check decides done or fail', async () => {
+test('installing Codex uses the terminal runner and its re-check decides done or fail', async t => {
+  const root = scratch(t);
   for (const installed of [true, false]) {
     let ran = false;
     const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: true }]);
     const output: string[] = [];
-    const env = { PATH: '/tools' };
-    const { report } = await setup({ root: '/project', env, interactive: true, yes: false, prompter: {
+    const env = { HOME: root, PATH: '/tools' };
+    const { report } = await setup({ root, env, interactive: true, yes: false, prompter: {
       ...prompter,
       confirm: async (question, def) => {
         assert.match(output.join(''), /chatgpt.com\/codex\/install.sh/);
@@ -42,7 +57,7 @@ test('installing Codex uses the terminal runner and its re-check decides done or
         return 7;
       },
       harness: async (id, fresh) => id === 'codex' && ran && installed ? {
-        id, bin: '/home/.local/bin/codex', version: [1, 2, 3], checks: [
+        id, bin: join(root, '.local/bin/codex'), version: [1, 2, 3], checks: [
           { name: id, verdict: 'ok', detail: '1.2.3' }, { name: `${id} auth`, verdict: 'ok', detail: 'logged in' },
         ],
       } : machine.harness(id, fresh),
@@ -53,7 +68,7 @@ test('installing Codex uses the terminal runner and its re-check decides done or
     assert.equal(line.verdict, installed ? 'done' : 'fail');
     if (installed) {
       assert.match(line.detail, /1.2.3.*open a new shell/);
-      assert.match(env.PATH, /\/home\/\.local\/bin/);
+      assert.ok(env.PATH.includes(join(root, '.local/bin')));
       assert.ok(report.steps.some(s => s.name === 'codex auth'));
     } else {
       assert.match(line.detail, /exit code 7/);
@@ -63,13 +78,14 @@ test('installing Codex uses the terminal runner and its re-check decides done or
   }
 });
 
-test('setup reports project, harnesses and installed logins in order without asking', async () => {
+test('setup reports project, harnesses and installed logins in order without asking', async t => {
+  const root = scratch(t, false);
   const prompter = scriptedPrompter([]);
-  const { report, code } = await setup({ root: '/project', env: {}, interactive: false, yes: true, prompter, machine });
+  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter, machine });
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code auth', 'open'], ['opencode auth', 'skip'],
+    ['claude-code auth', 'open'], ['opencode auth', 'skip'], ['trust', 'open'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -77,7 +93,8 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.deepEqual(prompter.asked, []);
 });
 
-test('a declined installer persists across setup runs until an explicit install', async () => {
+test('a declined installer persists across setup runs until an explicit install', async t => {
+  const root = scratch(t);
   let config = renderConfig(defaultConfig('project'));
   let runs = 0;
   const m: SetupMachine = {
@@ -91,25 +108,26 @@ test('a declined installer persists across setup runs until an explicit install'
     run: async () => { runs++; return 0; },
   };
   const first = scriptedPrompter([{ kind: 'confirm', question: 'Install Codex now?', answer: false }]);
-  await setup({ root: '/project', env: {}, interactive: true, yes: false, prompter: first, machine: m });
+  await setup({ root, env: { HOME: root }, interactive: true, yes: false, prompter: first, machine: m });
   assert.deepEqual(parseConfig(config, 'project').setup.declinedInstalls, ['codex']);
   const second = scriptedPrompter([]);
-  const { report } = await setup({ root: '/project', env: {}, interactive: true, yes: false, prompter: second, machine: m });
+  const { report } = await setup({ root, env: { HOME: root }, interactive: true, yes: false, prompter: second, machine: m });
   const line = report.steps.find(s => s.name === 'codex')!;
   assert.equal(line.verdict, 'skip');
   assert.match(line.detail, /declined earlier; cland setup --install codex/);
   assert.equal(runs, 0);
   // An explicit install clears the decline even if its re-check still fails.
-  await setup({ root: '/project', env: {}, interactive: false, yes: false, install: 'codex', prompter: second, machine: m });
+  await setup({ root, env: { HOME: root }, interactive: false, yes: false, install: 'codex', prompter: second, machine: m });
   assert.equal(runs, 1);
   assert.deepEqual(parseConfig(config, 'project').setup.declinedInstalls, []);
 });
 
-test('nonterminal detection and --yes never install or record a decline', async () => {
+test('nonterminal detection and --yes never install or record a decline', async t => {
+  const root = scratch(t);
   for (const interactive of [false, true]) {
     let runs = 0, writes = 0;
     const config = renderConfig(defaultConfig('project'));
-    await setup({ root: '/project', env: {}, interactive, yes: interactive, prompter: scriptedPrompter([]), machine: {
+    await setup({ root, env: { HOME: root }, interactive, yes: interactive, prompter: scriptedPrompter([]), machine: {
       ...machine,
       read: async () => config,
       run: async () => { runs++; return 0; },
@@ -120,13 +138,14 @@ test('nonterminal detection and --yes never install or record a decline', async 
   }
 });
 
-test('install rebuilds only the exact roles template for the installed set', async () => {
+test('install rebuilds only the exact roles template for the installed set', async t => {
+  const root = scratch(t);
   for (const kind of ['template', 'edited', 'favourite']) {
     const template = rolesTemplate(['claude-code']);
     const original = kind === 'favourite' ? setRoleKey(template, 'aide', 'launch', 'harness', 'claude-code', CHOSEN)
       : template + (kind === 'edited' ? '\n# human edit\n' : '');
     let roles = original, installed = false;
-    const { report } = await setup({ root: '/project', env: {}, interactive: false, yes: false, install: 'codex', prompter: scriptedPrompter([]), machine: {
+    const { report } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, install: 'codex', prompter: scriptedPrompter([]), machine: {
       ...machine,
       read: async path => path === 'roles.toml' ? roles : null,
       write: async (path, text, expected) => { assert.equal(path, 'roles.toml'); assert.equal(expected, roles); roles = text; },
@@ -144,9 +163,10 @@ test('install rebuilds only the exact roles template for the installed set', asy
   }
 });
 
-test('the first installed harness makes missing alternatives optional in the final report', async () => {
+test('the first installed harness makes missing alternatives optional in the final report', async t => {
+  const root = scratch(t);
   let installed = false;
-  const { report, code } = await setup({ root: '/project', env: {}, interactive: false, yes: false, install: 'codex', prompter: scriptedPrompter([]), machine: {
+  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, install: 'codex', prompter: scriptedPrompter([]), machine: {
     ...machine,
     run: async () => { installed = true; return 0; },
     harness: async id => id === 'codex' && installed ? {
@@ -157,13 +177,14 @@ test('the first installed harness makes missing alternatives optional in the fin
   } });
   assert.equal(code, 0);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex auth', 'ok'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex auth', 'ok'], ['trust', 'ok'],
   ]);
 });
 
-test('no installed harness makes every installer open; one installed makes missing ones skip', async () => {
+test('no installed harness makes every installer open; one installed makes missing ones skip', async t => {
+  const root = scratch(t, false);
   for (const installed of [false, true]) {
-    const { report, code } = await setup({ root: '/project', env: {}, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+    const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
       ...machine,
       harness: async id => installed && id === 'claude-code' ? machine.harness(id) : { id, bin: null, version: null, checks: [] },
     } });
@@ -180,8 +201,9 @@ test('no installed harness makes every installer open; one installed makes missi
   }
 });
 
-test('a missing project stops setup before probing harnesses', async () => {
-  const { report, code } = await setup({ root: '/empty', env: {}, interactive: false, yes: true, prompter: scriptedPrompter([]), machine: {
+test('a missing project stops setup before probing harnesses', async t => {
+  const root = scratch(t);
+  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: true, prompter: scriptedPrompter([]), machine: {
     ...machine, projectExists: async () => false,
     harness: async () => { throw new Error('must stop before probing'); },
   } });
@@ -189,8 +211,9 @@ test('a missing project stops setup before probing harnesses', async () => {
   assert.deepEqual(report.steps, [{ name: 'project', verdict: 'fail', detail: 'no .cland/ directory', fix: 'run cland init first' }]);
 });
 
-test('all steps ok exits zero and points to cland; installer folders explain PATH', async () => {
-  const { report, code } = await setup({ root: '/project', env: {}, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+test('all steps ok exits zero and points to cland; installer folders explain PATH', async t => {
+  const root = scratch(t);
+  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
     ...machine, onPath: async () => false,
     harness: async id => ({ id, bin: `/installer/${id}`, version: [2, 0, 24], checks: [
       { name: id, verdict: 'ok', detail: '2.0.24' },
@@ -199,13 +222,14 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   } });
   assert.equal(code, 0);
   assert.equal(report.next, 'cland');
-  assert.deepEqual(report.summary, { ok: 7, done: 0, skip: 0, open: 0, fail: 0 });
+  assert.deepEqual(report.summary, { ok: 8, done: 0, skip: 0, open: 0, fail: 0 });
   assert.ok(report.steps.every(s => s.verdict === 'ok'));
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });
 
-test('login probe-error hints preserve their instruction prose', async () => {
-  const { report, code } = await setup({ root: '/project', env: {}, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+test('login probe-error hints preserve their instruction prose', async t => {
+  const root = scratch(t, false);
+  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
     ...machine,
     harness: async id => ({ id, bin: '/tools/harness', version: [2, 0, 24], checks: [
       { name: id, verdict: 'ok', detail: '2.0.24' },

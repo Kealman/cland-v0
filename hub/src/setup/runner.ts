@@ -3,10 +3,11 @@ import { Cancelled } from './prompter.ts';
 import { project } from './steps/project.ts';
 import { harnesses } from './steps/harnesses.ts';
 import { logins } from './steps/logins.ts';
+import { trust } from './steps/trust.ts';
 import type { SetupLine, SetupOptions, SetupStep, SetupVerdict } from './types.ts';
 
-// Only built steps appear. Accounts, favourite, trust, hub and aide join here in that order.
-const STEPS: readonly SetupStep[] = [project, harnesses, logins];
+// Only built steps appear. Accounts and favourite join before trust; hub and aide follow it.
+const STEPS: readonly SetupStep[] = [project, harnesses, logins, trust];
 export type SetupReport = {
   root: string;
   version: string;

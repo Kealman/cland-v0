@@ -1,7 +1,7 @@
 // T2: setup's CLI boundary and actual command dispatch; probes are injected, no harness runs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -27,15 +27,16 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
     ] }),
   };
   let stdout = '', stderr = '';
-  const code = await runSetup(['--json', '--yes'], root, {}, { machine, prompter, stdinTTY: true, stdoutTTY: true, write: s => { stdout += s; }, narrate: s => { stderr += s; } });
-  assert.equal(code, 0);
+  const code = await runSetup(['--json'], root, { HOME: root }, { machine, prompter, stdinTTY: true, stdoutTTY: true, write: s => { stdout += s; }, narrate: s => { stderr += s; } });
+  assert.equal(code, 1);
   const report = JSON.parse(stdout);
   assert.deepEqual(Object.keys(report), ['root', 'version', 'interactive', 'steps', 'summary', 'next']);
   assert.equal(report.root, realpathSync(root));
   assert.equal(report.version, VERSION);
   assert.equal(report.interactive, false);
-  assert.equal(report.next, 'cland');
-  assert.equal(report.steps.length, 7);
+  assert.equal(report.next, 'cland setup');
+  assert.equal(report.steps.length, 8);
+  assert.equal(report.steps.at(-1).verdict, 'open');
   assert.deepEqual(prompter.asked, []);
   assert.match(stderr, /without a terminal/);
   assert.match(stderr, /cland setup.*in a terminal/);
@@ -118,7 +119,33 @@ test('setup executable JSON reports open installers without running any harness'
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
   assert.deepEqual(report.steps.map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'],
+    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['trust', 'skip'],
   ]);
   assert.match(result.stderr, /without a terminal/);
+});
+
+test('setup retains the CLI root spelling for Codex trust', async t => {
+  const root = await tempProject(t);
+  const alias = join(root, 'alias');
+  await mkdir(join(root, '.cland'));
+  await mkdir(join(root, '.codex'));
+  await symlink(root, alias);
+  const file = join(root, '.codex/config.toml');
+  const canonical = `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`;
+  await writeFile(file, canonical);
+  const machine: SetupMachine = {
+    read: async () => null, write: async () => { throw new Error('unexpected write'); }, run: async () => { throw new Error('unexpected installer'); },
+    projectExists: async () => true, onPath: async () => true,
+    harness: async id => ({ id, bin: id === 'codex' ? '/tools/codex' : null, version: [1, 0, 0], checks: [
+      { name: id, verdict: 'ok', detail: '1.0.0' }, { name: `${id} auth`, verdict: 'ok', detail: 'logged in' },
+    ] }),
+  };
+  let output = '';
+  const io = { machine, prompter: scriptedPrompter([]), write: (s: string) => { output += s; }, narrate: () => {} };
+  assert.equal(await runSetup([alias, '--json'], root, { HOME: root }, io), 1);
+  assert.equal(JSON.parse(output).steps.at(-1).verdict, 'open');
+  await writeFile(file, canonical + `[projects.${JSON.stringify(alias)}]\ntrust_level = "trusted"\n`);
+  output = '';
+  assert.equal(await runSetup([alias, '--json'], root, { HOME: root }, io), 0);
+  assert.equal(JSON.parse(output).steps.at(-1).verdict, 'ok');
 });

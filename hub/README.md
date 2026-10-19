@@ -972,7 +972,8 @@ explicit directory, refuses a discovered parent and HOME, and stops with
 "run cland init first" when `.cland/` is absent.
 
 Setup currently detects the project, then Claude Code, Codex and OpenCode, then
-the installed harnesses' logins, in that order. Each line has `ok`, `done`, `skip`,
+the installed harnesses' logins, then grants project trust for every installed
+harness, in that order. Each line has `ok`, `done`, `skip`,
 `open` or `fail`, a detail and any fix. With no harness installed, all three
 installers are `open`; with one installed, missing alternatives are `skip` with
 an installer hint. A binary found only in an installer's folder explains that a
@@ -992,18 +993,28 @@ exact, unedited roles template for the installed set; edited files and a marked
 favourite are preserved. Installer folders supplement setup's own PATH for later steps.
 
 Without both stdin and stdout attached to a terminal, setup asks and launches
-nothing; installers and their associated writes need an explicit `--install`.
-`--json` disables questions and prints one object with `root`, `version`, `interactive`, `steps`, `summary` and
-`next` on stdout; narration and any explicitly requested installer's output go
-to stderr. `steps` uses doctor's `name`,
+nothing. Installers and their associated writes need an explicit `--install`;
+trust writes need `--yes`. `--json` disables questions and prints one object
+with `root`, `version`, `interactive`, `steps`, `summary` and `next` on stdout;
+narration and any explicitly requested installer's output go to stderr. It can
+still install with `--install` or write trust with `--yes`. `steps` uses doctor's `name`,
 `verdict`, `detail` and optional `fix` fields. `next` is `cland setup` while work
 is open or failed, otherwise `cland`. Exit codes are 0 when no step is open or
 failed, 1 otherwise, and 130 for input cancellation at a question.
 
-`--yes` accepts defaults only for questions marked harmless. It never authorizes
-installing, signing in or launching. Later steps add logins, accounts, favourite
-harness, trust, hub and Aide.
-They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
+Trust asks no question in a terminal. It writes the real harness configuration
+for this project's path: Claude Code's profile `.claude.json` under its lock,
+and Codex's `config.toml` through a short-lived app-server whose process group
+is ended afterwards. The launch profile and each account named by a role are
+included. OpenCode has no trust gate. One `trust` line names the actual config
+paths, says `done` after a write or `ok` when already trusted, and gives the
+harness's own trust dialog as the manual fix after a failure. Without a terminal
+and without `--yes`, missing trust stays `open` and no config is written.
+
+`--yes` accepts defaults only for questions marked harmless and permits the
+trust writes above, including with `--json`. It never authorizes installing
+or signing in. Later steps will add logins, accounts, the favourite harness,
+hub and Aide. They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
 Action steps must detect again after acting and let that detection decide their
 result. `src/setup/terminal.ts` runs a child with inherited terminal I/O (stdout
 redirects to stderr for JSON reports), ignores

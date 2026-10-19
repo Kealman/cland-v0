@@ -293,6 +293,7 @@
     "hub/test/setup-machine.test.ts": "T3",
     "hub/test/setup-prompter.test.ts": "T3",
     "hub/test/setup-terminal.test.ts": "T1",
+    "hub/test/setup-trust.test.ts": "T1",
     "hub/test/shared-defects-report.test.ts": "T3",
     "hub/test/shared-defects.test.ts": "T1",
     "hub/test/skills-invocation.test.ts": "T1",

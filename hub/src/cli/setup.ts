@@ -49,8 +49,10 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   const narrate = json ? (io.narrate ?? ((text: string) => { process.stderr.write(text); })) : write;
   // Keep installer folders available to later steps and the hub child without changing the caller's env.
   const setupEnv = { ...env };
-  narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : install ? ` — without a terminal: install ${install} requested` : ' — without a terminal: detection only'}\n`);
-  const { report, code } = await setup({ root, env: setupEnv, interactive, json, yes: args.includes('--yes'), ...(install ? { install } : {}), narrate,
+  const yes = args.includes('--yes');
+  const actions = [install ? `install ${install} requested` : '', yes ? '--yes allows harmless writes' : ''].filter(Boolean).join('; ') || 'detection only';
+  narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : ` — without a terminal: ${actions}`}\n`);
+  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, ...(install ? { install } : {}), narrate,
     prompter: io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr }),
     machine: io.machine ?? setupMachine(root, setupEnv),
   });
