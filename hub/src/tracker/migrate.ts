@@ -2,6 +2,7 @@ import { validTimestamp } from './criteria.ts';
 import { fileNameOf, sizeRefusal, type Size, type Item } from './item.ts';
 import { DEFAULT_LEVELS, Ladder, kindsFor } from './kinds.ts';
 import { parseItemReference, prefixOf } from './prefixes.ts';
+import { DEFAULT_CATEGORIES } from './categories.ts';
 
 export type SizeAssignments = ReadonlyMap<number, Size>;
 
@@ -84,7 +85,7 @@ export function planMigration(files: readonly MigrationFile[], nextNumber: numbe
     techDebtId = canonical(techDebt);
     if (techDebt.item.fm.kind !== 'category') plan.categories.push({ action: 'convert', file: techDebt.file, id: techDebtId, title: 'Tech debt', fromKind: techDebt.item.fm.kind, kind: 'category' });
   } else techDebtId = seed('Tech debt');
-  for (const title of ['Bugs', 'Follow-ups', 'Ideas']) seed(title);
+  for (const title of DEFAULT_CATEGORIES) if (title !== 'Tech debt') seed(title);
 
   for (const entry of sorted) {
     const { file, item: { fm } } = entry;

@@ -70,7 +70,7 @@ test('an initialized non-worktree child remains its own project beside a running
   const childHub = await wait('start project hub', () => projectHub(fixtures, child, {}, { clock: new FakeClock(), harnesses: 'fake' }));
   assert.notEqual(childHub.discovery.socket, discovery.socket);
   ok(await wait('CLI task create --size', () => cland(child, 'task', 'create', '--size', 'M', 'Child item')));
-  assert.match(ok(await wait('CLI task view T-1', () => cland(child, 'task', 'view', 'T-1'))).stdout, /Child item/);
+  assert.match(ok(await wait('CLI task view T-5', () => cland(child, 'task', 'view', 'T-5'))).stdout, /Child item/);
   assert.match(ok(await wait('CLI task view T-1', () => cland(parent, 'task', 'view', 'T-1'))).stdout, /Parent item/);
   assert.equal(JSON.parse(ok(await wait('CLI task list --json', () => cland(parent, 'task', 'list', '--json'))).stdout).items.length, 1);
 });

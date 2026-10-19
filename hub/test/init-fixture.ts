@@ -39,7 +39,7 @@ export async function run(root: string, command: 'init' | 'update', env: Record<
 async function runWithIdentity(root: string, command: 'init' | 'update', env: Record<string, string>): Promise<Change[]> {
   // Version is a module constant: the old-release fixture needs a fresh module graph.
   if (env.CLAND_VERSION_OVERRIDE) return runCli(root, command, env);
-  if (env.CLAND_SKILLS_SOURCE_OVERRIDE) return provision(root, { skillsSource: env.CLAND_SKILLS_SOURCE_OVERRIDE, territory: command === 'init' });
+  if (env.CLAND_SKILLS_SOURCE_OVERRIDE) return provision(root, { skillsSource: env.CLAND_SKILLS_SOURCE_OVERRIDE, territory: command === 'init', categories: command === 'init' });
   const r = await captureCli(write => command === 'init' ? runInit(['--json'], root, write) : runUpdate(['--json'], root, write));
   assert.equal(r.code, 0, `cland ${command}: ${r.stderr}`);
   return (JSON.parse(r.stdout) as { changes: Change[] }).changes;

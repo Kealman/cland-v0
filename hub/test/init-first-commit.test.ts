@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { emptyFolder, gitIn, initIn, scratchMachine, snapshot, type InitMachine } from './init-machine.ts';
 import { provision } from '../src/init/provision.ts';
 import { Report } from '../src/init/files.ts';
@@ -99,6 +99,7 @@ test('empty-folder init creates one cland-only commit on clean dev', async t => 
   for (const path of files) assert.match(path, /^(AGENTS\.md$|\.agents\/|\.cland\/|\.claude\/|docs\/agents\/)/);
   assert.deepEqual(files.filter(path => path.startsWith('.cland/')), [
     '.cland/.gitignore', '.cland/RULES.md', '.cland/config.toml', '.cland/crew.toml', '.cland/roles.toml', '.cland/tasks/.gitkeep',
+    '.cland/tasks/C-1-bugs.md', '.cland/tasks/C-2-tech-debt.md', '.cland/tasks/C-3-follow-ups.md', '.cland/tasks/C-4-ideas.md',
   ]);
   assert.equal(await git(machine, root, 'status', '--porcelain'), '');
   assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
@@ -132,6 +133,7 @@ test('a second init preserves the first commit and reports nothing to change', a
   const second = await initIn(machine, root, 'init');
   assert.equal(second.code, 0, second.stderr);
   assert.match(second.stdout, /nothing to change: every managed part is current/);
+  assert.match(second.stdout, /unchanged\s+\.cland\/tasks\s+\(the four categories are present\)/);
   assert.equal(await git(machine, root, 'rev-parse', 'HEAD'), head);
   assert.equal(await git(machine, root, 'rev-list', '--all', '--count'), '1');
   assert.equal(await git(machine, root, 'status', '--porcelain'), '');
@@ -164,6 +166,7 @@ test('update never creates a repository or a first commit', async t => {
     if (repository) await git(machine, root, 'init', '-q', '-b', 'main');
     const result = await initIn(machine, root, 'update');
     assert.equal(result.code, 0, result.stderr);
+    assert.deepEqual(await readdir(join(root, '.cland/tasks')), ['.gitkeep'], 'update does not seed categories');
     const head = await gitIn(machine, root, 'rev-parse', '--verify', 'HEAD');
     assert.equal(head.code, 128);
     if (!repository) assert.equal((await gitIn(machine, root, 'rev-parse', '--git-dir')).code, 128);
@@ -217,7 +220,7 @@ test('legacy skill refresh commits owned leaves without adopting an unlisted pri
 test('init commits already current managed files in a previously provisioned non-Git folder', async t => {
   const machine = await scratchMachine(t, { identity: true });
   const root = await emptyFolder(machine);
-  provision(root, { territory: false, env: machine.env });
+  await provision(root, { territory: false, categories: true, env: machine.env });
   assert.equal((await gitIn(machine, root, 'rev-parse', '--git-dir')).code, 128);
   const result = await initIn(machine, root, 'init');
   assert.equal(result.code, 0, result.stderr);
@@ -225,4 +228,19 @@ test('init commits already current managed files in a previously provisioned non
   assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
   assert.equal(await git(machine, root, 'status', '--porcelain'), '');
   assert.match(await git(machine, root, 'show', 'HEAD:AGENTS.md'), /managed by cland/);
+});
+
+test('init with no root category includes the task placeholder in its first commit', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const root = await emptyFolder(machine);
+  await provision(root, { territory: false, env: machine.env });
+  const config = join(root, '.cland/config.toml');
+  await writeFile(config, (await readFile(config, 'utf8')).replace(/^levels = .*$/m, 'levels = []'));
+  const result = await initIn(machine, root, 'init');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /categories skipped: the ladder has no root category/);
+  assert.deepEqual(await readdir(join(root, '.cland/tasks')), ['.gitkeep']);
+  assert.equal(await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD', '.cland/tasks'), '.cland/tasks/.gitkeep');
+  assert.equal(await git(machine, root, 'status', '--porcelain'), '');
+  assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
 });

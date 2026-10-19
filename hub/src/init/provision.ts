@@ -3,6 +3,7 @@
 // is never written. Running it again changes nothing; after a version change it rewrites the managed parts only.
 //
 //   .cland/.gitignore, config.toml, crew.toml, roles.toml and RULES.md (written once, then the human's), tasks/.gitkeep
+//   init's four root categories in tasks/, through the tracker, before the first commit
 //   the General and Agents topics, in .cland/hub.db (not committed), through the store: no hub is needed
 //   .agents/skills/<name>/ and its manifest, .claude/skills (a symlink, or one per skill in the project's own folder)
 //   docs/agents/issue-tracker.md, domain.md, triage-labels.md
@@ -15,14 +16,16 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENTS, GENERAL } from '../hub/core.ts';
 import { Store } from '../hub/store.ts';
+import { Tracker } from '../tracker/tracker.ts';
+import { DEFAULT_CATEGORIES } from '../tracker/categories.ts';
 import { GITIGNORE, MANAGED_BY, layout } from '../project.ts';
 import { DEFAULT_CREW_TOML } from '../crew.ts';
 import { RULEBOOK_HEADER } from '../rules/rulebook.ts';
 import { rolesTemplate } from '../roles/template.ts';
 import { installedHarnesses } from '../doctor/harnesses.ts';
 import { provisionClaudeSettings } from './claude-settings.ts';
-import { provisionConfig } from './config.ts';
-import { isManagedFile, readText, Report, writeIfChanged, type Change } from './files.ts';
+import { provisionConfig, readProjectConfig } from './config.ts';
+import { isManagedFile, readText, refuseSymlink, Report, writeIfChanged, type Change } from './files.ts';
 import { provisionAgentsMd, provisionClaudeMd, provisionDocs } from './instructions.ts';
 import { provisionClaudeSkills, provisionSkills, SKILLS_SOURCE } from './skills.ts';
 import { provisionTerritory } from '../territory.ts';
@@ -37,12 +40,14 @@ export type ProvisionOptions = {
   territory?: boolean;
   /** Only init may create a repository and its first commit; update never does. */
   repository?: boolean;
+  /** Init seeds the root categories; update only refreshes managed files. */
+  categories?: boolean;
 };
 
 export const TASKS_KEEP = `# ${MANAGED_BY}: keeps .cland/tasks/ in git until it holds an item\n`;
 
 /** Provision `root`; returns what was done to each path. */
-export function provision(root: string, options: ProvisionOptions = {}): Change[] {
+export async function provision(root: string, options: ProvisionOptions = {}): Promise<Change[]> {
   const report = new Report(root);
   const l = layout(root);
   const createdRepository = options.territory !== false && options.repository !== false && createRepository(report, root);
@@ -81,6 +86,33 @@ export function provision(root: string, options: ProvisionOptions = {}): Change[
     report.add(l.db, had ? 'unchanged' : 'created', 'the General and Agents topics');
   } finally {
     store.close();
+  }
+
+  if (options.categories && !refuseSymlink(report, l.tasks)) {
+    const config = readProjectConfig(l.config, root, undefined, options.env);
+    const tracker = new Tracker({ root, db: l.db, env: options.env ?? process.env, ...(config ? { levels: config.tracker.levels } : {}) });
+    try {
+      if (!tracker.ladder.roots.includes('category')) {
+        report.add(l.tasks, 'unchanged', 'categories skipped: the ladder has no root category');
+      } else {
+        tracker.rescan();
+        const present = tracker.list({ kind: 'category', state: 'open' }).filter(item => item.parent === null);
+        let created = false;
+        for (const title of DEFAULT_CATEGORIES) {
+          const existing = present.find(item => item.title === title);
+          if (existing) {
+            report.add(join(l.tasks, existing.file), 'unchanged', `category ${title}`);
+            continue;
+          }
+          const item = await tracker.create({ id: 'cland-init', name: 'cland init', role: null, human: true }, { kind: 'category', title });
+          report.add(join(root, item.path), 'created', `category ${title}`);
+          created = true;
+        }
+        if (!created) report.add(l.tasks, 'unchanged', 'the four categories are present');
+      }
+    } finally {
+      await tracker.stop();
+    }
   }
 
   const managed = provisionSkills(report, root, options.skillsSource ?? SKILLS_SOURCE);

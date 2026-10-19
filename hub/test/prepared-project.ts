@@ -6,10 +6,11 @@ import { cp, mkdir, mkdtemp, readdir, readFile, realpath, writeFile } from 'node
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, type TestContext } from 'node:test';
-import { cland, tempProject } from './harness.ts';
+import { tempProject } from './harness.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { provisionTerritory } from '../src/territory.ts';
 import { Report } from '../src/init/files.ts';
+import { provision } from '../src/init/provision.ts';
 
 type Shape = 'repository' | 'territory' | 'release' | 'verification' | 'native-territory';
 const seeds = new Map<Shape, Promise<string>>();
@@ -37,8 +38,9 @@ async function build(shape: Shape): Promise<string> {
   }
   if (shape === 'native-territory') provisionTerritory(new Report(root), root);
   else if (shape !== 'repository') {
-    const result = await cland(root, 'init');
-    assert.equal(result.code, 0, result.stderr || result.stdout);
+    // These fixtures deliberately start with an empty tracker; init's category contract
+    // belongs to init-categories/first-commit, not every consumer's item numbering.
+    await provision(root, { territory: true, categories: false });
   }
   return root;
 }
@@ -65,7 +67,7 @@ export async function copyPreparedProject(root: string, shape: Shape = 'territor
   await writeFile(config, text.replaceAll(source, root));
 }
 
-/** Same lifetime/process ownership as tempProject; default is after cland init. */
+/** Same lifetime/process ownership as tempProject; default is provisioned with an empty tracker. */
 export async function preparedProject(t: TestContext, shape: Exclude<Shape, 'release'> = 'territory', prefix = 'cland-proj-'): Promise<string> {
   const root = await tempProject(t, prefix);
   await copyPreparedProject(root, shape);

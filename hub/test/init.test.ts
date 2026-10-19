@@ -129,6 +129,10 @@ test('cland init on an empty repository: git status shows exactly the committed 
     '.cland/roles.toml',
     '.cland/RULES.md',
     '.cland/tasks/.gitkeep',
+    '.cland/tasks/C-1-bugs.md',
+    '.cland/tasks/C-2-tech-debt.md',
+    '.cland/tasks/C-3-follow-ups.md',
+    '.cland/tasks/C-4-ideas.md',
     'AGENTS.md',
     'docs/agents/domain.md',
     'docs/agents/issue-tracker.md',
@@ -349,7 +353,7 @@ test('a hub started in an initialised project has General and Agents, serves the
   const secret = (await readFile(join(root, '.cland', 'secret'), 'utf8')).trim();
   assert.match(secret, /^[0-9a-f]{64}$/);
   const status = await gitStatus(root);
-  assert.ok(status.every((p) => /^(\.agents\/skills\/|\.claude\/(settings\.json|skills)$|\.cland\/(\.gitignore|config\.toml|crew\.toml|roles\.toml|RULES\.md|tasks\/\.gitkeep)$|AGENTS\.md$|docs\/agents\/)/.test(p)), status.join('\n'));
+  assert.ok(status.every((p) => /^(\.agents\/skills\/|\.claude\/(settings\.json|skills)$|\.cland\/(\.gitignore|config\.toml|crew\.toml|roles\.toml|RULES\.md|tasks\/(?:\.gitkeep|C-\d+-[^/]+\.md))$|AGENTS\.md$|docs\/agents\/)/.test(p)), status.join('\n'));
   for (const f of status) {
     if ((await lstat(join(root, f))).isSymbolicLink()) continue;
     assert.ok(!(await readFile(join(root, f), 'utf8')).includes(secret), `${f} holds the secret`);
@@ -364,7 +368,7 @@ test('a manifest that is not cland\'s, malformed, or names a path outside its sk
     await mkdir(join(initialSource, name));
     await writeFile(join(initialSource, name, 'SKILL.md'), 'initial release bytes\n');
   }
-  provision(root, { territory: false, skillsSource: initialSource });
+  await provision(root, { territory: false, skillsSource: initialSource });
   const manifestPath = join(root, '.agents', 'skills', '.cland-manifest.json');
   const good = JSON.parse(await readFile(manifestPath, 'utf8')) as { managed: string; skills: Record<string, Record<string, string>> };
   const hash = good.skills.tdd!['SKILL.md']!;
@@ -400,7 +404,7 @@ test('a manifest that is not cland\'s, malformed, or names a path outside its sk
     const text = manifest === null ? '{ not json' : `${JSON.stringify(manifest, null, 2)}\n`;
     await writeFile(manifestPath, text);
     const before = await tree(root);
-    const changes = provision(root, { territory: false, skillsSource: source });
+    const changes = await provision(root, { territory: false, skillsSource: source });
     assert.deepEqual(changes.filter((c) => c.action === 'removed'), [], what);
     const report = changes.find((c) => c.path === '.agents/skills/.cland-manifest.json');
     assert.equal(report?.action, 'kept', what);
@@ -416,7 +420,7 @@ test('a manifest that is not cland\'s, malformed, or names a path outside its sk
   }
   // a valid manifest again: update works as before
   await writeFile(manifestPath, `${JSON.stringify(good, null, 2)}\n`);
-  const changes = provision(root, { territory: false, skillsSource: initialSource });
+  const changes = await provision(root, { territory: false, skillsSource: initialSource });
   assert.equal(changes.find((c) => c.path === '.agents/skills/.cland-manifest.json')?.action, 'unchanged');
   assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest')?.verdict, 'ok');
 });
@@ -429,7 +433,7 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   await writeFile(join(source, 'tdd', 'SKILL.md'), 'abc');
   await writeFile(join(source, 'tdd', 'NOTES.md'), 'notes v1');
   const update = () => provision(root, { territory: false, skillsSource: source });
-  update();
+  await update();
   const target = join(root, '.agents', 'skills');
   const manifestPath = join(target, '.cland-manifest.json');
   const read = async () => JSON.parse(await readFile(manifestPath, 'utf8')) as { managed: string; skills: Record<string, string[] | Record<string, string>> };
@@ -439,7 +443,7 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   const legacyCheck = (await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest');
   assert.equal(legacyCheck?.verdict, 'warn');
   assert.equal(legacyCheck?.fix, 'cland update');
-  update();
+  await update();
   assert.deepEqual((await read()).skills, initial.skills, 'unchanged cland bytes acquire hashes too');
   assert.equal(((await read()).skills.tdd as Record<string, string>)['SKILL.md'], 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
   assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest')?.verdict, 'ok');
@@ -449,22 +453,22 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   await rm(notes);
   await symlink(join(source, 'tdd', 'NOTES.md'), notes);
   await writeFile(join(source, 'tdd', 'SKILL.md'), 'new skill');
-  update();
+  await update();
   assert.deepEqual((await read()).skills.tdd, legacy.skills.tdd, 'refused legacy path retains the list form');
   assert.equal(await readFile(join(target, 'tdd', 'SKILL.md'), 'utf8'), 'new skill', 'other owned files still update');
   assert.equal((await lstat(notes)).isSymbolicLink(), true);
   await rm(notes);
-  update();
+  await update();
   const hashed = (await read()).skills.tdd;
   assert.deepEqual(hashed, Object.fromEntries(await tree(join(target, 'tdd'))), 'migrate once no unknown hashes remain');
 
   await rm(notes);
   await symlink(join(source, 'tdd', 'NOTES.md'), notes);
   await writeFile(join(source, 'tdd', 'NOTES.md'), 'notes v2');
-  update();
+  await update();
   assert.deepEqual((await read()).skills.tdd, hashed, 'refused hashed file retains the old hash, not source or target bytes');
   await rm(join(source, 'tdd', 'SKILL.md'));
-  update();
+  await update();
   assert.deepEqual((await read()).skills.tdd, hashed, 'a link in a dropped hashed skill retains its install hashes');
   assert.equal(await readFile(join(target, 'tdd', 'SKILL.md'), 'utf8'), 'new skill', 'the refused skill stays whole');
 });

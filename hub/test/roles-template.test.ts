@@ -19,7 +19,7 @@ test('a Claude-only installation provisions six auto-permission roles', async t 
   const bin = join(root, 'bin');
   await mkdir(bin);
   await writeFile(join(bin, 'claude'), '', { mode: 0o755 });
-  provision(root, { territory: false, env: { HOME: join(root, 'home'), XDG_CONFIG_HOME: join(root, 'config'), PATH: bin } });
+  await provision(root, { territory: false, env: { HOME: join(root, 'home'), XDG_CONFIG_HOME: join(root, 'config'), PATH: bin } });
   const roles = parseRoles(await readFile(join(root, '.cland/roles.toml'), 'utf8'));
   assert.equal(roles.size, 6);
   for (const [role, definition] of roles) {
@@ -46,7 +46,7 @@ test('Codex fallback uses each role sandbox without replacing shipped Codex mode
 test('new crew policy gives the Aide sub-agents', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-crew-template-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  provision(root, { territory: false, env: { HOME: root, XDG_CONFIG_HOME: join(root, 'config'), PATH: '' } });
+  await provision(root, { territory: false, env: { HOME: root, XDG_CONFIG_HOME: join(root, 'config'), PATH: '' } });
   assert.equal(parseCrew(await readFile(join(root, '.cland/crew.toml'), 'utf8')).crew.aide!.subagents, true);
 });
 
@@ -85,7 +85,7 @@ test('no installed harness is reported while edited role and crew policy remain 
   const root = await mkdtemp(join(tmpdir(), 'cland-roles-update-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const env = { HOME: root, XDG_CONFIG_HOME: join(root, 'config'), PATH: '' };
-  const changes = provision(root, { territory: false, env });
+  const changes = await provision(root, { territory: false, env });
   assert.match(changes.find(change => change.path === '.cland/roles.toml')!.note!, /no harness was found/);
   const rolePath = join(root, '.cland/roles.toml');
   const crewPath = join(root, '.cland/crew.toml');
@@ -93,7 +93,7 @@ test('no installed harness is reported while edited role and crew policy remain 
   const crew = (await readFile(crewPath, 'utf8')).replace(/subagents = true/g, 'subagents = false') + '# human edit\n';
   await writeFile(rolePath, roles);
   await writeFile(crewPath, crew);
-  provision(root, { territory: false, env: { ...env, CLAND_CODEX_BIN: process.execPath } });
+  await provision(root, { territory: false, env: { ...env, CLAND_CODEX_BIN: process.execPath } });
   assert.equal(await readFile(rolePath, 'utf8'), roles);
   assert.equal(await readFile(crewPath, 'utf8'), crew);
 });

@@ -69,8 +69,8 @@ function containerLiterals(rel: string, source: ts.SourceFile, checker: ts.TypeC
   };
   const flagged = new Set<ts.Node>();
   const flag = (node: ts.Node): void => {
-    // The prefix migration deliberately seeds and converts this one fixed kind.
-    if (rel === 'hub/src/tracker/migrate.ts' && literal(node) && node.text === 'category') return;
+    // Migration and init deliberately seed this one fixed kind (T-649).
+    if (['hub/src/tracker/migrate.ts', 'hub/src/init/provision.ts'].includes(rel) && literal(node) && node.text === 'category') return;
     if (defaults(node) || operationalOccasion(node) || flagged.has(node)) return;
     flagged.add(node);
     failures.push(`${rel}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1}`);

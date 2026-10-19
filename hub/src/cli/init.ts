@@ -20,7 +20,7 @@ function isShallowRepository(root: string): boolean {
 
 function describe(changes: Change[], root: string, command: string): string {
   const lines = [`cland ${command} ${VERSION} in ${root}`];
-  const shown = changes.filter((c) => c.action !== 'unchanged' || c.path.startsWith('.cland/territory.git'));
+  const shown = changes.filter((c) => c.action !== 'unchanged' || c.path.startsWith('.cland/territory.git') || c.path === '.cland/tasks');
   // the skills on one line per action: `created .agents/skills/ (38 skills)`
   const skill = (c: Change) => /^\.agents\/skills\/[^/.][^/]*$/.test(c.path) && !c.note;
   const skills = new Map<string, number>();
@@ -63,7 +63,7 @@ async function run(command: 'init' | 'update', args: string[], cwd: string, writ
   if (!undo && territory && isShallow(root)) throw new Error(`cland ${command}: the territory needs the full history: run git fetch --unshallow, then cland ${command} again`);
   const report = undo ? undoTerritory(root, force) : null;
   if (report && existsSync(resolve(root, CLAND_DIR))) provisionAgentsMd(report, root);
-  const changes = report?.changes ?? (await import('../init/provision.ts')).provision(root, { territory, repository: command === 'init' });
+  const changes = report?.changes ?? await (await import('../init/provision.ts')).provision(root, { territory, repository: command === 'init', categories: command === 'init' });
   const next = command === 'init' && !undo ? NEXT : undefined;
   write(json ? `${JSON.stringify({ root, version: VERSION, changes, next })}\n` : `${describe(changes, root, command)}${next ? `\nnext: ${next}` : ''}\n`);
   return 0;

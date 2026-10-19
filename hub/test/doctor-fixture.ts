@@ -79,7 +79,7 @@ export const notOk = (r: Report) => r.checks.filter((c) => c.verdict !== 'ok').m
 export async function initialised(t: TestContext, env: Record<string, string>, openCode = false): Promise<string> {
   const root = await tempProject(t, 'cland-doctor-proj-');
   // This fixture needs provisioned files, not the init command's native territory contract.
-  const init = await captureCli(() => { provision(root, { territory: false }); return Promise.resolve(0); });
+  const init = await captureCli(async () => { await provision(root, { territory: false }); return 0; });
   assert.equal(init.code, 0, init.stderr);
   // The healthy fixture uses Codex; OpenCode's safety warnings are exercised separately.
   if (!openCode) {

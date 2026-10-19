@@ -126,6 +126,7 @@
     "hub/test/inbox-verifier-load.test.ts": "T4",
     "hub/test/inbox-workload-soak.test.ts": "T4",
     "hub/test/inbox-workload.test.ts": "T2",
+    "hub/test/init-categories.test.ts": "T1",
     "hub/test/init-config.test.ts": "T1",
     "hub/test/init-first-commit.test.ts": "T3",
     "hub/test/init-machine-lifecycle.test.ts": "T3",
