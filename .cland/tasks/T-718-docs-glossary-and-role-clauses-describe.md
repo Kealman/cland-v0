@@ -3,7 +3,7 @@ id: T-718
 kind: task
 title: Docs, glossary and role clauses describe tiers, the merge queue and the end of manual covers
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-547
 branch: t/T-718-docs-glossary-and-role-clauses-describe
 created: 2026-10-16T19:59:44.511Z
-updated: 2026-10-19T03:58:18.853Z
+updated: 2026-10-19T04:25:10.907Z
 ---
 
 ## Summary
@@ -36,12 +36,16 @@ Once T-713 switches the protocol, the crew's instructions must match it. Covers 
 
 - [x] C1. `docs/agents/tests.md` has the "Tiers and the merge queue" section, and no passage in it still requires covers per batch or `all` for a second receipt.
   - done: impl-718 · 2026-10-19T03:27:19.106Z
+  - verified: rev-30 [reviewer] · run rev-20261019-718-final · 2026-10-19T04:25:09.467Z · commit db2e5373a0614d6dedebdafd5be7d806cbbde2c8
 - [x] C2. The merge skill describes enqueue, the queue listing, cancel and each queue refusal with who acts on it.
   - done: impl-718 · 2026-10-19T03:24:54.795Z
+  - verified: rev-30 [reviewer] · run rev-20261019-718-final · 2026-10-19T04:25:09.467Z · commit db2e5373a0614d6dedebdafd5be7d806cbbde2c8
 - [x] C3. `GLOSSARY.md` defines the six terms with _Avoid_ lines.
   - done: impl-718 · 2026-10-19T03:24:55.144Z
+  - verified: rev-30 [reviewer] · run rev-20261019-718-final · 2026-10-19T04:25:09.467Z · commit db2e5373a0614d6dedebdafd5be7d806cbbde2c8
 - [x] C4. The Coordinator, Implementer and Lead clauses carry the new lines, and `roles.test.ts` passes its byte-headroom check for every role.
   - done: impl-718 · 2026-10-19T03:57:48.160Z
+  - verified: rev-30 [reviewer] · run rev-20261019-718-final · 2026-10-19T04:25:09.467Z · commit db2e5373a0614d6dedebdafd5be7d806cbbde2c8
 
 ## Comments
 
@@ -108,3 +112,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Replacement source clear; M2 resolved, M1 remains resolved. A-5762 records both restored Lead ownership lines and pinned clause-reader audit. Existing roles-snapshot category/grant assertions unchanged; raw A-5761 has roles-snapshot 10/10 and roles 4/4 with delivered-clause headroom. No dev merge or other changes; no remaining findings. Previous failed gate A-5759 retained. C1–C4 await accepted exact-head replacement runtime; QA scope none.
+
+### rev-30 · 2026-10-19T04:25:09.467Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-718-final
+commit: db2e5373a0614d6dedebdafd5be7d806cbbde2c8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear from source A-5747/A-5749/A-5762 and accepted replacement gate a42107e7/A-5768; audit A-5770. M1/M2 resolved, failed A-5759 retained. Actual hub-only plus Neovim smoke: 2398 pass, 5 skip, zero fail/cancel. roles.test 4/4 with delivered default/project clause headroom and roles-snapshot 10/10 including formerly failing ownership/grant assertion. Source establishes protocol plans/refusal ownership and all six glossary terms. No role repetition group is claimed. Three known T-803 report-only trips and other diagnostics disclosed. No findings; C1–C4 verified; QA scope none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
