@@ -3,7 +3,7 @@ id: T-920
 kind: task
 title: nvim client.test.ts 'follows its hub through a restart' still expects the CLI's 'autostart deferred' after T-911 made the deferral client-side
 state: open
-status: in progress
+status: review
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,7 @@ found_by: cover
 topic: topic-670
 branch: t/T-920-nvim-client-test-ts-follows-its-hub
 created: 2026-10-19T23:29:18.671Z
-updated: 2026-10-19T23:41:44.031Z
+updated: 2026-10-19T23:58:51.820Z
 ---
 
 ## Summary
@@ -31,8 +31,10 @@ Update the test to the T-911 contract: after `cland hub stop`, the workbench iss
 
 - [ ] C1. The test passes locally on macOS 5/5 serially, and fails if the client issues `hub start` inside the window (mutation check), with the receipt in the report.
   - verified: rev-30 [reviewer] · run rev-20261019-920-source · 2026-10-19T23:32:13.067Z · commit bf683e74d0007acef481332f5d275100f11701c4
+  - verified: rev-30 [reviewer] · run rev-20261019-920-integration-source · 2026-10-19T23:54:11.673Z · commit 71cda02bd087254547326a99ef95110d87e90089
+  - verified: rev-30 [reviewer] · run rev-20261019-920-final · 2026-10-19T23:58:51.820Z · commit 71cda02bd087254547326a99ef95110d87e90089
 - [ ] C2. A mode-free verify at the reviewed head is green.
-  - failed: rev-30 [reviewer] · 2026-10-19T23:41:44.031Z · note Authorized retry dc3ab308/A-6819 exits1 at same reviewed head with identical vboard child+parent failure; hold further retries pending T-921.
+  - verified: rev-30 [reviewer] · run rev-20261019-920-final · 2026-10-19T23:58:51.820Z · commit 71cda02bd087254547326a99ef95110d87e90089
 
 ## Comments
 
@@ -92,3 +94,33 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Retry evidence not clear, A-6821. Raw A-6819/dc3ab308 independently confirms821/819/2,zero cancel/skip/TODO, identical vboard ordinary failures44050/44060. Direct Coordinator history authorizes exactly one same-head retry and classifies issue as unrelated T-921-owned, then orders hold until T-921 lands; after that one requested dev merge requires fresh delta review/verify. C2 remains failed; no further unchanged-head retry authorized. C1/source retained. QA none; no Reviewer tests.
 
 Criteria: C2 failed (Authorized retry dc3ab308/A-6819 exits1 at same reviewed head with identical vboard child+parent failure; hold further retries pending T-921.).
+
+### rev-30 · 2026-10-19T23:54:11.673Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-920-integration-source
+commit: 71cda02bd087254547326a99ef95110d87e90089
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear; A-6844. Direct Coordinator authorization and merge parents confirm one integration of landed T-921 dev 5eb8c182. Only client.test.ts differs from that base, and its blob is identical to previously reviewed bf683e74; integrated vboard blob matches reviewed T-921. No new findings. C1 reverified from unchanged bytes and audited A-6806 five serial Mac passes plus failing zero-call mutation. C2 still requires a green configured mode-free run at this exact head followed by final evidence review; prior red receipts remain historical and are not cleared by this source pass. Native Linux T3 remains deferred under queue policy; QA none.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-19T23:58:51.820Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-920-final
+commit: 71cda02bd087254547326a99ef95110d87e90089
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, A-6849. Independently audited A-6846/5d8e089d at exact reviewed head: 822/822, zero fail/cancel/skip/TODO, no resource or duration-budget failure; cleanup hook bridges zero. Previously failing vboard child and parent now pass, all five children green. C2 verified, superseding runtime not-clear at the prior head; original red receipts retained. C1 reverified from A-6806 local five serial Mac passes plus failing zero-start mutation and unchanged bytes established in A-6844. Changed client test is T3 and absent from task plan; no Linux T3 claim. QA none; no Reviewer tests.
+
+Criteria: C1 verified, C2 verified.

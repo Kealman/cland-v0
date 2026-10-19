@@ -3,8 +3,9 @@ id: T-670
 kind: task
 title: The droplet runs [verification] prepare where it ran npm ci and the Neovim pin
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - v0.1.4
   - verification
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-669
 branch: t/T-670-the-droplet-runs-verification-prepare
 created: 2026-10-16T16:35:26.848Z
-updated: 2026-10-19T23:34:31.102Z
+updated: 2026-10-19T23:58:21.840Z
 ---
 
 ## Summary
@@ -35,15 +36,61 @@ The droplet executor runs the project's `prepare` in the prepared image's builde
 
 ## Acceptance criteria
 
-- [ ] C1. A shell-stack project (`prepare = "echo prepared > .prepared"`, `check = "sh -n test.sh"`, `test = "sh test.sh"`, the test asserting `.prepared` exists, `.gitignore` listing it) prepares a snapshot and verifies green on the fake droplet. The suite log shows the `prepare` output before `$ <check>` (`executor-run.test.ts`).
-- [ ] C2. The same project with a planted failing test turns the fake-droplet run red, with the test's output in the result message.
-- [ ] C3. `cland executor prepare` runs `[verification] prepare` in the builder's checkout in place of `npm ci` and the Neovim seed, as the fake machine's call log shows, and an unset `prepare` logs `prepare: not set` (`executor-prepare.test.ts`).
-- [ ] C4. A failing `prepare` at delivery turns the run red with `prepare failed (exit <n>)` and its output, and neither `check` nor `test` runs. A `prepare` that leaves an unignored file fails with `prepare left the checkout dirty`.
-- [ ] C5. `node hub/bin/verify-prepare.ts` with a matching key prints `dependencies match snapshot` and `Neovim pin matches snapshot` and runs neither step. With a moved lock it prints `dependencies changed: npm ci` and runs `npm ci` (script test with a fake `npm` on the PATH).
-- [ ] C6. This repository's `.cland/config.toml` sets `prepare = "node hub/bin/verify-prepare.ts"`, and a cland-shaped fake-droplet run's delivery log shows today's two lines (`executor-run.test.ts`).
+- [x] C1. A shell-stack project (`prepare = "echo prepared > .prepared"`, `check = "sh -n test.sh"`, `test = "sh test.sh"`, the test asserting `.prepared` exists, `.gitignore` listing it) prepares a snapshot and verifies green on the fake droplet. The suite log shows the `prepare` output before `$ <check>` (`executor-run.test.ts`).
+  - done: impl-670 · 2026-10-19T23:57:21.601Z
+- [x] C2. The same project with a planted failing test turns the fake-droplet run red, with the test's output in the result message.
+  - done: impl-670 · 2026-10-19T23:48:50.861Z
+- [x] C3. `cland executor prepare` runs `[verification] prepare` in the builder's checkout in place of `npm ci` and the Neovim seed, as the fake machine's call log shows, and an unset `prepare` logs `prepare: not set` (`executor-prepare.test.ts`).
+  - done: impl-670 · 2026-10-19T23:48:51.452Z
+  - verified: rev-30 [reviewer] · run rev-20261019-670-corrected-source · 2026-10-19T23:58:21.840Z · commit 43aa7d3ae31c028f587986b92c8e7126b48523c7
+- [x] C4. A failing `prepare` at delivery turns the run red with `prepare failed (exit <n>)` and its output, and neither `check` nor `test` runs. A `prepare` that leaves an unignored file fails with `prepare left the checkout dirty`.
+  - done: impl-670 · 2026-10-19T23:57:22.093Z
+- [x] C5. `node hub/bin/verify-prepare.ts` with a matching key prints `dependencies match snapshot` and `Neovim pin matches snapshot` and runs neither step. With a moved lock it prints `dependencies changed: npm ci` and runs `npm ci` (script test with a fake `npm` on the PATH).
+  - done: impl-670 · 2026-10-19T23:48:52.536Z
+  - verified: rev-30 [reviewer] · run rev-20261019-670-corrected-source · 2026-10-19T23:58:21.840Z · commit 43aa7d3ae31c028f587986b92c8e7126b48523c7
+- [x] C6. This repository's `.cland/config.toml` sets `prepare = "node hub/bin/verify-prepare.ts"`, and a cland-shaped fake-droplet run's delivery log shows today's two lines (`executor-run.test.ts`).
+  - done: impl-670 · 2026-10-19T23:48:53.022Z
 
 ## Comments
 
 ### impl-670 · 2026-10-19T23:34:31.102Z
 
 Implementation: builder runs root prepare with JSON CLAND_PREPARE_KEY, delivery uses each job's recorded prepare with snapshot key, failures preserve output and dirty paths. cland's script retains exact warm lock/pin lines and uses successful-install marker plus legacy image-marker fallback (Coordinator decision in topic-669) so existing images need no re-prepare. Native focused proofs: executor-run 17/17, executor-prepare 5/5; typecheck/test:lint green. Required executor-*, droplet-*, suite-* and verify-* serial local sweep in progress. Stage close checklist for supervising Lead: after hub restart, usual sharded dev cover must show dependencies match snapshot and Neovim pin matches snapshot on every shard.
+
+### impl-670 · 2026-10-19T23:49:07.591Z
+
+Source ready and pushed at c201b3e8f400e23553bd3cf5b33aac32ea2f5c18 after final fetch/merge of origin/dev. All C1–C6 marked done. A-6830 contains 81 serial local file receipts (537/537, zero fail/cancel/skip/TODO, 536.050s total) at task source 1700df92 plus final-head check, project-layout 0.099s and native droplet scenario 23.303s after base merge; own 15-file patch unchanged. Original owned fixture failure retained. Full source review assigned through reviewer routing; awaiting verdict before mode-free configured verification. QA policy none/after-stage, no item QA required.
+
+### rev-30 · 2026-10-19T23:52:21.045Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261019-670-source
+commit: c201b3e8f400e23553bd3cf5b33aac32ea2f5c18
+scope: full
+findings: [{"severity":"medium","text":"M1: New shell snapshot/green-red case takes 10.08955625 s and the new prepare-failure case at line 276 takes 5.070200333 s in A-6830; both exact identities lack baseline/allowance and exceed the active 5 s new-identity gate. Direct node --test omits that gate, and task-mode verification omits these T3 cases. Reduce/split while preserving assertions or obtain the permitted exact allowance before verification.","file":"hub/test/executor-run.test.ts","line":245}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Full source review not clear at c201b3e8. A-6840 contains the Standards/Spec review and independent receipt audit: all 81 local files total 537/537, and the 15 task patches are identical through the final merge. No functional spec mismatch found, but the two new native identities violate the active duration gate. Correct and request fresh source review before mode-free verification; no full task-head run requested. C1/C4 failed for M1; remaining criteria unverified on this pass. Stage warm-line cover checklist retained.
+
+Criteria: C1 failed (M1: New shell snapshot/green-red test exceeds the active new-identity duration budget without an allowance.), C4 failed (M1: New delivery prepare-failure test exceeds the active new-identity duration budget without an allowance.).
+
+### impl-670 · 2026-10-19T23:57:22.682Z
+
+M1 corrected and pushed at 43aa7d3ae31c028f587986b92c8e7126b48523c7; A-6845 contains original/final receipts and production duration audit. Two combined native cases split into four identities with assertions retained; atomic actual builder→snapshot→delivery→green stays together under Coordinator-approved exact10s/E-880 allowance (2026-10-19→2026-10-26). Full changed file19/19, twelve production timing receipts; checkDurations reports zero failures. Snapshot proof5.945s, planted-red4.934s, failure2.943s, dirty2.950s. npm run check and whitespace check pass. Only tests+one allowance changed; no dev merge after first review. Requesting fresh source review before any configured verification.
+
+### rev-30 · 2026-10-19T23:58:21.840Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-670-corrected-source
+commit: 43aa7d3ae31c028f587986b92c8e7126b48523c7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear, A-6847. M1 resolved: four native scenarios retain all prior assertions and public suite.start removes incidental CLI launch cost. Atomic builder/snapshot/green proof remains intact. Only that identity gets the directly Coordinator-authorized 10 s allowance, E-880 open epic, Oct19–26; all baseline/other allowance data unchanged. A-6845 raw 19/19 and 12 production timings independently read; corrected bodies 5.945/4.934/2.943/2.950 s, production checkDurations failures empty. No dev merge; production/fixtures unchanged from full functional review. C3/C5 verified using unchanged source and audited A-6830 local native proofs. C1/C2/C4/C6 await final settlement with configured same-head mode-free green; no Linux T3 claim. QA none; stage warm-line checklist retained.
+
+Criteria: C3 verified, C5 verified.

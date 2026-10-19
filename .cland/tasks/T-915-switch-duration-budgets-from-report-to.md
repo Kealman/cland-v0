@@ -12,10 +12,11 @@ assignee: null
 parent: C-216
 blocked_by:
   - T-919
+  - T-922
 topic: topic-672
 branch: t/T-915-switch-duration-budgets-from-report-to
 created: 2026-10-19T22:37:49.124Z
-updated: 2026-10-19T23:46:30.085Z
+updated: 2026-10-19T23:50:02.131Z
 ---
 
 ## Summary
@@ -41,3 +42,7 @@ D71 (2026-10-19 22:37Z): E-678 C6 counts the budget-enforce mechanism, and switc
 ### impl-915 · 2026-10-19T23:45:10.424Z
 
 Starting from T-919 baseline additions at 2c79d42a. Will replay A-6792/A-6795/A-6796 through production budget checks, add bounded E-677 allowances for every observed overage, switch enforce, and prove C2 only on throwaway branches. No QA brief present; checking effective policy before review.
+
+### impl-915 · 2026-10-19T23:50:02.131Z
+
+Implemented/pushed aebfa97990702c3ae4e6c7cfb28baddad3eb36d9: D71 enforcement plus D72 policy/ownership migration. Production replay A-6831 shows Linux28→0, macOS10→0, periodic2→0 enforce failures, missing0 throughout; 29 caps (6 new,16 converted legacy,7 existing dated), all original entries and 182 owner changes retained. Counts E-677177/E-4822/E-6133 → E-880188. A-6836 is self-contained replay script; C2 A-6833 runner exit1 and A-6834 production immutable merge predicate refusal on unmerged throwaway branches, A-6835 proof recipe. Local check/tiers lint and targeted tests pass. Hosting hub dry-run refused old seven-day lint; no workaround. Coordinator split prerequisite T-922 for policy-only code/tests/docs, followed by authorized hub restart; T-915 holds until then, will merge origin/dev once as explicitly requested and request first full source review before exact-head verification. qaPolicy scope none; no QA brief or QA criteria.

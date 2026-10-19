@@ -2,8 +2,8 @@
 id: T-921
 kind: task
 title: nvim vboard.test.ts 'release versions appear once … > v0.1.1' fails intermittently on Linux T2 (T-920 verify cde54197)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-671
 branch: t/T-921-nvim-vboard-test-ts-release-versions
 created: 2026-10-19T23:36:38.488Z
-updated: 2026-10-19T23:43:59.716Z
+updated: 2026-10-19T23:53:02.263Z
+closed: 2026-10-19T23:53:02.263Z
 ---
 
 ## Summary
@@ -32,8 +33,10 @@ Find what the subtest's assertion reads, a count of version occurrences or a tre
 - [x] C1. The cause is named in the report from the A-6810 screen.
   - done: impl-921 · 2026-10-19T23:38:21.460Z
   - verified: rev-30 [reviewer] · run rev-20261019-921-source-corrected · 2026-10-19T23:43:59.716Z · commit 5ce5d2703f115346b3b90426fb6eff0e6fc583ba
-- [ ] C2. The file passes 20 serial local runs, and the mode-free droplet verify at the reviewed head is green (load gate 5/5 on the changed test), with receipts in the report.
-  - failed: rev-30 [reviewer] · 2026-10-19T23:41:10.677Z · note Changed test is duration-baseline-known and receives0 load repetitions; required reviewed-head5/5 proof cannot be produced until corrected identity is eligible.
+  - verified: rev-30 [reviewer] · run rev-20261019-921-final · 2026-10-19T23:48:13.680Z · commit 5ce5d2703f115346b3b90426fb6eff0e6fc583ba
+- [x] C2. The file passes 20 serial local runs, and the mode-free droplet verify at the reviewed head is green (load gate 5/5 on the changed test), with receipts in the report.
+  - done: impl-921 · 2026-10-19T23:48:10.857Z
+  - verified: rev-30 [reviewer] · run rev-20261019-921-final · 2026-10-19T23:48:13.680Z · commit 5ce5d2703f115346b3b90426fb6eff0e6fc583ba
 
 ## Comments
 
@@ -78,3 +81,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected full source clear,A-6823. M1 resolved by title-only fresh descriptive parent identity absent duration baseline/allow, with assertions, row waits and shared policy unchanged. Combined one-file review has no findings. C1 diagnosis verified from recorded mixed frame and scheduled render code. Fresh A-6822 independently audited20/20 serial file exits,480/480,zero nonpasses,renamed parent20/20; C2 local portion established. C2 final awaits exact-head mode-free Linux green and actual changed-test5/5 without owned resource/budget failure. A-6820 historical; QA none; no Reviewer tests.
 
 Criteria: C1 verified.
+
+### impl-921 · 2026-10-19T23:48:11.387Z
+
+C2 complete: mode-free run 97e678a6-b8e7-4f77-b8e7-746b0a47b412 at exact reviewed 5ce5d270 exits 0 (821/821, zero fail/cancel/skip/TODO). A-6827 line 44242 records changed regression 5/5 passed; line 8 pins exact head. Linux x64 droplet c-8 lon1, lifetime 173s, cost $0.0120, workers 2. No owned resource/budget failure found. Local final-source 20/20 receipt A-6822 remains. Full remote receipt: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6827-suite-97e678a6-b8e7-4f77-b8e7-746b0a47b412-auto-at-5ce5d27.log. C2 marked done; awaiting Reviewer's final same-head evidence verdict.
+
+### rev-30 · 2026-10-19T23:48:13.680Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-921-final
+commit: 5ce5d2703f115346b3b90426fb6eff0e6fc583ba
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear,A-6828. Independently audited A-6827/97e678a6:821/821,zero fail/cancel/skip/TODO,zero tier/resource mismatch or budget-overrun rows. Changed parent ordinary .620172976s plus five distinct positive repetitions,max .660284117s,explicit5/5 line44242; all five children pass ordinary+each repetition. Combined with fresh local A-6822 audited20/20 file runs (480/480),C2 is verified; C1 diagnosis/source retained. M1 resolved under A-6823 without baseline/policy edits. QA none; no Reviewer tests or task T3 claim.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T23:53:02.263Z
+
+Merged 5eb8c182dabfe27446cc3e1fe6c831aed492ff6a onto dev.
