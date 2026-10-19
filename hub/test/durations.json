@@ -5096,6 +5096,13 @@
       "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands.",
       "owner": "E-677",
       "legacy": true
+    },
+    "hub/test/setup-machine.test.ts::setup machine keeps inherited harness state untouched": {
+      "seconds": 15,
+      "owner": "E-613",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "Runs the installer, profile-login and Codex EOF self-tests in a poisoned-HOME child so no harness account from the host is read; includes three real cland init processes and bounded, owned subprocess teardown. Initial Mac measurement 8.30 s."
     }
   }
 }

@@ -2738,6 +2738,63 @@ abandoned manual lock with the `rmdir` command printed by the waiter, naming
 either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
+### Trying setup on a scratch machine
+
+`test/setup-machine.ts` builds a temporary HOME, XDG directories, Git identity
+and project through the real `cland init`. Its PATH contains only allowlisted
+host utilities and fake harnesses. It inherits no account overrides, shell
+startup configuration or provider tokens. Never add the host PATH or a real
+DigitalOcean token to this environment. No installer makes a network request:
+the fake `curl` answers only the three official URLs, and rejects anything else.
+
+For QA, make a local `hub/test/setup-qa.try.ts` with the following, then run
+`node hub/test/setup-qa.try.ts` from a terminal (after setup ships). Claude Code
+is missing, Codex is signed in and OpenCode is signed out:
+
+```ts
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { fileURLToPath } from 'node:url';
+import { setupMachine, signIn, calls } from './setup-machine.ts';
+import { initIn } from './init-machine.ts';
+import { beforeDirectories, ownProcess } from './process-cleanup.ts';
+
+test('try setup', async t => {
+  const machine = await setupMachine(t, { installed: ['codex', 'opencode'] });
+  await signIn(machine, 'codex');
+  console.log({ project: machine.project, home: machine.home });
+  const child = spawn(process.execPath,
+    [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), 'setup', '--attach'],
+    { cwd: machine.project, env: machine.env, stdio: 'inherit' });
+  ownProcess(t, child.pid);
+  // Stop the scratch hub before the fixture removes its HOME and project.
+  beforeDirectories(t, async () => { await initIn(machine, machine.project, 'hub', 'stop'); });
+  const [code] = await once(child, 'close', { signal: t.signal });
+  assert.equal(code, 0);
+  console.log(await calls(machine));
+});
+```
+
+The fixture cleans up after the test; remove the local try file afterwards.
+`installFake(machine, harness, 'installer')` puts a binary only in its vendor's
+folder, off PATH; the default `'path'` puts it in the fake bin folder.
+`signIn(machine, harness, false)` signs out, and
+`profileEnvironment(machine, harness, scratchPath)` selects another profile
+(`OPENCODE_DB` for OpenCode). Apply that environment to a copy of the machine
+before calling helpers or starting commands. `loginFails(machine, harness, true)`
+makes login exit zero without changing its marker. Set
+`machine.env.FAKE_INSTALL_FAILS = 'claude-code'` (or `'codex'`, `'opencode'`,
+`'1'` for all) to make the emitted installer fail. OpenCode's default connection
+is a credential; `signIn(machine, 'opencode', true, { connection: 'env' })`
+models an env-only connection. `calls(machine)` reads invocations and Codex RPCs.
+
+`node --test hub/test/setup-machine.test.ts` exercises the installers, profile
+logins and Codex trust/EOF behaviour inside a poisoned inherited scratch HOME,
+then compares its `.claude.json`, `.codex/` and `.config/cland/` contents. The
+human's real account files are never opened by this self-test.
+
 The fake harness fixtures use **30 ms turns**, **50 ms adapter polls**, **100 ms
 Claude push trust**, and a **150 ms Codex refuse window**. Direct invocations of
 the fake executables retain their 300 ms turn and 1500 ms Codex refusal fallbacks.

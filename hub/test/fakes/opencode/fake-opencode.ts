@@ -50,8 +50,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { fakeLogin, login, recordCall } from '../setup-profile.ts';
 
 const HOME = process.env.FAKE_OPENCODE_HOME ?? join(process.env.TMPDIR ?? '/tmp', 'fake-opencode-home');
+recordCall('opencode', process.argv.slice(2));
 const SESSIONS = join(HOME, 'sessions');
 const SERVERS = join(HOME, 'servers');
 const PROMPTS = join(HOME, 'prompts');
@@ -82,9 +84,12 @@ async function main(args: string[]): Promise<number> {
     process.stdout.write(`opencode v${process.env.FAKE_OPENCODE_VERSION ?? '2.0.24-fake'}\n`);
     return 0;
   }
+  if (args[0] === 'auth' && args[1] === 'login' && args.includes('--standalone')) { login('opencode'); return 0; }
   if (args[0] === 'auth' && args[1] === 'list') {
     appendFileSync(join(HOME, 'auth-probes.jsonl'), JSON.stringify({ args, database: process.env.OPENCODE_DB, dataHome: process.env.XDG_DATA_HOME }) + '\n');
-    const providers = process.env.FAKE_OPENCODE_NO_AUTH === '1' ? [] : [{ id: 'fake', name: 'Fake Provider', connections: [{ type: 'credential', label: 'Fake Provider' }] }];
+    const identity = process.env.FAKE_OPENCODE_NO_AUTH === '1' ? null : fakeLogin('opencode');
+    const connection = identity?.connection;
+    const providers = !identity ? [] : [{ id: 'fake', name: 'Fake Provider', connections: [{ type: connection, ...(connection === 'env' ? { name: 'FAKE_API_KEY' } : { label: 'Fake Provider' }) }] }];
     process.stdout.write(`${JSON.stringify(providers, null, 2)}\n`);
     return 0;
   }

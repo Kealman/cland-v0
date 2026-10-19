@@ -78,8 +78,10 @@ import { join } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import WebSocket, { WebSocketServer } from 'ws';
+import { fakeLogin, login, recordCall } from '../setup-profile.ts';
 
 const VERSION = '0.160.0';
+recordCall('codex', process.argv.slice(2));
 const HOME = process.env.FAKE_CODEX_HOME ?? join(process.env.TMPDIR ?? '/tmp', 'fake-codex-home');
 for (const d of ['servers', 'threads', 'log']) mkdirSync(join(HOME, d), { recursive: true });
 const TURN_MS = Number(process.env.FAKE_CODEX_TURN_MS ?? 300);
@@ -122,13 +124,14 @@ async function main(args: string[]): Promise<number> {
     return 0;
   }
   if (args[0] === 'login' && args[1] === 'status') {
-    if (process.env.FAKE_CODEX_LOGGED_OUT === '1') {
+    if (process.env.FAKE_CODEX_LOGGED_OUT === '1' || !fakeLogin('codex')) {
       process.stderr.write('Not logged in\n');
       return 1;
     }
     process.stderr.write('Logged in using ChatGPT\n');
     return 0;
   }
+  if (args[0] === 'login') { login('codex'); return 0; }
   if (args[0] === 'app-server') return appServer(args.slice(1));
   if (args[0] === 'resume') return resume(args.slice(1));
   process.stderr.write(`fake codex: unsupported invocation ${JSON.stringify(args)}\n`);
@@ -451,6 +454,7 @@ async function appServer(args: string[]): Promise<number> {
     return [':read-only', ':workspace', ':danger-full-access'].includes(id as string) || defined ? null : `unknown permissions profile \`${String(id)}\``;
   };
   const handle = async (c: Conn, method: string, params: Record<string, unknown>): Promise<Answer> => {
+    recordCall('codex', ['app-server', ...args], { method, params });
     switch (method) {
       case 'initialize':
         c.initialized = true;
@@ -616,6 +620,20 @@ async function appServer(args: string[]): Promise<number> {
         log(`turn/steer ${t.turnId}: ${text}`);
         return loseOnce(text) ? { lost: true } : { result: { turnId: t.turnId } };
       }
+      case 'account/read': {
+        const identity = process.env.FAKE_CODEX_LOGGED_OUT === '1' ? null : fakeLogin('codex');
+        return { result: { account: identity ? { type: 'chatgpt', email: identity.email, planType: 'pro' } : null, requiresOpenaiAuth: true } };
+      }
+      case 'config/batchWrite': {
+        const home = process.env.CODEX_HOME ?? HOME;
+        mkdirSync(home, { recursive: true });
+        for (const edit of params.edits as Array<{ keyPath: string; value: string }>) {
+          const match = /^projects\."(.*)"\.trust_level$/.exec(edit.keyPath);
+          if (!match) return { error: { code: -32602, message: 'fake only supports project trust edits' } };
+          appendFileSync(join(home, 'config.toml'), `\n[projects.${JSON.stringify(match[1])}]\ntrust_level = ${JSON.stringify(edit.value)}\n`);
+        }
+        return { result: { status: 'ok' } };
+      }
       case 'account/rateLimits/read':
         log(`account/rateLimits/read ${JSON.stringify(params)}`);
         if (existsSync(join(process.env.CODEX_HOME ?? HOME, 'logged-out'))) return { error: { code: -32600, message: 'authentication required' } };
@@ -629,11 +647,16 @@ async function appServer(args: string[]): Promise<number> {
   if (!listen) {
     appendFileSync(join(HOME, 'polls.jsonl'), JSON.stringify({ at: Date.now(), pid: process.pid, args: ['app-server', ...args], cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('CLAND_') || key === 'CODEX_HOME')) }) + '\n');
     const c: Conn = { ws: { readyState: WebSocket.OPEN, send: data => { process.stdout.write(String(data) + '\n'); }, terminate: () => process.exit(0) }, initialized: false, subscribed: new Set() };
+    const pending = new Set<Promise<void>>();
     createInterface({ input: process.stdin }).on('line', line => {
       const m = JSON.parse(line);
       if (m.id === undefined) return;
-      void handle(c, m.method, m.params ?? {}).then(answer => process.stdout.write(JSON.stringify({ id: m.id, ...answer }) + '\n'));
-    }).on('close', () => process.exit(0));
+      const reply = handle(c, m.method, m.params ?? {}).then(answer => { process.stdout.write(JSON.stringify({ id: m.id, ...answer }) + '\n'); });
+      pending.add(reply);
+      void reply.finally(() => pending.delete(reply));
+    }).on('close', () => {
+      void Promise.all(pending).then(() => process.stdout.write('', () => process.exit(0)));
+    });
     await new Promise<void>(() => {});
     return 0;
   }

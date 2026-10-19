@@ -55,6 +55,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { fakeLogin, login, recordCall } from '../setup-profile.ts';
 
 const HOME = process.env.FAKE_CLAUDE_HOME ?? join(process.env.TMPDIR ?? '/tmp', 'fake-claude-home');
 const SESSIONS = join(HOME, 'sessions');
@@ -64,6 +65,7 @@ mkdirSync(JOBS, { recursive: true });
 const CONFIG_DIR = resolve(process.env.CLAUDE_CONFIG_DIR || join(process.env.HOME ?? '', '.claude'));
 const AUTH_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
 const SELF = fileURLToPath(import.meta.url);
+recordCall('claude-code', process.argv.slice(2));
 
 type Job = { configDir: string; authVariables: string[]; id: string; sessionId: string; name: string | null; model: string | null; effort: string | null; cwd: string; resume: boolean; mcp: McpConfig; settings: Settings; pluginDir: string | null };
 type McpConfig = { mcpServers?: Record<string, { command: string; args?: string[]; env?: Record<string, string> }> };
@@ -139,9 +141,11 @@ async function main(args: string[]): Promise<number> {
     process.stdout.write(`${process.env.FAKE_CLAUDE_VERSION ?? '2.1.294'} (Claude Code)\n`);
     return 0;
   }
+  if (first === 'auth' && args[1] === 'login') { login('claude-code'); return 0; }
   if (first === 'auth' && args[1] === 'status') {
-    const loggedIn = process.env.FAKE_CLAUDE_LOGGED_OUT !== '1';
-    process.stdout.write(`${JSON.stringify({ loggedIn, authMethod: loggedIn ? 'claude.ai' : 'none', apiProvider: 'firstParty' }, null, 2)}\n`);
+    const identity = process.env.FAKE_CLAUDE_LOGGED_OUT === '1' ? null : fakeLogin('claude-code');
+    const loggedIn = identity !== null;
+    process.stdout.write(`${JSON.stringify({ loggedIn, authMethod: loggedIn ? 'claude.ai' : 'none', apiProvider: 'firstParty', ...(identity ? { email: identity.email, orgName: identity.orgName } : {}) }, null, 2)}\n`);
     return loggedIn ? 0 : 1;
   }
   if (first === 'agents') {
