@@ -382,6 +382,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  priorityProbe?: () => number;
   publishRelease?: import('../src/hub/dispatch.ts').DispatcherOptions['publishRelease'];
   devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository;
   batchRepository?: import('../src/hub/merge-batch-territory.ts').BatchRepository;
@@ -434,6 +435,7 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   // No infrastructure child processes in T2. Native contracts opt in explicitly;
   // callers can override individual facts without restoring the other native probes.
   const probes = options.probes !== 'native' ? {
+    priorityProbe: () => 0,
     lintWarmer: { request: () => {}, close: async () => {} },
     git: async () => null,
     readBase: async () => null,

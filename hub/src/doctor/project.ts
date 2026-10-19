@@ -90,6 +90,7 @@ async function checkHub(l: Layout, readers: ProjectReaders): Promise<Check[]> {
       if (!owns) out.push(fail('hub', `pid ${d.pid} answers on ${d.socket} ${lock}`, 'cland hub stop, then cland hub start'));
       else if (status.version !== VERSION) out.push(warn('hub', `running pid ${d.pid}, version ${status.version}; this cland is ${VERSION}`, 'cland hub stop, then cland hub start'));
       else out.push(ok('hub', `running: pid ${d.pid}, ${lock}, answers hub.status on ${d.socket}, port ${d.port}, ${sessions}`));
+      if (status.priority?.warning) out.push(warn('hub priority', status.priority.warning.detail, status.priority.warning.fix));
       out.push(ok('hub.json', `valid, names pid ${d.pid}`));
     } else if (owns) {
       running = true;

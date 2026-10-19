@@ -714,6 +714,8 @@ export type VerificationQueue = {
 };
 
 export type HubStatus = {
+  /** Scheduling priority observed at hub startup. Absent on older hubs. */
+  priority?: import('./hub/priority.ts').HubPriority;
   mergeQueue?: MergeQueueEntry[];
   covers?: CoverStatus[];
   verification?: VerificationQueue;
