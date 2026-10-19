@@ -70,6 +70,19 @@ test('onboarding verification instructions are independent of npm', async () => 
   }
 });
 
+// T1: the tour's stage structure is source-only, without a hub or CLI process.
+test('the onboarding tour has eight stages ending with Look now', async () => {
+  const markdown = await readFile(new URL('TOUR.md', SKILL), 'utf8');
+  const stages = markdown.split(/^## /m).slice(1);
+  assert.equal(stages.length, 8);
+  for (const [index, stage] of stages.entries()) {
+    assert.match(stage, new RegExp(`^${index + 1}\\. `));
+    const paragraphs = stage.trim().split(/\n\s*\n/);
+    assert.match(paragraphs.at(-1)!, /^Look now: /);
+    assert.equal((stage.match(/^Look now: /gm) ?? []).length, 1);
+  }
+});
+
 // T1: source guidance uses the shipped settings commands instead of file edits.
 test('onboarding records crew settings through commands', async () => {
   const markdown = await readFile(new URL('SKILL.md', SKILL), 'utf8');
