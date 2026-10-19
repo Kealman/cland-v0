@@ -3,7 +3,7 @@ id: T-844
 kind: task
 title: Setup starts the hub and launches `aide-1` with the onboarding brief
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -13,9 +13,9 @@ parent: E-613
 blocked_by:
   - T-841
 topic: null
-branch: null
+branch: t/T-844-setup-starts-the-hub-and-launches-aide-1
 created: 2026-10-19T06:34:13.450Z
-updated: 2026-10-19T06:34:13.450Z
+updated: 2026-10-19T15:48:04.190Z
 ---
 
 ## Summary

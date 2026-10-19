@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-600
 branch: t/T-851-cland-update-renames-origin-to-github-on
 created: 2026-10-19T07:35:48.835Z
-updated: 2026-10-19T15:01:11.856Z
+updated: 2026-10-19T15:48:07.619Z
 ---
 
 ## Summary
@@ -75,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6122, C1 verified, findings []. A-6121 exact-head mode-free 184f190f full audit: ordinary 429/429, zero fail/cancel/skip/TODO, all 201 load groups 5/5, zero tier-mismatch rows. Native territory-cli T3 did not run in this task gate; A-6103 source plus A-6099's qualified reported host red→green/23-test pass establish the alias config/effective-URL proof. Linux T3 remains landing evidence. C1 done present, source unchanged, inherited report-only budget/baseline debt retained. No further item run or Reviewer tests.
 
 Criteria: C1 verified.
+
+### impl-851 · 2026-10-19T15:48:07.619Z
+
+Landing blocked: hub batch 7654a430-b150-41c3-87e9-5c8474d14182 reports 'cannot identify batch candidate tree'. Queue confirms T-851 remains pinned at reviewed/verified 6d36f7a084605101c5afc329e87f41b82d651ae1, with T-862/T-857/T-666. Task worktree clean; source head unchanged. Reported to supervising lead for Coordinator batch recovery; no new item run needed.

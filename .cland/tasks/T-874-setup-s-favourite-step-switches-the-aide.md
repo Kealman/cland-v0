@@ -3,7 +3,7 @@ id: T-874
 kind: task
 title: Setup's favourite step switches the Aide to Codex via setRoleKey and skips T-872's sandbox default
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
@@ -14,9 +14,9 @@ blocked_by:
   - T-841
   - T-872
 topic: null
-branch: null
+branch: t/T-874-setup-s-favourite-step-switches-the-aide
 created: 2026-10-19T12:48:36.547Z
-updated: 2026-10-19T12:48:36.547Z
+updated: 2026-10-19T15:48:00.933Z
 ---
 
 ## Summary
