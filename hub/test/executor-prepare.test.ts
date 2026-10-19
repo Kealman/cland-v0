@@ -211,15 +211,21 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
       return value.prepare?.state === 'done' && value.prepare.result?.state === 'current' ? true : undefined;
   });
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+  // T3 native Git inspection may outlive the status request's bounded read.
+  // Wait for its receipt, then assert the reason independently of readiness.
+  const inspectedSnapshot = (change: string) => eventually(`snapshot inspection after ${change} completes`, async () => {
+    const value = (await ui.request({ type: 'executor.status' })).value as { snapshot: { freshness: string } };
+    return value.snapshot.freshness !== 'unknown (inspection deferred)' ? value : undefined;
+  });
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.6\n');
   await git(root, 'add', 'nvim/NVIM_VERSION'); await git(root, 'commit', '-qm', 'Pin moved'); await git(root, 'push', '-q', 'origin', 'dev');
-  const pinMoved = (await ui.request({ type: 'executor.status' })).value as { snapshot: { freshness: string } };
+  const pinMoved = await inspectedSnapshot('pin change');
   assert.equal(pinMoved.snapshot.freshness, 'stale: base|nvim');
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
   await writeFile(join(root, 'package-lock.json'), (await readFile(join(root, 'package-lock.json'), 'utf8')).replaceAll('1.0.0', '1.0.1'));
   await writeFile(join(root, 'package.json'), '{"name":"prepared-fixture","version":"1.0.1"}\n');
   await git(root, 'add', 'package.json', 'package-lock.json', 'nvim/NVIM_VERSION'); await git(root, 'commit', '-qm', 'Lock moved'); await git(root, 'push', '-q', 'origin', 'dev');
-  const stale = (await ui.request({ type: 'executor.status' })).value as { snapshot: { freshness: string } };
+  const stale = await inspectedSnapshot('lock change');
   assert.match(stale.snapshot.freshness, /stale: base\|lock/);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
   await eventually('new image replaces old snapshot', () => api.images.length === 1 && api.images[0]!.id !== status.snapshot!.image ? true : undefined, 15000);
