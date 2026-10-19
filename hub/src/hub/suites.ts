@@ -712,7 +712,8 @@ export class Suites {
       const durable = (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length;
       const count = Math.min(free, this.#remoteBudget - durable, job.config?.verification.shards ?? this.#options.shards ?? 2);
       let cause: string | undefined;
-      if (count < 2) cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${job.config?.verification.shards ?? this.#options.shards ?? 2}`;
+      if (!await clandRunner(job.cwd)) cause = 'project commands are not sharded';
+      else if (count < 2) cause = free < 2 || this.#remoteBudget - durable < 2 ? 'fewer than 2 remote slots free' : `configured shard limit ${job.config?.verification.shards ?? this.#options.shards ?? 2}`;
       else {
         const history = durationHistory(this.#options.durationContext);
         const tiers = job.selection?.soak ? null : await readTierAssignments(job.cwd);
@@ -837,15 +838,15 @@ export class Suites {
   }
   async #hostGate(job: SuiteJob): Promise<void> {
     const command = verificationSteps(recordedCommands(job)).find(step => step.name === 'check')?.command;
+    await appendFile(job.log, `\nHost gate: ${command ?? 'check not set'}\n`);
     if (!command) return;
     if (this.#options.dropletServices?.hostGate) {
       job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));
       this.#save(job);
-      if (job.hostGate.code !== 0) throw new Error(`host typecheck failed (exit ${job.hostGate.code}); no droplet created`);
+      if (job.hostGate.code !== 0) throw new Error(`host check failed (exit ${job.hostGate.code}); no droplet created`);
       return;
     }
     const tree = await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head);
-    await appendFile(job.log, `\nHost gate: ${command}\n`);
     const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
     const fd = await open(job.log, 'a');
     try {
@@ -854,7 +855,7 @@ export class Suites {
       const code = await new Promise<number>((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve(code ?? 1)); });
       job.hostGate = { tree, command, code };
       this.#save(job);
-      if (code !== 0) throw new Error(`host typecheck failed (exit ${code}); no droplet created`);
+      if (code !== 0) throw new Error(`host check failed (exit ${code}); no droplet created`);
     } finally { this.#hostGates.delete(job.id); await fd.close(); }
   }
   #launchRemote(job: SuiteJob): void {

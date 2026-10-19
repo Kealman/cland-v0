@@ -52,7 +52,7 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
   assert.deepEqual(f.api.droplets, []);
 });
 
-test('host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures', async t => {
+test('host check failure creates no machine; remote typecheck stops tests and failed tests retain failures', async t => {
   const controls = join(await tempProject(t), 'failure-kind');
   await writeFile(controls, 'host');
   const hostHome = join(await tempProject(t), 'home/runner');
@@ -69,7 +69,11 @@ test('host typecheck failure creates no machine; remote typecheck stops tests an
     const report = await f.result(job.id);
     const hostLog = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
     assert.match(hostLog, /Host gate: npm run typecheck/);
-    if (kind === 'host') { assert.match(report.text, /host typecheck failed/); assert.equal(f.api.machineDirs.size, 0); }
+    if (kind === 'host') {
+      assert.match(report.text, /host check failed \(exit 2\); no droplet created/);
+      assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+      assert.equal(f.api.machineDirs.size, 0);
+    }
     else {
       assert.match(report.text, new RegExp(`exit ${kind === 'remote' ? 3 : 4}`));
       const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');

@@ -1,4 +1,4 @@
-// T2: shard failure aggregation and cancellation during reservation use scripted machines on the hub clock.
+// T2: close-run routing, shard failures and reservation cancellation use scripted machines on the hub clock.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -168,4 +168,22 @@ test('task heads and non-Coordinator batches keep one remote slot', async t => {
     assert.match((await drive(f, f.result(job.id))).text, /exit 0/);
   }
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
+});
+
+test('another project stage close skips sharding and runs once without a check', async t => {
+  const f = await integrated(t, '', 2, undefined, { machine: 'scripted', stack: 'other', check: '', test: 'printf project-test' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  const history = (await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] };
+  assert.deepEqual(history.messages.filter(m => m.text.startsWith('sharding skipped:')).map(m => [m.text, m.severity]), [['sharding skipped: project commands are not sharded', 'warn']]);
+  await drive(f, f.machine.started(job.id));
+  await f.verificationSettled();
+  await f.clock.advance(1000);
+  const result = await drive(f, f.result(job.id));
+  assert.match(result.text, /all exit 0/);
+  assert.match(result.text, /stage cover/);
+  assert.match(await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8'), /Host gate: check not set/);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+  assert.equal((await f.messages(job.id)).length, 1);
+  assert.deepEqual(f.api.droplets, []);
 });

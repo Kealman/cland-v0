@@ -16,7 +16,13 @@ planted strict-option/import errors before the switch.
 ### Project commands
 
 `[verification]` records POSIX shell command strings, independent of the stack.
-`check` is the fast gate. `prepare` installs dependencies on the remote executor.
+`check` is the fast gate. Before creating a droplet, the host runs the recorded
+command and logs `Host gate: <command>`; a failure reports
+`host check failed (exit <n>); no droplet created`. An unset check logs
+`Host gate: check not set` and continues. `prepare` installs dependencies on the remote executor.
+Stage, epic and release closes shard only candidates carrying cland's own runner.
+Other projects log `sharding skipped: project commands are not sharded` and run
+their recorded test once on one machine.
 Set available runtime tiers with `cland config set verification.test_unit '<command>'`
 and the corresponding `test_component`, `test_integration` and `test_soak` keys.
 Empty tier commands are unset. A candidate worktree with a nonempty `test` and
