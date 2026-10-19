@@ -17,12 +17,13 @@ export type BatchBoundary = {
   changed?(): void;
   entries(): MergeQueueEntry[];
   build(id: string, members: MergeQueueEntry[], base?: string): Promise<BatchCandidate>;
+  rebuildReason(tested: BatchCandidate, current: BatchCandidate): Promise<string | null>;
   land(entry: MergeQueueEntry, candidate: BatchCandidate): Promise<void>;
   drop(entry: MergeQueueEntry, reason: string): void;
   cleanup(candidate: BatchCandidate): Promise<void>;
   checkout(candidate: BatchCandidate): Promise<void>;
   isLanded(entry: MergeQueueEntry): boolean;
-  report(batch: MergeBatch, text: string): void;
+  report(batch: MergeBatch, text: string, phase?: 'rebuild'): void;
   notice(notice: TopicNotice): void;
 };
 export class BatchRebuild extends Error {}
@@ -79,6 +80,9 @@ export class MergeBatches {
       catch (error) {
         const batch = this.snapshot();
         if (!(error instanceof BatchRefusal || error instanceof BatchRebuild) || !batch) throw error;
+        // Recheck the new base against the retained evidence on the next tick.
+        // A base race alone does not invalidate a completed suite.
+        if (error instanceof BatchRebuild) return;
         if (error instanceof BatchRefusal) this.boundary.drop(error.entry, error.reason);
         await this.#cleanup(batch);
         const members = batch.members.filter(entry => (!(error instanceof BatchRefusal) || entry.item !== error.entry.item) && !batch.diagnosis?.excluded?.includes(entry.item) && !batch.completed?.includes(entry.item) && !this.boundary.isLanded(entry));
@@ -155,7 +159,10 @@ export class MergeBatches {
       const remaining = batch.members.slice(index).filter(e => !batch!.diagnosis?.excluded?.includes(e.item) && !this.boundary.isLanded(e));
       const current = await this.boundary.build(batch.id, remaining);
       if (this.#closed) return;
-      if (current.tree !== candidate.tree) {
+      const rebuild = current.tree !== candidate.tree ? await this.boundary.rebuildReason(candidate, current) : null;
+      if (this.#closed) return;
+      if (rebuild) {
+        this.boundary.report(batch, `batch ${batch.id} rebuild: ${rebuild}`, 'rebuild');
         await this.#cleanup(batch);
         batch = { id: randomUUID(), members: remaining, candidate: current };
         this.#save(batch); return;

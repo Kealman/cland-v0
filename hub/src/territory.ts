@@ -335,7 +335,8 @@ export function territoryProblems(root: string): string[] | null {
 // or a listing never holds the hub's event loop. The hub runs them one at a time (`src/hub/worktrees.ts`); the
 // writes also hold the territory lock against other processes, taken without blocking (`withTerritoryLockAsync`).
 
-/** `territoryGit`, awaited: trimmed stdout, or a rejection naming the command and Git's message. */
+/** `territoryGit`, awaited: trimmed scalar stdout, byte-preserving -z streams,
+ * or a rejection naming the command and Git's message. */
 export class TerritoryGitError extends Error {
   readonly stdout: string;
   readonly code: number | string | null | undefined;
@@ -346,7 +347,7 @@ export function territoryGitAsync(cwd: string, args: string[], marked = false, i
   return new Promise((resolvePromise, reject) => {
     const child = execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' } }, (err, stdout, stderr) => {
       if (err) reject(new TerritoryGitError(`git ${args.join(' ')}: ${String(stderr).trim() || err.message}`, String(stdout), err.code));
-      else resolvePromise(String(stdout).trim());
+      else resolvePromise(args.includes('-z') ? String(stdout) : String(stdout).trim());
     });
     child.stdin?.on('error', () => {}); // an early Git refusal can close stdin before the input is consumed
     child.stdin?.end(input);

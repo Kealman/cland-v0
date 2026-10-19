@@ -6,6 +6,7 @@ import { MergeError } from '../merge.ts';
 import { mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, type MergeTreeFacts } from '../territory.ts';
 import { committedTree } from '../verification-tree.ts';
 import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
+import { refusedOverridePaths } from '../merge-override.ts';
 
 /** Git/object and immutable-tree reads, replaceable by an in-process repository provider. */
 export type BatchRepository = {
@@ -15,6 +16,18 @@ export type BatchRepository = {
   checkout(candidate: BatchCandidate): Promise<void>;
   remove(candidate: BatchCandidate): Promise<void>;
 };
+
+/** Compare immutable candidates, including both sides of renames, using the
+ * same documentation/tracker policy that selects immediate merges. Unknown
+ * paths and failed reads must never turn into reusable test evidence. */
+export async function batchRebuildReason(root: string, tested: BatchCandidate, current: BatchCandidate, env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository): Promise<string | null> {
+  const git = provider?.git ?? ((args: string[]) => territoryGitAsync(root, args, false, undefined, env));
+  const paths = (await git(['diff', '--name-only', '-z', '--no-renames', tested.head, current.head, '--'])).split('\0').filter(Boolean);
+  const inputs = refusedOverridePaths(paths);
+  if (!inputs.length) return null;
+  const commit = await git(['--literal-pathspecs', 'log', '-1', '--format=%H', current.base, `^${tested.base}`, '--', ...inputs]);
+  return `commit ${commit || current.base} changed batch test inputs: ${inputs.join(', ')}`;
+}
 
 export async function prepareMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository, pinnedBase?: string): Promise<BatchCandidate> {
   const repository = provider ?? { git: (args: string[], input?: string) => territoryGitAsync(root, args, false, input, env),

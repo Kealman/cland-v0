@@ -1,6 +1,8 @@
 // T2: durable merge queue admission through projectHub and its public merge/task frames.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import cp from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
@@ -13,6 +15,7 @@ import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { VerificationQueue, MergeBatchStatus } from '../src/protocol.ts';
 import { parseConfig } from '../src/init/config.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
+import { batchRebuildReason } from '../src/hub/merge-batch-territory.ts';
 
 async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   const root = await tempProject(t);
@@ -205,4 +208,75 @@ test('a red singleton posts its bisection refusal to the member lead after appea
   assert.ok(history.messages.some(message => message.text.startsWith(`suite result ${run.id}`) && message.to.includes('coord')));
   assert.ok(history.messages.some(message => message.text.includes(`tree ${tree}`) && message.text.includes(item.id) && /tiers T1, T3; wall \d+ ms; exit 1/.test(message.text)));
   assert.ok(history.messages.some(message => /merge-queue-dropped.*merge-bisected.*hub\/test\/parser.test.ts::rejects stale input/s.test(message.text) && message.to.includes('coord')));
+});
+
+test('a code movement rebuild notice survives the original green result notice', async t => {
+  const started = Promise.withResolvers<RunRef>();
+  let receipt: RunStatus = { state: 'running' };
+  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
+  t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null }));
+  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
+    await writeFile(run.log, '# tests 1\n# pass 1\n'); started.resolve(run);
+  });
+  t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);
+  t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
+  t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
+  let moved = false;
+  let checkedHead = '', checkedTree = '';
+  const { ui, item, clock } = await fixture(t, { durationContext: null, candidate: {
+    head: async () => checkedHead, tree: async () => checkedTree,
+    inspect: async () => ({ head: checkedHead, tree: checkedTree, branch: '', selection: { mode: 'full', files: [], reason: 'batch' }, tierPlan: [], budgetBase: undefined }),
+  }, batchRepository: {
+    git: async args => {
+      if (args[0] === 'rev-parse') return args.at(-1) === 'refs/heads/dev' ? moved ? 'new-dev' : 'a'.repeat(40) : 'b'.repeat(40);
+      if (args[0] === 'merge-tree') return (moved ? 'new-tree' : 'old-tree') + '\0';
+      if (args[0] === 'commit-tree') return moved ? 'new-head' : 'old-head';
+      if (args[0] === 'diff') return 'hub/src/parser.ts\0';
+      if (args[0] === '--literal-pathspecs') return 'forcing-code-commit';
+      throw new Error(`unexpected Git operation ${args}`);
+    },
+    facts: async () => ({ context: null, workers: 1 }), identity: async () => moved ? 'new-tree' : 'old-tree',
+    checkout: async candidate => { checkedHead = candidate.head; checkedTree = candidate.tree; }, remove: async () => {},
+  } });
+  await value(ui, { type: 'merge', item: item.id });
+  await clock.advance(601_000);
+  await started.promise;
+  moved = true;
+  receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
+  await until(async () => {
+    await clock.advance(1000);
+    return (await value<{ suites: unknown[] }>(ui, { type: 'hub.status' })).suites.length === 2;
+  }, { what: 'changed code candidate admitted for a new batch' });
+  const history = await value<{ messages: Array<{ id: string; text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
+  const green = history.messages.find(message => /batch .*tiers T1, T3;.*exit 0/.test(message.text));
+  const rebuild = history.messages.find(message => /rebuild: commit forcing-code-commit changed batch test inputs: hub\/src\/parser.ts/.test(message.text));
+  assert.ok(green, 'original green result is retained');
+  assert.ok(rebuild, 'forcing commit is visible in the queue notice');
+  assert.notEqual(green.id, rebuild.id, 'the suite notice cannot deduplicate the rebuild notice');
+});
+
+test('the production batch Git adapter preserves whitespace in unknown paths', async t => {
+  let path = '';
+  t.mock.method(cp, 'execFile', (bin: string, args: string[], _options: cp.ExecFileOptions, callback: (error: Error | null, stdout: string, stderr: string) => void) => {
+    assert.equal(bin, 'git');
+    if (args[0] === 'diff') callback(null, path + '\0', '');
+    else {
+      assert.deepEqual(args, ['--literal-pathspecs', 'log', '-1', '--format=%H', 'current', '^tested', '--', path]);
+      callback(null, 'forcing-commit\n', '');
+    }
+    return { stdin: null };
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const candidate = (base: string) => ({ base, head: `${base}-head`, tree: `${base}-tree`, cwd: '/isolated', budgetLines: [] });
+  for (const unknown of [' docs/input.ts', ' README.md', '\tdocs/input.ts', '\nREADME.md', 'README.md ']) {
+    path = unknown;
+    assert.equal(await batchRebuildReason('/isolated', candidate('tested'), candidate('current')), `commit forcing-commit changed batch test inputs: ${unknown}`);
+  }
+  path = 'docs/input.md';
+  assert.equal(await batchRebuildReason('/isolated', candidate('tested'), candidate('current')), null);
 });

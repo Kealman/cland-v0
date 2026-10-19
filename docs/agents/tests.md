@@ -138,8 +138,11 @@ green batch or stage receipt. It uses the configured executor and Coordinator
 priority, occupying one suite slot.
 
 On green, each member lands through the existing merge receipt, checkout,
-territory publication and cleanup path. Tracker-only dev movement reuses green
-candidate evidence; a changed candidate tree rebuilds and reruns. Conflicts or
+territory publication and cleanup path. Dev movement reuses green candidate
+evidence when the immutable candidate diff stays within `refusedOverridePaths`'s
+documentation/tracker allowlist, the same policy that selects immediate merges.
+Other changed paths rebuild and rerun, with a notice naming the forcing commit.
+The reused receipt retains its original head and tree. Conflicts or
 landing gate refusals drop their member with a reason and rebuild the rest.
 Queue and batch state survive reopening the hub store. `cland merge queue` and
 `cland verify queue` show the current batch and its members. Results and logs go

@@ -69,7 +69,7 @@ import type { ArtifactCreate, ArtifactList, ArtifactPromote, ArtifactKeep, Artif
 import { MergeQueue } from './merge-queue.ts';
 import { taskTierEvidence, type SuiteDryRun } from '../suite-tier-report.ts';
 import { MergeBatches, BatchRefusal, BatchRebuild } from './merge-batches.ts';
-import { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch } from './merge-batch-territory.ts';
+import { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch, batchRebuildReason } from './merge-batch-territory.ts';
 import { TaskMerges } from './merge.ts';
 import { Releases } from './releases.ts';
 import { PushError } from '../territory-push.ts';
@@ -222,6 +222,7 @@ export class Dispatcher {
       changed: () => options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }),
       entries: () => this.#mergeQueue!.entries(),
       build: (id, members, base) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository, base)),
+      rebuildReason: (tested, current) => batchRebuildReason(root, tested, current, options.env, options.batchRepository),
       cleanup: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.remove(candidate) : removeMergeBatch(root, candidate, options.env)),
       checkout: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.checkout(candidate) : checkoutMergeBatch(root, candidate, options.env)),
       isLanded: entry => options.tracker!.summary(entry.item)?.state === 'closed' && !!options.tracker!.mergeReceipt(entry.item),
@@ -242,8 +243,8 @@ export class Dispatcher {
       },
       drop: (entry, reason) => this.#mergeQueue!.drop(entry, reason),
       notice: notice => { if (!options.core.noticeTo(GENERAL.id, notice)) throw new Error('batch notice topic unavailable'); },
-      report: (batch, text) => {
-        const phase = batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite';
+      report: (batch, text, reportPhase) => {
+        const phase = reportPhase ?? (batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite');
         const selected = batch.diagnosis?.selected === undefined ? batch.candidate : batch.diagnosis.jobs[batch.diagnosis.selected]?.candidate;
         const detail = { event: 'merge-batch-result', batch: batch.id, members: batch.members.map(e => e.item), tree: selected?.tree ?? null,
           ...(batch.diagnosis ? { diagnosis: batch.diagnosis } : {}) };

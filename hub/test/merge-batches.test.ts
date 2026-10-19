@@ -6,11 +6,11 @@ import { TaskMerges } from '../src/hub/merge.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MergeBatches, BatchRefusal, diagnosticResult, type BatchBoundary } from '../src/hub/merge-batches.ts';
+import { MergeBatches, BatchRefusal, BatchRebuild, diagnosticResult, type BatchBoundary, type BatchCandidate } from '../src/hub/merge-batches.ts';
 import type { MergeQueueEntry } from '../src/protocol.ts';
 import type { TopicNotice } from '../src/hub/core.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { prepareMergeBatch } from '../src/hub/merge-batch-territory.ts';
+import { prepareMergeBatch, batchRebuildReason, type BatchRepository } from '../src/hub/merge-batch-territory.ts';
 import { recordBatchFlakes } from '../src/hub/batch-flakes.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -52,6 +52,7 @@ async function fixture(t: Parameters<typeof suiteUnit>[0]) {
   let base = 'base', code = 'code';
   const boundary: BatchBoundary = {
     entries: () => entries,
+    rebuildReason: async (_tested, current) => `commit ${current.base} changed batch test inputs`,
     cleanup: async () => {},
     checkout: async candidate => { f.candidate.head = candidate.head; f.candidate.tree = candidate.tree; },
     isLanded: entry => landed.includes(entry.item),
@@ -437,6 +438,99 @@ for (const trackerOnly of [true, false]) test(`${trackerOnly ? 'tracker-only' : 
   }
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
   assert.equal(f.suites.status().length, trackerOnly ? 1 : 2);
+});
+
+for (const documentationOnly of [true, false]) test(`a green batch ${documentationOnly ? 'reuses its provider receipt for documentation' : 'reruns for a named code commit'}`, async t => {
+  const state = await fixture(t);
+  const { f, boundary, landed, entries, reports } = state;
+  entries.splice(1);
+  let dev = 'original-dev';
+  const provider: BatchRepository = {
+    git: async args => {
+      if (args[0] === 'rev-parse') return args.at(-1) === 'refs/heads/dev' ? dev : entries[0]!.head;
+      if (args[0] === 'merge-tree') return `${dev}-tree\0`;
+      if (args[0] === 'commit-tree') return `${dev}-head`;
+      if (args[0] === 'diff') {
+        assert.deepEqual(args, ['diff', '--name-only', '-z', '--no-renames', 'original-dev-head', 'docs-commit-head', '--']);
+        return documentationOnly ? '.cland/tasks/T-2.md\0qa/briefs/E-615.md\0docs/agents/tests.md\0' : 'hub/src/parser.ts\0';
+      }
+      if (args[0] === '--literal-pathspecs') return 'forcing-code-commit';
+      throw new Error(`unexpected Git operation ${args}`);
+    },
+    facts: async () => ({ context: null, workers: 1 }),
+    identity: async head => head.replace('-head', '-tree'),
+    checkout: boundary.checkout, remove: boundary.cleanup,
+  };
+  boundary.build = (id, members, base) => prepareMergeBatch(f.root, id, members, {}, provider, base);
+  boundary.rebuildReason = (tested, current) => batchRebuildReason(f.root, tested, current, {}, provider);
+  const land = boundary.land;
+  boundary.land = async (entry, candidate) => {
+    assert.equal(candidate.base, 'docs-commit', 'land rebased onto the current dev');
+    assert.equal(candidate.tree, 'docs-commit-tree');
+    await land(entry, candidate);
+  };
+  await f.clock.advance(600_000);
+  await state.runner.tick();
+  const first = f.suites.status()[0]!;
+  await f.machine.waits.run(f.machine.started(first.id));
+  dev = 'docs-commit';
+  await state.reopen();
+  await f.finish(first.id); await state.runner.tick();
+  if (!documentationOnly) {
+    assert.deepEqual(landed, [], 'changed code cannot land under the old receipt');
+    assert.match(reports.at(-1)!, /rebuild: commit forcing-code-commit changed batch test inputs: hub\/src\/parser.ts/);
+    await state.runner.tick();
+    const second = f.suites.status().at(-1)!;
+    assert.notEqual(second.id, first.id);
+    await f.finish(second.id); await state.runner.tick();
+  }
+  assert.deepEqual(landed, ['T-1']);
+  assert.equal(f.suites.status().length, documentationOnly ? 1 : 2);
+  assert.equal(f.suites.status()[0]!.tree, 'original-dev-tree', 'retained receipt is never relabeled');
+  assert.equal(state.runner.snapshot(), null);
+});
+
+test('batch comparison uses the immediate merge allowlist and names the forcing commit', async () => {
+  const candidate = (base: string): BatchCandidate => ({ base, head: `${base}-head`, tree: `${base}-tree`, cwd: '/isolated', budgetLines: [] });
+  let paths: string[] = [];
+  const provider: BatchRepository = {
+    git: async args => {
+      if (args[0] === 'diff') return paths.join('\0') + '\0';
+      assert.deepEqual(args, ['--literal-pathspecs', 'log', '-1', '--format=%H', 'docs-tip', '^old', '--', paths[1]]);
+      return 'forcing-code-commit';
+    },
+    facts: async () => ({ context: null, workers: 1 }), identity: async () => null, checkout: async () => {}, remove: async () => {},
+  };
+  const reason = () => batchRebuildReason('/isolated', candidate('old'), candidate('docs-tip'), {}, provider);
+  for (const path of ['.cland/tasks/T-1.md', '.cland/RULES.md', 'qa/briefs/T-1.md', 'docs/agents/tests.md', 'GLOSSARY.md', 'hub/README.md']) {
+    paths = [path];
+    assert.equal(await reason(), null, path);
+  }
+  // --no-renames supplies both paths: moving docs into code must invalidate.
+  for (const path of ['.cland/config.toml', '.cland/roles.toml', '.cland/unknown', '.agents/skills/test/SKILL.md', 'hub/src/parser.ts', 'hub/test/parser.test.ts', 'hub/test/tiers.json', 'package.json', 'unknown']) {
+    paths = ['docs/old.md', path];
+    assert.equal(await reason(), `commit forcing-code-commit changed batch test inputs: ${path}`, path);
+  }
+  provider.git = async () => { throw new Error('Git unavailable'); };
+  await assert.rejects(reason, /Git unavailable/);
+});
+
+test('a landing base race retains the green run for the next comparison', async t => {
+  const { f, runner, boundary, landed, move } = await fixture(t);
+  const land = boundary.land;
+  let raced = false;
+  boundary.land = async (...args) => {
+    if (!raced) { raced = true; move(true); throw new BatchRebuild('batch base moved before landing'); }
+    await land(...args);
+  };
+  await runner.tick();
+  const first = f.suites.status()[0]!;
+  await f.finish(first.id); await runner.tick();
+  assert.deepEqual(landed, []);
+  assert.equal(runner.snapshot()?.run, first.id);
+  await runner.tick();
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(f.suites.status().length, 1);
 });
 
 test('a conflict drops only its member before the single batch run', async t => {
