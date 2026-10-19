@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-575
 branch: t/T-837-cland-setup-reports-the-project-the
 created: 2026-10-19T06:34:12.801Z
-updated: 2026-10-19T09:11:39.615Z
+updated: 2026-10-19T09:54:42.778Z
 ---
 
 ## Summary
@@ -50,25 +50,33 @@ Tracer bullet 1 lays the skeleton the other steps join. `cland setup [dir]` runs
 - [x] C1. With an in-memory machine where Codex is missing and Claude Code is signed out, the flow reports `project ok`, one line per harness, and one line per login in the spec's order, and exits 1 without a terminal (T1 with the fake prompter, asserting it is never asked).
   - done: impl-837 · 2026-10-19T08:41:04.589Z
   - verified: rev-30 [reviewer] · run rev-20261019-837-final · 2026-10-19T09:11:37.315Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-final · 2026-10-19T09:54:40.501Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
 - [x] C2. With no harness installed, each harness line is `open` and names its official installer, and with one installed the missing ones are `skip` with the installer as a hint (T1).
   - done: impl-837 · 2026-10-19T08:54:11.997Z
   - verified: rev-30 [reviewer] · run rev-20261019-837-source-policy · 2026-10-19T08:54:27.820Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
   - verified: rev-30 [reviewer] · run rev-20261019-837-final · 2026-10-19T09:11:37.315Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-source · 2026-10-19T09:36:00.159Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-final · 2026-10-19T09:54:40.501Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
 - [x] C3. A folder without `.cland/` prints one `fail` line, "run cland init first", and exits 1 (T1), and `cland setup` in HOME refuses as init does (T2, CLI as subject).
   - done: impl-837 · 2026-10-19T08:41:05.459Z
   - verified: rev-30 [reviewer] · run rev-20261019-837-final · 2026-10-19T09:11:37.315Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-final · 2026-10-19T09:54:40.501Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
 - [x] C4. `--json` prints one object with `root`, `version`, `interactive: false`, `steps`, `summary` and `next`, parseable by `JSON.parse`, with the narration on stderr (T2, CLI as subject, injected probe results).
   - done: impl-837 · 2026-10-19T08:41:05.844Z
   - verified: rev-30 [reviewer] · run rev-20261019-837-final · 2026-10-19T09:11:37.315Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-final · 2026-10-19T09:54:40.501Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
 - [x] C5. A run where every step is `ok` exits 0, and its `--json` `next` is `cland` (T1).
   - done: impl-837 · 2026-10-19T08:41:06.317Z
   - verified: rev-30 [reviewer] · run rev-20261019-837-final · 2026-10-19T09:11:37.315Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-final · 2026-10-19T09:54:40.501Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
 - [x] C6. The terminal helper returns a child's exit code, returns 128 plus the signal number for a signalled child, and removes its SIGINT and SIGQUIT handlers afterwards (T1 with an injected spawner).
   - done: impl-837 · 2026-10-19T08:41:06.699Z
   - verified: rev-30 [reviewer] · run rev-20261019-837-source · 2026-10-19T08:43:23.819Z · commit d84ce977ed4006340f1c6ccd727b8db9dd4b1fe1
   - verified: rev-30 [reviewer] · run rev-20261019-837-source-corrected · 2026-10-19T08:46:54.123Z · commit 209431bfb81098ed476bc36206b71711ab437867
   - verified: rev-30 [reviewer] · run rev-20261019-837-source-policy · 2026-10-19T08:54:27.820Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
   - verified: rev-30 [reviewer] · run rev-20261019-837-final · 2026-10-19T09:11:37.315Z · commit c96703e58bf8b19494b59946c7fc3adf65dd054f
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-source · 2026-10-19T09:36:00.159Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
+  - verified: rev-30 [reviewer] · run rev-20261019-837-integration-final · 2026-10-19T09:54:40.501Z · commit 6c3d7ad8a688417281497f856af735b70f860f2c
 
 ## Comments
 
@@ -152,5 +160,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final same-head clear; A-5930. Full A-5929/37c06b9e audited: 1488/1488 ordinary pass, zero fail/cancel/skip/TODO, zero tier-mismatch rows; all 411 load groups 5/5. All eleven setup flow/terminal/CLI cases pass ordinarily and 5/5; corrected account-policy case passes. Source A-5911/A-5914/A-5921 plus evidence establish C1–C6. Prior failed A-5916 retained; L1 and carrier M1 resolved. No findings. T3 remains landing evidence; report-only lint/budget diagnostics disclosed. Existing T-852 pending-setup removal remains an integration obligation if that guard arrives.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-30 · 2026-10-19T09:36:00.159Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-837-integration-source
+commit: 6c3d7ad8a688417281497f856af735b70f860f2c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integration source clear; A-5939. Coordinator 2e717989 authority confirmed; setup production/CLI/account-policy and owned test carriers unchanged against prior reviewed c96703e5. Sole task edit removes setup from onboarding PENDING, preserving command discovery, stale-entry and rejection controls. Incoming setup-prompter tier retained with all setup tiers. A-5938 expected red then onboarding 2/2, flow 5/5 and typecheck/merge-tree evidence retained. No findings; C2/C6 refreshed. C1/C3/C4/C5 await new exact-head mode-free gate; A-5929 not reused as new-head runtime evidence.
+
+Criteria: C2 verified, C6 verified.
+
+### rev-30 · 2026-10-19T09:54:40.501Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-837-integration-final
+commit: 6c3d7ad8a688417281497f856af735b70f860f2c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integrated final clear; A-5944. A-5942/7ae81f13 full log audited: 1499/1499 ordinary passed, zero fail/cancel/skip/TODO, zero tier-mismatch rows and all 422 load groups 5/5. All eleven setup cases, corrected account policy and both onboarding guards pass; setup and onboarding cases also pass 5/5. Source A-5939 plus evidence establish C1–C6 at this head. Pending setup exception removal obligation fulfilled; no findings. Historical failed A-5916 retained. T3 remains landing evidence; report-only lint/budget diagnostics retained.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

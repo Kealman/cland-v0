@@ -7,13 +7,14 @@ status: planned
 size: XS
 labels:
   - ready-for-agent
+  - v0.1.5
 assignee: null
-parent: E-482
+parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T09:29:02.859Z
-updated: 2026-10-19T08:18:47.201Z
+updated: 2026-10-19T10:25:17.109Z
 ---
 
 ## Summary

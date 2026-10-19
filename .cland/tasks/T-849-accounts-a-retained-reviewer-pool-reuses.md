@@ -2,8 +2,8 @@
 id: T-849
 kind: task
 title: "accounts: a retained Reviewer pool reuses the old member after a same-size roles.toml rewrite (Linux batch run)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-573
 branch: t/T-849-accounts-a-retained-reviewer-pool-reuses
 created: 2026-10-19T07:31:31.466Z
-updated: 2026-10-19T08:34:30.633Z
+updated: 2026-10-19T10:17:00.069Z
+closed: 2026-10-19T10:17:00.069Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; no findings. A-5897 audits C2's complete Mac A-5893: 20/20 whole files (14 cases each) plus 20/20 isolated retained-pool runs, all zero fail/cancel/skip/todo. Exact-head mode-free A-5896 / 0d9d2cd7 passes 999/999 (377 T1+622 hub T2), concurrent-fresh regression ordinary-pass and 5/5. Zero tier-mismatch rows; all 235 groups pass 5/5. C1/C2 verified at unchanged 277532f4. Host log lacks embedded SHA; unchanged-head/platform provenance is separately disclosed by Implementer. Linux T3 remains landing evidence; historical exact race not reconstructed. No Reviewer edits/tests.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T10:17:00.069Z
+
+Merged 99e0bdca6881864953f07c814d552fca71b52a2b onto dev.

@@ -2,8 +2,8 @@
 id: T-831
 kind: task
 title: The merge queue reruns a green batch whenever dev moves, even by tracker-only commits
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-711
 topic: topic-571
 branch: t/T-831-the-merge-queue-reruns-a-green-batch
 created: 2026-10-19T06:28:57.845Z
-updated: 2026-10-19T08:48:08.550Z
+updated: 2026-10-19T10:17:09.876Z
+closed: 2026-10-19T10:17:09.876Z
 ---
 
 ## Summary
@@ -94,3 +95,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-5915. Audited full A-5913 / b3650656: exit 0, ordinary 381+868+232=1481 passed, zero fail/cancel/skip/TODO. Both owned files and all six new controls pass ordinarily and in five fresh repetitions; full census zero tier-mismatch rows and 401/401 load groups 5/5. Corrected source A-5892 remains unchanged, M1 resolved. C1/C2 verified. Report-only lint/duration findings retained; T3 remains landing-batch evidence, not claimed here. Claimant done boxes were unchecked at readback and need Implementer marks.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T10:17:09.876Z
+
+Merged 5b0ae65ef11fdb1edddee4d2a9173cff656469e2 onto dev.

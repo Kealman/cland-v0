@@ -6,17 +6,17 @@ state: open
 rank: 4229
 labels:
   - epic
-  - v0.1.4
   - verification
+  - v0.1.5
 assignee: null
-parent: R-577
+parent: R-866
 blocked_by: []
 follows:
   - E-676
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.217Z
-updated: 2026-10-19T08:15:35.020Z
+updated: 2026-10-19T10:25:16.657Z
 ---
 
 ## Summary

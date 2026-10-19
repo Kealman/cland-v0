@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-19T08:18:46.910Z
+updated: 2026-10-19T10:25:17.375Z
 ---
 
 ## Goal
@@ -89,8 +89,6 @@ stages:
       - - T-675
       - - T-723
       - - T-724
-      - - T-786
-      - - T-793
       - - T-818
       - - T-848
       - - T-849

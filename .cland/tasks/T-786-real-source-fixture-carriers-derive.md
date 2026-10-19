@@ -6,17 +6,17 @@ state: open
 status: planned
 size: S
 labels:
-  - v0.1.4
   - verification
   - hub
   - ready-for-agent
+  - v0.1.5
 assignee: null
-parent: E-482
+parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T07:21:29.054Z
-updated: 2026-10-19T08:18:47.162Z
+updated: 2026-10-19T10:25:22.362Z
 ---
 
 ## Summary
