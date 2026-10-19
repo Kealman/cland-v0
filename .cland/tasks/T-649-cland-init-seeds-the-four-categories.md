@@ -3,8 +3,9 @@ id: T-649
 kind: task
 title: "cland init seeds the four categories: Bugs, Tech debt, Follow-ups and Ideas"
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 6
 labels:
   - v0.1.4
   - init
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-544
 branch: t/T-649-cland-init-seeds-the-four-categories
 created: 2026-10-16T16:24:00.181Z
-updated: 2026-10-19T01:56:05.750Z
+updated: 2026-10-19T02:06:53.968Z
 ---
 
 ## Summary
@@ -32,9 +33,34 @@ Every role clause files work into the categories, yet a new project has none: on
 
 ## Acceptance criteria
 
-- [ ] C1. After `cland init` in an empty folder, `cland task list --kind category` lists Bugs, Tech debt, Follow-ups and Ideas, each with no parent (init-categories.test.ts, on the scratch machine of ticket T-639).
-- [ ] C2. Their four item files are in init's first commit, and `git status --porcelain` stays empty.
-- [ ] C3. A second `cland init` creates no category, and the project's item count is unchanged.
-- [ ] C4. In a project that already has an open root category Ideas, init creates only the other three and leaves Ideas byte-identical.
-- [ ] C5. `cland update` on a project without categories creates none.
-- [ ] C6. `planMigration` and init read the same constant (a unit test compares the titles migrate seeds with init's).
+- [x] C1. After `cland init` in an empty folder, `cland task list --kind category` lists Bugs, Tech debt, Follow-ups and Ideas, each with no parent (init-categories.test.ts, on the scratch machine of ticket T-639).
+  - done: impl-649 · 2026-10-19T02:02:48.679Z
+- [x] C2. Their four item files are in init's first commit, and `git status --porcelain` stays empty.
+  - done: impl-649 · 2026-10-19T02:02:49.356Z
+- [x] C3. A second `cland init` creates no category, and the project's item count is unchanged.
+  - done: impl-649 · 2026-10-19T02:02:50.032Z
+- [x] C4. In a project that already has an open root category Ideas, init creates only the other three and leaves Ideas byte-identical.
+  - done: impl-649 · 2026-10-19T02:02:50.582Z
+- [x] C5. `cland update` on a project without categories creates none.
+  - done: impl-649 · 2026-10-19T02:02:51.276Z
+- [x] C6. `planMigration` and init read the same constant (a unit test compares the titles migrate seeds with init's).
+  - done: impl-649 · 2026-10-19T02:02:51.998Z
+
+## Comments
+
+### impl-649 · 2026-10-19T02:00:44.079Z
+
+Implemented category seeding through Tracker.create before the first commit, with DEFAULT_CATEGORIES shared by init and planMigration. Test-first failures observed for empty tracker seeding, first-commit membership, already-provisioned category membership and custom ladders. Coordinator decision: when category is not a configured root, preserve the ladder and report skipped. Host typecheck and lint pass; targeted checks underway before source review. Init-only options keep update and generic provisioning fixtures from seeding.
+
+### rev-30 · 2026-10-19T02:06:53.968Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-649-source
+commit: 58038de6100a2432bd5a817b5b2549aed0e14cdf
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; no Standards or Spec findings. A-5719 records the production, async-caller and fixture audit. Shared category titles, Tracker.create seeding before first commit, byte-preserved existing roots, update exclusion and Coordinator-authorized custom-ladder skip behavior are consistent. C1–C6 remain unverified pending accepted exact-head post-clear runtime evidence; QA scope none.
