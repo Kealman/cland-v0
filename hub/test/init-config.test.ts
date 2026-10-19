@@ -19,11 +19,11 @@ test('tracker config accepts peer levels and rejects malformed, duplicate and co
 });
 
 test('merge queue defaults off and round-trips an explicitly enabled boolean', () => {
-  assert.deepEqual(defaultConfig('scratch').merge, { queue: false });
-  assert.deepEqual(parseConfig('', 'scratch').merge, { queue: false });
+  assert.deepEqual(defaultConfig('scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000 });
+  assert.deepEqual(parseConfig('', 'scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000 });
   const configured = parseConfig('[merge]\nqueue = true\n', 'scratch');
-  assert.deepEqual(configured.merge, { queue: true });
-  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { queue: true });
+  assert.deepEqual(configured.merge, { queue: true, batch: 3, batchWaitMs: 600_000 });
+  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { queue: true, batch: 3, batchWaitMs: 600_000 });
   for (const invalid of ['"true"', '1', '[]']) {
     assert.throws(() => parseConfig(`[merge]\nqueue = ${invalid}`, 'scratch', {}, { strict: true }), /merge.queue must be a boolean/);
   }

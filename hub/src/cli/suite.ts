@@ -18,7 +18,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
   if (values.size !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values.size)) throw new Error('--size must be a nonempty slug');
   if (values.executor !== undefined && values.executor !== 'local' && values.executor !== 'droplet') throw new Error('--executor must be local or droplet');
-  if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be stage, epic, release or soak');
+  if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be batch, stage, epic, release or soak (batch is hub-owned)');
   if (values.help) { out(SUITE_USAGE); return 0; }
   if (values.diagnostics && !values['dry-run']) throw new Error('--diagnostics requires --dry-run');
   if (positionals[0] === 'classify') {
@@ -36,7 +36,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
     if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
     const q = await ask(d, { type: 'suite.queue' }, 15000) as VerificationQueue;
     const duration = (ms: number | null) => ms === null ? 'unknown' : `${Math.ceil(ms / 1000)}s`;
-    const lines = [`local: ${q.holder ? `${q.holder.kind === 'hand run' && q.holder.session !== 'human' ? 'hand run' : q.holder.session}${q.holder.occasion ? ` · occasion ${q.holder.occasion}` : ''} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · since ${q.holder.since ?? 'unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
+    const lines = [...(q.batch ? [`batch ${q.batch.id}: ${q.batch.members.map(entry => entry.item).join(', ')} · tree ${q.batch.candidate?.tree ?? 'preparing'}${q.batch.failed ? ` · blocked: ${q.batch.failed}` : ''}`] : []), `local: ${q.holder ? `${q.holder.kind === 'hand run' && q.holder.session !== 'human' ? 'hand run' : q.holder.session}${q.holder.occasion ? ` · occasion ${q.holder.occasion}` : ''} · pid ${q.holder.pid ?? 'unknown'} · ${q.holder.worktree ?? 'worktree unknown'} · since ${q.holder.since ?? 'unknown'} · ETA ${duration(q.holder.etaMs)}` : 'none'}`,
       `local fallback: ${q.localFallback ?? true}`,
       ...(q.remote ?? []).map(r => `remote ${q.remote?.length ?? 0}/${q.remoteBudget ?? 4}: ${r.session} · ${r.item ?? r.id} · droplet ${r.machine?.name ?? 'acquiring'} ${r.machine?.size ?? 'unknown'} ${r.machine?.region ?? 'unknown'}${r.occasion ? ` · occasion ${r.occasion}` : ''}${r.shard ? ` · ${r.shard}` : ''} · since ${r.since ?? 'unknown'} · ETA ${duration(r.etaMs)}`),
       ...q.waiters.map(w => `${w.position}. ${w.session} · ${w.item ?? w.id} · ${w.executor ?? 'local'} · ${w.mode}${w.occasion ? ` · occasion ${w.occasion}` : ''}${w.waitingFor === 'remote' ? ' · waiting for remote' : ''} · wait ${duration(w.waitMs)} · ETA ${duration(w.etaMs)}`),

@@ -67,6 +67,27 @@ item, reason and expiry required below still govern manifest additions.
 
 Deterministic whole-repository source guards run through `npm run test:static`, included in the task host gate’s `npm run test:lint`.
 
+### Queued merge batches
+
+With `[merge] queue = true`, reviewed code heads wait in a durable FIFO. The hub
+starts the oldest `batch` entries (default 3) when full, or after `batch_wait`
+(default `"10m"`) from the oldest request. It prepares squash objects in order,
+checks immutable merged-tree lint and duration budgets, and verifies a detached
+candidate with the hub-owned `batch` occasion. That run selects all T1 and T3
+files, with five load repetitions only for T3 identities absent from the last
+green batch or stage receipt. It uses the configured executor and Coordinator
+priority, occupying one suite slot.
+
+On green, each member lands through the existing merge receipt, checkout,
+territory publication and cleanup path. Tracker-only dev movement reuses green
+candidate evidence; a changed candidate tree rebuilds and reruns. Conflicts or
+landing gate refusals drop their member with a reason and rebuild the rest.
+Queue and batch state survive reopening the hub store. `cland merge queue` and
+`cland verify queue` show the current batch and its members. Results and logs go
+to Agents and each member's requester and item lead. A red batch remains held;
+red-batch isolation is the following T-712 work. Task verification admission is
+unchanged by this opt-in merge policy.
+
 ### Named T3 scenarios
 
 The ten scenarios below prove process seams once the rules are covered in T1/T2. Each is one manifest entry with tier T3 and a unique scenario name, one whole-file scheduling unit, at most 120 seconds of manifest test time, and at most one live hub. Headers name the flow, lower-tier rule coverage and the expected hub process starts. Other T3 lifecycle regressions and the three harness contracts remain separate. The target cadence is T3 once per merge batch and at stage, epic and release; this inventory does not change task admission policy.

@@ -183,6 +183,17 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
 /** Package cadence excludes soak files unless the admitted selection enables them. */
 export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: DurationHistory & { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
   const phases = await unfilteredPackageShards(cwd, mode, selection, coverage, options);
+  if (coverage?.tiers) {
+    const tiers = await readTierAssignments(cwd);
+    if (!tiers) throw new ShardManifestError('batch requires tier assignments', [TIER_MANIFEST]);
+    const planned: SuiteShard[] = [];
+    for (const phase of phases) {
+      const targets: string[] = [];
+      for await (const file of glob(phase.targets, { cwd })) if (coverage.tiers.includes(tiers.get(file)!)) targets.push(file);
+      if (targets.length) planned.push({ ...phase, targets: targets.sort() });
+    }
+    return planned;
+  }
   if (coverage?.soak) return phases;
   const tiers = await readTierAssignments(cwd);
   const soak = [...tiers ?? []].filter(([, tier]) => tier === 'T4').map(([file]) => file);

@@ -8,7 +8,7 @@ import { join, resolve, relative, isAbsolute, sep } from 'node:path';
 import { MergeError } from './merge.ts';
 import { lintHubShardTree, ShardManifestError } from './suite-shards.ts';
 import { durationBudgetContext, DurationInspectionError } from './suite-duration-context.ts';
-import { checkMergeBudgets } from './suite-duration-budget.ts';
+import { checkMergeBudgets, type DurationBudgetContext } from './suite-duration-budget.ts';
 import { suiteLimits } from './suite-limits.ts';
 import { withCleanup, withCleanupAsync } from './cleanup.ts';
 import { acquireLock, acquireLockAsync, HubLocked } from './hub/lock.ts';
@@ -606,6 +606,37 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
   }, resumed);
 }
 
+/** Immutable admission is shared by immediate squashes and queued batch preparation. */
+export type MergeTreeFacts = { context: DurationBudgetContext | null; workers: number };
+
+/** Read-only repository facts; callers gate the resulting immutable snapshot. */
+export async function mergeTreeFacts(root: string, tree: string, head: string, base: string,
+  resumed: <T>(work: () => T) => T = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<MergeTreeFacts> {
+  try { await lintHubShardTree(root, tree, env, { head, base }); }
+  catch (err) { resumed(() => { throw new MergeError('merge-tiers', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
+  try {
+    const findings = await testLintPolicy(root, { tree, head, base, env });
+    if (findings.length) throw new TestLintError(findings);
+  } catch (err) { resumed(() => { throw new MergeError('merge-test-lint', err instanceof Error ? err.message : String(err), err instanceof TestLintError ? err.files : undefined); }); }
+  const context = await durationBudgetContext(root, { head: tree, base, env }).catch(error => resumed(() => {
+    if (error instanceof DurationInspectionError) throw new MergeError('merge-budget', error.message);
+    throw error;
+  }));
+  return { context, workers: context ? (await suiteLimits(root, 'local', env)).workers : 1 };
+}
+
+export function gateMergeTree({ context, workers }: MergeTreeFacts): string[] {
+  const budget = context ? checkMergeBudgets(context, workers) : { failures: [], lines: [] };
+  if (budget.failures.length) throw new MergeError('merge-budget', [...budget.failures.map(line => line.replace(/^merge-budget: /, '')), ...budget.lines].join('\n'));
+  return budget.lines;
+}
+
+export async function checkMergeTree(root: string, tree: string, head: string, base: string,
+  resumed: <T>(work: () => T) => T = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<string[]> {
+  const facts = await mergeTreeFacts(root, tree, head, base, resumed, env);
+  return resumed(() => gateMergeTree(facts));
+}
+
 // ---------------------------------------------------------------- the squash gate's Git work (T-59, D2/D9)
 /** The guard owns the lock and calls `message` again after preparation, before any ref moves. */
 export async function squashTask(
@@ -651,20 +682,7 @@ export async function squashTask(
       throw new MergeError('merge-conflict', `rebase ${branch} on ${base}; conflicts: ${files.join(', ')}`, files);
     });
   }
-  try { await lintHubShardTree(root, tree, env, { head: tip, base: before }); }
-  catch (err) { resumed(() => { throw new MergeError('merge-tiers', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
-  try {
-    const findings = await testLintPolicy(root, { tree, head: tip, base: before, env });
-    if (findings.length) throw new TestLintError(findings);
-  } catch (err) { resumed(() => { throw new MergeError('merge-test-lint', err instanceof Error ? err.message : String(err), err instanceof TestLintError ? err.files : undefined); }); }
-  const durationContext = await durationBudgetContext(root, { head: tree, base: before, env }).catch(error => resumed(() => {
-    if (error instanceof DurationInspectionError) throw new MergeError('merge-budget', error.message);
-    throw error;
-  }));
-  const budget = durationContext ? checkMergeBudgets(durationContext, (await suiteLimits(root, 'local', env)).workers) : { failures: [], lines: [] };
-  resumed(() => {
-    if (budget.failures.length) throw new MergeError('merge-budget', [...budget.failures.map(line => line.replace(/^merge-budget: /, '')), ...budget.lines].join('\n'));
-  });
+  const budgetLines = await checkMergeTree(root, tree, tip, before, resumed, env);
   // Include deleted rename sources as well as destinations for path-based merge gates and checkout safety.
   const touched = await territoryGitAsync(root, ['diff', '--no-renames', '--name-only', '-z', before, tree, '--'], undefined, undefined, env);
   const tracked = await territoryGitAsync(root, ['diff', '--name-only', '-z', 'HEAD', '--'], undefined, undefined, env);
@@ -723,7 +741,7 @@ export async function squashTask(
     }
     resumed(() => { if (err === admissionError) throw err; throw new MergeError('merge-git', err instanceof Error ? err.message : String(err)); });
   }
-  return { commit, base, ...(budget.lines.length ? { budgetLines: budget.lines } : {}) };
+  return { commit, base, ...(budgetLines.length ? { budgetLines } : {}) };
 }
 
 /** Restore an unlanded preparation, or roll back a failed landing, only from its recorded index states. */

@@ -37,6 +37,7 @@ import { occasionSelection } from '../verification-occasion.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  batch?: { id: string; members: import('../protocol.ts').MergeQueueEntry[] };
   sequence?: number;
   health?: MachineHealth;
   shardHealth?: ShardMachineHealth[];
@@ -352,14 +353,15 @@ export class Suites {
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+    if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}`, shell: true } };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     const config = this.#options.projectConfig?.();
     const settings = { ...this.#options };
     const executor = input.executor ?? settings.executor ?? 'local';
@@ -385,9 +387,10 @@ export class Suites {
     const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
     const { head, branch, tree, budgetBase } = candidate;
     const selection = occasionSelection(candidate.selection, input.occasion);
-    if (input.occasion && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (input.occasion) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' ? 'soak' : 'stage');
+    if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
+    if (input.occasion) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     const tierPlan = input.occasion ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
+    if (input.occasion === 'batch') selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 
     if (input.dryRun) {
       const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
@@ -503,13 +506,15 @@ export class Suites {
   // Integrated dev precedes human waiters, then item rank; each group retains enqueue order.
   #ordered(): Array<SuiteJob | HumanSlot> {
     return [...this.#queue(), ...[...this.#humans.values()].filter(s => !s.left && !s.admittedAt)].sort((a, b) => {
-      const integrated = (s: SuiteJob | HumanSlot) => 'actor' in s && s.integrated === true;
+      const integrated = (s: SuiteJob | HumanSlot) => 'actor' in s && (s.integrated === true || s.occasion === 'batch');
       const rank = (s: SuiteJob | HumanSlot) => 'actor' in s ? s.priority ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
   async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
-    const stage = this.#jobs.findLast(job => job.occasion === occasion && job.integrated && job.branch === 'dev'
+    const stage = this.#jobs.findLast(job => (occasion === 'batch'
+      ? job.occasion === 'stage' && job.integrated && job.branch === 'dev' || job.occasion === 'batch' && job.batch
+      : job.occasion === occasion && job.integrated && job.branch === 'dev')
       && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
       && job.reported && job.outcome?.code === 0);
     if (!stage) return { run: null, tests: [] };
@@ -603,8 +608,8 @@ export class Suites {
   }
   #shouldPlanShards(job: SuiteJob): boolean {
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
-    // epic occasions). A batch keeps its occasion unset and gains no stage proof.
-    return job.occasion !== 'soak' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
+    // epic occasions). Soaks and hub-owned merge batches use one slot and gain no stage proof.
+    return job.occasion !== 'batch' && job.occasion !== 'soak' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
       && job.branch === 'dev' && job.mode === 'all' && job.tree
       && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
   }
@@ -1088,6 +1093,7 @@ export class Suites {
   covers(): import('../protocol.ts').CoverStatus[] { return recentCovers(this.#jobs); }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
+      ...(job.batch ? { batch: job.batch } : {}),
       ...(job.cover ? { cover: job.cover } : {}),
       ...(job.occasion ? { occasion: job.occasion } : {}),
       ...(job.workers === undefined ? {} : { workers: job.workers }), ...(job.size ? { size: job.size } : {}),

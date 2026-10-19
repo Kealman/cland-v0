@@ -43,6 +43,7 @@ export class MergeQueue {
       const item = this.tracker.summary(entry.item);
       const head = tips ? tips.get(entry.branch) ?? null : this.tracker.freshnessTip(entry.branch);
       let reason: string | undefined;
+      if (item?.state === 'closed' && this.tracker.mergeReceipt(entry.item)) { this.store.dropMerge(entry.item); continue; }
       if (!item || item.state === 'closed') reason = 'item closed or removed';
       else if (item.branch !== entry.branch) reason = 'task branch changed';
       else if ((head !== null || refreshed) && head !== entry.head) reason = 'branch head changed or deleted';

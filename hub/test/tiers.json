@@ -150,6 +150,7 @@
     "hub/test/lead-routing-process.test.ts": "T3",
     "hub/test/lead-routing.test.ts": "T2",
     "hub/test/lifecycle-serialization.test.ts": "T1",
+    "hub/test/merge-batches.test.ts": "T1",
     "hub/test/merge-budget.test.ts": "T1",
     "hub/test/merge-checkout.test.ts": "T3",
     "hub/test/merge-gate.test.ts": "T3",

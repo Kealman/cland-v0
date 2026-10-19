@@ -509,7 +509,7 @@ export type ClientHello = {
 };
 
 // Operational verification occasions are independent of configured tracker container kinds.
-export const VERIFY_OCCASIONS = { stage: 'stage', epic: 'epic', release: 'release', soak: 'soak' } as const;
+export const VERIFY_OCCASIONS = { batch: 'batch', stage: 'stage', epic: 'epic', release: 'release', soak: 'soak' } as const;
 export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIONS];
 export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
   return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);
@@ -647,6 +647,7 @@ export type CoverStatus = { id: string; head: string; branch: string; completedA
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  batch?: { id: string; members: MergeQueueEntry[] };
   cover?: CoverRecord;
   workers?: number; size?: string;
   occasion?: VerifyOccasion;
@@ -684,7 +685,9 @@ export type QueueWaitMetrics = {
   last24Hours: Record<'local' | 'droplet', QueueWaitStats>;
   last50Runs: Record<'local' | 'droplet', QueueWaitStats>;
 };
+export type MergeBatchStatus = { id: string; members: MergeQueueEntry[]; run?: string; candidate?: { tree: string }; failed?: string };
 export type VerificationQueue = {
+  batch?: MergeBatchStatus | null;
   version: 1; at: string; holder: VerificationHolder | null; remote?: VerificationHolder[]; remoteBudget?: number; localFallback?: boolean; waiters: VerificationWaiter[];
   metrics: { window: number; count: number; wait: DurationStats; run: DurationStats; queueWait?: QueueWaitMetrics };
 };

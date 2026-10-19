@@ -15,7 +15,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 
 export type ProjectConfig = {
   name: string;
-  merge: { queue: boolean };
+  merge: { queue: boolean; batch: number; batchWaitMs: number };
   verification: { soak: string; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
@@ -30,7 +30,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  merge: { queue: false },
+  merge: { queue: false, batch: 3, batchWaitMs: 600_000 },
   verification: { soak: '', executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
@@ -91,6 +91,8 @@ image = ${JSON.stringify(c.verification.droplet.image)}
 [merge]
 # Queue reviewed code heads for batch landing. Documentation and human overrides land immediately.
 queue = ${c.merge.queue}
+batch = ${c.merge.batch}
+batch_wait = "${c.merge.batchWaitMs / 1000}s"
 
 [sessions]
 # Archive stopped crew after their item closes, otherwise after their stop. Aides are excluded.
@@ -157,6 +159,12 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   const merge = (doc.merge ?? {}) as Record<string, unknown>;
   accepts('merge.queue', merge.queue, typeof merge.queue === 'boolean', 'a boolean');
   if (typeof merge.queue === 'boolean') c.merge.queue = merge.queue;
+  accepts('merge.batch', merge.batch, Number.isSafeInteger(merge.batch) && Number(merge.batch) > 0, 'a positive integer');
+  if (Number.isSafeInteger(merge.batch) && Number(merge.batch) > 0) c.merge.batch = Number(merge.batch);
+  if (merge.batch_wait !== undefined) {
+    if (typeof merge.batch_wait !== 'string') throw new Error('merge.batch_wait must be a duration string');
+    c.merge.batchWaitMs = durationMs(merge.batch_wait);
+  }
   const sessions = (doc.sessions ?? {}) as Record<string, unknown>;
   for (const [key, field] of [['archive_after_item', 'archiveAfterItemMs'], ['archive_after_stop', 'archiveAfterStopMs']] as const) {
     if (sessions[key] !== undefined) {

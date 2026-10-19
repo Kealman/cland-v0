@@ -30,11 +30,13 @@ export class TaskMerges {
 
   readonly tracker: Tracker;
   readonly queue: MergeQueue | undefined;
-  readonly worktrees: TaskWorktrees;
+  readonly worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>;
+  readonly #squash: typeof squashTask;
   readonly log: LogFn;
   readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue) {
+  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask) {
+    this.#squash = squash;
     this.queue = queue;
     this.#env = env;
     this.#territoryLock = territoryLock;
@@ -95,7 +97,7 @@ export class TaskMerges {
     return { ...result, followUp };
   }
 
-  merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}): Promise<MergeResult> {
+  merge(id: string, actor: Actor, resumed: Resumed, override?: string, authorize: () => void = () => {}, queuedCandidate?: { head: string; base: string }): Promise<MergeResult> {
     id = this.tracker.resolveId(id) ?? id;
     return this.worktrees.serial(async (): Promise<MergeResult> => {
       const state: { landed: { commit: string; base: string; budgetLines?: string[] } | null } = { landed: null };
@@ -162,7 +164,7 @@ export class TaskMerges {
           await this.tracker.refreshFreshness(resumed);
           const checked = await this.#view(id, resumed, override === undefined);
           resumed(() => this.#message(checked, override));
-          if (this.queue?.enabled() && override === undefined) {
+          if (!queuedCandidate && this.queue?.enabled() && override === undefined) {
             const candidate = await this.queue.candidate(checked, resumed);
             if (refusedOverridePaths(candidate.files).length) {
               const validateLane = await this.#laneHold(checked, candidate.files, candidate.baseTip, resumed);
@@ -180,9 +182,11 @@ export class TaskMerges {
             }
           }
           try {
-            const result = await squashTask(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
+            const result = await this.#squash(this.tracker.root, view.branch!, async (tip, base, baseTip, files) => {
               resumed(() => {
-                if (override === undefined && this.queue?.enabled() && refusedOverridePaths(files).length) throw new MergeError('merge-changed', 'task requires the merge queue; try again');
+                if (queuedCandidate && baseTip !== queuedCandidate.base) throw new MergeError('merge-changed', 'batch base moved before landing');
+                if (queuedCandidate && (tip !== queuedCandidate.head || !this.queue?.entries().some(entry => entry.item === id && entry.head === tip))) throw new MergeError('merge-changed', 'queued candidate changed before landing');
+                if (!queuedCandidate && override === undefined && this.queue?.enabled() && refusedOverridePaths(files).length) throw new MergeError('merge-changed', 'task requires the merge queue; try again');
                 if (override === undefined) return;
                 const refused = refusedOverridePaths(files);
                 if (refused.length) throw new MergeError('merge-override-scope', `override is limited to tracker and documentation changes; review required for: ${refused.join(', ')}`, refused);

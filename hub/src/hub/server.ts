@@ -26,6 +26,7 @@ export type HubBaseOptions = CoreOptions & {
   requestGuard?: DispatcherOptions['requestGuard'];
   readArtifact?: DispatcherOptions['readArtifact'];
   selectSuite?: DispatcherOptions['selectSuite'];
+  batchRepository?: DispatcherOptions['batchRepository'];
   git?: DispatcherOptions['git'];
   droplet?: DropletDependencies;
   verification?: DispatcherOptions['verification'];
@@ -108,6 +109,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ...(options.droplet ? { droplet: options.droplet } : {}),
     ...(options.verification ? { verification: options.verification } : {}),
     ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}),
+    ...(options.batchRepository ? { batchRepository: options.batchRepository } : {}),
     ...(options.territoryLock ? { territoryLock: options.territoryLock } : {}),
     ...(options.artifactFiles ? { artifactFiles: options.artifactFiles } : {}),
     secret: options.secret,

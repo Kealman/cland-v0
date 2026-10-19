@@ -64,7 +64,7 @@ export type Daemon = {
   stop: () => Promise<void>;
 };
 
-export async function serveProject(root: string, options: { accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
+export async function serveProject(root: string, options: { batchRepository?: import('./merge-batch-territory.ts').BatchRepository; accountReader?: import('../accounts/poller.ts').AccountReader; lintWarmer?: Pick<TestLintWarmer, 'request' | 'close'>; compatibility?: import('../executor/local.ts').LocalCompatibility; territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync; hasTerritory?: typeof import('../territory.ts').hasTerritory; openDatabase?: (path: string) => DatabaseSync; candidate?: import('./suite-candidate.ts').SuiteCandidate; selectSuite?: import('./dispatch.ts').DispatcherOptions['selectSuite']; durationContext?: import('../suite-duration-budget.ts').DurationBudgetContext | null; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; processes?: LockProcessTable; droplet?: DropletDependencies; adapters?: AdapterFactory[]; clock?: Clock; log?: LogFn; flushLog?: () => Promise<void>; listen?: ListenMode; scheduleTips?: TipSchedule; journalOpen?: JournalOpen; env?: NodeJS.ProcessEnv; starter?: Starter; autostart?: boolean } = {}): Promise<Daemon> {
 
   const clock = options.clock ?? realClock;
   const env = options.env ?? process.env;
@@ -219,6 +219,7 @@ export async function serveProject(root: string, options: { accountReader?: impo
       journal,
       projectConfig: roles.config,
       ...(options.hasTerritory ? { hasTerritory: options.hasTerritory } : {}),
+      ...(options.batchRepository ? { batchRepository: options.batchRepository } : {}),
       ...(options.territoryLock ? { territoryLock: options.territoryLock } : {}),
       ...(options.git ? { git: options.git } : {}),
       ...(options.droplet ? { droplet: options.droplet } : {}),

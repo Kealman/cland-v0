@@ -8,7 +8,7 @@ import { defaultConfig, parseConfig } from './init/config.ts';
 import { fetchSuiteDev, selectionFailure } from './suite-dev-fetch.ts';
 
 export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
-export type SuiteSelection = { mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateFiles?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
@@ -44,7 +44,8 @@ export function describeSelection(selection: SuiteSelection, filesBytes = Infini
 
 /** Cache receipts are reusable only for identical effective package/test sets. */
 export function sameSuiteSelection(previous: SuiteSelection | undefined, selection: SuiteSelection): boolean {
-  return previous?.soak === selection.soak
+  return JSON.stringify(previous?.tiers) === JSON.stringify(selection.tiers)
+    && previous?.soak === selection.soak
     && previous?.mode === selection.mode
     && (selection.mode !== 'hub-selected' || JSON.stringify([previous.tests, previous.nvimFull]) === JSON.stringify([selection.tests, selection.nvimFull]))
     && JSON.stringify(previous.nvimTests) === JSON.stringify(selection.nvimTests);

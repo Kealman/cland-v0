@@ -67,6 +67,8 @@ import { artifactEntry, folderFiles } from './artifact-folder.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList, ArtifactPromote, ArtifactKeep, ArtifactArchive, ArtifactMove } from '../protocol.ts';
 import { MergeQueue } from './merge-queue.ts';
+import { MergeBatches, BatchRefusal, BatchRebuild } from './merge-batches.ts';
+import { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch } from './merge-batch-territory.ts';
 import { TaskMerges } from './merge.ts';
 import { Releases } from './releases.ts';
 import { PushError } from '../territory-push.ts';
@@ -104,6 +106,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  batchRepository?: import('./merge-batch-territory.ts').BatchRepository;
   hasTerritory?: typeof import('../territory.ts').hasTerritory;
   territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync;
   git?: import('../tracker/verdict-git.ts').Git;
@@ -170,6 +173,7 @@ export class Dispatcher {
   #closed = false;
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
+  readonly #batches: MergeBatches | null;
   readonly #suites: Suites | null;
   readonly #droplets: DropletExecutor | null;
   readonly #demos: Demos | null;
@@ -212,7 +216,39 @@ export class Dispatcher {
       this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
-    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(GENERAL.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification(queue), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(GENERAL.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    this.#batches = root && this.#suites && this.#merges && this.#mergeQueue ? new MergeBatches(options.core.store, this.#suites, options.core.clock, {
+      changed: () => options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }),
+      entries: () => this.#mergeQueue!.entries(),
+      build: (id, members) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository)),
+      cleanup: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.remove(candidate) : removeMergeBatch(root, candidate, options.env)),
+      checkout: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.checkout(candidate) : checkoutMergeBatch(root, candidate, options.env)),
+      isLanded: entry => options.tracker!.summary(entry.item)?.state === 'closed' && !!options.tracker!.mergeReceipt(entry.item),
+      land: async (entry, candidate) => {
+        try {
+          const result = await this.#merges!.merge(entry.item, entry.by, work => work(), undefined, () => {
+            if (this.#closed || !(options.projectConfig?.().merge.queue ?? false)) throw new Error('merge batch execution stopped');
+          }, { head: entry.head, base: candidate.base });
+          if ('queued' in result) throw new Error('batch landing requeued its member');
+          if (result.followUp) throw new Error(result.followUp.error);
+        } catch (error) {
+          // A recoverable landing must keep its receipt and membership for retry;
+          // only an ordinary gate refusal drops an entry from the next batch.
+          if (error instanceof MergeError && error.code === 'merge-changed' && error.message.includes('batch base moved')) throw new BatchRebuild(error.message);
+          if (error instanceof MergeError && !['merge-recovery', 'merge-git', 'merge-unpublished', 'merge-checkout', 'merge-dirty'].includes(error.code)) throw new BatchRefusal(entry, error.message);
+          throw error;
+        }
+      },
+      drop: (entry, reason) => this.#mergeQueue!.drop(entry, reason),
+      report: (batch, text) => {
+        for (const entry of batch.members) {
+          const topic = options.tracker!.summary(entry.item)?.topic ?? AGENTS.id;
+          options.core.noticeTo(topic, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${entry.item}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text, detail: { event: 'merge-batch-result', batch: batch.id, members: batch.members.map(e => e.item), tree: batch.candidate?.tree ?? null } });
+        }
+        options.core.noticeTo(AGENTS.id, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}`, kind: 'report', text });
+      },
+    }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
+    void this.#mergeQueueReady.then(() => { if (!this.#closed) this.#batches?.start(); });
     options.tracker?.useVerify((item, branch) => this.#suites?.latest(item, branch) ?? null, () => this.#suites?.stageCovers() ?? []);
     // what a read shows changed: no earlier answer is replayed
     options.core.subscribe(event => {
@@ -280,6 +316,7 @@ export class Dispatcher {
     await closingDroplets;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
+    await this.#batches?.close();
     this.#merges?.stop();
     this.#mergeQueue?.stop();
     await this.#mergeQueueReady;
@@ -648,6 +685,9 @@ export class Dispatcher {
       text: `suite accounting correction ${job.id} · ${machines.join('; ')}`,
       detail: { event: 'verification-accounting-confirmed', id: job.id, item: job.item ?? null } });
     if (!id) throw new Error('accounting correction topic unavailable');
+    for (const entry of job.batch?.members ?? []) {
+      core.noticeTo(this.#options.tracker?.summary(entry.item)?.topic ?? AGENTS.id, { id: `suite-accounting:${job.id}:${entry.item}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text: `suite accounting correction ${job.id} · ${machines.join('; ')}` });
+    }
   }
   async #reportSuite(job: Readonly<SuiteJob>, checkpointArtifact: (id: string) => void): Promise<void> {
     const core = this.#options.core;
@@ -678,7 +718,7 @@ export class Dispatcher {
       return;
     }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
-    const callerNow = () => this.#suitePermissions(job.actor, job.topic, job.to, true);
+    const callerNow = () => job.batch ? null : this.#suitePermissions(job.actor, job.topic, job.to, true);
     callerNow();
     const title = `Suite ${job.id} · ${job.mode} at ${job.head.slice(0, 7)}`;
     // Artifact registration may have committed just before the hub died.
@@ -686,7 +726,7 @@ export class Dispatcher {
     let artifactId = job.artifact ?? prior?.id ?? null;
     if (!job.artifact && prior) checkpointArtifact(prior.id);
     if (!artifactId) {
-      const create = () => this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work());
+      const create = () => job.batch ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work());
       const operation = this.#artifactQueue.then(create);
       this.#artifactQueue = operation.catch(() => {});
       const result = await operation as { id: string };
@@ -754,6 +794,16 @@ export class Dispatcher {
       }
     }
     const result = core.store.transaction(() => {
+      if (job.batch) {
+        const id = core.noticeTo(job.topic, { id: messageId, kind: 'report', text, to: job.to });
+        if (!id) throw new Error('batch suite result topic unavailable');
+        for (const entry of job.batch.members) {
+          const topic = this.#options.tracker?.summary(entry.item)?.topic ?? AGENTS.id;
+          core.noticeTo(topic, { id: `${messageId}:${entry.item}`, kind: 'report', text, to: [entry.by.name, `lead ${entry.item}`] });
+        }
+        core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
+        return null;
+      }
       if (job.occasion === 'soak') {
         if (!core.noticeTo(GENERAL.id, { id: messageId, kind: 'report', to: ['coordinator'], text,
           detail: { event: 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
@@ -765,10 +815,20 @@ export class Dispatcher {
       if (core.store.message(result.message.id)) core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
       return result;
     });
-    if (!core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
+    if (result && !core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
     this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name ?? (job.occasion === 'soak' ? 'hub' : undefined), topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
     this.#log({ event: 'audit', session: job.occasion === 'soak' ? 'hub' : caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: job.occasion === 'soak' ? 'hub' : caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
+  async #batchArtifact(job: Readonly<SuiteJob>, title: string): Promise<{ id: string; path: string }> {
+    const core = this.#options.core, root = this.#options.control?.status().root;
+    const artifact = await createArtifact(core.store, root, { type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log },
+      { name: 'hub', cwd: root ?? '.', kind: 'agent', role: () => null },
+      artifact => { core.noticeTo(job.topic, { id: `batch-artifact:${job.id}`, kind: 'report', text: `▣ ${artifact.id} file · ${title}`, detail: { artifact: artifact.id } }); },
+      work => work(), () => {}, this.#options.readArtifact ?? readFile, core.clock);
+    core.artifactChanged(artifact);
+    return { id: artifact.id, path: artifact.path };
+  }
+
   async #artifact(frame: ArtifactCreate | ArtifactList, callerNow: () => Caller | null, resumed: <T>(work: () => T) => T): Promise<unknown> {
     const caller = callerNow();
     const core = this.#options.core;
@@ -1193,7 +1253,7 @@ export class Dispatcher {
           }
           case 'rule.show': throw new Error('use rule.list to read rules');
           case 'merge.queue':
-            return later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries } })));
+            return later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
           case 'merge':
             return merge(frame, connection);
           case 'artifact.promote':
@@ -1455,17 +1515,17 @@ export class Dispatcher {
           break;
         case 'suite.queue':
           if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
-          later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+          later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value: { ...value, batch: this.#batches?.snapshot() ?? null } }), error => Dispatcher.#failure(frame.id, error)));
           break;
         case 'hub.subscriptions':
           peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
           break;
         case 'merge.queue':
-          later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries } })));
+          later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
           break;
         case 'hub.status': {
           const status = (): HubFrame => {
-            const verification = this.#suites?.snapshot();
+            const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : undefined;
             const base = control.status();
             const tracker = this.#options.tracker;
             return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], covers: this.#suites?.covers() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };

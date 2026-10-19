@@ -1,0 +1,75 @@
+// Build squash objects in FIFO order; a detached worktree is only the executor's input.
+import { join } from 'node:path';
+import { mkdir, stat } from 'node:fs/promises';
+import type { MergeQueueEntry } from '../protocol.ts';
+import { MergeError } from '../merge.ts';
+import { mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, type MergeTreeFacts } from '../territory.ts';
+import { committedTree } from '../verification-tree.ts';
+import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
+
+/** Git/object and immutable-tree reads, replaceable by an in-process repository provider. */
+export type BatchRepository = {
+  git(args: string[], input?: string): Promise<string>;
+  facts(tree: string, head: string, base: string): Promise<MergeTreeFacts>;
+  identity(head: string): Promise<string | null>;
+  checkout(candidate: BatchCandidate): Promise<void>;
+  remove(candidate: BatchCandidate): Promise<void>;
+};
+
+export async function prepareMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository): Promise<BatchCandidate> {
+  const repository = provider ?? { git: (args: string[], input?: string) => territoryGitAsync(root, args, false, input, env),
+    facts: (tree: string, head: string, base: string) => mergeTreeFacts(root, tree, head, base, undefined, env),
+    identity: (head: string) => committedTree(root, head, env),
+    checkout: (candidate: BatchCandidate) => checkoutMergeBatch(root, candidate, env),
+    remove: (candidate: BatchCandidate) => removeMergeBatch(root, candidate, env) };
+  const git = repository.git;
+  const base = await git(['rev-parse', 'refs/heads/dev']);
+  let head = base;
+  const budgetLines: string[] = [];
+  for (const entry of members) {
+    try {
+      const tip = await git(['rev-parse', `refs/heads/${entry.branch}`]);
+      if (tip !== entry.head || entry.verdictBase !== 'dev') throw new MergeError('merge-changed', 'queued head or base changed');
+      let tree: string;
+      try { tree = (await git(['merge-tree', '--write-tree', '--name-only', '-z', head, tip])).split('\0')[0]!; }
+      catch (error) {
+        if (error instanceof TerritoryGitError && error.code === 1) throw new MergeError('merge-conflict', `rebase ${entry.branch} on dev`);
+        throw error;
+      }
+      budgetLines.push(...gateMergeTree(await repository.facts(tree, tip, head)));
+      head = await git(['commit-tree', tree, '-p', head], `Batch candidate ${entry.item}\n`);
+    } catch (error) {
+      if (error instanceof MergeError) throw new BatchRefusal(entry, error.message);
+      throw error;
+    }
+  }
+  const tree = await repository.identity(head);
+  if (!tree) throw new Error('cannot identify batch candidate tree');
+  const cwd = join(root, '.cland/run/merge-batches', id);
+  return { base, head, tree, cwd, budgetLines: [...new Set(budgetLines)] };
+}
+
+export async function checkoutMergeBatch(root: string, candidate: BatchCandidate, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  await mkdir(join(root, '.cland/run/merge-batches'), { recursive: true });
+  // A persisted preparation can survive a crash before admission. Never rewrite
+  // a candidate while its worker runs; the controller materializes only before submission.
+  const exists = await stat(candidate.cwd).then(() => true, error => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  });
+  if (exists) {
+    const head = await territoryGitAsync(candidate.cwd, ['rev-parse', 'HEAD'], false, undefined, env);
+    if (head !== candidate.head) throw new Error('existing batch checkout differs from its durable head');
+    return;
+  }
+  await territoryGitAsync(root, ['worktree', 'add', '--detach', candidate.cwd, candidate.head], false, undefined, env);
+}
+
+/** Workers have a final collected receipt before the controller calls this. */
+export async function removeMergeBatch(root: string, candidate: BatchCandidate, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  const exists = await stat(candidate.cwd).then(() => true, error => {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
+  });
+  if (exists) await territoryGitAsync(root, ['worktree', 'remove', candidate.cwd], false, undefined, env);
+}

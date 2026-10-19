@@ -8,6 +8,9 @@ import { manualTips } from './freshness-harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { dispatcherSpoke, value } from './validation-support.ts';
 import { onCleanup } from './process-cleanup.ts';
+import { LocalExecutor } from '../src/executor/local.ts';
+import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
+import type { VerificationQueue, MergeBatchStatus } from '../src/protocol.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 
 async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
@@ -130,4 +133,73 @@ test('queued cancellation replies forbidden when its caller loses merge authorit
   const result = await cancelling;
   assert.deepEqual([result.ok, result.code, result.permission], [false, 'forbidden', 'merge']);
   assert.equal((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries.length, 1, 'revoked authority cannot cancel');
+});
+
+test('queued merged-tree budget refusal moves no ref or checkout', async t => {
+  const reads: string[][] = [];
+  const manifest = { version: 1 as const, source: { artifacts: [], commit: 'base' }, budget: { mode: 'enforce' as const, testSeconds: 5, fileSeconds: 60 }, files: { component: { seconds: 600, tests: 1 } }, tests: { 'component::rule': 600 }, allow: {} };
+  const { ui, item, clock } = await fixture(t, { batchRepository: {
+    git: async args => {
+      reads.push(args);
+      if (args[0] === 'rev-parse') return args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40);
+      if (args[0] === 'merge-tree') return 'c'.repeat(40) + '\0';
+      throw new Error(`unexpected mutation: ${args[0]}`);
+    },
+    facts: async (tree, head, base) => {
+      assert.deepEqual([tree, head, base], ['c'.repeat(40), 'b'.repeat(40), 'a'.repeat(40)], 'admit the merged tree against the captured base');
+      return { context: { manifest, tiers: { component: 'T2' } }, workers: 1 };
+    },
+    identity: async () => { throw new Error('a refused tree cannot reach checkout preparation'); },
+    checkout: async () => { throw new Error('a refused tree cannot be checked out'); },
+    remove: async () => {},
+  } });
+  await value(ui, { type: 'merge', item: item.id });
+  await clock.advance(601_000);
+  await until(async () => (await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries.length === 0, { what: 'budget refusal drops queued candidate' });
+  const history = await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
+  assert.ok(history.messages.some(message => /merge-queue-dropped.*merge-budget.*T2 projected wall 600 s > 480 s/s.test(message.text)));
+  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status' })).suites.length, 0);
+  assert.ok(reads.every(args => ['rev-parse', 'merge-tree'].includes(args[0]!)), 'no checkout, commit or ref mutation');
+});
+
+
+test('running batch appears in both queues and posts its result to the member lead', async t => {
+  const started = Promise.withResolvers<RunRef>();
+  let receipt: RunStatus = { state: 'running' };
+  const lease = (run: RunRef, deadline: string): Lease => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null });
+  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
+  t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
+  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { await writeFile(run.log, '# tests 1\n# fail 1\n'); started.resolve(run); });
+  t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);
+  t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
+  t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
+  const candidateHead = 'f'.repeat(40), tree = 'e'.repeat(40);
+  const { root, ui, item, clock } = await fixture(t, { durationContext: null, candidate: {
+    head: async () => candidateHead, tree: async () => tree,
+    inspect: async () => ({ head: candidateHead, tree, branch: '', selection: { mode: 'full', files: [], reason: 'batch' }, tierPlan: [], budgetBase: undefined }),
+  }, batchRepository: {
+    git: async args => args[0] === 'rev-parse' ? args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40) : args[0] === 'merge-tree' ? tree + '\0' : candidateHead,
+    facts: async () => ({ context: null, workers: 1 }), identity: async () => tree,
+    checkout: async () => {}, remove: async () => {},
+  } });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'batch-requester', role: 'coordinator' });
+  const topic = (await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Batch report', item: item.id })).topic.id;
+  assert.equal((await coord.call<{ queued: number }>('merge', { item: item.id })).queued, 1);
+  await clock.advance(601_000);
+  const run = await started.promise;
+  const merging = await value<{ batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
+  const verifying = await value<VerificationQueue>(ui, { type: 'suite.queue' });
+  assert.deepEqual(merging.batch.members.map(member => member.item), [item.id]);
+  assert.equal(verifying.batch?.id, merging.batch.id);
+  assert.equal(verifying.holder?.occasion, 'batch');
+  receipt = { state: 'done', code: 1, finished: clock.now().toISOString() };
+  await clock.advance(1000);
+  await until(async () => { await clock.advance(1000); const status = await value<{ suites: Array<{ error: string | null }> }>(ui, { type: 'hub.status' }); if (status.suites[0]?.error) throw new Error(status.suites[0].error); return (await value<{ batch: MergeBatchStatus }>(ui, { type: 'merge.queue' })).batch.failed !== undefined; }, { what: 'red batch reported', timeoutMs: 1500 });
+  const history = await value<{ messages: Array<{ text: string; to: string[] }> }>(ui, { type: 'topic.history', topic, limit: 100 });
+  assert.ok(history.messages.some(message => message.text.startsWith(`suite result ${run.id}`) && message.to.includes('coord')));
+  assert.ok(history.messages.some(message => message.text.includes(`tree ${tree}`) && message.text.includes(item.id) && /tiers T1, T3; wall \d+ ms; exit 1/.test(message.text)));
 });
