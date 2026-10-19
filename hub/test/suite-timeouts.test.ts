@@ -154,7 +154,9 @@ import {spawnSync} from 'node:child_process'; import {existsSync,readFileSync,wr
 import {until} from ${JSON.stringify(new URL('./until.ts', import.meta.url).href)};
 import {pidAlive} from ${JSON.stringify(new URL('../src/project.ts', import.meta.url).href)};
 import {parseProcessTable} from ${JSON.stringify(new URL('../src/process-table.ts', import.meta.url).href)};
-const result=spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), {encoding:'utf8'});
+// Match the native cleanup probe's buffer: ps eww includes every process's
+// environment, which exceeds spawnSync's 1 MiB default on a busy Mac.
+const result=spawnSync(${JSON.stringify(ps)}, process.argv.slice(2), {encoding:'utf8',maxBuffer:32*1024*1024});
 if (process.argv.includes('-e') && existsSync(${JSON.stringify(armed)}) && !existsSync(${JSON.stringify(snapshot)})) {
   const parent=Number(readFileSync(${JSON.stringify(armed)},'utf8'));
   if (result.status===0 && parseProcessTable(result.stdout).some(row=>row.pid===parent)) {
