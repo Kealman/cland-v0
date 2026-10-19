@@ -55,7 +55,8 @@ would otherwise measure contention with the base phase. The selection and run
 result name this choice as `load gate: T4 repetitions skipped`, with the file
 count. Nightly deadline planning excludes those repetitions before budgeting.
 
-Task load repetitions cover new T1/T2 identities against the duration baseline.
+Task load repetitions cover new T1/T2 identities against the duration baseline
+plus durable 5/5 load proofs from task heads that have landed on dev.
 The hub owns batch, dev-t3 and soak occasions. The Coordinator requests stage, epic and
 release occasions; QA may request epic for its demo. An explicit `all` on a task
 head requires authorization and retains T3. A flaky-gate second task receipt
@@ -928,7 +929,15 @@ At each stage close the Coordinator runs
 `npm run test:durations -- <latest-green-integrated-log-artifact-path>` on `dev`
 and commits the refreshed manifest. `node hub/test/durations.ts refresh <log>…`
 accepts several logs (newest last), takes per-test medians, sums file test-time,
-preserves reasons and drops tests absent from the newest log. It reads the durable
+preserves reasons and retains baseline entries for files absent from every supplied
+log. For each observed file, it drops tests absent from the newest supplied log
+that ran that file. Ordinary passing file-completion receipts also mark empty files
+as observed: removing a file’s last test drops its old identities and records zero
+test-time. Load-gate file envelopes do not mark ordinary execution. Partial task (T0–T2) and batch (T1+T3) logs can therefore refresh
+their tiers without erasing the others. Unobserved allowances remain intact even
+when their files have no timing baseline. Retained entries keep source artifact
+references; timings for observed identities still use per-test
+medians across supplied logs. It reads the durable
 `suite timing` records or older top-level spec timings with start/source title
 mapping. Refresh writes a `TODO` allowance only for an over-budget identity absent
 from both its previous baseline and `allow`; replace it before admission.
@@ -937,14 +946,23 @@ baseline seconds.
 Keep artifact ids and the source head in `source` so timings remain traceable.
 
 Task-branch verifies have a **load gate** for each admitted T1/T2 top-level `file::test` identity
-missing from the duration manifest's `tests` baseline. As the phase discovers
+missing from both the duration manifest's `tests` baseline and the hub's durable
+landed-task proof set. The hub retains exact identities with completed `5/5 passed`
+load-gate receipts on reported green task runs. A proof becomes known only when
+that run's item has a dev landing receipt matching its exact branch and head.
+Unlanded branches and other revisions supply no exemption; skips, partial passes
+and quarantined failures supply no proof. Suite history retains the proofs across
+hub restarts without a dev commit per landing; retained pre-upgrade logs are read
+once to recover older proofs. As the phase discovers
 new names, `[verification] load_gate_workers` parallel lanes (default 2) repeat
 each identity five times in fresh Node processes with an escaped, exact `--test-name-pattern` on the file, alongside the ordinary
 phase. Ordinary integrated `dev` runs receive no repetitions. At stage, epic and release occasions, the hub instead pins the identities observed in the latest completed, reported green integrated stage run. Every T1–T3 identity absent from that receipt receives five repetitions, even if it appears in the current duration manifest; T4 runs only in the base soak phase. A later ordinary batch, failed stage or cache hit does not advance that baseline. Without a retained stage receipt, all observed identities are treated as new. Each shard carries the same pinned baseline. Each lane finishes all five repetitions of one identity
 sequentially before taking another; the gate never drops repetitions to meet a
 wall deadline. Its worker count is included in the log and run report. Increasing
 it trades wall time for load, independently of ordinary phase workers.
-An `allow` entry permits duration; only the stage-close baseline refresh makes a test known to this gate.
+An `allow` entry permits duration; task identities become known through a duration
+baseline refresh or a matching landed-task 5/5 proof. Stage, batch and soak occasions
+continue to use their own pinned receipt baselines, independently of landed-task proofs.
 The live hub sets the task flag in the selection JSON. Updating a candidate
 runner alone does not enable it when the running hub predates this feature;
 bootstrap uses package-runner fixtures, followed by a live task proof after the

@@ -1,4 +1,4 @@
-import { skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
+import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
@@ -70,6 +70,7 @@ export type SuiteJob = {
   admittedAt?: string; completedAt?: string; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
   tierPlan?: TierPlan; tierReported?: boolean; durationBase?: string; budgetReported?: boolean;
+  loadProofs?: string[];
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
@@ -82,7 +83,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -426,6 +427,7 @@ export class Suites {
       : occasionSelection(admitted, input.occasion, config?.merge.batchTiers);
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
+    if (!input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
     const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
     if (input.occasion === 'soak') selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
@@ -550,6 +552,23 @@ export class Suites {
       const rank = (s: SuiteJob | HumanSlot) => 'actor' in s ? s.priority ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
+  }
+  async #landedTaskIdentities(): Promise<string[]> {
+    const known = new Set<string>();
+    for (const job of this.#jobs) {
+      if (!job.item || job.integrated || job.occasion || job.cached || job.cancelled || job.requesterDied
+        || !job.selection?.loadGate || !job.reported || job.outcome?.code !== 0) continue;
+      const landing = this.#options.taskLanding?.(job.item);
+      if (!landing || landing.base !== 'dev' || landing.tip !== job.head || landing.branch !== job.branch) continue;
+      // Backfill retained pre-upgrade receipts once; future runs store proof at reporting.
+      if (!job.loadProofs) {
+        const artifact = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
+        job.loadProofs = loadProofIdentities(await readFile(artifact?.path ?? job.log, 'utf8').catch(() => ''));
+        this.#save(job);
+      }
+      for (const identity of job.loadProofs) known.add(identity);
+    }
+    return [...known].sort();
   }
   async #stageIdentities(occasion: VerifyOccasion = 'stage'): Promise<NonNullable<SuiteSelection['loadGateBaseline']>> {
     const stage = this.#jobs.findLast(job => (occasion === 'batch'
@@ -1107,6 +1126,9 @@ export class Suites {
           }
         } catch { await appendFile(job.log, 'budget (report only): unavailable (report read failed)\n'); }
         job.budgetReported = true; this.#save(job);
+      }
+      if (!job.loadProofs && job.item && !job.integrated && !job.occasion && !job.cached && !job.cancelled && !job.requesterDied && job.selection?.loadGate && job.outcome.code === 0) {
+        job.loadProofs = loadProofIdentities(await readFile(job.log, 'utf8'));
       }
       this.#recordTiming(job, job.completedAt ?? (!job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : this.#clock.now().toISOString()));
       if (job.integrated && !job.parentRun && !job.cover) {

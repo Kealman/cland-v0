@@ -14,12 +14,22 @@ export function skipT4LoadRepetitions(selection: SuiteSelection, plan: TierPlan)
     reason: `${selection.reason}; load gate: T4 repetitions skipped; ${soakFiles.length} files run in base phase only` };
 }
 
-/** Occasion receipts pin known identities; task runs retain the duration baseline. */
+/** Only the gate's completed 5/5 success line supplies proof; skips, partials and
+ * quarantined failures deliberately have different formats. Retain exact names.
+ */
+export function loadProofIdentities(log: string): string[] {
+  return [...new Set(log.split('\n').flatMap(line => {
+    const match = /^load gate: ((?:hub\/(?:src|test)|nvim\/test)\/[^\r\n]+\.test\.ts::[^\r\n]+) 5\/5 passed$/.exec(line);
+    return match ? [match[1]!] : [];
+  }))].sort();
+}
+
+/** Occasion receipts replace the baseline; landed task proofs extend it. */
 export function loadGateRepetitions(identity: string, selection: SuiteSelection | undefined, durationTests: Record<string, number>): 0 | 5 {
   if (selection?.loadGateTests && !selection.loadGateTests.includes(identity)) return 0;
   if (selection?.loadGateFiles && !selection.loadGateFiles.includes(identity.split('::')[0]!)) return 0;
   const known = selection?.loadGateBaseline;
-  return (known ? known.tests.includes(identity) : Object.hasOwn(durationTests, identity)) ? 0 : 5;
+  return (known ? known.tests.includes(identity) : (Object.hasOwn(durationTests, identity) || selection?.loadGateKnownTests?.includes(identity))) ? 0 : 5;
 }
 
 /** Pin five-repetition identities before spending on a soak. Serialize repeat costs:

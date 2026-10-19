@@ -1,7 +1,8 @@
-// Refresh from integrated logs; never invent timings for tests not executed there.
+// Refresh observed files from green logs; retain baselines for unobserved files.
 import { glob, readFile, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { TestProgress } from '../src/suite-progress.ts';
 import { DURATION_MANIFEST, fileTimings, readDurationManifest, timingKey, type DurationManifest, type TestTiming } from '../src/suite-durations.ts';
 
 const median = (values: number[]) => {
@@ -40,6 +41,21 @@ export function logTimings(log: string, legacyFile?: (name: string) => string | 
   return records;
 }
 
+// Ordinary completed file envelopes prove execution even after the final test
+// was removed. Load-gate processes and interrupted/skipped files prove no such thing.
+function completedFiles(log: string): string[] {
+  const files = new Set<string>();
+  for (const line of log.split('\n')) {
+    if (!line.startsWith('suite progress ')) continue;
+    let row: Partial<TestProgress>;
+    try { row = JSON.parse(line.slice('suite progress '.length)); } catch { continue; }
+    if (row?.event === 'finish' && row.type === 'file' && row.outcome === 'pass'
+      && row.scope === undefined && row.nesting === 0 && typeof row.file === 'string' && row.file.endsWith('.test.ts')
+      && typeof row.id === 'string' && Number.isFinite(row.at) && Number.isFinite(row.seconds) && row.seconds! >= 0) files.add(row.file);
+  }
+  return [...files];
+}
+
 async function sourceTitles(cwd: string): Promise<(name: string) => string | undefined> {
   const ts = await import('typescript');
   const titles: Array<{ file: string; pattern: RegExp }> = [];
@@ -70,16 +86,17 @@ export async function refreshDurations(cwd: string, logs: string[]): Promise<Dur
   const artifacts: string[] = [];
   let commit = '';
   let legacyFile: ((name: string) => string | undefined) | undefined;
-  let latestTests = new Set<string>();
+  const latestByFile = new Map<string, Set<string>>();
   for (const path of logs) {
     const log = (await readFile(path, 'utf8')).replace(/\x1b\[[0-9;]*m/g, '');
     if (!/^Finished: exit 0\s*$/m.test(log)) throw new Error(`not a green integrated log: ${path}`);
     const artifact = /^A-\d+/.exec(basename(path))?.[0];
     if (artifact) artifacts.push(artifact);
     commit = /^Head (\S+)/m.exec(log)?.[1] ?? commit;
-    if (!/^suite (?:timing|start) /m.test(log)) legacyFile ??= await sourceTitles(cwd);
+    if (!/^suite (?:timing|start|progress) /m.test(log)) legacyFile ??= await sourceTitles(cwd);
     const records = logTimings(log, legacyFile);
-    if (!records.length) throw new Error(`no test timings in ${path}`);
+    const executed = completedFiles(log);
+    if (!records.length && !executed.length) throw new Error(`no test timings in ${path}`);
     // Smoke repeats within one run contribute one sample to its median.
     const run = new Map<string, { test: TestTiming; seconds: number[] }>();
     for (const test of records) {
@@ -88,26 +105,47 @@ export async function refreshDurations(cwd: string, logs: string[]): Promise<Dur
       const sample = run.get(key) ?? { test, seconds: [] };
       sample.seconds.push(test.seconds); run.set(key, sample);
     }
-    latestTests = new Set(run.keys());
+    const observed = new Map<string, Set<string>>(executed.map(file => [file, new Set<string>()]));
+    for (const [key, sample] of run) {
+      const names = observed.get(sample.test.file) ?? new Set<string>();
+      names.add(key); observed.set(sample.test.file, names);
+    }
+    for (const [file, names] of observed) latestByFile.set(file, names);
     for (const [key, sample] of run) {
       const collected = samples.get(key) ?? { test: sample.test, seconds: [] };
       collected.seconds.push(median(sample.seconds)); samples.set(key, collected);
     }
   }
-  const tests = [...samples].filter(([key]) => latestTests.has(key)).map(([, sample]) => ({ ...sample.test, seconds: rounded(median(sample.seconds)) }));
+  const tests = [...samples].filter(([key, sample]) => latestByFile.get(sample.test.file)?.has(key)).map(([, sample]) => ({ ...sample.test, seconds: rounded(median(sample.seconds)) }));
+  // Partial-tier logs say nothing about files they did not execute.
+  for (const [key, seconds] of Object.entries(previous?.tests ?? {})) {
+    const split = key.indexOf('::');
+    const file = key.slice(0, split);
+    if (!latestByFile.has(file)) tests.push({ file, name: key.slice(split + 2), seconds });
+  }
   const files = fileTimings(tests);
+  for (const file of latestByFile.keys()) files[file] ??= { seconds: 0, tests: 0 };
+  for (const [path, file] of Object.entries(previous?.files ?? {})) if (!latestByFile.has(path)) files[path] = { ...file };
   for (const file of Object.values(files)) file.seconds = rounded(file.seconds);
   const budget = previous?.budget ?? { testSeconds: 5, fileSeconds: 60 };
   const allow: DurationManifest['allow'] = {};
+  for (const [key, entry] of Object.entries(previous?.allow ?? {})) {
+    if (key !== 'T3' && !latestByFile.has(key.split('::')[0]!)) allow[key] = { ...entry };
+  }
   for (const test of tests) {
+    if (!latestByFile.has(test.file)) continue;
     const key = timingKey(test);
     if (previous?.allow[key] || (test.seconds > budget.testSeconds && previous?.tests[key] === undefined)) allow[key] = { ...previous?.allow[key], seconds: test.seconds, reason: previous?.allow[key]?.reason ?? 'TODO' };
   }
   for (const [path, file] of Object.entries(files)) {
+    if (!latestByFile.has(path)) continue;
     if (previous?.allow[path]?.file || (file.seconds > budget.fileSeconds && previous?.files[path] === undefined)) allow[path] = { ...previous?.allow[path], file: true, seconds: file.seconds, reason: previous?.allow[path]?.reason ?? 'TODO' };
   }
   if (previous?.allow.T3) allow.T3 = previous.allow.T3;
-  const manifest: DurationManifest = { version: 1, source: { artifacts: [...new Set(artifacts)], commit }, budget,
+  const retained = [...Object.keys(previous?.files ?? {}), ...Object.keys(previous?.tests ?? {}), ...Object.keys(previous?.allow ?? {})]
+    .some(key => key === 'T3' || !latestByFile.has(key.split('::')[0]!));
+  const sources = [...new Set([...(retained ? previous?.source.artifacts ?? [] : []), ...artifacts])];
+  const manifest: DurationManifest = { version: 1, source: { artifacts: sources, commit }, budget,
     files: sorted(Object.entries(files)), tests: sorted(tests.map(test => [timingKey(test), test.seconds])), allow: sorted(Object.entries(allow)) };
   await writeFile(join(cwd, DURATION_MANIFEST), JSON.stringify(manifest, null, 2) + '\n');
   return manifest;

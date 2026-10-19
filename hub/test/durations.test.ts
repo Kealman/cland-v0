@@ -18,7 +18,7 @@ test('refresh takes per-test medians, sums file test-time, preserves reasons and
   const manifest = join(cwd, 'hub/test/durations.json');
   await writeFile(manifest, JSON.stringify({ version: 1, source: { artifacts: [], commit: 'old' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
     'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: 'Exercises remote teardown through real processes.' },
-    'hub/test/deleted.test.ts::gone': { seconds: 9, owner: 'E-677', legacy: true, reason: 'Deleted.' },
+    'hub/test/one.test.ts::gone': { seconds: 9, owner: 'E-677', legacy: true, reason: 'Deleted.' },
   } }));
   const logs = [];
   for (const [index, seconds] of [6, 12, 9].entries()) {
@@ -169,11 +169,11 @@ test('refresh prunes tests absent from the newest log and creates a reason place
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   const old = join(cwd, 'A-6-old.log'), latest = join(cwd, 'A-7-latest.log');
   const log = (tests: Array<{ file: string; name: string; seconds: number }>) => 'Head latest123\n' + tests.map(record => `suite timing ${JSON.stringify(record)}\n`).join('') + 'Finished: exit 0\n';
-  await writeFile(old, log([{ file: 'hub/test/deleted.test.ts', name: 'gone', seconds: 8 }]));
+  await writeFile(old, log([{ file: 'hub/test/large.test.ts', name: 'gone', seconds: 8 }]));
   await writeFile(latest, log([{ file: 'hub/test/large.test.ts', name: 'a', seconds: 31 }, { file: 'hub/test/large.test.ts', name: 'b', seconds: 31 }]));
   await exec(process.execPath, [generator, 'refresh', old, latest], { cwd });
   const result = JSON.parse(await readFile(join(cwd, 'hub/test/durations.json'), 'utf8'));
-  assert.equal(result.tests['hub/test/deleted.test.ts::gone'], undefined);
+  assert.equal(result.tests['hub/test/large.test.ts::gone'], undefined);
   assert.deepEqual(result.allow['hub/test/large.test.ts'], { file: true, seconds: 62, reason: 'TODO' });
   await writeFile(latest, log([{ file: 'hub/test/large.test.ts', name: 'a', seconds: 31 }]).replace('exit 0', 'exit 1'));
   await assert.rejects(exec(process.execPath, [generator, 'refresh', latest], { cwd }), /not a green integrated log/);
