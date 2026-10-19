@@ -313,18 +313,14 @@
       "startDaemon": 3,
       "spawnSpoke": 4
     },
-    "hub/test/prepared-project.test.ts": {
-      "startDaemon": 2
-    },
+    "hub/test/prepared-project.test.ts": {},
     "hub/test/presence.test.ts": {},
     "hub/test/process-cleanup.test.ts": {},
     "hub/test/process-started.test.ts": {},
     "hub/test/progress.test.ts": {},
     "hub/test/project-clock.test.ts": {},
-    "hub/test/project-hub.test.ts": {
-      "spawnSpoke": 1,
-      "fakeClaude": 1
-    },
+    "hub/test/project-hub-lifecycle.test.ts": {},
+    "hub/test/project-hub.test.ts": {},
     "hub/test/project-probes.test.ts": {},
     "hub/test/prompt-races.test.ts": {},
     "hub/test/push.test.ts": {

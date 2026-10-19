@@ -310,6 +310,7 @@ function analyzeTestSource(file: string, text: string, entry: TierEntry): Module
     }
     const header = text.slice(leading[0]?.pos ?? 0, end);
     lifecycle ||= /\bT3:\s*[^\s*/][^\n]*/.test(header);
+    lifecycle ||= tier === 'T4' && /\bT4:\s*[^\s*/][^\n]*/.test(header);
     if (tier === 'T3' && !lifecycle) findings.push({ file, line: 1, rule: 't3-lifecycle', message: 'first comment block must name the process behaviour: T3: <behaviour>' });
   }
   const exported = new Map<string, ts.Node>();

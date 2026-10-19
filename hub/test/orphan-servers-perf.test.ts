@@ -1,4 +1,4 @@
-// T4: real hub startup under sixteen resistant processes and bounded sweep escalation.
+// T4: native process lifecycle — hub startup under sixteen resistant processes and bounded sweep escalation.
 // These elapsed-time measurements require a quiet machine; they are soak assertions.
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -565,6 +565,20 @@ test('process helper growth requires lifecycle evidence for each category', asyn
   }
 });
 
+test('T4 lifecycle headers exempt process helpers while preserving wait and tier rules', async () => {
+  const { checkTestLint } = await import('../src/test-lint-policy.ts');
+  const source = async () => '// T4: resistant native process deadlines and reaping\nstartDaemon(t, root);';
+  const manifest = { version: 1 as const, tests: { [file]: 'T4' as const } };
+  assert.deepEqual(await checkTestLint({ manifest, source }), []);
+  assert.equal((await checkTestLint({ manifest, source: async () => 'startDaemon(t, root);' }))[0]?.rule, 'startDaemon');
+  assert.equal((await checkTestLint({ manifest, source: async () => await source() + '\nsleep(10);' }))[0]?.rule, 'wall-clock-wait');
+  for (const tier of ['T1', 'T2', 'T3'] as const) {
+    const findings = await checkTestLint({ manifest: { version: 1, tests: { [file]: tier } }, source });
+    assert.ok(findings.some(f => f.rule === (tier === 'T3' ? 't3-lifecycle' : 'tier-process')), tier);
+    assert.ok(findings.some(f => f.rule === 'startDaemon'), 'T4 header cannot exempt another tier');
+  }
+});
+
 test('new files require tier rules or a T3 lifecycle declaration', async () => {
   const { checkTestLint } = await import('../src/test-lint-policy.ts');
   for (const entry of ['T3', { tier: 'T3', contract: 'codex' }, { tier: 'T3', scenario: 'flow' }] as const) {
