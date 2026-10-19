@@ -3,7 +3,7 @@ id: T-652
 kind: task
 title: "Init accepts any default branch: dev and the territory start from it, and the territory records it"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-546
 branch: t/T-652-init-accepts-any-default-branch-dev-and
 created: 2026-10-16T16:24:00.971Z
-updated: 2026-10-19T03:13:34.160Z
+updated: 2026-10-19T03:39:34.424Z
 ---
 
 ## Summary
@@ -37,18 +37,25 @@ The territory hard-codes `main`: a repository whose default branch is `master` g
 
 - [x] C1. `cland init` in a clone whose default branch is `master` creates `dev` from `master`, seeds the territory with `master` and `dev`, and leaves the clean root on `dev` (territory-cli.test.ts).
   - done: impl-652 · 2026-10-19T03:12:04.381Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 - [x] C2. The territory's configuration holds `cland.defaultBranch = master`, and a project initialised without it reads `main`.
   - done: impl-652 · 2026-10-19T03:12:04.736Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 - [x] C3. A push that updates or deletes `master` in that territory is refused by the hook with a message naming `master`, while task-branch pushes pass.
   - done: impl-652 · 2026-10-19T03:12:05.175Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 - [x] C4. `cland init --undo` in that clone returns the root to `master`.
   - done: impl-652 · 2026-10-19T03:12:05.610Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 - [x] C5. `cland doctor` in that project reports the territory healthy, and reports `territory master is missing` once that ref is deleted from it.
   - done: impl-652 · 2026-10-19T03:12:05.946Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 - [x] C6. A repository whose only branch is `trunk` gets `dev` from `trunk`; one with two branches, neither `main` nor `master`, and no `origin/HEAD` is refused before any write, naming both branches.
   - done: impl-652 · 2026-10-19T03:12:06.384Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 - [x] C7. Demo: in a scratch HOME, a clone of a local upstream whose HEAD is `master`, then `cland init`, `git branch` and `git -C .cland/territory.git branch` show `dev` started from `master`.
   - done: impl-652 · 2026-10-19T03:12:06.821Z
+  - verified: rev-30 [reviewer] · run rev-20261019-652-final · 2026-10-19T03:39:32.042Z · commit 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
 
 ## Comments
 
@@ -68,3 +75,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; no Standards or Spec findings. A-5739 records all five files, discovery order and refusal before territory writes, write-once default with legacy main fallback, native hook protection, doctor/undo/taskBase consumers, async config-map reuse, docs and test controls. C7 scratch demo A-5738 retained. C1–C7 remain unverified pending accepted exact-head gate and final evidence reconciliation; QA scope none.
+
+### rev-30 · 2026-10-19T03:39:32.042Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-652-final
+commit: 8c642cccfbd6d77fdf0d0ae5a895b2d13d0dd0c7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear from source A-5739, accepted exact-head gate b343afad/A-5757 and scratch demo A-5738; audit A-5758. Hub-only plus Neovim smoke: 2396 passed, 5 skips, zero failures/cancellations. Territory CLI 22/22; all eight new groups 5/5 (40 bodies), first-commit 15/15 and task-worktrees 9/9. Master precedence/seeding/rerun, legacy fallback, native hook/task pushes, undo, doctor, remote-only default, trunk and write-free ambiguity controls pass. Three known T-803 report-only trips and other diagnostics remain disclosed. No findings; C1–C7 verified; QA scope none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
