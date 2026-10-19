@@ -3,11 +3,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { ProjectConfiguration } from '../src/hub/configuration.ts';
+import { layout } from '../src/project.ts';
 import { cland, clandWithEnv, connectUi, eventually, projectHub, tempProject } from './harness.ts';
 
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
 
 const roles = (model: string) => `[implementer.launch]\nharness="codex"\nmodel="${model}"\n`;
+
+// T2: real file edits through the configuration source used by launch admission.
+test('concurrent fresh callers both observe a saved same-size role account edit', async t => {
+  const root = await tempProject(t);
+  const files = layout(root);
+  await mkdir(files.dir, { recursive: true });
+  const text = (account: string) => `[reviewer.launch]\nharness="codex"\naccount="${account}"\n`;
+  await writeFile(files.roles, text('codex-b'));
+  const source = new ProjectConfiguration(files, null, () => {}, {}, work => work(), () => {}, async () => null);
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  await source.start();
+  t.after(() => source.stop());
+  await writeFile(files.roles, text('codex-a'));
+  const observed = await Promise.all([0, 1].map(async () => {
+    await source.fresh();
+    return source.get().get('reviewer')?.launch.account;
+  }));
+  assert.deepEqual(observed, ['codex-a', 'codex-a']);
+});
 
 // T2: command reload is a hub rule; no process lifecycle is involved.
 test('hub reload applies changed verification commands without a restart', async t => {

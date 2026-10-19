@@ -103,14 +103,19 @@ export class ProjectConfiguration implements RolesSource {
   async #fileStamp(path: string): Promise<string> {
     return stat(path).then(s => `${s.dev}:${s.ino}:${s.size}:${s.mtimeMs}:${s.ctimeMs}`, () => 'missing');
   }
-  async fresh(resumed: Resumed = this.resumed): Promise<void> {
-    try {
-      await this.#work;
-      const stamp = await this.#fileStamp(this.layout.roles);
-      if (this.#stopped || stamp === this.#attemptStamp) return;
-      this.#attemptStamp = stamp;
-      await this.reload(resumed);
-    } catch { /* reload already reports the file and keeps the complete last-good pair */ }
+  fresh(resumed: Resumed = this.resumed): Promise<void> {
+    // Serialize detection with publication: a concurrent launch must not mistake
+    // another refresh's attempted stamp for an already loaded snapshot.
+    const work = this.#work.then(async () => {
+      try {
+        const stamp = await this.#fileStamp(this.layout.roles);
+        if (this.#stopped || stamp === this.#attemptStamp) return;
+        this.#attemptStamp = stamp;
+        await this.#reload(resumed);
+      } catch { /* reload already reports the file and keeps the complete last-good pair */ }
+    });
+    this.#work = work;
+    return work;
   }
   reload(resumed: Resumed = this.resumed): Promise<ConfigReloadResult> {
     const work = this.#work.then(() => this.#reload(resumed));
