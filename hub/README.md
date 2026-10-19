@@ -57,6 +57,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/territory.ts` | The territory's Git runner, shared lock, provisioning, undo and read-only health checks; the task branches' base and the task worktrees (made, listed, removed); the squash commit and guarded push; usable without a hub. |
 | `src/hub/worktrees.ts` | Task worktrees in the hub (T-58): which items get one, made at a task's claim and by `session.launch` with an item (which then claims the item for the session), listed with their items and the sessions inside, pruned. |
 | `src/cli/worktree.ts` | `cland worktree list`, `cland worktree prune [--yes]`. |
+| `src/cli/setup.ts` | `cland setup [dir]`: root and terminal policy, text/JSON output; `src/setup/` holds the ordered runner, step modules and terminal child helper. |
 | `src/cli/doctor.ts` | `cland doctor [dir]` (below). |
 | `src/doctor/` | Its checks: `toolchain.ts` (the harnesses, `gh`, Neovim), `project.ts` (the hub, the config files, what `cland init` provisioned), `ranges.ts` (`TESTED_RANGES`, the harness versions each adapter was built against), `report.ts` (the verdicts, the text and the runner). |
 | `src/init/provision.ts` | What `cland init` and `cland update` provision, step by step (below); `src/init/` holds one module per managed part: `config.ts` (`config.toml`, also read by the hub), `skills.ts`, `instructions.ts` (`AGENTS.md`, `CLAUDE.md`, `docs/agents/*`), `claude-settings.ts` (the hooks and background worktree policy), `files.ts` (write-only-when-changed and the report). |
@@ -75,7 +76,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/spoke/hub-client.ts` | The spoke's connection: reconnects for ever with capped backoff, asks again for the name it was welcomed under, retries a requested name before taking a generated one, never stops for good (closed with 4002 by a hub older than T-51, it reconnects like after any close). Acks every delivery and hands each message id to the session once. Fails a request after its deadline, keepalives while connected and reconnects after two unanswered keepalives; before the welcome, tool requests wait for readiness up to 20 s, and a hub that does not answer hello within the separate welcome deadline is left and reconnected to. |
 | `src/spoke/spoke.ts` | The stdio MCP server a harness spawns: tools `send` (into a topic, to the human or to sessions), `topic.create`, `resolve`, `ask`, `who`, `status`, `rename`, `history` (a session's traffic, or a topic's with `topic`; Agents accepts `item` and `session` filters), `session.launch`, `role.handover`, `role.state`, `artifact.create`, `artifact.promote` and the `task.*` tools (`src/spoke/task-tools.ts`); exits when the session's stdin closes. |
 | `bin/cland-spoke.ts` | The spoke's entry point. |
-| `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `doctor`, `hub …`, `task …`, `session …`, `worktree …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
+| `bin/cland.ts` | The `cland` CLI: `open`, `init`, `update`, `setup`, `doctor`, `hub …`, `task …`, `session …`, `worktree …`, `hook …`, `--version`, `--help`. With no command it opens the workbench when stdin and stdout are a terminal, and prints the help otherwise. |
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. Every CLI invocation records its time, arguments and effective config directory in `invocations.jsonl` (and the compatible `calls.jsonl`); sessions are partitioned by that directory and job records include only the names of inherited auth variables; a `logged-out` marker refuses `agents` and `--bg` with token expiry. Like the real one it also runs the project's `.claude/settings.json` hooks and reads `CLAUDE.md` with its `@` imports, else `AGENTS.md`; what a session loaded goes to `jobs/<id>.context.json`. |
 | `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
@@ -963,6 +964,37 @@ The root `package.json` owns cland's version. `src/version.ts` reads it for
 mark. `hub/package.json` has no version. `CLAND_VERSION_OVERRIDE` is for tests
 that simulate an update. A release bump is an ordinary commit merged before
 the release's dry run; `cland release` does not write the version.
+
+## cland setup
+
+Run `cland setup [dir]` after `cland init`. It uses the current directory or the
+explicit directory, refuses a discovered parent and HOME, and stops with
+"run cland init first" when `.cland/` is absent.
+
+Setup currently detects the project, then Claude Code, Codex and OpenCode, then
+the installed harnesses' logins, in that order. Each line has `ok`, `done`, `skip`,
+`open` or `fail`, a detail and any fix. With no harness installed, all three
+installers are `open`; with one installed, missing alternatives are `skip` with
+an installer hint. A binary found only in an installer's folder explains that a
+new shell is needed for PATH. A missing Claude Code or Codex login is `open`;
+OpenCode's login is optional because its free model needs none.
+
+Without both stdin and stdout attached to a terminal, setup asks, installs,
+writes and launches nothing. `--json` always selects this report-only mode and
+prints one object with `root`, `version`, `interactive`, `steps`, `summary` and
+`next` on stdout; narration goes to stderr. `steps` uses doctor's `name`,
+`verdict`, `detail` and optional `fix` fields. `next` is `cland setup` while work
+is open or failed, otherwise `cland`. Exit codes are 0 when no step is open or
+failed, 1 otherwise, and 130 for input cancellation at a question.
+
+`--yes` accepts defaults only for questions marked harmless. It never authorizes
+installing, signing in or launching. This first set of steps detects only; later
+steps will add the guided actions, accounts, favourite harness, trust, hub and Aide.
+They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
+Action steps must detect again after acting and let that detection decide their
+result. `src/setup/terminal.ts` runs a child with inherited terminal I/O, ignores
+SIGINT and SIGQUIT in the parent while the child runs, restores its handlers,
+and returns the child's exit code or 128 plus its signal number.
 
 ## cland init and cland update
 

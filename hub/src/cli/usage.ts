@@ -40,6 +40,11 @@ export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the 
   update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
 `;
 
+export const SETUP_USAGE = `  setup [dir] [--json] [--yes]
+                  detect the project, harnesses and logins; without a terminal, report only
+                  --yes accepts harmless defaults only; never installs, signs in or launches
+`;
+
 export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub and what cland init provisioned; one line per
                   check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers and deleted-project hubs)
 `;

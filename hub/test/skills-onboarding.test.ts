@@ -8,7 +8,7 @@ import { configKeys } from '../src/init/config-set.ts';
 const SKILL = new URL('../../.agents/skills/onboarding/', import.meta.url);
 const FILES = ['SKILL.md', 'EMPTY.md', 'EXISTING.md', 'WELCOME.md', 'TOUR.md'];
 // Open v0.1.4 work owns these commands. A shipped command makes its exception fail.
-const PENDING: Record<string, string> = { setup: 'T-837' };
+const PENDING: Record<string, string> = {};
 const HELP = Object.values(usage).join('\n');
 const COMMANDS = new Set<string>();
 for (const line of HELP.split('\n')) {
