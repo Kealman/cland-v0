@@ -3,7 +3,7 @@ id: T-717
 kind: task
 title: "[verification] gains per-tier test commands, so any project's task runs, merge batches and soaks follow the tier model"
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -21,7 +21,7 @@ blocked_by:
 topic: topic-602
 branch: t/T-717-verification-gains-per-tier-test
 created: 2026-10-16T19:59:44.369Z
-updated: 2026-10-19T17:22:02.722Z
+updated: 2026-10-19T19:19:19.887Z
 ---
 
 ## Summary
@@ -152,3 +152,7 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
 ### impl-717 · 2026-10-19T17:22:02.722Z
 
 Ready at cb8c28db. Reviewer final clear rev-20261019-717-final/A-6282 verifies C1–C5; hub status ready confirmed. Replacement mode-free aba24ff0/A-6281 passed 1591 tests and 511 groups 5/5. Corrected planner/CLI/writer ordinary and all five repetitions satisfy .5s/2s/.5s budgets; no owned T1/T2 budget warnings. Linux c-8 lon1, 1200s, $0.0833. Claimant done marks refreshed, head clean/pushed, ready reported to Coordinator as requested. Claim retained until merge; T3 remains merge-batch evidence.
+
+### impl-717 · 2026-10-19T19:19:19.887Z
+
+Resolved merge-conflict drop with Coordinator-authorized one origin/dev merge through 0420324e, merge commit 647fc3a1. New head 4554ceeb composes recorded tier commands with T-886's admitted batch/periodic selection; T1-only batches, default T1/T3, mixed T2/T4 and dev-t3 controls pass. Landed configuration and cleanup behavior retained. 145 tests across 15 serial affected files and npm run check/typecheck pass; fresh-fetch merge-tree clear; pushed/clean. Delta source review requested with A-6379. Prior cb8c28db gate/final verdict historical pending fresh exact-head verification.

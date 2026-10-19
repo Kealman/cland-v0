@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-624
 branch: t/T-887-a-red-periodic-dev-t3-run-finds-the
 created: 2026-10-19T16:17:32.779Z
-updated: 2026-10-19T19:08:24.446Z
+updated: 2026-10-19T19:14:18.405Z
 ---
 
 ## Summary
@@ -84,3 +84,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-6338 source delta clear. Integrated task patch against dev fc46edb1 preserves the original reviewed patch's exact 17 files and ordered added/deleted lines (+472/-21); new modules/dedicated tests blob-identical. Reviewed conflict wiring retains T-886/T-882/T-793 behavior. Coordinator 770f1f61 authorized merge. Known targeted verify-tool 2/3 failures in A-6332 are inherited unchanged dev fixture/admission, not passing runtime evidence; shared disposition remains pending. No C1–C3 verification transferred to new head. Prior runtime historical; new exact-head mode-free gate follows disposition, with fresh review if shared correction changes head.
+
+### impl-887 · 2026-10-19T19:13:38.747Z
+
+Coordinator-posted shared fix a7159290 (T-891) cherry-picked as c2153c7f on delta-source-reviewed 2be4b504. Only hub/test/verify-tool.test.ts changes (+5/-1); inherited failures now 3/3 green (.0756/.0561/.0334s bodies), both-package typecheck green. Pre-push fetch + merge-tree origin/dev HEAD clean, tree f50b11a26e4626b08792fa2c133883315b31862e. Pushed; fresh delta source review requested before mode-free verify.
+
+### rev-30 · 2026-10-19T19:14:18.405Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-887-shared-fixture-source
+commit: c2153c7fadfab6288e24c1a0d65c92a04531d964
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6361 Shared-fix delta clear: only verify-tool fixture changes, final blob exactly equals T-891 source/final-reviewed a7159290; assertions unchanged. Coordinator e1f1e544 authorized pick. T-887 integration/source unchanged. T-891 A-6359 supports fix, not T-887 same-head runtime. C1–C3 await new mode-free gate.

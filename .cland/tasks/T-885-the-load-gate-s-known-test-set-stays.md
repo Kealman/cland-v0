@@ -3,7 +3,7 @@ id: T-885
 kind: task
 title: The load gate's known-test set stays current under the merge queue without a stage-close refresh
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-620
 branch: t/T-885-the-load-gate-s-known-test-set-stays
 created: 2026-10-19T16:16:37.559Z
-updated: 2026-10-19T17:10:19.053Z
+updated: 2026-10-19T19:15:32.144Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ The load gate treats every T1/T2 identity missing from hub/test/durations.json's
   - verified: rev-31 [reviewer] · run rev-20261019-885-source-2 · 2026-10-19T16:26:14.684Z · commit d2c9890f799b544e30c571141988ec716788f164
   - done: impl-885 · 2026-10-19T17:09:22.674Z
   - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-source · 2026-10-19T19:15:32.144Z · commit e5d0abef240b47e29f8812ca841664e46b5d625f
 
 ## Comments
 
@@ -103,3 +104,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear on authorized same-head retry c080353f / A-6271. Independently parsed 1588 ordinary passes and all 508 gates 5/5. All five owned C1/C2 controls pass plus 25 repetitions; maxima 0.140093347 s ordinary and 0.137806980 s repeated, no owned budget/resource violations. C3 docs remain source-verified; all criteria verified. Independently read Coordinator 0abb374d authorizing the retry and filing prior launcher failure as T-889. That identity now passes ordinary plus 5/5; A-6249 remains retained as failed evidence. A-6210 host native CLI evidence remains disclosed; Linux T3 is the landing gate. The final artifact retains 27 external budget rows, four known onboarding trips (T-877 overlap), roles-editor overlap T-875 and report-only whole-plan T1 projection 122.628 > 120 s with missing baselines. No source change or further run required for this item evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-31 · 2026-10-19T19:15:32.144Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-integration-source
+commit: e5d0abef240b47e29f8812ca841664e46b5d625f
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized integration delta clear; no Standards/Spec findings. Independently read Coordinator 2c3f70ba authorizing this single dev merge. Combined conflict hunks retain dev's batchTiers selection and dev-t3 baseline exclusion alongside the separate ordinary task-only landed-proof attachment. Docs combine both policies; C3 verified at the new head. Proof helper, duration refresh and new T1 controls are byte-unchanged from prior final-clear head; dev's duration/config changes remain intact. A-6360 reports both-project typecheck and four targeted files 30/30 green. C1/C2 need fresh unchanged-head mode-free task evidence; prior A-6271 is stale for execution. See integration delta artifact in topic-620.
+
+Criteria: C3 verified.

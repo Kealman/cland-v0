@@ -2,8 +2,8 @@
 id: T-869
 kind: task
 title: suite-command diagnostics still say 'npm' for any stack's commands
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-608
 branch: t/T-869-suite-command-diagnostics-still-say-npm
 created: 2026-10-19T11:52:12.288Z
-updated: 2026-10-19T15:55:23.463Z
+updated: 2026-10-19T19:19:29.299Z
+closed: 2026-10-19T19:19:29.299Z
 ---
 
 ## Summary
@@ -66,3 +67,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6180 audits full A-6178 / fc62cec4 at unchanged reviewed head. Ordinary 1559/1559 zero fail/cancel/skip/TODO, all 479 groups 5/5. New non-npm signal test passes ordinarily .007037273 s and all five repetitions, exact argv/cause retained. C1 verified with A-6155's two stack-neutral string audit. Four inherited T-856 push tripwire rows retained under T-877; none from suite-command. Existing report-only debt/T-881 unchanged. T3 remains landing evidence; no Reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:19:29.299Z
+
+Merged ebc5f829b5910c4ac125459d58fe8931ae3a98d4 onto dev.

@@ -2,8 +2,8 @@
 id: T-865
 kind: task
 title: cland hub start kills a hub whose startup ready check stalls tracker storage past the 15 s probe deadline
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-596
 branch: t/T-865-cland-hub-start-kills-a-hub-whose
 created: 2026-10-19T10:23:43.735Z
-updated: 2026-10-19T17:00:58.652Z
+updated: 2026-10-19T19:15:43.943Z
+closed: 2026-10-19T19:15:43.943Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at exact reviewed head; A-6265. A-6264 ordinary 1563/1563 and all 483 load groups 5/5, including all five owned startup controls within their tiers. A-6238's qualified precommit local T3 import regression is 3/3, hub status 18 modules against unchanged budget. C1/C2 verified from retained source plus current receipts. Inherited T-856/T-877 resource exception retained; Linux native T3 remains merge-batch landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6265-t-865-final-import-corrected-evidence-at-d929c47c.md
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T19:15:43.943Z
+
+Merged 2f5878cad1569e781890a762750f34184b13cb84 onto dev.

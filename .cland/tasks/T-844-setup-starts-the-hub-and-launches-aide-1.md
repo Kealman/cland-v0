@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-614
 branch: t/T-844-setup-starts-the-hub-and-launches-aide-1
 created: 2026-10-19T06:34:13.450Z
-updated: 2026-10-19T19:12:09.875Z
+updated: 2026-10-19T19:18:54.016Z
 ---
 
 ## Summary

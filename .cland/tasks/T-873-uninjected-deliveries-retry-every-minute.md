@@ -2,8 +2,8 @@
 id: T-873
 kind: task
 title: Uninjected deliveries retry every minute without bound and log every attempt, flooding hub.log
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-597
 branch: t/T-873-uninjected-deliveries-retry-every-minute
 created: 2026-10-19T12:24:05.900Z
-updated: 2026-10-19T17:33:12.208Z
+updated: 2026-10-19T19:19:06.550Z
+closed: 2026-10-19T19:19:06.550Z
 ---
 
 ## Summary
@@ -145,3 +146,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at source-4 head on A-6287 / 3847263d. Independently audited 1563 ordinary passes, all 483 gates 5/5; seven owned cases plus 35 repetitions pass. Fake-hour budget finding resolved: ordinary 0.346899373 s and repeated 0.330192765–0.409283490 s; all owned ordinary/repetition cases remain below T2 2 s with file total below 30 s, no owned budget/resource violations. C1 verified. Connection-episode recovery, in-flight retry, uncertain explicit retry, transport ordering and notice controls remain positive 5/5. A-6241/A-6242 retain the requested local native regressions, production unchanged after source-3; fresh Linux T3 remains landing evidence. Full external inventory of 22 report-only budgets and four onboarding trips (T-877 overlap; roles-editor T-875) retained in the final artifact in topic-597. Prior old-head failures/budget evidence remain recorded.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:19:06.550Z
+
+Merged 1c88088a21929c83ba13cd47f312e83b07a7e81d onto dev.

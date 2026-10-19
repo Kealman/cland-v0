@@ -2,8 +2,8 @@
 id: T-851
 kind: task
 title: cland update renames origin to github on a v0.1.3 project initialised under a symlinked path (macOS /tmp)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-600
 branch: t/T-851-cland-update-renames-origin-to-github-on
 created: 2026-10-19T07:35:48.835Z
-updated: 2026-10-19T17:42:59.396Z
+updated: 2026-10-19T19:19:21.066Z
+closed: 2026-10-19T19:19:21.066Z
 ---
 
 ## Summary
@@ -116,3 +117,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final integration evidence clear; A-6296. A-6295 ordinary 455/455, all 227 groups 5/5, zero tier mismatch. Native territory-cli is excluded; A-6293 retained merged-source host capture supplies 25/25, owned symlink case 1.794 s plus landed whitespace/worktree controls. Tested-tree provenance qualified separately from Linux gate. C1 verified; T3 Linux remains landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6296-t-851-final-integrated-head-evidence-at-7398d761.md
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:19:21.066Z
+
+Merged 25f8b738391c8583d5777ce8d46ca1576cdeaf30 onto dev.
