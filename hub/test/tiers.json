@@ -175,7 +175,7 @@
       "tier": "T3",
       "contract": "opencode"
     },
-    "hub/test/opencode-check.test.ts": "T3",
+    "hub/test/opencode-check.test.ts": "T1",
     "hub/test/opencode-database.test.ts": "T3",
     "hub/test/opencode-launch-policy.test.ts": "T2",
     "hub/test/opencode-native.test.ts": "T2",

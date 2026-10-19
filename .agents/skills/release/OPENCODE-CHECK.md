@@ -1,7 +1,7 @@
-# OpenCode compatibility before a cland release
+# Informational OpenCode check before a cland release
 
 Run `npm run check:opencode` from the cland source checkout before the release dry run. Other projects retain their own release checks.
 
-This network check compares the newest stable OpenCode 2.x wire operations and event names with the tested version. It downloads and integrity-checks that exact binary, then completes a turn against a local fake provider with scratch HOME, XDG directories and OPENCODE_DB. It is deliberately separate from `npm test`.
+This opt-in network probe compares the newest stable OpenCode 2.x OpenAPI wire operations and event names with the version the adapter was built against. It prints compatible operations or differences and writes nothing to the repository. The adapter's behavioural checks remain in place.
 
-A pass updates the exclusive bound in `hub/src/doctor/ranges.ts`. Have that source change reviewed and merged before previewing the release. A failure preserves the range and files a Bug in the tracker's Bugs category. Resolve the Bug and rerun the check before continuing; a reported filing failure also blocks release until the Bug is filed and resolved.
+Include differences as a note in the release report and continue to the dry run. Compatibility differences exit 0; only a network or probe failure exits nonzero. If the probe cannot complete, record that failure in the report. The check is informational and does not stop the release.

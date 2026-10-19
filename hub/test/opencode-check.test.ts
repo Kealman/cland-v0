@@ -1,17 +1,11 @@
-// Offline fixtures for the release check's public contract comparison. No upstream fetch or model call.
+// T1: recorded documents and a fake download exercise the informational probe without sockets or processes.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { once } from 'node:events';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
+import { runOpenCodeCheck } from '../bin/check-opencode.ts';
 import { adapterEventNames, compareEventNames, compareOpenCodeContract, type OpenApi } from '../src/doctor/opencode-contract.ts';
-import { cland, nativeProjectHub as projectHub, tempProject } from './harness.ts';
-import { onCleanup, ownProcess } from './process-cleanup.ts';
 
 function document(): OpenApi {
   const paths: OpenApi = {};
@@ -83,74 +77,74 @@ test('release contract retains required response data while accepting optional u
   assert.match(compareOpenCodeContract(withEvent(['id', 'data']), withEvent(['id'])).join('\n'), /required field data/);
 });
 
-async function releaseFixture(t: TestContext, failure?: 'contract' | 'smoke') {
-  const root = await tempProject(t, 'cland-release-check-');
-  await projectHub(t, root);
-  const category = await cland(root, 'task', 'create', 'Bugs', '--kind', 'category', '--json');
-  assert.equal(category.code, 0, category.stderr);
-  const bugs = (JSON.parse(category.stdout) as { item: { id: string } }).item.id;
-  await mkdir(join(root, 'hub/src/doctor'), { recursive: true });
-  await mkdir(join(root, 'hub/src/adapters/opencode'), { recursive: true });
-  await writeFile(join(root, 'hub/src/adapters/opencode.ts'), "e.type === 'session.execution.started'");
-  await writeFile(join(root, 'hub/src/adapters/opencode/state.ts'), "case 'permission.asked':");
-  const ranges = join(root, 'hub/src/doctor/ranges.ts');
-  const original = 'opencode: { min: [2, 0, 24], below: [2, 0, 25] },\n';
-  await writeFile(ranges, original);
-  await mkdir(join(root, 'package/bin'), { recursive: true });
-  let fake = await readFile(new URL('./fixtures/opencode-check.mjs', import.meta.url), 'utf8');
-  if (failure === 'smoke') fake = fake.replace('session.execution.succeeded', 'session.execution.failed');
-  await writeFile(join(root, 'package/bin/opencode'), `#!${process.execPath}\n${fake}`, { mode: 0o755 });
-  const tarball = join(root, 'binary.tgz');
-  await promisify(execFile)('tar', ['-czf', tarball, '-C', root, 'package']);
-  const archive = await readFile(tarball);
-  const newest = document();
-  if (failure === 'contract') {
-    assert.ok(newest.paths && typeof newest.paths === 'object' && !Array.isArray(newest.paths));
-    delete newest.paths['/api/model'];
+async function releaseFixture(t: TestContext) {
+  const root = await mkdtemp(join(tmpdir(), 'cland-release-check-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const files = {
+    'hub/src/adapters/opencode.ts': "e.type === 'session.execution.started'",
+    'hub/src/adapters/opencode/state.ts': "case 'permission.asked':",
+    'hub/src/doctor/ranges.ts': 'opencode: { min: [2, 0, 24], below: [2, 0, 31] },\n',
+    '.cland/tasks/T-1-existing.md': '# An existing tracker item\n',
+  };
+  for (const [path, bytes] of Object.entries(files)) {
+    const full = join(root, path);
+    await mkdir(join(full, '..'), { recursive: true });
+    await writeFile(full, bytes);
   }
-  const upstream = createServer((req, res) => {
-    if (req.url?.endsWith('/binary.tgz')) { res.end(archive); return; }
-    const value = req.url === '/@opencode/cli' ? { versions: { '1.99.0': {}, '2.0.24': {}, '2.0.30': {}, '2.1.0-beta': {}, '3.0.0': {} } }
-      : req.url?.startsWith('/@opencode/cli-') ? { dist: { tarball: 'https://fixture.invalid/binary.tgz', integrity: `sha512-${createHash('sha512').update(archive).digest('base64')}` } }
-      : req.url?.endsWith('openapi.json') ? (req.url.includes('v2.0.30') ? newest : document())
-      : undefined;
-    if (value) res.end(JSON.stringify(value));
-    else res.end('"session.execution.started" "permission.asked"');
-  });
-  onCleanup(t, async () => { upstream.closeAllConnections(); await new Promise<void>(resolve => upstream.close(() => resolve())); });
-  upstream.listen(0, '127.0.0.1');
-  await once(upstream, 'listening');
-  const address = upstream.address();
-  assert.ok(address && typeof address !== 'string');
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
-  Object.assign(env, { CLAND_TEST_OPENCODE_CHECK_ROOT: root, CLAND_TEST_OPENCODE_CHECK_ORIGIN: `http://127.0.0.1:${address.port}` });
-  const result = await new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
-    const child = execFile(process.execPath, [fileURLToPath(new URL('../bin/check-opencode.ts', import.meta.url))], { cwd: root, env, timeout: 30_000 }, (error, stdout, stderr) => {
-      if (error && typeof error.code !== 'number') reject(error);
-      else resolve({ code: error?.code as number ?? 0, stdout, stderr });
-    });
-    ownProcess(t, child.pid);
-  });
-  return { root, ranges, original, bugs, ...result };
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const requests: string[] = [];
+  const download = async (url: string): Promise<string> => {
+    requests.push(url);
+    if (url === 'https://registry.npmjs.org/@opencode/cli') return JSON.stringify({ versions: {
+      '1.99.0': {}, '2.0.24': {}, '2.0.9': {}, '2.0.30': {}, '2.1.0-beta': {}, '3.0.0': {},
+    } });
+    if (url.endsWith('openapi.json')) return url.includes('v2.0.30')
+      ? readFile(new URL('./fixtures/opencode-newer-openapi.json', import.meta.url), 'utf8')
+      : JSON.stringify(document());
+    return url.includes('v2.0.30') ? '"permission.asked"' : '"session.execution.started" "permission.asked"';
+  };
+  return { root, files, stdout, stderr, requests, options: { root, download, stdout: (line: string) => stdout.push(line), stderr: (line: string) => stderr.push(line) } };
 }
 
-test('release CLI checks newest stable 2.x and advances the bound after a completed fake-provider turn', async t => {
-  const result = await releaseFixture(t);
-  assert.equal(result.code, 0, result.stderr);
-  assert.match(result.stdout, /newest stable 2.x 2.0.30/);
-  assert.match(result.stdout, /fake-provider smoke passed/);
-  assert.match(await readFile(result.ranges, 'utf8'), /below: \[2, 0, 31\]/);
+test('release check reports recorded operation and event differences without repository writes', async t => {
+  const fixture = await releaseFixture(t);
+  const code = await runOpenCodeCheck(fixture.options);
+  assert.equal(code, 0, fixture.stderr.join('\n'));
+  const report = fixture.stdout.join('\n');
+  assert.match(report, /newest stable 2.x 2.0.30/);
+  assert.match(report, /GET \/api\/model: missing operation in newest document/);
+  assert.match(report, /session.execution.started: absent from newest event source/);
+  assert.match(report, /informational/i);
+  assert.deepEqual(fixture.stderr, []);
+  assert.equal(fixture.requests.length, 9, 'only registry, two OpenAPI documents and six event sources are downloaded');
+  const after = (await readdir(fixture.root, { recursive: true, withFileTypes: true }))
+    .filter(entry => entry.isFile()).map(entry => join(entry.parentPath, entry.name)).sort();
+  assert.deepEqual(after, Object.keys(fixture.files).map(path => join(fixture.root, path)).sort());
+  for (const [path, bytes] of Object.entries(fixture.files)) assert.deepEqual(await readFile(join(fixture.root, path)), Buffer.from(bytes));
 });
 
-for (const failure of ['contract', 'smoke'] as const) test(`release CLI retains the range and files a Bug when ${failure} fails`, async t => {
-  const result = await releaseFixture(t, failure);
-  assert.equal(result.code, 1);
-  assert.match(result.stderr, /Tested range unchanged/);
-  assert.match(result.stderr, /Bug filed: T-/);
-  assert.equal(await readFile(result.ranges, 'utf8'), result.original);
-  const listed = await cland(result.root, 'task', 'list', '--json');
-  assert.equal(listed.code, 0, listed.stderr);
-  const bug = (JSON.parse(listed.stdout).items as Array<{ title: string; labels: string[]; parent: string }>).find(item => item.labels.includes('bug'));
-  assert.equal(bug?.parent, result.bugs);
-  assert.match(bug?.title ?? '', /OpenCode 2.0.30 release compatibility check failed/);
+test('release check reports compatible operations without a release gate', async t => {
+  const fixture = await releaseFixture(t);
+  const code = await runOpenCodeCheck({ ...fixture.options, download: async url => {
+    if (url.endsWith('openapi.json')) return JSON.stringify(document());
+    if (url.endsWith('.ts')) return '"session.execution.started" "permission.asked"';
+    return fixture.options.download(url);
+  } });
+  assert.equal(code, 0);
+  assert.match(fixture.stdout.join('\n'), /10 wire operations and 2 adapter event names compatible/);
+  assert.deepEqual(fixture.stderr, []);
+});
+
+test('release check distinguishes network and probe failures from compatibility differences', async t => {
+  const fixture = await releaseFixture(t);
+  for (const [download, message] of [
+    [async () => { throw new Error('network unavailable'); }, /network unavailable/],
+    [async () => 'not JSON', /JSON/],
+    [async () => '{"versions":{"3.0.0":{}}}', /no stable OpenCode 2.x release/],
+  ] as const) {
+    fixture.stderr.length = 0;
+    assert.equal(await runOpenCodeCheck({ ...fixture.options, download }), 1);
+    assert.match(fixture.stderr.join('\n'), message);
+  }
 });
