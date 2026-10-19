@@ -90,7 +90,7 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code login', 'open'], ['opencode login', 'skip'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['aide', 'skip'],
+    ['claude-code login', 'open'], ['opencode login', 'skip'], ['accounts', 'ok'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['aide', 'skip'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -207,7 +207,7 @@ test('the first installed harness makes missing alternatives optional in the fin
   } });
   assert.equal(code, 1); // favourite still needs --harness or --yes without a terminal
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['aide', 'skip'],
   ]);
 });
 
@@ -253,7 +253,7 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   } });
   assert.equal(code, 0);
   assert.equal(report.next, 'cland');
-  assert.deepEqual(report.summary, { ok: 9, done: 0, skip: 2, open: 0, fail: 0 });
+  assert.deepEqual(report.summary, { ok: 10, done: 0, skip: 2, open: 0, fail: 0 });
   assert.ok(report.steps.slice(0, -2).every(s => s.verdict === 'ok'));
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });

@@ -164,7 +164,7 @@ test('setup CLI hands over after the summary on each run, including --attach', a
     launch: async () => { throw new Error('unexpected Aide launch'); }, resume: async () => { throw new Error('unexpected resume'); },
     attach: async name => { assert.equal(name, 'aide-1'); return 'opencode attach http://localhost:1234'; },
   };
-  for (const args of [[], [], ['--attach'], ['--attach', '--no-aide']]) {
+  for (const args of [[], [], ['--attach'], ['--no-accounts'], ['--attach', '--no-accounts'], ['--attach', '--no-aide']]) {
     let output = '';
     const calls: unknown[] = [];
     const io = {
@@ -177,6 +177,7 @@ test('setup CLI hands over after the summary on each run, including --attach', a
       },
     };
     assert.equal(await runSetup(['--yes', ...args], root, { HOME: root, PATH: join(root, 'bin'), CLAND_LAUNCHER: '/tools/workbench' }, io), 0, output);
+    assert.match(output, args.includes('--no-accounts') ? /skip  accounts  --no-accounts/ : /ok    accounts  no new signed-in profiles/);
     assert.equal(calls.length, args.includes('--no-aide') ? 0 : 1);
     if (calls.length) assert.equal((calls[0] as unknown[])[0], args.includes('--attach') ? 'sh' : '/tools/workbench');
     assert.equal(output.split('\n').filter(s => s.includes('session stop')).length, args.includes('--no-aide') ? 0 : 1);

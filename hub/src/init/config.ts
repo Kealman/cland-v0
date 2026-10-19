@@ -16,7 +16,7 @@ import type { HarnessId } from '../doctor/ranges.ts';
 
 export type ProjectConfig = {
   name: string;
-  setup: { declinedInstalls: HarnessId[] };
+  setup: { declinedInstalls: HarnessId[]; declinedAccounts: string[] };
   merge: { queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
   verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
@@ -32,7 +32,7 @@ const MINUTE = 60_000;
 
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
-  setup: { declinedInstalls: [] },
+  setup: { declinedInstalls: [], declinedAccounts: [] },
   merge: { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
   verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
@@ -57,6 +57,8 @@ name = ${JSON.stringify(c.name)}
 [setup]
 # Missing harnesses declined in setup; --install <harness> runs their installer.
 declined_installs = ${JSON.stringify(c.setup.declinedInstalls)}
+# Accounts declined in setup; add them to the machine-wide registry by hand to use them.
+declined_accounts = ${JSON.stringify(c.setup.declinedAccounts)}
 
 [verification]
 # cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'.
@@ -186,6 +188,13 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
       throw new Error('setup.declined_installs must be a list of harness ids: claude-code, codex, opencode');
     }
     c.setup.declinedInstalls = [...new Set(ids)] as HarnessId[];
+  }
+  if (setup.declined_accounts !== undefined) {
+    const names = setup.declined_accounts;
+    if (!Array.isArray(names) || !names.every(name => typeof name === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(name))) {
+      throw new Error('setup.declined_accounts must be a list of account names');
+    }
+    c.setup.declinedAccounts = [...new Set(names)] as string[];
   }
   // Startup keeps legacy lenience; settings writes must never silently discard a supplied value.
   const accepts = (key: string, value: unknown, valid: boolean, expected: string): void => {

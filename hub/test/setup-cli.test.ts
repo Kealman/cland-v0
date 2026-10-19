@@ -29,7 +29,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
     ] }),
   };
   let stdout = '', stderr = '';
-  const code = await runSetup(['--json'], root, { HOME: root }, { machine, prompter, stdinTTY: true, stdoutTTY: true, write: s => { stdout += s; }, narrate: s => { stderr += s; } });
+  const code = await runSetup(['--json', '--no-accounts'], root, { HOME: root }, { machine, prompter, stdinTTY: true, stdoutTTY: true, write: s => { stdout += s; }, narrate: s => { stderr += s; } });
   assert.equal(code, 1);
   const report = JSON.parse(stdout);
   assert.deepEqual(Object.keys(report), ['root', 'version', 'interactive', 'steps', 'summary', 'next']);
@@ -37,7 +37,8 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   assert.equal(report.version, VERSION);
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
-  assert.equal(report.steps.length, 11);
+  assert.equal(report.steps.length, 12);
+  assert.equal(report.steps.find((s: { name: string }) => s.name === 'accounts').verdict, 'skip');
   assert.equal(report.steps.at(-1).verdict, 'open');
   assert.deepEqual(prompter.asked, []);
   assert.match(stderr, /without a terminal/);
@@ -50,7 +51,7 @@ test('setup --install codex runs without a terminal or question', async t => {
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   let runs = 0;
-  const code = await runSetup(['--install', 'codex'], root, {}, {
+  const code = await runSetup(['--install', 'codex'], root, { HOME: root }, {
     stdinTTY: false, stdoutTTY: false, write: () => {}, prompter: scriptedPrompter([]),
     machine: {
       requiredHarnesses: async () => [],
@@ -71,7 +72,7 @@ test('setup JSON explicit installer reserves stdout for its report', async t => 
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   let stdout = '', stderr = '', runs = 0;
-  await runSetup(['--json', '--install', 'codex'], root, {}, {
+  await runSetup(['--json', '--install', 'codex'], root, { HOME: root }, {
     write: text => { stdout += text; }, narrate: text => { stderr += text; }, prompter: scriptedPrompter([]),
     machine: {
       requiredHarnesses: async () => [],
@@ -114,7 +115,7 @@ test('setup keeps the explicit root and rejects discovered parents or extra flag
     await assert.rejects(runSetup(args, root), /usage: cland setup/);
   }
   let output = '';
-  const code = await runSetup(['sub'], root, {}, { write: s => { output += s; } }).catch(e => { assert.match(e.message, /discovered project root/); return 1; });
+  const code = await runSetup(['sub'], root, { HOME: root }, { write: s => { output += s; } }).catch(e => { assert.match(e.message, /discovered project root/); return 1; });
   assert.equal(code, 1);
   assert.equal(output, '');
 });
@@ -130,7 +131,7 @@ test('setup executable JSON reports open installers without running any harness'
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
   assert.deepEqual(report.steps.map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['accounts', 'ok'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['aide', 'skip'],
   ]);
   assert.match(result.stderr, /without a terminal/);
 });

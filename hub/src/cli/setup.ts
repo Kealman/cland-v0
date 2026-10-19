@@ -31,7 +31,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   let dir: string | undefined;
   let harness: HarnessId | undefined;
   let install: HarnessId | undefined;
-  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-aide] [--attach]');
+  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-accounts] [--no-aide] [--attach]');
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--install') {
@@ -44,7 +44,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
       if (!chosen || harness) throw usage();
       harness = chosen;
       i++;
-    } else if (arg === '--json' || arg === '--yes' || arg === '--no-aide' || arg === '--attach') continue;
+    } else if (arg === '--json' || arg === '--yes' || arg === '--no-aide' || arg === '--no-accounts' || arg === '--attach') continue;
     else if (arg.startsWith('--') || dir !== undefined) throw usage();
     else dir = arg;
   }
@@ -63,7 +63,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   const prompter = io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr });
   const actions = [install ? `install ${install} requested` : '', harness ? `favourite ${harness} requested` : '', yes ? '--yes allows harmless writes' : ''].filter(Boolean).join('; ') || 'detection only';
   narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : ` — without a terminal: ${actions}`}\n`);
-  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, noAide: args.includes('--no-aide'), ...(io.hub ? { hub: io.hub } : {}), ...(harness ? { harness } : {}), ...(install ? { install } : {}), narrate,
+  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, noAide: args.includes('--no-aide'), noAccounts: args.includes('--no-accounts'), ...(io.hub ? { hub: io.hub } : {}), ...(harness ? { harness } : {}), ...(install ? { install } : {}), narrate,
     prompter,
     machine: io.machine ?? setupMachine(root, setupEnv),
   });

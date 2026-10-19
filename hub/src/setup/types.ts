@@ -32,6 +32,7 @@ export type SetupOptions = {
   machine: SetupMachine;
   install?: HarnessId;
   noAide?: boolean;
+  noAccounts?: boolean;
   hub?: SetupHub;
   kind?: typeof projectKind;
   narrate?: (text: string) => void;

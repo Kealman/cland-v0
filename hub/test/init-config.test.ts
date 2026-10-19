@@ -14,19 +14,26 @@ test('update keeps setup declines when refreshing the managed config', t => {
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, '.cland'));
   const path = join(root, '.cland/config.toml');
-  writeFileSync(path, '# managed by cland 0.1.0\n[setup]\ndeclined_installs = ["codex"]\n');
+  writeFileSync(path, '# managed by cland 0.1.0\n[setup]\ndeclined_installs = ["codex"]\ndeclined_accounts = ["claude-work"]\n');
   const report = new Report(root);
   provisionConfig(report, path, root);
   assert.equal(report.changes[0]?.action, 'updated');
-  assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch').setup.declinedInstalls, ['codex']);
+  assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch').setup, { declinedInstalls: ['codex'], declinedAccounts: ['claude-work'] });
 });
 
 test('setup declines round-trip and reject unknown harness ids', () => {
   const config = parseConfig('[setup]\ndeclined_installs = ["codex", "opencode"]', 'scratch');
   assert.deepEqual(config.setup.declinedInstalls, ['codex', 'opencode']);
+  config.setup.declinedAccounts = ['claude-work'];
   assert.deepEqual(parseConfig(renderConfig(config), 'scratch').setup, config.setup);
   for (const input of ['["unknown"]', '"codex"', '[1]']) {
     assert.throws(() => parseConfig(`[setup]\ndeclined_installs = ${input}`, 'scratch', {}, { strict: true }), /setup.declined_installs.*harness ids/);
+  }
+});
+
+test('setup account declines reject malformed names', () => {
+  for (const input of ['[1]', '"claude-work"', '["../work"]', '["Work"]']) {
+    assert.throws(() => parseConfig(`[setup]\ndeclined_accounts = ${input}`, 'scratch'), /setup.declined_accounts.*account names/);
   }
 });
 

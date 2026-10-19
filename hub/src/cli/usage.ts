@@ -40,11 +40,12 @@ export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the 
   update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
 `;
 
-export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-aide] [--attach]
+export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-accounts] [--no-aide] [--attach]
                   check the project, install harnesses on yes, report logins and choose the human's favourite harness
                   --install <harness> runs its installer without asking, even without a terminal
                   without a terminal, --yes or --harness permits the favourite choice
                   --yes accepts harmless defaults and starts the hub; the Aide and logins need a terminal
+                  --no-accounts skips account discovery; accounts are machine-wide and default to No
                   --no-aide skips the hub and Aide; cland starts the hub with the workbench
                   opens the workbench on aide-1; --attach uses the harness's attach in this terminal instead
 `;
