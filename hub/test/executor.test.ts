@@ -1,30 +1,14 @@
-// Executor evidence through the real hub/spoke and CLI, plus the declared source contract.
+// T3: real PATH-selected Node worker launch and recovery of a live worker across hub process restarts.
 import { verificationFixture } from './verification-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { platform, arch, release } from 'node:os';
-import ts from 'typescript';
 import { DatabaseSync } from 'node:sqlite';
-import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, spawnSpoke, startDaemon, tempProject, until, pidAlive } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
-
-test('the executor contract has nine operations and no backend-specific identifiers', async () => {
-  const source = await readFile(new URL('../src/executor/executor.ts', import.meta.url), 'utf8');
-  const file = ts.createSourceFile('executor.ts', source, ts.ScriptTarget.Latest, true);
-  const identifiers: string[] = [];
-  function visit(node: ts.Node): void {
-    if (ts.isIdentifier(node)) identifiers.push(node.text);
-    ts.forEachChild(node, visit);
-  }
-  visit(file);
-  for (const forbidden of ['ssh', 'scp', 'host', 'address', 'key']) assert.ok(!identifiers.includes(forbidden), forbidden);
-  const contract = file.statements.find((node): node is ts.InterfaceDeclaration => ts.isInterfaceDeclaration(node) && node.name.text === 'Executor')!;
-  assert.deepEqual(contract.members.map(member => member.name!.getText(file)), ['acquire', 'prepare', 'deliver', 'start', 'status', 'log', 'cancel', 'release', 'reap']);
-  assert.match(source, /'paused'/);
-});
 
 async function fixture(t: import('node:test').TestContext, script: string, alternateNode = false) {
   const root = await tempProject(t, 'cland-executor-');
@@ -66,7 +50,7 @@ async function fixture(t: import('node:test').TestContext, script: string, alter
     if (job.pid) ownProcess(t, job.pid);
     return job;
   };
-  return { root, ui, item, topic, launch };
+  return { root, ui, item, topic, launch, daemonPid: discovery.pid };
 }
 
 test('verify reports the worker PATH Node, candidate Neovim pin and platform in its receipt and journal', async t => {
@@ -105,6 +89,7 @@ test('a pre-executor running job restored from hub.db reports as local exactly o
   const job = await f.launch({ waitForRunning: true });
   assert.ok(job.pid);
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  await until(() => !pidAlive(f.daemonPid), { what: 'the stopped hub process is gone before editing its store' });
   const db = new DatabaseSync(join(f.root, '.cland', 'hub.db'));
   try {
     const row = db.prepare("select value from meta where key = 'suite-jobs'").get() as { value: string };
@@ -112,9 +97,22 @@ test('a pre-executor running job restored from hub.db reports as local exactly o
     for (const run of jobs) { delete run.executor; delete run.lease; delete run.platform; }
     db.prepare("update meta set value = ? where key = 'suite-jobs'").run(JSON.stringify(jobs));
   } finally { db.close(); }
-  await writeFile(join(f.root, 'finish'), 'ready');
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
+  const adopted = await eventually('the restarted hub adopts the held live worker', async () => {
+    const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+    return status.suites?.find(run => run.id === job.id && run.state === 'running');
+  });
+  assert.equal(adopted.pid, job.pid);
+  assert.equal(adopted.executor, 'local');
+  assert.equal(pidAlive(job.pid), true, 'the restored worker is still alive before its barrier is released');
+  assert.equal(adopted.reported, false);
+  await writeFile(join(f.root, 'finish'), 'ready');
+  const completed = await eventually('the released worker writes its completion receipt', async () => {
+    try { return JSON.parse(await readFile(join(f.root, '.cland', 'run', 'suites', job.id, 'result.json'), 'utf8')) as { code: number }; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
+  });
+  assert.equal(completed.code, 0);
   const read = async () => {
     const history = await ui.request({ type: 'topic.history', topic: f.topic });
     return (history.value as { messages: Array<{ id: string; text: string }> }).messages.filter(message => message.id === `suite:${job.id}`);
@@ -127,6 +125,7 @@ test('a pre-executor running job restored from hub.db reports as local exactly o
   assert.equal(status.suites![0]!.executor, 'local');
   assert.equal(status.suites![0]!.platform?.nvim, 'none');
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  await until(() => !pidAlive(next.discovery.pid), { what: 'the second stopped hub is gone before restart' });
   const again = await startDaemon(t, f.root);
   const againUi = await connectUi(t, again.discovery);
   const history = await againUi.request({ type: 'topic.history', topic: f.topic });

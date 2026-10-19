@@ -120,9 +120,9 @@
       "wall-clock-wait": 1
     },
     "hub/test/durations.test.ts": {},
+    "hub/test/edges-component.test.ts": {},
     "hub/test/edges.test.ts": {
-      "wall-clock-wait": 1,
-      "startDaemon": 2
+      "startDaemon": 1
     },
     "hub/test/epic-close.test.ts": {
       "spawnSpoke": 2
@@ -133,6 +133,7 @@
     },
     "hub/test/executor-admission-lock.test.ts": {},
     "hub/test/executor-admission.test.ts": {},
+    "hub/test/executor-contract.test.ts": {},
     "hub/test/executor-droplet-component.test.ts": {},
     "hub/test/executor-droplet.test.ts": {
       "wall-clock-assertion": 1,
@@ -167,8 +168,9 @@
     "hub/test/freshness.test.ts": {
       "wall-clock-wait": 1
     },
+    "hub/test/handover-integrity-component.test.ts": {},
     "hub/test/handover-integrity.test.ts": {
-      "startDaemon": 5,
+      "startDaemon": 2,
       "spawnSpoke": 1
     },
     "hub/test/handover-process.test.ts": {
@@ -328,11 +330,9 @@
     "hub/test/request-guard.test.ts": {
       "wall-clock-wait": 3
     },
+    "hub/test/resilience-component.test.ts": {},
     "hub/test/resilience.test.ts": {
-      "wall-clock-wait": 4,
-      "wall-clock-assertion": 1,
-      "startDaemon": 2,
-      "spawnSpoke": 9
+      "spawnSpoke": 3
     },
     "hub/test/review-qa-component.test.ts": {},
     "hub/test/review-qa.test.ts": {

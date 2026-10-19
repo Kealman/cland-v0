@@ -1,12 +1,12 @@
-// The JSON-lines edges (spec 4.2): the Unix socket of a real daemon and the stdio of a child hub. Each line
-// is a frame and is held to the frame limit on its own, however the bytes arrive.
+// T3: native stdio startup, sandbox/listener bind failure, daemon lock refusal and child exit.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION, type VerificationQueue } from '../src/protocol.ts';
-import { CLI_ENTRY, connectSocket, frameClient, isolateVerification, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+import { CLI_ENTRY, frameClient, isolateVerification, killDaemon, pidAlive, startDaemon, tempProject, type FrameClient } from './harness.ts';
+
 
 /** A valid `topic.list` request one byte under the frame limit (its newline not counted). */
 export function nearLimitFrame(id: string): string {
@@ -16,38 +16,6 @@ export function nearLimitFrame(id: string): string {
   return frame;
 }
 
-test('the Unix socket reads a near-limit frame and the next one from a single write; a line or a remainder over the limit closes', async (t) => {
-  const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectSocket(discovery.socket);
-  t.after(() => ui.close());
-  ui.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'ui' });
-  assert.equal((await ui.next()).type, 'welcome');
-
-  // a small frame first, so the near-limit one does not start on a read boundary; all three in one write
-  ui.write(`${JSON.stringify({ type: 'topic.list', id: 'first' })}\n${nearLimitFrame('big')}\n${JSON.stringify({ type: 'topic.list', id: 'small' })}\n`);
-  assert.equal((await ui.next(10_000)).id, 'first');
-  const big = await ui.next(10_000);
-  assert.equal(big.id, 'big');
-  assert.equal(big.ok, true);
-  const small = await ui.next();
-  assert.equal(small.id, 'small');
-  assert.equal(small.ok, true);
-
-  // one line over the limit, even arriving complete with its newline, ends the connection
-  ui.write(`${'x'.repeat(MAX_FRAME_BYTES + 1)}\n`);
-  await ui.closed;
-
-  // an unfinished line already over the limit ends it too, before its newline ever comes
-  const other = await connectSocket(discovery.socket);
-  t.after(() => other.close());
-  other.send({ type: 'hello', protocol: PROTOCOL_VERSION, secret: discovery.secret, client: 'ui' });
-  assert.equal((await other.next()).type, 'welcome');
-  other.write('x'.repeat(MAX_FRAME_BYTES + 1));
-  await other.closed;
-});
-
-// ------------------------------------------------------------------ stdio, with and without listeners
 
 type StdioHub = { ui: FrameClient; pid: number; stderr: () => string; exited: Promise<number | null>; write: (raw: string) => void };
 
@@ -65,7 +33,7 @@ async function spawnStdioHub(t: TestContext, root: string, args: string[], prefi
   const exited = new Promise<number | null>((resolve) => child.once('exit', (code) => resolve(code)));
   t.after(async () => {
     child.stdin.end();
-    await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]);
+    await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))]); // lint-allow-wall-clock: bound native child teardown before forced reaping
     if (child.exitCode === null) await killDaemon(child.pid as number);
   });
   const ui = frameClient(
