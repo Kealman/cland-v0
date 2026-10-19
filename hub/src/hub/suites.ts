@@ -275,12 +275,15 @@ export class Suites {
   };
   #remember(job: SuiteJob, announce: boolean): void {
     if (!this.#order.has(job.id)) { job.sequence ??= this.#order.size; this.#order.set(job.id, job.sequence); }
-    const later = (previous: SuiteJob | undefined) => !previous || this.#order.get(job.id)! >= this.#order.get(previous.id)!;
-    if (job.item && later(this.#latestItems.get(idNumber(job.item)))) this.#latestItems.set(idNumber(job.item), job);
-    if (job.branch && later(this.#latestBranches.get(job.branch))) this.#latestBranches.set(job.branch, job);
     // A successful report checkpoints the log artifact across async I/O. Publish its
-    // terminal card once with that artifact, or immediately if reporting is blocked.
-    if (announce && job.state === 'finished' && !job.reported && !job.error) return;
+    // terminal card once with that artifact, or once the blocking error is persisted.
+    if (job.state === 'finished' && !job.reported && !job.error) return;
+    const later = (previous: SuiteJob | undefined) => !previous || this.#order.get(job.id)! >= this.#order.get(previous.id)!;
+    // Task frames can also be built by unrelated tracker updates. Keep their lookup
+    // at the last publishable checkpoint while the live job awaits cleanup/reporting.
+    const snapshot = { ...job };
+    if (job.item && later(this.#latestItems.get(idNumber(job.item)))) this.#latestItems.set(idNumber(job.item), snapshot);
+    if (job.branch && later(this.#latestBranches.get(job.branch))) this.#latestBranches.set(job.branch, snapshot);
     // Report recovery makes a finished result eligible for stage evidence even
     // when its public result card was already published with a delivery error.
     const card = JSON.stringify([verifyResult(job), job.reported]);

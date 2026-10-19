@@ -9,7 +9,7 @@ import { Suites, type SuiteJob } from '../src/hub/suites.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import { FakeClock } from './fake-clock.ts';
 
-async function fixture(t: test.TestContext, count: number, reported: boolean) {
+async function fixture(t: test.TestContext, count: number, reported: boolean, options: { job?: Partial<SuiteJob>; onJob?: (job: Readonly<SuiteJob>) => void } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'suite-persistence-'));
   const database = join(root, 'hub.db');
   const store = new Store(database), clock = new FakeClock();
@@ -23,13 +23,13 @@ async function fixture(t: test.TestContext, count: number, reported: boolean) {
       head: 'a'.repeat(40), branch: 'fixture', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate'),
       pid: null, started: null, outcome: { code: 0, cause: '' }, artifact: null, reported, error: null,
       cleaned: true, progressReported: true, budgetReported: true, finished, state: 'finished',
-      selection: { mode: 'hub-only', files: ['x'.repeat(9000)], reason: 'history' } };
+      selection: { mode: 'hub-only', files: ['x'.repeat(9000)], reason: 'history' }, ...options.job };
     if (!reported) { await writeFile(job.result, JSON.stringify({ code: 0, finished })); await writeFile(job.log, ''); }
     jobs.push(job);
   }
   store.setMeta('suite-jobs', JSON.stringify(jobs));
   let reports = 0, allowed = false;
-  const suites = new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env: { CLAND_EXECUTOR_STATE: join(root, 'state') } });
+  const suites = new Suites(store, root, async () => { reports++; if (!allowed) throw new Error('forbidden: artifact.create (a session with no role has no tools)'); }, { clock, env: { CLAND_EXECUTOR_STATE: join(root, 'state') }, ...(options.onJob ? { onJob: options.onJob } : {}) });
   t.after(async () => { await suites.close(); store.close(); await rm(root, { recursive: true, force: true }); });
   return { store, suites, clock, database, reports: () => reports, allowReports: () => { allowed = true; } };
 }
@@ -66,4 +66,40 @@ test('a changed authorization retries a forbidden report once', async t => {
   assert.equal(f.suites.status()[0]!.reported, true);
   await f.clock.advance(1000); await f.suites.settled();
   assert.equal(f.reports(), 2);
+});
+
+
+test('cleanup-blocked terminal cards wait for the persisted error checkpoint', async t => {
+  // T1: delay the error row at the asynchronous executor cleanup boundary.
+  // The tracker reads latest() when it builds task frames, including unrelated updates.
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const error = 'suite cleanup waiting for a verified worker identity; process preserved';
+  t.mock.method(LocalExecutor.prototype, 'status', async () => ({ state: 'done', code: 1 }));
+  t.mock.method(LocalExecutor.prototype, 'release', async () => {
+    entered.resolve(); await release.promise; throw new Error(error);
+  });
+  const announcements: Array<{ state: string | undefined; error: string | null }> = [];
+  const f = await fixture(t, 1, false, {
+    job: { item: 'T-1', executor: 'local', state: 'running', cleaned: false, outcome: { code: 1, cause: 'fixture admission failed' } },
+    onJob: job => {
+      const reader = new Store(f.database);
+      try {
+        const persisted = JSON.parse(reader.meta(`suite-job:${job.id}`)!) as { job: SuiteJob };
+        announcements.push({ state: job.state, error: persisted.job.error });
+      } finally { reader.close(); }
+    },
+  });
+  try {
+    await f.clock.advance(1000); await entered.promise;
+    for (const [item, branch] of [['T-1', null], ['T-2', 'fixture']] as const) {
+      assert.equal(f.suites.latest(item, branch)?.state, 'running', 'a task frame cannot expose finished while the error row is delayed');
+    }
+    assert.deepEqual(announcements, [], 'cleanup has not produced a terminal announcement');
+  } finally { release.resolve(); await f.suites.settled(); }
+  for (const [item, branch] of [['T-1', null], ['T-2', 'fixture']] as const) {
+    assert.equal(f.suites.latest(item, branch)?.state, 'finished');
+  }
+  assert.deepEqual(announcements, [{ state: 'finished', error }], 'the terminal announcement observes the committed cleanup error');
+  assert.equal((JSON.parse(f.store.meta('suite-job:0')!) as { job: SuiteJob }).job.cleaned, false);
+  assert.equal(f.suites.status()[0]!.reported, false);
 });
