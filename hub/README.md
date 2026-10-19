@@ -1001,8 +1001,9 @@ explicit directory, refuses a discovered parent and HOME, and stops with
 "run cland init first" when `.cland/` is absent.
 
 Setup currently detects the project, then Claude Code, Codex and OpenCode, then
-the installed harnesses' logins, then grants project trust for every installed
-harness, in that order. Each line has `ok`, `done`, `skip`,
+the installed harnesses' logins, then records the favourite harness and grants
+project trust for every installed harness, in that order. Each line has `ok`,
+`done`, `skip`,
 `open` or `fail`, a detail and any fix. With no harness installed, all three
 installers are `open`; with one installed, missing alternatives are `skip` with
 an installer hint. A binary found only in an installer's folder explains that a
@@ -1023,13 +1024,23 @@ favourite are preserved. Installer folders supplement setup's own PATH for later
 
 Without both stdin and stdout attached to a terminal, setup asks and launches
 nothing. Installers and their associated writes need an explicit `--install`;
-trust writes need `--yes`. `--json` disables questions and prints one object
+trust writes need `--yes`, and the favourite choice needs `--yes` or `--harness`.
+`--json` disables questions and prints one object
 with `root`, `version`, `interactive`, `steps`, `summary` and `next` on stdout;
 narration and any explicitly requested installer's output go to stderr. It can
-still install with `--install` or write trust with `--yes`. `steps` uses doctor's `name`,
+still install with `--install`, choose a favourite with `--harness` or `--yes`,
+or write trust with `--yes`. `steps` uses doctor's `name`,
 `verdict`, `detail` and optional `fix` fields. `next` is `cland setup` while work
 is open or failed, otherwise `cland`. Exit codes are 0 when no step is open or
 failed, 1 otherwise, and 130 for input cancellation at a question.
+
+The favourite step offers installed harnesses in Claude Code, Codex, OpenCode
+order, labels signed-out ones and asks no question when only one is installed.
+`--harness <h>` selects an installed harness without a question; `--yes` takes
+the first installed default. The choice marks `[aide.launch]` in `roles.toml`;
+changing harness also clears its model and resets effort for that harness.
+An already-marked installed favourite reports `ok` without a question unless
+`--harness` selects another. Invalid roles are left untouched with repair guidance.
 
 Trust asks no question in a terminal. It writes the real harness configuration
 for this project's path: Claude Code's profile `.claude.json` under its lock,
@@ -1042,8 +1053,8 @@ and without `--yes`, missing trust stays `open` and no config is written.
 
 `--yes` accepts defaults only for questions marked harmless and permits the
 trust writes above, including with `--json`. It never authorizes installing
-or signing in. Later steps will add logins, accounts, the favourite harness,
-hub and Aide. They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
+or signing in. Later steps will add login actions, accounts, hub and Aide.
+They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
 Action steps must detect again after acting and let that detection decide their
 result. `src/setup/terminal.ts` runs a child with inherited terminal I/O (stdout
 redirects to stderr for JSON reports), ignores

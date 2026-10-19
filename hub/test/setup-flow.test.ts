@@ -1,4 +1,4 @@
-// T1: setup actions and reports on an in-memory machine; no processes or terminal; scratch trust configs.
+// T1: setup actions and reports on an in-memory machine; no processes or terminal; scratch roles and trust configs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -14,6 +14,8 @@ import { CHOSEN, setRoleKey } from '../src/roles/editor.ts';
 function scratch(t: test.TestContext, trusted = true): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'cland-setup-')));
   t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  writeFileSync(join(root, '.cland/roles.toml'), `[aide.launch]\nharness = "opencode" # the human's favourite, chosen in cland setup\n`);
   if (trusted) {
     writeFileSync(join(root, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));
     mkdirSync(join(root, '.codex'));
@@ -85,7 +87,7 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code auth', 'open'], ['opencode auth', 'skip'], ['trust', 'open'],
+    ['claude-code auth', 'open'], ['opencode auth', 'skip'], ['favourite', 'ok'], ['trust', 'open'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -175,9 +177,9 @@ test('the first installed harness makes missing alternatives optional in the fin
       ],
     } : { id, bin: null, version: null, checks: [] },
   } });
-  assert.equal(code, 0);
+  assert.equal(code, 1); // favourite still needs --harness or --yes without a terminal
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex auth', 'ok'], ['trust', 'ok'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex auth', 'ok'], ['favourite', 'open'], ['trust', 'ok'],
   ]);
 });
 
@@ -222,7 +224,7 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   } });
   assert.equal(code, 0);
   assert.equal(report.next, 'cland');
-  assert.deepEqual(report.summary, { ok: 8, done: 0, skip: 0, open: 0, fail: 0 });
+  assert.deepEqual(report.summary, { ok: 9, done: 0, skip: 0, open: 0, fail: 0 });
   assert.ok(report.steps.every(s => s.verdict === 'ok'));
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });

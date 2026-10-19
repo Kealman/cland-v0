@@ -15,7 +15,7 @@ export type SetupMachine = {
 };
 
 /** Every step receives the same policy. yes accepts harmless defaults only;
- * Without a terminal, installers need --install and harmless writes such as trust need --yes.
+ * Without a terminal, installers need --install, trust needs --yes, and favourite needs --harness or --yes.
  */
 export type SetupOptions = {
   root: string;
@@ -24,6 +24,7 @@ export type SetupOptions = {
   env: NodeJS.ProcessEnv;
   interactive: boolean;
   yes: boolean;
+  harness?: HarnessId;
   prompter: Prompter;
   machine: SetupMachine;
   install?: HarnessId;

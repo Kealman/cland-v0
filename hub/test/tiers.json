@@ -289,6 +289,7 @@
     "hub/test/session-stop-races.test.ts": "T3",
     "hub/test/session-usage.test.ts": "T2",
     "hub/test/setup-cli.test.ts": "T2",
+    "hub/test/setup-favourite.test.ts": "T1",
     "hub/test/setup-flow.test.ts": "T1",
     "hub/test/setup-machine.test.ts": "T3",
     "hub/test/setup-prompter.test.ts": "T1",

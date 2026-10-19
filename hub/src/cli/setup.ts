@@ -24,20 +24,26 @@ type SetupIO = {
 /** The CLI owns roots, terminal policy and rendering; the runner owns the ordered steps. */
 export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env, io: Partial<SetupIO> = {}): Promise<number> {
   const json = args.includes('--json');
+  let dir: string | undefined;
+  let harness: HarnessId | undefined;
   let install: HarnessId | undefined;
-  const positional: string[] = [];
+  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>]');
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--install') {
-      const id = args[++i] as HarnessId;
-      if (install || !HARNESS_ORDER.includes(id)) throw new Error('--install requires one harness: claude-code, codex or opencode');
-      install = id;
+      const chosen = HARNESS_ORDER.find(id => id === args[i + 1]);
+      if (!chosen || install) throw new Error('--install requires one harness: claude-code, codex or opencode');
+      install = chosen;
+      i++;
+    } else if (arg === '--harness') {
+      const chosen = HARNESS_ORDER.find(id => id === args[i + 1]);
+      if (!chosen || harness) throw usage();
+      harness = chosen;
+      i++;
     } else if (arg === '--json' || arg === '--yes') continue;
-    else if (arg.startsWith('--')) throw new Error('usage: cland setup [dir] [--json] [--yes] [--install <harness>]');
-    else positional.push(arg);
+    else if (arg.startsWith('--') || dir !== undefined) throw usage();
+    else dir = arg;
   }
-  const [dir, extra] = positional;
-  if (extra !== undefined) throw new Error('usage: cland setup [dir] [--json] [--yes] [--install <harness>]');
   const target = resolve(cwd, dir ?? '.');
   if (!existsSync(target) || !statSync(target).isDirectory()) throw new Error(`${target} is not a directory`);
   const root = realpathSync(target);
@@ -50,9 +56,9 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   // Keep installer folders available to later steps and the hub child without changing the caller's env.
   const setupEnv = { ...env };
   const yes = args.includes('--yes');
-  const actions = [install ? `install ${install} requested` : '', yes ? '--yes allows harmless writes' : ''].filter(Boolean).join('; ') || 'detection only';
+  const actions = [install ? `install ${install} requested` : '', harness ? `favourite ${harness} requested` : '', yes ? '--yes allows harmless writes' : ''].filter(Boolean).join('; ') || 'detection only';
   narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : ` — without a terminal: ${actions}`}\n`);
-  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, ...(install ? { install } : {}), narrate,
+  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, ...(harness ? { harness } : {}), ...(install ? { install } : {}), narrate,
     prompter: io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr }),
     machine: io.machine ?? setupMachine(root, setupEnv),
   });

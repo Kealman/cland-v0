@@ -14,6 +14,7 @@ import type { SetupMachine } from '../src/setup/types.ts';
 test('setup JSON is one report on stdout with nonterminal narration on stderr', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   const prompter = scriptedPrompter([]);
   const machine: SetupMachine = {
     read: async () => null,
@@ -35,7 +36,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   assert.equal(report.version, VERSION);
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
-  assert.equal(report.steps.length, 8);
+  assert.equal(report.steps.length, 9);
   assert.equal(report.steps.at(-1).verdict, 'open');
   assert.deepEqual(prompter.asked, []);
   assert.match(stderr, /without a terminal/);
@@ -46,6 +47,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
 test('setup --install codex runs without a terminal or question', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   let runs = 0;
   const code = await runSetup(['--install', 'codex'], root, {}, {
     stdinTTY: false, stdoutTTY: false, write: () => {}, prompter: scriptedPrompter([]),
@@ -65,6 +67,7 @@ test('setup --install codex runs without a terminal or question', async t => {
 test('setup JSON explicit installer reserves stdout for its report', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   let stdout = '', stderr = '', runs = 0;
   await runSetup(['--json', '--install', 'codex'], root, {}, {
     write: text => { stdout += text; }, narrate: text => { stderr += text; }, prompter: scriptedPrompter([]),
@@ -98,11 +101,15 @@ test('setup refuses HOME through the CLI and its usage appears in help', async (
 test('setup keeps the explicit root and rejects discovered parents or extra flags', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   const sub = join(root, 'sub');
   await mkdir(sub);
   await assert.rejects(runSetup([], sub), /refuses target.*discovered project root/);
   await assert.rejects(runSetup(['--unknown'], root), /usage: cland setup/);
   await assert.rejects(runSetup(['.', '.'], root), /usage: cland setup/);
+  for (const args of [['--harness'], ['--harness', 'other'], ['--harness', '--yes'], ['--harness', 'codex', '--harness', 'opencode']]) {
+    await assert.rejects(runSetup(args, root), /usage: cland setup/);
+  }
   let output = '';
   const code = await runSetup(['sub'], root, {}, { write: s => { output += s; } }).catch(e => { assert.match(e.message, /discovered project root/); return 1; });
   assert.equal(code, 1);
@@ -112,6 +119,7 @@ test('setup keeps the explicit root and rejects discovered parents or extra flag
 test('setup executable JSON reports open installers without running any harness', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   const result = await clandWithEnv(root, { CLAND_CLAUDE_BIN: '/missing/claude', CLAND_CODEX_BIN: '/missing/codex', CLAND_OPENCODE_BIN: '/missing/opencode' }, 'setup', root, '--json', '--yes');
   assert.equal(result.code, 1, result.stderr);
   const report = JSON.parse(result.stdout);
@@ -119,7 +127,7 @@ test('setup executable JSON reports open installers without running any harness'
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
   assert.deepEqual(report.steps.map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['trust', 'skip'],
+    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['favourite', 'open'], ['trust', 'skip'],
   ]);
   assert.match(result.stderr, /without a terminal/);
 });
@@ -128,6 +136,7 @@ test('setup retains the CLI root spelling for Codex trust', async t => {
   const root = await tempProject(t);
   const alias = join(root, 'alias');
   await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/roles.toml'), `[aide.launch]\nharness = "codex" # the human's favourite, chosen in cland setup\n`);
   await mkdir(join(root, '.codex'));
   await symlink(root, alias);
   const file = join(root, '.codex/config.toml');
