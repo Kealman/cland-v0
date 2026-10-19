@@ -2,8 +2,8 @@
 id: T-885
 kind: task
 title: The load gate's known-test set stays current under the merge queue without a stage-close refresh
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-620
 branch: t/T-885-the-load-gate-s-known-test-set-stays
 created: 2026-10-19T16:16:37.559Z
-updated: 2026-10-19T19:45:20.884Z
+updated: 2026-10-19T20:07:15.875Z
+closed: 2026-10-19T20:07:15.875Z
 ---
 
 ## Summary
@@ -24,19 +25,22 @@ The load gate treats every T1/T2 identity missing from hub/test/durations.json's
 ## Acceptance criteria
 
 - [x] C1. (T1, known-identity admission test) A T1/T2 identity that passed its five load-gate repetitions in the task run of an item that has since landed on dev is not repeated by later task runs, with no manual baseline refresh. A test over the gate's known-identity set shows this, and an identity introduced by an unlanded branch is still repeated.
-  - done: impl-885 · 2026-10-19T19:37:04.075Z
   - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final · 2026-10-19T19:38:32.635Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
+  - done: impl-885 · 2026-10-19T19:54:01.791Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final-2 · 2026-10-19T19:56:17.332Z · commit d4792e4831895f2a7defdb8eeac38e811a3012ca
 - [x] C2. `node hub/test/durations.ts refresh` given logs that each cover only some tiers keeps the previous baseline entries of files that appear in none of the given logs, and still drops tests that vanished from files the newest log ran (T1 test over refreshDurations).
-  - done: impl-885 · 2026-10-19T19:37:07.290Z
   - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final · 2026-10-19T19:38:32.635Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
+  - done: impl-885 · 2026-10-19T19:54:02.896Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final-2 · 2026-10-19T19:56:17.332Z · commit d4792e4831895f2a7defdb8eeac38e811a3012ca
 - [x] C3. (T0, docs inspection) docs/agents/tests.md describes the known-identity rule and the partial-log refresh in place of the stage-close-only rule.
   - verified: rev-31 [reviewer] · run rev-20261019-885-source-2 · 2026-10-19T16:26:14.684Z · commit d2c9890f799b544e30c571141988ec716788f164
   - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
   - verified: rev-31 [reviewer] · run rev-20261019-885-integration-source · 2026-10-19T19:15:32.144Z · commit e5d0abef240b47e29f8812ca841664e46b5d625f
   - verified: rev-31 [reviewer] · run rev-20261019-885-shared-source · 2026-10-19T19:26:35.174Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
-  - done: impl-885 · 2026-10-19T19:37:09.584Z
   - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final · 2026-10-19T19:38:32.635Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
   - verified: rev-31 [reviewer] · run rev-20261019-885-integration-source-2 · 2026-10-19T19:45:20.884Z · commit d4792e4831895f2a7defdb8eeac38e811a3012ca
+  - done: impl-885 · 2026-10-19T19:54:04.007Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final-2 · 2026-10-19T19:56:17.332Z · commit d4792e4831895f2a7defdb8eeac38e811a3012ca
 
 ## Comments
 
@@ -186,3 +190,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta clear, no Standards/Spec findings. Independently read Coordinator 79b3a85f allowing this one dev merge after conflict. Only manual conflict is Dispatcher Suites construction beside the newly landed DevT3Probes/DevT3Search setup. Combined diff and comparison to pinned dev show the complete dev constructor/search wiring retained, with only the existing taskLanding callback added: closed item summary supplies its exact merge receipt, otherwise null. Proof planner, refresh implementation, three refresh controls and two landed-load controls are byte-unchanged from the prior final-clear head. C3 docs still describe exact landed-head 5/5 proof admission, partial-log unobserved retention/empty-file pruning/provenance; reverified at this head. Separate targeted 2+3+17+8 checks and both-project typecheck reported green, functional timing only. Earlier final receipt is stale for this new head; C1/C2 await fresh mode-free configured task execution. See integration delta artifact A-6480.
 
 Criteria: C3 verified.
+
+### rev-31 · 2026-10-19T19:56:17.332Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-integration-final-2
+commit: d4792e4831895f2a7defdb8eeac38e811a3012ca
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear at unchanged integration head. A-6514 run 4e9b8ce0 exits 0: 1653/1653 ordinary, 335/335 load finishes, 67 groups 5/5, zero tier mismatches/non-pass. Five owned C1/C2 controls pass ordinary and 5/5 within T1 budgets; C3 same-head inspection A-6480 retained. A-6521 lists the complete raw audit and known external report-only rows, covered per Coordinator 798ff31d (no duplicate aside). T3 remains periodic/integrated evidence.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T20:07:15.875Z
+
+Merged 58a203e50ee03cd9a0a6d45e8e094b395842a9c6 onto dev.

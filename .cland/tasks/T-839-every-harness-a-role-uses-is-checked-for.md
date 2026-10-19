@@ -2,8 +2,8 @@
 id: T-839
 kind: task
 title: Every harness a role uses is checked for a login and signed in on yes, and the second check decides
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-627
 branch: t/T-839-every-harness-a-role-uses-is-checked-for
 created: 2026-10-19T06:34:12.988Z
-updated: 2026-10-19T19:45:20.428Z
+updated: 2026-10-19T20:07:23.997Z
+closed: 2026-10-19T20:07:23.997Z
 ---
 
 ## Summary
@@ -42,18 +43,23 @@ Tracer bullet 2, the login half. For each harness a role uses (N3's function), s
 - [x] C1. A signed-out Claude Code used by a role runs `claude auth login` on yes, and the second check reading signed in gives `claude-code login done` (T1).
   - done: impl-839 · 2026-10-19T19:36:25.397Z
   - verified: rev-31 [reviewer] · run rev-20261019-839-final · 2026-10-19T19:38:29.285Z · commit 1e72273030453ff8949181b11e791cac74f2a673
+  - verified: rev-31 [reviewer] · run rev-20261019-839-integration-final · 2026-10-19T19:56:35.037Z · commit 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2
 - [x] C2. A login that exits 0 but leaves the harness signed out offers one retry, and a no then gives `fail` with `run: claude auth login` (T1).
   - done: impl-839 · 2026-10-19T19:36:30.159Z
   - verified: rev-31 [reviewer] · run rev-20261019-839-final · 2026-10-19T19:38:29.285Z · commit 1e72273030453ff8949181b11e791cac74f2a673
+  - verified: rev-31 [reviewer] · run rev-20261019-839-integration-final · 2026-10-19T19:56:35.037Z · commit 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2
 - [x] C3. A signed-out Codex that no role uses is not offered a login, and its line says no role uses it (T1).
   - done: impl-839 · 2026-10-19T19:36:39.204Z
   - verified: rev-31 [reviewer] · run rev-20261019-839-final · 2026-10-19T19:38:29.285Z · commit 1e72273030453ff8949181b11e791cac74f2a673
+  - verified: rev-31 [reviewer] · run rev-20261019-839-integration-final · 2026-10-19T19:56:35.037Z · commit 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2
 - [x] C4. OpenCode's login question defaults to No, and on yes the command runs with `OPENCODE_DB` set to cland's database after its folder exists (T1, asserting the command's env).
   - done: impl-839 · 2026-10-19T19:36:43.855Z
   - verified: rev-31 [reviewer] · run rev-20261019-839-final · 2026-10-19T19:38:29.285Z · commit 1e72273030453ff8949181b11e791cac74f2a673
+  - verified: rev-31 [reviewer] · run rev-20261019-839-integration-final · 2026-10-19T19:56:35.037Z · commit 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2
 - [x] C5. Without a terminal, no login runs, and each signed-out harness in use is `open` with its exact command (T1).
   - done: impl-839 · 2026-10-19T19:36:47.822Z
   - verified: rev-31 [reviewer] · run rev-20261019-839-final · 2026-10-19T19:38:29.285Z · commit 1e72273030453ff8949181b11e791cac74f2a673
+  - verified: rev-31 [reviewer] · run rev-20261019-839-integration-final · 2026-10-19T19:56:35.037Z · commit 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2
 
 ## Comments
 
@@ -153,3 +159,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized merge delta clear, no Standards/Spec findings. Independently read Coordinator 79b3a85f allowing this one dev merge after conflict. Only manual conflict is setup-flow.test.ts: retain login labels/required-harness and exact-command/auth assertions, selected-profile pretrust/trust-ok protection, add the landed hub/Aide skip rows and noAide:true to focused fixture calls. noAide's landed hub step returns skip before obtaining a native client; T-844's dedicated hub/Aide tests remain on dev. The summary now accounts for two skip rows while still requiring all preceding steps ok. Product logins.ts is byte-unchanged from the final-clear head. Types merge preserves dev's noAide/hub/project-kind options plus T-839's run environment option. Against pinned dev only logins.ts, types.ts and setup-flow.test.ts differ. Twenty cases/T1 enforcement and typecheck are reported green; fresh receipt still required. Earlier final receipt is stale for this new head; C1–C5 await fresh mode-free configured task execution. See integration delta artifact A-6479.
+
+### impl-839 · 2026-10-19T19:54:05.078Z
+
+Post-integration mode-free verification 4d2b88b9-a205-4d8f-85a5-34ac0eb43080 passed at exact source-reviewed 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2: 1656/1656 tests, zero fail/cancel/skip/TODO. Receipt A-6515, Linux x64 droplet c-8 lon1, lifetime 405s, cost $0.0281. Claimant done marks remain; waiting for fresh same-head final Reviewer verdict before reporting ready for re-enqueue.
+
+### rev-31 · 2026-10-19T19:56:35.037Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-839-integration-final
+commit: 32e5c879f7ed95a53a8769f8a7b3ce90b156c8e2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head configured mode-free run 4d2b88b9 / A-6515 passes 1656/1656 ordinary, 355/355 load finishes, all 71 groups 5/5, zero non-pass/tier mismatch. All 20 setup-flow cases and eleven new login identities 5/5 establish C1–C5; max owned repetition .029384790s, whole file .407091185s. Profile/override/no-spawn and noAide integration retained (A-6479/A-6447). A-6522 retains full raw audit and known report-only rows under Coordinator 798ff31d; no duplicate aside. T3 remains periodic/integrated evidence.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T20:07:23.997Z
+
+Merged d801ec6948689b568ecbdc4a062a4e0930403f36 onto dev.

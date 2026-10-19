@@ -3,7 +3,7 @@ id: T-900
 kind: task
 title: "Process-helper migration: CLI tests (aide claims, artifacts, GitHub import)"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-638
 branch: t/T-900-process-helper-migration-cli-tests-aide
 created: 2026-10-19T19:27:16.880Z
-updated: 2026-10-19T19:47:31.284Z
+updated: 2026-10-19T20:09:01.727Z
 ---
 
 ## Summary
@@ -32,10 +32,14 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 
 ## Acceptance criteria
 
-- [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+- [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
   - verified: rev-31 [reviewer] · run rev-20261019-900-source-2 · 2026-10-19T19:47:01.422Z · commit f80390dc95d80b1a42a680758e1a85b44e7bd0ad
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-31 [reviewer] · 2026-10-19T19:35:21.153Z · note Moved T2 cases retain non-exempt native Git starts and submitted over-budget timings; no compliant final-source T1/T2 gate evidence yet.
+  - verified: rev-31 [reviewer] · run rev-20261019-900-source-3 · 2026-10-19T19:55:31.228Z · commit 855916de6906388afb7cc2dcba6d45cf8be75648
+  - done: impl-900 · 2026-10-19T20:08:28.744Z
+  - verified: rev-31 [reviewer] · run rev-20261019-900-final · 2026-10-19T20:09:00.222Z · commit 855916de6906388afb7cc2dcba6d45cf8be75648
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - done: impl-900 · 2026-10-19T20:08:29.592Z
+  - verified: rev-31 [reviewer] · run rev-20261019-900-final · 2026-10-19T20:09:00.222Z · commit 855916de6906388afb7cc2dcba6d45cf8be75648
 
 ## Comments
 
@@ -84,3 +88,56 @@ Criteria: C1 verified.
 ### impl-900 · 2026-10-19T19:47:31.284Z
 
 Source-clear A-6491 at unchanged f80390dc; C1 verified by Reviewer. Mode-free cland verify admitted run dc479d17-fb37-48b3-9558-396c462e33d3, reporting to topic-638, reviewing holder and claimant. Waiting idle for its exact-head Linux receipt; C2's 12 identities ×5 repetitions remain pending. Retained T3 cases are locally green and Linux T3 stays landing evidence.
+
+### impl-900 · 2026-10-19T19:53:56.609Z
+
+Failed run dc479d17/A-6505 at f80390dc matches the assignment's known shared T-891 defect only (two verify-tool identities, 12 with repetitions). All 12 owned moved identities passed 5/5, no owned failures. Applied exactly pre-authorized a7159290 + 67a01b6f, now pushed 855916de with no dev merge and pre-push fetch/merge-tree clean. Repaired verify-tool file passes 3/3 locally; root typecheck, tiers, diff-check green. A-6512 records delta/failed-parent evidence. Fresh source review requested before replacement-head mode-free verification; C2 still pending.
+
+### rev-31 · 2026-10-19T19:55:30.423Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-900-runtime-1
+commit: f80390dc95d80b1a42a680758e1a85b44e7bd0ad
+scope: evidence
+findings: [{"severity":"medium","text":"Known shared T-891 fixture defect: two verify-tool identities fail ordinary and 0/5 repetitions without a configured verification command; A-6505 exits 1. All twelve owned moved identities pass 5/5, but the task gate is not green.","file":"hub/test/verify-tool.test.ts","line":48}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Independent entire-log audit A-6518: ordinary 1407/1409 pass; 275/285 repetition finishes pass. All failures are the two known shared identities; zero owned budget/trip rows, all 12 owned cases 5/5 under tier budgets. Replacement source is reviewed separately.
+
+Criteria: C2 failed (A-6505 mode-free run exits 1 on the two shared verify-tool fixtures despite 12 owned identities passing 5/5.).
+
+### rev-31 · 2026-10-19T19:55:31.228Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-900-source-3
+commit: 855916de6906388afb7cc2dcba6d45cf8be75648
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized shared T-891 delta only: +7/-1 verify-tool fixture command/worktree configuration, assertions and injected selection preserved. T-900 source/native routing/allowances unchanged from A-6491/A-6459; C1 reverified. A-6518 retains failed A-6505 audit and source inspection. C2 awaits fresh same-head wholly green mode-free verification and all 12 moved identities 5/5; native T3 Linux remains landing evidence.
+
+Criteria: C1 verified.
+
+### impl-900 · 2026-10-19T20:08:43.415Z
+
+Exact reviewed head 855916de passed mode-free Linux verification 59cce871 / A-6557: 1644 pass, zero fail/cancel/skip/TODO; all 12 owned identities ordinary and 5/5 (60/60), no owned overrun/trip. Linux x64 c-8 lon1, lifetime 388s, $0.0269. A-6559 maps exact gate lines and criteria; C1/C2 claimant done marks added. Final same-head Reviewer verdict pending. Source unchanged; no new duration allowance. Native T3 local proof A-6459 remains applicable, Linux T3 deferred to periodic/integrated occasions as reviewed.
+
+### rev-31 · 2026-10-19T20:09:00.222Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-900-final
+commit: 855916de6906388afb7cc2dcba6d45cf8be75648
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head configured mode-free 59cce871/A-6557 green: 1644/1644 ordinary, 285/285 load finishes, all 57 groups 5/5, zero non-pass/tier mismatch. All twelve owned cases pass 5/5 within budgets (T2 ordinary max 1.562021779s, rep max 1.900186253s; file max 5.328788520s). C1 source A-6518 retained; C2 assertion/native/no-allowance evidence A-6491/A-6459 unchanged. A-6562 keeps whole-log audit/known external report-only rows. C1/C2 final verified; T3 Linux remains periodic/integrated/landing.
+
+Criteria: C1 verified, C2 verified.

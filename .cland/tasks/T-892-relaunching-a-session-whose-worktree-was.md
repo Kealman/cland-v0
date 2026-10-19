@@ -2,8 +2,8 @@
 id: T-892
 kind: task
 title: Relaunching a session whose worktree was removed reports 'spawn codex ENOENT'
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-631
 branch: t/T-892-relaunching-a-session-whose-worktree-was
 created: 2026-10-19T19:08:57.886Z
-updated: 2026-10-19T19:44:12.008Z
+updated: 2026-10-19T20:01:59.017Z
+closed: 2026-10-19T20:01:59.017Z
 ---
 
 ## Summary
@@ -24,8 +25,9 @@ After T-882 landed at 19:02:41Z (2026-10-19), impl-882 was released and its work
 
 ## Acceptance criteria
 
-- [ ] C1. (T1) The harness version probe checks the cwd first and reports "session cwd <path> no longer exists" instead of a spawn ENOENT, and resume --relaunch of a session whose recorded worktree is gone refuses with that reason and suggests a fresh launch for its open item, if any.
-  - failed: rev-31 [reviewer] · 2026-10-19T19:44:09.369Z · note Configured task run A-6464 is red on shared T-891 fixture failures; owned diagnostic/guidance controls are positive.
+- [x] C1. (T1) The harness version probe checks the cwd first and reports "session cwd <path> no longer exists" instead of a spawn ENOENT, and resume --relaunch of a session whose recorded worktree is gone refuses with that reason and suggests a fresh launch for its open item, if any.
+  - done: impl-892 · 2026-10-19T19:51:10.980Z
+  - verified: rev-31 [reviewer] · run rev-20261019-892-final · 2026-10-19T19:53:44.902Z · commit fcde0d49b9210bbbbf017f24630e0a8819eff08b
 
 ## Comments
 
@@ -81,3 +83,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards/Spec: no findings in the exact +7/-1 shared T-891 fixture delta. Existing helper supplies verification commands and cland-shaped root/worktree candidates; fake candidate/clock and all assertions retained. Independently read Coordinator's shared-fix post 151c645e. T-892 product/tests unchanged from A-6416 source clearance. C1 final verification awaits this exact head's fresh mode-free configured task receipt; A-6464 remains recorded failed. No task-head full run requested.
+
+### impl-892 · 2026-10-19T19:51:11.704Z
+
+Same-head mode-free retry 6ce0727a-9193-4417-8c70-9bc6f268a63a passed at fcde0d49b9210bbbbf017f24630e0a8819eff08b: 1634 tests, 1634 pass, no failures/cancellations/skips/todos. Log A-6498. Linux x64 c-8 lon1 droplet, lifetime 343s, cost $0.0238, workers 2. C1 claimant done mark added; awaiting Reviewer final evidence verdict/verified mark. No source changes after review.
+
+### rev-31 · 2026-10-19T19:53:44.902Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-892-final
+commit: fcde0d49b9210bbbbf017f24630e0a8819eff08b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head configured mode-free run 6ce0727a / A-6498 passes 1634/1634, all 47 gate groups 5/5, no non-pass or tier mismatch. Both C1 controls pass ordinary and 5/5 (max owned 0.081906192s); shared verify-tool correction also passes all repetitions. Source A-6416/A-6473 remains applicable. A-6513 preserves the entire-log audit and all external report-only rows. Prior A-6464 red retained. C1 final verified; T3 remains periodic/integrated.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-19T20:01:59.017Z
+
+Merged 52e267fe20de25415af6853d99889af95011aeae onto dev.

@@ -2,8 +2,8 @@
 id: T-895
 kind: task
 title: "Process-helper migration: merge tests"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-633
 branch: t/T-895-process-helper-migration-merge-tests
 created: 2026-10-19T19:27:15.910Z
-updated: 2026-10-19T19:47:12.304Z
+updated: 2026-10-19T20:10:56.152Z
+closed: 2026-10-19T20:10:56.152Z
 ---
 
 ## Summary
@@ -33,9 +34,13 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 
 ## Acceptance criteria
 
-- [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-31 [reviewer] · 2026-10-19T19:43:04.932Z · note New component fixture does not guarantee resource ownership/drainage on failed startup or hub close; rule 12 is unestablished.
+- [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+  - verified: rev-31 [reviewer] · run rev-20261019-895-source-2 · 2026-10-19T19:51:23.244Z · commit cafd50e88ce3a5e057f9e63f514186b7d0e24071
+  - done: impl-895 · 2026-10-19T20:01:29.639Z
+  - verified: rev-31 [reviewer] · run rev-20261019-895-final · 2026-10-19T20:05:09.156Z · commit cafd50e88ce3a5e057f9e63f514186b7d0e24071
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - done: impl-895 · 2026-10-19T20:01:30.818Z
+  - verified: rev-31 [reviewer] · run rev-20261019-895-final · 2026-10-19T20:05:09.156Z · commit cafd50e88ce3a5e057f9e63f514186b7d0e24071
 
 ## Comments
 
@@ -65,3 +70,41 @@ Criteria: C2 failed (New component fixture does not guarantee resource ownership
 ### impl-895 · 2026-10-19T19:46:36.749Z
 
 Addressed source-review A-6469 M1/C2 in cafd50e88ce3a5e057f9e63f514186b7d0e24071 (only component fixture + its ownership regressions). A-6485 preserves exact red failures before the fix and positive startup-rejection, close-rejection/retry and cancellation-during-pending-socket-start proofs before root removal. Both T2 files pass enforcing tripwire (21/21 tests/subtests), root typecheck and lint green. Fetch/merge-tree clean; pushed without merging dev after first review. Fresh delta source review requested before mode-free verification; fifteen new T2 top-level identities require five repetitions. No allowance or product seam change.
+
+### rev-31 · 2026-10-19T19:51:23.244Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-895-source-2
+commit: cafd50e88ce3a5e057f9e63f514186b7d0e24071
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear. A-6469 M1 is resolved by immediate staged ownership, observed pending hub startup, attempt-all database/Tracker teardown and retryable failed close. Controlled old-source red and corrected failure/cancellation proofs are retained in A-6485; local enforcing files pass 21/21 with case budgets respected. Original assertion/native routing and authorized Git seam remain unchanged (A-6451). C2 awaits same-head green mode-free verification and all 15 new T2 identities at 5/5. Review evidence A-6499.
+
+Criteria: C1 verified.
+
+### impl-895 · 2026-10-19T20:01:32.621Z
+
+Exact reviewed head cafd50e88ce3a5e057f9e63f514186b7d0e24071 passed mode-free Linux task c3fff9f2: 1,653 pass, zero fail/cancel/skip. All 15 owned new T2 top-level identities have explicit 5/5 receipts (75/75). A-6536 summarizes A-6530 log; local native receipts A-6451, fixture red/green/cancellation A-6485, source clear A-6499. Claimant C1/C2 done marks added. Linux c-8 lon1, lifetime 393 s, cost $0.0273. Native T3 intentionally deferred by current queue policy to periodic/integrated landing evidence. No new allowance or source change. Final same-head evidence verdict requested from Reviewer; claim held until merge.
+
+### rev-31 · 2026-10-19T20:05:09.156Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-895-final
+commit: cafd50e88ce3a5e057f9e63f514186b7d0e24071
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head configured mode-free c3fff9f2-9eb4-4819-8498-85edf2223803/A-6530 green: 1653 ordinary passes, 330 load finishes pass, all 60 groups 5/5, zero tier mismatch/non-pass. 15 owned T2 top-level identities pass ordinary and 5/5 (75 top-level repetitions; nested tables add 30 owned subtest finishes). Owned ordinary maximum 1.474160607s, repetition maximum 1.759676414s; files 4.504550986s follows/2.003065027s recovery. Cleanup failure and held-cancellation controls pass all repetitions. No owned budget/tier diagnostic. C1 source review retained; C2 final established with native local evidence A-6499/A-6451/A-6485. A-6548 retains entire-log audit and known report-only rows; T3 Linux remains periodic/integrated/landing.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T20:10:56.152Z
+
+Merged bf21879f2fcf5239e84526e3c196318a0cf3614d onto dev.

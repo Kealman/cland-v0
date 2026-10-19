@@ -3,7 +3,7 @@ id: T-667
 kind: task
 title: Another stack's verify runs its test in full and reports the test's output
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-619
 branch: t/T-667-another-stack-s-verify-runs-its-test-in
 created: 2026-10-16T16:35:24.761Z
-updated: 2026-10-19T19:48:10.079Z
+updated: 2026-10-19T20:08:41.363Z
 ---
 
 ## Summary
@@ -39,22 +39,27 @@ Coverage selection, the hub and Neovim modes, and the load gate are cland's own 
   - done: impl-667 · 2026-10-19T16:49:21.517Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
+  - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.145Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
 - [x] C2. (T2) In that project `cland verify hub` and `cland verify nvim` are refused with the reason, while `cland verify` and `cland verify all` are accepted (suite CLI test).
   - done: impl-667 · 2026-10-19T16:49:22.264Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
+  - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
 - [x] C3. (T3, run locally before enqueue; the Linux T3 run is landing evidence) A scratch project with `check = "sh -n test.sh"` and `test = "sh test.sh"` verifies green locally. After a planted failing assertion it turns red, and its result message holds the failing line of the test's output (new CLI test against a temporary project's hub).
   - done: impl-667 · 2026-10-19T16:49:22.933Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
+  - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
 - [x] C4. (T1) The summary of a failed run without node test counts reads `test exited <n>: <line>` and lists the last 20 output lines, while a node-test log keeps today's summary (unit test on `suiteSummary`).
   - done: impl-667 · 2026-10-19T16:49:23.437Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
+  - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
 - [x] C5. (existing T3 files, unchanged) A cland-shaped candidate keeps today's coverage selection, modes and load gate, and the existing `suite-selection.test.ts`, `suite-coverage.test.ts` and `suite-selection-report.test.ts` pass unchanged.
   - done: impl-667 · 2026-10-19T16:49:24.049Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
+  - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
 
 ## Comments
 
@@ -158,3 +163,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear A-6495. Full task-patch comparison preserves old behavior except expected cland-runner guard now encloses upstream periodic-probe/batch files, plus authorized fixture materialization of historical cland package/runner. All assertions and upstream search/result/worker behavior retained. A-6489 raw15serialfiles173/173 pass zero fail/cancel/skip/TODO; correctedT2 cases1.696/1.237s. NativeC3 shell7.501s and C5 96+2+4 checks green locally, not Linux evidence. No tier/allowance/newproductionworkaround. Fresh exact-head mode-free gate required; priorA6418 historical; QA none.
+
+### rev-30 · 2026-10-19T20:00:36.146Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-periodic-search-integrated-final
+commit: 99e2505d3b1157c238f860525b7b888f202fa292
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final current-head evidence clear, A-6529. Independently audited A-6524 exact-head mode-free b80d897a: 1656/1656, zero fail/cancel/skip/TODO, all 70 load groups 5/5, no resource mismatch or owned budget trip. C1/C2 capability/submission/CLI and C4 summary controls ordinary plus repetitions pass within case budgets; integrated historical-candidate fixture controls ordinary and five repetitions also pass. Source delta A-6495 and retained local C3/C5 native/selection proofs A-6489 cover integrated source. All C1–C5 verified. Linux T3 remains periodic/integrated, absent from configured batch tiers; QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

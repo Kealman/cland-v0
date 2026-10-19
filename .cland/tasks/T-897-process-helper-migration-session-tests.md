@@ -3,8 +3,9 @@ id: T-897
 kind: task
 title: "Process-helper migration: session tests"
 state: open
-status: review
+status: in progress
 size: M
+criterion_seq: 2
 labels:
   - v0.1.4
   - tests
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-635
 branch: t/T-897-process-helper-migration-session-tests
 created: 2026-10-19T19:27:16.282Z
-updated: 2026-10-19T19:45:34.245Z
+updated: 2026-10-19T20:09:41.763Z
 ---
 
 ## Summary
@@ -34,7 +35,9 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 ## Acceptance criteria
 
 - [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+  - verified: rev-30 [reviewer] · run rev-20261019-897-source-corrected · 2026-10-19T19:59:51.322Z · commit 36cc8be8c31d2e0af88df82e20cb4abb44a22aad
 - [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - failed: rev-30 [reviewer] · 2026-10-19T20:09:41.763Z · note Owned T2 stop/status case spawns native ps (A-6556:47642) despite functionally green ordinary/five repetitions; fixture correction required.
 
 ## Comments
 
@@ -45,3 +48,52 @@ Implementation in progress: authorized native-default TaskWorktrees Git-operatio
 ### impl-897 · 2026-10-19T19:45:34.245Z
 
 Committed/pushed 5917d81ccaf033319660947c0cab9b240859ffbd after pre-first-review origin/dev integration and clean merge-tree. Source review requested. A-6478 contains final assertion map, root check/tier/lint logs and exact-head serial targeted receipts for all five injected T2 and five retained T3 files (all pass, no skips). Authorized standalone native-default TaskWorktrees seam is 917fb602; Coordinator approved native territory contract disposition in 44e04850. No allowance added. Awaiting source verdict before mode-free verify; no per-item QA required.
+
+### rev-30 · 2026-10-19T19:52:46.811Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261019-897-source
+commit: 5917d81ccaf033319660947c0cab9b240859ffbd
+scope: full
+findings: [{"severity":"medium","text":"M2/C2: the original public hub.status requests.slow assertion was replaced by guard.counters.slow. This no longer detects missing or stale public status counter wiring. Restore the actual hub.status request/returned-field assertion; the connected UI and injected guard already exist.","file":"hub/test/session-async-processes.test.ts","line":86},{"severity":"medium","text":"M3/C2: fresh Codex resume no longer asserts a different returned harnessSessionId. Omitting resumeConversation in a spawn request does not prove the returned session uses a new conversation; FakeHarness currently aliases conversation identity to the stable cland sessionId. Use distinct scripted conversation IDs and retain the returned-ID inequality while preserving stable cland identity/model/cwd/brief.","file":"hub/test/session-resume.test.ts","line":71},{"severity":"medium","text":"M1/C2: 13 migrated top-level identities retain exact keys present in dev duration tests, so loadGateRepetitions returns 0 and the required five task repetitions will be skipped. Give reworked migrated cases fresh descriptive identities (including generated names/nested ownership as applicable), without deleting baselines or changing shared load policy, before verification.","file":"hub/test/session-launch.test.ts","line":47}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Full source not clear A-6503. Standards seam/native-default construction/helper retirement sound; all10localfiles35/35 pass and no allowance change. C2 has3medium Spec findings:13known moved keys skip load repetitions; public status counter check replaced by internal guard; returned fresh Codex conversation identity no longer differs in the proof. Restore these assertions and fresh migrated identities, request new source review before verify. C1sourcecondition established; native Linux periodic/integrated and QA none.
+
+Criteria: C2 failed (M1:13 migrated identities remain known and skip five task repeats; M2 public status counter assertion lost; M3 returned fresh Codex conversation-ID inequality lost.).
+
+### impl-897 · 2026-10-19T19:56:25.373Z
+
+A-6503 M1–M3 corrected and pushed as 36cc8be8c31d2e0af88df82e20cb4abb44a22aad; fresh source review requested. A-6520 holds 5/5 serial T2 file passes (22 tests/subtests), npm run check green, and actual-reporter identity audit: 20 moved top-level cases, zero known baseline keys, all eligible for five repetitions under unchanged policy. Public hub.status requests.slow assertion and returned fresh Codex conversation-ID inequality restored. Native source/proofs unchanged; no dev merge after first review or baseline/policy/allowance edits. Mode-free verification awaits source clearance.
+
+### rev-30 · 2026-10-19T19:59:51.322Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-897-source-corrected
+commit: 36cc8be8c31d2e0af88df82e20cb4abb44a22aad
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected full source review clear; A-6503 M1–M3 resolved. A-6526 records both axes and independent raw reporter/baseline audit: all twenty migrated top-level identities are fresh and eligible for five repetitions; raw local 22/22. Public hub.status requests.slow and distinct returned Codex conversation assertions restored. C2 remains pending exact-head mode-free Linux ordinary plus all twenty five-repetition receipts, overall green/no owned budget or resource trip. Local native evidence remains A-6478, not task T3. QA none.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-19T20:09:41.763Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261019-897-native-probe-failed
+commit: 36cc8be8c31d2e0af88df82e20cb4abb44a22aad
+scope: evidence
+findings: [{"severity":"medium","text":"M4/C2: the migrated T2 stop/status rule emits child_process.spawn via doctor/report.ts and hub/lock.ts startedProbe (A-6556:47642). Inject the fixture process/probe facts to eliminate native ps while retaining the real hub.status returned requests.slow assertion, stop/log assertions and tripwire; fresh source and exact-head verification required.","file":"hub/test/session-async-processes.test.ts","line":61}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not clear on owned resource boundary, A-6565. A-6556 functionally passes 1670/1670; all twenty moved ordinary cases +100 repetitions pass within budgets, but one owned T2 child_process.spawn mismatch escapes through startedProbe. This is not a covered budget aside. M1–M3 remain resolved; keep public status assertions and eliminate native probe via fixture facts, then fresh source review before replacement mode-free verification. C2 failed; QA none.
+
+Criteria: C2 failed (Owned T2 stop/status case spawns native ps (A-6556:47642) despite functionally green ordinary/five repetitions; fixture correction required.).

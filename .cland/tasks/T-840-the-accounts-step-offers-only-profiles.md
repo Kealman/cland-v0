@@ -3,7 +3,7 @@ id: T-840
 kind: task
 title: The accounts step offers only profiles with their own directory, asks with the default No, and never registers a harness's default profile
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-613
 blocked_by:
   - T-839
-topic: null
-branch: null
+topic: topic-644
+branch: t/T-840-the-accounts-step-offers-only-profiles
 created: 2026-10-19T06:34:13.082Z
-updated: 2026-10-19T06:34:13.082Z
+updated: 2026-10-19T20:07:51.480Z
 ---
 
 ## Summary

@@ -3,8 +3,9 @@ id: T-845
 kind: task
 title: Setup ends in the workbench with the Aide in the centre, or in the harness's attach with `--attach`, and one closing line follows
 state: open
-status: review
+status: ready
 size: M
+criterion_seq: 4
 labels:
   - v0.1.4
   - ready-for-agent
@@ -16,7 +17,7 @@ blocked_by:
 topic: topic-642
 branch: t/T-845-setup-ends-in-the-workbench-with-the
 created: 2026-10-19T06:34:13.540Z
-updated: 2026-10-19T19:47:11.356Z
+updated: 2026-10-19T20:09:33.545Z
 ---
 
 ## Summary
@@ -40,10 +41,18 @@ Tracer bullet 4, the hand-over. After the summary line, setup opens the workbenc
 
 ## Acceptance criteria
 
-- [ ] C1. An interactive run with `aide-1` running calls the injected `run` with the launcher on the root and `CLAND_OPEN_SESSION=aide-1` in its environment, then prints exactly one closing line naming `cland session stop aide-1` (T1).
-- [ ] C2. `--attach` prints the hub's attach command, runs it after Enter and prints the attach closing lines, while Ctrl+D at the pause runs nothing and still prints them (T1, fake prompter and hub client).
-- [ ] C3. A launcher exiting 1 adds the `--attach` hint before the closing line (T1).
-- [ ] C4. Without a terminal, or with `--no-aide`, no launcher or attach runs (T1).
+- [x] C1. An interactive run with `aide-1` running calls the injected `run` with the launcher on the root and `CLAND_OPEN_SESSION=aide-1` in its environment, then prints exactly one closing line naming `cland session stop aide-1` (T1).
+  - done: impl-845 · 2026-10-19T20:08:50.115Z
+  - verified: rev-31 [reviewer] · run rev-20261019-845-final · 2026-10-19T20:09:31.477Z · commit b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36
+- [x] C2. `--attach` prints the hub's attach command, runs it after Enter and prints the attach closing lines, while Ctrl+D at the pause runs nothing and still prints them (T1, fake prompter and hub client).
+  - done: impl-845 · 2026-10-19T20:08:51.040Z
+  - verified: rev-31 [reviewer] · run rev-20261019-845-final · 2026-10-19T20:09:31.477Z · commit b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36
+- [x] C3. A launcher exiting 1 adds the `--attach` hint before the closing line (T1).
+  - done: impl-845 · 2026-10-19T20:08:52.248Z
+  - verified: rev-31 [reviewer] · run rev-20261019-845-final · 2026-10-19T20:09:31.477Z · commit b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36
+- [x] C4. Without a terminal, or with `--no-aide`, no launcher or attach runs (T1).
+  - done: impl-845 · 2026-10-19T20:08:53.262Z
+  - verified: rev-31 [reviewer] · run rev-20261019-845-final · 2026-10-19T20:09:31.477Z · commit b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36
 
 ## Comments
 
@@ -54,3 +63,39 @@ Implementing post-summary workbench/--attach handover. Agreed criterion seams ar
 ### impl-845 · 2026-10-19T19:47:11.356Z
 
 Implementation pushed at b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36; evidence A-6492 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6492-t-845-implementation-and-criterion-evidence.md. Root typecheck, tiers, report-only test lint and five targeted files (37 tests) passed. Source review request queued with the next free live Reviewer; no verification before source clear.
+
+### rev-31 · 2026-10-19T20:01:33.131Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-845-source
+commit: b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards/Spec source clear; post-summary workbench and --attach match C1–C4 and §3.3. Root/env/default launcher, repeated run, Enter/EOF, failures, nonterminal/noAide/Aide-failure guards and checkout command spelling are covered by injected T1 tests. Existing terminal/protocol seams reused; no new process fixture or allowance. A-6538; host evidence A-6492. Final C1–C4 await same-head configured mode-free receipt with nine new handover identities 5/5; no task T3 run requested.
+
+### impl-845 · 2026-10-19T20:01:51.534Z
+
+Source clear rev-20261019-845-source / A-6538 at unchanged b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36. Mode-free verification d0e311e0-9f48-4df2-848a-f714f7ab0183 admitted, queue position 1; reports to topic-642, Reviewer and claimant. Waiting for hub result; branch remains clean and frozen.
+
+### impl-845 · 2026-10-19T20:09:01.864Z
+
+Unchanged-head mode-free run d0e311e0 passed: 1657/1657, zero fail/cancel/skip/TODO; all nine setup-handover T1 identities passed 5/5 load repetitions. A-6560 log at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6560-suite-d0e311e0-9f48-4df2-848a-f714f7ab0183-auto-at-b43a0ad.log. Linux x64 / Node v24.21.0 / Neovim v0.12.5; droplet c-8 lon1, lifetime 369s, cost $0.0256. Claimant C1–C4 done marks added. Awaiting Reviewer final verdict; epic T3 demo remains separate.
+
+### rev-31 · 2026-10-19T20:09:31.477Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-845-final
+commit: b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Configured mode-free d0e311e0/A-6560 passes at unchanged source head: 1657/1657 ordinary, 355/355 load finishes, all 71 groups 5/5, no tier mismatch/non-pass. All nine T1 handover controls pass ordinary/5/5, including root/env/repeat/one hint, Enter/EOF, launcher error, guards and CLI integration. Max owned body .024891793s, rep .026693136s, file .293441416s. C1–C4 established with source A-6538; A-6564 retains entire-log audit and known external report-only notices. No outstanding findings; epic T3 demo separately owned.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

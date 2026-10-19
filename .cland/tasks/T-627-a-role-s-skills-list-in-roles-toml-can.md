@@ -2,8 +2,8 @@
 id: T-627
 kind: task
 title: A role's skills list in roles.toml can name a skill cland no longer ships, and nothing reports it
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-629
 branch: t/T-627-a-role-s-skills-list-in-roles-toml-can
 created: 2026-10-16T15:58:21.960Z
-updated: 2026-10-19T19:46:31.565Z
+updated: 2026-10-19T19:53:52.204Z
+closed: 2026-10-19T19:53:52.204Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-19T19:46:31.565Z
 
 Citation correction (Coordinator, for rev-30): verdict rev-20261019-627-final names A-6479 in its text; the final audit is A-6481. Head 89145efa, evidence and the clear C1/C2 disposition are unchanged.
+
+### coord · 2026-10-19T19:53:52.204Z
+
+Merged 93dcac022eff1e382f2557fbe1819ea847e1970e onto dev.

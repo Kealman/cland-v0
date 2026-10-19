@@ -2,8 +2,8 @@
 id: T-894
 kind: task
 title: The merge-batch report still says 'tiers T1, T3' when the batch runs T1 only
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-632
 branch: t/T-894-the-merge-batch-report-still-says-tiers
 created: 2026-10-19T19:12:39.490Z
-updated: 2026-10-19T19:43:46.386Z
+updated: 2026-10-19T19:53:32.382Z
+closed: 2026-10-19T19:53:32.382Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged 1ff6d584. Raw A-6465 exact-head mode-free c35a241b independently audited: 1149/1149, zero failure/cancel/skip/TODO, all 37 load groups 5/5, no resource mismatch or owned budget row. Actual default/T1 report cases ordinary .041812657/.063300765 s and five repetitions each, maxima .359054023/.333774500 under .5 s. C1 verified; full source A-6406 and final audit A-6472. Linux c-8 lon1 lifetime270s/$0.0187, suite181.29s. T3 periodic/integrated only under current T1-only batch config; no task native claim, QA none.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:53:32.382Z
+
+Merged 89d683f15f84594c4eb1a9e7679df2fd9e13c1a7 onto dev.
