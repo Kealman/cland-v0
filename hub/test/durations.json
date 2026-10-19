@@ -5669,6 +5669,13 @@
       "owner": "E-677",
       "legacy": true
     },
+    "hub/test/task-worktrees-lifecycle.test.ts::cland session launch --item starts the Implementer in the worktree with the claim taken over from the Coordinator; its Claude Code refuses a worktree of its own": {
+      "seconds": 6.984,
+      "owner": "E-677",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-896 retained the native Git worktree, real CLI session launches and Claude Code WorktreeCreate hook refusal in T3 under a new file identity. Periodic Linux run A-6718 measured 6.984 s; these process boundaries exceed the legacy 5 s new-identity gate while fitting the 10 s T3 budget."
+    },
     "hub/test/termination-ownership.test.ts::doctors from different projects end one deleted hub and its fake harness tree once": {
       "seconds": 9.422937,
       "reason": "Runs doctor concurrently across two fixture projects to prove that one deleted hub and its owned harness tree terminate exactly once.",

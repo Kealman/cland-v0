@@ -1,3 +1,4 @@
+// T3: real child/grandchild preload propagation and sandbox write denial require native processes.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -84,9 +85,14 @@ test('fixture', async () => {
   const diff = compare(before, after);
   assert.match(diff, /\| git \| 6 \| 7 \| 1 \| 16.7% \|/);
   assert.match(diff, /hub\/test\/helper.mjs fixtureHelper \| 1 \| 2 \| 1/);
-  assert.ok(knownGaps(repo).includes('hub/test/cli-imports.test.ts'));
-  assert.ok(knownGaps(repo).includes('hub/test/session-async-processes.test.ts'));
-  assert.ok(knownGaps(repo).includes('hub/test/claude-code-sessions.test.ts'));
+  // Audit controlled sources so migrations of real tests cannot stale these expectations.
+  const nvimFixture = join(root, 'nvim', 'test');
+  mkdirSync(nvimFixture, { recursive: true });
+  writeFileSync(join(fixture, 'env-gap.test.ts'), 'process.env.NODE_OPTIONS = "";');
+  writeFileSync(join(nvimFixture, 'sandbox-gap.test.ts'), 'const sandbox = "sandbox-exec";');
+  writeFileSync(join(fixture, 'covered.test.ts'), 'export {};');
+  writeFileSync(join(fixture, 'helper.ts'), 'process.env.NODE_OPTIONS = "";');
+  assert.deepEqual(knownGaps(root), ['hub/test/env-gap.test.ts', 'nvim/test/sandbox-gap.test.ts']);
 });
 
 
@@ -110,5 +116,4 @@ test('a sandbox denying census log writes preserves child stdout, exit and spawn
   assert.equal(data.total, 1);
   assert.equal(data.gapSources[0].count, 1);
   assert.match(data.gapSources[0].source, /sandbox may deny census log writes/);
-  assert.ok(knownGaps(repo).includes('nvim/test/qa.test.ts'));
 });
