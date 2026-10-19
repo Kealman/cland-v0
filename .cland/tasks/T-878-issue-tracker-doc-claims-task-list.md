@@ -3,7 +3,7 @@ id: T-878
 kind: task
 title: issue-tracker doc claims task.list summaries carry every frontmatter field, but github is omitted
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - v0.1.4
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-609
 branch: t/T-878-issue-tracker-doc-claims-task-list
 created: 2026-10-19T14:41:41.049Z
-updated: 2026-10-19T15:28:46.296Z
+updated: 2026-10-19T15:30:22.399Z
 ---
 
 ## Summary

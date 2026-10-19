@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-613
 branch: t/T-868-remote-clock-s-native-i-o-guard-is
 created: 2026-10-19T11:41:10.800Z
-updated: 2026-10-19T15:29:22.700Z
+updated: 2026-10-19T15:29:41.021Z
 ---
 
 ## Summary
@@ -27,3 +27,9 @@ Found aside by impl-524 on 2026-10-19 while fixing T-524. T-524 now avoids these
 ## Acceptance criteria
 
 - [ ] C1. Either scripted machines and the remote fixture register their native operations with the clock guard, or the guard is replaced by an enforceable shared receipt API. A held-I/O regression shows that advancing the clock while a tracked operation is in flight is refused or joined.
+
+## Comments
+
+### impl-868 · 2026-10-19T15:29:41.021Z
+
+Implementation seam: scripted native filesystem dependencies plus the remote fixture's in-process provider boundary, all keyed by one shared FakeClock. Add a held-publication regression through a machine dependency (without manually calling track), and retain a separate peer driver to prove the shared guard. Harness-only change; qaPolicy scope is none.
