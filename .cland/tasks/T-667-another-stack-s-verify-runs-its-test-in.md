@@ -2,8 +2,8 @@
 id: T-667
 kind: task
 title: Another stack's verify runs its test in full and reports the test's output
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-619
 branch: t/T-667-another-stack-s-verify-runs-its-test-in
 created: 2026-10-16T16:35:24.761Z
-updated: 2026-10-19T20:50:56.468Z
+updated: 2026-10-19T21:32:45.524Z
+closed: 2026-10-19T21:32:45.524Z
 ---
 
 ## Summary
@@ -36,30 +37,35 @@ Coverage selection, the hub and Neovim modes, and the load gate are cland's own 
 ## Acceptance criteria
 
 - [x] C1. (T2 submission contract, plus a T3 real-candidate regression) In a temporary project without `hub/test/run-suite.ts`, a submitted verify records mode `full` with reason `project test runs in full`, no `loadGate` and no coverage lookup (suite CLI test with the other-stack fixture).
-  - done: impl-667 · 2026-10-19T16:49:21.517Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
   - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.145Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
+  - done: impl-667 · 2026-10-19T21:27:55.575Z
+  - verified: rev-30 [reviewer] · run rev-20261019-667-shared-fixture-final · 2026-10-19T21:28:12.303Z · commit aba5deabaf78aff471b96db48b6252fcf39abff2
 - [x] C2. (T2) In that project `cland verify hub` and `cland verify nvim` are refused with the reason, while `cland verify` and `cland verify all` are accepted (suite CLI test).
-  - done: impl-667 · 2026-10-19T16:49:22.264Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
   - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
+  - done: impl-667 · 2026-10-19T21:27:56.189Z
+  - verified: rev-30 [reviewer] · run rev-20261019-667-shared-fixture-final · 2026-10-19T21:28:12.303Z · commit aba5deabaf78aff471b96db48b6252fcf39abff2
 - [x] C3. (T3, run locally before enqueue; the Linux T3 run is landing evidence) A scratch project with `check = "sh -n test.sh"` and `test = "sh test.sh"` verifies green locally. After a planted failing assertion it turns red, and its result message holds the failing line of the test's output (new CLI test against a temporary project's hub).
-  - done: impl-667 · 2026-10-19T16:49:22.933Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
   - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
+  - done: impl-667 · 2026-10-19T21:27:56.689Z
+  - verified: rev-30 [reviewer] · run rev-20261019-667-shared-fixture-final · 2026-10-19T21:28:12.303Z · commit aba5deabaf78aff471b96db48b6252fcf39abff2
 - [x] C4. (T1) The summary of a failed run without node test counts reads `test exited <n>: <line>` and lists the last 20 output lines, while a node-test log keeps today's summary (unit test on `suiteSummary`).
-  - done: impl-667 · 2026-10-19T16:49:23.437Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
   - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
+  - done: impl-667 · 2026-10-19T21:27:57.277Z
+  - verified: rev-30 [reviewer] · run rev-20261019-667-shared-fixture-final · 2026-10-19T21:28:12.303Z · commit aba5deabaf78aff471b96db48b6252fcf39abff2
 - [x] C5. (existing T3 files, unchanged) A cland-shaped candidate keeps today's coverage selection, modes and load gate, and the existing `suite-selection.test.ts`, `suite-coverage.test.ts` and `suite-selection-report.test.ts` pass unchanged.
-  - done: impl-667 · 2026-10-19T16:49:24.049Z
   - verified: rev-30 [reviewer] · run rev-20261019-667-final · 2026-10-19T16:50:28.550Z · commit b6fb05a8ceb752fc500fe32da4a54908e9d2b221
   - verified: rev-30 [reviewer] · run rev-20261019-667-integrated-final · 2026-10-19T19:30:16.011Z · commit 9c9a9fd6923fe08900095c6f8a85bd2df6dcfd03
   - verified: rev-30 [reviewer] · run rev-20261019-667-periodic-search-integrated-final · 2026-10-19T20:00:36.146Z · commit 99e2505d3b1157c238f860525b7b888f202fa292
+  - done: impl-667 · 2026-10-19T21:27:57.763Z
+  - verified: rev-30 [reviewer] · run rev-20261019-667-shared-fixture-final · 2026-10-19T21:28:12.303Z · commit aba5deabaf78aff471b96db48b6252fcf39abff2
 
 ## Comments
 
@@ -221,3 +227,52 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Combined delta source clear, A-6684. Direct Coordinator history authorizes owned merge-queue fixture correction, one T-717 integration and narrow other-stack occasion fetch proof. Nine owned patches identical; all C5 files byte-identical to merged dev. Resolutions retain per-tier wrappers/coverage append, paired command records/phase summaries and cland-only planning guards. Other-stack occasion performs real bounded origin/dev fetch and retains proof through admission without cland load/coverage fields. Original merge-queue assertions retained; real runner-absent task/stage controls cover composition. A-6679 main captures 196/196 plus focused stage red→green; C3/C5 remain qualified local native evidence. C1–C5 final settlement requires fresh exact-head mode-free overall green; prior red A-6654 remains historical. QA none; no Reviewer execution.
+
+### rev-30 · 2026-10-19T21:05:24.760Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-per-tier-occasion-runtime
+commit: 04f1c3bd3c9391262c22013a0ab498aa4992eead
+scope: evidence
+findings: [{"severity":"medium","text":"Exact-head A-6703 exits1: three selection/report controls expect hub/nvim-specific modes but receive project-full/empty deciding files; cache-recovery at line30 also gets the cland-phase refusal. All four ordinary cases and every repetition fail (four0/5 groups). Gate cannot settle until lead/Coordinator classification and correction/disposition; no flake/shared label inferred.","file":"hub/test/suite-selection-component.test.ts","line":14}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-6705 independently audits A-6703/be1036f7: ordinary1628/1632, four failures and20 repeated failures;272/276 groups5/5, four0/5, zero tier/resource mismatch. Source A-6684 remains the reviewed basis, but final C1–C5 withheld on red gate. Local native proofs A-6679 remain qualified only. Keep head/failed receipt; lead/Coordinator disposition required before diagnosis, shared scope change or retry, and changed head needs source review. No Reviewer tests/reruns; QA none.
+
+### impl-667 · 2026-10-19T21:11:41.455Z
+
+Pushed aba5deab: the single shared suite-component-fixture initializer now calls verificationFixture with identical true scripts; no production change or assertion edits. Focused cache-recovery2/3→3/3 and selection-component0/3→3/3. Coordinator-requested full serial suite-*, verify-* and merge-queue families plus suite.test.ts pass all60 files /442 tests, zero fail/cancel/skip/TODO; original outputs and focused red-green retained A-6708. Typecheck and lint pass; fetched merge-tree preflight clean. Fresh delta review requested before new mode-free verification; A-6703 retained as prior-head red.
+
+### rev-30 · 2026-10-19T21:12:51.022Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-component-initializer-source
+commit: aba5deabaf78aff471b96db48b6252fcf39abff2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fixture delta source clear, A-6711. One-file canonical verificationFixture call preserves package true scripts and materializes the cland marker, matching injected candidate facts without changing production detection/any assertion. Direct Coordinator history approves shared initializer correction. Independent A-6708 audit matches all60 requested files exactly:442/442, zero fail/cancel/skip/TODO; separate cache2/3→3/3 and selection0/3→3/3 red/green retained. Real runner-absent shell/task-batch/stage controls and all unchanged C5 files pass as qualified local native evidence. Prior integration A-6684 unchanged. C1–C5 final gate pending fresh exact-head mode-free overall green; A-6703 remains historical red. QA none; no Reviewer tests.
+
+### rev-30 · 2026-10-19T21:28:12.303Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-shared-fixture-final
+commit: aba5deabaf78aff471b96db48b6252fcf39abff2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear, A-6727. Independent A-6726 audit: 1894/1894, zero fail/cancel/skip/TODO, all 303 load groups 5/5, zero tier/resource mismatch or owned overrun. C1/C2 submission/CLI controls ordinary+five pass (max .277455125 s); four C4 summary controls ordinary+five pass. All four prior A-6703 failures now ordinary+five pass after canonical initializer A-6711. Retained current-source A-6708 local sweep 442/442 includes native C3 shell green/cache/red, real other-stack stage/Python tiers and unchanged C5 files; integration A-6684 applies. All C1–C5 verified. Prior red receipts retained; no Linux T3 task claim. Covered report-only rows per Coordinator; QA none; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T21:32:45.524Z
+
+Merged 623024a71a31b50aefdd2db8bbd9e6ec0e32b661 onto dev.

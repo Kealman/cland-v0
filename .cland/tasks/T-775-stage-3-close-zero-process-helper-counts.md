@@ -2,8 +2,8 @@
 id: T-775
 kind: task
 title: "Stage-3 close: zero process-helper counts outside contract, scenario and T3-header files, and measure T3 seconds and hub starts"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -32,7 +32,8 @@ blocked_by:
 topic: topic-628
 branch: t/T-775-stage-3-close-zero-process-helper-counts
 created: 2026-10-18T04:49:35.780Z
-updated: 2026-10-19T21:00:24.030Z
+updated: 2026-10-19T21:22:02.391Z
+closed: 2026-10-19T21:22:02.391Z
 ---
 
 ## Summary
@@ -45,13 +46,17 @@ Zero the process-helper counts outside contract, scenario and T3-header lifecycl
 
 ## Acceptance criteria
 
-- [ ] C1. The process-helper counts in the lint baseline are zero outside contract, scenario, T3-header and T4-lifecycle-header files (the T4 exemption T-901 added, e.g. orphan-servers-perf), and a planted `spawnSpoke` in a T2 file is refused, proved by the lint run and a lint test.
+- [x] C1. The process-helper counts in the lint baseline are zero outside contract, scenario, T3-header and T4-lifecycle-header files (the T4 exemption T-901 added, e.g. orphan-servers-perf), and a planted `spawnSpoke` in a T2 file is refused, proved by the lint run and a lint test.
+  - done: impl-775 · 2026-10-19T21:16:46.759Z
+  - verified: rev-30 [reviewer] · run rev-20261019-775-final · 2026-10-19T21:17:01.244Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
 - [x] C2. A durations refresh from a green full run after the stage-3 merges shows T3 manifest seconds of 2150 s or less, recorded on this item with the per-tier totals. (D66: the measured value is recorded on this item and accepted for v0.1.4; reaching the target is studied later in E-880 under Ideas.)
   - done: impl-775 · 2026-10-19T19:25:10.188Z
   - verified: rev-30 [reviewer] · run rev-20261019-775-source · 2026-10-19T20:43:54.892Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
+  - verified: rev-30 [reviewer] · run rev-20261019-775-final · 2026-10-19T21:17:01.244Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
 - [x] C3. A spawn census against T-708's 150-start goal: not measured in v0.1.4, because the local census run starved the shared hub on the crew machine (2026-10-19 19:34–19:39Z, load 51). The measurement is carried into E-880 under Ideas (D66).
   - done: impl-775 · 2026-10-19T19:40:31.742Z
   - verified: rev-30 [reviewer] · run rev-20261019-775-source · 2026-10-19T20:43:54.892Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
+  - verified: rev-30 [reviewer] · run rev-20261019-775-final · 2026-10-19T21:17:01.244Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
 
 ## Comments
 
@@ -93,3 +98,43 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full source clear, A-6674; Standards/Spec no findings. Six-file scope preserves lifecycle assertions/tiers and all old baseline counts; exactly 60 empty entries added. Independent manifest/baseline/header audit agrees with all 485 rows, 341 non-exempt zero-helper files, sole nonzero T4 orphan-servers-perf/startDaemon:1 under revised C1. Raw local 50/50 passes; new T1 planted-spawnSpoke refusal .001199083 s. C1 final runtime awaits exact-head mode-free gate. C2 verified under revised D66: independently recomputed accepted historical T3 2356.811994 s, gap 206.811994 s, not current-head timings/target attainment. C3 verified as explicit Coordinator stop/no-restart/not-measured disposition with E-880 owning later measurement; no partial census accepted. QA none; no Reviewer execution.
 
 Criteria: C2 verified, C3 verified.
+
+### impl-775 · 2026-10-19T21:00:52.491Z
+
+Exact-head mode-free verify b572f618/A-6697 is red at 10ebf126. Hub base phase 1869 pass, zero failures. Only completed failure: migrated nvim/test/items.test.ts::recorded item frames render trees, map groups, details, board and edited files, load-gate repetition 4 (4/5 pass), ERR_ASSERTION line76 on the anchored Items panel/impl row match. Logged screen contains the row; cause not diagnosed. This file is outside this item's six-file source delta. C1 claimant done remains pending accepted verification. Reported blocker to lead T-775; awaiting Coordinator shared fix/disposition, no retry or head change. Droplet Linux x64, Node24.21.0/Neovim0.12.5; lifetime934s, cost$0.0648. C2/C3 source dispositions remain verified under D66.
+
+### rev-30 · 2026-10-19T21:00:56.199Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261019-775-runtime
+commit: 10ebf1267b67136d78fcdbfa70be4459c00ddddc
+scope: evidence
+findings: [{"severity":"medium","text":"Exact-head A-6697 is red: recorded item frames render trees/map groups/details/board/edited files passes ordinary but repetition 4 fails its row regex; load group is 4/5. Final gate requires lead/Coordinator disposition before diagnosis/fix/retry; no defect or flake attribution made.","file":"nvim/test/items.test.ts","line":76}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-6700: independently audited A-6697, ordinary1869/1869; 276/277 groups5/5, one Neovim item group4/5, zero tier/resource mismatches. Owned new lint regression ordinary+five pass, max .328408150 s; no owned trip. Source A-6674 remains clear and C2/C3 dispositions remain verified, but final C1 is withheld on the red mode-free gate. Failing file is outside source delta. Preserve receipt/head and obtain lead/Coordinator classification under rule11 before diagnosis/fix/retry. No Reviewer tests or census restart; QA none.
+
+### rev-30 · 2026-10-19T21:17:01.244Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-775-final
+commit: 10ebf1267b67136d78fcdbfa70be4459c00ddddc
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence clear, A-6715. Direct Coordinator authorizes single unchanged-head retry after A-6697 external Items flake classification/T-909; first red/A-6700 retained. Independently audited A-6714/22cd7b4e:1869/1869, zero fail/cancel/skip/TODO, all277 groups5/5, zero resource mismatch/owned overrun. Owned T1 refusal ordinary+five max .262560445 s; prior failing Items ordinary+five now pass. Source A-6674 plus current gate settles C1. C2 retains revised D66 historical2356.811994 s accepted measurement, target miss disclosed; C3 remains explicitly not measured/no census restart under Coordinator decision. All C1–C3 verified; no current-head speed/census claim, no Reviewer tests; QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-775 · 2026-10-19T21:17:02.918Z
+
+C1 claimant done after accepted authorized retry 22cd7b4e/A-6714 exits0 at unchanged reviewed head 10ebf126. Ordinary receipts: 1869 pass, no failures/cancellations/skips; new owned lint regression ordinary plus 5/5 load passes; previously failing migrated item-frames case now 5/5. C1 source audit remains A-6667: 341 non-exempt files zero baseline and direct helpers; sole T4 row explicitly disclosed. First red b572f618/A-6697 remains recorded and was classified by Coordinator as unrelated T-902 flake owned by T-909; exactly one retry authorized and used. C2/C3 retain verified D66 dispositions. Reviewer final evidence settlement pending; no head/source change, dev merge or census restart. Green Linux x64 droplet Node24.21/Neovim0.12.5, 877s lifetime, $0.0609 cost.
+
+### coord · 2026-10-19T21:22:02.391Z
+
+Merged 0ca04fa34450a7dea17d2aabdf401688b3c4d47a onto dev.
