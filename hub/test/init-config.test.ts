@@ -1,9 +1,33 @@
 // T1: tracker level parsing and ladder validation are pure configuration rules.
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
-import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
+import { defaultConfig, parseConfig, provisionConfig, renderConfig } from '../src/init/config.ts';
+import { Report } from '../src/init/files.ts';
+
+test('update keeps setup declines when refreshing the managed config', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-setup-config-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  writeFileSync(path, '# managed by cland 0.1.0\n[setup]\ndeclined_installs = ["codex"]\n');
+  const report = new Report(root);
+  provisionConfig(report, path, root);
+  assert.equal(report.changes[0]?.action, 'updated');
+  assert.deepEqual(parseConfig(readFileSync(path, 'utf8'), 'scratch').setup.declinedInstalls, ['codex']);
+});
+
+test('setup declines round-trip and reject unknown harness ids', () => {
+  const config = parseConfig('[setup]\ndeclined_installs = ["codex", "opencode"]', 'scratch');
+  assert.deepEqual(config.setup.declinedInstalls, ['codex', 'opencode']);
+  assert.deepEqual(parseConfig(renderConfig(config), 'scratch').setup, config.setup);
+  for (const input of ['["unknown"]', '"codex"', '[1]']) {
+    assert.throws(() => parseConfig(`[setup]\ndeclined_installs = ${input}`, 'scratch', {}, { strict: true }), /setup.declined_installs.*harness ids/);
+  }
+});
 
 // T1: verification command parsing and rendering need no hub or process.
 test('verification commands retain literal shell syntax through the config template', () => {

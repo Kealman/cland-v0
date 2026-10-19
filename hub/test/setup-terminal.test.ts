@@ -39,3 +39,13 @@ test('terminal child spawn errors still restore parent signal handlers', async (
     assert.equal(signals.listenerCount('SIGQUIT'), 0);
   }
 });
+
+test('JSON terminal child sends stdout to stderr while inheriting stdin and stderr', async () => {
+  const spawn: TerminalSpawner = (_bin, _args, options) => {
+    assert.deepEqual(options.stdio, [0, 2, 2]);
+    const child = new EventEmitter();
+    queueMicrotask(() => child.emit('close', 0, null));
+    return child;
+  };
+  assert.equal(await terminalCommand('installer', [], { env: {}, cwd: '/project', stdout: 'stderr' }, { spawn, signals: new EventEmitter() }), 0);
+});

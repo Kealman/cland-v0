@@ -35,6 +35,18 @@ test('config set keeps verification command arguments verbatim and applies them 
   }
 });
 
+test('config set accepts setup decline lists and refuses unknown harness ids', async t => {
+  const { root, path } = await fixture(t);
+  const result = await cland(root, 'config', 'set', 'setup.declined_installs', '["codex", "opencode"]');
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(parseConfig(await readFile(path, 'utf8'), root).setup.declinedInstalls, ['codex', 'opencode']);
+  const original = await readFile(path, 'utf8');
+  const invalid = await cland(root, 'config', 'set', 'setup.declined_installs', '["unknown"]');
+  assert.equal(invalid.code, 1);
+  assert.match(invalid.stderr, /setup.declined_installs.*harness ids/);
+  assert.equal(await readFile(path, 'utf8'), original);
+});
+
 test('config set without a running hub refuses and leaves the managed file unchanged', async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/config.toml');

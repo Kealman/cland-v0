@@ -979,20 +979,34 @@ an installer hint. A binary found only in an installer's folder explains that a
 new shell is needed for PATH. A missing Claude Code or Codex login is `open`;
 OpenCode's login is optional because its free model needs none.
 
-Without both stdin and stdout attached to a terminal, setup asks, installs,
-writes and launches nothing. `--json` always selects this report-only mode and
-prints one object with `root`, `version`, `interactive`, `steps`, `summary` and
-`next` on stdout; narration goes to stderr. `steps` uses doctor's `name`,
+For a missing harness in a terminal, setup shows its official user-level installer
+before asking `Install <Harness> now? [y/N]`. A yes runs it in the same terminal,
+then detects the harness again: found is `done`, still missing is `fail` with the
+exit code and command to run by hand. A no is saved in `[setup] declined_installs`
+in `.cland/config.toml`; later runs skip it with a `cland setup --install <harness>`
+hint. `cland update` preserves this list and `cland config set setup.declined_installs`
+accepts a list of harness ids (`claude-code`, `codex`, `opencode`).
+`--install <harness>` clears its decline and runs the missing harness's installer
+without asking, including without a terminal. A successful install rebuilds an
+exact, unedited roles template for the installed set; edited files and a marked
+favourite are preserved. Installer folders supplement setup's own PATH for later steps.
+
+Without both stdin and stdout attached to a terminal, setup asks and launches
+nothing; installers and their associated writes need an explicit `--install`.
+`--json` disables questions and prints one object with `root`, `version`, `interactive`, `steps`, `summary` and
+`next` on stdout; narration and any explicitly requested installer's output go
+to stderr. `steps` uses doctor's `name`,
 `verdict`, `detail` and optional `fix` fields. `next` is `cland setup` while work
 is open or failed, otherwise `cland`. Exit codes are 0 when no step is open or
 failed, 1 otherwise, and 130 for input cancellation at a question.
 
 `--yes` accepts defaults only for questions marked harmless. It never authorizes
-installing, signing in or launching. This first set of steps detects only; later
-steps will add the guided actions, accounts, favourite harness, trust, hub and Aide.
+installing, signing in or launching. Later steps add logins, accounts, favourite
+harness, trust, hub and Aide.
 They join the single ordered list in `src/setup/runner.ts` through `SetupOptions`.
 Action steps must detect again after acting and let that detection decide their
-result. `src/setup/terminal.ts` runs a child with inherited terminal I/O, ignores
+result. `src/setup/terminal.ts` runs a child with inherited terminal I/O (stdout
+redirects to stderr for JSON reports), ignores
 SIGINT and SIGQUIT in the parent while the child runs, restores its handlers,
 and returns the child's exit code or 128 plus its signal number.
 

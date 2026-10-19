@@ -1,17 +1,21 @@
 import type { HarnessId } from '../doctor/ranges.ts';
 import type { HarnessProbe } from '../doctor/toolchain.ts';
 import type { Prompter } from './prompter.ts';
+import type { TerminalOutput } from './terminal.ts';
 
 export type SetupVerdict = 'ok' | 'done' | 'skip' | 'open' | 'fail';
 export type SetupLine = { name: string; verdict: SetupVerdict; detail: string; fix?: string };
 export type SetupMachine = {
   projectExists(): Promise<boolean>;
-  harness(id: HarnessId): Promise<HarnessProbe>;
+  harness(id: HarnessId, fresh?: boolean): Promise<HarnessProbe>;
   onPath(id: HarnessId): Promise<boolean>;
+  run(command: string, output?: TerminalOutput): Promise<number>;
+  read(path: 'config.toml' | 'roles.toml'): Promise<string | null>;
+  write(path: 'config.toml' | 'roles.toml', text: string, expected: string): Promise<void>;
 };
 
 /** Every step receives the same policy. yes accepts harmless defaults only;
- * interactive=false forbids questions, writes, installs, sign-ins and launches.
+ * Without a terminal only explicitly requested installers may run.
  */
 export type SetupOptions = {
   root: string;
@@ -20,5 +24,8 @@ export type SetupOptions = {
   yes: boolean;
   prompter: Prompter;
   machine: SetupMachine;
+  install?: HarnessId;
+  narrate?: (text: string) => void;
+  json?: boolean;
 };
 export type SetupStep = (options: SetupOptions) => Promise<SetupLine[]>;

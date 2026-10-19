@@ -16,6 +16,9 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   await mkdir(join(root, '.cland'));
   const prompter = scriptedPrompter([]);
   const machine: SetupMachine = {
+    read: async () => null,
+    write: async () => { throw new Error('unexpected write'); },
+    run: async () => { throw new Error('unexpected installer'); },
     projectExists: async () => true,
     onPath: async () => true,
     harness: async id => ({ id, bin: '/tools/harness', version: [2, 0, 24], checks: [
@@ -37,6 +40,49 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   assert.match(stderr, /without a terminal/);
   assert.match(stderr, /cland setup.*in a terminal/);
   assert.equal(stdout.trim().split('\n').length, 1);
+});
+
+test('setup --install codex runs without a terminal or question', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  let runs = 0;
+  const code = await runSetup(['--install', 'codex'], root, {}, {
+    stdinTTY: false, stdoutTTY: false, write: () => {}, prompter: scriptedPrompter([]),
+    machine: {
+      projectExists: async () => true, onPath: async () => true, read: async () => null,
+      write: async () => { throw new Error('unexpected write'); },
+      run: async command => { assert.match(command, /chatgpt.com\/codex\/install.sh/); runs++; return 0; },
+      harness: async id => ({ id, bin: null, version: null, checks: [] }),
+    },
+  });
+  assert.equal(code, 1); // the installer ran, but the injected re-check still reports missing
+  assert.equal(runs, 1);
+  await assert.rejects(runSetup(['--install', 'unknown'], root), /harness/);
+  await assert.rejects(runSetup(['--install'], root), /harness/);
+});
+
+test('setup JSON explicit installer reserves stdout for its report', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  let stdout = '', stderr = '', runs = 0;
+  await runSetup(['--json', '--install', 'codex'], root, {}, {
+    write: text => { stdout += text; }, narrate: text => { stderr += text; }, prompter: scriptedPrompter([]),
+    machine: {
+      projectExists: async () => true, onPath: async () => true, read: async () => null,
+      write: async () => { throw new Error('unexpected write'); },
+      run: async (_command, options) => {
+        assert.equal(options?.stdout, 'stderr');
+        stderr += 'installer output\n';
+        runs++;
+        return 0;
+      },
+      harness: async id => ({ id, bin: null, version: null, checks: [] }),
+    },
+  });
+  assert.equal(runs, 1);
+  assert.equal(JSON.parse(stdout).interactive, false);
+  assert.equal(stdout.trim().split('\n').length, 1);
+  assert.match(stderr, /installer output/);
 });
 
 test('setup refuses HOME through the CLI and its usage appears in help', async () => {

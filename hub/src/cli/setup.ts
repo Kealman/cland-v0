@@ -7,6 +7,8 @@ import { setupMachine } from '../setup/machine.ts';
 import { setup } from '../setup/runner.ts';
 import type { SetupMachine } from '../setup/types.ts';
 import { VERSION } from '../version.ts';
+import { HARNESS_ORDER } from '../setup/steps/harnesses.ts';
+import type { HarnessId } from '../doctor/ranges.ts';
 
 export { SETUP_USAGE } from './usage.ts';
 
@@ -22,8 +24,20 @@ type SetupIO = {
 /** The CLI owns roots, terminal policy and rendering; the runner owns the ordered steps. */
 export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.ProcessEnv = process.env, io: Partial<SetupIO> = {}): Promise<number> {
   const json = args.includes('--json');
-  const [dir, extra] = args.filter(arg => !arg.startsWith('--'));
-  if (extra !== undefined || args.some(arg => arg.startsWith('--') && !['--json', '--yes'].includes(arg))) throw new Error('usage: cland setup [dir] [--json] [--yes]');
+  let install: HarnessId | undefined;
+  const positional: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if (arg === '--install') {
+      const id = args[++i] as HarnessId;
+      if (install || !HARNESS_ORDER.includes(id)) throw new Error('--install requires one harness: claude-code, codex or opencode');
+      install = id;
+    } else if (arg === '--json' || arg === '--yes') continue;
+    else if (arg.startsWith('--')) throw new Error('usage: cland setup [dir] [--json] [--yes] [--install <harness>]');
+    else positional.push(arg);
+  }
+  const [dir, extra] = positional;
+  if (extra !== undefined) throw new Error('usage: cland setup [dir] [--json] [--yes] [--install <harness>]');
   const target = resolve(cwd, dir ?? '.');
   if (!existsSync(target) || !statSync(target).isDirectory()) throw new Error(`${target} is not a directory`);
   const root = realpathSync(target);
@@ -33,10 +47,12 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   const interactive = !json && (io.stdinTTY ?? Boolean(process.stdin.isTTY)) && (io.stdoutTTY ?? Boolean(process.stdout.isTTY));
   const write = io.write ?? ((text: string) => { process.stdout.write(text); });
   const narrate = json ? (io.narrate ?? ((text: string) => { process.stderr.write(text); })) : write;
-  narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : ' — without a terminal: detection only'}\n`);
-  const { report, code } = await setup({ root, env, interactive, yes: args.includes('--yes'),
+  // Keep installer folders available to later steps and the hub child without changing the caller's env.
+  const setupEnv = { ...env };
+  narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : install ? ` — without a terminal: install ${install} requested` : ' — without a terminal: detection only'}\n`);
+  const { report, code } = await setup({ root, env: setupEnv, interactive, json, yes: args.includes('--yes'), ...(install ? { install } : {}), narrate,
     prompter: io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr }),
-    machine: io.machine ?? setupMachine(root, env),
+    machine: io.machine ?? setupMachine(root, setupEnv),
   });
   if (json) write(`${JSON.stringify(report)}\n`);
   else {

@@ -40,8 +40,9 @@ export const INIT_USAGE = `  init [dir]      prepare the project (dir, else the 
   update [dir]    rewrite what cland manages in an initialised project to this version; nothing else
 `;
 
-export const SETUP_USAGE = `  setup [dir] [--json] [--yes]
-                  detect the project, harnesses and logins; without a terminal, report only
+export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--install <harness>]
+                  check the project, install harnesses on yes, and report logins
+                  --install <harness> runs its installer without asking, even without a terminal
                   --yes accepts harmless defaults only; never installs, signs in or launches
 `;
 
