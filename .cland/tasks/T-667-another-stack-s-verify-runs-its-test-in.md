@@ -3,7 +3,7 @@ id: T-667
 kind: task
 title: Another stack's verify runs its test in full and reports the test's output
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-619
 branch: t/T-667-another-stack-s-verify-runs-its-test-in
 created: 2026-10-16T16:35:24.761Z
-updated: 2026-10-19T20:39:00.484Z
+updated: 2026-10-19T20:50:56.468Z
 ---
 
 ## Summary
@@ -204,3 +204,20 @@ findings: [{"severity":"medium","text":"Exact-head A-6654 exits 1: red-singleton
 finding_counts: {"high":0,"medium":1,"low":0}
 
 A-6660 records independent raw A-6654 audit: ordinary 1510/1508/2, all 155 completed load groups 5/5, no tier/resource mismatch. Source A-6635 remains clear, but final C1–C5 are not newly verified because current-head gate af62ebd2 is red. Retain failed receipt/head; no defect attribution or diagnosis beyond the raw assertions, and no Reviewer tests/reruns. Request lead/Coordinator disposition under rule 11.
+
+### impl-667 · 2026-10-19T20:49:13.284Z
+
+Combined review head 04f1c3bd includes the Coordinator-authorized dev merge after T-717, the fake cland merge-queue checkout fixture fix (12/12), and the approved narrow other-stack occasion fetch-proof correction. Real runner-absent stage test reproduced missing-proof rejection then passes executing all four configured tiers without cland load/coverage fields. A-6679 retains original 196/196 targeted outputs, local native C3/C5 proofs and new red-green control; hub typecheck and test lint pass. C5 files exactly match merged dev. Source review requested before a new exact-head mode-free verify.
+
+### rev-30 · 2026-10-19T20:50:56.468Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-per-tier-occasion-integration-source
+commit: 04f1c3bd3c9391262c22013a0ab498aa4992eead
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Combined delta source clear, A-6684. Direct Coordinator history authorizes owned merge-queue fixture correction, one T-717 integration and narrow other-stack occasion fetch proof. Nine owned patches identical; all C5 files byte-identical to merged dev. Resolutions retain per-tier wrappers/coverage append, paired command records/phase summaries and cland-only planning guards. Other-stack occasion performs real bounded origin/dev fetch and retains proof through admission without cland load/coverage fields. Original merge-queue assertions retained; real runner-absent task/stage controls cover composition. A-6679 main captures 196/196 plus focused stage red→green; C3/C5 remain qualified local native evidence. C1–C5 final settlement requires fresh exact-head mode-free overall green; prior red A-6654 remains historical. QA none; no Reviewer execution.

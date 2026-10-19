@@ -2,8 +2,8 @@
 id: T-904
 kind: task
 title: "Two existing cases over budget: suite-task-selection (T1, 0.50 s) and suite-accounting (T2, 3.24 s)"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-648
 branch: t/T-904-two-existing-cases-over-budget-suite
 created: 2026-10-19T19:41:14.536Z
-updated: 2026-10-19T20:43:20.016Z
+updated: 2026-10-19T21:00:34.065Z
+closed: 2026-10-19T21:00:34.065Z
 ---
 
 ## Summary
@@ -23,8 +24,10 @@ Two existing cases are over their tier budget in green task runs on 2026-10-19 (
 
 ## Acceptance criteria
 
-- [ ] C1. (T1/T2) Both cases, and the three in the Coordinator's added-cases comment, run within their tier budget in a mode-free task verify, with every assertion kept: the whole-repository manifest inventory proof and all 50 acquirers. No new allowance.
-  - failed: rev-31 [reviewer] · 2026-10-19T20:42:33.729Z · note Both admission T2 identities report native child_process.execFile from the early-captured suite-selection promisifier (A-6665:44963–44964).
+- [x] C1. (T1/T2) Both cases, and the three in the Coordinator's added-cases comment, run within their tier budget in a mode-free task verify, with every assertion kept: the whole-repository manifest inventory proof and all 50 acquirers. No new allowance.
+  - verified: rev-31 [reviewer] · run rev-20261019-904-final · 2026-10-19T20:48:13.747Z · commit fb61c842f8359390ee4f92bf08afdc582789ec67
+  - done: impl-904b · 2026-10-19T20:55:34.822Z
+  - verified: rev-31 [reviewer] · run rev-20261019-904-integration-final · 2026-10-19T20:55:58.290Z · commit f9e204c1da95ef259d5406548368f8bfaf756260
 
 ## Comments
 
@@ -80,3 +83,54 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-6670: M1 corrected in source. Only delta from reviewed 33e70b26 is restoring harness/TestLintWarmer dynamic imports after fakeExec/custom promisifier installation and syncBuiltinESMExports; verificationFixture's earlier import is filesystem-only. Bounded synchronous fixture writes remain. A-6669 reports full admission file 6/6 normal and 6/6 with T2 enforcement preinstalled, zero resource reports; modeled cold admission 1250ms. Other four files, all assertions, full inventory/50-acquirer proof, tiers/durations/allowances unchanged. Standards and Spec clear. C1 remains run-dependent and unverified; fresh same-head mode-free receipt must execute all five named cases within tier budgets with zero owned resource violations. Failed parent resource evidence A-6668 retained.
+
+### rev-31 · 2026-10-19T20:48:13.747Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-904-final
+commit: fb61c842f8359390ee4f92bf08afdc582789ec67
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6677 independently audits complete same-head configured mode-free 5a08e8c9/A-6675: 563/563 ordinary, 390/390 repeated finishes, all 78 gate groups 5/5, zero non-pass/tier mismatch/load failure/budget diagnostics. All five named known cases execute and fit budgets: whole-manifest planner .396610423s (T1 <.5); 50-acquirer accounting 1.608632055s; cold admission 1.462277331s; configured levels .296505985s; CLI size .159646096s (T2 <2). Prior owned native execFile trips are absent; modeled cold refusal remains 1250ms. Full manifest inventory, 50 concurrent acquire proof and assertions preserved per A-6652/A-6670; no tier/duration/allowance changes. Claimant done confirmed; C1 final verified. Prior resource failure A-6668 retained. Linux x64 c-8 lon1 195s/$0.0135; no task T3 claim.
+
+Criteria: C1 verified.
+
+### impl-904b · 2026-10-19T20:49:41.515Z
+
+Coordinator requested one origin/dev merge after merge conflict. Merged 62cd66fe as f9e204c1 and preserved T-717's entire new per-tier planner test with its compact manifest plus the full repository inventory test, both on the in-memory fixture. Typecheck/lint pass. All five files rerun sequentially: 42 tests pass. Named cases 0.160/1.535/0.617/0.181/0.092 s. Delta review requested before fresh mode-free verification.
+
+### rev-31 · 2026-10-19T20:50:34.296Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-904-integration-source
+commit: f9e204c1da95ef259d5406548368f8bfaf756260
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6682: Coordinator 4ef265b7 authorized the single dev merge after T-717 conflict. Standards and Spec clear. Resolution retains every inherited per-tier assertion, all three selection permutations and unchanged compact nine-entry manifest; only fixture acquisition becomes in-memory. Original full-manifest case still inventories all current 486 paths separately. Other four owned files byte-identical to prior final-clear, including corrected admission import ordering. Final scope exactly five owned test files; tiers/durations/baseline match pinned dev 62cd66fe, no allowance changes. A-6681 all 42 local finishes and typecheck/lint pass. C1 remains unverified until fresh same-head configured mode-free evidence for all five named case budgets, inherited per-tier pass and zero owned resource violations; prior A-6675 does not cover this changed head.
+
+### rev-31 · 2026-10-19T20:55:58.290Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-904-integration-final
+commit: f9e204c1da95ef259d5406548368f8bfaf756260
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6691 independently audits complete same-head configured mode-free f7cf85c3/A-6690: 581/581 ordinary, 485/485 repeated finishes, all 97 groups 5/5, zero tier mismatch/load failure/non-pass/budget or regression diagnostics. All five C1 cases meet tier budgets: full-manifest planner .298113728s; 50-acquirer accounting 1.599237292s; cold admission 1.130148381s; malformed levels .238516467s; CLI size .132476613s. Inherited T-717 per-tier case .007832438s ordinary, five distinct passing repeats max .264736511s (<.5s T1). Full current 486-entry inventory, all assertions and 50-acquirer proof remain source-reviewed in A-6682/A-6652, no allowance increase. Corrected native-import boundary stays clean; cold modeled admission 1250ms. Claimant C1 done; C1 final verified at integrated head. Linux x64 c-8 lon1 210s/$0.0146; native T3 remains periodic/integrated evidence.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-19T21:00:34.065Z
+
+Merged 06e0b738a7d8aabe83fbf4ddb6d0627ee8dd2ac6 onto dev.
