@@ -2,12 +2,14 @@
 // defaults and the permission list (enforced by the hub on every spoke tool call: `permissions.ts`). Written with the defaults when missing, never rewritten;
 // refreshed asynchronously every 500 ms; every check reads the last parsed snapshot. A file that does not parse is logged and the last good version stays in force.
 import { readFile, stat, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { parse } from 'smol-toml';
 import { ROLE_NAMES } from '../names.ts';
 import type { LogFn } from '../log.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 import { rolesTemplate } from './template.ts';
+import { projectSkills } from './skills.ts';
 import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import { DEFAULT_PERMISSIONS, grantRefusal } from './permissions.ts';
 import { APPROVALS, PERMISSIONS, SANDBOX_MODES, SANDBOX_NETWORKS, type Approval, type Permissions, type Sandbox } from '../adapters/contract.ts';
@@ -43,7 +45,12 @@ export type RoleDefinition = {
 export type RolesConfig = ReadonlyMap<string, RoleDefinition>;
 
 /** What the hub asks of the role definitions: the last parsed snapshot, with no I/O at check time. */
-export type RolesSource = { get: () => RolesConfig; fresh?: (resumed?: Resumed) => Promise<void> };
+export type RolesSource = {
+  get: () => RolesConfig;
+  fresh?: (resumed?: Resumed) => Promise<void>;
+  /** Read only when building instructions; permission checks keep using the parsed snapshot. */
+  availableSkills?: () => ReadonlySet<string>;
+};
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const strings = (v: unknown, where: string): string[] => {
@@ -211,6 +218,8 @@ export class RolesFile implements RolesSource {
 
   /** One immutable-in-use snapshot. A refresh publishes a replacement, never edits a check's map. */
   get(): RolesConfig { return this.#config; }
+
+  availableSkills(): ReadonlySet<string> { return projectSkills(dirname(dirname(this.path))); }
 
   /** Rare launch/assignment paths see an edit immediately; hot permission checks never await disk. */
   async fresh(resumed: Resumed = this.#resumed): Promise<void> {

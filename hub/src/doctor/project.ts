@@ -15,6 +15,7 @@ import { CLAND_DIR, layout, pidAlive, readDiscovery, type Layout } from '../proj
 import type { HubStatus } from '../protocol.ts';
 import { KNOWN_GOOD_FREE_MODELS } from '../adapters/opencode/client.ts';
 import { parseRoles } from '../roles/config.ts';
+import { isSkill, projectSkills } from '../roles/skills.ts';
 import { VERSION } from '../version.ts';
 import { fail, ok, probeTimeout, run, warn, type Check } from './report.ts';
 import { territoryProblems } from '../territory.ts';
@@ -131,7 +132,10 @@ function checkConfig(l: Layout): Check[] {
     try {
       const parsed = parseRoles(roles);
       out.push(ok('roles.toml', `parses: ${[...parsed.keys()].join(', ')}`));
-      for (const [role, { launch }] of parsed) {
+      const available = projectSkills(l.root);
+      for (const [role, { launch, skills }] of parsed) {
+        const missing = skills.filter(skill => !available.has(skill));
+        if (missing.length) out.push(warn(`role skills ${role}`, `${role} names unavailable skills: ${missing.join(', ')}`, `remove unavailable names from ${role}.skills in ${CLAND_DIR}/roles.toml, or restore their folders holding SKILL.md in .agents/skills/`));
         if (launch.harness !== 'opencode') continue;
         const model = launch.model?.split('#')[0];
         if (!model || KNOWN_GOOD_FREE_MODELS.includes(model.includes('/') ? model : `opencode/${model}`) || /[-:]free$/.test(model)) {
@@ -170,15 +174,6 @@ const real = (path: string): string | null => {
     return realpathSync(path);
   } catch {
     return null;
-  }
-};
-
-/** Whether `path` is a usable skill: a folder (or a link to one) holding a `SKILL.md` file. */
-const isSkill = (path: string): boolean => {
-  try {
-    return statSync(path).isDirectory() && statSync(join(path, 'SKILL.md')).isFile();
-  } catch {
-    return false;
   }
 };
 

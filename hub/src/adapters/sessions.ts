@@ -905,8 +905,9 @@ export class Sessions {
     const selected = request.resolvedAccount;
     const policy = this.#launchPolicy(role);
     const adapter = this.adapter(harness);
-    const rules = role !== null ? projectRulesText(role, this.#core.rules?.get() ?? [], this.#core.roleDefinition(role)) : null;
-    const clause = role !== null && this.#core.roles ? `${clauseText(request.name, role, this.#core.roleDefinition(role))}\n\n${rules}` : null;
+    const definition = role !== null ? this.#core.roleInstructions(role) : undefined;
+    const rules = role !== null ? projectRulesText(role, this.#core.rules?.get() ?? [], definition) : null;
+    const clause = role !== null && this.#core.roles ? `${clauseText(request.name, role, definition)}\n\n${rules}` : null;
     if (brief && rules) brief = { ...brief, text: `${brief.text}\n\n${rules}` };
     this.#firstHello.set(launchToken, { role, carried: clause !== null && adapter.clauseAtSpawn === true, acceptedId: null });
     const item = request.item ?? null;

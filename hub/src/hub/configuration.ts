@@ -9,6 +9,7 @@ import { isDeepStrictEqual, promisify } from 'node:util';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../init/config.ts';
 import { DEFAULTS, parseRoles, ROLES_REFRESH_MS, type RolesConfig, type RolesSource } from '../roles/config.ts';
 import { rolesTemplate } from '../roles/template.ts';
+import { projectSkills } from '../roles/skills.ts';
 import { installedHarnessesAsync } from '../doctor/harnesses.ts';
 import type { Layout } from '../project.ts';
 import type { LogFn } from '../log.ts';
@@ -57,6 +58,7 @@ export class ProjectConfiguration implements RolesSource {
     this.#config = config ?? defaultConfig(basename(layout.root));
   }
   get = (): RolesConfig => this.#roles;
+  availableSkills = (): ReadonlySet<string> => projectSkills(this.layout.root);
   config = (): ProjectConfig => this.#config;
   status = (): ConfigStatus => ({ ...this.#status });
   async start(): Promise<void> {

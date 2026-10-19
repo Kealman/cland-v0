@@ -1,11 +1,11 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { cland, connectUi, eventually, flushProjectLogs, inProcessSpoke, projectHub, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
+import { cland, connectSocket, connectUi, eventually, flushProjectLogs, inProcessSpoke, projectHub, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
 
@@ -26,6 +26,53 @@ async function status(ui: FrameClient): Promise<Status> {
 }
 
 const isClause = (e: ChannelEvent) => e.params.meta?.kind === 'role';
+
+// T2: clause frames and the native launch input at the in-process adapter boundary.
+test('role clauses and launch instructions omit unavailable skills and retain project-owned skills', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  const file = join(root, '.cland/roles.toml');
+  await writeFile(file, DEFAULT_ROLES_TOML.replace('skills = ["implement", "tdd", "diagnosing-bugs"]',
+    'skills = ["implement", "grill-me", "project-check", "project-link", "empty-skill", "broken-skill"]'));
+  for (const skill of ['implement', 'project-check', 'empty-skill']) {
+    const directory = join(root, '.agents/skills', skill);
+    await mkdir(directory, { recursive: true });
+    if (skill !== 'empty-skill') await writeFile(join(directory, 'SKILL.md'), '# Skill\n');
+  }
+  await symlink('project-check', join(root, '.agents/skills/project-link'));
+  await symlink('missing-target', join(root, '.agents/skills/broken-skill'));
+  const { discovery, fakes } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  const readClause = async (name: string) => {
+    assert.equal((await ui.request({ type: 'role.set', session: name, role: 'implementer' })).ok, true);
+    const peer = await connectSocket(discovery.socket);
+    t.after(() => peer.close());
+    peer.send({ type: 'hello', protocol: 2, secret: discovery.secret, name, sessionId: name, cwd: root });
+    assert.equal((await peer.next()).type, 'welcome');
+    const frame = await peer.next();
+    assert.equal(frame.type, 'role');
+    return frame;
+  };
+  const clause = await readClause('direct');
+  assert.deepEqual(clause.skills, ['implement', 'project-check', 'project-link']);
+  const text = (clause.message as { text: string }).text;
+  assert.match(text, /Skills for this role: implement, project-check, project-link\./);
+  assert.doesNotMatch(text, /grill-me|empty-skill|broken-skill/);
+  const launch = async (name: string) => {
+    const result = await ui.request({ type: 'session.launch', name, role: 'implementer', harness: 'codex', brief: 'Complete the assigned work.' });
+    assert.equal(result.ok, true, result.error);
+    return fakes.codex!.spawns.at(-1)!;
+  };
+  const input = await launch('launch-mixed');
+  assert.match(input.clause!, /Skills for this role: implement, project-check, project-link\./);
+  assert.doesNotMatch(`${input.clause}\n${input.brief!.text}`, /grill-me|empty-skill|broken-skill/);
+  // Inventory changes take effect without an edit to roles.toml or a hub restart.
+  await rm(join(root, '.agents'), { recursive: true });
+  const empty = await readClause('direct-empty');
+  assert.deepEqual(empty.skills, []);
+  assert.doesNotMatch((empty.message as { text: string }).text, /Skills for this role:/);
+  assert.doesNotMatch((await launch('launch-empty')).clause!, /Skills for this role:/);
+});
 
 test('crew clauses describe category filing and the Aide speaking for the human', async t => {
   const root = await tempProject(t);
@@ -65,6 +112,8 @@ test('a session with no role is refused at hello; the role the human assigns del
     return hub;
   };
   const root = await tempProject(t);
+  await mkdir(join(root, '.agents/skills/code-review'), { recursive: true });
+  await writeFile(join(root, '.agents/skills/code-review/SKILL.md'), '# Code review\n');
   await serve(t, root);
   // CLAND_ROLE alone grants nothing: only the human, or a launch for the role, does
   const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev-1', sessionId: 'sess-rev', role: 'reviewer', assignRole: false });

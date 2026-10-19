@@ -151,6 +151,32 @@ test('Neovim not at the pinned version, or missing', async t => {
   assert.equal(check(gone.report, 'neovim').verdict, 'fail');
 });
 
+// T2: the public doctor report, with injected machine probes and real project files.
+test('doctor warns for every role and unknown skill while accepting project-owned skills', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const local = join(root, '.agents/skills/project-check');
+  await mkdir(local);
+  await writeFile(join(local, 'SKILL.md'), '# Project check\n');
+  await mkdir(join(root, '.agents/skills/empty-skill'));
+  await symlink('missing-target', join(root, '.agents/skills/broken-skill'));
+  const file = join(root, '.cland/roles.toml');
+  const roles = await readFile(file, 'utf8');
+  await writeFile(file, roles
+    .replace('skills = ["implement", "tdd", "diagnosing-bugs"]', 'skills = ["implement", "project-check", "grill-me", "empty-skill", "broken-skill"]')
+    .replace('skills = ["code-review"]', 'skills = ["code-review", "grill-me"]'));
+  const result = await report(root, tools.env, []);
+  assert.equal(result.code, 0, notOk(result.report).join('\n'));
+  const warnings = result.report.checks.filter(c => c.name.startsWith('role skills '));
+  assert.deepEqual(warnings.map(c => [c.name, c.verdict, c.detail]), [
+    ['role skills implementer', 'warn', 'implementer names unavailable skills: grill-me, empty-skill, broken-skill'],
+    ['role skills reviewer', 'warn', 'reviewer names unavailable skills: grill-me'],
+  ]);
+  for (const warning of warnings) assert.match(warning.fix ?? '', /\.cland\/roles\.toml/);
+  await writeFile(file, roles);
+  assert.deepEqual((await report(root, tools.env, [])).report.checks.filter(c => c.name.startsWith('role skills ')), []);
+});
+
 test('roles.toml that does not parse fails, naming the TOML error', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);

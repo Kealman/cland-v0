@@ -246,6 +246,13 @@ export class HubCore {
     return { ...definition, clause: `${base}\n\n${staffingClause(role, this.crew.get())}${section}` };
   }
 
+  /** Instructions name only usable project skills, without changing the configured role policy. */
+  roleInstructions(role: string) {
+    const definition = this.roleDefinition(role);
+    const available = this.#roles?.availableSkills?.();
+    return definition && available ? { ...definition, skills: definition.skills.filter(skill => available.has(skill)) } : definition;
+  }
+
   deliverReuseBrief(message: Message): void {
     const name = message.to[0]!;
     this.#record(message, [{ session: name, state: 'queued', direct: true }], this.#now().getTime());
@@ -2094,7 +2101,7 @@ export class HubCore {
    */
   #recordClause(c: Connection, reason: string, previous?: string | null, injected = false, extra: Pick<RoleClause, 'reason' | 'to'> = {}): string | null {
     if (!this.#roles) return null;
-    const definition = c.role !== null ? this.roleDefinition(c.role) : undefined;
+    const definition = c.role !== null ? this.roleInstructions(c.role) : undefined;
     const clause: RoleClause = c.role !== null ? { role: c.role, clause: roleClauseSections(definition?.clause ?? '').base, skills: definition?.skills ?? [] } : { role: null, clause: '', skills: [] };
     Object.assign(clause, extra);
     let text = c.role !== null ? clauseText(c.name, c.role, definition) : revokedText(c.name, previous ?? null, reason);
