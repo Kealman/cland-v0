@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type { TestEvent } from 'node:test/reporters';
 import skipReporter from './skip-reporter.ts';
 import { FakeClock } from './fake-clock.ts';
-import { suiteProgress } from '../src/suite-progress.ts';
+import { suiteProgress, progressLines } from '../src/suite-progress.ts';
 
 async function* events(rows: TestEvent[]) { yield* rows; }
 
@@ -40,7 +40,10 @@ test('a recovered report retains the durable partial result after machine deleti
   await f.machine.waits.run(f.machine.started(job.id));
   await f.suites.settled();
   const at = f.clock.now().getTime();
-  const log = `suite progress ${JSON.stringify({ event: 'start', id: 'a', file: 'hub/test/a.test.ts', name: 'hung', nesting: 0, at })}\n`;
+  const identity = { id: 'a', file: 'hub/test/a.test.ts', name: 'hung', nesting: 0 };
+  const log = `suite progress ${JSON.stringify({ ...identity, event: 'start', at })}\n`
+    + `suite progress ${JSON.stringify({ ...identity, event: 'finish', at: at + 11000, outcome: 'cancelled', seconds: 11, timedOut: true })}\n`;
+  f.clock.block(11000);
   f.beforeReport(async () => { throw new Error('reporting unavailable'); });
   await f.finish(job.id, 1, log, false);
   await f.suites.settled();
@@ -49,6 +52,7 @@ test('a recovered report retains the durable partial result after machine deleti
   const path = join(f.root, '.cland/run/suites', job.id, 'result.json');
   const before = JSON.parse(await readFile(path, 'utf8'));
   assert.equal(before.progress.unfinished.length, 1);
+  assert.equal(before.progress.unfinished[0].timedOut, true);
   assert.deepEqual(f.api.droplets, []);
   await f.reopen();
   f.beforeReport(async () => {});
@@ -81,4 +85,32 @@ test('duration receipts count test bodies once without their outer file envelope
     { file: 'hub/test/example.test.ts', name: 'body', seconds: 0.25 },
   ]);
   reporter.destroy();
+});
+
+// T1: native timeout evidence identifies the effective test budget; parent
+// cancellation and absent metadata cannot prove an individual test timed out.
+test('only an observed native test timeout establishes a hang', async () => {
+  const cases = [
+    { name: 'default timeout', elapsed: 11000, failureType: 'testTimeoutFailure', message: 'test timed out after 8000ms', hung: true },
+    { name: 'ten minute override', elapsed: 180000, failureType: 'cancelledByParent', message: 'test did not finish before its parent', hung: false },
+    { name: 'unknown budget', elapsed: 180000, failureType: undefined, message: '', hung: false },
+  ];
+  for (const entry of cases) {
+    const clock = new FakeClock();
+    const start = { file: '/project/hub/test/example.test.ts', name: entry.name, nesting: 0, line: 9, column: 1, type: 'test' as const, testId: 1 };
+    async function* source(): AsyncGenerator<TestEvent> {
+      yield { type: 'test:dequeue', data: start };
+      clock.block(entry.elapsed);
+      if (entry.failureType) {
+        const details = { passed: false, duration_ms: entry.elapsed, error: Object.assign(new Error(entry.message), { failureType: entry.failureType, code: 'ERR_TEST_FAILURE', cause: new Error(entry.message) }) };
+        yield { type: 'test:complete', data: { ...start, testNumber: 1, details } };
+      }
+    }
+    let log = '';
+    for await (const line of skipReporter(source(), { cwd: '/project', clock })) log += line;
+    const receipt = suiteProgress(log, clock.now().getTime())!;
+    const text = progressLines(receipt).join('\n');
+    assert.match(text, entry.hung ? /^hung:/ : /^in flight:/, entry.name);
+    assert.deepEqual(receipt.completed, [], 'an interrupted body never counts as completed');
+  }
 });

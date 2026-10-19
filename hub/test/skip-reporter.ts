@@ -41,6 +41,7 @@ export default async function* skipReporter(source: AsyncIterable<TestEvent>, op
           const error = event.data.details.error as (Error & { failureType?: string }) | undefined;
           const cancelled = ['cancelledByParent', 'testAborted', 'testTimeoutFailure'].includes(error?.failureType ?? '');
           const row: TestProgress = { event: 'finish', id: first?.id ?? `${phase}:${++sequence}`, file, name: first?.name ?? data.name, at: clock.now().getTime(), nesting: data.nesting, ...(scope ? { scope } : {}),
+            ...(error?.failureType === 'testTimeoutFailure' ? { timedOut: true } : {}),
             ...(first?.type || event.data.details.type ? { type: first?.type ?? event.data.details.type! } : {}), outcome: event.data.skip ? 'skip' : event.data.todo ? 'todo' : cancelled ? 'cancelled' : event.data.details.passed ? 'pass' : 'fail', seconds: event.data.details.duration_ms / 1000 };
           const timing = timings && row.type !== 'file' && data.nesting === 0 && data.line !== undefined ? `suite timing ${JSON.stringify({ file, name: data.name, seconds: row.seconds })}\n` : '';
           yield `suite progress ${JSON.stringify(row)}\n${timing}`;

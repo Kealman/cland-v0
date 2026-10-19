@@ -7,6 +7,7 @@ import { suiteUnit } from './suite-unit-fixture.ts';
 import { reserveShardSpend } from '../src/executor/droplet/spend.ts';
 import { fixture } from './remote-fixture.ts';
 import { drive } from './remote-clock.ts';
+import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 
 test('nightly skips with one cap notice when another project holds shared spend', async t => {
@@ -112,4 +113,51 @@ test('green nightly publishes a coverage map that selects task tests', async t =
   assert.ok('tests' in selected);
   assert.deepEqual(selected.tests, [testFile]);
   assert.equal(selected.map.artifact, maps[0]!.pointer.artifact);
+});
+
+// T2: the admitted deadline plan crosses the scripted provider without real time.
+test('nightly trims repetitions to the manifest projection before creating its machine', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet' }, 'workers=1\nsoak="12:00"\nlifetime="15m"\nrun_timeout="5m"');
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const file = 'hub/test/example.test.ts';
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await writeFile(join(f.root, file), '');
+  const unmeasured = 'hub/test/unmeasured.test.ts';
+  await writeFile(join(f.root, unmeasured), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T2', [unmeasured]: 'T2' } }));
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: { [file]: { seconds: 20, tests: 2 } }, tests: { [`${file}::first`]: 10, [`${file}::second`]: 10 }, allow: {} }));
+  await f.tick(); await f.suites.settled();
+  const job = (await f.jobs())[0]!;
+  assert.ok(job, 'the trimmed soak is admitted');
+  assert.deepEqual(job.selection?.loadGateTests, [`${file}::first`]);
+  assert.equal(loadGateRepetitions(`${file}::first`, job.selection, {}), 5);
+  assert.equal(loadGateRepetitions(`${file}::second`, job.selection, {}), 0);
+  assert.equal(loadGateRepetitions(`${file}::unmeasured`, job.selection, {}), 0, 'unknown identities cannot grow the admitted plan');
+  assert.match(await f.log(job.id), /soak deadline plan:.*1.*2.*20%.*1 files use median base projection/);
+  await f.machine.waits.run(f.machine.started(job.id));
+  await f.finish(job.id);
+  assert.equal(f.status(job.id).outcome?.code, 0);
+});
+
+test('nightly refuses a base run beyond the deadline before reserving a droplet', async t => {
+  const notices: string[] = [];
+  const f = await suiteUnit(t, { onSoakNotice: (_id, text) => { notices.push(text); } },
+    'soak="12:00"\nlifetime="15m"\nrun_timeout="5m"');
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const file = 'hub/test/example.test.ts';
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await writeFile(join(f.root, file), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T4' } }));
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: { [file]: { seconds: 300, tests: 1 } }, tests: { [`${file}::slow`]: 300 }, allow: {} }));
+  await f.tick(); await f.suites.settled();
+  assert.equal(f.suites.status().length, 0);
+  assert.equal(notices.length, 1);
+  assert.match(notices[0]!, /soak deadline plan refused: base projection 301.0 s exceeds 180.0 s/);
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
 });

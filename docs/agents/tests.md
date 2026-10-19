@@ -61,8 +61,17 @@ uses the same mode-free selection. T3 smoke files are filtered out of task plans
 that time, including when it starts late, and persists the attempt across restarts.
 It requires clean `dev` at freshly fetched `origin/dev` and skips an unchanged
 candidate tree. A soak uses one droplet with Coordinator priority, plans T1–T4
-with `CLAND_TEST_SOAK=1`, and load-repeats identities absent from the last green
-soak. The executor reserves shared daily spend before creating the machine;
+with `CLAND_TEST_SOAK=1`, and load-repeats measured identities absent from the last
+green soak. Admission pins the timeout/configuration and a five-repetition identity
+list from `durations.json`. Its estimate uses the package phase worker projection for the base run (including
+the manifest median for missing files), then charges each repeated identity its
+whole file cost (or identity cost, if greater) serially, plus one second per fresh
+process. It reserves 20% of `run_timeout` for load variance
+and 60 seconds for check/coverage/runner overhead, trimming repetitions to fit.
+Unmeasured identities still run in the base phase but do not acquire repetitions;
+a missing duration manifest or a base projection beyond that budget refuses admission
+with a reason before any machine is created. The plan and omitted counts stay in
+the selection/log. The executor reserves shared daily spend before creating the machine;
 a cap refusal skips the night with one notice naming `daily_spend_usd`'s cap.
 Results go to the Coordinator in General. Green coverage maps feed task selection.
 A red soak leaves queued merges intact and does not prevent another batch.
@@ -481,6 +490,12 @@ or stderr (`[verification].stall_timeout`), reports the last started tests, and
 reaps the verified process tree before releasing its leases. Both settings accept
 positive durations such as `"120s"` and `"10m"`; explicit test-level timeouts
 override Node's default. Droplet runs also have their enforced total `run_timeout`.
+A deadline interruption reports `timeout: N tests completed, M failed` before
+in-flight diagnostics, preserving completed pass/fail/skip counts. An unfinished
+test is labelled `in flight`; `hung` requires an observed native `testTimeoutFailure` receipt for that
+identity, proving its own effective timeout expired (including explicit overrides).
+Elapsed time beyond the run-wide default alone and unknown per-test budgets never
+establish a hang.
 When an inherited-pipe writer cannot be verified, the result explicitly says
 cleanup is incomplete, Agents and the inbox receive one warning, and the queue
 is released. Unknown processes are preserved; exact fast-writer ownership is
