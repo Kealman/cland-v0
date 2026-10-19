@@ -32,10 +32,12 @@ export class TaskMerges {
   readonly queue: MergeQueue | undefined;
   readonly worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>;
   readonly #squash: typeof squashTask;
+  readonly #git: typeof territoryGitAsync;
   readonly log: LogFn;
   readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask) {
+  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync) {
+    this.#git = git;
     this.#squash = squash;
     this.queue = queue;
     this.#env = env;
@@ -68,7 +70,7 @@ export class TaskMerges {
           && !predecessor.verdicts.some(v => v.verdict === 'qa' && v.stage === undefined && v.source === 'hub' && v.writer?.role === 'qa');
         if (!resumed(pending)) continue;
         const tasks = resumed(() => this.tracker.list({ under: id, kind: 'task' }).map(t => t.id));
-        const surfaces = await epicMergeFiles(this.tracker.root, tasks, dev, this.#env);
+        const surfaces = await epicMergeFiles(this.tracker.root, tasks, dev, this.#env, args => this.#git(this.tracker.root, args, undefined, undefined, this.#env));
         const overlap = resumed(() => files.filter(file => surfaces.includes(file)));
         if (overlap.length) holds.push({ id, files: [...overlap] });
       }
@@ -117,7 +119,7 @@ export class TaskMerges {
             if (pendingSync) throw new MergeError('merge-recovery', `finish pending cland sync before merging ${id}`);
             return this.tracker.mergeReceipt(id);
           });
-          const existing = prior ? await landedTask(this.tracker.root, id, prior, resumed, undefined, this.#env) : null;
+          const existing = prior ? await landedTask(this.tracker.root, id, prior, resumed, undefined, this.#env, this.#git) : null;
           if (prior && existing) {
             resumed(() => {
               state.landed = { commit: prior.commit, base: prior.base };
@@ -137,20 +139,20 @@ export class TaskMerges {
             await reconcileTaskCheckout(this.tracker.root, prior, resumed, () => {
               const { checkout: _checkout, ...coherent } = prior;
               this.tracker.recordMerge(id, coherent);
-            }, authorize, this.#env);
+            }, authorize, this.#env, this.#git);
             if (!existing.published) {
               resumed(authorize);
               resumed(() => { step = 'publish'; });
-              await territoryGitAsync(this.tracker.root, ['push', territoryPath(this.tracker.root), `refs/heads/${prior.base}:refs/heads/${prior.base}`], true, undefined, this.#env);
+              await this.#git(this.tracker.root, ['push', territoryPath(this.tracker.root), `refs/heads/${prior.base}:refs/heads/${prior.base}`], true, undefined, this.#env);
             }
             return;
           }
           if (prior?.checkout) {
             try {
-              const parent = await territoryGitAsync(this.tracker.root, ['rev-parse', `${prior.commit}^`], undefined, undefined, this.#env);
-              const base = await territoryGitAsync(this.tracker.root, ['rev-parse', `refs/heads/${prior.base}`], undefined, undefined, this.#env);
+              const parent = await this.#git(this.tracker.root, ['rev-parse', `${prior.commit}^`], undefined, undefined, this.#env);
+              const base = await this.#git(this.tracker.root, ['rev-parse', `refs/heads/${prior.base}`], undefined, undefined, this.#env);
               resumed(() => { if (base !== parent) throw new Error('the integration ref moved since preparation; its checkout was kept'); });
-              await restoreTaskCheckout(this.tracker.root, { ...prior, checkout: prior.checkout }, resumed, authorize, this.#env);
+              await restoreTaskCheckout(this.tracker.root, { ...prior, checkout: prior.checkout }, resumed, authorize, this.#env, this.#git);
               resumed(() => {
                 const { checkout: _checkout, ...restored } = prior;
                 this.tracker.recordMerge(id, restored);
@@ -206,7 +208,7 @@ export class TaskMerges {
           } catch (err) {
             // The failing step alone cannot decide the outcome: a failed rollback can leave either ref landed.
             const receipt = resumed(() => this.tracker.mergeReceipt(id));
-            const observed = receipt ? await landedTask(this.tracker.root, id, receipt, resumed, undefined, this.#env) : null;
+            const observed = receipt ? await landedTask(this.tracker.root, id, receipt, resumed, undefined, this.#env, this.#git) : null;
             resumed(() => {
               if (!receipt || !observed) {
                 // A complete prelanding rollback needs no further checkout recovery. Later user staging is ordinary

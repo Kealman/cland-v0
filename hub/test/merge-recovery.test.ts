@@ -1,125 +1,87 @@
-import { onCleanup } from './process-cleanup.ts';
+// T2: merge rule failures, verdict permissions and request accounting with injected Git and FakeClock.
+import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
-import { preparedProject, copyPreparedProject } from './prepared-project.ts';
-import { Store } from '../src/hub/store.ts';
-import { parseItem, serializeItem } from '../src/tracker/item.ts';
-import { fixedRoles } from '../src/roles/config.ts';
-import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
-import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
-import { git, ok, json, project, task, requireQa, review, refused, indexLockProject, observableProject } from './merge-support.ts';
+import { existsSync } from 'node:fs';
+import { until, startHub } from './harness.ts';
+import { componentProject, human } from './merge-component-support.ts';
+import { RequestGuard } from '../src/hub/budget.ts';
+import type { ItemView } from '../src/tracker/tracker.ts';
+import { review } from './merge-support.ts';
 
-
-test('a close write failure reports merged follow-up failure; retry closes and prunes without a second commit', async (t) => {
-  const { root, ui, rev, discovery } = await project(t, undefined, undefined, startDaemon);
-  const work = await task(root);
-  await review(rev, work.id);
-  const topic = await ui.request({ type: 'topic.create', title: 'Retry parser', item: work.id });
-  assert.equal(topic.ok, true, topic.error);
-  const before = git(root, 'rev-parse', 'dev');
-  const obstruction = join(root, '.cland', 'tasks', `.T-1-ship-the-parser.md.${discovery.pid}.tmp`);
-  await mkdir(obstruction);
-  const first = json<{ commit: string; followUp?: { step: string; error: string } }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(first.followUp?.step, 'close');
-  assert.match(first.followUp?.error ?? '', /merged, follow-up failed: close/);
-  assert.equal(git(root, 'rev-parse', 'dev'), first.commit);
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), first.commit);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'open');
-  assert.ok(existsSync(work.path));
-  await rm(obstruction, { recursive: true });
-  // The prepared landing is durable across hub replacement, not just remembered by this request.
-  await killDaemon(discovery.pid);
-  const restarted = await startDaemon(t, root);
-  const retryUi = await connectUi(t, restarted.discovery);
-  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(retry.commit, first.commit);
-  assert.equal(retry.followUp, undefined);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  const closed = json<{ item: { state: string; claim: unknown; comments: Array<{ text: string }> } }>(await cland(root, 'task', 'view', work.id, '--json')).item;
-  assert.equal(closed.state, 'closed');
-  assert.equal(closed.claim, null);
-  assert.equal(closed.comments.filter(c => c.text.includes(`Merged ${first.commit}`)).length, 1);
-  // Closing succeeds before deferred session cleanup necessarily removes the worktree.
-  await eventually('retried merge worktree cleanup', () => !existsSync(work.path) ? true : undefined);
-  assert.equal(existsSync(work.path), false);
-  const history = await retryUi.request({ type: 'topic.history', topic: (topic.value as { topic: { id: string } }).topic.id });
-  assert.equal((history.value as { topic: { status: string } }).topic.status, 'closed');
-  const again = json<{ commit: string; cleanup: string; followUp?: unknown }>(await cland(root, 'merge', 't-01', '--json'));
-  assert.equal(again.commit, first.commit);
-  assert.equal(again.cleanup, 'removed');
-  assert.equal(again.followUp, undefined);
-  assert.equal((await retryUi.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
-  assert.match(journal, /"event":"merge-follow-up-failed"/);
-  assert.doesNotMatch(journal, /"event":"merge-refused"/);
-});
-
-test('foreground merge freshness fan-out after Git is measured as a resumed 400 ms stretch', async (t) => {
-  const clock = { now: 0 };
-  const { root, tracker, ui, rev, records, work } = await observableProject(t, undefined, clock);
+test('injected merge freshness fan-out is measured as a resumed 400 ms stretch', async (t) => {
+  const f = await componentProject(t);
+  const { tracker, ui, rev, records, facts, clock, merges } = f;
+  const work = await f.ticket();
   await review(rev, work.id);
   const created = await ui.request({ size: 'M', type: 'task.create', title: 'A branch that will appear', branch: 't/later' });
   assert.equal(created.ok, true, created.error);
   const id = (created.value as { item: { id: string } }).item.id;
-  const tip = git(work.path, 'rev-parse', 'HEAD');
+  const tip = facts.heads.get(work.branch!)!;
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id, verdict: 'review', scope: 'full', result: 'clear', run: 'later', commit: tip })).ok, true);
-  await eventually('missing branch settled stale', async () => {
+  await until(async () => {
     await tracker.refreshFreshness();
-    return tracker.view(id).verdicts[0]?.current === false ? true : undefined;
-  });
-  // Drain the last write's background poke; creating a Git branch schedules no tracker work.
-  await sleep(100);
+    return tracker.view(id).verdicts[0]?.current === false;
+  }, { what: 'missing branch settled stale' });
+  // The manual tip scheduler has no background poke to drain.
   await tracker.refreshFreshness();
-  git(root, 'branch', 't/later', tip);
+  facts.heads.set('t/later', tip);
   // A real task-event subscriber is a public boundary; only the guard clock is synthetic.
-  tracker.onChange(change => { if (change.id === id) clock.now += 400; });
-  const response = await ui.request({ type: 'merge', item: work.id }, 30_000);
-  assert.equal(response.ok, true, response.error);
+  tracker.onChange(change => { if (change.id === id) clock.block(400); });
+  const guard = new RequestGuard({ now: () => clock.now().getTime(), log: r => records.push(r) });
+  const response = await guard.measure('merge', 'human', () => merges.merge(work.id, human, guard.resumer('merge', 'human')));
+  assert.ok('commit' in response);
   assert.ok(records.some(r => r.event === 'slow-request' && r.tool === 'merge' && r.phase === 'resumed' && Number(r.ms) >= 400), JSON.stringify(records));
 });
 
-test('a verdict whose session changes role while Git resolves uses the role and permissions at its write', async (t) => {
+
+test('in-process verdict writes use the role held after injected Git resolves', async (t) => {
   for (const role of ['implementer', 'coordinator']) await t.test(role, async t => {
-    const reached = Promise.withResolvers<void>();
+    let reached = false;
     const release = Promise.withResolvers<void>();
     let paused = false;
-    const { root, tracker, ui, rev, work } = await observableProject(t, real => async (args, input) => {
-      if (paused && args[0] === 'rev-parse') { reached.resolve(); await release.promise; }
+    const f = await componentProject(t, { git: real => async (args, input) => {
+      if (paused && args[0] === 'rev-parse') { reached = true; await release.promise; }
       return real(args, input);
-    });
+    } });
+    const { tracker, ui, rev, facts, merges } = f;
+    const work = await f.ticket();
     paused = true;
     const writing = rev.call<{ ok: boolean; code?: string; error?: string }>('task.comment', { id: work.id, verdict: 'review', scope: 'full', result: 'clear', run: 'role-await' });
-    await reached.promise;
-    assert.equal((await ui.request({ type: 'role.set', session: 'rev', role })).ok, true);
-    release.resolve();
+    try {
+      await until(() => reached, { what: 'verdict commit lookup paused' });
+      assert.equal((await ui.request({ type: 'role.set', session: 'rev', role })).ok, true);
+    } finally { release.resolve(); }
     const result = await writing;
     if (role === 'implementer') {
       assert.equal(result.ok, false, JSON.stringify(result));
       assert.equal(result.code, 'forbidden');
-      await refused(ui, root, work.id, 'review-missing');
+      const refs = [...facts.heads];
+      await assert.rejects(merges.merge(work.id, human, work => work()), /review-missing/);
+      assert.deepEqual([...facts.heads], refs, 'a gate refusal moves no ref');
     } else {
       assert.equal(result.ok, true, result.error);
       const verdict = tracker.view(work.id).verdicts[0];
       assert.equal(verdict?.writer?.role, 'coordinator');
       assert.equal(verdict?.by, 'rev [coordinator]');
-      await refused(ui, root, work.id, 'review-role');
+      const refs = [...facts.heads];
+      await assert.rejects(merges.merge(work.id, human, work => work()), /review-role/);
+      assert.deepEqual([...facts.heads], refs, 'a gate refusal moves no ref');
     }
   });
 });
 
-test('release, topic closure and cleanup failures remain merged and retry the remaining steps', async (t) => {
-  for (const step of ['release', 'topic close', 'cleanup', 'branch cleanup']) {
+
+test('in-process release and topic closure failures retry only remaining merge steps', async (t) => {
+  for (const step of ['release', 'topic close']) {
     await t.test(step, async t => {
-      const { root, tracker, ui, rev, work } = await observableProject(t);
+      const f = await componentProject(t);
+      const { root, tracker, ui, rev, facts, merges } = f;
+      const work = await f.ticket();
       await review(rev, work.id);
-      const before = git(root, 'rev-parse', 'dev');
+      const before = facts.landings.length;
       const topic = await ui.request({ type: 'topic.create', title: 'Follow-ups', item: work.id });
       assert.equal(topic.ok, true, topic.error);
       let repair: () => void | Promise<void> = () => {};
@@ -133,242 +95,119 @@ test('release, topic closure and cleanup failures remain merged and retry the re
         onCleanup(t, () => db.close());
         db.exec("create trigger fail_topic before update of status on topics when old.item = 'T-1' begin select raise(abort, 'topic closure failure'); end");
         repair = () => db.exec('drop trigger fail_topic');
-      } else if (step === 'branch cleanup') {
-        const lock = join(root, '.git', 'refs', 'heads', `${work.branch}.lock`);
-        await writeFile(lock, 'branch locked\n');
-        repair = () => rm(lock);
-      } else {
-        await writeFile(join(work.path, 'parser.txt'), 'uncommitted work\n');
-        repair = () => writeFile(join(work.path, 'parser.txt'), 'parser\n');
       }
-      const response = await ui.request({ type: 'merge', item: work.id }, 30_000);
-      assert.equal(response.ok, true, response.error);
-      const first = response.value as { commit: string; followUp?: { step: string; error: string } };
-      assert.equal(first.followUp?.step, step === 'branch cleanup' ? 'cleanup' : step);
+      const first = await merges.merge(work.id, human, work => work()) as { commit: string; followUp?: { step: string; error: string } };
+      assert.equal(first.followUp?.step, step);
       assert.ok(first.followUp?.error.includes('merged, follow-up failed:'));
-      assert.equal(git(root, 'rev-parse', 'dev'), first.commit);
+      assert.equal(facts.heads.get('dev'), first.commit);
       assert.equal(tracker.view(work.id).state, 'closed');
       await repair();
-      const retried = await ui.request({ type: 'merge', item: work.id }, 30_000);
-      assert.equal(retried.ok, true, retried.error);
-      const done = retried.value as { commit: string; followUp?: unknown };
+      const done = await merges.merge(work.id, human, work => work()) as { commit: string; followUp?: unknown };
       assert.equal(done.commit, first.commit);
       assert.equal(done.followUp, undefined);
-      assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
+      assert.equal(facts.landings.length - before, 1);
       assert.equal(tracker.view(work.id).claim, null);
-      // Closing succeeds before deferred session cleanup necessarily removes the worktree.
-      await eventually('retried follow-up worktree cleanup', () => !existsSync(work.path) ? true : undefined);
-      assert.equal(existsSync(work.path), false);
-      assert.equal(git(root, 'branch', '--list', work.branch), '');
+      assert.equal(facts.worktrees.has(work.id), false, 'successful retry removes the worktree');
+      assert.equal(facts.heads.has(work.branch!), false, 'successful retry removes the task branch');
       const history = await ui.request({ type: 'topic.history', topic: (topic.value as { topic: { id: string } }).topic.id });
       assert.equal((history.value as { topic: { status: string } }).topic.status, 'closed');
     });
   }
 });
 
-
-test('restart after local ref movement but before territory push republishes the prepared commit without another squash', async (t) => {
-  const { root, rev, discovery } = await project(t, undefined, undefined, startDaemon);
-  const work = await task(root);
-  await review(rev, work.id);
-  const before = git(root, 'rev-parse', 'dev');
-  const hook = join(root, '.git', 'hooks', 'pre-push');
-  await writeFile(hook, '#!/bin/sh\nkill -KILL "$(ps -p "$PPID" -o ppid=)"\nexit 1\n', { mode: 0o755 });
-  const interrupted = await cland(root, 'merge', work.id, '--json');
-  assert.notEqual(interrupted.code, 0);
-  await killDaemon(discovery.pid);
-  const local = git(root, 'rev-parse', 'dev');
-  assert.notEqual(local, before);
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  await rm(hook);
-  await startDaemon(t, root);
-  // A reconnecting session can defer cleanup independently of publishing the
-  // recovered commit. Keep that state observable instead of relying on timing.
-  const holder = await spawnSpoke({ discover: true, cwd: work.path, name: 'cleanup-peer', sessionId: 'cleanup-peer', role: 'implementer' });
-  onCleanup(t, () => holder.close());
-  await holder.waitForPresence(['cleanup-peer']);
-  const retried = json<{ commit: string; cleanup: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
-  const diagnostics = async () => {
-    await flushProjectLogs(t, root);
-    const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(line => /merge|worktree|cleanup-peer/.test(line));
-    return `${JSON.stringify(retried)}\n${journal.join('\n')}`;
-  };
-  assert.equal(retried.commit, local);
-  assert.equal(retried.followUp, undefined, await diagnostics());
-  assert.equal(retried.cleanup, 'waiting for sessions', await diagnostics());
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), local);
-  await holder.close();
-  try {
-    await eventually('recovered merge worktree cleanup', () => !existsSync(work.path) && git(root, 'branch', '--list', work.branch) === '' ? true : undefined);
-  } catch (error) {
-    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${await diagnostics()}`, { cause: error });
-  }
-});
-
-test('a failed external log sink still returns the landed commit and retries only follow-ups', async (t) => {
+test('injected merge logging failures retain the landed commit and retry only follow-ups', async (t) => {
   let failing = true;
-  const { root, ui, rev, work } = await observableProject(t, undefined, undefined, entry => {
+  const f = await componentProject(t, { sink: entry => {
     if (failing && ['task-merged', 'merge-follow-up-failed'].includes(String(entry.event))) throw new Error('record sink unavailable');
-  });
+  } });
+  const { rev, facts, merges } = f;
+  const work = await f.ticket();
   await review(rev, work.id);
-  const before = git(root, 'rev-parse', 'dev');
-  const first = await ui.request({ type: 'merge', item: work.id }, 30_000);
-  assert.equal(first.ok, true, first.error);
-  const result = first.value as { commit: string; followUp?: { step: string } };
+  const before = facts.landings.length;
+  const result = await merges.merge(work.id, human, work => work()) as { commit: string; followUp?: { step: string } };
   assert.equal(result.followUp?.step, 'record');
-  assert.equal(git(root, 'rev-parse', 'dev'), result.commit);
+  assert.equal(facts.heads.get('dev'), result.commit);
   failing = false;
-  const retry = await ui.request({ type: 'merge', item: work.id }, 30_000);
-  assert.equal(retry.ok, true, retry.error);
-  assert.equal((retry.value as { commit: string }).commit, result.commit);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-});
-
-test('deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored', async (t) => {
-  const fake = await fakeClaude(t);
-  const { root, ui, rev } = await project(t, fake.env);
-  // Keep the session alive to exercise deferred cleanup after an explicit stop.
-  assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: 'never' })).ok, true);
-  const work = await task(root);
-  ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
-  await review(rev, work.id);
-  const merged = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(merged.cleanup, 'waiting for sessions');
-  git(work.path, 'switch', '-c', 'keep-this-branch');
-  ok(await cland(root, 'session', 'stop', 'impl-1'));
-  await eventually('branch mismatch recorded by deferred cleanup', async () => (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).includes('worktree branch changed since merge') ? true : undefined);
-  assert.ok(existsSync(work.path));
-  assert.notEqual(git(root, 'branch', '--list', 'keep-this-branch'), '');
-  assert.notEqual(git(root, 'branch', '--list', work.branch), '');
-  git(work.path, 'switch', work.branch);
-  const retry = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(retry.commit, merged.commit);
-  assert.equal(retry.cleanup, 'removed');
-  await eventually('restored branch worktree cleanup', () => !existsSync(work.path) ? true : undefined);
-  assert.equal(existsSync(work.path), false);
-  assert.notEqual(git(root, 'branch', '--list', 'keep-this-branch'), '');
-});
-
-
-test('deferred cleanup keeps the task branch and worktree if its tip moved after landing', async (t) => {
-  const fake = await fakeClaude(t);
-  const { root, ui, rev } = await project(t, fake.env);
-  // Keep the session alive to exercise deferred cleanup after an explicit stop.
-  assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: 'never' })).ok, true);
-  const work = await task(root);
-  ok(await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', work.id));
-  await review(rev, work.id);
-  const merged = json<{ commit: string; cleanup: string }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(merged.cleanup, 'waiting for sessions');
-  await writeFile(join(work.path, 'parser.txt'), 'additional unmerged work\n');
-  git(work.path, 'commit', '-qam', 'After landing');
-  const extra = git(work.path, 'rev-parse', 'HEAD');
-  ok(await cland(root, 'session', 'stop', 'impl-1'));
-  await eventually('moved tip reported as kept', async () => {
-    const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
-    if (journal.includes(`branch moved since merge (${extra}), kept`)) return true;
-    assert.ok(existsSync(work.path), 'cleanup must keep the worktree holding new commits');
-    return undefined;
-  });
-  assert.ok(existsSync(work.path));
-  assert.equal(git(root, 'rev-parse', work.branch), extra);
-  assert.equal(git(root, 'rev-parse', 'dev'), merged.commit);
-  assert.equal(await readFile(join(work.path, 'parser.txt'), 'utf8'), 'additional unmerged work\n');
-});
-
-test('a rejected push with failed rollback remains landed and retry restores the root tree before publication completes', async (t) => {
-  const { root, rev, discovery } = await project(t, undefined, undefined, startDaemon);
-  const work = await task(root);
-  await review(rev, work.id);
-  const before = git(root, 'rev-parse', 'dev');
-  const hook = join(root, '.git', 'hooks', 'pre-push');
-  await writeFile(hook, '#!/bin/sh\nprintf \'locked\n\' > "$(git rev-parse --git-path refs/heads/dev.lock)"\nexit 1\n', { mode: 0o755 });
-  const result = json<{ commit: string; followUp?: { step: string; error: string } }>(await cland(root, 'merge', work.id, '--json'));
-  assert.ok(result.followUp);
-  assert.match(result.followUp.error, /rollback failed|publish pending/);
-  assert.equal(git(root, 'rev-parse', 'dev'), result.commit);
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
-  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', `${before}^{tree}`));
-  assert.equal(existsSync(join(root, 'parser.txt')), false);
-  await flushProjectLogs(t, root);
-  const journal = await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8');
-  assert.doesNotMatch(journal, /"event":"merge-refused"/);
-  await rm(hook);
-  await rm(join(root, '.git', 'refs', 'heads', 'dev.lock'));
-  await killDaemon(discovery.pid);
-  await startDaemon(t, root);
-  // The rollback receipt survives restart and refuses an index edited since that recorded rollback.
-  await writeFile(join(root, 'README.md'), 'staged work to preserve\n');
-  git(root, 'add', 'README.md');
-  const staged = git(root, 'write-tree');
-  const edited = json<{ commit: string; followUp?: { step: string } }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(edited.commit, result.commit);
-  assert.equal(edited.followUp?.step, 'checkout');
-  assert.equal(git(root, 'write-tree'), staged);
-  assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'staged work to preserve\n');
-  git(root, 'restore', '--source', before, '--staged', '--worktree', 'README.md');
-  // Recovery must preserve new root work rather than overwrite it just to finish the prior landing.
-  await writeFile(join(root, 'parser.txt'), 'local work to preserve\n');
-  const obstructed = json<{ commit: string; followUp?: { step: string } }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(obstructed.commit, result.commit);
-  assert.equal(obstructed.followUp?.step, 'checkout');
-  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'local work to preserve\n');
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
-  await rm(join(root, 'parser.txt'));
-  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
+  const retry = await merges.merge(work.id, human, work => work()) as { commit: string };
   assert.equal(retry.commit, result.commit);
-  assert.equal(retry.followUp, undefined);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), result.commit);
-  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', 'dev^{tree}'));
-  assert.equal(git(root, 'diff', '--name-only'), '');
-  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
-  // Publishing succeeds before deferred session cleanup necessarily removes the worktree.
-  await eventually('retried rejected-push worktree cleanup', () => !existsSync(work.path) ? true : undefined);
-  assert.equal(existsSync(work.path), false);
+  assert.equal(facts.landings.length - before, 1);
 });
 
-
-test('a published receipt remains landed when local rollback succeeds, and retry repairs the root ref and tree', async (t) => {
-  const { root, rev } = await project(t);
-  const work = await task(root);
-  await review(rev, work.id);
-  const before = git(root, 'rev-parse', 'dev');
-  const hook = join(root, '.git', 'hooks', 'pre-push');
-  await writeFile(hook, '#!/bin/sh\ngit -c core.hooksPath=/dev/null push .cland/territory.git refs/heads/dev:refs/heads/dev || exit 2\nexit 1\n', { mode: 0o755 });
-  const result = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
-  assert.ok(result.followUp);
-  assert.equal(git(root, 'rev-parse', 'dev'), before);
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), result.commit);
-  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', `${before}^{tree}`));
-  await rm(hook);
-  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(retry.commit, result.commit);
-  assert.equal(retry.followUp, undefined);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  assert.equal(git(root, 'write-tree'), git(root, 'rev-parse', 'dev^{tree}'));
-  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
-});
-
-test('retrying a completed merge preserves staged deletion and reversion of its touched files', async (t) => {
-  for (const file of ['parser.txt', 'README.md']) await t.test(file, async (t) => {
-    const { root, rev } = await project(t);
-    const work = await task(root, 'Ship changes', file);
-    await review(rev, work.id);
-    const merged = json<{ commit: string }>(await cland(root, 'merge', work.id, '--json'));
-    if (file === 'parser.txt') git(root, 'rm', file);
+// Drive the real registered teardown before its owned directory cleanup, including partial acquisition.
+test('component fixture drains startup and close failures before removing its root', async t => {
+  for (const failure of ['startup', 'close'] as const) await t.test(failure, async t => {
+    const hooks: Array<() => Promise<void>> = [];
+    const fixtureContext = { signal: t.signal, after: (hook: () => Promise<void>) => hooks.push(hook) } as unknown as TestContext;
+    let acquired: Parameters<typeof startHub>[0] | undefined;
+    let root = '', closeCalls = 0;
+    const starting = componentProject(fixtureContext, { start: async options => {
+      assert.ok(options);
+      acquired = options;
+      root = options.tracker!.root;
+      if (failure === 'startup') throw new Error('controlled startup failure');
+      const hub = await startHub(options);
+      const close = hub.close;
+      hub.close = async () => { await close(); if (++closeCalls === 1) throw new Error('controlled close failure'); };
+      return hub;
+    } });
+    let fixture: Awaited<ReturnType<typeof componentProject>> | undefined;
+    if (failure === 'startup') await assert.rejects(starting, /controlled startup failure/);
     else {
-      await writeFile(join(root, file), 'project\n');
-      git(root, 'add', file);
+      fixture = await starting;
+      await assert.rejects(fixture.stop(), /controlled close failure/);
     }
-    const staged = git(root, 'write-tree');
-    const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
-    assert.equal(retry.commit, merged.commit);
-    assert.equal(retry.followUp, undefined);
-    assert.equal(git(root, 'write-tree'), staged, 'receipt recovery must keep staged edits');
-    if (file === 'parser.txt') assert.equal(existsSync(join(root, file)), false);
-    else assert.equal(await readFile(join(root, file), 'utf8'), 'project\n');
+    let inspected = false;
+    beforeDirectories(fixtureContext, async () => {
+      try {
+        assert.ok(existsSync(root), 'root remains until writers are observed stopped');
+        assert.throws(() => acquired!.tracker!.list(), /not open/, 'tracker database is closed before root removal');
+        assert.throws(() => acquired!.store!.mergeQueue(), /not open/, 'hub store is closed before root removal');
+        inspected = true;
+      } finally {
+        // Red runs still stop leaked writers before the directory cleanup runs.
+        await acquired!.tracker!.stop();
+        try { acquired!.store!.mergeQueue(); acquired!.store!.close(); } catch { /* already closed */ }
+      }
+    });
+    for (const hook of hooks) await hook();
+    assert.equal(inspected, true);
+    assert.equal(existsSync(root), false);
+    if (failure === 'close') assert.equal(closeCalls, 2, 'failed hub close is retried');
   });
+});
+
+test('component fixture drains cancelled socket startup before removing its root', async t => {
+  const hooks: Array<() => Promise<void>> = [], controller = new AbortController();
+  const fixtureContext = { signal: controller.signal, after: (hook: () => Promise<void>) => hooks.push(hook) } as unknown as TestContext;
+  const release = Promise.withResolvers<void>();
+  let acquired: Parameters<typeof startHub>[0] | undefined, entered = false, inspected = false;
+  const starting = componentProject(fixtureContext, { start: async options => {
+    assert.ok(options);
+    acquired = options;
+    const hub = await startHub(options);
+    entered = true;
+    await release.promise;
+    return hub;
+  } });
+  const cancelled = assert.rejects(starting, /controlled cancellation/);
+  onCleanup(t, async () => { release.resolve(); await cancelled; for (const hook of hooks) await hook(); });
+  await until(() => entered, { what: 'socket acquired but startup return held' });
+  const root = acquired!.tracker!.root;
+  beforeDirectories(fixtureContext, () => {
+    assert.ok(existsSync(root), 'drain inspection precedes root removal');
+    assert.throws(() => acquired!.tracker!.list(), /not open/);
+    assert.throws(() => acquired!.store!.mergeQueue(), /not open/);
+    inspected = true;
+  });
+  controller.abort(new Error('controlled cancellation'));
+  const cleaning = hooks[0]!();
+  // Cleanup must await the pending socket acquisition before touching its lower resources/root.
+  await Promise.resolve();
+  assert.equal(inspected, false);
+  assert.ok(existsSync(root));
+  release.resolve();
+  await cancelled;
+  await cleaning;
+  assert.equal(inspected, true);
+  assert.equal(existsSync(root), false);
 });

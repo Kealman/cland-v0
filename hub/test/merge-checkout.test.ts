@@ -1,19 +1,12 @@
-import { onCleanup } from './process-cleanup.ts';
-import { test, type TestContext } from 'node:test';
+// T3: real Git conflicts, ref/index locks and checkout rollback preserve native bytes, staging and refs.
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
-import { preparedProject, copyPreparedProject } from './prepared-project.ts';
-import { Store } from '../src/hub/store.ts';
-import { parseItem, serializeItem } from '../src/tracker/item.ts';
-import { fixedRoles } from '../src/roles/config.ts';
-import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
-import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
-import { git, ok, json, project, task, requireQa, review, refused, indexLockProject, observableProject } from './merge-support.ts';
+import { cland, eventually, nativeProjectHub } from './harness.ts';
+import { git, ok, json, project, task, review, refused, indexLockProject } from './merge-native-support.ts';
 
 
 test('conflicts name the files, touched local edits refuse, and unrelated edits survive a merge', async (t) => {
@@ -91,7 +84,7 @@ test('an index lock during post-checkout write-tree restores the staged tree, fi
 });
 
 test('a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge', async (t) => {
-  const { root, ui, rev, discovery } = await indexLockProject(t, 'persistent-lock', startDaemon);
+  const { root, ui, rev, stop } = await indexLockProject(t, 'persistent-lock');
   const work = await task(root);
   await review(rev, work.id);
   await writeFile(join(root, 'README.md'), 'unrelated staged bytes\n');
@@ -116,8 +109,8 @@ test('a blocked prelanding restore reports its durable recovery receipt and repa
   assert.match(journal, /"event":"merge-recovery-pending"/);
   assert.doesNotMatch(journal, /"event":"merge-refused"/);
   await rm(join(root, '.git', 'index.lock'));
-  await killDaemon(discovery.pid);
-  await startDaemon(t, root);
+  await stop();
+  await nativeProjectHub(t, root, {}, { harnesses: 'fake' });
   const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
   assert.equal(retry.followUp, undefined);
   assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
@@ -125,29 +118,6 @@ test('a blocked prelanding restore reports its durable recovery receipt and repa
   assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'unrelated staged bytes\n');
   assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
   assert.equal(json<{ item: { state: string } }>(await cland(root, 'task', 'view', work.id, '--json')).item.state, 'closed');
-});
-
-test('a crash before the integration ref moves retains checkout recovery and can merge after restart', async (t) => {
-  const { root, rev, discovery } = await indexLockProject(t, 'crash-before-ref', startDaemon);
-  const work = await task(root);
-  await review(rev, work.id);
-  const before = git(root, 'rev-parse', 'dev');
-  const interrupted = await cland(root, 'merge', work.id);
-  assert.notEqual(interrupted.code, 0);
-  await killDaemon(discovery.pid);
-  assert.ok(existsSync(join(root, '.cland', 'before-ref-crash')));
-  assert.equal(git(root, 'rev-parse', 'dev'), before);
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), before);
-  assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'finished\n');
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  const receipt = db.prepare('select checkout_recovery from tracker_merges where item_id = ?').get(work.id);
-  db.close();
-  assert.ok(receipt?.checkout_recovery, 'unlanded mutation must retain its durable checkout snapshot');
-  await startDaemon(t, root);
-  const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'merge', work.id, '--json'));
-  assert.equal(retry.followUp, undefined);
-  assert.equal(git(root, 'rev-list', '--count', `${before}..dev`), '1');
-  assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), retry.commit);
 });
 
 test('a root switched during real merge-tree preparation is refused without changing the checkout or refs', async (t) => {

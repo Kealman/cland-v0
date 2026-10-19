@@ -162,10 +162,8 @@
     "hub/test/fake-harness-capabilities.test.ts": {},
     "hub/test/fake-harness.test.ts": {},
     "hub/test/fixture-worker-lifecycle.test.ts": {},
-    "hub/test/follows.test.ts": {
-      "startDaemon": 2,
-      "spawnSpoke": 1
-    },
+    "hub/test/follows-native.test.ts": {},
+    "hub/test/follows.test.ts": {},
     "hub/test/freshness.test.ts": {
       "wall-clock-wait": 1
     },
@@ -240,26 +238,17 @@
     "hub/test/lead-routing.test.ts": {},
     "hub/test/lifecycle-serialization.test.ts": {},
     "hub/test/merge-budget.test.ts": {},
-    "hub/test/merge-checkout.test.ts": {
-      "startDaemon": 2
-    },
+    "hub/test/merge-checkout-lifecycle.test.ts": {},
+    "hub/test/merge-checkout.test.ts": {},
     "hub/test/merge-gate.test.ts": {
       "spawnSpoke": 1
     },
     "hub/test/merge-override.test.ts": {},
     "hub/test/merge-policy.test.ts": {},
     "hub/test/merge-queue.test.ts": {},
-    "hub/test/merge-recovery.test.ts": {
-      "wall-clock-wait": 1,
-      "startDaemon": 3,
-      "spawnSpoke": 1,
-      "fakeClaude": 2
-    },
-    "hub/test/merge.test.ts": {
-      "startDaemon": 1,
-      "spawnSpoke": 1,
-      "fakeClaude": 1
-    },
+    "hub/test/merge-recovery-native.test.ts": {},
+    "hub/test/merge-recovery.test.ts": {},
+    "hub/test/merge.test.ts": {},
     "hub/test/migrate-plan.test.ts": {},
     "hub/test/mod-bridge.test.ts": {},
     "hub/test/models.test.ts": {},

@@ -4,8 +4,8 @@ import { territoryGitAsync } from '../territory.ts';
 import type { Git } from './verdict-git.ts';
 import { idNumber, normalizeId } from './item.ts';
 
-export async function epicMergeFiles(root: string, tasks: readonly string[], ref = 'dev', env: NodeJS.ProcessEnv = process.env): Promise<string[]> {
-  return mergeFiles(args => territoryGitAsync(root, args, undefined, undefined, env), tasks, ref);
+export async function epicMergeFiles(root: string, tasks: readonly string[], ref = 'dev', env: NodeJS.ProcessEnv = process.env, git: Git = args => territoryGitAsync(root, args, undefined, undefined, env)): Promise<string[]> {
+  return mergeFiles(git, tasks, ref);
 }
 
 async function checked(git: Git, args: string[]): Promise<string> {

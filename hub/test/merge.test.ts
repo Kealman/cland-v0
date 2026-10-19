@@ -1,19 +1,14 @@
+// T3: native Git squash publication, CLI landing inspection and worktree/session cleanup boundaries.
 import { onCleanup } from './process-cleanup.ts';
-import { test, type TestContext } from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { DatabaseSync } from 'node:sqlite';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, flushProjectLogs, clandWithEnv, connectUi, connectWsUi, eventually, fakeClaude, killDaemon, sleep, spawnSpoke, startDaemon, startHub, tempProject, type CliResult } from './harness.ts';
-import { preparedProject, copyPreparedProject } from './prepared-project.ts';
-import { Store } from '../src/hub/store.ts';
-import { parseItem, serializeItem } from '../src/tracker/item.ts';
-import { fixedRoles } from '../src/roles/config.ts';
-import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
-import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
-import { git, ok, json, project, task, requireQa, review, refused, indexLockProject, observableProject } from './merge-support.ts';
+import { cland, eventually, inProcessSpoke, nativeProjectHub, tempProject } from './harness.ts';
+import { parseItem } from '../src/tracker/item.ts';
+import { git, ok, json, project, task, review } from './merge-native-support.ts';
 
 
 test('a current hub review lands one squash commit in the root and territory, closes the item and topic, and removes its worktree and branch', async (t) => {
@@ -56,7 +51,7 @@ test('a current hub review lands one squash commit in the root and territory, cl
 });
 
 test('discussion after a completed merge never blocks CLI push or recreates its worktree', async t => {
-  const { root, ui, rev, discovery } = await project(t, undefined, undefined, startDaemon);
+  const { root, ui, rev, stop } = await project(t);
   const work = await task(root);
   const created = await ui.request({ type: 'topic.create', title: 'Landed task', item: work.id });
   assert.equal(created.ok, true, created.error);
@@ -70,8 +65,8 @@ test('discussion after a completed merge never blocks CLI push or recreates its 
   git(root, 'commit', '-qm', 'Record completed tracker');
   ok(await cland(root, 'push'));
   assert.equal(git(join(root, '.cland', 'territory.git'), 'rev-parse', 'dev'), git(root, 'rev-parse', 'dev'));
-  await killDaemon(discovery.pid);
-  await startDaemon(t, root);
+  await stop();
+  await nativeProjectHub(t, root, {}, { harnesses: 'fake' });
   ok(await cland(root, 'push'));
   assert.equal(existsSync(work.path), false);
   assert.equal(git(root, 'branch', '--list', work.branch), '');
@@ -159,7 +154,7 @@ test('simultaneous Coordinator spoke merges serialize and the second commit incl
   const two = await task(root, 'Second task', 'two.txt');
   await review(rev, one.id);
   await review(rev, two.id);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });
   onCleanup(t, () => coord.close());
   await coord.waitForPresence(['coord', 'rev']);
   const before = git(root, 'rev-parse', 'dev');
@@ -177,8 +172,7 @@ test('simultaneous Coordinator spoke merges serialize and the second commit incl
 });
 
 test('merge closes the item while a launched session is inside, then removes the worktree and branch after it stops', async (t) => {
-  const fake = await fakeClaude(t);
-  const { root, ui, rev } = await project(t, fake.env);
+  const { root, ui, rev } = await project(t);
   // Keep the session alive to exercise deferred cleanup after an explicit stop.
   assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.stop_after', value: 'never' })).ok, true);
   const work = await task(root);

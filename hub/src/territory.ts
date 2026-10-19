@@ -363,8 +363,8 @@ export function territoryGitAsync(cwd: string, args: string[], marked = false, i
   });
 }
 
-const maybeGitAsync = (cwd: string, args: string[], env: NodeJS.ProcessEnv = process.env): Promise<string | null> => territoryGitAsync(cwd, args, undefined, undefined, env).catch(() => null);
-const refAsync = (cwd: string, name: string, env: NodeJS.ProcessEnv = process.env): Promise<string | null> => maybeGitAsync(cwd, ['rev-parse', '--verify', '--quiet', name], env);
+const maybeGitAsync = (cwd: string, args: string[], env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<string | null> => git(cwd, args, undefined, undefined, env).catch(() => null);
+const refAsync = (cwd: string, name: string, env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<string | null> => maybeGitAsync(cwd, ['rev-parse', '--verify', '--quiet', name], env, git);
 
 export const worktreesPath = (root: string): string => join(root, '.cland', 'worktrees');
 export const taskWorktreePath = (root: string, item: string): string => join(worktreesPath(root), item);
@@ -788,29 +788,29 @@ export async function squashTask(
 }
 
 /** Restore an unlanded preparation, or roll back a failed landing, only from its recorded index states. */
-export async function restoreTaskCheckout(root: string, receipt: { commit: string; base: string; checkout: { before: string; after: string } }, resumed: <T>(work: () => T) => T, authorize: () => void = () => {}, env: NodeJS.ProcessEnv = process.env): Promise<void> {
-  const before = await refAsync(root, `${receipt.commit}^`, env);
-  const branch = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env);
-  const index = await territoryGitAsync(root, ['write-tree'], undefined, undefined, env);
+export async function restoreTaskCheckout(root: string, receipt: { commit: string; base: string; checkout: { before: string; after: string } }, resumed: <T>(work: () => T) => T, authorize: () => void = () => {}, env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<void> {
+  const before = await refAsync(root, `${receipt.commit}^`, env, git);
+  const branch = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env, git);
+  const index = await git(root, ['write-tree'], undefined, undefined, env);
   resumed(() => {
     authorize();
     if (!before || branch !== receipt.base) throw new Error(`the root must be on ${receipt.base} for checkout recovery`);
     if (index !== receipt.checkout.before && index !== receipt.checkout.after) throw new Error('the index changed since merge preparation; staged work was kept');
   });
-  await territoryGitAsync(root, ['read-tree', '-m', '-u', receipt.commit, before!], undefined, undefined, env);
-  const restored = await territoryGitAsync(root, ['write-tree'], undefined, undefined, env);
+  await git(root, ['read-tree', '-m', '-u', receipt.commit, before!], undefined, undefined, env);
+  const restored = await git(root, ['write-tree'], undefined, undefined, env);
   resumed(() => { if (restored !== receipt.checkout.before) throw new Error('the restored index differs from its durable snapshot'); });
 }
 
 /** A recorded Item commit on the local integration ref is landed; publication may still need finishing. */
-export async function landedTask(root: string, id: string, receipt: { commit: string; base: string; branch: string; tip: string }, resumed: <T>(work: () => T) => T, options: { strict?: boolean } = {}, env: NodeJS.ProcessEnv = process.env): Promise<{ current: boolean; published: boolean } | null> {
+export async function landedTask(root: string, id: string, receipt: { commit: string; base: string; branch: string; tip: string }, resumed: <T>(work: () => T) => T, options: { strict?: boolean } = {}, env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<{ current: boolean; published: boolean } | null> {
   // Reopen must not mistake an unavailable Git inspection for a fully rolled-back receipt.
   const inspect = (cwd: string, args: string[]) => options.strict
-    ? territoryGitAsync(cwd, args, undefined, undefined, env).catch(err => resumed(() => {
+    ? git(cwd, args, undefined, undefined, env).catch(err => resumed(() => {
       if (err instanceof TerritoryGitError && err.code === 1 && (args[0] === 'merge-base' || args[0] === 'rev-parse')) return null;
       throw err;
     }))
-    : maybeGitAsync(cwd, args, env);
+    : maybeGitAsync(cwd, args, env, git);
   const message = await inspect(root, ['show', '-s', '--format=%B', receipt.commit]);
   if (!resumed(() => message?.split('\n').includes(`Item: ${id}`))) return null;
   const local = await inspect(root, ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]);
@@ -818,47 +818,47 @@ export async function landedTask(root: string, id: string, receipt: { commit: st
   const remoteObject = options.strict ? await inspect(territoryPath(root), ['rev-parse', '--verify', '--quiet', `${receipt.commit}^{commit}`]) : null;
   const remote = !options.strict || remoteObject ? await inspect(territoryPath(root), ['merge-base', '--is-ancestor', receipt.commit, `refs/heads/${receipt.base}`]) : null;
   if (local === null && remote === null) return null;
-  const tip = await refAsync(root, `refs/heads/${receipt.branch}`, env);
+  const tip = await refAsync(root, `refs/heads/${receipt.branch}`, env, git);
   return resumed(() => ({ current: tip === null || tip === receipt.tip, published: remote !== null }));
 }
 
 /** Finish a recorded landing's root checkout after an interrupted or failed rollback. No local edits are forced. */
-export async function reconcileTaskCheckout(root: string, receipt: { commit: string; base: string; checkout?: { before: string; after: string } }, resumed: <T>(work: () => T) => T, reconciled: () => void = () => {}, authorize: () => void = () => {}, env: NodeJS.ProcessEnv = process.env): Promise<void> {
-  const before = await refAsync(root, `${receipt.commit}^`, env);
-  const current = await refAsync(root, `refs/heads/${receipt.base}`, env);
-  const checkout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env);
+export async function reconcileTaskCheckout(root: string, receipt: { commit: string; base: string; checkout?: { before: string; after: string } }, resumed: <T>(work: () => T) => T, reconciled: () => void = () => {}, authorize: () => void = () => {}, env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<void> {
+  const before = await refAsync(root, `${receipt.commit}^`, env, git);
+  const current = await refAsync(root, `refs/heads/${receipt.base}`, env, git);
+  const checkout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env, git);
   resumed(() => {
     if (!before || !current) throw new Error('cannot resolve the recorded landing and its base');
     if (checkout !== receipt.base) throw new Error(`the project root must be on ${receipt.base} to finish its landed merge`);
   });
-  const contains = await maybeGitAsync(root, ['merge-base', '--is-ancestor', receipt.commit, current!], env);
-  const advances = contains === null ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', current!, receipt.commit], env) : '';
+  const contains = await maybeGitAsync(root, ['merge-base', '--is-ancestor', receipt.commit, current!], env, git);
+  const advances = contains === null ? await maybeGitAsync(root, ['merge-base', '--is-ancestor', current!, receipt.commit], env, git) : '';
   const target = resumed(() => {
     if (advances === null) throw new Error(`${receipt.base} diverged from the recorded landing; its checkout was kept`);
     return contains === null ? receipt.commit : current!;
   });
-  const checkedTip = await refAsync(root, `refs/heads/${receipt.base}`, env);
-  const checkedCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env);
+  const checkedTip = await refAsync(root, `refs/heads/${receipt.base}`, env, git);
+  const checkedCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env, git);
   resumed(() => {
     if (checkedTip !== current || checkedCheckout !== receipt.base) throw new Error('the root checkout or base changed before landing reconciliation; try again');
   });
   if (receipt.checkout) {
-    const index = await territoryGitAsync(root, ['write-tree'], undefined, undefined, env);
+    const index = await git(root, ['write-tree'], undefined, undefined, env);
     const rolledBack = resumed(() => {
       authorize();
       if (index !== receipt.checkout!.before && index !== receipt.checkout!.after) throw new Error('the index changed since merge rollback; staged work was kept');
       return index === receipt.checkout!.before;
     });
-    if (rolledBack) await territoryGitAsync(root, ['read-tree', '-m', '-u', before!, target], undefined, undefined, env);
+    if (rolledBack) await git(root, ['read-tree', '-m', '-u', before!, target], undefined, undefined, env);
     // Record a coherent checkout before the ref repair; a ref failure can be retried without touching staged work.
     resumed(() => { authorize(); reconciled(); });
   }
   if (target !== current) {
     resumed(authorize);
-    await territoryGitAsync(root, ['update-ref', `refs/heads/${receipt.base}`, target, current!], undefined, undefined, env);
+    await git(root, ['update-ref', `refs/heads/${receipt.base}`, target, current!], undefined, undefined, env);
   }
-  const finalTip = await refAsync(root, `refs/heads/${receipt.base}`, env);
-  const finalCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env);
+  const finalTip = await refAsync(root, `refs/heads/${receipt.base}`, env, git);
+  const finalCheckout = await maybeGitAsync(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], env, git);
   resumed(() => {
     if (finalTip !== target || finalCheckout !== receipt.base) throw new Error('the root checkout or base changed during landing reconciliation; try again');
   });
