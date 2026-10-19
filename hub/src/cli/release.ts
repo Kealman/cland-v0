@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
-import { hubDiscovery, readDiscovery } from '../project.ts';
+import { hubDiscovery, projectRoot, readDiscovery } from '../project.ts';
 import type { ReleaseResult, SyncResult } from '../release.ts';
+import { defaultBranch } from '../territory.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export { RELEASE_USAGE } from './usage.ts';
@@ -20,6 +21,6 @@ export async function runSync(args: string[], cwd = process.cwd()): Promise<numb
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
   const result = await askHubFrame(d, { type: 'sync' }, 120_000) as SyncResult;
-  process.stdout.write(values.json ? `${JSON.stringify(result)}\n` : `Synced main ${result.main}; dev ${result.dev}\n${result.followUp ? `${result.followUp.error}\n` : ''}`);
+  process.stdout.write(values.json ? `${JSON.stringify(result)}\n` : `Synced ${defaultBranch(d.root ?? projectRoot(cwd))} ${result.main}; dev ${result.dev}\n${result.followUp ? `${result.followUp.error}\n` : ''}`);
   return 0;
 }

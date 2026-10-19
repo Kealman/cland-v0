@@ -6,13 +6,116 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, connectWsUi, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectWsUi, projectHub, spawnSpoke, startDaemon, startHub, tempProject } from './harness.ts';
 import { Store } from '../src/hub/store.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { git, ok, json, project, merged, clean, collaborator } from './release-support.ts';
+import { gitIn, initIn, masterClone, scratchMachine } from './init-machine.ts';
 
 const snapshot = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n---\n');
+
+async function scratchHub(machine: Awaited<ReturnType<typeof scratchMachine>>, root: string) {
+  // projectHub normally merges the host environment. Scope startup as well as Git/CLI commands
+  // so injected Git config, credentials and native probes cannot reach the developer's state.
+  const original = process.env;
+  try {
+    process.env = machine.env;
+    return await projectHub(machine.context, root, {}, { probes: 'native' });
+  } finally { process.env = original; }
+}
+
+// T3: native ref transactions and remote publication require real Git. All commands use a scratch HOME/XDG,
+// identity and local bare GitHub stand-in; the hub runs in-process with no daemon or harness lifecycle.
+test('release publishes the recorded master default without creating main', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root, upstream: github } = await masterClone(machine);
+  const readGit = async (repo: string, ...args: string[]) => ok(await gitIn(machine, repo, ...args)).stdout.trim();
+  ok(await initIn(machine, root, 'init', '--json'));
+  const territory = join(root, '.cland', 'territory.git');
+  await readGit(root, 'add', '.');
+  await readGit(root, 'commit', '-qm', 'Project setup');
+  const dev = await readGit(root, 'rev-parse', 'dev');
+  await scratchHub(machine, root);
+  const before = await readGit(github, 'show-ref');
+  const preview = json<{ refs: string[] }>(await initIn(machine, root, 'release', 'v0.1.0', '--dry-run', '--json'));
+  assert.deepEqual(preview.refs, [`${dev}:refs/heads/master`, 'refs/tags/v0.1.0:refs/tags/v0.1.0']);
+  assert.equal(await readGit(github, 'show-ref'), before);
+  const released = json<{ commit: string; followUp?: unknown }>(await initIn(machine, root, 'release', 'v0.1.0', '--json'));
+  assert.equal(released.commit, dev);
+  assert.equal(released.followUp, undefined);
+  for (const repo of [root, territory, github]) {
+    assert.equal(await readGit(repo, 'rev-parse', 'master'), dev);
+    assert.equal(await readGit(repo, 'rev-parse', 'v0.1.0^{}'), dev);
+    assert.equal(await readGit(repo, 'for-each-ref', '--format=%(refname)', 'refs/heads/main'), '');
+  }
+});
+
+// T3: Git ancestry, replay and local/remote ref isolation need native Git under scratch HOME/XDG.
+test('sync imports master after release refuses commits dev lacks', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root, upstream: github } = await masterClone(machine);
+  const readGit = async (repo: string, ...args: string[]) => ok(await gitIn(machine, repo, ...args)).stdout.trim();
+  ok(await initIn(machine, root, 'init', '--json'));
+  await scratchHub(machine, root);
+  await writeFile(join(root, 'local.txt'), 'unreleased\n');
+  await readGit(root, 'add', '.');
+  await readGit(root, 'commit', '-qm', 'Unreleased work');
+  const dev = await readGit(root, 'rev-parse', 'dev');
+  // Commit directly in the bare stand-in; no external remote or credential is used.
+  const remote = await readGit(github, 'commit-tree', 'master^{tree}', '-p', 'master', '-m', 'Collaborator work');
+  await readGit(github, 'update-ref', 'refs/heads/master', remote);
+  const before = await readGit(github, 'show-ref');
+  const refused = await initIn(machine, root, 'release', 'v0.1.0', '--dry-run');
+  assert.notEqual(refused.code, 0);
+  assert.match(refused.stderr, /release-behind: github\/master has commits dev lacks/);
+  assert.match(refused.stderr, /Collaborator work/);
+  const synced = ok(await initIn(machine, root, 'sync'));
+  assert.match(synced.stdout, new RegExp(`Synced master ${remote}; dev `));
+  const territory = join(root, '.cland', 'territory.git');
+  const replayed = await readGit(root, 'rev-parse', 'dev');
+  assert.notEqual(replayed, dev);
+  for (const repo of [root, territory]) {
+    assert.equal(await readGit(repo, 'rev-parse', 'master'), remote);
+    assert.equal(await readGit(repo, 'rev-parse', 'dev'), replayed);
+    assert.equal(await readGit(repo, 'for-each-ref', '--format=%(refname)', 'refs/heads/main'), '');
+  }
+  assert.equal(await readFile(join(root, 'local.txt'), 'utf8'), 'unreleased\n');
+  assert.equal(await readGit(root, 'status', '--porcelain'), '');
+  assert.equal(await readGit(github, 'show-ref'), before, 'sync never pushes to GitHub');
+});
+
+// T3: the legacy default must survive real Git replay and a pinned publication retry, not just config parsing.
+test('legacy publication receipts recover main without a recorded default', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root, upstream: github } = await masterClone(machine);
+  const readGit = async (repo: string, ...args: string[]) => ok(await gitIn(machine, repo, ...args)).stdout.trim();
+  ok(await initIn(machine, root, 'init', '--json'));
+  const territory = join(root, '.cland', 'territory.git');
+  for (const repo of [root, territory, github]) await readGit(repo, 'branch', '-m', 'master', 'main');
+  await readGit(territory, 'config', '--unset', 'cland.defaultBranch');
+  await scratchHub(machine, root);
+  await readGit(root, 'add', '.');
+  await readGit(root, 'commit', '-qm', 'Project setup');
+  const remote = await readGit(github, 'commit-tree', 'main^{tree}', '-p', 'main', '-m', 'Collaborator work');
+  await readGit(github, 'update-ref', 'refs/heads/main', remote);
+  const synced = ok(await initIn(machine, root, 'sync'));
+  assert.match(synced.stdout, new RegExp(`Synced main ${remote}; dev `));
+  const dev = await readGit(root, 'rev-parse', 'dev');
+  const lock = join(root, '.git', 'refs', 'heads', 'main.lock');
+  await writeFile(lock, 'fixture obstruction\n');
+  const released = json<{ followUp?: { step: string } }>(await initIn(machine, root, 'release', 'v0.1.0', '--json'));
+  assert.equal(released.followUp?.step, 'local refs');
+  const receipt = JSON.parse(await readFile(join(root, '.cland', 'release.tmp'), 'utf8'));
+  assert.deepEqual(Object.keys(receipt).sort(), ['commit', 'github', 'main', 'notes', 'tag', 'version']);
+  assert.equal(receipt.main, remote);
+  await rm(lock);
+  await readGit(root, 'commit', '--allow-empty', '-qm', 'Later dev work');
+  const retry = json<{ commit: string; followUp?: unknown }>(await initIn(machine, root, 'release', 'v0.1.0', '--json'));
+  assert.equal(retry.commit, dev);
+  assert.equal(retry.followUp, undefined);
+  for (const repo of [root, territory, github]) assert.equal(await readGit(repo, 'rev-parse', 'main'), dev);
+});
 
 // T3: native Git commit selection and unchanged refs prove the publication boundary; no hub process starts.
 test('release checks the committed dev package version before preview or publication', { timeout: 5_000 }, async t => {
