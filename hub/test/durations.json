@@ -5746,12 +5746,6 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/verdict-findings.test.ts::CLI and MCP verdicts expose all severities, clear lows and explicit empty findings in views and journal": {
-      "seconds": 1.532294,
-      "reason": "Writes verdicts through both the real CLI and an MCP spoke against a live hub, then reads every severity back from task view and the journal.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/verification-workers.test.ts::remote completion waits for its timestamp before reporting, settling cost and caching": {
       "seconds": 5.131005,
       "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing.",

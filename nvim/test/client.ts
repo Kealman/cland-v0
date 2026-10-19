@@ -107,7 +107,7 @@ return rows`;
  * Start the client in `root` as cland-nvim would (NVIM_APPNAME=cland, --clean -u init.lua), headless, and
  * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
  */
-export async function createClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer' } = {}, native?: { isolateVerification: (root: string) => Promise<void>; ownProcess: (t: TestContext, pid: number | undefined) => unknown; ownDirectory: (t: TestContext, path: string) => unknown; beforeDirectories: typeof beforeDirectories }): Promise<Client> {
+export async function createClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer'; screenPollMs?: number } = {}, native?: { isolateVerification: (root: string) => Promise<void>; ownProcess: (t: TestContext, pid: number | undefined) => unknown; ownDirectory: (t: TestContext, path: string) => unknown; beforeDirectories: typeof beforeDirectories }): Promise<Client> {
   await ensureFixtureAdmission();
   const stubOnly = env.CLAND_HUB_TRANSPORT === 'stdio'
     && env.CLAND_COMMAND === JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]);
@@ -200,7 +200,7 @@ export async function createClient(t: TestContext, bin: string, root: string, en
         last = await client.screen();
         const text = last.join('\n');
         if (predicate(text)) return text;
-        await sleep(40);
+        await sleep(opts.screenPollMs ?? 40);
       }
       throw new Error(`the screen never showed ${what} within ${timeoutMs} ms:\n${last.map((l) => `|${l}|`).join('\n')}\n${stderr}`);
     },

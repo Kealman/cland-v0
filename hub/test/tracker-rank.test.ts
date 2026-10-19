@@ -1,5 +1,6 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Sibling rank through the agreed hub frame, CLI and MCP seams (T-122).
+import { componentTask } from './component-task.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import { performance } from 'node:perf_hooks';
@@ -373,11 +374,11 @@ test('the shared client ordering fixture matches hub lists and resolved event ra
   assert.equal((event.item as Item).rank, 10);
 });
 
-async function migration(root: string): Promise<{ code: number; stdout: string; stderr: string }> {
+async function migration(root: string, command = cland): Promise<{ code: number; stdout: string; stderr: string }> {
   let stdout = '';
   try {
     await migrateHighRank(async <T>(...args: string[]) => {
-      const result = await cland(root, 'task', ...args, '--json');
+      const result = await command(root, 'task', ...args, '--json');
       if (result.code) throw new Error(result.stderr.trim());
       return JSON.parse(result.stdout) as T;
     }, json => { stdout += json; });
@@ -390,23 +391,23 @@ async function migration(root: string): Promise<{ code: number; stdout: string; 
 test('the high migration ranks singleton groups, including closed items, and a rerun writes nothing', async t => {
   const root = await tempProject(t);
   await openHub(t, root);
-  for (const title of ['One', 'Two']) assert.equal((await cland(root, 'task', 'create', title, '--kind', 'epic')).code, 0);
+  for (const title of ['One', 'Two']) assert.equal((await componentTask(root, 'task', 'create', title, '--kind', 'epic')).code, 0);
   for (const parent of ['T-1', 'T-2']) {
-    assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'Ordinary', '--parent', parent)).code, 0);
-    assert.equal((await cland(root, 'task', 'create', '--size', 'M', 'High', '--label', 'high', '--parent', parent)).code, 0);
+    assert.equal((await componentTask(root, 'task', 'create', '--size', 'M', 'Ordinary', '--parent', parent)).code, 0);
+    assert.equal((await componentTask(root, 'task', 'create', '--size', 'M', 'High', '--label', 'high', '--parent', parent)).code, 0);
   }
-  assert.equal((await cland(root, 'task', 'close', 'T-6')).code, 0);
-  const first = await migration(root);
+  assert.equal((await componentTask(root, 'task', 'close', 'T-6')).code, 0);
+  const first = await migration(root, componentTask);
   assert.equal(first.code, 0, first.stderr);
   const migrated = JSON.parse(first.stdout) as { moved: Array<{ id: string }>; retired: string[] };
   assert.deepEqual(migrated.moved.map(item => item.id), ['T-4', 'T-6']);
   assert.deepEqual(migrated.retired, ['T-4', 'T-6']);
-  const listed = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<Item & { labels: string[] }> };
+  const listed = JSON.parse((await componentTask(root, 'task', 'list', '--json')).stdout) as { items: Array<Item & { labels: string[] }> };
   assert.deepEqual(listed.items.filter(item => item.parent === 'E-1').map(item => item.id), ['T-4', 'T-3']);
   assert.deepEqual(listed.items.filter(item => item.parent === 'E-2').map(item => item.id), ['T-6', 'T-5']);
   assert.equal(listed.items.some(item => item.labels.includes('high')), false);
   const before = await Promise.all(listed.items.map(item => readFile(join(root, '.cland', 'tasks', item.file), 'utf8')));
-  const again = await migration(root);
+  const again = await migration(root, componentTask);
   assert.equal(again.code, 0, again.stderr);
   assert.deepEqual(JSON.parse(again.stdout), { moved: [], retired: [] });
   assert.deepEqual(await Promise.all(listed.items.map(item => readFile(join(root, '.cland', 'tasks', item.file), 'utf8'))), before);

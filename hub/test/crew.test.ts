@@ -1,4 +1,5 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { componentCrewWithEnv } from './component-task.ts';
 import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
@@ -187,10 +188,12 @@ test('crew set observes the session role boundary from CLI', async t => {
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   for (const [name, role, allowed] of [['coord', 'coordinator', true], ['aide-one', 'aide', true], ['impl', 'implementer', false], ['rev', 'reviewer', false], ['qa-one', 'qa', false]] as const) {
     assert.equal((await ui.request({ type: 'role.set', session: name, role })).ok, true);
-    const result = await clandWithEnv(root, { CLAND_SESSION_NAME: name }, 'crew', 'set', 'reviewer.size', '2');
+    // One native CLI proof; role permutations use the same CLI with explicit IO/environment.
+    const command = name === 'coord' ? clandWithEnv : componentCrewWithEnv;
+    const result = await command(root, { CLAND_SESSION_NAME: name }, 'crew', 'set', 'reviewer.size', '2');
     assert.equal(result.code, allowed ? 0 : 1, result.stderr);
     if (!allowed) assert.match(result.stderr, /forbidden.*crew.set/);
-    const show = await clandWithEnv(root, { CLAND_SESSION_NAME: name }, 'crew', 'show', '--json');
+    const show = await command(root, { CLAND_SESSION_NAME: name }, 'crew', 'show', '--json');
     assert.equal(show.code, 0, show.stderr);
   }
 });

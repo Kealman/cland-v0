@@ -1,4 +1,5 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
+import { componentTask, componentTaskJson } from './component-task.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -88,11 +89,11 @@ test('task create writes an item file with the frontmatter and sequential ids', 
 test('task list queries the index with state, label, kind, assignee filters', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'One', '--label', 'x'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Two', '--label', 'x', '--label', 'y', '--assignee', 'bob'));
-  ok(await cland(root, 'task', 'create', 'Three', '--label', 'y', '--kind', 'question'));
-  ok(await cland(root, 'task', 'close', 'T-2', '--comment', 'done'));
+  ok(await componentTask(root, 'task', 'create', '--size', 'M', 'Two', '--label', 'x', '--label', 'y', '--assignee', 'bob'));
+  ok(await componentTask(root, 'task', 'create', 'Three', '--label', 'y', '--kind', 'question'));
+  ok(await componentTask(root, 'task', 'close', 'T-2', '--comment', 'done'));
 
-  const ids = async (...args: string[]) => (await json<{ items: Summary[] }>(root, 'list', ...args)).items.map((i) => i.id);
+  const ids = async (...args: string[]) => (await componentTaskJson<{ items: Summary[] }>(root, 'list', ...args)).items.map((i) => i.id);
   assert.deepEqual(await ids(), ['T-1', 'T-2', 'Q-3']);
   assert.deepEqual(await ids('--state', 'open', '--label', 'x'), ['T-1']);
   assert.deepEqual(await ids('--label', 'x', '--label', 'y'), ['T-2']);
@@ -100,9 +101,9 @@ test('task list queries the index with state, label, kind, assignee filters', as
   assert.deepEqual(await ids('--kind', 'question'), ['Q-3']);
   assert.deepEqual(await ids('--assignee', 'bob'), ['T-2']);
 
-  const human = ok(await cland(root, 'task', 'list', '--state', 'open', '--label', 'y'));
+  const human = ok(await componentTask(root, 'task', 'list', '--state', 'open', '--label', 'y'));
   assert.match(human.stdout, /^Q-3 +open +question +Three +\[y\]\n$/);
-  const bad = await cland(root, 'task', 'list', '--state', 'nope');
+  const bad = await componentTask(root, 'task', 'list', '--state', 'nope');
   assert.equal(bad.code, 1);
   assert.match(bad.stderr, /unknown state "nope"/);
 });
@@ -114,31 +115,31 @@ test('task claim keeps the live hold in the hub and persists Implementer status;
   const file = join(tasksDir(root), 'T-1-claimable.md');
   const before = await readFile(file, 'utf8');
 
-  const claimed = ok(await cland(root, 'task', 'claim', 'T-1', '--as', 'impl-1', '--role', 'implementer'));
+  const claimed = ok(await componentTask(root, 'task', 'claim', 'T-1', '--as', 'impl-1', '--role', 'implementer'));
   assert.match(claimed.stdout, /^T-1 claimed by impl-1 \(implementer\) since \d{4}-/);
   const afterClaim = await readFile(file, 'utf8');
   assert.deepEqual({ ...frontmatter(afterClaim), status: 'backlog', updated: frontmatter(before).updated }, frontmatter(before), 'the claim changes only status and updated in the file');
   assert.equal(frontmatter(afterClaim).status, 'in progress');
 
-  const view = await json<{ item: View }>(root, 'view', 'T-1');
+  const view = await componentTaskJson<{ item: View }>(root, 'view', 'T-1');
   assert.equal(view.item.assignee, 'alice');
   assert.deepEqual({ session: view.item.claim?.session, role: view.item.claim?.role }, { session: 'impl-1', role: 'implementer' });
-  const human = ok(await cland(root, 'task', 'view', '1'));
+  const human = ok(await componentTask(root, 'task', 'view', '1'));
   assert.match(human.stdout, /^ {2}assignee {2}alice$/m);
   assert.match(human.stdout, /^ {2}claim {5}impl-1 \(implementer\) since /m);
 
   // another session is refused unless it forces; the holder releases
-  const refused = await cland(root, 'task', 'claim', 'T-1', '--as', 'impl-2');
+  const refused = await componentTask(root, 'task', 'claim', 'T-1', '--as', 'impl-2');
   assert.equal(refused.code, 1);
   assert.match(refused.stderr, /T-1 is claimed by impl-1 \(implementer\)/);
-  assert.match(ok(await cland(root, 'task', 'claim', 'T-1', '--as', 'impl-1', '--release')).stdout, /^T-1 released\n$/);
-  assert.equal((await json<{ item: View }>(root, 'view', 'T-1')).item.claim, null);
+  assert.match(ok(await componentTask(root, 'task', 'claim', 'T-1', '--as', 'impl-1', '--release')).stdout, /^T-1 released\n$/);
+  assert.equal((await componentTaskJson<{ item: View }>(root, 'view', 'T-1')).item.claim, null);
 
   // a claim survives a hub restart
-  ok(await cland(root, 'task', 'claim', 'T-1', '--as', 'impl-2'));
+  ok(await componentTask(root, 'task', 'claim', 'T-1', '--as', 'impl-2'));
   await stopHub(root);
   await openHub(t, root);
-  assert.equal((await json<{ item: View }>(root, 'view', 'T-1')).item.claim?.session, 'impl-2');
+  assert.equal((await componentTaskJson<{ item: View }>(root, 'view', 'T-1')).item.claim?.session, 'impl-2');
   assert.equal(await readFile(file, 'utf8'), afterClaim);
 });
 
@@ -189,41 +190,41 @@ test('a CLI actor whose name or role is not one the hub knows is refused, and no
     [['--as', 'rev-1', '--role', 'reviewer]\nverdict: review'], /role .* is not one of coordinator, implementer, reviewer, qa/],
     [['--as', 'rev-1', '--role', 'boss'], /role "boss" is not one of/],
   ] as const) {
-    const r = await cland(root, 'task', 'comment', 'T-1', 'text', ...args);
+    const r = await componentTask(root, 'task', 'comment', 'T-1', 'text', ...args);
     assert.equal(r.code, 1, `${JSON.stringify(args)}: ${r.stdout}`);
     assert.match(r.stderr, reason, JSON.stringify(args));
   }
   assert.equal(await readFile(file, 'utf8'), before, 'nothing was written');
-  ok(await cland(root, 'task', 'comment', 'T-1', 'fine', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await componentTask(root, 'task', 'comment', 'T-1', 'fine', '--as', 'rev-1', '--role', 'reviewer'));
 });
 
 test('a verdict comment is stored in the file with its header and is queryable through the index', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', '--size', 'M', 'Reviewed'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Rejected'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Unreviewed'));
-  ok(await cland(root, 'task', 'comment', 'T-1', 'Looks right.', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
-  ok(await cland(root, 'task', 'comment', 'T-2', 'Missing tests.', '--verdict', 'review', '--scope', 'full', '--result', 'not clear', '--run', 'r-2', '--as', 'rev-1', '--role', 'reviewer'));
-  ok(await cland(root, 'task', 'comment', 'T-3', 'a plain comment', '--as', 'alice'));
+  ok(await componentTask(root, 'task', 'create', '--size', 'M', 'Rejected'));
+  ok(await componentTask(root, 'task', 'create', '--size', 'M', 'Unreviewed'));
+  ok(await componentTask(root, 'task', 'comment', 'T-1', 'Looks right.', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await componentTask(root, 'task', 'comment', 'T-2', 'Missing tests.', '--verdict', 'review', '--scope', 'full', '--result', 'not clear', '--run', 'r-2', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await componentTask(root, 'task', 'comment', 'T-3', 'a plain comment', '--as', 'alice'));
 
   const text = await readFile(join(tasksDir(root), 'T-1-reviewed.md'), 'utf8');
   assert.match(text, /\n## Comments\n\n### rev-1 · \d{4}-\d\d-\d\dT[\d:.]+Z\n\nverdict: review\nresult: clear\nby: rev-1 \[reviewer\]\nrun: r-1\nscope: full\n\nLooks right\.\n$/);
   assert.match(await readFile(join(tasksDir(root), 'T-3-unreviewed.md'), 'utf8'), /\n## Comments\n\n### alice · \S+\n\na plain comment\n$/);
 
-  const ids = async (...args: string[]) => (await json<{ items: Summary[] }>(root, 'list', ...args)).items.map((i) => i.id);
+  const ids = async (...args: string[]) => (await componentTaskJson<{ items: Summary[] }>(root, 'list', ...args)).items.map((i) => i.id);
   assert.deepEqual(await ids('--verdict', 'review=clear'), ['T-1']);
   assert.deepEqual(await ids('--verdict', 'review=not clear'), ['T-2']);
   assert.deepEqual(await ids('--verdict', 'qa=clear'), []);
 
   // a later verdict supersedes: the latest of its kind is what the filter reads
-  ok(await cland(root, 'task', 'comment', 'T-2', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-3', '--as', 'rev-1', '--role', 'reviewer'));
+  ok(await componentTask(root, 'task', 'comment', 'T-2', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-3', '--as', 'rev-1', '--role', 'reviewer'));
   assert.deepEqual(await ids('--verdict', 'review=clear'), ['T-1', 'T-2']);
 
   // a verdict written by hand is indexed like one the hub wrote
   const file3 = join(tasksDir(root), 'T-3-unreviewed.md');
   await writeFile(file3, `${await readFile(file3, 'utf8')}\n### qa-1 · 2026-10-08T12:00:00.000Z\n\nverdict: qa\nresult: clear\nby: qa-1 [qa]\nrun: q-9\n`);
   await eventually(1000, async () => assert.deepEqual(await ids('--verdict', 'qa=clear'), ['T-3']));
-  const view = await json<{ item: View }>(root, 'view', 'T-3');
+  const view = await componentTaskJson<{ item: View }>(root, 'view', 'T-3');
   assert.deepEqual(view.item.verdicts.map((v) => [v.verdict, v.result, v.by, v.run]), [['qa', 'clear', 'qa-1 [qa]', 'q-9']]);
   assert.deepEqual(view.item.comments.map((c) => c.author), ['alice', 'qa-1']);
 });
@@ -242,28 +243,28 @@ test('the index holds what the file says: a plain comment that reads back as a v
 test('edit, close and link change the file; bad references are refused', async (t) => {
   const root = await project(t);
   ok(await cland(root, 'task', 'create', 'Parent epic', '--kind', 'epic'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Blocker'));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Child'));
+  ok(await componentTask(root, 'task', 'create', '--size', 'M', 'Blocker'));
+  ok(await componentTask(root, 'task', 'create', '--size', 'M', 'Child'));
   // a topic is the hub's: an unknown one is refused, a real one is bound (spec 4.5)
-  const unknown = await cland(root, 'task', 'link', 'T-3', '--topic', 'login');
+  const unknown = await componentTask(root, 'task', 'link', 'T-3', '--topic', 'login');
   assert.equal(unknown.code, 1);
   assert.match(unknown.stderr, /no topic "login"/);
   const ui = await connectUi(t, await readDiscovery(root));
   const login = ((await ui.request({ type: 'topic.create', title: 'Login' })).value as { topic: { id: string } }).topic.id;
-  ok(await cland(root, 'task', 'link', 'T-3', '--parent', 'E-1', '--blocked-by', 'T-2', '--topic', login, '--branch', 't/3-child'));
-  ok(await cland(root, 'task', 'edit', 'T-3', '--title', 'Child renamed', '--body', 'New body.', '--assignee', 'carol'));
+  ok(await componentTask(root, 'task', 'link', 'T-3', '--parent', 'E-1', '--blocked-by', 'T-2', '--topic', login, '--branch', 't/3-child'));
+  ok(await componentTask(root, 'task', 'edit', 'T-3', '--title', 'Child renamed', '--body', 'New body.', '--assignee', 'carol'));
   let fm = frontmatter(await readFile(join(tasksDir(root), 'T-3-child.md'), 'utf8'));
   assert.deepEqual([fm.title, fm.parent, fm.blocked_by, fm.topic, fm.branch, fm.assignee], ['Child renamed', 'E-1', ['T-2'], login, 't/3-child', 'carol']);
-  ok(await cland(root, 'task', 'link', 'T-3', '--unblock', 'T-2', '--topic', 'none'));
-  ok(await cland(root, 'task', 'close', 'T-3'));
+  ok(await componentTask(root, 'task', 'link', 'T-3', '--unblock', 'T-2', '--topic', 'none'));
+  ok(await componentTask(root, 'task', 'close', 'T-3'));
   fm = frontmatter(await readFile(join(tasksDir(root), 'T-3-child.md'), 'utf8'));
   assert.deepEqual([fm.blocked_by, fm.topic, fm.state], [[], null, 'closed']);
   assert.notEqual(fm.updated, fm.created);
 
-  const self = await cland(root, 'task', 'link', 'T-3', '--parent', 'T-3');
+  const self = await componentTask(root, 'task', 'link', 'T-3', '--parent', 'T-3');
   assert.equal(self.code, 1);
   assert.match(self.stderr, /cannot reference itself/);
-  const missing = await cland(root, 'task', 'view', 'T-99');
+  const missing = await componentTask(root, 'task', 'view', 'T-99');
   assert.equal(missing.code, 1);
   assert.match(missing.stderr, /no item T-99/);
 });

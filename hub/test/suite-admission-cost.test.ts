@@ -35,7 +35,15 @@ async function fixture(t: TestContext, coldViolation = false) {
   let poll!: () => Promise<void>;
   const logs: Record<string, unknown>[] = [];
   const commands: string[][] = [];
-  let heldBatch: { entered: ReturnType<typeof Promise.withResolvers<void>>; release: ReturnType<typeof Promise.withResolvers<void>> } | undefined;
+  let heldBatch: { completed: boolean; entered: ReturnType<typeof Promise.withResolvers<void>>; release: ReturnType<typeof Promise.withResolvers<void>> } | undefined;
+  // Many manifest paths intentionally share one source blob. Model Git's object
+  // deduplication instead of rehashing it for every fake command and duplicate path.
+  const oids = new Map<string,string>();
+  const oidOf = (text: string) => {
+    let oid = oids.get(text);
+    if (!oid) { oid = createHash('sha1').update(text).digest('hex'); oids.set(text,oid); }
+    return oid;
+  };
   const missing = () => Object.assign(new Error('missing Git object'), { code: 128 });
   function execute(args: string[]): string {
     if (args[0] === 'config') throw missing();
@@ -53,7 +61,7 @@ async function fixture(t: TestContext, coldViolation = false) {
     if (args[0] === 'ls-tree') {
       const snapshot = snapshots.get(args.find(arg => snapshots.has(arg))!)!;
       if (args.includes('--name-only')) return [...snapshot.keys()].join('\0') + '\0';
-      return [...snapshot].map(([path, text]) => `100644 blob ${createHash('sha1').update(text).digest('hex')}\t${path}\0`).join('');
+      return [...snapshot].map(([path, text]) => `100644 blob ${oidOf(text)}\t${path}\0`).join('');
     }
     throw new Error(`unexpected Git command: ${args.join(' ')}`);
   }
@@ -64,7 +72,7 @@ async function fixture(t: TestContext, coldViolation = false) {
     const child = new EventEmitter() as childProcess.ChildProcess;
     if (args[0] === 'cat-file') {
       child.stdin = new Writable({ write(chunk, _encoding, done) {
-        const blobs = new Map([...snapshots.values()].flatMap(snapshot => [...snapshot.values()].map(text => [createHash('sha1').update(text).digest('hex'), text])));
+        const blobs = new Map([...snapshots.values()].flatMap(snapshot => [...snapshot.values()].map(text => [oidOf(text), text])));
         const output = Buffer.concat(String(chunk).trim().split('\n').map(oid => {
           const content = Buffer.from(blobs.get(oid)!);
           return Buffer.concat([Buffer.from(`${oid} blob ${content.length}\n`), content, Buffer.from('\n')]);
@@ -72,7 +80,7 @@ async function fixture(t: TestContext, coldViolation = false) {
         if (heldBatch) {
           const gate = heldBatch; heldBatch = undefined;
           gate.entered.resolve();
-          void gate.release.promise.then(() => callback(null, output, ''));
+          void gate.release.promise.then(() => { callback(null, output, ''); gate.completed = true; });
         } else queueMicrotask(() => callback(null, output, ''));
         done();
       } });
@@ -106,7 +114,7 @@ async function fixture(t: TestContext, coldViolation = false) {
     compatibility: { holder: async () => null, occupied: async () => true } });
   const ui = await connectUi(t, hub.discovery);
   return { root, clock, ui, files, paths, head, logs, eventually, commands, planted,
-    holdBatch: () => heldBatch = { entered: Promise.withResolvers<void>(), release: Promise.withResolvers<void>() },
+    holdBatch: () => heldBatch = { completed: false, entered: Promise.withResolvers<void>(), release: Promise.withResolvers<void>() },
     moveDev: async () => { dev = head; await poll(); } };
 }
 
@@ -147,6 +155,7 @@ test('suite.start admission over a repository-sized manifest', async t => {
     await gate.entered.promise;
     try { assert.equal((await f.ui.request({ type: 'hub.status' })).ok, true, 'foreground requests answer while background warming is held'); }
     finally { gate.release.resolve(); }
+    await f.eventually('released Git batch completed', () => gate.completed ? true : undefined);
     await f.eventually('new dev facts warmed', () => f.logs.find(row => row.event === 'test-lint-warmed' && row.head === f.head));
   });
   await t.test('CLI opt-in diagnostics survive the normal deadline and retain reachability', async () => {
@@ -163,6 +172,7 @@ test('suite.start admission over a repository-sized manifest', async t => {
       await f.clock.advance(15001);
       assert.equal(settled, false, 'opt-in diagnostics have their own longer request deadline');
       gate.release.resolve();
+      await f.eventually('diagnostic Git batch completed', () => gate.completed ? true : undefined);
       assert.equal(await request, 0);
       assert.match(output, /test lint reachable:/);
       assert.doesNotMatch(output, /reachability diagnostics:/);

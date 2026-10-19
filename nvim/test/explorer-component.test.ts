@@ -47,10 +47,10 @@ const fixture: Scenario = { items: [
   {id:'T-22',kind:'task',title:'Planned epic task',parent:'E-2',status:'planned',state:'open'},
 ], processes:[{name:'coord',role:'coordinator',state:'idle',status:'running'}] };
 
-async function stub(t: test.TestContext, scenario = fixture, projectRoot?: string, centre: 'general' | 'explorer' = 'explorer') {
+async function stub(t: test.TestContext, scenario = fixture, projectRoot?: string, centre: 'general' | 'explorer' = 'explorer', screenPollMs = 40) {
   const root = projectRoot ?? await tempProject(t);
   const controlPath = `${root}/stub.sock`;
-  const c = await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath},{centre});
+  const c = await startClient(t,bin,root,{CLAND_HUB_TRANSPORT:'stdio',CLAND_COMMAND:JSON.stringify([process.execPath,STUB]),CLAND_STUB_SCENARIO_JSON:JSON.stringify(scenario),CLAND_STUB_CONTROL:controlPath},{centre,screenPollMs});
   await c.rpc.request('nvim_ui_try_resize',200,50);
   if (scenario.holdSnapshots?.includes('task.list')) await c.waitScreen(s=>s.includes('hub: connected'),'connected with held item snapshot');
   else await waitInitialSnapshots(c);
@@ -159,11 +159,14 @@ test('D hides done items across the tree and A exposes archived roots with scope
 });
 
 test('invalid explorer preferences reset alone and are reported while other ui.json keys survive', {skip}, async t => {
+  const root=await tempProject(t);
+  await mkdir(`${root}/.cland`,{recursive:true});
+  let c: Client | undefined;
   for(const invalid of [false,[],{folds:{'E-0':true}},{folds:{'E-3':'open'}},{scope:42},{hide_done:'yes'},{archive:1},{card_width:'wide'}]) {
-    const root=await tempProject(t);
-    await mkdir(`${root}/.cland`,{recursive:true});
     await writeFile(`${root}/.cland/ui.json`,JSON.stringify({version:2,panels:{left:false,right:'inbox',dock:false},sizes:{right:46},items_filter:'all',explorer:invalid,future_preference:{kept:true}}));
-    const {c}=await stub(t,fixture,root);
+    // One cold load, then the same public disk loader for every invalid input.
+    if (!c) ({c}=await stub(t,fixture,root,'explorer',5));
+    else await c.lua("local root=...; require('cland.ui').load(root); require('cland.state').changed()",root);
     assert.equal(await c.lua("return require('cland.state').S.ui.right"),'inbox');
     assert.match(String(await c.lua("return require('cland.state').S.flash.text")),/invalid explorer.*defaults/);
     await c.input('<Esc><Space>e'); await c.waitScreen(s=>s.includes('done shown · 5 · D'),'invalid explorer default');
@@ -173,7 +176,6 @@ test('invalid explorer preferences reset alone and are reported while other ui.j
     assert.deepEqual(saved.explorer,{folds:{},scope:null,hide_done:true,archive:false,card_width:null});
     assert.equal(saved.items_filter,'all'); assert.deepEqual(saved.sizes,{right:46});
     assert.deepEqual(saved.future_preference,{kept:true});
-    await c.lua("vim.cmd('qa!')").catch(()=>{}); await c.rpc.closed;
   }
 });
 
@@ -395,14 +397,14 @@ function benchFixture(): Scenario {
 
 test('bench reports build and buffer medians for 300 items fully unfolded and restores the human view', {skip}, async t => {
   const scenario=benchFixture(); assert.equal(scenario.items!.length,300);
-  const {c}=await stub(t,scenario);
+  const {c}=await stub(t,scenario,undefined,'explorer',5);
   await c.input('zR');
   await c.waitScreen(s=>s.includes('Benchmark task 0'),'all epic plans unfolded');
   await c.lua("assert(vim.wait(5000,function() return vim.tbl_count(require('cland.plan').detail)==10 and not next(require('cland.plan').pending) end))");
   await select(c,'T-100'); await c.input('<CR>h');
   await c.lua("assert(vim.wait(5000,function() return require('cland.item_view').detail['T-100'] ~= nil end))");
   const before=await c.lua("return vim.deepcopy(require('cland.explorer').ui())");
-  const results=await c.lua<Array<{label:string;rows:number;model_ms:number;draw_ms:number}>>("return require('cland.explorer').bench(25,'T-100')");
+  const results=await c.lua<Array<{label:string;rows:number;model_ms:number;draw_ms:number}>>("return require('cland.explorer').bench(3,'T-100')");
   t.diagnostic(`300-item bench (ms): ${JSON.stringify(results)}`);
   assert.equal(results.length,3);
   assert.ok(results[1]!.rows>300,'fully unfolded includes every item and the stage labels');

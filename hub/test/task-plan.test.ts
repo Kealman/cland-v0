@@ -1,5 +1,6 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Epic plans through the project hub, socket frames, CLI and in-process MCP handlers.
+import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -66,7 +67,7 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
     assert.match(refused.stderr, /split.*2–3 M|non-empty reason/);
     assert.equal(await readFile(join(root, epic.path), 'utf8'), before);
   }
-  const cli = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile,
+  const cli = await componentTask(root, 'task', 'plan', 'set', epic.id, '--file', planFile,
     '--allow-large', `${a.id.replace('T-', 'E-')}=One atomic schema migration`, '--allow-large', `${b.id}=One CLI compatibility switch`, '--json');
   assert.equal(cli.code, 0, cli.stderr);
   assert.deepEqual(JSON.parse(cli.stdout).plan, plan);
@@ -76,7 +77,7 @@ test('a two-stage plan is written by CLI, shown by MCP and view JSON, changed an
   assert.match(stored, /## Plan\n\n```yaml\nstages:/);
   assert.match(stored, /Keep this prose\./);
   assert.match(stored, /Keep this comment\./);
-  const viewed = await cland(root, 'task', 'view', epic.id, '--json');
+  const viewed = await componentTask(root, 'task', 'view', epic.id, '--json');
   assert.equal(viewed.code, 0, viewed.stderr);
   assert.deepEqual(JSON.parse(viewed.stdout).item.plan, plan);
   const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
@@ -123,12 +124,12 @@ const beforeRestart = await coord.call<{ history: Array<{ id: string; reason?: s
   assert.match(beforeRestart.history.at(-1)?.reason ?? '', /^Split work for parallel lanes\n/);
   await stopHub(root);
   await openHub(t, root);
-  const restored = await cland(root, 'task', 'plan', 'show', epic.id, '--json');
+  const restored = await componentTask(root, 'task', 'plan', 'show', epic.id, '--json');
   assert.equal(restored.code, 0, restored.stderr);
   assert.deepEqual(JSON.parse(restored.stdout).history, beforeRestart.history);
   // An existing plan still needs an auditable exception even if its YAML is unchanged.
   await writeFile(planFile, stringify(changed));
-  const unchanged = await cland(root, 'task', 'plan', 'set', epic.id, '--file', planFile,
+  const unchanged = await componentTask(root, 'task', 'plan', 'set', epic.id, '--file', planFile,
     '--allow-large', `${a.id}=Retain the atomic schema migration`, '--allow-large', `${b.id}=Retain the CLI switch`, '--json');
   assert.equal(unchanged.code, 0, unchanged.stderr);
   const history = JSON.parse(unchanged.stdout).history;

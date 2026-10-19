@@ -92,7 +92,7 @@ test('events keys, warning/dim presentation, independent mutes, last look and co
     const socket = createConnection(controlPath); socket.setEncoding('utf8'); socket.on('error', reject); socket.on('data', () => { socket.end(); resolve(); }); socket.write(JSON.stringify(command) + '\n');
   });
   const env = { CLAND_STUB_CONTROL: controlPath, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) };
-  const c = await startClient(t, bin, root, env);
+  const c = await startClient(t, bin, root, env, { screenPollMs: 5 });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);
   await c.input('<Esc> N');
@@ -148,7 +148,7 @@ test('events keys, warning/dim presentation, independent mutes, last look and co
   assert.deepEqual(saved.events.muted, []);
   assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
   await c.input(':qa!<CR>');
-  const cold = await startClient(t, bin, root, env);
+  const cold = await startClient(t, bin, root, env, { screenPollMs: 5 });
   await cold.waitScreen(s => s.includes('hub: connected'), 'cold connected');
   await waitInitialSnapshots(cold);
   await cold.input('<Esc> E');

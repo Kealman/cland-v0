@@ -1,5 +1,6 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Configured hierarchy through the real hub, CLI and MCP boundaries.
+import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -181,26 +182,26 @@ test('renamed top-level metadata survives restart; an empty ladder refuses forme
   const top = await cland(root, 'task', 'create', 'Plan', '--kind', 'initiative', '--version', '1.0.0', '--json');
   assert.equal(top.code, 0, top.stderr);
   assert.match(top.stdout, /## Notes/);
-  assert.equal((await cland(root, 'task', 'create', 'Child', '--kind', 'feature', '--parent', 'T-1')).code, 0);
-  assert.equal((await cland(root, 'task', 'close', 'T-1')).code, 1);
-  const wrongVersion = await cland(root, 'task', 'edit', 'T-2', '--version', '1.0.0');
+  assert.equal((await componentTask(root, 'task', 'create', 'Child', '--kind', 'feature', '--parent', 'T-1')).code, 0);
+  assert.equal((await componentTask(root, 'task', 'close', 'T-1')).code, 1);
+  const wrongVersion = await componentTask(root, 'task', 'edit', 'T-2', '--version', '1.0.0');
   assert.equal(wrongVersion.code, 1);
   assert.match(wrongVersion.stderr, /version belongs only to an initiative item/);
   await stopHub(root);
   await openHub(t, root);
-  assert.match((await cland(root, 'task', 'view', 'T-1', '--json')).stdout, /"version":"1.0.0"/);
+  assert.match((await componentTask(root, 'task', 'view', 'T-1', '--json')).stdout, /"version":"1.0.0"/);
   await stopHub(root);
   await writeFile(config, '[tracker]\nlevels = []\n');
   await openHub(t, root);
-  assert.deepEqual(JSON.parse((await cland(root, 'task', 'list', '--json')).stdout).items, [], 'unchanged file hashes do not retain kinds removed from config');
+  assert.deepEqual(JSON.parse((await componentTask(root, 'task', 'list', '--json')).stdout).items, [], 'unchanged file hashes do not retain kinds removed from config');
   const ui = await connectUi(t, await readDiscovery(root));
   await eventually('removed container notices', async () => {
     const history = await ui.request({ type: 'topic.history', topic: 'agents' });
     assert.match(JSON.stringify(history.value), /I-1-plan\.md.*unknown kind/);
     return true;
   });
-  for (const kind of ['task', 'question', 'spec', 'map']) assert.equal((await cland(root, 'task', 'create', ...((kind) === 'task' ? ['--size', 'M'] : []), kind, '--kind', kind)).code, 0);
-  const bad = await cland(root, 'task', 'create', 'Old container', '--kind', 'epic');
+  for (const kind of ['task', 'question', 'spec', 'map']) assert.equal((await componentTask(root, 'task', 'create', ...((kind) === 'task' ? ['--size', 'M'] : []), kind, '--kind', kind)).code, 0);
+  const bad = await componentTask(root, 'task', 'create', 'Old container', '--kind', 'epic');
   assert.equal(bad.code, 1);
   assert.match(bad.stderr, /unknown kind/);
 });

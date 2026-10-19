@@ -321,14 +321,14 @@ test('resize bursts project once at final width and stale closed/reused windows 
   }
 });
 
-async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', charting = true) {
+async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', charting = true, screenPollMs = 40) {
   const root = await tempProject(t, 'cland-thread-');
   await mkdir(join(root, '.git'));
   const controlPath = join(root, 'stub.sock');
   const c = await startClient(t, bin, root, {
     TZ: timeZone, CLAND_STUB_NOW: ts, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]),
     CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath,
-  });
+  }, { screenPollMs });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);
   if (!scenario.holdSnapshots?.includes('topic.history')) {
@@ -564,18 +564,26 @@ test('background fold reconstruction leaves the focused board alone and rejects 
 });
 
 test('delayed initial history preserves focused composer modes and an unfocused composer', { skip }, async t => {
-  for (const mode of ['i', 'R', 'n', 't']) {
-    const c = await start(t, { messages: { general: Array.from({length: 40}, (_,i) => msg(`initial-${i}`, 'implementer', `Initial ${i}${i===39 ? ' '+ 'word '.repeat(30)+'TAIL-END' : ''}`)) }, holdSnapshots: ['topic.history'] }, 'UTC', false);
+  const modes = ['i', 'R', 'n', 't'];
+  const topics = modes.map((mode,i) => ({id:i===0?'general':`initial-${mode}`,title:'General',status:'open'}));
+  const history = Array.from({length: 40}, (_,i) => msg(`initial-${i}`, 'implementer', `Initial ${i}${i===39 ? ' '+ 'word '.repeat(30)+'TAIL-END' : ''}`));
+  const c = await start(t, { topics, messages:Object.fromEntries(topics.map(topic=>[topic.id,history])), holdSnapshots: ['topic.history'] }, 'UTC', false, 5);
+  for (const [i,mode] of modes.entries()) {
+    // Each mode gets a fresh topic view/composer and a real held initial snapshot.
+    if(i>0) await c.input(`<Esc>:Cland view thread ${topics[i]!.id}<CR>`);
     await c.control({ waitSnapshot: 'topic.history' });
     await c.input('<Esc>');
     if (mode === 'n') await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
     else if (mode === 't') await c.lua(`
       local b=vim.api.nvim_create_buf(false,true)
       vim.api.nvim_open_win(b,true,{split='right',win=require('cland.layout').centre()})
-      vim.fn.termopen({'cat'})
+      vim.api.nvim_open_term(b,{})
       vim.cmd('startinsert')
     `);
-    else await c.input(mode === 'R' ? 'R' : 'i');
+    else {
+      await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.composer)");
+      await c.input(mode === 'R' ? 'R' : 'i');
+    }
     await eventually(`${mode} mode entered before releasing history`, async () => await c.mode() === mode ? true : undefined);
     assert.equal(await c.mode(), mode);
     const win = await c.lua<number>('return vim.api.nvim_get_current_win()');
@@ -634,6 +642,8 @@ test('200 message rewrites and steady-state appends retain cached parsing and in
   const text = '## Plan\nLine 1: **T-58** and `history`\n- keep words aligned under the bullet\n[brief](https://example.com/a/long/destination)\n```lua\nlocal value = 1\nprint(value)\n```';
   const c = await start(t, { messages: { general: Array.from({ length: 200 }, (_, i) => msg(`cost${i}`, i % 3 === 0 ? 'human' : 'implementer', text)) } });
   await c.waitScreen(s => s.includes('print(value)'), 'history loaded');
+  // The component proves cache/relative cost; the explicit benchmark keeps its longer samples.
+  const benchmark = process.env.CLAND_RENDER_BENCHMARK === '1';
   const costs = await c.lua<{ append: number; rewrite: number; appendWall: number; rewriteWall: number; cold: number; coldParses: number; warmParses: number }>(`
     local t=require('cland.views').topic('general').thread
     local function median(n,fn)
@@ -665,10 +675,10 @@ test('200 message rewrites and steady-state appends retain cached parsing and in
     api.nvim_win_set_buf(win,t.buf)
     api.nvim_buf_delete(cold_thread.buf,{force=true})
     parses=0
-    local rewrite,rewriteWall=median(15,function() t:render(); vim.cmd('redraw!') end)
+    local rewrite,rewriteWall=median(${benchmark ? 15 : 5},function() t:render(); vim.cmd('redraw!') end)
     local warmParses=parses
     vim.treesitter.get_string_parser=original
-    local append,appendWall=median(31,function(i)
+    local append,appendWall=median(${benchmark ? 31 : 9},function(i)
       t:add({id='cost-new-'..i,from='human',fromKind='human',to={'coordinator'},ts='2026-10-09T10:01:00Z',text='## New '..i..'\\nUse \`history\` and **T-58**',stage='queued'})
     end)
     return {append=append,rewrite=rewrite,appendWall=appendWall,rewriteWall=rewriteWall,cold=cold,coldParses=coldParses,warmParses=warmParses}

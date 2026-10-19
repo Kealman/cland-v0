@@ -1,11 +1,11 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ProjectConfiguration } from '../src/hub/configuration.ts';
 import { layout } from '../src/project.ts';
-import { cland, clandWithEnv, connectUi, eventually, projectHub, tempProject } from './harness.ts';
+import { cland, clandWithEnv, connectUi, eventually, flushProjectLogs, projectHub, tempProject } from './harness.ts';
 
 const config = (root: string, budget: number) => `[verification]\nlock_path=${JSON.stringify(join(root, "suite.lock"))}\nremote_budget=${budget}\n`;
 
@@ -52,7 +52,14 @@ test('hub reload publishes config and roles together and retains both after eith
   const commit = '1'.repeat(40);
   const daemon = await projectHub(t, root, {}, { git: async args => args[0] === 'log' ? commit : null });
   const ui = await connectUi(t, daemon.discovery);
-  const status = async () => JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+  const status = async () => {
+    const result = await ui.request({ type: 'hub.status' });
+    assert.equal(result.ok, true, result.error);
+    const status = result.value as import('../src/protocol.ts').HubStatus;
+    assert.ok(status.config);
+    assert.ok(status.verification);
+    return { ...status, config: status.config, verification: status.verification };
+  };
   const initial = await status();
   assert.equal(initial.config.sourceCommit, commit);
   assert.ok(Date.parse(initial.config.loadedAt));
@@ -71,8 +78,9 @@ test('hub reload publishes config and roles together and retains both after eith
     assert.equal((await status()).verification.remoteBudget, 3);
     const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
     assert.equal(listed.roles.find(r => r.role === 'implementer')?.launch.model, 'before');
-    const journal = await cland(root, 'hub', 'journal', '--kind', 'config-reload-failed', '--json');
-    assert.ok(journal.stdout.includes(bad));
+    await flushProjectLogs(t, root);
+    const journal = (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line));
+    assert.ok(JSON.stringify(journal.filter(row => row.event === 'config-reload-failed')).includes(bad));
   }
 });
 

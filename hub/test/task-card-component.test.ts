@@ -1,4 +1,5 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
+import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import files, { readFile, writeFile } from 'node:fs/promises';
@@ -177,15 +178,15 @@ test('hub closes after a hand reopen replace retained closed times, while alread
   for (const args of [['close', item.id], ['edit', item.id, '--status', 'done'], ['edit', item.id, '--state', 'closed']]) {
     const source = (await readFile(path, 'utf8')).replace(/^closed:.*\n/m, '').replace('state: closed', 'state: open').replace('status: done', 'status: backlog');
     await writeFile(path, source.replace(/^updated:.*\n/m, line => `${line}closed: ${old}\n`));
-    const reopened = JSON.parse((await cland(root, 'task', 'view', item.id, '--json')).stdout).item;
+    const reopened = JSON.parse((await componentTask(root, 'task', 'view', item.id, '--json')).stdout).item;
     assert.equal(reopened.state, 'open');
     assert.equal(reopened.closed, old, 'hand saves remain the source of truth');
-    const close = await cland(root, 'task', ...args, '--json');
+    const close = await componentTask(root, 'task', ...args, '--json');
     assert.equal(close.code, 0, close.stderr);
     const closed = JSON.parse(close.stdout).item.closed;
     assert.notEqual(closed, old);
     assert.ok(Date.parse(closed) > Date.parse(old));
-    const retry = await cland(root, 'task', ...args, '--json');
+    const retry = await componentTask(root, 'task', ...args, '--json');
     assert.equal(retry.code, 0, retry.stderr);
     assert.equal(JSON.parse(retry.stdout).item.closed, closed, 'already-closed writes remain idempotent');
   }

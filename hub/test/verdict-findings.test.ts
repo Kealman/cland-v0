@@ -1,4 +1,5 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
+import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -39,10 +40,10 @@ test('CLI and MCP verdicts expose all severities, clear lows and explicit empty 
   const created = await cland(root, 'task', 'create', 'Findings', '--size', 'S', '--json');
   assert.equal(created.code, 0, created.stderr);
   const item: ItemView = JSON.parse(created.stdout).item;
-  const verdict = await cland(root, 'task', 'comment', item.id, 'All findings recorded.', '--verdict', 'review', '--scope', 'full', '--result', 'not clear', '--run', 'cli',
+  const verdict = await componentTask(root, 'task', 'comment', item.id, 'All findings recorded.', '--verdict', 'review', '--scope', 'full', '--result', 'not clear', '--run', 'cli',
     '--finding', 'high:Drops a verdict@hub/src/tracker/tracker.ts:42', '--finding', 'medium:Omits counts', '--finding', 'low:Explain the field: use @ consistently@hub/README.md:12', '--json');
   assert.equal(verdict.code, 0, verdict.stderr);
-  const viewed = await cland(root, 'task', 'view', item.id, '--json');
+  const viewed = await componentTask(root, 'task', 'view', item.id, '--json');
   const stored: ItemView = JSON.parse(viewed.stdout).item;
   assert.deepEqual(stored.verdicts[0]!.findings, findings);
   assert.deepEqual(stored.verdicts[0]!.findingCounts, counts);
@@ -59,7 +60,7 @@ test('CLI and MCP verdicts expose all severities, clear lows and explicit empty 
     assert.equal(toolRefusal.ok, false);
     assert.match(toolRefusal.error, /record not clear instead/);
     assert.ok(toolRefusal.error.includes(`${severity}: Unresolved ${severity} bug`));
-    const cliRefusal = await cland(root, 'task', 'comment', item.id, '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'bad-clear-cli', '--finding', `${severity}:Unresolved ${severity} bug`);
+    const cliRefusal = await componentTask(root, 'task', 'comment', item.id, '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'bad-clear-cli', '--finding', `${severity}:Unresolved ${severity} bug`);
     assert.equal(cliRefusal.code, 1);
     assert.match(cliRefusal.stderr, /record not clear instead/);
     assert.ok(cliRefusal.stderr.includes(`${severity}: Unresolved ${severity} bug`));
@@ -70,7 +71,7 @@ test('CLI and MCP verdicts expose all severities, clear lows and explicit empty 
   assert.equal(clear.item.verdicts.at(-1)!.result, 'clear');
   assert.deepEqual(clear.item.verdicts.at(-1)!.findings, low);
   assert.deepEqual(clear.item.verdicts.at(-1)!.findingCounts, { high: 0, medium: 0, low: 1 });
-  const plain = await cland(root, 'task', 'view', item.id);
+  const plain = await componentTask(root, 'task', 'view', item.id);
   assert.match(plain.stdout, /findings: 1 high, 1 medium, 1 low/);
   assert.match(plain.stdout, /low: Document the default @hub\/README.md/);
   const empty = await reviewer.call<{ item: ItemView }>('task.comment', { id: item.id, verdict: 'review', result: 'clear', run: 'none', scope: 'evidence', findings: [] });
@@ -86,7 +87,7 @@ test('CLI and MCP verdicts expose all severities, clear lows and explicit empty 
   assert.deepEqual(records[0].findingCounts, counts);
   assert.deepEqual(records[1].findings, low);
   assert.deepEqual(records[2].findingCounts, { high: 0, medium: 0, low: 0 });
-  const qa = await cland(root, 'task', 'comment', item.id, '--verdict', 'qa', '--result', 'clear', '--run', 'qa-unchanged', '--finding', 'high:QA result validation unchanged', '--json');
+  const qa = await componentTask(root, 'task', 'comment', item.id, '--verdict', 'qa', '--result', 'clear', '--run', 'qa-unchanged', '--finding', 'high:QA result validation unchanged', '--json');
   assert.equal(qa.code, 0, qa.stderr);
   const qaView: ItemView = JSON.parse(qa.stdout).item;
   assert.equal(qaView.verdicts.at(-1)!.result, 'clear');
@@ -111,7 +112,7 @@ test('invalid findings refuse atomically and text headers carry findings through
     assert.equal(await readFile(file, 'utf8'), original);
   }
   for (const finding of ['critical:bad', 'low:', 'low:bad@x:0']) {
-    const refused = await cland(root, 'task', 'comment', item.id, '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'bad-cli', '--finding', finding);
+    const refused = await componentTask(root, 'task', 'comment', item.id, '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'bad-cli', '--finding', finding);
     assert.notEqual(refused.code, 0);
     assert.match(refused.stderr, /finding/);
   }
@@ -121,14 +122,14 @@ test('invalid findings refuse atomically and text headers carry findings through
   const header = `verdict: review\nresult: not clear\nrun: from-text\nscope: full\nfindings: ${JSON.stringify(findings)}\n\nReview notes.`;
   const recorded = await ui.request({ type: 'task.comment', item: item.id, text: header });
   assert.equal(recorded.ok, true, recorded.error);
-  const before: ItemView = JSON.parse((await cland(root, 'task', 'view', item.id, '--json')).stdout).item;
+  const before: ItemView = JSON.parse((await componentTask(root, 'task', 'view', item.id, '--json')).stdout).item;
   assert.deepEqual(before.verdicts[0]!.findings, findings);
   assert.equal(before.verdicts[0]!.source, 'hub');
   // Stop the first writer before rebuilding the index in a second hub.
   ui.close();
   await hub.stop();
   const restarted = await projectHub(t, root);
-  const after: ItemView = JSON.parse((await cland(root, 'task', 'view', item.id, '--json')).stdout).item;
+  const after: ItemView = JSON.parse((await componentTask(root, 'task', 'view', item.id, '--json')).stdout).item;
   assert.deepEqual(after.verdicts[0]!.findings, findings);
   assert.deepEqual(after.verdicts[0]!.findingCounts, counts);
   assert.equal(after.verdicts[0]!.source, 'hub');
@@ -136,6 +137,6 @@ test('invalid findings refuse atomically and text headers carry findings through
   const altered = (await readFile(file, 'utf8')).replace('Drops a verdict', 'Changed finding');
   await writeFile(file, altered);
   await projectHub(t, root);
-  const changed: ItemView = JSON.parse((await cland(root, 'task', 'view', item.id, '--json')).stdout).item;
+  const changed: ItemView = JSON.parse((await componentTask(root, 'task', 'view', item.id, '--json')).stdout).item;
   assert.equal(changed.verdicts[0]!.source, 'file');
 });

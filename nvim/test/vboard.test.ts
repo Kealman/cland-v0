@@ -28,10 +28,10 @@ const fixture: Scenario = {
     task(20, 'planned', ''),
   ]
 };
-async function start(t: TestContext, scenario = fixture) {
+async function start(t: TestContext, scenario = fixture, screenPollMs = 40) {
   const root = await mkdtemp(join(tmpdir(), 'cland-vboard-')); ownDirectory(t, root); await mkdir(join(root, '.git'));
   const controlPath = join(root, 'stub.sock');
-  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath });
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: {}, ...scenario }), CLAND_STUB_CONTROL: controlPath }, { screenPollMs });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);
   await c.input('<Esc><Space>i');
@@ -173,6 +173,7 @@ test('board and all-tree batch folds preserve each other through round trips', {
 });
 
 test('release versions appear once in the scope, all tree, top bar and item header', { skip }, async t => {
+  let shared: Awaited<ReturnType<typeof start>> | undefined;
   for (const [title, version, heading, kind = 'release', id = 'R-228'] of [
     ['Working with items', '0.1.2', 'R-228 0.1.2 Working with items'],
     ['v0.1.1', '0.1.1', 'R-228 v0.1.1'],
@@ -180,12 +181,21 @@ test('release versions appear once in the scope, all tree, top bar and item head
     ['Unversioned', undefined, 'R-228 Unversioned'],
     ['Configured release', '0.3.0', 'I-228 0.3.0 Configured release', 'initiative', 'I-228'],
   ] as const) {
-    await t.test(title, async t => {
-      const c = await start(t, { tracker: { levels: [kind, 'epic'] }, items: [
+    await t.test(title, async () => {
+      const items = [
         { id, kind, title, version, state: 'open', file: `${id}-release.md` },
         { id: 'E-269', kind: 'epic', title: 'Prefixes and categories', state: 'open', parent: id },
-      ] });
-      const screen = await c.waitScreen(s => s.includes('board ·'), 'release scope');
+      ];
+      // Formatting permutations share a client; a different configured ladder gets its own fixture.
+      const c = kind === 'release' && shared ? shared : await start(t, { tracker: { levels: [kind, 'epic'] }, items }, 5);
+      if (kind === 'release' && shared) {
+        await c.control({set:{items}});
+        await c.control({emit:{type:'task',id,item:items[0]}});
+        await c.input('<Esc><Space>g');
+        await c.lua("require('cland.items').set_filter('board'); vim.api.nvim_set_current_win(vim.fn.bufwinid(require('cland.panels').buf('items')))");
+      }
+      if (kind === 'release') shared = c;
+      const screen = await c.waitScreen(s => s.includes('board ·') && s.split('\n')[0]!.includes(heading), 'release scope');
       assert.ok(screen.split('\n')[0]!.includes(heading), 'top bar: ' + screen.split('\n')[0]);
       assert.ok(screen.split('\n').slice(1).some(row => row.split('│')[0]!.trim().startsWith(heading + ' ')), 'scope header: ' + screen);
       await c.input('6');

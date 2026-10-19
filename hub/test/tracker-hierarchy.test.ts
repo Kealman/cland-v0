@@ -1,5 +1,6 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
 // Release planning through the hub's public protocol, CLI and real MCP spoke.
+import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -27,7 +28,7 @@ test('a release version and Notes survive writes and a hub restart; CLI and MCP 
   assert.equal(item.version, '0.1.0');
   assert.match(item.body, /^The goal\.\n\n## Notes$/);
   assert.match(await readFile(join(root, item.path), 'utf8'), /version: 0\.1\.0\n/);
-  const comment = await cland(root, 'task', 'comment', item.id, 'Keep the version.');
+  const comment = await componentTask(root, 'task', 'comment', item.id, 'Keep the version.');
   assert.equal(comment.code, 0, comment.stderr);
   await stopHub(root);
   await openHub(t, root);
@@ -42,7 +43,7 @@ test('a release version and Notes survive writes and a hub restart; CLI and MCP 
   assert.equal(optional.item.version, undefined);
   assert.equal(optional.item.body, 'Goal\n\n## Notes\n\nPrepared notes.');
   for (const version of ['v0.1.0', '01.1.0', '0.1', '0.1.0-01', '0.1.0\n']) {
-    const bad = await cland(root, 'task', 'create', 'Bad', '--kind', 'release', '--version', version);
+    const bad = await componentTask(root, 'task', 'create', 'Bad', '--kind', 'release', '--version', version);
     assert.equal(bad.code, 1, version);
     assert.match(bad.stderr, /version.*semver/);
   }

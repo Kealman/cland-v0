@@ -1,4 +1,5 @@
 // T2 component: tracker rules at public APIs, sockets, CLI and in-process MCP.
+import { componentTask, componentTaskJson } from './component-task.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -61,6 +62,7 @@ test('an existing hub database upgrades additively and legacy verdicts remain fi
 
 
 test('review scope is required through CLI and MCP, indexed and announced, while QA carries none', async t => {
+  const task = componentTaskJson<{ item: ItemView; items: ItemSummary[] }>;
   const root = await tempProject(t);
   const { discovery } = await openHub(t, root);
   const ui = await connectUi(t, discovery);
@@ -73,18 +75,18 @@ test('review scope is required through CLI and MCP, indexed and announced, while
   const refused = await cland(root, 'task', ...args);
   assert.equal(refused.code, 1);
   assert.match(refused.stderr, /full, delta or evidence/);
-  const invalid = await cland(root, 'task', ...args, '--scope', 'unknown');
+  const invalid = await componentTask(root, 'task', ...args, '--scope', 'unknown');
   assert.equal(invalid.code, 1);
   assert.match(invalid.stderr, /full, delta or evidence/);
   const recorded = await task(root, ...args, '--scope', 'delta');
   assert.equal(recorded.item.verdicts[0]?.scope, 'delta');
   assert.equal((await task(root, 'view', item.id)).item.verdicts[0]?.scope, 'delta');
   assert.equal((await task(root, 'list')).items[0]?.verdicts[0]?.scope, 'delta');
-  assert.match((await cland(root, 'task', 'view', item.id)).stdout, /scope delta/);
+  assert.match((await componentTask(root, 'task', 'view', item.id)).stdout, /scope delta/);
   const event = await ui.waitFor(f => f.type === 'task' && (f.item as ItemSummary)?.verdicts?.[0]?.scope === 'delta');
   assert.equal((event.item as ItemSummary).verdicts[0]?.scope, 'delta');
   await ui.waitFor(f => f.type === 'message' && String((f.message as { text: string }).text).includes('verdict posted review clear · delta · scope-cli'));
-  const qa = await cland(root, 'task', 'comment', item.id, 'QA', '--verdict', 'qa', '--result', 'clear', '--run', 'scope-qa', '--scope', 'full');
+  const qa = await componentTask(root, 'task', 'comment', item.id, 'QA', '--verdict', 'qa', '--result', 'clear', '--run', 'scope-qa', '--scope', 'full');
   assert.equal(qa.code, 1);
   assert.match(qa.stderr, /QA verdict.*scope/i);
   const input = { id: item.id, text: 'Checked again', verdict: 'review', result: 'clear', run: 'scope-mcp' };
@@ -97,14 +99,14 @@ test('review scope is required through CLI and MCP, indexed and announced, while
   assert.equal(result.item.verdicts.at(-1)?.source, 'hub');
   await ui.waitFor(f => f.type === 'task' && (f.item as ItemSummary)?.status === 'ready');
   const before = await readFile(join(root, item.path), 'utf8');
-  const textMissing = await cland(root, 'task', 'comment', item.id, 'verdict: review\nresult: clear\nrun: text-missing');
+  const textMissing = await componentTask(root, 'task', 'comment', item.id, 'verdict: review\nresult: clear\nrun: text-missing');
   assert.equal(textMissing.code, 1);
   assert.match(textMissing.stderr, /full, delta or evidence/);
   assert.equal(await readFile(join(root, item.path), 'utf8'), before);
-  const textQa = await cland(root, 'task', 'comment', item.id, 'verdict: qa\nresult: clear\nrun: text-qa\nscope: full');
+  const textQa = await componentTask(root, 'task', 'comment', item.id, 'verdict: qa\nresult: clear\nrun: text-qa\nscope: full');
   assert.equal(textQa.code, 1);
   assert.match(textQa.stderr, /QA verdict.*scope/i);
-  const textInvalid = await cland(root, 'task', 'comment', item.id, 'verdict: review\nresult: clear\nrun: text-invalid\nscope: unknown');
+  const textInvalid = await componentTask(root, 'task', 'comment', item.id, 'verdict: review\nresult: clear\nrun: text-invalid\nscope: unknown');
   assert.equal(textInvalid.code, 1);
   assert.match(textInvalid.stderr, /full, delta or evidence/);
   assert.equal((await task(root, 'comment', item.id, 'verdict: review\nresult: clear\nrun: text-full\nscope: full')).item.verdicts.at(-1)?.scope, 'full');
