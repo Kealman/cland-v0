@@ -3,7 +3,7 @@ id: T-713
 kind: task
 title: Task verify runs T0, T1 and selected T2, and T3 runs only in merge batches and occasions
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -22,7 +22,7 @@ blocked_by:
 topic: topic-543
 branch: t/T-713-task-verify-runs-t0-t1-and-selected-t2
 created: 2026-10-16T19:59:43.795Z
-updated: 2026-10-19T02:49:28.092Z
+updated: 2026-10-19T03:20:24.445Z
 ---
 
 ## Summary
@@ -40,12 +40,16 @@ This is the protocol switch (memo §5.5 step 4; decisions 1–2). A task's verif
 
 - [x] C1. A task verify plans the check step, all T1 files and coverage-selected T2 files, and no T3 or T4 file, proved by a selection test over this repository's `tiers.json`.
   - done: impl-713 · 2026-10-19T02:48:44.806Z
+  - verified: rev-31 [reviewer] · run rev-20261019-713-final · 2026-10-19T03:20:23.013Z · commit 9ee3671dcd0c69ace4c8f2fec1bf0ba80da6022e
 - [x] C2. A T2 coverage fallback plans all T2 files and still no T3 file, proved by a selection test.
   - done: impl-713 · 2026-10-19T02:09:47.288Z
+  - verified: rev-31 [reviewer] · run rev-20261019-713-final · 2026-10-19T03:20:23.014Z · commit 9ee3671dcd0c69ace4c8f2fec1bf0ba80da6022e
 - [x] C3. The Coordinator's `all` and an occasion request still plan T3, proved by the same tests.
   - done: impl-713 · 2026-10-19T02:03:03.783Z
+  - verified: rev-31 [reviewer] · run rev-20261019-713-final · 2026-10-19T03:20:23.014Z · commit 9ee3671dcd0c69ace4c8f2fec1bf0ba80da6022e
 - [x] C4. This repository's config sets `[merge] queue = true` in the same change, and a merge after it enqueues, proved by a config test.
   - done: impl-713 · 2026-10-19T02:03:04.226Z
+  - verified: rev-31 [reviewer] · run rev-20261019-713-final · 2026-10-19T03:20:23.014Z · commit 9ee3671dcd0c69ace4c8f2fec1bf0ba80da6022e
 
 ## Blocked by
 
@@ -251,3 +255,48 @@ Result: clear source for one replacement mode-free exact-head droplet verificati
 Findings: Standards 0; Spec 0.
 
 Evidence: A-5735.
+
+### rev-31 · 2026-10-19T03:20:23.014Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-713-final
+commit: 9ee3671dcd0c69ace4c8f2fec1bf0ba80da6022e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-713 final evidence review: clear
+
+Head: 9ee3671dcd0c69ace4c8f2fec1bf0ba80da6022e, unchanged from source-4 / A-5735.
+Run: 3e377f81-4330-4b1a-a742-7e01b0148eae / A-5740, raw exit 0, broad bootstrap full plan.
+Scope: evidence. Branch tip and task receipt independently match; C1–C4 are claimant-done.
+
+## Standards
+
+Clear; no remaining findings. The two formerly hard-failing integrated package-contract cases now pass in 2.701398968 s and 2.988668546 s, below the legacy 5 s gate. The six T1 task-planner cases each fit 0.5 s: 0.369, 0.204, 0.024, 0.256, 0.107 and 0.231 s. Their file totals 1.191241474 test-seconds. The actual Linux T3 ratchet is 2649.014 s versus base 2651.501 s, below base; the host-only projection was not substituted for this receipt. No allowance or timing-baseline change was needed.
+
+All seven relevant complete test files pass (141 ordinary cases), and all 33 observed relevant load-gate identities pass 5/5. No owned hard budget, report-only per-test/file overage, runtime tier mismatch or quarantine outcome appears. The only three tier mismatches are known external T-803 suite-close-component identities. Other external report-only budget debt remains disclosed in A-5740; this verdict makes no global zero-debt claim.
+
+## Spec
+
+Clear; verify C1–C4:
+- C1: exact repository-manifest planner control passes ordinarily and 5/5, proving the check command, whole T1 and selected T2 without T3/T4. Effective queue controls cover absent/false candidate/host protection and candidate-local opt-in.
+- C2: fallback-with-inherited-Neovim-subset control passes ordinarily and 5/5, proving all T2 across both packages and no T3/T4; the successful selected-coverage contract remains green.
+- C3: integrated/all/occasion planner control passes ordinarily and 5/5; both actual runner CLI spellings pass complete-file-set/transport override assertions and 5/5 repetitions.
+- C4: repository queue/default config control and all seven public merge-queue tests pass, observing reviewed code enqueueing under the repository policy. Task result/preview deferred-T3 reporting controls also pass.
+
+The package admission cap remains coupled to both candidate opt-in and effective hosting-hub batch protection, with widened plans recomputed before cache matching. Existing tier-aware cache separation and legacy behavior remain source-reviewed and unchanged.
+
+Bootstrap limitation: the running host predates this protocol and admitted full coverage. A-5740 positively completes both hub phases and Neovim, but is not an observation of a live T0–T2-only task run after reload. The controlled candidate policy tests establish the task criteria. Former C5's 20-run timing measurement belongs to Coordinator-owned T-824 after merge, per a6119505; no timing improvement or completed batch landing is claimed here.
+
+Ordinary overall result: 2762 tests, 2754 pass, zero fail/cancelled/TODO, eight existing platform/binary skips (the idle-sleep skip retains its generic raw reason). All three shard failure arrays are empty. Hub free 158.00 s, hub machine 1189.47 s, Neovim 339.17 s; suite 1686.66 s. Linux x64 c-8 lon1, workers 2, Node 24.21.0, Neovim 0.12.5; lifetime 1768 s, cost $0.1228, peak load 7.55.
+
+Final clear; C1–C4 verified. No additional task run or per-item QA required. T-824 remains outstanding post-merge work.
+
+Findings: Standards 0; Spec 0.
+
+Evidence: A-5742.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
