@@ -9,7 +9,7 @@ export function occasionSelection(selection: SuiteSelection, occasion?: VerifyOc
   }
   if (occasion === 'dev-t3') {
     const { tests: _tests, nvimTests: _nvimTests, shard: _shard, ...full } = selection;
-    return { ...full, mode: 'full', tiers: ['T3'], soak: false, loadGate: false };
+    return { ...full, mode: 'full', tiers: ['T2', 'T3'], soak: false, loadGate: false };
   }
   return occasion ? { ...selection, soak: true, loadGate: true } : selection;
 }

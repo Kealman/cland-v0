@@ -46,7 +46,7 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1); five repetitions of T3 identities absent from the last green batch or stage receipt |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
-| Periodic dev T3 | T3 only, one droplet; no load repetitions |
+| Periodic dev (`dev-t3`) | T2 and T3, one droplet; no load repetitions |
 | Nightly soak | T1–T4; five repetitions of identities absent from the last green soak |
 
 T4 files run only in their selected base soak phase. They never acquire extra
@@ -62,11 +62,16 @@ release occasions; QA may request epic for its demo. An explicit `all` on a task
 head requires authorization and retains T3. A flaky-gate second task receipt
 uses the same mode-free selection. T3 smoke files are filtered out of task plans.
 
-### Periodic dev T3 and release gate
+### Periodic dev T2/T3 and release gate
 
 `[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
 Its default is `["T1", "T3"]`; this repository sets `["T1"]` (D67).
 Task verification stays T0–T2. A green batch with T1 only supplies no T3 receipt.
+With this repository's T1-only batches, automated T2 coverage after merge runs
+only in the periodic dev run, the nightly soak and close occasions (stage, epic
+and release). Ordinary integrated `dev` or explicit `all` remains available for
+manual checks. This catches interactions between separately verified task heads
+that their selected task T2 runs cannot catch before landing.
 
 `[verification] dev_t3_every = "2h"` enables a hub-owned `dev-t3` occasion;
 `""` (the default) disables it. The first attempt is due one interval after
@@ -75,8 +80,8 @@ only when dev's head has moved. The cursor survives restart, and a queued,
 running or unreported periodic run prevents another. A refused admission is
 throttled for one interval. The hub requires clean root dev at freshly fetched
 origin/dev and retries unavailable candidates on later clock ticks. It uses one
-droplet under the ordinary shared remote budget and daily spend cap, selects T3
-only without load repetitions, and never holds or rebuilds a merge batch.
+droplet under the ordinary shared remote budget and daily spend cap, selects T2
+and T3 without load repetitions, and never holds or rebuilds a merge batch.
 Nightly soak still runs T1–T4 independently.
 
 Each periodic result goes to the Coordinator in General with head, previous green
@@ -88,7 +93,8 @@ Git range is explicit (`null`), including timeout or I/O rejection; it cannot
 block publication or the next periodic run. The previous
 green is pinned at admission and retained with the durable job.
 
-A red periodic result starts a separate durable culprit search. Each failing file
+A red periodic result starts a separate durable culprit search for T2 and T3
+failures alike, retaining the `DevT3Result` interface above. Each failing file
 reruns at the red head first (an executed pass is a flake), then at the pinned
 last green head (a failure is pre-existing), then bisects the intervening landed
 commits. Probes run only that file, with no load repetitions or full-suite cache

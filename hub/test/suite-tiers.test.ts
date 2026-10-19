@@ -22,13 +22,13 @@ test('large stage identity baselines reach the runner through a file instead of 
   assert.deepEqual(selectionFromEnv(transport.env), selection);
 });
 
-test('occasions plan batch T1 and T3, close T1 through T4 and ordinary all through T3', async t => {
+test('occasions preserve their tier and load policies', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-occasion-plan-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const tests: TierManifest['tests'] = {
     'hub/test/component.test.ts': 'T2', 'hub/test/integration.test.ts': 'T3',
     'hub/test/soak.test.ts': 'T4', 'hub/test/unit.test.ts': 'T1',
-    'nvim/test/editor.test.ts': 'T3', 'nvim/test/soak.test.ts': 'T4',
+    'nvim/test/component.test.ts': 'T2', 'nvim/test/editor.test.ts': 'T3', 'nvim/test/soak.test.ts': 'T4',
   };
   for (const file of Object.keys(tests)) {
     await mkdir(join(root, file, '..'), { recursive: true });
@@ -36,19 +36,20 @@ test('occasions plan batch T1 and T3, close T1 through T4 and ordinary all throu
   }
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
   const full = { mode: 'full' as const, files: [], reason: 'all' };
-  for (const [executor, occasion] of [['local', undefined], ['droplet', undefined], ['local', 'batch'], ['droplet', 'batch'], ['local', 'stage'], ['droplet', 'stage'], ['droplet', 'epic'], ['local', 'release'], ['droplet', 'soak']] as const) {
+  for (const [executor, occasion] of [['local', undefined], ['droplet', undefined], ['local', 'batch'], ['droplet', 'batch'], ['droplet', 'dev-t3'], ['local', 'stage'], ['droplet', 'stage'], ['droplet', 'epic'], ['local', 'release'], ['droplet', 'soak']] as const) {
     const selection = occasionSelection(full, occasion);
     const phases = await packageShards(root, selection.mode, undefined, selection, { executor, workers: 4 });
     const plan = await planTierReport(root, selection, 4, phases);
-    assert.deepEqual(plan.flatMap(row => row.files).sort(), Object.keys(tests).filter(file => occasion === 'batch' ? ['T1', 'T3'].includes(tests[file] as string) : occasion || tests[file] !== 'T4').sort());
-    assert.deepEqual(plan.map(row => row.tier), occasion === 'batch' ? ['T1', 'T3'] : occasion ? ['T1', 'T2', 'T3', 'T4'] : ['T1', 'T2', 'T3']);
-    assert.equal(suiteTestEnv(selection, { CLAND_TEST_SOAK: '1' }).CLAND_TEST_SOAK, occasion && occasion !== 'batch' ? '1' : undefined);
-    assert.equal(selection.loadGate, occasion ? true : undefined);
+    const tiers = occasion === 'dev-t3' ? ['T2', 'T3'] : occasion === 'batch' ? ['T1', 'T3'] : occasion ? ['T1', 'T2', 'T3', 'T4'] : ['T1', 'T2', 'T3'];
+    assert.deepEqual(plan.flatMap(row => row.files).sort(), Object.keys(tests).filter(file => tiers.includes(tests[file] as string)).sort());
+    assert.deepEqual(plan.map(row => row.tier), tiers);
+    assert.equal(suiteTestEnv(selection, { CLAND_TEST_SOAK: '1' }).CLAND_TEST_SOAK, occasion && occasion !== 'batch' && occasion !== 'dev-t3' ? '1' : undefined);
+    assert.equal(selection.loadGate, occasion === 'dev-t3' ? false : occasion ? true : undefined);
     const gated = skipT4LoadRepetitions(selection, plan);
-    for (const file of Object.keys(tests)) {
+    for (const file of occasion === 'dev-t3' ? [] : Object.keys(tests)) {
       assert.equal(loadGateRepetitions(`${file}::new`, gated, {}), occasion && occasion !== 'batch' && tests[file] === 'T4' ? 0 : 5, `${occasion}: ${file}`);
     }
-    if (occasion && occasion !== 'batch') assert.match(gated.reason, /T4 repetitions skipped; 2 files run in base phase only/);
+    if (occasion && occasion !== 'batch' && occasion !== 'dev-t3') assert.match(gated.reason, /T4 repetitions skipped; 2 files run in base phase only/);
   }
 });
 
