@@ -5789,12 +5789,6 @@
       "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling.",
       "owner": "E-677",
       "legacy": true
-    },
-    "nvim/test/thread.test.ts::generated live appends, ask evictions and delivery changes equal a full render": {
-      "seconds": 10.987651,
-      "reason": "Iterates generated live appends, ask evictions and delivery changes against a real Neovim buffer, comparing every incremental result to a complete render.",
-      "owner": "E-677",
-      "legacy": true
     }
   }
 }

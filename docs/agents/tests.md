@@ -985,8 +985,9 @@ handshake. Their expiry stops the mod's restart loop too. The real-hub lifecycle
 test uses `CLAND_TEST_BRIDGE_GRACE_MS=2000`; a T1 test pins the production default
 to 60 000 ms and the mod's expiry decision has an in-process no-retry proof.
 `CLAND_TEST_SMOKE_BUDGET_MS` shortens readiness only for planted startup hangs.
-The thread differential oracle uses 2 seeds × 12 renders on the merge path and
-4 × 25 with `CLAND_TEST_SOAK=1`. The shipped QA walk, orphan performance cases,
+The ordinary T2 thread differential oracle always uses 2 seeds × 12 renders,
+including when `CLAND_TEST_SOAK=1`. The separate T4 case in
+`nvim/test/thread-oracle-soak.test.ts` runs 4 × 25 through the same oracle helper. The shipped QA walk, orphan performance cases,
 and hub harness self-tests are T4. A `hub/test` helper diff keeps the package
 fallback, filtered to T1/T2 on a queue-enabled task; T4 self-tests run at
 occasions and in the nightly soak. Each phase's existing discovery sweep reports bridge counts before and

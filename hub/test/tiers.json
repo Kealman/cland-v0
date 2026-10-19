@@ -482,6 +482,7 @@
     "nvim/test/shell-component.test.ts": "T2",
     "nvim/test/shell.test.ts": "T3",
     "nvim/test/stub-control.test.ts": "T2",
+    "nvim/test/thread-oracle-soak.test.ts": "T4",
     "nvim/test/thread.test.ts": "T2",
     "nvim/test/ui.test.ts": "T3",
     "nvim/test/vboard.test.ts": "T2",
