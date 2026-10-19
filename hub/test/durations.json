@@ -2174,7 +2174,7 @@
     "hub/test/init.test.ts::a parent folder replaced by a symlink between the check and the write: the write is refused, nothing lands outside": 0.046275,
     "hub/test/init.test.ts::cland init on a repository with its own AGENTS.md, CLAUDE.md, settings, docs and skills: theirs stays, only the managed parts are added": 0.189324,
     "hub/test/init.test.ts::cland init on an empty repository: git status shows exactly the committed set, with no machine path in it": 0.607468,
-    "hub/test/init.test.ts::cland init provisions exactly the 20 curated skills in its manifest and folders": 0.152709,
+    "hub/test/init.test.ts::cland init provisions exactly the 21 curated skills in its manifest and folders": 0.152709,
     "hub/test/init.test.ts::cland init twice changes nothing: the tree is byte-identical, and the second run reports nothing to do": 0.794314,
     "hub/test/init.test.ts::cland update after a version bump rewrites the managed parts to the new version and touches nothing else": 0.767167,
     "hub/test/init.test.ts::init adds qa_default and update keeps a configured QA policy": 0.33847,

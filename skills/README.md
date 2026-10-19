@@ -2,7 +2,7 @@
 
 The curated skill set lives in [`.agents/skills/`](../.agents/skills/), edited in place. These are the live copies this repository's sessions use and the source `cland init` copies into projects. `.claude/skills` links to that directory. A skill added here ships with the next `cland update`.
 
-The set keeps 15 upstream skills from `mattpocock/skills`: code-review, codebase-design, diagnosing-bugs, domain-modeling, grilling, implement, prototype, research, retro, tdd, to-spec, to-tickets, triage, wayfinder and writing-for-agents. cland's own skills are handover, merge, plan-epic, qa and release; onboarding joins them in v0.1.4.
+The set keeps 15 upstream skills from `mattpocock/skills`: code-review, codebase-design, diagnosing-bugs, domain-modeling, grilling, implement, prototype, research, retro, tdd, to-spec, to-tickets, triage, wayfinder and writing-for-agents. cland's own skills are handover, merge, onboarding, plan-epic, qa and release.
 
 Each upstream `SKILL.md` records its upstream folder and origin commit, the MIT attribution and one line of cland's changes in frontmatter `metadata.origin` and `metadata.changes`. Its folder carries the full upstream `LICENSE`, so the notice travels with every copy. The details of cland's edits stay in `git log -- .agents/skills/<name>`.
 

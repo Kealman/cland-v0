@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onboarding"
+  short_description: "Onboard the human onto a project new to cland"
+policy:

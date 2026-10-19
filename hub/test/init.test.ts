@@ -81,13 +81,13 @@ test('init adds qa_default and update keeps a configured QA policy', async t => 
   assert.equal(await readFile(path, 'utf8'), updated);
 });
 
-test('cland init provisions exactly the 20 curated skills in its manifest and folders', async t => {
+test('cland init provisions exactly the 21 curated skills in its manifest and folders', async t => {
   const root = await tempProject(t, 'cland-init-curated-');
   await gitRepo(root);
   await run(root, 'init');
   const expected = [
     'code-review', 'codebase-design', 'diagnosing-bugs', 'domain-modeling', 'grilling',
-    'handover', 'implement', 'merge', 'plan-epic', 'prototype', 'qa', 'release',
+    'handover', 'implement', 'merge', 'onboarding', 'plan-epic', 'prototype', 'qa', 'release',
     'research', 'retro', 'tdd', 'to-spec', 'to-tickets', 'triage', 'wayfinder', 'writing-for-agents',
   ];
   const skills = join(root, '.agents', 'skills');
