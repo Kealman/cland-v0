@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import * as usage from '../src/cli/usage.ts';
 import { configKeys } from '../src/init/config-set.ts';
@@ -10,6 +11,7 @@ import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts'
 import type { CrewConfig } from '../src/crew.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
+import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
 import { clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { copyPreparedProject } from './prepared-project.ts';
@@ -237,4 +239,73 @@ test('the onboarding Aide launches the Coordinator with the first release brief 
   assert.ok(spawn);
   assert.equal(spawn.role, 'coordinator');
   assert.match(spawn.brief!.text, /(?:^|\n)Work release R-1(?:\n|$)/);
+});
+
+// T2: the documented import/link/edit CLI flow is the subject; GitHub is a fake gh boundary.
+test('the onboarding Aide plans imported open GitHub issues in its first release', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.git/objects'), { recursive: true });
+  await mkdir(join(root, '.git/refs'));
+  await writeFile(join(root, '.git/HEAD'), 'ref: refs/heads/dev\n');
+  await writeFile(join(root, '.git/config'), [
+    '[core]\nrepositoryformatversion = 0\nbare = false',
+    '[remote "github"]\nurl = git@github.com:acme/widgets.git',
+    `[remote "origin"]\nurl = ${join(root, '.cland/territory.git')}`,
+  ].join('\n'));
+  const issue = (number: number, state: string) => ({
+    number, state, title: `Issue ${number}`, body: '', labels: [], comments: 0,
+    html_url: `https://github.com/acme/widgets/issues/${number}`, created_at: '2026-01-01T00:00:00Z',
+  });
+  const open = [issue(10, 'open'), issue(11, 'open')];
+  const pull = { ...issue(13, 'open'), pull_request: { url: 'https://api.github.com/repos/acme/widgets/pulls/13' } };
+  const fixture = join(root, 'github.json');
+  const log = join(root, 'gh.log');
+  await writeFile(fixture, JSON.stringify({
+    'repos/acme/widgets/issues?state=open&per_page=100': [...open, pull],
+    'repos/acme/widgets/issues?state=all&per_page=100': [...open, issue(12, 'closed'), pull],
+  }));
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  const release = await ui.request({ type: 'task.create', kind: 'release', title: 'What next' });
+  assert.equal(release.ok, true, release.error);
+  assert.equal((release.value as { item: { id: string } }).item.id, 'R-1');
+  const env = {
+    CLAND_SESSION_NAME: 'onboarding-aide',
+    PATH: [fileURLToPath(new URL('./fixtures/fake-gh/', import.meta.url)), dirname(process.execPath), process.env.PATH ?? ''].join(':'),
+    FAKE_GH_FIXTURE: fixture, FAKE_GH_LOG: log,
+  };
+  const run = async (...args: string[]) => {
+    const result = await clandWithEnv(root, env, 'task', ...args);
+    assert.equal(result.code, 0, result.stderr);
+    return result.stdout;
+  };
+
+  const imported = await run('import-github');
+  assert.match(imported, /open issues\): 2 issues, 1 pull request skipped/);
+  const first = /\b(T-\d+)\s+#10\s+created\s+Issue 10/.exec(imported)?.[1];
+  const second = /\b(T-\d+)\s+#11\s+created\s+Issue 11/.exec(imported)?.[1];
+  assert.ok(first, imported);
+  assert.ok(second, imported);
+  assert.notEqual(first, second);
+  const listed = JSON.parse(await run('list', '--state', 'open', '--json')) as { items: ItemSummary[] };
+  const issues = listed.items.filter(item => item.kind === 'task');
+  assert.deepEqual(issues.map(item => [item.id, item.title]).sort((a, b) => a[1]!.localeCompare(b[1]!)), [[first, 'Issue 10'], [second, 'Issue 11']]);
+  assert.ok(issues.every(item => item.size == null && item.parent === null));
+  const all = await ui.request({ type: 'task.list' });
+  assert.equal(all.ok, true, all.error);
+  assert.equal((all.value as { items: ItemSummary[] }).items.length, 3, 'only the release and two open issues exist');
+  const calls = await readFile(log, 'utf8');
+  assert.match(calls, /issues\?state=open&per_page=100/);
+  assert.doesNotMatch(calls, /state=all|\/issues\/12/);
+
+  await run('link', first, '--parent', 'R-1');
+  await run('edit', first, '--size', 'S', '--status', 'planned');
+  const view = await ui.request({ type: 'task.view', item: first });
+  assert.equal(view.ok, true, view.error);
+  const item = (view.value as { item: ItemView }).item;
+  assert.equal(item.github?.number, 10);
+  assert.equal(item.parent, 'R-1');
+  assert.equal(item.size, 'S');
+  assert.equal(item.status, 'planned');
 });

@@ -9,7 +9,7 @@ You are the human's Aide in their first hour with cland on this project, maybe t
 
 `cland setup` launches you with one line: `Run the onboarding skill; project: empty | existing; harnesses: <installed>; human's harness: <favourite>`. Fill a missing field yourself:
 
-- **project**: `existing` when `git ls-files` lists anything beside cland's own files (`.cland/`, `.agents/`, `.claude/`, `docs/agents/`, `AGENTS.md`, `CLAUDE.md`), else `empty`.
+- **project**: `existing` when a file beside cland's own paths (`.cland/`, `.agents/`, `.claude/`, `docs/agents/`, `AGENTS.md`, `CLAUDE.md`) is tracked, or is untracked and not ignored (`git ls-files --cached --others --exclude-standard`); else `empty`.
 - **harnesses**: those of `claude`, `codex` and `opencode` that answer `--version`.
 - **human's harness**: the one you run on.
 
