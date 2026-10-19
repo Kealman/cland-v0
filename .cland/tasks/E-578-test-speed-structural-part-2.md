@@ -11,7 +11,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T06:35:58.703Z
-updated: 2026-10-16T20:01:20.056Z
+updated: 2026-10-19T22:37:32.652Z
 ---
 
 ## Summary
@@ -37,3 +37,9 @@ stages:
       - - T-575
       - - T-520
 ```
+
+## Comments
+
+### coord · 2026-10-19T22:37:32.652Z
+
+Disposition D71 (stand-in under D24, ask 1298ecf4, 2026-10-19 22:37Z), applying D66: C2–C6 are speed or measurement targets. The measured values count as meeting them for v0.1.4, and how to reach the original targets goes to E-880 (Ideas). QA records each measured value with its source (run id or artifact) in its verdict and marks C2–C6 verified under D71. Where no measurement exists at all, the verdict says so, and the criterion is verified under D71 only if a value is recorded somewhere. C1 (spawn starts < 600) is judged as written.

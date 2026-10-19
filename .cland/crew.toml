@@ -3,24 +3,26 @@ leads = []
 idle_from = []
 
 [crew.coordinator]
-heartbeat = "1h"
 policy = "singleton"
 size = 1
 keep_context = false
 stop_after = "never"
 subagents = true
+heartbeat = "1h"
 
 [crew.lead]
 policy = "per-item"
 keep_context = false
 stop_after = "never"
 subagents = true
+# heartbeat = "off" # (default)
 
 [crew.implementer]
 policy = "per-item"
 keep_context = false
 stop_after = "merge"
 subagents = false
+# heartbeat = "off" # (default)
 
 [crew.reviewer]
 policy = "pool"
@@ -29,16 +31,20 @@ size = 4
 keep_context = true
 stop_after = "never"
 subagents = false
+# heartbeat = "off" # (default)
 
 [crew.qa]
-policy = "singleton"
-size = 1
+# D70 (2026-10-19 22:13Z, stand-in under D24, ask 239c3c32): a pool of 3 until the v0.1.4 release, so epic demos run in parallel; back to singleton (size 1) after it.
+policy = "pool"
+size = 3
 keep_context = false
 stop_after = "never"
 subagents = false
+# heartbeat = "off" # (default)
 
 [crew.aide]
 policy = "per-item"
 keep_context = false
 stop_after = "never"
 subagents = false
+# heartbeat = "off" # (default)

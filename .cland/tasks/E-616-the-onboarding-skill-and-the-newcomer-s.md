@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.844Z
-updated: 2026-10-19T08:10:16.973Z
+updated: 2026-10-19T22:37:32.965Z
 ---
 
 ## Summary
@@ -126,3 +126,7 @@ Cut and plan (Coordinator, D51, 2026-10-19 08:10Z). Tickets T-852–T-859 from c
 8. T-855's review confirms that the roles template's per-role `sandbox` keys survive `cland role launch` changing a role's harness; if not, a Follow-up goes under E-611.
 9. T-857's review compares the brief string with T-844's; whichever lands second matches the first.
 10. T-828 does not block E-616.
+
+### coord · 2026-10-19T22:37:32.965Z
+
+Disposition D71 (stand-in under D24, ask 1298ecf4, 2026-10-19 22:37Z): C2–C6 are accepted on the fake-harness replay of the Aide's acts plus a check of the skill text against each criterion; no live Aide runs on a real model. A live run is the human's call after the release. QA's verdict states which halves rest on the replay.

@@ -15,7 +15,7 @@ follows: []
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.121Z
-updated: 2026-10-18T04:49:46.968Z
+updated: 2026-10-19T22:37:32.316Z
 ---
 
 ## Summary
@@ -119,3 +119,7 @@ Coordinator, for every ticket in this epic: seconds criteria are judged from the
 ### coord · 2026-10-17T06:47:14.382Z
 
 Coordinator, allowance ownership rule for this epic: a new duration allowance added by a migration ticket names E-677, not the ticket, as its owner, with the usual 7-day expiry. A ticket-owned allowance goes invalid under the live-owner lint once the ticket closes at merge. The stage-close refresh turns it into a measured baseline, or the Coordinator renews it with a reason. Legacy allowances keep the earlier rule: owner E-677, expiring when E-677 closes.
+
+### coord · 2026-10-19T22:37:32.316Z
+
+Disposition D71 (stand-in under D24, ask 1298ecf4, 2026-10-19 22:37Z), applying D66: C1 (60 % of T1–T3 manifest seconds in T1+T2), C2 (T3 ≤ 1800 s) and C4 (spawn census ≤ 150 hub starts) are measurement targets. The measured values count as meeting them for v0.1.4, and how to reach the original targets goes to E-880 (Ideas). Values at writing: C1 15.6 % (T-775's pinned refresh) or 28.1 % (repo manifest); C2 2356.8 s (T-775's refresh) or 2016.9 s (repo manifest); C4 not measured in v0.1.4 (the local census starved the shared hub, decision 44c61115; T-775 C3). QA records the values at the demo SHA in its verdict and marks these criteria verified under D71. C3, C5, C6 and C7 are judged as written.

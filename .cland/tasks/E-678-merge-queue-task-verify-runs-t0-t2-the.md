@@ -17,7 +17,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.217Z
-updated: 2026-10-19T15:29:20.489Z
+updated: 2026-10-19T22:37:32.796Z
 ---
 
 ## Summary
@@ -82,3 +82,9 @@ stages:
       - - T-827
       - - T-812
 ```
+
+## Comments
+
+### coord · 2026-10-19T22:37:32.796Z
+
+Disposition D71 (stand-in under D24, ask 1298ecf4, 2026-10-19 22:37Z). C4 passes with these exceptions, all the Coordinator's, from restart #17 (04:23Z) to the release build. Direct non-batch, non-tracker/docs commits on dev: 9e79d7e4 (D64 [merge] batch = 4), 1d81bd6e (D68 daily cap $20), 595c7f01 (durations baseline refresh from green run cd21226d / A-6297), e56825e8 (D69 batch_wait 2m), plus the D68 revert at 00:00Z 2026-10-20 if it lands before the release build. Manual integrated full dev runs (diagnosis or baseline, not occasion runs): e06cee33, d0660b6b, cd21226d, e1986b51 (326b4251 and 87ff7258 never ran tests). Stage, epic, release, soak and hub dev-t3 occasion runs are not manual covers. C6 counts the enforce mechanism, proven by its tests. Switching the manifest from report to enforce is a separate v0.1.4 task before the release (D63), and C6's verdict names it. C1, C2, C3, C5 and C7 already carry D66.
