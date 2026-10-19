@@ -3,7 +3,7 @@ id: T-877
 kind: task
 title: T-856's real-Git push proof trips the T2 process boundary; move it to an allowed tier or seam
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -11,9 +11,9 @@ assignee: null
 parent: C-216
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-877-t-856-s-real-git-push-proof-trips-the-t2
 created: 2026-10-19T13:52:09.532Z
-updated: 2026-10-19T14:49:53.664Z
+updated: 2026-10-19T15:28:21.338Z
 ---
 
 ## Summary

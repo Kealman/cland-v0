@@ -3,7 +3,7 @@ id: T-868
 kind: task
 title: "remote-clock's native-I/O guard is inactive: scripted machines never call remoteWaits.track()"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -11,9 +11,9 @@ assignee: null
 parent: C-216
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-868-remote-clock-s-native-i-o-guard-is
 created: 2026-10-19T11:41:10.800Z
-updated: 2026-10-19T14:49:53.375Z
+updated: 2026-10-19T15:28:13.307Z
 ---
 
 ## Summary

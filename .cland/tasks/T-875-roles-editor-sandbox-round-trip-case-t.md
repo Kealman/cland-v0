@@ -3,17 +3,17 @@ id: T-875
 kind: task
 title: roles-editor sandbox round-trip case (T-872) runs 0.6 s against the 0.5 s T1 budget
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
 assignee: null
 parent: C-326
 blocked_by: []
-topic: null
-branch: null
+topic: topic-607
+branch: t/T-875-roles-editor-sandbox-round-trip-case-t
 created: 2026-10-19T13:46:45.481Z
-updated: 2026-10-19T14:49:53.568Z
+updated: 2026-10-19T15:28:29.867Z
 ---
 
 ## Summary
