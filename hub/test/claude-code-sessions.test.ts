@@ -54,6 +54,31 @@ async function fixture(t: TestContext) {
   return { root, ui, clock, fake, launch, signal, peer };
 }
 
+test('in-process Claude signal order drops an older Stop arriving after the next turn start regardless of elapsed time', async t => {
+  const f = await fixture(t);
+  const { root, ui, clock } = f;
+  const launched = await f.launch('coord', { role: 'coordinator', harness: 'claude-code' });
+  const peer = await f.peer('coord', launched);
+  await peer.waitForPresence(['coord']);
+  // Stop was fired first, but its hook has not posted yet. The next start is
+  // observed first; scheduling delays do not change either event's timestamp.
+  const stopAt = clock.now().getTime() + 1;
+  const started = await f.signal('coord', launched.sessionId, 'turn-start', { at: stopAt + 1 });
+  assert.deepEqual(started.value, { applied: true, state: 'busy' });
+  assert.equal((await status(ui)).sessions.find(s => s.name === 'coord')?.state, 'busy');
+  await clock.advance(20_000); // Beyond the former T3 fixture's 10-second poll window.
+  const stopped = await f.signal('coord', launched.sessionId, 'turn-end', { at: stopAt });
+  assert.deepEqual(stopped.value, { applied: false, state: 'busy' });
+  assert.equal((await status(ui)).sessions.find(s => s.name === 'coord')?.state, 'busy');
+  assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
+  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
+  // Rejecting the stale Stop must still allow this turn's own later completion.
+  const completed = await f.signal('coord', launched.sessionId, 'turn-end', { at: stopAt + 2 });
+  assert.deepEqual(completed.value, { applied: true, state: 'idle' });
+  assert.equal((await harness(ui, 'coord')).state, 'idle');
+});
+
 test('in-process Claude failures retain sender attribution across delayed prompt starts', async (t) => {
   const f = await fixture(t);
   const { root, ui, clock, launch } = f;

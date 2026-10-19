@@ -7,7 +7,8 @@ import { existsSync } from 'node:fs';
 import { afterCleanup, beforeDirectories, ownProcess } from './process-cleanup.ts';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
+import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, connectUi, eventually, fakeClaude, inProcessSpoke, killDaemon, pidAlive, nativeProjectHub as projectHub, projectHub as scriptedProjectHub, tempProject, type FrameClient } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
 import { NO_PS } from './native-process.ts';
 
 type Presence = { name: string; sessionId: string; state: string };
@@ -36,18 +37,6 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
   eventually(`${name} present as ${state}`, async () => ((await status(ui)).sessions.find((s) => s.name === name)?.state === state ? true : undefined));
 
 const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
-
-/** A launched session's first turn, its role clause, is over: answered, and a pushed busy then idle seen after
- *  `mark` (the turn's late signals can no longer move the state: a later idle outranks them). */
-async function clauseTurnDone(ui: FrameClient, name: string, mark: number): Promise<void> {
-  await clauseAnswered(ui, name);
-  await eventually(`${name}: the clause turn's busy, then idle`, () => {
-    const events = ui.frames.slice(mark).filter((f) => f.type === 'session.state' && f.session === name);
-    const busy = events.findIndex((e) => e.state === 'busy' && e.source !== 'poll');
-    return busy >= 0 && events.slice(busy + 1).some((e) => e.state === 'idle') ? true : undefined;
-  });
-  await presentAs(ui, name, 'idle');
-}
 
 const sendGeneral = async (ui: FrameClient, text: string): Promise<string> => {
   const sent = await ui.request({ type: 'topic.send', topic: 'general', text });
@@ -105,23 +94,30 @@ function hook(t: TestContext, root: string, event: string, o: { session: string;
 
 test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
   const root = await tempProject(t);
-  // Suppress fallback polls so delayed hook ordering alone controls the staged state.
-  const fake = await fakeClaude(t, { pollMs: 10_000, awaitSignals: true });
-  const { discovery } = await projectHub(t, root, fake.env);
+  // Only the hooks need real processes here. A scripted harness has no automatic clause
+  // turn or fallback poll that could overwrite the staged busy state on a loaded machine.
+  const clock = new FakeClock();
+  const { discovery, fakes } = await scriptedProjectHub(t, root, {}, { clock });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const mark = ui.frames.length;
-  const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await clauseTurnDone(ui, 'coord', mark);
+  const launched = await launch(ui, 'coord', { role: 'coordinator', harness: 'claude-code' });
+  const fake = fakes['claude-code']!;
+  const peer = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', assignRole: false,
+    sessionId: launched.sessionId, launchToken: fake.spawns[0]!.launchToken! });
+  await peer.waitForPresence(['coord']);
+  fake.idle('coord');
+  await presentAs(ui, 'coord', 'idle');
 
   // Stop's process starts first but is gated before cland loads. The next hook's completed
   // busy report is the positive ordering barrier; releasing Stop makes it arrive last.
   const stop = hook(t, root, 'turn-end', { session: 'coord', launch: launched.sessionId, held: true });
   await stop.started;
   await hook(t, root, 'turn-start', { session: 'coord', launch: launched.sessionId }).done;
-  await presentAs(ui, 'coord', 'busy');
+  await ui.waitFor(f => f.type === 'session.state' && f.session === 'coord' && f.state === 'busy' && f.source === 'hook');
+  assert.equal((await status(ui)).sessions.find(s => s.name === 'coord')?.state, 'busy');
   stop.release();
   await stop.done;
+  assert.equal((await status(ui)).sessions.find(s => s.name === 'coord')?.state, 'busy');
   assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
