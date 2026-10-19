@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.217Z
-updated: 2026-10-19T04:46:19.806Z
+updated: 2026-10-19T07:34:02.108Z
 ---
 
 ## Summary
@@ -68,6 +68,7 @@ stages:
       - - T-713
         - T-718
       - - T-803
+      - - T-850
   - name: the product rule
     qa:
       scope: none

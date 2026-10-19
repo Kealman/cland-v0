@@ -2,8 +2,8 @@
 id: T-663
 kind: task
 title: The suite's commands are shell lines from one resolver, with today's npm lines unchanged
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-559
 branch: t/T-663-the-suite-s-commands-are-shell-lines
 created: 2026-10-16T16:35:22.893Z
-updated: 2026-10-19T06:22:11.056Z
+updated: 2026-10-19T07:53:48.000Z
+closed: 2026-10-19T07:53:48.000Z
 ---
 
 ## Summary
@@ -36,17 +37,23 @@ Prefactoring for "Verification for any stack" (spec v0.1.4 §3.7). The suite wor
 
 - [x] C1. The resolver returns today's lines for the `auto`, `all`, `hub` and `nvim` requests and for a full selection (new unit test `hub/test/verification-commands.test.ts`).
   - done: impl-663 · 2026-10-19T06:20:25.099Z
+  - verified: rev-30 [reviewer] · run rev-20261019-663-final · 2026-10-19T06:39:12.239Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
 - [x] C2. A local run's log still shows `$ npm run typecheck` before `$ npm test`, and the existing suite tests (`suite.test.ts`, `suite-runner.test.ts`, `suite-cancel.test.ts`) pass unchanged.
   - done: impl-663 · 2026-10-19T06:20:25.463Z
+  - verified: rev-30 [reviewer] · run rev-20261019-663-final · 2026-10-19T06:39:12.239Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
 - [x] C3. `stall_timeout` still stops a silent command run through the shell with its whole process tree, including a pipeline line such as `sleep 999 | cat` (case added to `suite-timeouts.test.ts`).
   - done: impl-663 · 2026-10-19T06:20:25.913Z
+  - verified: rev-30 [reviewer] · run rev-20261019-663-final · 2026-10-19T06:39:12.239Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
 - [x] C4. A fake-droplet run's `run.sh` holds the resolver's lines in order, and `executor-run.test.ts` passes with its typecheck-before-test assertion unchanged.
   - done: impl-663 · 2026-10-19T06:20:26.352Z
+  - verified: rev-30 [reviewer] · run rev-20261019-663-final · 2026-10-19T06:39:12.239Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
 - [x] C5. The host gate log reads `Host gate: npm run typecheck`, and a failing host gate still creates no machine (`executor-run.test.ts`).
   - done: impl-663 · 2026-10-19T06:20:26.704Z
+  - verified: rev-30 [reviewer] · run rev-20261019-663-final · 2026-10-19T06:39:12.240Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
 - [x] C6. `grep` finds no npm argument vector for the suite commands outside the resolver in `hub/src/hub/suite-worker.ts`, `hub/src/hub/suites.ts` and `hub/src/executor/droplet/run.ts`.
   - done: impl-663 · 2026-10-19T06:20:27.150Z
   - verified: rev-30 [reviewer] · run rev-20261019-663-source · 2026-10-19T06:22:11.056Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
+  - verified: rev-30 [reviewer] · run rev-20261019-663-final · 2026-10-19T06:39:12.240Z · commit 2601907064ea79354500a5bab9abe581833bf2b3
 
 ## Comments
 
@@ -72,3 +79,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; A-5820 Standards/Spec audit has no findings. Shared named resolver preserves mode/full-selection and expanded-check/legacy-typecheck behavior (Coordinator e3f6e1b0). Local/host/droplet use quoted shell lines with prior ordering, lease timing, environment and supervision retained; old vector host receipts safely force a remote recheck. New T1 table and native pipeline cleanup control preserve existing assertions; no config behavior added. Pinned grep establishes C6, verified here. C1–C5 await unchanged-head mode-free task gate and native host evidence; T3 is landing-batch evidence, not task execution. QA none.
 
 Criteria: C6 verified.
+
+### rev-30 · 2026-10-19T06:39:12.240Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-663-final
+commit: 2601907064ea79354500a5bab9abe581833bf2b3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-5831 combines source A-5820, accepted exact-head 6457fd3e/A-5830 (1469/1469, zero fail/cancel/skip) and durable native host A-5821. Resolver 2/2 plus both 5/5 repetition groups; all 389 global groups pass. Native host timeout/pipeline 8/8, suite 11/11, runner 43/43, cancel 6/6, executor-run 14/14, lease contract 6/6, check 3/3 retain shell-tree cleanup, command order, host failure/no-machine and lease/coverage controls. Five inherited report-only T-803 rows disclosed. C1–C6 verified; no findings, QA none. T3 Linux remains landing-batch evidence; not claimed from task receipt.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T07:53:48.000Z
+
+Merged 354c20cdffcaab0c447218c1254d24241723e90d onto dev.

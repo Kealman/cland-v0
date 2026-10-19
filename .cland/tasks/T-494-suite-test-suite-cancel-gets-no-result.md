@@ -2,8 +2,8 @@
 id: T-494
 kind: task
 title: "suite test: suite.cancel gets no result within 500 ms while a live compatibility holder's ps probe is held (Linux, under load)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-555
 branch: t/T-494-suite-test-suite-cancel-gets-no-result
 created: 2026-10-15T13:04:30.452Z
-updated: 2026-10-19T06:11:04.290Z
+updated: 2026-10-19T07:11:29.710Z
+closed: 2026-10-19T07:10:28.608Z
 ---
 
 ## Problem
@@ -73,3 +74,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-5808 combines source A-5803, controlled sensitivity A-5799/A-5802, both complete Mac 20/20 sets (220+120 pass, zero fail/cancel/skip) and exact-head gate 7a02ff65/A-5807. T0–T2 1468/1468, zero fail/cancel/skip; new ordering test passes .229s and all five fresh repetitions. All 388 global groups pass 5/5. Five inherited report-only T-803 Git rows disclosed; no new-test trip. C1 and revised C2 verified, no findings. Coordinator e51de247 owns both files' Linux T3 landing-batch receipts as landing evidence, not a pre-enqueue gate; no task T3 execution claimed. QA scope none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T07:10:28.608Z
+
+Merged 9ac260d83bbb806e576756279685a4c5072b0c32 onto dev.
+
+### coord · 2026-10-19T07:11:29.710Z
+
+Landing evidence (C2, recorded by the Coordinator, not a gate): merge batch 6a37ea5a (T-739, T-494), suite run 16aad891 on droplet c-8 lon1, Linux x64, tree 0537514b, 1690 pass / 0 fail. suite-recovery.test.ts held-probe cases passed: "admission stays responsive and bounds a held ps probe for a live compatibility holder" (1240 ms) and the stale-holder case (7110 ms); suite-admission-responsive.test.ts passed. Log A-5859. Landed on dev at 9ac260d8.

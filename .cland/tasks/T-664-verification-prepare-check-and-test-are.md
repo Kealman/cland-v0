@@ -2,8 +2,8 @@
 id: T-664
 kind: task
 title: "[verification] prepare, check and test are config keys that the template writes and cland config set sets"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-558
 branch: t/T-664-verification-prepare-check-and-test-are
 created: 2026-10-16T16:35:23.509Z
-updated: 2026-10-19T06:27:21.802Z
+updated: 2026-10-19T07:53:36.982Z
+closed: 2026-10-19T07:53:36.982Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-5826 combines source A-5812, exact-head selected task gate 3a6c15a8/A-5825 (1038/1038, zero fail/cancel/skip) and retained host init 13/13 A-5814. Parser 5/5, CLI 9/9, reload 4/4 execute; four new identities each pass five repetitions. All 239 global groups pass 5/5. Literal shell strings/comments, defaults/refusals, argv/readback/applies-now, restart-free applied keys and init/update preservation established. Five inherited report-only T-803 Git rows disclosed, none from task tests. C1–C5 verified; no findings, QA none. No Neovim/T3 task execution claimed; native init Linux coverage remains landing-batch evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T07:53:36.982Z
+
+Merged 3834b5a144594cabbc0b50955af632ccbd911786 onto dev.

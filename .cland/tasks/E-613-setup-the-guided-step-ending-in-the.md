@@ -12,10 +12,10 @@ parent: R-577
 blocked_by:
   - E-612
   - E-611
-topic: null
+topic: topic-561
 branch: null
 created: 2026-10-16T15:34:18.570Z
-updated: 2026-10-16T15:51:23.458Z
+updated: 2026-10-19T06:44:28.874Z
 ---
 
 ## Summary
@@ -90,6 +90,43 @@ With fake harnesses on the PATH, one missing and one signed out, under a scratch
 - Code: `hub/src/cli/doctor.ts`, `hub/src/doctor/toolchain.ts`, `hub/src/doctor/keys.ts`, `hub/src/doctor/ranges.ts`, `hub/src/accounts/registry.ts`, `hub/src/cli/open.ts`, `nvim/lua/cland/init.lua`; in the prototype, `hub/src/setup/` and `hub/src/cli/setup.ts`.
 - GLOSSARY: Harness, Account, Aide, Hub; Setup arrives with "The onboarding skill and the newcomer's first page".
 
+## Plan
+
+```yaml
+stages:
+  - name: doctor per role, the prompter, the skeleton report, the fakes and the launcher's open
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-832
+        - T-833
+        - T-834
+      - - T-835
+        - T-837
+      - - T-836
+      - - T-843
+  - name: the steps - installs, logins, accounts, favourite, trust, hub, Aide and the hand-over
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-838
+        - T-839
+        - T-840
+      - - T-841
+        - T-844
+        - T-845
+      - - T-842
+  - name: the end-to-end scenario
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-846
+      - - T-847
+```
+
 ## Comments
 
 ### human · 2026-10-16T15:36:05.733Z
@@ -99,3 +136,25 @@ Open point resolved by the human's amendment on Q-599 (2026-10-16): harness vers
 ### human · 2026-10-16T15:51:23.458Z
 
 From the human's setup run (2026-10-16 16:17): the accounts step wrote three entries into ~/.config/cland/accounts.toml: a path-less `claude` (claude-code, no config_dir), `claude-work` (~/.claude-work) and `codex`; the sessions panel then showed four accounts beside the two harness defaults and the human asked to return to the defaults only (done by hand). For the plan: the default profile of a harness is never registered as an account (it is the harness default already); only profiles with their own directory or identity become entries; a path-less claude-code entry on dev makes the hub poll a signed-out profile (the T-603 family), so setup must not create one.
+
+### coord · 2026-10-19T06:34:31.390Z
+
+Coordinator decisions on the ticket cut (2026-10-19, D51, which gives every v0.1.4 plan to the Coordinator; this supersedes the Constraints' "human approves this plan by hand"). The 15 tickets are T-832–T-846; the full cut, with each question's reasoning, is attached in the epic topic.
+(1) The step names follow spec §3.3: project, harnesses, logins, accounts, favourite, trust, hub, Aide. One line per step, and one line per harness inside harnesses and logins. The workbench is the hand-over after the summary.
+(2) Without a terminal and with no flags, nothing changes. `--yes` allows the harmless writes: the favourite's default, trust and the hub start. `--install <h>` runs that installer. A login and the Aide always need a terminal.
+(3) `--yes` takes each question's default, so it never writes accounts.toml.
+(4) Declines are remembered in a managed `[setup]` table in .cland/config.toml (`declined_installs`, `declined_accounts`), as the spec chose for installs.
+(5) Trust goes to the profile the hub launches each harness with, plus every account a role names.
+(6) An unedited roles template is rebuilt after an install, only while isRolesTemplate holds.
+(7) TESTED_RANGES stays as a note only. OpenCode 1.x and 3.x lose their refusal; the adapter's behavioural check reports a real mismatch. check:opencode only reports.
+(8) Doctor outside a project fails one row when no harness is installed. Neovim's row stays as it is.
+(9) No product install override: the fake `curl` answers the official installer URLs.
+(10) The T3 scenario uses script(1), with flags per platform.
+(11) Codex's pinned install is dropped.
+(12) The brief may name the onboarding skill before E-616 ships.
+(13) "existing" vs "empty" follows the prototype's rule.
+(14) A second interactive run reopens the workbench on aide-1.
+(15) Stage 2 runs three lanes; each step is its own module.
+(16) Plan approval per D51.
+(17) Exit 130 when input ends at a question.
+(18) `cland setup <dir>` takes the positional directory with init's root rules.

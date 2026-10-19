@@ -3,7 +3,7 @@ id: T-669
 kind: task
 title: A project without a Neovim pin or package-lock.json gets a prepared droplet snapshot
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-560
 branch: t/T-669-a-project-without-a-neovim-pin-or
 created: 2026-10-16T16:35:25.691Z
-updated: 2026-10-19T06:23:14.775Z
+updated: 2026-10-19T06:42:37.722Z
 ---
 
 ## Summary
@@ -35,12 +35,16 @@ Prefactoring for the droplet's `prepare` (ticket T-670). The snapshot's prepare 
 
 - [x] C1. `cland executor prepare` in a temporary project with neither `nvim/` nor `package-lock.json` builds a snapshot through the fake DigitalOcean API and machine, with a key without `nvim` and `lock` (`executor-prepare.test.ts`).
   - done: impl-669 · 2026-10-19T06:21:59.197Z
+  - verified: rev-31 [reviewer] · run rev-20261019-669-final · 2026-10-19T06:42:36.122Z · commit ba8e3a4643569098711dab6515bc82a6747942ab
 - [x] C2. That builder's user data installs Node and has no Neovim download, while a project pinning Neovim still gets it (assertions on the fake API's recorded `user_data`).
   - done: impl-669 · 2026-10-19T06:19:33.440Z
+  - verified: rev-31 [reviewer] · run rev-20261019-669-final · 2026-10-19T06:42:36.122Z · commit ba8e3a4643569098711dab6515bc82a6747942ab
 - [x] C3. `keyHash` of a four-part key equals a recorded golden value, so this repository's existing snapshot reads `current` (unit test).
   - done: impl-669 · 2026-10-19T06:16:28.959Z
+  - verified: rev-31 [reviewer] · run rev-20261019-669-final · 2026-10-19T06:42:36.122Z · commit ba8e3a4643569098711dab6515bc82a6747942ab
 - [x] C4. A run delivered to the pin-less snapshot prints no lock or Neovim line and verifies on the fake machine, and `cland executor status` shows `none` for the absent parts without `stale`.
   - done: impl-669 · 2026-10-19T06:21:59.571Z
+  - verified: rev-31 [reviewer] · run rev-20261019-669-final · 2026-10-19T06:42:36.122Z · commit ba8e3a4643569098711dab6515bc82a6747942ab
 
 ## Comments
 
@@ -170,3 +174,46 @@ Result: clear source for one configured mode-free exact-head task verification. 
 Findings: Standards 0; Spec 0.
 
 Evidence: A-5822.
+
+### rev-31 · 2026-10-19T06:42:36.122Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-669-final
+commit: ba8e3a4643569098711dab6515bc82a6747942ab
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-669 final evidence review: clear
+
+Head: ba8e3a4643569098711dab6515bc82a6747942ab, unchanged from source-3 / A-5822.
+Run: 42ec3216-1705-41cb-9099-275b7a2b3c86 / A-5834, raw exit 0.
+Scope: evidence. Branch tip and task receipt independently match; C1–C4 are claimant-done.
+
+## Standards
+
+Clear; no task-owned finding remains. The two new prepare-key T1 cases positively pass at 0.002500581 s and 0.000468693 s and each passes 5/5 fresh load repetitions. All nine existing executor-prepare-component cases, the prepare-retry case and both controlled case-deadlines ownership cases pass. The latter two also pass 5/5 repetitions. No owned budget overrun, runtime tier mismatch, skip, quarantine or cleanup failure is reported. The three ordinary phase failure arrays are empty; all 389 reported load-gate identities pass 5/5.
+
+External report-only debt remains: budget overages and 52 missing baselines are disclosed in A-5834. Five runtime tier mismatches are outside this change: three known T-803 suite-close-component identities plus two suite-soak-component nightly identities. I reported the latter as Bugs / S for lead/Coordinator deduplication; Implementer 4fdd49bf confirms forwarding. This is not a global zero-debt verdict.
+
+## Spec
+
+Verify C1–C4 with source-3, retained native host evidence A-5813/A-5816/A-5819 and this exact-head task gate:
+- C1: the native pinless CLI fixture reports successful scripted-provider snapshot preparation and reuse with absent nvim/lock. Source now derives project pin inputs from the same fetched base it archives.
+- C2: recorded user-data assertions retain required Node/apt installation and guarded optional Neovim installation; pinned projects retain their install path.
+- C3: exact-head Linux T1 golden and optional-comparison cases pass ordinarily and 5/5. Four-part serialization/hash compatibility is preserved; the retained real-repository comparison is separately attributed to host evidence.
+- C4: the native host fixture captures the real delivery command, confirms absent lock/Neovim checks/output, completes the scripted executor run, and observes current/none status. The existing pinned replacement/reuse contract remains green. Fixture drainage and reliable provider cleanup are source-reviewed and supported by the exact-head component drainage controls.
+
+Execution limits: the task protocol ran T0–T2, including Neovim T1/T2. The T3 executor-prepare.test.ts file did not execute in A-5834; A-5819 reports its five ordinary host cases green at the final source. No Linux native-T3 execution or five host file repetitions is claimed. That integration coverage remains for the landing merge batch. The existing unconditional npm-ci preparation stage remains explicitly T-670's replacement work; the permissive scripted transport is not evidence of a real arbitrary-stack machine build.
+
+Ordinary result: 1469 tests, 1469 pass, zero failure/cancellation/skip/TODO (374 whole-T1 phase, 863 hub component phase, 232 Neovim phase). Host check passes. Suite 918.05 s, load-gate extra wall 561.93 s, peak load 7.15. Linux x64 c-8 lon1, workers 2, Node 24.21.0, Neovim 0.12.5; lifetime 1014 s, cost $0.0704. Task report keeps T3 deferred; reported ratchet 2651.501 s equals base, with incomplete timings separately disclosed.
+
+Result: final clear; C1–C4 verified. No additional task verification or per-item QA. Merge-batch integration and T-670 remain separate outstanding work.
+
+Findings: Standards 0; Spec 0.
+
+Evidence: A-5837.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

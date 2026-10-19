@@ -2,8 +2,8 @@
 id: T-803
 kind: task
 title: suite-close-component (T2) spawns git through the occasion planner's legacyDurationKeys; inject the duration history
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: review
 topic: topic-550
 branch: t/T-803-suite-close-component-t2-spawns-git
 created: 2026-10-18T13:33:08.257Z
-updated: 2026-10-19T05:34:34.784Z
+updated: 2026-10-19T06:48:31.545Z
+closed: 2026-10-19T06:48:31.545Z
 ---
 
 ## Summary
@@ -77,3 +78,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-5792 combines source A-5790, five-identity host enforce red/green A-5789 and accepted exact-head 95385b26/A-5791. Task T0–T2: 1468/1468 pass, zero fail/cancel/skip. All five formerly tripping identities execute and pass; whole log has zero tier-mismatch rows. Close 6/6, soak 5/5, tier-report 6/6, context 4/4; new T1 default/injection test and five repetitions pass. All 388 global groups pass 5/5; relevant 15 groups/75 bodies pass without claiming repetition of every close identity. Production Git fallback and allowance provenance retained. C1/C2 verified, no findings; QA scope none. T3 remains merge-batch evidence.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T06:48:31.545Z
+
+Merged 9251cfd25f8e62fcddc3b0aecea7e6e09956dd32 onto dev.

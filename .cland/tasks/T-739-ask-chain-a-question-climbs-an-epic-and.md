@@ -2,8 +2,8 @@
 id: T-739
 kind: task
 title: "ask-chain: 'a question climbs an epic and release one level per forward' failed once in a timed-out droplet run"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -18,7 +18,8 @@ blocked_by: []
 topic: topic-553
 branch: t/T-739-ask-chain-a-question-climbs-an-epic-and
 created: 2026-10-17T14:59:41.309Z
-updated: 2026-10-19T05:48:02.631Z
+updated: 2026-10-19T07:10:18.318Z
+closed: 2026-10-19T07:10:18.318Z
 ---
 
 ## Summary
@@ -113,3 +114,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5801.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T07:10:18.318Z
+
+Merged 546d8b68b595cb7f7ed97b87ace8a0c470b5ebc0 onto dev.
