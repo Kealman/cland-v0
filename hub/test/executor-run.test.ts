@@ -39,6 +39,10 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
       const cwd = join(directory, 'home/runner/cland');
       assert.equal((await exec('git', ['rev-parse', 'HEAD'], { cwd })).stdout.trim(), head);
       assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
+      const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
+      assert.ok(script.indexOf("echo '$ npm run typecheck'") < script.indexOf("echo '$ npm test'"));
+      assert.ok(script.includes("/bin/sh -c 'npm run typecheck' || exit $?"));
+      assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'\n/bin/sh -c 'npm test' || exit $?`));
       assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
     }
     assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted state\n');
@@ -61,6 +65,8 @@ test('host typecheck failure creates no machine; remote typecheck stops tests an
     await f.api.setMachineFaults({ checkoutDifference: kind === 'remote' });
     const job = await f.launch('--fresh');
     const report = await f.result(job.id);
+    const hostLog = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+    assert.match(hostLog, /Host gate: npm run typecheck/);
     if (kind === 'host') { assert.match(report.text, /host typecheck failed/); assert.equal(f.api.machineDirs.size, 0); }
     else {
       assert.match(report.text, new RegExp(`exit ${kind === 'remote' ? 3 : 4}`));

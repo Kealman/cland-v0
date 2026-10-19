@@ -110,7 +110,7 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   await writeFile(join(root, 'hub/src/tracker/change.ts'), 'export const candidate = true;\n');
   if (!scripted) { await git('add', 'hub/src/tracker/change.ts'); await git('commit', '-qm', 'Hub change'); }
   const machine = scriptedMachine(root, clock, key, options.script);
-  const dependencies: DropletDependencies = { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: ['run', 'typecheck'], code: 0 }) };
+  const dependencies: DropletDependencies = { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 }) };
   // Mutable facts let integrated-close fixtures describe dev without creating a repository.
   // Native Git/immutable-tree transport remains in the process executor contracts.
   const candidate: Awaited<ReturnType<SuiteCandidate['inspect']>> = { head: 'a'.repeat(40), branch: 'task-candidate', tree: 'd'.repeat(40),

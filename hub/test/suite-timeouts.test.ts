@@ -1,3 +1,4 @@
+// T3: command stall, cancellation and inherited-pipe cleanup prove real process-tree termination.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,6 +8,7 @@ import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, te
 import { fixture, type ResultMessage } from './suite-fixture.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
+import { systemProcesses } from '../src/system-processes.ts';
 import { ownProcess } from './process-cleanup.ts';
 import type { Artifact } from '../src/protocol.ts';
 import type { VerificationQueue, HubStatus } from '../src/protocol.ts';
@@ -218,4 +220,37 @@ test('verify keeps a slow command alive while partial stderr output continues', 
   const result = await eventually('partial output prevents stall', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
   assert.match(result.text, /exit 0/);
   assert.doesNotMatch(await readFile(result.artifacts[0]!.path, 'utf8'), /stalled:/);
+});
+
+// A direct command supervisor fixture isolates shell pipeline ownership from hub admission.
+test('stall timeout reaps the shell pipeline process tree', async t => {
+  const root = await tempProject(t, 'cland-shell-stall-');
+  const commandModule = new URL('../src/suite-command.ts', import.meta.url).href;
+  const resultPath = join(root, 'command-result.json');
+  const script = `import {suiteCommand} from ${JSON.stringify(commandModule)};
+import {writeFile} from 'node:fs/promises';
+const outcome = await suiteCommand('echo $$ > shell.pid; sleep 999 | cat', ${JSON.stringify(root)}, {
+  ...process.env, CLAND_SUITE_LIMITS_CWD: ${JSON.stringify(root)},
+  CLAND_SUITE_LIMITS: JSON.stringify({stallTimeoutMs: 3000})
+});
+await writeFile(${JSON.stringify(resultPath)}, JSON.stringify(outcome));`;
+  const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  const done = new Promise<number | null>(resolve => child.once('close', resolve));
+  const shell = await eventually('shell pipeline started', () => readFile(join(root, 'shell.pid'), 'utf8').then(Number, () => undefined));
+  ownProcess(t, shell);
+  const pipeline = await eventually('both pipeline children started', async () => {
+    const children = (await systemProcesses()).filter(row => row.parent === shell);
+    return children.length === 2 ? children : undefined;
+  });
+  for (const row of pipeline) ownProcess(t, row.pid);
+  const outcome = await eventually('command cleanup receipt', () => readFile(resultPath, 'utf8').then(text => JSON.parse(text) as {code: number; cause: string}, () => undefined), 10000);
+  assert.equal(await done, 0);
+  assert.equal(outcome.code, 1);
+  assert.match(outcome.cause, /stalled: no output for 0\.05 min/);
+  assert.doesNotMatch(outcome.cause, /cleanup incomplete/);
+  for (const pid of [shell, ...pipeline.map(row => row.pid)]) {
+    await eventually('pipeline PID reaped', () => !pidAlive(pid) ? true : undefined);
+    assert.equal(pidAlive(pid), false, `pipeline pid ${pid} survived stall cleanup`);
+  }
 });

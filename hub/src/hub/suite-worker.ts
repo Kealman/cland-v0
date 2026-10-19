@@ -13,11 +13,8 @@ import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import { selectionTransport, type SuiteSelection } from '../suite-selection.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
+import { verificationCommands } from '../verification-commands.ts';
 import { suiteCommand } from '../suite-command.ts';
-
-export function suiteCommands(job: { mode: string; selection?: SuiteSelection }, check = ['run', 'typecheck']): string[][] {
-  return [check, ...(job.selection?.mode === 'full' ? [['test']] : job.mode === 'hub' ? [['test', '--workspace', 'hub']] : job.mode === 'nvim' ? [['run', 'test:nvim']] : [['test']])];
-}
 
 export async function suiteWorker(input: string): Promise<void> {
   const job = JSON.parse(await readFile(input, 'utf8')) as { id: string; limits?: import('../suite-limits.ts').SuiteLimits; cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null; integrated?: boolean };
@@ -60,13 +57,14 @@ export async function suiteWorker(input: string): Promise<void> {
     const nvim = await readFile(join(job.cwd, 'nvim', 'NVIM_VERSION'), 'utf8').then(text => text.trim(), () => 'none');
     platform = { os: osPlatform(), arch: arch(), release: release(), node, nvim };
     process.stdout.write(`platform ${platform.os} ${platform.arch} ${platform.release} · Node ${node} · Neovim ${nvim}\n`);
-    const commands = suiteCommands(job, await suiteCheckCommand(job.cwd));
+    const commands = verificationCommands(job, await suiteCheckCommand(job.cwd));
     if (!admitted) code = 1;
-    for (const [index, args] of (admitted ? commands : []).entries()) {
-      if (index === 1 && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
+    for (const name of (admitted ? ['check', 'test'] as const : [])) {
+      const line = commands[name];
+      if (name === 'test' && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
       if (signal) break;
-      if (index === 0) process.stdout.write('typecheck: local\n');
-      process.stdout.write(`\n$ npm ${args.join(' ')}\n`);
+      if (name === 'check') process.stdout.write('typecheck: local\n');
+      process.stdout.write(`\n$ ${line}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
       env.CLAND_SUITE_EXECUTOR = 'local';
       if (job.limits) { env.CLAND_SUITE_LIMITS = JSON.stringify(job.limits); env.CLAND_SUITE_LIMITS_CWD = job.cwd; }
@@ -85,9 +83,9 @@ export async function suiteWorker(input: string): Promise<void> {
         if (transport.file) await writeFile(path, transport.file, { mode: 0o600 });
         Object.assign(env, transport.env);
       }
-      if (job.selection?.recordCoverage && index > 0) env.CLAND_COVERAGE_OUTPUT = join(dirname(job.result), 'coverage-map.json');
+      if (job.selection?.recordCoverage && name === 'test') env.CLAND_COVERAGE_OUTPUT = join(dirname(job.result), 'coverage-map.json');
       else delete env.CLAND_COVERAGE_OUTPUT;
-      const outcome = await suiteCommand(args, job.cwd, env);
+      const outcome = await suiteCommand(line, job.cwd, env);
       code = outcome.code;
       cause = outcome.cause;
       if (code !== 0) break;

@@ -1,7 +1,7 @@
 import type { SuiteSelection } from '../suite-selection.ts';
 
 export type ExecutorKind = 'local' | 'droplet';
-export type HostGate = { tree: string | null; command: string[]; code: number };
+export type HostGate = { tree: string | null; command: string; code: number };
 export type RunRef = {
   hostGate?: HostGate;
   limits?: import('../suite-limits.ts').SuiteLimits;

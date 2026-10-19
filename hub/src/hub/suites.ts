@@ -10,6 +10,7 @@ import { appendFile, mkdir, readFile, writeFile, rename, stat, open } from 'node
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
+import { verificationCommands } from '../verification-commands.ts';
 import { suiteCheckCommand } from '../suite-check.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext } from '../suite-duration-budget.ts';
@@ -769,12 +770,12 @@ export class Suites {
       return;
     }
     const tree = await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head);
-    const command = await suiteCheckCommand(job.cwd);
-    await appendFile(job.log, `\nHost gate: npm ${command.join(' ')}\n`);
+    const { check: command } = verificationCommands(job, await suiteCheckCommand(job.cwd));
+    await appendFile(job.log, `\nHost gate: ${command}\n`);
     const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
     const fd = await open(job.log, 'a');
     try {
-      const child = spawn('npm', command, { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
+      const child = spawn('/bin/sh', ['-c', command], { cwd: job.cwd, env, detached: true, stdio: ['ignore', fd.fd, fd.fd] });
       this.#hostGates.set(job.id, child);
       const code = await new Promise<number>((resolve, reject) => { child.once('error', reject); child.once('close', code => resolve(code ?? 1)); });
       job.hostGate = { tree, command, code };

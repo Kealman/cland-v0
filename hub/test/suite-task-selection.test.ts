@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { taskSuiteSelection, type SuiteSelection } from '../src/suite-selection.ts';
 import { packageShards, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
-import { suiteCommands } from '../src/hub/suite-worker.ts';
+import { verificationCommands } from '../src/verification-commands.ts';
 import { suiteCheckCommand } from '../src/suite-check.ts';
 
 // These five planner cases read identical immutable inputs. Build their isolated
@@ -41,7 +41,7 @@ test('task cadence plans all T1 plus selected T2 from the repository manifest', 
   assert.deepEqual(planned, [...Object.keys(f.manifest.tests).filter(file => f.tier(file) === 'T1'), 'hub/test/merge-queue.test.ts', 'nvim/test/client-component.test.ts'].sort());
   assert.deepEqual(selection.tiers, ['T1', 'T2']);
   assert.equal(selection.loadGate, true);
-  assert.deepEqual(suiteCommands({ mode: 'auto', selection }, await suiteCheckCommand(f.root)), [['run', 'check'], ['test']]);
+  assert.deepEqual(verificationCommands({ mode: 'auto', selection }, await suiteCheckCommand(f.root)), { check: 'npm run check', test: 'npm test' });
 });
 
 test('a task coverage fallback widens T2 without admitting T3 or T4', async () => {

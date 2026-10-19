@@ -394,6 +394,7 @@
     "hub/test/verdict-commit.test.ts": "T3",
     "hub/test/verdict-criteria.test.ts": "T2",
     "hub/test/verdict-findings.test.ts": "T2",
+    "hub/test/verification-commands.test.ts": "T1",
     "hub/test/verification-tree.test.ts": "T3",
     "hub/test/verification-workers.test.ts": "T3",
     "hub/test/verifier-resolver.test.ts": "T1",

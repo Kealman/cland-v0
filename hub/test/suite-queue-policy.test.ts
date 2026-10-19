@@ -47,8 +47,9 @@ test('task queue executes the hub policy with explicit worker overrides', async 
   t.mock.method(DropletExecutor.prototype, 'start', async (lease: DropletLease) => { lease.execution = { head: 'fixture', started: true }; });
   t.mock.method(DropletExecutor.prototype, 'status', async () => ({ state: 'running' }));
   t.mock.method(DropletExecutor.prototype, 'log', async () => ({ text: '', next: 0 }));
-  t.mock.method(childProcess, 'spawn', ((command: string) => {
-    assert.equal(command, 'npm', 'only the host typecheck boundary may spawn');
+  t.mock.method(childProcess, 'spawn', ((command: string, args: string[]) => {
+    assert.equal(command, '/bin/sh', 'only the host typecheck boundary may spawn');
+    assert.deepEqual(args, ['-c', 'npm run typecheck']);
     const child = new EventEmitter();
     queueMicrotask(() => child.emit('close', 0));
     return child as ChildProcess;

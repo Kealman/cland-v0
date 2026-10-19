@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { suiteCheckCommand } from '../src/suite-check.ts';
-import { suiteCommands } from '../src/hub/suite-worker.ts';
+import { verificationCommands } from '../src/verification-commands.ts';
 import { ownDirectory, ownProcess, beforeDirectories, onCleanup, cleanupProcesses } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
@@ -23,8 +23,8 @@ async function bounded<T>(operation: Promise<T>, boundary: string, milliseconds:
   finally { signal.removeEventListener('abort', abort); }
 }
 
-function ownedCheck(t: import('node:test').TestContext, cwd: string, args: string[], signal = t.signal) {
-  const child = spawn('npm', args, { cwd, timeout: 10_000, signal, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+function ownedCheck(t: import('node:test').TestContext, cwd: string, args: string[] | string, signal = t.signal) {
+  const child = spawn(typeof args === 'string' ? '/bin/sh' : 'npm', typeof args === 'string' ? ['-c', args] : args, { cwd, timeout: 10_000, signal, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '', stderr = '', failure = '';
   child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
   child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
@@ -137,8 +137,8 @@ test('check runs the report lint once after typecheck and preserves a green exit
   git('init', '-qb', 'dev'); git('add', '.');
   git('-c', 'user.name=Lint fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Frozen lint baseline');
   const check = await suiteCheckCommand(cwd);
-  assert.deepEqual(check, ['run', 'check']);
-  assert.deepEqual(suiteCommands({ mode: 'auto' }, check), [['run', 'check'], ['test']]);
+  assert.equal(check, 'npm run check');
+  assert.deepEqual(verificationCommands({ mode: 'auto' }, check), { check: 'npm run check', test: 'npm test' });
   const command = root.attach(ownedCheck(t, cwd, check));
   const { code, stdout, stderr } = await command.result;
   assert.equal(code, 0, stderr);
@@ -156,7 +156,7 @@ test('check runs the report lint once after typecheck and preserves a green exit
   await shrink.stop();
   assert.deepEqual(JSON.parse(await readFile(join(cwd, 'hub/test/lint-baseline.json'), 'utf8')).files['hub/test/a.test.ts'], {});
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
-  assert.deepEqual(await suiteCheckCommand(cwd), ['run', 'typecheck'], 'older candidates retain their command and host-gate identity');
+  assert.equal(await suiteCheckCommand(cwd), 'npm run typecheck', 'older candidates retain their command and host-gate identity');
 });
 
 

@@ -100,7 +100,7 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
     tree: async () => candidate.tree,
     inspect: async () => { await inspectBarrier(); return { ...structuredClone(candidate), tierPlan: [], budgetBase: undefined }; },
   }, projectConfig: () => config, env: { DIGITALOCEAN_TOKEN: token, CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_RUN_POLL_MS: '1', CLAND_TEST_DROPLET_MACHINE_MS: '20', CLAND_TEST_DROPLET_RELEASE_MS: '20' },
-  dropletServices: { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: ['run', 'typecheck'], code: 0 }) },
+  dropletServices: { ...machine.dependencies, api: api.provider, hostGate: async run => ({ tree: run.tree ?? null, command: 'npm run typecheck', code: 0 }) },
   log: entry => { logs.push(entry); publish(); }, onFallback: job => { notices.push(job.id); publish(); }, onShardingSkipped: (_job, cause) => { shardingNotices.push(cause); publish(); }, onJob: publish, onQueue: publish, ...options });
   let suites = make();
   const releases = new Set<() => void>();
