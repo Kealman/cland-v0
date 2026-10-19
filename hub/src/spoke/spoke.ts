@@ -36,7 +36,24 @@ import { hasRoleMappedSession } from '../hub/store.ts';
 import { VERSION } from '../version.ts';
 
 const TOOLS = [
-  { name: 'verify', description: 'With dryRun, return admission and tier projections without queueing; diagnostics opts into the slower report-only reachability graph. Otherwise submit verification and return immediately; the hub posts one result. Occasion shards integrated dev full close runs: Coordinator stage/epic/release, QA epic. Omit occasion for batch/task runs.', inputSchema: { type: 'object', properties: { dryRun: { type: 'boolean' }, diagnostics: { type: 'boolean' }, mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'] }, cwd: { type: 'string' }, report: { type: 'string' }, to: { type: 'array', items: { type: 'string' } }, fresh: { type: 'boolean' }, workers: { type: 'integer', minimum: 1 }, size: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' }, executor: { type: 'string', enum: ['local', 'droplet'] }, occasion: { type: 'string', enum: Object.values(VERIFY_OCCASIONS) } }, required: ['cwd'], anyOf: [{ required: ['report'] }, { properties: { dryRun: { const: true } }, required: ['dryRun'] }] } },
+  {
+    name: 'verify',
+    description: 'Preview admission with dryRun, or submit verification and return immediately; the hub posts one result. Running sessions retain their launch-time tool schema.',
+    inputSchema: { type: 'object', properties: {
+      cwd: { type: 'string', description: "Absolute candidate directory; defaults to the caller's claimed item worktree. Required when no item is claimed." },
+      mode: { type: 'string', enum: ['auto', 'all', 'hub', 'nvim'], default: 'auto', description: 'Omit for task selection. all is reserved to the Coordinator, human shell and authorized occasions; hub/nvim select a package.' },
+      executor: { type: 'string', enum: ['local', 'droplet'], description: 'Override the configured verification executor; omit to use project configuration.' },
+      report: { type: 'string', description: 'Report topic id or recipient. Required except for a dryRun preview.' },
+      to: { type: 'array', items: { type: 'string' }, description: 'Result recipients, including the responsible Reviewer and claimant; defaults to no extra recipients for a topic report.' },
+      occasion: { type: 'string', enum: Object.values(VERIFY_OCCASIONS), description: 'Integrated run occasion: Coordinator stage/epic/release, QA epic; batch and soak are hub-owned. Omit for tasks.' },
+      dryRun: { type: 'boolean', default: false, description: 'Preview admission and tier projections without enqueueing or starting an executor.' },
+      diagnostics: { type: 'boolean', default: false, description: 'Include the slower report-only reachability graph; requires dryRun: true.' },
+      workers: { type: 'integer', minimum: 1, maximum: Number.MAX_SAFE_INTEGER, description: 'Positive safe integer overriding configured test workers.' },
+      size: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$', description: 'Droplet size slug override; letters, digits, dots, underscores and hyphens, starting with a letter or digit.' },
+      fresh: { type: 'boolean', default: false, description: 'Request a new receipt instead of a completed cached result; active submissions still reuse their run.' },
+    }, anyOf: [{ required: ['report'] }, { properties: { dryRun: { const: true } }, required: ['dryRun'] }],
+    allOf: [{ if: { properties: { diagnostics: { const: true } }, required: ['diagnostics'] }, then: { properties: { dryRun: { const: true } }, required: ['dryRun'] } }] },
+  },
   { name: 'merge.queue', description: 'List durable merge queue entries in FIFO order.', inputSchema: { type: 'object', properties: {} } },
   { name: 'merge', description: 'Queue or land an open task on its base as one squash commit after clear, current hub verdicts. Coordinator or a supervising Lead within its scheduled subtree; never delegate a merge to a sub-agent.', inputSchema: { type: 'object', properties: { item: { type: 'string' }, cancel: { type: 'boolean' } }, required: ['item'] } },
   {
@@ -353,7 +370,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
           return text({ ok: true, ...value });
         }
         case 'verify': {
-          const value = await hub.request({ ...args, type: 'suite.start', mode: args.mode ?? 'auto' } as Omit<import('../protocol.ts').SuiteStart, 'id'>, args.diagnostics === true ? 120_000 : 15_000) as Record<string, unknown>;
+          const value = await hub.request({ ...args, type: 'suite.start', mode: args.mode === undefined ? 'auto' : args.mode } as Omit<import('../protocol.ts').SuiteStart, 'id'>, args.diagnostics === true ? 120_000 : 15_000) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'merge.queue': {

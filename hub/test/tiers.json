@@ -417,6 +417,7 @@
     "hub/test/verifier-routing.test.ts": "T2",
     "hub/test/verify-all.test.ts": "T3",
     "hub/test/verify-submission.test.ts": "T2",
+    "hub/test/verify-tool.test.ts": "T2",
     "hub/test/visibility-component.test.ts": "T2",
     "hub/test/visibility-volume.test.ts": "T4",
     "hub/test/visibility.test.ts": "T3",

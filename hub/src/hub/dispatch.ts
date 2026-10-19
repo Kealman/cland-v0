@@ -1,5 +1,7 @@
 import { devT3Result } from './dev-t3-result.ts';
 import { reportSoakQuarantine } from './soak-quarantine.ts';
+import { suiteStartIssues } from '../protocol.ts';
+import { taskWorktreePath } from '../territory.ts';
 import { gitIn } from '../tracker/verdict-git.ts';
 import { interruptionLines } from '../suite-progress.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
@@ -1587,8 +1589,11 @@ export class Dispatcher {
     // CLI and MCP verification share identity, occasion and reporting admission.
     const startSuite = (frame: Record<string, unknown>, callerNow: () => Caller | null): void => {
       if (!this.#suites) return peer.send(Dispatcher.#failure(String(frame.id), new Error('this hub serves no project for suites')));
-      if (!isClientRequest(frame) || frame.type !== 'suite.start') return peer.send(Dispatcher.#failure(String(frame.id), new Error('invalid verify request')));
-      const request = frame, caller = callerNow();
+      const caller = callerNow();
+      const claimed = caller ? this.#options.tracker?.list().find(item => item.kind === 'task' && item.state === 'open' && item.claim?.sessionId === caller.sessionId) : undefined;
+      const input = { ...frame, ...(frame.cwd === undefined && claimed ? { cwd: taskWorktreePath(this.#options.tracker!.root, claimed.id) } : {}) };
+      if (!isClientRequest(input) || input.type !== 'suite.start') return peer.send(Dispatcher.#failure(String(frame.id), new Error(`invalid verify request: ${suiteStartIssues(input).join('; ')}`)));
+      const request = input;
       if (!isAbsolute(request.cwd)) return peer.send(Dispatcher.#failure(request.id, new Error('suite cwd must be absolute')));
       const topic = core.store.topic(request.report ?? '')?.id ?? (caller ? this.#options.tracker?.list().find(i => i.claim?.sessionId === caller.sessionId)?.topic ?? (request.dryRun ? GENERAL.id : undefined) : GENERAL.id);
       if (!topic) return peer.send(Dispatcher.#failure(request.id, new Error('a session report needs your claimed item topic; use --report <topic>')));

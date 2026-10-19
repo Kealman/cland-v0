@@ -515,6 +515,25 @@ export type VerifyOccasion = typeof VERIFY_OCCASIONS[keyof typeof VERIFY_OCCASIO
 export function isVerifyOccasion(value: unknown): value is VerifyOccasion {
   return Object.values(VERIFY_OCCASIONS).some(occasion => occasion === value);
 }
+/** Field diagnostics shared by frame validation and verification admission. */
+export function suiteStartIssues(f: Record<string, unknown>): string[] {
+  const issues: string[] = [];
+  if (typeof f.id !== 'string') issues.push('id must be a string');
+  if (typeof f.cwd !== 'string') issues.push('cwd must be an absolute directory; supply cwd when no item is claimed');
+  if (!['auto', 'all', 'hub', 'nvim'].some(mode => mode === f.mode)) issues.push('mode must be auto, all, hub or nvim');
+  if (f.executor !== undefined && !['local', 'droplet'].some(executor => executor === f.executor)) issues.push('executor must be local or droplet');
+  if (typeof f.report !== 'string' && !(f.report === undefined && f.dryRun === true)) issues.push('report must be a string (required unless dryRun is true)');
+  if (f.to !== undefined && !(Array.isArray(f.to) && f.to.every(value => typeof value === 'string'))) issues.push('to must be an array of strings');
+  if (f.occasion !== undefined && !isVerifyOccasion(f.occasion)) issues.push(`occasion must be ${Object.values(VERIFY_OCCASIONS).join(', ')}`);
+  for (const field of ['dryRun', 'fresh', 'diagnostics']) {
+    if (f[field] !== undefined && typeof f[field] !== 'boolean') issues.push(`${field} must be a boolean`);
+  }
+  if (f.diagnostics === true && f.dryRun !== true) issues.push('diagnostics requires dryRun: true');
+  if (f.workers !== undefined && !(typeof f.workers === 'number' && Number.isSafeInteger(f.workers) && f.workers > 0)) issues.push('workers must be a positive safe integer');
+  if (f.size !== undefined && !(typeof f.size === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(f.size))) issues.push('size must be a slug starting with a letter or digit, using letters, digits, dots, underscores or hyphens');
+  return issues;
+}
+
 export type SuiteStart = { type: 'suite.start'; dryRun?: boolean; diagnostics?: boolean; workers?: number; size?: string; occasion?: VerifyOccasion; id: string; mode: 'auto' | 'all' | 'hub' | 'nvim'; cwd: string; report?: string; to?: string[]; fresh?: boolean; executor?: import('./executor/executor.ts').ExecutorKind };
 export type SuiteSlot = { type: 'suite.slot' | 'suite.forced'; id: string; mode: string; cwd: string; head: string; pid: number; token: string };
 /** Read-only targeted-test admission; never reserves a human queue position. */
@@ -812,7 +831,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'suite.forced':
       return ['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':
-      return (f.diagnostics === undefined || typeof f.diagnostics === 'boolean' && (!f.diagnostics || f.dryRun === true)) && (f.workers === undefined || typeof f.workers === 'number' && Number.isSafeInteger(f.workers) && f.workers > 0) && (f.size === undefined || typeof f.size === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(f.size)) && (f.occasion === undefined || isVerifyOccasion(f.occasion)) && (f.executor === undefined || ['local', 'droplet'].includes(String(f.executor))) && (f.fresh === undefined || typeof f.fresh === 'boolean') && ['auto', 'all', 'hub', 'nvim'].includes(String(f.mode)) && (f.dryRun === undefined || typeof f.dryRun === 'boolean') && typeof f.cwd === 'string' && (typeof f.report === 'string' || f.dryRun === true && f.report === undefined) && (f.to === undefined || (Array.isArray(f.to) && f.to.every(v => typeof v === 'string')));
+      return suiteStartIssues(f).length === 0;
     case 'suite.cancel':
       return f.suite === undefined || (typeof f.suite === 'string' && f.suite.trim().length > 0);
     case 'suite.classify':
