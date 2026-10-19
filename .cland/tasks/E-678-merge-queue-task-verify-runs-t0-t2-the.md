@@ -16,7 +16,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.217Z
-updated: 2026-10-19T04:17:34.419Z
+updated: 2026-10-19T04:46:19.806Z
 ---
 
 ## Summary
@@ -67,6 +67,7 @@ stages:
     lanes:
       - - T-713
         - T-718
+      - - T-803
   - name: the product rule
     qa:
       scope: none

@@ -2,8 +2,8 @@
 id: T-825
 kind: task
 title: "suite.test cleanup-preserved worker: the finished frame can arrive before the job row holds the cleanup error"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-813
 topic: topic-548
 branch: t/T-825-suite-test-cleanup-preserved-worker-the
 created: 2026-10-19T03:23:55.419Z
-updated: 2026-10-19T04:01:42.535Z
+updated: 2026-10-19T04:46:29.432Z
+closed: 2026-10-19T04:46:29.432Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from source A-5752, raw audit A-5764 and Coordinator C2 settlement A-5765. Explicit cd3a5f35 and task.view revision accept the actual same-head Linux T3 execution: suite.test 11/11 including preserved worker, alongside 20/20 serial Mac runs A-5751. Accepted task gate d36a7b8c/A-5763 has 2399 pass, 5 skip, zero fail/cancel; held-cleanup regression passes ordinarily and 5/5, persistence 4/4. C2-pending text in A-5764 is superseded by the revised criterion; no inferred integrated proof. No findings; C1/C2 verified; known report-only diagnostics retained. QA scope none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T04:46:29.432Z
+
+Merged 55a9bbfb601632246046b2c941395710577253af onto dev.

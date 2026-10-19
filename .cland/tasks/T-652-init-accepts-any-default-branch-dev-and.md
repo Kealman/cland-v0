@@ -2,8 +2,8 @@
 id: T-652
 kind: task
 title: "Init accepts any default branch: dev and the territory start from it, and the territory records it"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-546
 branch: t/T-652-init-accepts-any-default-branch-dev-and
 created: 2026-10-16T16:24:00.971Z
-updated: 2026-10-19T03:39:34.424Z
+updated: 2026-10-19T04:46:22.040Z
+closed: 2026-10-19T04:46:22.040Z
 ---
 
 ## Summary
@@ -90,3 +91,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from source A-5739, accepted exact-head gate b343afad/A-5757 and scratch demo A-5738; audit A-5758. Hub-only plus Neovim smoke: 2396 passed, 5 skips, zero failures/cancellations. Territory CLI 22/22; all eight new groups 5/5 (40 bodies), first-commit 15/15 and task-worktrees 9/9. Master precedence/seeding/rerun, legacy fallback, native hook/task pushes, undo, doctor, remote-only default, trunk and write-free ambiguity controls pass. Three known T-803 report-only trips and other diagnostics remain disclosed. No findings; C1–C7 verified; QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-19T04:46:22.040Z
+
+Merged b0163cc3214a802dcb985971d934374642d4fb19 onto dev.
