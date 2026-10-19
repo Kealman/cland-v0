@@ -1,3 +1,4 @@
+// T3: failed native launches retain their PID identity fences and owned files across hub restart until child exit.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';

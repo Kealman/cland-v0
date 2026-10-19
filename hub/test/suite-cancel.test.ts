@@ -1,3 +1,4 @@
+// T3: cancellation terminates real suite workers and descendants; hub restart recovers worker death and reports once.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { verificationFixture } from './verification-fixture.ts';
 import { test } from 'node:test';

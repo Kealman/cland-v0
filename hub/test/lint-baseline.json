@@ -35,6 +35,7 @@
     "hub/test/aide-claims.test.ts": {},
     "hub/test/aide-component.test.ts": {},
     "hub/test/aide-import-cli.test.ts": {},
+    "hub/test/aide-migration.test.ts": {},
     "hub/test/aide-permissions.test.ts": {},
     "hub/test/aide.test.ts": {
       "spawnSpoke": 1,
@@ -51,6 +52,7 @@
     "hub/test/asks-cli.test.ts": {},
     "hub/test/asks.test.ts": {},
     "hub/test/bridge-grace.test.ts": {},
+    "hub/test/case-deadlines.test.ts": {},
     "hub/test/claude-code-accounts.test.ts": {},
     "hub/test/claude-code-adapter.test.ts": {
       "startDaemon": 2,
@@ -104,12 +106,16 @@
     "hub/test/demo.test.ts": {
       "startDaemon": 1
     },
+    "hub/test/dev-t3-search-component.test.ts": {},
+    "hub/test/dev-t3-search.test.ts": {},
     "hub/test/doctor-cli.test.ts": {},
+    "hub/test/doctor-harness-probe.test.ts": {},
     "hub/test/doctor-isolation.test.ts": {
       "startDaemon": 2
     },
     "hub/test/doctor.test.ts": {},
     "hub/test/duration-legacy.test.ts": {},
+    "hub/test/durations-refresh.test.ts": {},
     "hub/test/durations-runner-budget.test.ts": {},
     "hub/test/durations-runner.test.ts": {
       "wall-clock-wait": 1
@@ -127,6 +133,7 @@
     "hub/test/executor-admission-lock.test.ts": {},
     "hub/test/executor-admission.test.ts": {},
     "hub/test/executor-contract.test.ts": {},
+    "hub/test/executor-deadline.test.ts": {},
     "hub/test/executor-droplet-component.test.ts": {},
     "hub/test/executor-droplet.test.ts": {
       "wall-clock-assertion": 1,
@@ -134,6 +141,8 @@
     },
     "hub/test/executor-health-math.test.ts": {},
     "hub/test/executor-health.test.ts": {},
+    "hub/test/executor-liveness.test.ts": {},
+    "hub/test/executor-lock-liveness.test.ts": {},
     "hub/test/executor-prepare-component.test.ts": {},
     "hub/test/executor-prepare-retry.test.ts": {},
     "hub/test/executor-prepare.test.ts": {
@@ -191,15 +200,22 @@
     "hub/test/inbox-verifier-load.test.ts": {},
     "hub/test/inbox-workload-soak.test.ts": {},
     "hub/test/inbox-workload.test.ts": {},
+    "hub/test/init-categories.test.ts": {},
     "hub/test/init-config.test.ts": {},
+    "hub/test/init-first-commit.test.ts": {},
+    "hub/test/init-machine-lifecycle.test.ts": {},
     "hub/test/init-machine.test.ts": {},
     "hub/test/init-next.test.ts": {},
     "hub/test/init-process.test.ts": {
       "fakeClaude": 1
     },
+    "hub/test/init-repository.test.ts": {},
     "hub/test/init-roots.test.ts": {},
     "hub/test/init-settings.test.ts": {},
+    "hub/test/init-skills-report.test.ts": {},
+    "hub/test/init-skills-update.test.ts": {},
     "hub/test/init.test.ts": {},
+    "hub/test/inject-stalled.test.ts": {},
     "hub/test/item-lead.test.ts": {},
     "hub/test/journal-async.test.ts": {
       "wall-clock-wait": 1,
@@ -231,6 +247,7 @@
     },
     "hub/test/lead-routing.test.ts": {},
     "hub/test/lifecycle-serialization.test.ts": {},
+    "hub/test/merge-batches.test.ts": {},
     "hub/test/merge-budget.test.ts": {},
     "hub/test/merge-checkout-lifecycle.test.ts": {},
     "hub/test/merge-checkout.test.ts": {},
@@ -239,6 +256,7 @@
     },
     "hub/test/merge-override.test.ts": {},
     "hub/test/merge-policy.test.ts": {},
+    "hub/test/merge-queue-unit.test.ts": {},
     "hub/test/merge-queue.test.ts": {},
     "hub/test/merge-recovery-native.test.ts": {},
     "hub/test/merge-recovery.test.ts": {},
@@ -252,6 +270,7 @@
     "hub/test/nvim-artifacts-rules.test.ts": {},
     "hub/test/nvim-crew-rules.test.ts": {},
     "hub/test/nvim-fixture-boundary.test.ts": {},
+    "hub/test/nvim-frame-consumers.test.ts": {},
     "hub/test/nvim-inbox-requests-rules.test.ts": {},
     "hub/test/nvim-item-prefixes-rules.test.ts": {},
     "hub/test/nvim-items-rules.test.ts": {},
@@ -294,6 +313,7 @@
     "hub/test/plan-approval.test.ts": {},
     "hub/test/plan-gate.test.ts": {},
     "hub/test/planned-stage.test.ts": {},
+    "hub/test/prepare-key.test.ts": {},
     "hub/test/prepared-project.test.ts": {},
     "hub/test/presence.test.ts": {},
     "hub/test/process-cleanup.test.ts": {},
@@ -310,6 +330,7 @@
     "hub/test/quarantine-runner.test.ts": {},
     "hub/test/quarantine.test.ts": {},
     "hub/test/release-item.test.ts": {},
+    "hub/test/release-t3-component.test.ts": {},
     "hub/test/release.test.ts": {
       "startDaemon": 1,
       "spawnSpoke": 1
@@ -339,10 +360,13 @@
     "hub/test/role-launch.test.ts": {},
     "hub/test/roles-component.test.ts": {},
     "hub/test/roles-editor.test.ts": {},
+    "hub/test/roles-harnesses.test.ts": {},
     "hub/test/roles-launch-permissions.test.ts": {},
     "hub/test/roles-session-refresh.test.ts": {},
     "hub/test/roles-snapshot-cli.test.ts": {},
     "hub/test/roles-snapshot.test.ts": {},
+    "hub/test/roles-template-component.test.ts": {},
+    "hub/test/roles-template.test.ts": {},
     "hub/test/roles-timing.test.ts": {},
     "hub/test/roles.test.ts": {
       "spawnSpoke": 1,
@@ -384,12 +408,14 @@
     "hub/test/scenarios/ticket-flow.test.ts": {
       "spawnSpoke": 1
     },
+    "hub/test/selection-replay-package.test.ts": {},
     "hub/test/session-archive-merge.test.ts": {},
     "hub/test/session-archive.test.ts": {},
     "hub/test/session-async-processes-lifecycle.test.ts": {},
     "hub/test/session-async-processes.test.ts": {},
     "hub/test/session-brief-component.test.ts": {},
     "hub/test/session-brief.test.ts": {},
+    "hub/test/session-cwd.test.ts": {},
     "hub/test/session-events-component.test.ts": {},
     "hub/test/session-events.test.ts": {
       "startDaemon": 1,
@@ -423,21 +449,38 @@
       "fakeCodex": 1
     },
     "hub/test/session-usage.test.ts": {},
+    "hub/test/setup-cli.test.ts": {},
+    "hub/test/setup-favourite.test.ts": {},
+    "hub/test/setup-flow.test.ts": {},
+    "hub/test/setup-handover.test.ts": {},
+    "hub/test/setup-hub-component.test.ts": {},
+    "hub/test/setup-hub.test.ts": {},
+    "hub/test/setup-machine.test.ts": {},
+    "hub/test/setup-project-kind.test.ts": {},
+    "hub/test/setup-prompter.test.ts": {},
+    "hub/test/setup-terminal.test.ts": {},
+    "hub/test/setup-trust.test.ts": {},
     "hub/test/shared-defects-report.test.ts": {},
     "hub/test/shared-defects.test.ts": {},
     "hub/test/skills-invocation.test.ts": {},
+    "hub/test/skills-onboarding.test.ts": {},
     "hub/test/skills-qa-catalogue.test.ts": {},
     "hub/test/skills-qa.test.ts": {},
     "hub/test/skills-tracker-jq.test.ts": {},
     "hub/test/skills-tracker.test.ts": {},
+    "hub/test/source-fixture.test.ts": {},
     "hub/test/spawn-census.test.ts": {},
     "hub/test/spoke-identity.test.ts": {},
     "hub/test/spoke-readiness.test.ts": {},
     "hub/test/sqlite-contention.test.ts": {},
+    "hub/test/stage-closure-component.test.ts": {},
     "hub/test/stage-qa.test.ts": {
       "startDaemon": 1,
       "spawnSpoke": 1
     },
+    "hub/test/startup-deadline-component.test.ts": {},
+    "hub/test/startup-diagnostic.test.ts": {},
+    "hub/test/startup-ready-component.test.ts": {},
     "hub/test/startup-smoke.test.ts": {},
     "hub/test/store-and-forward.test.ts": {},
     "hub/test/subscription-frame.test.ts": {
@@ -450,6 +493,7 @@
     "hub/test/suite-admission-close.test.ts": {},
     "hub/test/suite-admission-cost.test.ts": {},
     "hub/test/suite-admission-native.test.ts": {},
+    "hub/test/suite-admission-responsive.test.ts": {},
     "hub/test/suite-admission.test.ts": {},
     "hub/test/suite-cache-recovery.test.ts": {},
     "hub/test/suite-cache.test.ts": {},
@@ -465,6 +509,7 @@
       "startDaemon": 1
     },
     "hub/test/suite-close.test.ts": {},
+    "hub/test/suite-command.test.ts": {},
     "hub/test/suite-cover.test.ts": {},
     "hub/test/suite-coverage-selection.test.ts": {},
     "hub/test/suite-coverage.test.ts": {},
@@ -473,7 +518,11 @@
     "hub/test/suite-duration-context.test.ts": {},
     "hub/test/suite-human-component.test.ts": {},
     "hub/test/suite-human.test.ts": {},
+    "hub/test/suite-hung-component.test.ts": {},
+    "hub/test/suite-landed-load.test.ts": {},
     "hub/test/suite-load-diagnostics.test.ts": {},
+    "hub/test/suite-persistence.test.ts": {},
+    "hub/test/suite-progress.test.ts": {},
     "hub/test/suite-protocol.test.ts": {},
     "hub/test/suite-queue-policy.test.ts": {},
     "hub/test/suite-queue.test.ts": {},
@@ -489,16 +538,21 @@
     },
     "hub/test/suite-scheduling.test.ts": {},
     "hub/test/suite-selection-component.test.ts": {},
+    "hub/test/suite-selection-fetch.test.ts": {},
     "hub/test/suite-selection-report.test.ts": {},
     "hub/test/suite-selection.test.ts": {},
+    "hub/test/suite-soak-component.test.ts": {},
+    "hub/test/suite-soak.test.ts": {},
     "hub/test/suite-stage-cover.test.ts": {},
     "hub/test/suite-stage-rules.test.ts": {},
+    "hub/test/suite-task-selection.test.ts": {},
     "hub/test/suite-tier-report.test.ts": {},
     "hub/test/suite-tiers.test.ts": {},
     "hub/test/suite-timeouts.test.ts": {
       "wall-clock-wait": 1
     },
     "hub/test/suite-wait-metrics.test.ts": {},
+    "hub/test/suite-worker-cause.test.ts": {},
     "hub/test/suite.test.ts": {
       "startDaemon": 5
     },
@@ -529,6 +583,7 @@
     "hub/test/territory-lock.test.ts": {},
     "hub/test/test-admission-outcome.test.ts": {},
     "hub/test/test-admission.test.ts": {},
+    "hub/test/test-lint-policy.test.ts": {},
     "hub/test/test-lint.test.ts": {},
     "hub/test/thread-seed-plan.test.ts": {},
     "hub/test/tier-context.test.ts": {},
@@ -567,6 +622,7 @@
     "hub/test/tracker-status.test.ts": {
       "spawnSpoke": 3
     },
+    "hub/test/tracker-summary.test.ts": {},
     "hub/test/tracker.test.ts": {
       "wall-clock-wait": 2,
       "wall-clock-assertion": 1
@@ -581,6 +637,7 @@
     },
     "hub/test/verdict-criteria.test.ts": {},
     "hub/test/verdict-findings.test.ts": {},
+    "hub/test/verification-commands.test.ts": {},
     "hub/test/verification-tree.test.ts": {},
     "hub/test/verification-workers.test.ts": {},
     "hub/test/verifier-resolver.test.ts": {},
@@ -591,6 +648,7 @@
     "hub/test/verifier-routing.test.ts": {},
     "hub/test/verify-all.test.ts": {},
     "hub/test/verify-submission.test.ts": {},
+    "hub/test/verify-tool.test.ts": {},
     "hub/test/visibility-component.test.ts": {},
     "hub/test/visibility-volume.test.ts": {},
     "hub/test/visibility.test.ts": {
@@ -651,6 +709,7 @@
     },
     "nvim/test/item-prefixes.test.ts": {},
     "nvim/test/items.test.ts": {},
+    "nvim/test/launcher-component.test.ts": {},
     "nvim/test/layers-component.test.ts": {},
     "nvim/test/layers.test.ts": {
       "startDaemon": 1,
@@ -687,6 +746,7 @@
       "wall-clock-wait": 11
     },
     "nvim/test/stub-control.test.ts": {},
+    "nvim/test/thread-oracle-soak.test.ts": {},
     "nvim/test/thread.test.ts": {},
     "nvim/test/ui.test.ts": {
       "wall-clock-wait": 8

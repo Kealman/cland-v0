@@ -565,6 +565,20 @@ test('process helper growth requires lifecycle evidence for each category', asyn
   }
 });
 
+test('shrinking a retired spawnSpoke allowance refuses a planted call in an existing T2 file', async () => {
+  const { checkTestLint, shrinkLintBaseline } = await import('../src/test-lint-policy.ts');
+  const manifest = { version: 1 as const, tests: { [file]: 'T2' as const } };
+  const baseline = { version: 1 as const, files: { [file]: { spawnSpoke: 1 } } };
+  const base = { manifest, baseline };
+  const planted = async () => "import { spawnSpoke } from './harness.ts'; spawnSpoke({ name: 'planted' });";
+  assert.deepEqual(await checkTestLint({ manifest, source: planted, baseline, base }), []);
+  const shrunk = await shrinkLintBaseline(manifest, async () => '', baseline);
+  assert.deepEqual(shrunk.files[file], {});
+  assert.deepEqual(await checkTestLint({ manifest, source: planted, baseline: shrunk, base }), [
+    { file, line: 1, rule: 'spawnSpoke', message: 'spawnSpoke count 1 exceeds frozen allowance 0' },
+  ]);
+});
+
 test('T4 lifecycle headers exempt process helpers while preserving wait and tier rules', async () => {
   const { checkTestLint } = await import('../src/test-lint-policy.ts');
   const source = async () => '// T4: resistant native process deadlines and reaping\nstartDaemon(t, root);';

@@ -1,4 +1,4 @@
-// T3 lifecycle: forced post-merge termination reaps each native harness without a death notification.
+// T3: forced post-merge termination reaps each native harness without a death notification.
 // Fake-clock merge-stop classification shares its assertions with the T2 manual-stop file.
 // Codex descendant probes exercise real OS identity disappearing between snapshot and final SIGKILL probe.
 import test, { type TestContext } from 'node:test';

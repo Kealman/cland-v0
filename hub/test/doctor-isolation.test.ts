@@ -1,3 +1,4 @@
+// T3: doctor --fix reaps a deleted project's live hub process while preserving another root's hub.
 // Run alongside orphan-servers.test.ts: each doctor's deleted-project sweep owns only its fixture root.
 import test from 'node:test';
 import assert from 'node:assert/strict';
