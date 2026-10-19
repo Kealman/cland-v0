@@ -3,7 +3,7 @@ id: T-667
 kind: task
 title: Another stack's verify runs its test in full and reports the test's output
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-619
 branch: t/T-667-another-stack-s-verify-runs-its-test-in
 created: 2026-10-16T16:35:24.761Z
-updated: 2026-10-19T20:08:41.363Z
+updated: 2026-10-19T20:29:18.485Z
 ---
 
 ## Summary
@@ -178,3 +178,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final current-head evidence clear, A-6529. Independently audited A-6524 exact-head mode-free b80d897a: 1656/1656, zero fail/cancel/skip/TODO, all 70 load groups 5/5, no resource mismatch or owned budget trip. C1/C2 capability/submission/CLI and C4 summary controls ordinary plus repetitions pass within case budgets; integrated historical-candidate fixture controls ordinary and five repetitions also pass. Source delta A-6495 and retained local C3/C5 native/selection proofs A-6489 cover integrated source. All C1–C5 verified. Linux T3 remains periodic/integrated, absent from configured batch tiers; QA none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-19T20:29:18.485Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-landed-proof-shared-fix-source
+commit: 35effc9e31a5b2fdee4c4c4d6d51c2bcd05ea571
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Combined delta source clear, A-6635. Direct Coordinator history confirms merges and exact T-907 exception to C5 unchanged-file wording. Independent task-patch comparison shows only new landed-identity lookup runner guard and posted one-line obsolete T4 expectation fix; all other owned patches unchanged. Preserves T-885 proof persistence/exact-head lookup, T-893 periodic tiers and arbitrary-stack full/no-cland-planning behavior. Raw A-6630 fifteen files184/184; C3 shell3.179 s, C5 selection96/96+coverage/report passes qualified local. C1–C5 await fresh exact-head mode-free gate; previous evidence historical. QA none.

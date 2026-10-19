@@ -2,8 +2,8 @@
 id: T-893
 kind: task
 title: The periodic dev run covers T2 too, so post-merge T2 interactions surface within two hours
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-643
 branch: t/T-893-the-periodic-dev-run-covers-t2-too-so
 created: 2026-10-19T19:09:07.564Z
-updated: 2026-10-19T20:10:07.682Z
+updated: 2026-10-19T20:14:50.879Z
+closed: 2026-10-19T20:14:50.879Z
 ---
 
 ## Summary
@@ -71,3 +72,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear, A-6567. A-6558/c6562119 independently audited: 1648/1648, zero fail/cancel/skip/TODO, all 63 load groups 5/5, no resource mismatch or owned budget trip. C1 occasion planner and mixed T2/T3 culprit-search/Bug controls pass ordinary and all five repetitions within T1 0.5 s (max .378939/.175236 s respectively across receipts); periodic schedule/settings pass too. Source A-6523 establishes behavior and C2 docs. All C1/C2 verified; no actual native T3 execution claim. QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T20:14:50.879Z
+
+Merged db0aecab58e11f944c4ef5f7aaa7c937b675404d onto dev.

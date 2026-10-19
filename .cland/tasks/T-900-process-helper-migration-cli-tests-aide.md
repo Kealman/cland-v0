@@ -2,8 +2,8 @@
 id: T-900
 kind: task
 title: "Process-helper migration: CLI tests (aide claims, artifacts, GitHub import)"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-638
 branch: t/T-900-process-helper-migration-cli-tests-aide
 created: 2026-10-19T19:27:16.880Z
-updated: 2026-10-19T20:09:01.727Z
+updated: 2026-10-19T20:14:23.967Z
+closed: 2026-10-19T20:14:23.967Z
 ---
 
 ## Summary
@@ -141,3 +142,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Same-head configured mode-free 59cce871/A-6557 green: 1644/1644 ordinary, 285/285 load finishes, all 57 groups 5/5, zero non-pass/tier mismatch. All twelve owned cases pass 5/5 within budgets (T2 ordinary max 1.562021779s, rep max 1.900186253s; file max 5.328788520s). C1 source A-6518 retained; C2 assertion/native/no-allowance evidence A-6491/A-6459 unchanged. A-6562 keeps whole-log audit/known external report-only rows. C1/C2 final verified; T3 Linux remains periodic/integrated/landing.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T20:14:23.967Z
+
+Merged d696ad7294d0f5141151bb685b8d0eacae8ff576 onto dev.

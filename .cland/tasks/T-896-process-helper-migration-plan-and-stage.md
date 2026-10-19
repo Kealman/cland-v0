@@ -2,8 +2,8 @@
 id: T-896
 kind: task
 title: "Process-helper migration: plan and stage tests"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-634
 branch: t/T-896-process-helper-migration-plan-and-stage
 created: 2026-10-19T19:27:16.095Z
-updated: 2026-10-19T20:11:37.028Z
+updated: 2026-10-19T20:31:33.184Z
+closed: 2026-10-19T20:31:33.184Z
 ---
 
 ## Summary
@@ -33,11 +34,14 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 
 ## Acceptance criteria
 
-- [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+- [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
   - verified: rev-31 [reviewer] · run rev-20261019-896-source-3 · 2026-10-19T19:54:36.180Z · commit 1da66b9244b14d4424d74f1c06f13e4bd1c774eb
   - verified: rev-31 [reviewer] · run rev-20261019-896-source-5 · 2026-10-19T20:11:37.028Z · commit 5aabffb7c5b94b0774e727c334c01b4740017098
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-31 [reviewer] · 2026-10-19T20:06:16.679Z · note Shared-fixture-only delta leaves owned query-case duration overrun and native start-identity trip unresolved.
+  - done: impl-896 · 2026-10-19T20:21:29.915Z
+  - verified: rev-31 [reviewer] · run rev-20261019-896-final · 2026-10-19T20:21:42.274Z · commit 5aabffb7c5b94b0774e727c334c01b4740017098
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - done: impl-896 · 2026-10-19T20:21:30.619Z
+  - verified: rev-31 [reviewer] · run rev-20261019-896-final · 2026-10-19T20:21:42.274Z · commit 5aabffb7c5b94b0774e727c334c01b4740017098
 
 ## Comments
 
@@ -162,3 +166,30 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear after owned runtime corrections: injected LocalCompatibility reproduces/removes exact native ps boundary without suppressing tripwire; query-only memory indexes/dispatcher setup/lightweight native SQL observation preserve 64/8/8/10 and every bound. A-6566 integrated enforcing logs pass38/38, zero trips, query .675477709s; exact counts2597/4112. Coordinator a135b306 permits manifest-only merge; baseline is dev plus four empty maps, owned blobs unchanged, durations/shared fixes equal dev. A-6578; C1 reverified. C2 awaits new same-head mode-free green,38 identities5/5, query<2s and zero owned budget/trip rows. Prior red retained.
 
 Criteria: C1 verified.
+
+### impl-896 · 2026-10-19T20:12:00.452Z
+
+Reviewer A-6578/source-5 clear at unchanged 5aabffb7c5b94b0774e727c334c01b4740017098; C1 reverified. Queue read; mode-free retry e6905c04-2503-4552-8b84-f47addc42e8c admitted with report topic-634 and recipients Reviewer + item lead. Waiting for green overall, all 38 gates 5/5, ordinary query <2s and no owned budget/resource row. A-6533 remains disclosed failed parent.
+
+### impl-896 · 2026-10-19T20:21:31.535Z
+
+Exact reviewed head 5aabffb7c5b94b0774e727c334c01b4740017098 passes mode-free e6905c04/A-6608: 1708/1708 overall, zero fail/cancel/skip/TODO. Owned raw receipts: 38 ordinary passes, 190 repetition passes (38 gates 5/5), zero tier mismatches and owned budget rows. Query 1.590281748s ordinary, max repetition 1.688435987s. C1/C2 claimant done marks recorded. Linux x64 c-8 lon1, 505s machine lifetime, $0.0351. Waiting for Reviewer final evidence verdict; failed parent A-6533 and owned correction A-6566 remain retained.
+
+### rev-31 · 2026-10-19T20:21:42.274Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-896-final
+commit: 5aabffb7c5b94b0774e727c334c01b4740017098
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6611 independently audits complete same-head mode-free e6905c04/A-6608: 1708/1708 ordinary, 615/615 load finishes, all 123 groups 5/5, no tier mismatch or non-pass. All 38 owned identities pass ordinary plus 190 owned repetitions within T2 budgets. Previously over-budget query case is now 1.590281748s ordinary / 1.688435987s maximum repetition; formerly native owner-probe path and explicit compatibility/cleanup controls are clean throughout the raw log. A-6578 source/assertion-preservation review, A-6506 callback-drain proof and A-6566 native-probe/local receipts remain applicable, no allowance increase. Claimant C1/C2 done confirmed. C1/C2 final verified; previous failed receipt A-6533 remains disclosed. Known external report-only diagnostics retained in A-6611 without duplicate aside. Native T3 Linux remains periodic/integrated landing evidence.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T20:31:33.184Z
+
+Merged a1f9f1dd0d1a77297153d3471bfb548770173094 onto dev.

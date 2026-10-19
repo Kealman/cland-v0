@@ -2,8 +2,8 @@
 id: T-899
 kind: task
 title: "Process-helper migration: suite, skills and migration tests"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-637
 branch: t/T-899-process-helper-migration-suite-skills
 created: 2026-10-19T19:27:16.714Z
-updated: 2026-10-19T20:11:40.425Z
+updated: 2026-10-19T20:31:54.320Z
+closed: 2026-10-19T20:31:54.320Z
 ---
 
 ## Summary
@@ -37,9 +38,12 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 - [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
   - verified: rev-30 [reviewer] · run rev-20261019-899-migration-source-corrected · 2026-10-19T19:49:06.072Z · commit b511905786ab6a239f85ca8ed42b209ccae475c5
   - verified: rev-30 [reviewer] · run rev-20261019-899-shared-fixture-source · 2026-10-19T20:02:03.597Z · commit 105f4b9db4e93b32d8d6565fabb9f42ccd4a81ac
-  - done: impl-899 · 2026-10-19T20:11:10.666Z
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-30 [reviewer] · 2026-10-19T20:11:40.425Z · note Seventeen owned T2 process-resource mismatches in QA/migration CLI proofs; all ordinary/160 repetition assertions pass within budget but approved CLI boundary is missing.
+  - verified: rev-30 [reviewer] · run rev-20261019-899-closed-cli-source-corrected · 2026-10-19T20:17:31.870Z · commit fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3
+  - verified: rev-30 [reviewer] · run rev-20261019-899-final · 2026-10-19T20:26:07.228Z · commit fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3
+  - done: impl-899 · 2026-10-19T20:26:23.542Z
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - verified: rev-30 [reviewer] · run rev-20261019-899-final · 2026-10-19T20:26:07.228Z · commit fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3
+  - done: impl-899 · 2026-10-19T20:26:24.439Z
 
 ## Comments
 
@@ -122,3 +126,45 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Final not clear on owned process admission, A-6579. Independently verified A-6569 functional 1664/1664 and all32 migrated ordinary +160 repetition passes within budgets; original M1 cost resolved. Raw resource tripwire records seventeen owned direct CLI/jq process mismatches. Keep actual executable/stdio/exit assertions, use approved narrow CLI-subject support (Coordinator-posted change if necessary), eliminate incidental native probes, retain tripwire; fresh source review then exact-head verification. C2 failed, QA none.
 
 Criteria: C2 failed (Seventeen owned T2 process-resource mismatches in QA/migration CLI proofs; all ordinary/160 repetition assertions pass within budget but approved CLI boundary is missing.).
+
+### impl-899 · 2026-10-19T20:16:22.549Z
+
+M2 correction committed/pushed as its own fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3 under Coordinator 8945b7ca authorization. Closed-set synchronous CLI support matches only shipped recorder/migration entries and required preload; direct/altered/async lookalikes still trip. Native jq probes replaced by filesystem PATH facts. New tripwire regression red→green, full runner18/18, QA12/12 and migration3/3 pass under actual T2 enforcement with zero mismatches. Typecheck/lint green; no allowance/tier/baseline change. A-6598 holds evidence. Fresh delta review requested; prior functional-green A-6569 is not compliant final evidence because of M2. C2 awaits fresh exact-head run.
+
+### rev-30 · 2026-10-19T20:17:31.870Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-899-closed-cli-source-corrected
+commit: fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M2 corrected source clear, A-6602. Authorized closed CLI-subject set requires exact executable/entry/preload paths and existing synchronous marker; unchanged guard grants only T2 execFile. Other APIs/altered entries/async descendants remain denied. Native CLI/stdio/exit/rule assertions retained; incidental jq process probes removed via filesystem facts. Raw A-6598 enforcing QA12/12 and migration3/3 zero resource trips; native runner18/18 includes red→green closed-set controls. C1 verified; C2 awaits exact-head mode-free overall green, all32 ordinary +160 repetition passes and no owned budget/resource mismatch. No tier/allowance/baseline change; QA none.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-19T20:26:07.228Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-899-final
+commit: fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final current-head evidence clear, A-6624. Independent raw A-6622/c19d2ea7:1664/1664, zero fail/cancel/skip/TODO, all77 load groups5/5, zero resource mismatch. All32 moved ordinary +160 repetition passes within T1/T2 budgets; max catalogue .045720945 s, max T2 admission1.508060137 s; no owned budget row. M1 cost and M2 CLI boundary resolved via source A-6496/A-6602, retained all assertions/no allowance. Original local native A-6456 and new boundary runner18/18 A-6598 retained as host evidence; native Linux T3 periodic/integrated. C1/C2 verified, QA none.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-899 · 2026-10-19T20:26:25.456Z
+
+Completed at pushed/clean fc9d1f6dfde3c2802f2e8fccb215a849c61a5db3. Final Reviewer clear rev-20261019-899-final/A-6624 verifies C1/C2. Exact-head mode-free c19d2ea7/A-6622:1664/1664, all32 migrated ordinary +160 repetition passes, all owned bodies within tier, zero owned process mismatches or budget rows. A-6623 provides canonical extraction/maxima. C1/C2 claimant done marks refreshed. Linux c-8 lon1 lifetime443 s cost$0.0307. No allowance/tier promotion; authorized closed CLI boundary is own fc9d1f6d. Native local proofs retained, Linux T3 periodic/integrated; QA none. Keeping claim until merge; hub owns ready notification.
+
+### coord · 2026-10-19T20:31:54.320Z
+
+Merged 454fdcee9e880230f51a9f0c15cd8988bbfc2048 onto dev.

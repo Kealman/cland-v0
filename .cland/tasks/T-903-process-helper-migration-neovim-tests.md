@@ -2,8 +2,8 @@
 id: T-903
 kind: task
 title: "Process-helper migration: Neovim tests (artifacts, crew, inbox requests, needs-you)"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-641
 branch: t/T-903-process-helper-migration-neovim-tests
 created: 2026-10-19T19:27:17.818Z
-updated: 2026-10-19T20:09:18.539Z
+updated: 2026-10-19T20:21:19.539Z
+closed: 2026-10-19T20:21:19.539Z
 ---
 
 ## Summary
@@ -33,11 +34,14 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 
 ## Acceptance criteria
 
-- [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+- [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
   - verified: rev-30 [reviewer] · run rev-20261019-903-source · 2026-10-19T19:55:00.598Z · commit 8f789a41a3e4accf8f9efef866cc92efc7830c77
   - verified: rev-30 [reviewer] · run rev-20261019-903-relocated-rules-source · 2026-10-19T20:08:59.317Z · commit 9f118b19608ff84008230e8677ee862762d98199
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-30 [reviewer] · 2026-10-19T20:05:08.337Z · note Owned four rule files under nvim/test import hub runtime/harness; exact-head T1 boundary guard fails and required T2/load proof never runs.
+  - verified: rev-30 [reviewer] · run rev-20261019-903-final · 2026-10-19T20:16:37.968Z · commit 9f118b19608ff84008230e8677ee862762d98199
+  - done: impl-903 · 2026-10-19T20:16:39.102Z
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - verified: rev-30 [reviewer] · run rev-20261019-903-final · 2026-10-19T20:16:37.968Z · commit 9f118b19608ff84008230e8677ee862762d98199
+  - done: impl-903 · 2026-10-19T20:16:39.694Z
 
 ## Comments
 
@@ -109,3 +113,26 @@ Criteria: C1 verified.
 ### impl-903 · 2026-10-19T20:09:18.539Z
 
 Moved the four injected rule files to hub/test with byte-identical test bodies; Neovim screen runtime and recordings unchanged. Existing boundary guard 7/7 green, relocated rule cases 12/12 green, typecheck/tiers/lint pass; A-6555. Coordinator-authorized manifest-only dev integration retained both sides. Reviewer delta clear at exact head 9f118b19, M1 resolved/C1 verified (A-6561). Replacement mode-free verify 5e907f2a-e8a9-4003-8a15-a4afeb16528f admitted with Reviewer and claimant recipients; waiting for result. Failed first run A-6545 remains disclosed.
+
+### rev-30 · 2026-10-19T20:16:37.968Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-903-final
+commit: 9f118b19608ff84008230e8677ee862762d98199
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final current-head evidence clear, A-6600. Raw A-6597/5e907f2a independently audited: 1681/1681, zero fail/cancel/skip/TODO; all95 load groups5/5 and zero resource mismatch. Exactly26 owned migrated identities each ordinary +5 passing repetitions (130 repeats), maximum body .968512006 s<T2 2 s, no owned budget row. Source A-6561 preserves all rule bodies/screens/recordings and fixes prior import-boundary failure; C1/C2 verified. No new allowance/native seam. QA none; native Linux T3 periodic/integrated.
+
+Criteria: C1 verified, C2 verified.
+
+### impl-903 · 2026-10-19T20:16:40.361Z
+
+Replacement mode-free verify 5e907f2a/A-6597 passes at exact reviewed 9f118b19: 1,681 passed, no failures/skips/cancellations. Raw audit confirms all 26 owned ordinary identities pass and all 26 load gates pass 5/5 (130 repetitions), with no owned budget/resource trip and no allowance. Linux c-8 lon1,374s lifetime,$0.0260. C1/C2 claimant done marks added; Reviewer final evidence verdict pending. Failed import-boundary run A-6545 retained; source unchanged.
+
+### coord · 2026-10-19T20:21:19.539Z
+
+Merged 70f695ccc1a43082c190a2b0e364b3b00c01c894 onto dev.

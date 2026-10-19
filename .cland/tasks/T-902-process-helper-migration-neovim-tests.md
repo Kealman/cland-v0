@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-639
 branch: t/T-902-process-helper-migration-neovim-tests
 created: 2026-10-19T19:27:17.295Z
-updated: 2026-10-19T20:04:31.085Z
+updated: 2026-10-19T20:23:47.598Z
 ---
 
 ## Summary
@@ -33,10 +33,15 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 
 ## Acceptance criteria
 
-- [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+- [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
   - verified: rev-31 [reviewer] · run rev-20261019-902-source-2 · 2026-10-19T20:04:31.085Z · commit 3506aba1ee105e070237729594c59ba19181dd0f
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-31 [reviewer] · 2026-10-19T19:59:44.616Z · note Moved prefix T2 case exceeds 2s in its receipt; ten unchanged client identities would skip required five load repetitions.
+  - done: impl-902 · 2026-10-19T20:14:18.717Z
+  - verified: rev-31 [reviewer] · run rev-20261019-902-final · 2026-10-19T20:14:52.314Z · commit 3506aba1ee105e070237729594c59ba19181dd0f
+  - verified: rev-31 [reviewer] · run rev-20261019-902-integration-source · 2026-10-19T20:19:53.849Z · commit 743e1f94e2284a4e29adf03d06b71e9a67b1f773
+  - verified: rev-31 [reviewer] · run rev-20261019-902-integration-source-2 · 2026-10-19T20:23:47.598Z · commit 9019bb4d4a86ebdf88d0636e039d0f966109b446
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - done: impl-902 · 2026-10-19T20:14:20.597Z
+  - verified: rev-31 [reviewer] · run rev-20261019-902-final · 2026-10-19T20:14:52.314Z · commit 3506aba1ee105e070237729594c59ba19181dd0f
 
 ## Comments
 
@@ -79,5 +84,54 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Both A-6525 findings resolved: public runTask alias edit preserves assertions with .405327458s local prefix body; all 25 moved T2 identities are independently absent from the unchanged duration baseline and qualify for 5/5. Coordinator 63e61d74 authorized integration of pinned dev 93dcac02; recorder catalogue is +237 records/+1112 nodes, zero changed/removed existing keys, all four slices match. Original assertion/native routing retained; local 25/25 and native lifecycle green, all budgets respected. A-6546/A-6542. C1 verified; C2 awaits wholly green unchanged-head mode-free receipt plus all 25 identities 5/5.
+
+Criteria: C1 verified.
+
+### impl-902 · 2026-10-19T20:14:31.081Z
+
+Unchanged-head mode-free verification e4cd32c3 passed: 1675/1675 with no failures/cancellations/skips. Audit A-6593 proves all 25 moved T2 identities have 1 ordinary pass and 5 distinct load repetitions (125 total), maximum 1.138463385s. C1/C2 claimant done marks recorded. Reviewer has the final evidence audit; native T3 was locally green, with Linux T3 deferred to periodic/integrated occasions by the configured tier plan.
+
+### rev-31 · 2026-10-19T20:14:52.314Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-902-final
+commit: 3506aba1ee105e070237729594c59ba19181dd0f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Same-head configured mode-free e4cd32c3/A-6587 green:1675/1675 ordinary,445/445 load finishes,89 groups5/5, zero tier mismatch/non-pass. All25 moved identities pass ordinary+5/5 (125 owned repetitions), max owned1.138463385s; prefix .807308209s ordinary closes M1 and all13 renamed clients actually repeat, closing M2. C1 source A-6546 retained; C2 assertion/catalogue/native local evidence A-6542/A-6449 unchanged. A-6595 retains full audit; known report-only notices need no aside. C1/C2 final verified; T3 Linux remains periodic/integrated/landing evidence.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-31 · 2026-10-19T20:19:53.849Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-902-integration-source
+commit: 743e1f94e2284a4e29adf03d06b71e9a67b1f773
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6606: Standards and Spec clear for the authorized tier integration. All 23 non-manifest owned blobs match prior final-clear 3506aba1; tiers retain both owned entries and dev's new frame-consumer entry, with no removed dev entries or allowance change. A-6599 local receipts remain within budgets. C1 reverified; C2 needs fresh evidence at the next published head. Coordinator update 2bdffcb8 now sequences T-903 first, then another integration/recording refresh: keep verification held at this intermediate head and request fresh source review afterward. Prior green A-6587 is not reused for the changed head.
+
+Criteria: C1 verified.
+
+### rev-31 · 2026-10-19T20:23:47.598Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-902-integration-source-2
+commit: 9019bb4d4a86ebdf88d0636e039d0f966109b446
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6617: post-T-903 integration authorized by primary Coordinator 2bdffcb8 is clear on Standards and Spec. Both parent stub handler blocks retained; all 21 other non-map/non-main-catalogue owned blobs unchanged. Manifest/baseline preserve every dev entry and only apply owned migration reductions. Catalogue independently +237 records/+1112 nodes versus pinned dev 70f695cc, zero existing keys changed/removed; all four owned slices match. A-6612 recorder/replay/integrity/boundary/discovery controls pass. Native source/dependencies remain unchanged from prior local green A-6599. C1 reverified; C2 requires fresh same-head configured mode-free green receipt and all 25 moved identities ordinary plus actual 5/5, with zero owned tier/budget issues. All 25 keys remain absent from unchanged dev duration baseline; no allowance edit.
 
 Criteria: C1 verified.

@@ -2,8 +2,8 @@
 id: T-897
 kind: task
 title: "Process-helper migration: session tests"
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-635
 branch: t/T-897-process-helper-migration-session-tests
 created: 2026-10-19T19:27:16.282Z
-updated: 2026-10-19T20:09:41.763Z
+updated: 2026-10-19T20:31:47.042Z
+closed: 2026-10-19T20:31:47.042Z
 ---
 
 ## Summary
@@ -34,10 +35,14 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
 
 ## Acceptance criteria
 
-- [ ] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
+- [x] C1. (T0 lint) In T-684's process-helper baseline, every file listed here has a count of zero, unless it is a truthful T3-header lifecycle file or case that holds only native-process assertions. The lint run shows it.
   - verified: rev-30 [reviewer] · run rev-20261019-897-source-corrected · 2026-10-19T19:59:51.322Z · commit 36cc8be8c31d2e0af88df82e20cb4abb44a22aad
-- [ ] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
-  - failed: rev-30 [reviewer] · 2026-10-19T20:09:41.763Z · note Owned T2 stop/status case spawns native ps (A-6556:47642) despite functionally green ordinary/five repetitions; fixture correction required.
+  - verified: rev-30 [reviewer] · run rev-20261019-897-compatibility-source-corrected · 2026-10-19T20:14:45.420Z · commit 46514ac31324309411af8d742dd0684a2fdc2a00
+  - done: impl-897 · 2026-10-19T20:23:09.293Z
+  - verified: rev-30 [reviewer] · run rev-20261019-897-final · 2026-10-19T20:23:10.621Z · commit 46514ac31324309411af8d742dd0684a2fdc2a00
+- [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
+  - done: impl-897 · 2026-10-19T20:23:09.918Z
+  - verified: rev-30 [reviewer] · run rev-20261019-897-final · 2026-10-19T20:23:10.621Z · commit 46514ac31324309411af8d742dd0684a2fdc2a00
 
 ## Comments
 
@@ -97,3 +102,41 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Not clear on owned resource boundary, A-6565. A-6556 functionally passes 1670/1670; all twenty moved ordinary cases +100 repetitions pass within budgets, but one owned T2 child_process.spawn mismatch escapes through startedProbe. This is not a covered budget aside. M1–M3 remain resolved; keep public status assertions and eliminate native probe via fixture facts, then fresh source review before replacement mode-free verification. C2 failed; QA none.
 
 Criteria: C2 failed (Owned T2 stop/status case spawns native ps (A-6556:47642) despite functionally green ordinary/five repetitions; fixture correction required.).
+
+### impl-897 · 2026-10-19T20:13:47.910Z
+
+M4 fixed and pushed at 46514ac31324309411af8d742dd0684a2fdc2a00; fresh source review requested. A-6586 records a deterministic fixture-only suite-owner reproduction under enforcing tripwire (red exact ps stack, then green with existing verification.compatibility facts), all five T2 files passing with resource mode enforce/no trips, unchanged twenty-key 5-repeat eligibility, and npm run check green. All public status/stop/log assertions retained; no production/native/tier/baseline/allowance changes. Prior 1ff894a8/A-6556 is functional green but not completion evidence due M4; replacement mode-free verify waits for source clearance.
+
+### rev-30 · 2026-10-19T20:14:45.420Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-897-compatibility-source-corrected
+commit: 46514ac31324309411af8d742dd0684a2fdc2a00
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M4 corrected source clear, A-6594. Existing compatibility injection and fixture-only lock path eliminate native owner probe without changing public stop/status/log assertions, production or tripwire. A-6586 red reproduces exact enforced native spawn; targeted green and all five resource-enforced files raw22/22 pass. Independent reporter/baseline audit retains twenty fresh top-level identities eligible for five repetitions. C1 verified; C2 awaits replacement exact-head overall green, twenty ordinary +100 repetition passes within budget and no owned resource mismatch. Native A-6478 unchanged; QA none.
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-19T20:23:10.621Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-897-final
+commit: 46514ac31324309411af8d742dd0684a2fdc2a00
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final current-head clear, A-6615. Independent raw A-6613/20a35d22: 1670/1670, zero fail/cancel/skip/TODO, all82 load groups5/5 and zero resource mismatch. All20 exact migrated keys have one ordinary +5 passing repetitions (100); max .564749115 s<T2 2 s, no owned budget row. Stop/status max .082484790 s, prior native ps mismatch absent. Source A-6526/A-6594 resolves M1–M4 while preserving public assertions and native splits; unchanged local native proofs A-6478 retained. C1/C2 verified. No new allowance; native Linux T3 periodic/integrated, QA none.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T20:31:47.042Z
+
+Merged 9e3ca0dbafc774191bffb65bbafaac8c8b778a37 onto dev.

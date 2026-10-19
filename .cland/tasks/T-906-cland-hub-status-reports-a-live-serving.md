@@ -3,17 +3,17 @@ id: T-906
 kind: task
 title: cland hub status reports a live, serving hub as 'does not answer' (hub.status slower than the probe timeout)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-647
+branch: t/T-906-cland-hub-status-reports-a-live-serving
 created: 2026-10-19T20:06:03.703Z
-updated: 2026-10-19T20:06:03.703Z
+updated: 2026-10-19T20:28:12.019Z
 ---
 
 ## Summary

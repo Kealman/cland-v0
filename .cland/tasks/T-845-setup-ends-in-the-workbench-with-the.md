@@ -2,8 +2,8 @@
 id: T-845
 kind: task
 title: Setup ends in the workbench with the Aide in the centre, or in the harness's attach with `--attach`, and one closing line follows
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-642
 branch: t/T-845-setup-ends-in-the-workbench-with-the
 created: 2026-10-19T06:34:13.540Z
-updated: 2026-10-19T20:09:33.545Z
+updated: 2026-10-19T20:14:39.879Z
+closed: 2026-10-19T20:14:39.878Z
 ---
 
 ## Summary
@@ -99,3 +100,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Configured mode-free d0e311e0/A-6560 passes at unchanged source head: 1657/1657 ordinary, 355/355 load finishes, all 71 groups 5/5, no tier mismatch/non-pass. All nine T1 handover controls pass ordinary/5/5, including root/env/repeat/one hint, Enter/EOF, launcher error, guards and CLI integration. Max owned body .024891793s, rep .026693136s, file .293441416s. C1–C4 established with source A-6538; A-6564 retains entire-log audit and known external report-only notices. No outstanding findings; epic T3 demo separately owned.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T20:14:39.878Z
+
+Merged 661c22460bfe47085c76d6549c35b9f815ed398f onto dev.
