@@ -3,7 +3,7 @@ id: T-649
 kind: task
 title: "cland init seeds the four categories: Bugs, Tech debt, Follow-ups and Ideas"
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-544
 branch: t/T-649-cland-init-seeds-the-four-categories
 created: 2026-10-16T16:24:00.181Z
-updated: 2026-10-19T02:06:53.968Z
+updated: 2026-10-19T02:34:16.607Z
 ---
 
 ## Summary
@@ -35,16 +35,22 @@ Every role clause files work into the categories, yet a new project has none: on
 
 - [x] C1. After `cland init` in an empty folder, `cland task list --kind category` lists Bugs, Tech debt, Follow-ups and Ideas, each with no parent (init-categories.test.ts, on the scratch machine of ticket T-639).
   - done: impl-649 · 2026-10-19T02:02:48.679Z
+  - verified: rev-30 [reviewer] · run rev-20261019-649-final · 2026-10-19T02:34:14.539Z · commit 58038de6100a2432bd5a817b5b2549aed0e14cdf
 - [x] C2. Their four item files are in init's first commit, and `git status --porcelain` stays empty.
   - done: impl-649 · 2026-10-19T02:02:49.356Z
+  - verified: rev-30 [reviewer] · run rev-20261019-649-final · 2026-10-19T02:34:14.539Z · commit 58038de6100a2432bd5a817b5b2549aed0e14cdf
 - [x] C3. A second `cland init` creates no category, and the project's item count is unchanged.
   - done: impl-649 · 2026-10-19T02:02:50.032Z
+  - verified: rev-30 [reviewer] · run rev-20261019-649-final · 2026-10-19T02:34:14.539Z · commit 58038de6100a2432bd5a817b5b2549aed0e14cdf
 - [x] C4. In a project that already has an open root category Ideas, init creates only the other three and leaves Ideas byte-identical.
   - done: impl-649 · 2026-10-19T02:02:50.582Z
+  - verified: rev-30 [reviewer] · run rev-20261019-649-final · 2026-10-19T02:34:14.539Z · commit 58038de6100a2432bd5a817b5b2549aed0e14cdf
 - [x] C5. `cland update` on a project without categories creates none.
   - done: impl-649 · 2026-10-19T02:02:51.276Z
+  - verified: rev-30 [reviewer] · run rev-20261019-649-final · 2026-10-19T02:34:14.539Z · commit 58038de6100a2432bd5a817b5b2549aed0e14cdf
 - [x] C6. `planMigration` and init read the same constant (a unit test compares the titles migrate seeds with init's).
   - done: impl-649 · 2026-10-19T02:02:51.998Z
+  - verified: rev-30 [reviewer] · run rev-20261019-649-final · 2026-10-19T02:34:14.539Z · commit 58038de6100a2432bd5a817b5b2549aed0e14cdf
 
 ## Comments
 
@@ -64,3 +70,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; no Standards or Spec findings. A-5719 records the production, async-caller and fixture audit. Shared category titles, Tracker.create seeding before first commit, byte-preserved existing roots, update exclusion and Coordinator-authorized custom-ladder skip behavior are consistent. C1–C6 remain unverified pending accepted exact-head post-clear runtime evidence; QA scope none.
+
+### impl-649 · 2026-10-19T02:33:50.452Z
+
+Exact-head post-source-review verification 49e4d2f6-a11d-464d-8a19-d22368124b89 passed at 58038de6100a2432bd5a817b5b2549aed0e14cdf: 2382 passed, 5 skipped, 0 failed. Configured droplet executor, Linux x64 / Node v24.21.0 / Neovim v0.12.5, c-8 lon1, lifetime 1565s, cost $0.1087. Durable log A-5726. Head unchanged; awaiting Reviewer's final same-head verdict. No further run requested.
+
+### rev-30 · 2026-10-19T02:34:14.539Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-649-final
+commit: 58038de6100a2432bd5a817b5b2549aed0e14cdf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear from source A-5719 and accepted exact-head gate 49e4d2f6/A-5726; raw evidence audit A-5728. Hub-only plus Neovim smoke: 2382 passed, 5 skips, zero failures/cancellations. Category 7/7, first-commit 9/9 and all 80 corresponding repetition bodies pass; changed init/role/worktree/doctor carriers pass. Exact roots, first-commit membership/clean status, repeat count, byte-preserved Ideas, update exclusion and shared migration titles established. Custom-ladder exception remains covered. Three known T-803 report-only trips and other diagnostics remain disclosed. No findings; C1–C6 verified; QA scope none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

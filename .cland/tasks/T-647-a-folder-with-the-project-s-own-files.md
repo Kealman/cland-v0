@@ -3,7 +3,7 @@ id: T-647
 kind: task
 title: A folder with the project's own files and a repository without commits get the same first commit, and the human's files stay as they were
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-612
 blocked_by:
   - T-646
-topic: null
-branch: null
+topic: topic-545
+branch: t/T-647-a-folder-with-the-project-s-own-files
 created: 2026-10-16T16:23:59.744Z
-updated: 2026-10-18T20:04:45.804Z
+updated: 2026-10-19T02:33:14.866Z
 ---
 
 ## Summary
@@ -40,3 +40,9 @@ A non-empty folder without Git and a repository without commits get what an empt
 - [ ] C4. In a repository without commits whose unborn branch is `master`, the first commit lands on `master` and `dev` starts from it.
 - [ ] C5. A human's own `AGENTS.md` and `.claude/settings.json` present before init are not in the first commit, and init's managed block and hooks are in their working-copy content.
 - [ ] C6. In each of the three cases the root ends on `dev` and the territory holds `dev` at the first commit.
+
+## Comments
+
+### impl-647 · 2026-10-19T02:33:14.866Z
+
+Implemented first-commit handling for non-empty folders and unborn repositories. Native Git regressions cover untouched README/src bytes and mtimes, staged blob plus distinct working-copy preservation on main/master, pre-existing managed-file exclusion, and ignored-path reporting. First-commit tests: 14/14, 17.89 s. Waiting for Coordinator's T-649 landing note before merging dev and requesting first source review.
