@@ -2,8 +2,8 @@
 id: T-847
 kind: task
 title: Retag setup-prompter.test.ts to T1 once T-835's pause-scanner fix is live
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-591
 branch: t/T-847-retag-setup-prompter-test-ts-to-t1-once
 created: 2026-10-19T06:44:17.771Z
-updated: 2026-10-19T13:53:32.556Z
+updated: 2026-10-19T15:47:29.552Z
+closed: 2026-10-19T15:47:29.552Z
 ---
 
 ## Summary
@@ -69,3 +70,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; C1 verified, no findings. A-6078 audits A-6076 exact-head mode-free run 45563d45: serving hub admitted the T1 assignment and host lint explicitly reports setup-prompter T1; qualifies T1. Ordinary 1549/1549 with zero fail/cancel/skip/TODO; all 469 repetition groups 5/5; full-log zero tier-mismatch rows. All six prompter cases pass ordinary and five repetitions, max .004799 s per test, .01627243 s summed tests, .177217454 s file wall, within T1 budgets; A-6056 measured host file .077800 s. A-6057 established stream-only hermetic source, unchanged assertions/production/durations.json. Claimant C1 done present. Existing report-only duration/baseline debt elsewhere retained; T3 deferred to Coordinator landing evidence. No further run/source change.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T15:47:29.552Z
+
+Merged 4dec4d2ff2a2407f5c0990973d2d406b31254ce8 onto dev.

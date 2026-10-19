@@ -2,8 +2,8 @@
 id: T-841
 kind: task
 title: The favourite harness lands in `[aide.launch]`, marked as the human's choice
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-582
 branch: t/T-841-the-favourite-harness-lands-in-aide
 created: 2026-10-19T06:34:13.175Z
-updated: 2026-10-19T14:37:20.314Z
+updated: 2026-10-19T15:47:40.571Z
+closed: 2026-10-19T15:47:40.571Z
 ---
 
 ## Summary
@@ -212,3 +213,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Trust integration final clear; A-6087 audits exact-head b261667a/A-6086. Ordinary 1566/1566, zero fail/cancel/skip/TODO, all 486 load groups 5/5, zero tier-mismatch rows. All 39 relevant favourite/flow/trust/CLI tests pass ordinary plus five repetitions; combined install+choice JSON, --harness without --yes leaving trust open/config absent, and Codex original-root spelling all pass. C1–C4 verified and claimant done marks present. Source composition A-6085 unchanged; inherited report-only duration/baseline/lint debt retained. T-874 remains separate. Native T3 remains Coordinator landing evidence; no further item run or Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T15:47:40.571Z
+
+Merged 3c6c2715271eae1abef444256aee9dc08336fd92 onto dev.
