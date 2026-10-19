@@ -5,6 +5,7 @@ import { projectRoot } from '../project.ts';
 import { readlinePrompter, type Prompter } from '../setup/prompter.ts';
 import { setupMachine } from '../setup/machine.ts';
 import { setup } from '../setup/runner.ts';
+import type { SetupHub } from '../setup/hub.ts';
 import type { SetupMachine } from '../setup/types.ts';
 import { VERSION } from '../version.ts';
 import { HARNESS_ORDER } from '../setup/steps/harnesses.ts';
@@ -19,6 +20,7 @@ type SetupIO = {
   narrate(text: string): void;
   prompter: Prompter;
   machine: SetupMachine;
+  hub: SetupHub;
 };
 
 /** The CLI owns roots, terminal policy and rendering; the runner owns the ordered steps. */
@@ -27,7 +29,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   let dir: string | undefined;
   let harness: HarnessId | undefined;
   let install: HarnessId | undefined;
-  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>]');
+  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-aide]');
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--install') {
@@ -40,7 +42,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
       if (!chosen || harness) throw usage();
       harness = chosen;
       i++;
-    } else if (arg === '--json' || arg === '--yes') continue;
+    } else if (arg === '--json' || arg === '--yes' || arg === '--no-aide') continue;
     else if (arg.startsWith('--') || dir !== undefined) throw usage();
     else dir = arg;
   }
@@ -58,7 +60,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   const yes = args.includes('--yes');
   const actions = [install ? `install ${install} requested` : '', harness ? `favourite ${harness} requested` : '', yes ? '--yes allows harmless writes' : ''].filter(Boolean).join('; ') || 'detection only';
   narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : ` — without a terminal: ${actions}`}\n`);
-  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, ...(harness ? { harness } : {}), ...(install ? { install } : {}), narrate,
+  const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, noAide: args.includes('--no-aide'), ...(io.hub ? { hub: io.hub } : {}), ...(harness ? { harness } : {}), ...(install ? { install } : {}), narrate,
     prompter: io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr }),
     machine: io.machine ?? setupMachine(root, setupEnv),
   });

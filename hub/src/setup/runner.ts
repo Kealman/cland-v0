@@ -5,10 +5,12 @@ import { harnesses } from './steps/harnesses.ts';
 import { logins } from './steps/logins.ts';
 import { favourite } from './steps/favourite.ts';
 import { trust } from './steps/trust.ts';
+import { hub } from './steps/hub.ts';
+import { aide } from './steps/aide.ts';
 import type { SetupLine, SetupOptions, SetupStep, SetupVerdict } from './types.ts';
 
-// Only built steps appear. Accounts joins before favourite; hub and aide follow trust.
-const STEPS: readonly SetupStep[] = [project, harnesses, logins, favourite, trust];
+// Accounts joins before favourite; workbench hand-over follows this report.
+const STEPS: readonly SetupStep[] = [project, harnesses, logins, favourite, trust, hub, aide];
 export type SetupReport = {
   root: string;
   version: string;

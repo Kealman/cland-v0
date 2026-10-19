@@ -37,7 +37,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   assert.equal(report.version, VERSION);
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
-  assert.equal(report.steps.length, 9);
+  assert.equal(report.steps.length, 11);
   assert.equal(report.steps.at(-1).verdict, 'open');
   assert.deepEqual(prompter.asked, []);
   assert.match(stderr, /without a terminal/);
@@ -123,14 +123,14 @@ test('setup executable JSON reports open installers without running any harness'
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
-  const result = await clandWithEnv(root, { CLAND_CLAUDE_BIN: '/missing/claude', CLAND_CODEX_BIN: '/missing/codex', CLAND_OPENCODE_BIN: '/missing/opencode' }, 'setup', root, '--json', '--yes');
+  const result = await clandWithEnv(root, { CLAND_CLAUDE_BIN: '/missing/claude', CLAND_CODEX_BIN: '/missing/codex', CLAND_OPENCODE_BIN: '/missing/opencode' }, 'setup', root, '--json', '--yes', '--no-aide');
   assert.equal(result.code, 1, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.root, root);
   assert.equal(report.interactive, false);
   assert.equal(report.next, 'cland setup');
   assert.deepEqual(report.steps.map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['favourite', 'open'], ['trust', 'skip'],
+    ['project', 'ok'], ['claude-code', 'open'], ['codex', 'open'], ['opencode', 'open'], ['favourite', 'open'], ['trust', 'skip'], ['hub', 'skip'], ['aide', 'skip'],
   ]);
   assert.match(result.stderr, /without a terminal/);
 });
@@ -155,10 +155,10 @@ test('setup retains the CLI root spelling for Codex trust', async t => {
   };
   let output = '';
   const io = { machine, prompter: scriptedPrompter([]), write: (s: string) => { output += s; }, narrate: () => {} };
-  assert.equal(await runSetup([alias, '--json'], root, { HOME: root }, io), 1);
-  assert.equal(JSON.parse(output).steps.at(-1).verdict, 'open');
+  assert.equal(await runSetup([alias, '--json', '--no-aide'], root, { HOME: root }, io), 1);
+  assert.equal(JSON.parse(output).steps.at(-3).verdict, 'open');
   await writeFile(file, canonical + `[projects.${JSON.stringify(alias)}]\ntrust_level = "trusted"\n`);
   output = '';
-  assert.equal(await runSetup([alias, '--json'], root, { HOME: root }, io), 0);
-  assert.equal(JSON.parse(output).steps.at(-1).verdict, 'ok');
+  assert.equal(await runSetup([alias, '--json', '--no-aide'], root, { HOME: root }, io), 0);
+  assert.equal(JSON.parse(output).steps.at(-3).verdict, 'ok');
 });

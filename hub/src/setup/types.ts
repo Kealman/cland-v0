@@ -1,3 +1,5 @@
+import type { SetupHub } from './hub.ts';
+import type { projectKind } from './project-kind.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
 import type { HarnessProbe } from '../doctor/toolchain.ts';
 import type { Prompter } from './prompter.ts';
@@ -29,6 +31,9 @@ export type SetupOptions = {
   prompter: Prompter;
   machine: SetupMachine;
   install?: HarnessId;
+  noAide?: boolean;
+  hub?: SetupHub;
+  kind?: typeof projectKind;
   narrate?: (text: string) => void;
   json?: boolean;
 };

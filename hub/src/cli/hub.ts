@@ -83,7 +83,7 @@ async function waitForExit(pid: number, ms: number): Promise<boolean> {
   return !pidAlive(pid);
 }
 
-async function start(root: string, io: Io, starter: Starter, autostart: boolean): Promise<number> {
+export async function startProjectHub(root: string, io: Io, starter: Starter, autostart: boolean, env: NodeJS.ProcessEnv = process.env): Promise<number> {
   const since = new Date();
   const l = layout(root);
   if (autostart && autostartDeferred(root)) {
@@ -107,7 +107,7 @@ async function start(root: string, io: Io, starter: Starter, autostart: boolean)
   mkdirSync(l.logDir, { recursive: true });
   const logFd = openSync(l.log, 'a');
   const logStart = fstatSync(logFd).size;
-  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve', '--starter', JSON.stringify(starter), ...(autostart ? ['--autostart'] : [])], { cwd: root, detached: true, stdio: ['ignore', logFd, logFd], env: process.env });
+  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve', '--starter', JSON.stringify(starter), ...(autostart ? ['--autostart'] : [])], { cwd: root, detached: true, stdio: ['ignore', logFd, logFd], env });
   closeSync(logFd);
   child.unref();
   let exited: number | null = null;
@@ -396,7 +396,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   const l = { ...layout(target ?? root), discovery };
   switch (sub) {
     case 'start':
-      return start(root, io, starter, rest.includes('--autostart'));
+      return startProjectHub(root, io, starter, rest.includes('--autostart'));
     case 'subscriptions': {
       const hub = readDiscovery(l.discovery);
       if (!hub) throw new Error('no hub running');

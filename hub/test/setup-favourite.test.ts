@@ -158,7 +158,7 @@ test('setup routes the explicit harness flag to the favourite step without a ter
   const { root, machine } = options;
   for (const [harness, verdict] of [['codex', 'done'], ['opencode', 'fail']] as const) {
     let stdout = '';
-    const code = await runSetup(['--harness', harness, root, '--json'], root, options.env, { machine, prompter: scriptedPrompter([]), stdinTTY: false, write: s => { stdout += s; }, narrate: () => {} });
+    const code = await runSetup(['--no-aide', '--harness', harness, root, '--json'], root, options.env, { machine, prompter: scriptedPrompter([]), stdinTTY: false, write: s => { stdout += s; }, narrate: () => {} });
     assert.equal(code, verdict === 'done' ? 0 : 1);
     assert.equal(JSON.parse(stdout).steps.find((s: { name: string }) => s.name === 'favourite').verdict, verdict);
   }
@@ -175,7 +175,7 @@ test('an explicit install can supply the favourite selected in the same JSON set
     installed.push('codex');
     return 0;
   };
-  const code = await runSetup(['--json', '--harness', 'codex', '--install', 'codex'], options.root, options.env, {
+  const code = await runSetup(['--no-aide', '--json', '--harness', 'codex', '--install', 'codex'], options.root, options.env, {
     machine: options.machine, prompter: scriptedPrompter([]), stdinTTY: false,
     write: s => { stdout += s; }, narrate: s => { stderr += s; },
   });
@@ -183,8 +183,8 @@ test('an explicit install can supply the favourite selected in the same JSON set
   const report = JSON.parse(stdout);
   assert.equal(report.steps.find((s: { name: string }) => s.name === 'codex').verdict, 'done');
   assert.deepEqual(report.steps.find((s: { name: string }) => s.name === 'favourite'), { name: 'favourite', verdict: 'done', detail: 'codex' });
-  assert.deepEqual(report.steps.slice(-2).map((s: { name: string }) => s.name), ['favourite', 'trust']);
-  assert.equal(report.steps.at(-1).verdict, 'ok');
+  assert.deepEqual(report.steps.slice(-4, -2).map((s: { name: string }) => s.name), ['favourite', 'trust']);
+  assert.equal(report.steps.at(-3).verdict, 'ok');
   assert.equal(parseRoles(await readFile(path, 'utf8')).get('aide')!.launch.harness, 'codex');
   assert.equal(await projectSetUp(options.root), true);
   assert.match(stderr, /chatgpt.com\/codex\/install.sh/);
@@ -196,12 +196,12 @@ test('an explicit favourite leaves missing trust open without yes', async t => {
   const config = join(options.root, '.codex/config.toml');
   await rm(config);
   let stdout = '';
-  const code = await runSetup(['--json', '--harness', 'codex'], options.root, options.env, {
+  const code = await runSetup(['--no-aide', '--json', '--harness', 'codex'], options.root, options.env, {
     machine: options.machine, prompter: scriptedPrompter([]), stdinTTY: false,
     write: s => { stdout += s; }, narrate: () => {},
   });
   assert.equal(code, 1);
-  assert.deepEqual(JSON.parse(stdout).steps.slice(-2).map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [['favourite', 'done'], ['trust', 'open']]);
+  assert.deepEqual(JSON.parse(stdout).steps.slice(-4, -2).map((s: { name: string; verdict: string }) => [s.name, s.verdict]), [['favourite', 'done'], ['trust', 'open']]);
   assert.equal(parseRoles(await readFile(path, 'utf8')).get('aide')!.launch.harness, 'codex');
   await assert.rejects(readFile(config), { code: 'ENOENT' });
 });
