@@ -1,5 +1,6 @@
 // T1: batch policy at the durable controller/Suites seam, FakeClock and in-process executor receipts.
 import { join } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { TaskMerges } from '../src/hub/merge.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
@@ -15,6 +16,32 @@ import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import { selectionFromEnv, selectionTransport } from '../src/suite-selection.ts';
+import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
+
+test('batch failing-file selections round-trip to exactly the requested package files', async t => {
+  // T1: real Suites admission, transport decoder and package planner; no worker needed.
+  const f = await suiteUnit(t);
+  const hub = 'hub/test/example.test.ts', nvim = 'nvim/test/example.test.ts';
+  const tests = { [hub]: 'T1', 'hub/test/unrelated.test.ts': 'T1', [nvim]: 'T2', 'nvim/test/unrelated.test.ts': 'T2' } as const;
+  for (const file of Object.keys(tests)) {
+    await mkdir(join(f.root, file, '..'), { recursive: true });
+    await writeFile(join(f.root, file), '');
+  }
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  for (const files of [[hub], [nvim], [hub, nvim]]) {
+    const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true,
+      batch: { id: 'batch', members: [], diagnostic: { key: 'omit-0', files } } }, () => {});
+    assert.ok('dryRun' in result);
+    const transport = selectionTransport(result.selection, join(f.root, 'selection.json'));
+    assert.equal(transport.file, undefined);
+    const selection = selectionFromEnv(transport.env)!;
+    assert.deepEqual(selection, result.selection);
+    assert.deepEqual(selection.shard, { files: files.includes(hub) ? [hub] : [], nvim: files.includes(nvim) });
+    const phases = await packageShards(f.root, selection.mode, selection.shard, selection, { workers: 1 });
+    assert.deepEqual(phases.flatMap(phase => phase.targets).sort(), files.toSorted());
+  }
+});
 
 async function fixture(t: Parameters<typeof suiteUnit>[0]) {
   const f = await suiteUnit(t, { executor: 'droplet' });
@@ -59,7 +86,8 @@ test('a red single-member batch refuses the member with its failing identity', a
   assert.equal(f.suites.status().length, 1, 'singleton needs no diagnostic rerun');
 });
 
-test('a red triple lands the unique green leave-one-out tree', async t => {
+test('a red hub-only triple reaches a unique green leave-one-out verdict through runner selection decoding', async t => {
+  // T1: compose real MergeBatches, Suites and the runner decoder with executor receipts.
   const { f, runner, boundary, dropped, landed, reports } = await fixture(t);
   const build = boundary.build;
   boundary.build = async (id, members) => {
@@ -78,6 +106,8 @@ test('a red triple lands the unique green leave-one-out tree', async t => {
   await runner.tick();
   for (let index = 0; index < 3; index++) {
     const diagnostic = f.suites.status().at(-1)!;
+    const transport = selectionTransport(diagnostic.selection, join(f.root, 'selection.json'));
+    assert.deepEqual(selectionFromEnv(transport.env), diagnostic.selection, 'the runner must accept each diagnostic before producing its test receipt');
     assert.deepEqual(diagnostic.selection?.shard, { files: ['hub/test/example.test.ts'], nvim: false });
     assert.equal(diagnostic.selection?.loadGate, false);
     assert.equal(diagnostic.cached, undefined);
@@ -86,6 +116,7 @@ test('a red triple lands the unique green leave-one-out tree', async t => {
   }
   assert.match(dropped[0]!, /T-2: merge-bisected.*rejects stale input/);
   assert.deepEqual(landed, ['T-1', 'T-3']);
+  assert.equal(runner.snapshot(), null, 'diagnosis completes instead of holding an inconclusive batch');
   assert.equal(f.suites.status().length, 4, 'one batch plus at most three file jobs');
   assert.match(reports.at(-1)!, /file job.*tree without-culprit.*seconds.*cost/s);
 });
