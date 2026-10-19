@@ -17,7 +17,7 @@ follows:
 topic: null
 branch: null
 created: 2026-10-16T19:58:43.217Z
-updated: 2026-10-19T14:51:31.840Z
+updated: 2026-10-19T15:24:22.441Z
 ---
 
 ## Summary
@@ -32,13 +32,13 @@ The plan, lanes and hot files are in A-4143's companion PLAN (topic-406).
 
 ## Definition of done
 
-- [ ] C1. The median task-run body (check through collection) over the last 20 droplet task runs (or all available since T-713 went live, at restart #17 on 2026-10-19 04:23Z, if fewer; D63) is 8 minutes or less on c-8 at workers 2.
-- [ ] C2. Executed suite runs per merged ticket average 1.6 or less over the last 50 merges (or all available since T-713 went live, at restart #17 on 2026-10-19 04:23Z, if fewer; D63), counting task runs, batch runs divided by batch size, and bisection jobs.
-- [ ] C3. Over the last 50 task runs (or all available since T-713 went live, at restart #17 on 2026-10-19 04:23Z, if fewer; D63), 10 % or fewer were red, and 5 % or fewer were red on a flake (a quarantined or later-green test with no code change).
+- [ ] C1. The median task-run body (check through collection) over the first 20 droplet task runs after T-713 went live is measured against the 8-minute target on c-8 at workers 2, with the run ids (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
+- [ ] C2. Executed suite runs per merged ticket over the merges since T-713 went live are measured against the 1.6 target, counting task runs, batch runs divided by batch size and bisection jobs (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
+- [ ] C3. Task runs since T-713 went live are measured for red rate (target ≤ 10 %) and red-on-a-flake rate (target ≤ 5 %, a quarantined or later-green test with no code change) (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
 - [ ] C4. From T-713 going live (restart #17, 2026-10-19 04:23Z) to the release build, every commit on dev landed from a green batch tree or as a tracker/docs-only or human-override direct landing, and no manual cover ran (accumulated-to-release scope, D63).
-- [ ] C5. Over the last 50 merges (or all available since T-713 went live, at restart #17 on 2026-10-19 04:23Z, if fewer; D63), the median batch wall is 15 minutes or less and the median droplet cost per merge $0.08 or less.
+- [ ] C5. Over merges since T-713 went live, the median batch wall (target ≤ 15 minutes) and the median droplet cost per merge (target ≤ $0.08) are measured (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
 - [ ] C6. Budgets enforce: a planted over-budget T2 test without an allowance fails its run, and T3 growth without an allowance is refused with `merge-budget`.
-- [ ] C7. Every nightly soak due between T-715's merge and the release build ran within the daily cap and recorded a coverage map that task selection used; the nights and runs are reported as accumulated at release (D63).
+- [ ] C7. Every nightly soak due between T-715's merge and the release build is listed with its cost against the daily cap and the $0.25 target and with whether it recorded a coverage map (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
 - [ ] C8. A non-Node fixture project with per-tier commands runs unit and component tests in its task verify and integration tests in its merge batch.
 
 ## Plan

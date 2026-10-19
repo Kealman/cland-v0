@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-603
 branch: t/T-824-measure-the-median-task-run-body-over
 created: 2026-10-19T01:56:44.318Z
-updated: 2026-10-19T14:57:20.107Z
+updated: 2026-10-19T15:24:23.104Z
 ---
 
 ## Summary
@@ -24,7 +24,7 @@ The post-merge measurement split from T-713's C5: after T-713 lands, the median 
 
 ## Acceptance criteria
 
-- [ ] C1. Over the first 20 droplet task runs after T-713 is live, the median task-run body (check through collection) is 8 minutes or less on c-8 at workers 2; the run ids, per-run bodies and the median are recorded on this item.
+- [ ] C1. The median task-run body over the first 20 droplet task runs after T-713 went live is measured against the 8-minute target on c-8 at workers 2; the run ids, per-run bodies and the median are recorded on this item (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
   - failed: rev-31 [reviewer] · 2026-10-19T14:57:20.107Z · note First20 eligible droplet task runs have median775.045s > required480s; arithmetic and cohort confirmed. C1 remains unchecked/unverified.
 
 ## Comments

@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-580
 branch: t/T-666-cland-verify-runs-the-project-s-own
 created: 2026-10-16T16:35:24.419Z
-updated: 2026-10-19T15:06:12.238Z
+updated: 2026-10-19T15:24:16.920Z
 ---
 
 ## Summary

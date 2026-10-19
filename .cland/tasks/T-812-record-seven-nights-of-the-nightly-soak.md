@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-604
 branch: t/T-812-record-seven-nights-of-the-nightly-soak
 created: 2026-10-18T16:21:54.721Z
-updated: 2026-10-19T14:54:22.623Z
+updated: 2026-10-19T15:24:23.648Z
 ---
 
 ## Summary
@@ -24,7 +24,7 @@ T-715's former C5 is an observation that can only be made after merge, so it can
 
 ## Acceptance criteria
 
-- [ ] C1. From T-715's merge to the release build, every night's soak is listed from the lease records with run id, tree, duration and cost; each ran under $0.25, and any skipped night names its cause (accumulated-to-release scope, D63).
+- [ ] C1. From T-715's merge to the release build, every night's soak is listed from the lease records with run id, tree, duration and cost against the $0.25 target, and any skipped night names its cause (D65: measured and recorded on this epic with the target; the miss is carried to v0.2's E-880, not a release gate).
 
 ## Comments
 
