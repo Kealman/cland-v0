@@ -4,7 +4,7 @@ import { mkdir, stat } from 'node:fs/promises';
 import type { MergeQueueEntry } from '../protocol.ts';
 import { MergeError } from '../merge.ts';
 import { mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, type MergeTreeFacts } from '../territory.ts';
-import { committedTree } from '../verification-tree.ts';
+import { committedTreeOrThrow } from '../verification-tree.ts';
 import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
 
@@ -32,7 +32,7 @@ export async function batchRebuildReason(root: string, tested: BatchCandidate, c
 export async function prepareMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository, pinnedBase?: string): Promise<BatchCandidate> {
   const repository = provider ?? { git: (args: string[], input?: string) => territoryGitAsync(root, args, false, input, env),
     facts: (tree: string, head: string, base: string) => mergeTreeFacts(root, tree, head, base, undefined, env),
-    identity: (head: string) => committedTree(root, head, env),
+    identity: (head: string) => committedTreeOrThrow(root, head, env),
     checkout: (candidate: BatchCandidate) => checkoutMergeBatch(root, candidate, env),
     remove: (candidate: BatchCandidate) => removeMergeBatch(root, candidate, env) };
   const git = repository.git;
@@ -56,8 +56,13 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
       throw error;
     }
   }
-  const tree = await repository.identity(head);
-  if (!tree) throw new Error('cannot identify batch candidate tree');
+  let tree: string | null;
+  try {
+    tree = await repository.identity(head);
+    if (!tree) throw new Error('repository identity returned no tree (Git output unavailable)');
+  } catch (error) {
+    throw new Error(`cannot identify batch candidate tree for commit ${head}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
   const cwd = join(root, '.cland/run/merge-batches', id);
   return { base, head, tree, cwd, budgetLines: [...new Set(budgetLines)] };
 }

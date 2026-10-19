@@ -74,6 +74,33 @@ async function fixture(t: Parameters<typeof suiteUnit>[0]) {
 const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n';
 const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
 
+test('diagnostic identity failure holds the batch with omission and Git evidence', async t => {
+  const state = await fixture(t);
+  const { f, boundary, runner, dropped, landed, reports } = state;
+  const notices: TopicNotice[] = [];
+  boundary.notice = notice => { notices.push(notice); };
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog);
+  boundary.build = (id, members, base) => prepareMergeBatch(f.root, id, members, {}, {
+    git: async args => args[0] === 'rev-parse' ? members.find(entry => `refs/heads/${entry.branch}` === args[1])!.head
+      : args[0] === 'commit-tree' ? 'fresh-commit' : 'merged-tree\0',
+    facts: async () => ({ context: null, workers: 1 }),
+    identity: async () => { throw new Error('git write-tree: stdout: partial output; stderr: unable to write tree'); },
+    checkout: boundary.checkout, remove: boundary.cleanup,
+  }, base);
+  await runner.tick();
+  assert.match(runner.snapshot()?.failed ?? '', /omitting T-1.*fresh-commit.*git write-tree.*partial output.*unable to write tree/s);
+  assert.deepEqual(runner.snapshot()?.diagnosis?.jobs, []);
+  assert.deepEqual(dropped, []); assert.deepEqual(landed, []);
+  assert.equal(f.suites.status().length, 1, 'no diagnostic job admitted without an identity');
+  assert.equal(notices.length, 1);
+  assert.deepEqual(notices[0]!.to, ['coordinator']);
+  assert.match(notices[0]!.text, /omitting T-1.*git write-tree.*unable to write tree/s);
+  assert.match(reports.at(-1)!, /omitting T-1/);
+  await state.reopen(); await state.runner.tick();
+  assert.equal(notices.length, 1, 'durable hold does not repeat the notice');
+});
+
 test('a red single-member batch refuses the member with its failing identity', async t => {
   const { f, runner, entries, dropped, landed } = await fixture(t);
   entries.splice(1);

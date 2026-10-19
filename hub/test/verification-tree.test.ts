@@ -4,8 +4,54 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { candidateTree, committedTree } from '../src/verification-tree.ts';
+import { candidateTree, committedTree, committedTreeOrThrow } from '../src/verification-tree.ts';
+import { prepareMergeBatch } from '../src/hub/merge-batch-territory.ts';
 import { eventually, tempProject } from './harness.ts';
+
+test('strict historical identity retains Git failure output while cache lookup returns null', async t => {
+  // T3: real Git failure-output contract, without a fake executable.
+  const root = await tempProject(t);
+  await promisify(execFile)('git', ['init', '-q'], { cwd: root });
+  await assert.rejects(() => committedTreeOrThrow(root, 'missing-candidate'), error => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /git read-tree missing-candidate failed/);
+    assert.match(error.message, /stdout: \(empty\); stderr: fatal:/);
+    assert.match(error.message, /missing-candidate/);
+    return true;
+  });
+  assert.equal(await committedTree(root, 'missing-candidate'), null);
+});
+
+test('diagnostic candidate hashing excludes tracker versions differing from HEAD and live files', async t => {
+  // T3: real Git index safety contract; in-memory Git cannot reproduce rm's refusal.
+  const root = await tempProject(t);
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
+  await git('init', '-qb', 'dev');
+  await git('config', 'user.name', 'Test');
+  await git('config', 'user.email', 'test@example.com');
+  await git('config', 'commit.gpgsign', 'false');
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, 'source'), 'code\n');
+  const paths = ['.cland/tasks/T-1.md', '.cland/RULES.md'];
+  for (const path of paths) await writeFile(join(root, path), 'base\n');
+  await git('add', '.'); await git('commit', '-qm', 'Base');
+  const base = await git('rev-parse', 'HEAD');
+  for (const path of paths) await writeFile(join(root, path), 'candidate\n');
+  await git('add', '.');
+  const tip = await git('commit-tree', await git('write-tree'), '-p', base, '-m', 'Member');
+  await git('update-ref', 'refs/heads/t/1', tip);
+  await git('reset', '--hard', base);
+  for (const path of paths) await writeFile(join(root, path), 'live tracker update\n');
+  const index = await readFile(join(root, '.git/index'));
+  // The independent expected tree contains only the literal source blob.
+  const blob = await git('rev-parse', `${base}:source`);
+  const candidate = await prepareMergeBatch(root, 'omit-0', [{ item: 'T-1', branch: 't/1', head: tip, verdictBase: 'dev', enqueued: '2026-10-19T00:00:00Z', by: { id: 'coord', name: 'coord', role: 'coordinator' } }], process.env, undefined, base);
+  assert.ok(await committedTree(root, candidate.head), 'fresh unreferenced commit has an identity');
+  assert.equal(await git('ls-tree', candidate.tree), `100644 blob ${blob}\tsource`);
+  assert.deepEqual(await readFile(join(root, '.git/index')), index);
+  assert.equal(await git('rev-parse', 'HEAD'), base);
+  for (const path of paths) assert.equal(await readFile(join(root, path), 'utf8'), 'live tracker update\n');
+});
 
 for (const change of ['tracker', 'rulebook', 'source', 'dirty source', 'strict head'] as const) {
   test(`candidate hashing observes an overlapping ${change} change`, async t => {

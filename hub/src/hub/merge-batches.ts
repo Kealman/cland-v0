@@ -194,7 +194,15 @@ export class MergeBatches {
       if (!job) {
         const omitted = batch.members[index]!.item;
         const key = `omit-${index}`;
-        job = { key, omitted, candidate: await this.boundary.build(`${batch.id}-${key}`, batch.members.filter(e => e.item !== omitted), batch.candidate!.base) };
+        try {
+          job = { key, omitted, candidate: await this.boundary.build(`${batch.id}-${key}`, batch.members.filter(e => e.item !== omitted), batch.candidate!.base) };
+        } catch (error) {
+          if (error instanceof BatchRefusal) throw error;
+          this.#hold(batch, `diagnostic candidate omitting ${omitted}: ${error instanceof Error ? error.message : String(error)}`,
+            `Original run ${batch.run}; tree ${batch.candidate!.tree}; failure log ${diagnosis.failure.log.artifact}: ${diagnosis.failure.log.path}`,
+            { event: 'merge-diagnostic-preparation-failed', omitted });
+          return;
+        }
         diagnosis.jobs.push(job); this.#save(batch);
       }
       if (!await this.#fileJob(batch, job)) return;
@@ -250,7 +258,7 @@ export class MergeBatches {
   #hold(batch: MergeBatch, reason: string, evidence: string, detail: Record<string, unknown>): void {
     this.store.transaction(() => {
       batch.failed = reason;
-      const text = `batch ${batch.id} held: ${reason}\nCoordinator: diagnose the aborted run before recovering this batch; no member has been blamed or refused.\n${evidence}`;
+      const text = `batch ${batch.id} held: ${reason}\nCoordinator: diagnose the held batch before recovering it; no member has been blamed or refused.\n${evidence}`;
       this.boundary.notice({ id: `merge-inconclusive:${batch.id}`, kind: 'report', to: ['coordinator'], text, detail: { ...detail, batch: batch.id } });
       this.boundary.report(batch, text); this.#save(batch);
     });

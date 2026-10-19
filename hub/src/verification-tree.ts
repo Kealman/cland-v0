@@ -31,17 +31,32 @@ export async function candidateTree(cwd: string, head: string | undefined, env: 
 
 /** Historical evidence uses the same tree identity without requiring that build to be checked out. */
 export async function committedTree(cwd: string, head: string, env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  return committedTreeOrThrow(cwd, head, env).catch(() => null);
+}
+
+/** Candidate preparation must retain Git's failure evidence instead of treating it as a cache miss. */
+export async function committedTreeOrThrow(cwd: string, head: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), 'cland-candidate-'));
   try {
-    const git = async (args: string[], index = false) => (await exec('git', args, {
-      cwd, timeout: 10_000, maxBuffer: 8 * 1024 * 1024,
-      env: { ...env, ...(index ? { GIT_INDEX_FILE: join(dir, 'index') } : {}) },
-    })).stdout.trim();
+    const git = async (args: string[]) => {
+      try {
+        return (await exec('git', args, {
+          cwd, timeout: 10_000, maxBuffer: 8 * 1024 * 1024,
+          env: { ...env, GIT_INDEX_FILE: join(dir, 'index') },
+        })).stdout.trim();
+      } catch (error) {
+        const failure = error as Error & { stdout?: string; stderr?: string; code?: string | number };
+        throw new Error(`git ${args.join(' ')} failed (${failure.code ?? failure.message}); stdout: ${failure.stdout || '(empty)'}; stderr: ${failure.stderr || '(empty)'}`, { cause: error });
+      }
+    };
     // A private index neither reads nor changes the user's staged changes.
-    await git(['read-tree', head], true);
-    await git(['rm', '--quiet', '-r', '--cached', '--ignore-unmatch', '--', ...excludedPaths], true);
-    const tree = await git(['write-tree'], true);
+    await git(['read-tree', head]);
+    // Historical tracker versions can differ from both HEAD and live files.
+    // Force is safe here: only this disposable index is changed, never the worktree.
+    await git(['rm', '--force', '--quiet', '-r', '--cached', '--ignore-unmatch', '--', ...excludedPaths]);
+    const tree = await git(['write-tree']);
+    if (!tree) throw new Error('git write-tree returned empty stdout');
     return tree;
-  } catch { return null; }
+  }
   finally { await rm(dir, { recursive: true, force: true }); }
 }
