@@ -66,7 +66,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
         const deadline = setTimeout(() => resolve(false), 500);
         void ended.then(() => { clearTimeout(deadline); resolve(true); }, () => { clearTimeout(deadline); resolve(false); });
       });
-      if (!pipesClosed) cause += `; cleanup incomplete: unverified inherited-pipe writer (npm pid ${child.pid}; stdout ${child.stdout.readableEnded ? 'closed' : 'open'}; stderr ${child.stderr.readableEnded ? 'closed' : 'open'})`;
+      if (!pipesClosed) cause += `; cleanup incomplete: unverified inherited-pipe writer (command pid ${child.pid}; stdout ${child.stdout.readableEnded ? 'closed' : 'open'}; stderr ${child.stderr.readableEnded ? 'closed' : 'open'})`;
     })();
     // Observe immediately; propagate cleanup failures below without an unhandled rejection.
     void ending.then(stopped.resolve, stopped.resolve);
@@ -112,7 +112,7 @@ export async function suiteCommand(line: string, cwd: string, env: NodeJS.Proces
       return { code: 1, signal: null };
     })]);
     await ending;
-    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || (outcome.signal ? `npm terminated by ${outcome.signal}` : '') };
+    return { code: cause ? 1 : outcome.code ?? 1, cause: cause || (outcome.signal ? `command terminated by ${outcome.signal}` : '') };
   } finally {
     closed = true;
     clearTimeout(timer);

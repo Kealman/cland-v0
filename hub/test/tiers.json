@@ -333,6 +333,7 @@
     "hub/test/suite-close-component.test.ts": "T2",
     "hub/test/suite-close-recovery.test.ts": "T3",
     "hub/test/suite-close.test.ts": "T3",
+    "hub/test/suite-command.test.ts": "T2",
     "hub/test/suite-cover.test.ts": "T1",
     "hub/test/suite-coverage-selection.test.ts": "T1",
     "hub/test/suite-coverage.test.ts": "T3",
