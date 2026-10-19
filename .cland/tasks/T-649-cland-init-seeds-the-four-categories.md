@@ -2,8 +2,8 @@
 id: T-649
 kind: task
 title: "cland init seeds the four categories: Bugs, Tech debt, Follow-ups and Ideas"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-544
 branch: t/T-649-cland-init-seeds-the-four-categories
 created: 2026-10-16T16:24:00.181Z
-updated: 2026-10-19T02:34:16.607Z
+updated: 2026-10-19T02:34:21.423Z
+closed: 2026-10-19T02:34:21.423Z
 ---
 
 ## Summary
@@ -89,3 +90,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from source A-5719 and accepted exact-head gate 49e4d2f6/A-5726; raw evidence audit A-5728. Hub-only plus Neovim smoke: 2382 passed, 5 skips, zero failures/cancellations. Category 7/7, first-commit 9/9 and all 80 corresponding repetition bodies pass; changed init/role/worktree/doctor carriers pass. Exact roots, first-commit membership/clean status, repeat count, byte-preserved Ideas, update exclusion and shared migration titles established. Custom-ladder exception remains covered. Three known T-803 report-only trips and other diagnostics remain disclosed. No findings; C1–C6 verified; QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T02:34:21.423Z
+
+Merged 12d3c5abdeffe4866a7e99304add5eb1149befe1 onto dev.
