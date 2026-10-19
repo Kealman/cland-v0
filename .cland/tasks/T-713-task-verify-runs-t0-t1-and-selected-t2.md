@@ -2,8 +2,8 @@
 id: T-713
 kind: task
 title: Task verify runs T0, T1 and selected T2, and T3 runs only in merge batches and occasions
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -22,7 +22,8 @@ blocked_by:
 topic: topic-543
 branch: t/T-713-task-verify-runs-t0-t1-and-selected-t2
 created: 2026-10-16T19:59:43.795Z
-updated: 2026-10-19T03:20:24.445Z
+updated: 2026-10-19T03:20:35.322Z
+closed: 2026-10-19T03:20:35.322Z
 ---
 
 ## Summary
@@ -300,3 +301,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5742.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T03:20:35.322Z
+
+Merged 2b0f3345854be6efdf30b89298075dbd5d7b80fe onto dev.
