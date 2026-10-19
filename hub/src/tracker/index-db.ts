@@ -144,6 +144,8 @@ type VerdictRecord = Verdict & { author: string; at: string };
 type KeyedVerdict = { verdict: VerdictRecord; key: string };
 export type CheckoutRecovery = { before: string; after: string };
 export type MergeReceipt = { branch: string; tip: string; base: string; commit: string; override?: string; checkout?: CheckoutRecovery };
+/** Durable completed stage evidence, independent of the suite cache and rebuildable item index. */
+export type StageClosure = { hash: string; head: string; tree: string; linux: string; macos: string };
 
 export type IndexMeta = { file: string; hash: string; source: Source; indexedAt: number };
 
@@ -336,6 +338,16 @@ export class TrackerIndex {
   rememberPlannedEntry(id: string, entry: { stage: string | null; items: number[] }): void {
     this.#db.prepare('insert into tracker_meta (key, value) values (?, ?) on conflict(key) do update set value = excluded.value')
       .run(`planned-entry:${idNumber(id)}`, JSON.stringify(entry));
+  }
+
+  stageClosure(id: string, stage: string): StageClosure | null {
+    const row = this.#db.prepare('select value from tracker_meta where key = ?').get(`stage-closure:${idNumber(id)}:${stage}`) as Row | undefined;
+    return row ? JSON.parse(row.value as string) as StageClosure : null;
+  }
+
+  recordStageClosure(id: string, stage: string, closure: StageClosure): void {
+    this.#db.prepare('insert into tracker_meta (key, value) values (?, ?) on conflict(key) do update set value = excluded.value')
+      .run(`stage-closure:${idNumber(id)}:${stage}`, JSON.stringify(closure));
   }
 
   remove(id: string): void {

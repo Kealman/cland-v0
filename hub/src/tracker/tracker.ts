@@ -29,7 +29,7 @@ import type { SessionHold } from '../protocol.ts';
 const untimed: Resumed = work => work();
 import { basename, join } from 'node:path';
 import { parseFindings, countFindings, type Finding } from './findings.ts';
-import { commentKey, TrackerIndex, type Claim, type VerifierHold, type IndexedItem, type IndexedVerdict, type ListFilter } from './index-db.ts';
+import { commentKey, TrackerIndex, type Claim, type VerifierHold, type IndexedItem, type IndexedVerdict, type ListFilter, type StageClosure } from './index-db.ts';
 import {
   COMMENTS_HEADING,
   fileNameOf,
@@ -126,7 +126,7 @@ export type ItemView = IndexedItem & {
   mergeQueue?: { position: number; enqueued: string };
   warnings?: string[];
   planError?: string;
-  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; cover?: { tree: string | null; missing: StagePlatform[]; linux?: string; macos?: string } }>;
+  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; closure?: Omit<StageClosure, 'hash'>; cover?: { tree: string | null; missing: StagePlatform[]; linux?: string; macos?: string } }>;
   planHistory?: PlanHistoryEntry[];
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
@@ -256,6 +256,7 @@ export class Tracker {
   #storageError = 'tracker storage abandoned during shutdown';
   #abandonedOperations: StorageOperation[] = [];
   readonly #root: string;
+  readonly #readStageTree: (head: string) => Promise<string | null>;
   readonly #dir: string;
   readonly #index: TrackerIndex;
   readonly #log: LogFn;
@@ -318,7 +319,7 @@ export class Tracker {
   #verifyImmediate: NodeJS.Immediate | null = null;
   readonly #shown = new Map<string, string>();
 
-  constructor(options: { onDevTip?: (head: string | null) => void; clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
+  constructor(options: { stageTree?: (head: string) => Promise<string | null>; onDevTip?: (head: string | null) => void; clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     this.#clock = options.clock ?? realClock;
     this.#parse = options.parse ?? parseItem;
     this.#watch = options.watch ?? watchFolder;
@@ -358,6 +359,7 @@ export class Tracker {
     };
     this.#watchResumed = options.watchResumed ?? untimed;
     this.#root = options.root;
+    this.#readStageTree = options.stageTree ?? (head => committedTree(this.#root, head, this.#env));
     this.#writeGate = options.writeGate;
     this.#dir = join(options.root, TASKS_REL);
     this.#log = options.log ?? (() => {});
@@ -1632,11 +1634,13 @@ export class Tracker {
 
   #stageCurrent(id: string, v: IndexedVerdict): boolean {
     const snapshot = v.stage === undefined ? null : this.#stageSnapshot(id, v.stage);
+    const closure = v.stage === undefined ? null : this.#index.stageClosure(id, v.stage);
     const claim = this.#index.claimOf(id);
     const independent = !claim || !['implementer', 'aide'].includes(claim.role ?? '') || !v.writer || !this.sameSession(claim.sessionId, v.writer.sessionId);
     return independent && v.source === 'hub' && v.writer?.role === 'qa' && v.writer.sessionId !== 'human' && !v.writer.sessionId.startsWith('cli:')
       && !!v.commit && !!snapshot?.merged && snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none' && snapshot.hash === v.stage_hash
-      && this.#fresh.ancestor(id, v.commit) === true && this.#stageCover(id, snapshot, v.commit).missing.length === 0;
+      && (this.#fresh.ancestor(id, v.commit) ?? (closure?.hash === snapshot.hash && closure.head === v.commit))
+      && this.#stageCover(id, v.stage!, snapshot, v.commit).missing.length === 0;
   }
 
   #stageTree(id: string, head: string | null): string | null {
@@ -1650,7 +1654,7 @@ export class Tracker {
       this.#runBackground(async () => {
         // The request only schedules work; Git and its private index run off-path.
         await new Promise<void>(resolve => setImmediate(resolve));
-        const tree = await committedTree(this.#root, head, this.#env).catch(() => null);
+        const tree = await this.#readStageTree(head).catch(() => null);
         this.#stageTrees.set(head, tree); this.#stageTreePending.delete(head);
         const ids = [...(this.#stageTreeWaiters.get(head) ?? [])];
         this.#stageTreeWaiters.delete(head);
@@ -1670,8 +1674,12 @@ export class Tracker {
     return this.#stageTrees.get(head) ?? null;
   }
 
-  #stageCover(id: string, snapshot: { items: string[] }, build?: string): NonNullable<NonNullable<ItemView['stages']>[number]['cover']> {
+  #stageCover(id: string, name: string, snapshot: { hash: string; items: string[] }, build?: string): NonNullable<NonNullable<ItemView['stages']>[number]['cover']> {
     this.#stageCoverDependents.add(id);
+    const recorded = this.#index.stageClosure(id, name);
+    if (recorded?.hash === snapshot.hash && (!build || build === recorded.head)) {
+      return { tree: recorded.tree, missing: [], linux: recorded.linux, macos: recorded.macos };
+    }
     const covers = this.#stageCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
     const landings = snapshot.items.flatMap(child => this.#index.mergeReceipt(child)?.commit ?? []);
@@ -1693,10 +1701,25 @@ export class Tracker {
       const snapshot = this.#stageSnapshot(item.fm.id, stage.name)!;
       const verdict = evidence.missing ? undefined : evidence.verdicts.filter(v => v.stage === stage.name).at(-1);
       const needsQa = snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none';
-      const cover = snapshot.qa.when === 'after-stage' ? this.#stageCover(item.fm.id, snapshot, needsQa ? verdict?.commit : undefined) : undefined;
-      const closed = item.fm.state === 'closed' || snapshot.merged && (!cover || cover.missing.length === 0) && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
+      const saved = this.#index.stageClosure(item.fm.id, stage.name);
+      let closure = saved?.hash === snapshot.hash && (!needsQa || saved.head === verdict?.commit) ? saved : null;
+      const cover = snapshot.qa.when === 'after-stage' ? this.#stageCover(item.fm.id, stage.name, snapshot, needsQa ? verdict?.commit : undefined) : undefined;
+      const completed = snapshot.merged && (!cover || cover.missing.length === 0)
+        // A recorded closure remains evidence while a moved tip's ancestry check
+        // is pending. An observed rollback (or Git failure) still opens it.
+        && (!closure || this.#fresh.ancestor(item.fm.id, closure.head) !== false)
+        && (!needsQa || !!verdict && verdict.result === 'clear' && this.#stageCurrent(item.fm.id, verdict));
+      if (completed && cover?.tree && cover.linux && cover.macos && !closure) {
+        const head = needsQa ? verdict?.commit : this.#stageCovers().find(run => run.id === cover.linux)?.head;
+        if (head) {
+          closure = { hash: snapshot.hash, head, tree: cover.tree, linux: cover.linux, macos: cover.macos };
+          this.#index.recordStageClosure(item.fm.id, stage.name, closure);
+        }
+      }
+      const closed = item.fm.state === 'closed' || completed;
       return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
         ...(cover ? { cover } : {}),
+        ...(closure ? { closure: { head: closure.head, tree: closure.tree, linux: closure.linux, macos: closure.macos } } : {}),
         ...(verdict ? { verdict: { ...verdict, current: this.#stageCurrent(item.fm.id, verdict) } } : {}) };
     });
   }
