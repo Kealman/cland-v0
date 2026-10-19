@@ -37,8 +37,9 @@ test('role harness round trips preserve every explicit sandbox choice (T-872)', 
   const root = await mkdtemp(join(tmpdir(), 'cland-role-sandbox-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const path = join(root, 'roles.toml');
-  const template = rolesTemplate(['claude-code']);
-  const roles = [...parseRoles(template).keys()];
+  const roles = [...parseRoles(rolesTemplate(['claude-code'])).keys()];
+  // T1: exercise every role's launch edits without repeatedly parsing unrelated default clauses and grants.
+  const template = roles.map(role => `[${role}.launch]\nharness = "claude-code"\n`).join('');
   for (const mode of ['read-only', 'workspace-write', 'danger-full-access', '']) {
     const setting = `"sandbox" = '${mode}' # explicit choice\n`;
     let text = template;
