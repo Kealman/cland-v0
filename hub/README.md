@@ -1,5 +1,34 @@
 # hub
 
+## Start a project with cland
+
+You need Node 24 and Git. Install cland from the release checkout:
+
+```sh
+git clone --depth 1 --branch v0.1.4 https://github.com/Kealman/cland-v0.git ~/.local/share/cland && npm --prefix ~/.local/share/cland ci --omit=dev && npm install -g ~/.local/share/cland
+```
+
+In your project folder, initialise cland:
+
+```sh
+cd /path/to/your-project
+cland init
+```
+
+Use an empty folder or a full clone of an existing project. A shallow project clone is refused: the territory needs the full history. The shallow checkout above installs cland itself.
+
+Then run setup in that same project folder:
+
+```sh
+cland setup
+```
+
+Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub and the Aide.
+
+The workbench opens on the Aide, who leads the Onboarding: who decides what, a first plan you can see, the crew and a Welcome note; on your ok, the Aide commits and pushes the results and starts the Coordinator, then offers the Tour.
+
+To reopen the workbench later, run `cland` in your project folder.
+
 The cland hub: the per-project service sessions talk through, the spoke each session runs, and the `cland` CLI. Node 24, TypeScript run by type stripping (no build step), `node:sqlite`, `ws`, the MCP SDK.
 
 Its core was extracted from an earlier hub (ADR 0003). What was kept, what was dropped and why, and the pointer to the survey behind it (issue #2) are in `docs/hub-extraction.md`.

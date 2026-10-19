@@ -21,8 +21,8 @@ The harness the human talks to, on which the Aide runs; the human chooses it dur
 _Avoid_: default harness, main harness, preferred agent
 
 **Setup**:
-The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it only reports what is open.
-_Avoid_: wizard, installer, onboarding (the Aide's conversation that follows)
+The guided step, in a terminal, that readies a project once it is initialised: the harnesses, their logins and folder trust, the accounts and the Favourite harness, then the hub and the Aide, which it opens in the workbench for the Onboarding. Each step checks first and asks only about what is missing; without a terminal it reports open steps by default, but explicit options can authorise harness installation and folder-trust writes.
+_Avoid_: installer, onboarding (the Aide's conversation that follows)
 **Session**:
 One running interactive instance of a harness, with its own history and working state. A session has a name and at most one role.
 _Avoid_: agent, process, terminal, instance
@@ -52,8 +52,8 @@ A session that works for the human alone: it holds no crew duty, is addressed by
 _Avoid_: assistant, helper, personal session, scratch session, human session
 
 **Onboarding**:
-The Aide's first conversation with the human on a project new to cland, led from a skill: who decides what, a first plan the human sees, the crew, the Welcome note and the Coordinator's start, then the Tour if the human wants it. The human decides; the Aide acts.
-_Avoid_: wizard, setup (the terminal step before it), tutorial, first run
+The Aide's first conversation with the human on a project new to cland, led from a skill: who decides what, a first plan the human sees, the stack, the crew and the Welcome note, then the Tour on request. On the human's ok, the Aide commits what init and the Onboarding wrote, pushes it and launches the Coordinator to work the first release; with only a map, it commits and pushes but waits to launch the Coordinator.
+_Avoid_: setup (the terminal step before it), tutorial, first run
 
 **Tour**:
 The staged walk through what cland does that the Aide offers once the work runs: one stage per round, tied to what is on the human's screen and ending with what to look at now; the human can stop after any stage.
@@ -204,7 +204,7 @@ A file, or a folder with an entry file, that a session or the human shows to oth
 _Avoid_: attachment, upload, document, file (that is a kind), output
 
 **Welcome note**:
-The short note the Onboarding leaves in General, in the human's language: who is who on the crew, the human's rules, the first release and how to reach the Aide.
+The short note titled "Welcome aboard" that the Onboarding leaves in General, in the human's language: who is who on the crew, the human's rules, the first release (or map) and how to reach the Aide.
 _Avoid_: welcome artifact, README, onboarding summary
 **Explorer**:
 The centre view of the item tree: a release, its epics and their tasks, with the categories and the unscheduled items as further roots; it folds in place, scopes to a node and shows the Card of the row under the cursor. It changes nothing by hand: the human steers through a message to the Coordinator.
