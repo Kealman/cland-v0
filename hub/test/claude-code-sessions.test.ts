@@ -1,167 +1,84 @@
-// T3 lifecycle: real Claude hook-process ordering and pre-release failure cleanup,
-// native bridge confirmations, PID reuse and stop escalation.
-// The Claude Code adapter's edges: the order of a session's signals, which launch a signal belongs to, deliveries
-// that wait across a launch, a rename or an unconfirmed inject, resume under a reused pid, and a stop that fails.
-// As in `claude-code-adapter.test.ts`: an in-process hub, the fake Claude Code at the harness process boundary, the
-// real `cland hook` processes, and a scripted UI on the daemon's socket. Nothing inside the hub is mocked.
+// T2: Claude signal attribution and delivery rules through real frames, production interpretation and fake harness I/O.
+// Native hook ordering, early bridge input, PID identity, escalation and held-hook reaping are in the lifecycle split.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { afterCleanup, beforeDirectories, ownProcess } from './process-cleanup.ts';
 import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import { withDiscoveredPid, CLI_ENTRY, FAKE_CLAUDE_DIR, clauseAnswered, connectUi, eventually, fakeClaude, killDaemon, pidAlive, spawnSpoke, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
-import { NO_PS } from './native-process.ts';
-
-type Presence = { name: string; sessionId: string; state: string };
-type Harness = { name: string; pid: number | null; harnessId: string | null; sessionId: string; harnessSessionId: string | null; status: string; state: string };
-type Status = { sessions: Presence[]; harnesses: Harness[] };
-
+import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
+import { realClock } from '../src/hub/clock.ts';
+import { FakeClock } from './fake-clock.ts';
+import { fakeHarness, type FakeHarness } from './fakes/harness.ts';
+import { connectUi, eventually, inProcessSpoke, projectHub, tempProject, type FrameClient } from './harness.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
+type Harness = HarnessProcessView;
+type Status = { sessions: Array<{ name: string; sessionId: string; state: string }>; harnesses: Harness[] };
 async function status(ui: FrameClient): Promise<Status> {
   const r = await ui.request({ type: 'hub.status' });
   assert.equal(r.ok, true, r.error);
   return r.value as Status;
 }
-
 const harness = async (ui: FrameClient, name: string): Promise<Harness> => {
-  const h = (await status(ui)).harnesses.find((x) => x.name === name);
+  const h = (await status(ui)).harnesses.find(x => x.name === name);
   assert.ok(h, `no harness row ${name}`);
   return h;
 };
-
-async function launch(ui: FrameClient, name: string, extra: Record<string, unknown> = {}): Promise<Harness> {
-  const r = await ui.request({ type: 'session.launch', name, ...extra }, 30_000);
-  assert.equal(r.ok, true, r.error);
-  return (r.value as { process: Harness }).process;
-}
-
-const presentAs = (ui: FrameClient, name: string, state: string) =>
-  eventually(`${name} present as ${state}`, async () => ((await status(ui)).sessions.find((s) => s.name === name)?.state === state ? true : undefined));
-
-const hubLog = (root: string) => readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
-
-/** A launched session's first turn, its role clause, is over: answered, and a pushed busy then idle seen after
- *  `mark` (the turn's late signals can no longer move the state: a later idle outranks them). */
-async function clauseTurnDone(ui: FrameClient, name: string, mark: number): Promise<void> {
-  await clauseAnswered(ui, name);
-  await eventually(`${name}: the clause turn's busy, then idle`, () => {
-    const events = ui.frames.slice(mark).filter((f) => f.type === 'session.state' && f.session === name);
-    const busy = events.findIndex((e) => e.state === 'busy' && e.source !== 'poll');
-    return busy >= 0 && events.slice(busy + 1).some((e) => e.state === 'idle') ? true : undefined;
-  });
-  await presentAs(ui, name, 'idle');
-}
-
-/** The id of the role clause the hub recorded for `name` (the latest one). */
-const clauseId = (root: string, name: string) =>
-  eventually(`the clause of ${name} recorded`, async () => [...(await hubLog(root)).matchAll(new RegExp(`"event":"role-clause","session":"${name}"[^\\n]*"id":"([^"]+)"`, 'g'))].at(-1)?.[1]);
-
-const sendGeneral = async (ui: FrameClient, text: string): Promise<string> => {
-  const sent = await ui.request({ type: 'topic.send', topic: 'general', text });
-  assert.equal(sent.ok, true, sent.error);
-  return (sent.value as { message: { id: string } }).message.id;
-};
-
-const injected = (ui: FrameClient, id: string, timeoutMs = 15_000) => ui.waitFor((f) => f.type === 'delivery' && f.message === id && f.stage === 'injected', timeoutMs);
-
-/**
- * One `cland hook <event>` as a harness runs it, the payload on stdin; `done` resolves when it exited (it waits for
- * the hub's answer). `held` gates the process before `cland` runs on fd 3; `started`
- * resolves once the process is running (its start time, the signal's time, is behind it), whatever the machine's load.
- */
-function hook(t: TestContext, root: string, event: string, o: { session: string; launch?: string; payload?: Record<string, unknown>; held?: boolean }): { started: Promise<void>; done: Promise<void>; release: () => void; pid: number } {
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
-  const MARK = 'cland-test-hook-started';
-  env.NODE_OPTIONS = `--import=data:text/javascript,${encodeURIComponent(`process.stderr.write(${JSON.stringify(`${MARK}\n`)}); ${o.held ? "const { createReadStream } = await import('node:fs'); await new Promise(resolve => createReadStream(null, { fd: 3 }).once('data', resolve));" : ''}`)}`;
-  const args = [CLI_ENTRY, 'hook', event, '--session', o.session, ...(o.launch ? ['--launch', o.launch] : []), '--hub-file', join(root, '.cland', 'hub.json')];
-  let markStarted!: () => void;
-  const started = new Promise<void>((resolve) => (markStarted = resolve));
-  let release = () => {};
-  let pid!: number;
-  const done = new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'pipe', 'pipe'], timeout: 15_000, killSignal: 'SIGKILL' });
-    pid = child.pid!;
-    ownProcess(t, child.pid); // Resource cleanup and signal cleanup both own this exact child identity.
-    let released = false;
-    release = () => {
-      if (released) return;
-      released = true;
-      const gate = child.stdio[3] as import('node:stream').Writable;
-      if (!gate.destroyed && !gate.writableEnded && child.exitCode === null && child.signalCode === null) gate.end('release');
-    };
-    let err = '';
-    child.stderr!.on('data', (c: Buffer) => {
-      err += String(c);
-      if (err.includes(MARK)) markStarted();
-      const rest = String(c).replace(`${MARK}\n`, '');
-      if (rest) process.stderr.write(rest);
-    });
-    child.on('error', reject);
-    child.on('close', () => {
-      markStarted();
-      resolve();
-    });
-    child.stdin!.end(JSON.stringify(o.payload ?? {}));
-  });
-  // ownProcess runs before this step in normal teardown; it also owns signal cleanup.
-  // Observe close before directory removal, even if an assertion failed while fd 3 was held.
-  beforeDirectories(t, async () => { await done; });
-  return { started, done, release: () => release(), pid };
-}
-
-test('signal order is the order the harness fired them: a Stop whose hook process started slowly does not outrank the next turn start', async (t) => {
+const hubLog = (root: string) => readFile(join(root, '.cland/log/hub.log'), 'utf8');
+async function fixture(t: TestContext) {
   const root = await tempProject(t);
-  // Suppress fallback polls so delayed hook ordering alone controls the staged state.
-  const fake = await fakeClaude(t, { pollMs: 10_000, awaitSignals: true });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const mark = ui.frames.length;
-  const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await clauseTurnDone(ui, 'coord', mark);
-
-  // Stop's process starts first but is gated before cland loads. The next hook's completed
-  // busy report is the positive ordering barrier; releasing Stop makes it arrive last.
-  const stop = hook(t, root, 'turn-end', { session: 'coord', launch: launched.sessionId, held: true });
-  await stop.started;
-  await hook(t, root, 'turn-start', { session: 'coord', launch: launched.sessionId }).done;
-  await presentAs(ui, 'coord', 'busy');
-  stop.release();
-  await stop.done;
-  assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
-});
-
-test('late Claude start and StopFailure hooks keep failure notes with their own turn sender', async (t) => {
-  const root = await tempProject(t);
-  // Suppress fallback polls so delayed hook ordering alone controls the staged state.
-  const fake = await fakeClaude(t, { pollMs: 600_000, awaitSignals: true });
-  const { discovery } = await projectHub(t, root, fake.env);
+  const clock = new FakeClock();
+  let fake!: FakeHarness;
+  const { discovery } = await projectHub(t, root, {}, { clock, adapters: [(host, clock) => {
+    // Only interpretation needs the production adapter's bounded prompt history; no native methods run.
+    const interpreter = new ClaudeCodeAdapter(host, { clock, bin: 'unused-claude', env: { HOME: root } });
+    fake = fakeHarness('claude-code', { host, clock });
+    fake.interpret = interpreter.interpret.bind(interpreter);
+    const close = fake.close.bind(fake);
+    fake.close = () => { interpreter.close(); close(); };
+    return fake;
+  }] });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
-  const mark = ui.frames.length;
-  const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await clauseTurnDone(ui, 'coord', mark);
-  const a = await spawnSpoke({ cwd: root, discover: true, name: 'sender-a', role: 'implementer' });
-  const b = await spawnSpoke({ cwd: root, discover: true, name: 'sender-b', role: 'reviewer' });
+  const launch = async (name: string, extra: Record<string, unknown> = {}) => {
+    const result = await ui.request({ type: 'session.launch', name, ...extra });
+    assert.equal(result.ok, true, result.error);
+    const process = (result.value as { process: Harness }).process;
+    fake.idle(name);
+    return process;
+  };
+  const signal = async (name: string, launch: string, event: string, payload: Record<string, unknown> = {}) => {
+    const result = await ui.request({ type: 'session.signal', session: name, launch, event, at: typeof payload.at === 'number' ? payload.at : clock.now().getTime(), payload });
+    assert.equal(result.ok, true, result.error);
+    return result;
+  };
+  const peer = (name: string, process: Harness) => inProcessSpoke(t, { cwd: root, discover: true, name, assignRole: false, sessionId: process.sessionId, launchToken: fake.spawns.findLast(s => s.name === name)!.launchToken! });
+  return { root, ui, clock, fake, launch, signal, peer };
+}
+
+test('in-process Claude failures retain sender attribution across delayed prompt starts', async (t) => {
+  const f = await fixture(t);
+  const { root, ui, clock, launch } = f;
+  const launched = await launch('coord', { role: 'coordinator' });
+  const coord = await f.peer('coord', launched);
+  await coord.waitForPresence(['coord']);
+  const a = await inProcessSpoke(t, { cwd: root, discover: true, name: 'sender-a', role: 'implementer' });
+  const b = await inProcessSpoke(t, { cwd: root, discover: true, name: 'sender-b', role: 'reviewer' });
   t.after(async () => { await a.close(); await b.close(); });
   await a.waitForPresence(['sender-a']);
   await b.waitForPresence(['sender-b']);
   await a.call('send', { to: ['coord'], text: 'first turn' });
-  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: first turn');
-  await presentAs(ui, 'coord', 'idle');
+  await coord.waitForEvent(e => e.params.content.includes('first turn'));
+  await coord.call('send', { to: ['sender-a'], text: 'pong: first turn' });
+
   await b.call('send', { to: ['coord'], text: 'second turn' });
+  await coord.waitForEvent(e => e.params.content.includes('second turn'));
+  await coord.call('send', { to: ['sender-b'], text: 'pong: second turn' });
   const first = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender-a');
   const second = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'sender-b');
   const firstId = (first.message as { id: string }).id;
   const secondId = (second.message as { id: string }).id;
   await eventually('both inputs answered', () => ui.frames.filter((f) => f.type === 'message' && (f.message as { from: string; text: string }).from === 'coord' && ['pong: first turn', 'pong: second turn'].includes((f.message as { text: string }).text)).length === 2 ? true : undefined);
-  const at = Date.now() + 10_000;
-  const signal = (event: string, payload: Record<string, unknown>) => hook(t, root, event, { session: 'coord', launch: launched.sessionId, payload }).done;
+  const at = clock.now().getTime() + 10_000;
+  const signal = (event: string, payload: Record<string, unknown>) => f.signal('coord', launched.sessionId, event, payload);
   await signal('turn-start', { at, prompt_id: 'first', ids: [firstId] });
   await signal('turn-start', { at: at + 2000, prompt_id: 'second', ids: [secondId] });
   await signal('turn-start', { at: at + 100, prompt_id: 'first', ids: [firstId] }); // A's older hook arrives after B's
@@ -173,7 +90,8 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
   await b.waitForEvent((e) => e.params.content.includes('its turn failed: second turn failed'));
   assert.equal(a.events.some((e) => e.params.content.includes('its turn failed: second turn failed')), false);
 
-  await t.test('failure before its start hook reports immediately and later notifies the matching prompt sender', async () => {
+  clock.block(20_000);
+  await t.test('a failure preceding prompt start later reaches only its matching sender', async () => {
     await signal('turn-start', { prompt_id: 'prior', ids: [firstId] });
     await signal('turn-end', { prompt_id: 'late-start', hook_event_name: 'StopFailure', error: 'failure before start' });
     await ui.waitFor((f) => f.type === 'message' && (f.message as { kind?: string; text: string }).kind === 'turn-failed' && (f.message as { text: string }).text.includes('failure before start'));
@@ -184,9 +102,9 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
     assert.equal(a.events.some((e) => e.params.content.includes('its turn failed: failure before start')), false);
   });
 
-  await t.test('bounded prompt history discards unresolved old attribution without guessing', async () => {
+  await t.test('bounded Claude prompt history forgets unresolved old sender attribution', async () => {
     await signal('turn-end', { prompt_id: 'expired', hook_event_name: 'StopFailure', error: 'expired failure' });
-    for (let i = 0; i < 128; i++) await ui.request({ type: 'session.signal', session: 'coord', launch: launched.sessionId, event: 'turn-start', payload: { prompt_id: `recent-${i}`, ids: [secondId] } });
+    for (let i = 0; i < 128; i++) await signal('turn-start', { prompt_id: `recent-${i}`, ids: [secondId] });
     await signal('turn-start', { prompt_id: 'expired', ids: [firstId] });
     await signal('turn-end', { prompt_id: 'recent-127', hook_event_name: 'StopFailure', error: 'recent failure' });
     await b.waitForEvent((e) => e.params.content.includes('its turn failed: recent failure'));
@@ -194,28 +112,23 @@ test('late Claude start and StopFailure hooks keep failure notes with their own 
   });
 });
 
-test('a signal from an earlier launch under the same name changes nothing of the process that replaced it', async (t) => {
-  const root = await tempProject(t);
-  // Trust pushed states while keeping process discovery/exit polling active for the crash below.
-  const fake = await fakeClaude(t, { pushTrustMs: 600_000, awaitSignals: true });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  // the Coordinator: the fake answers its clause to the human, which only the Coordinator may (#30)
-  const first = await launch(ui, 'impl-1', { role: 'coordinator', harness: 'claude-code' });
-  await presentAs(ui, 'impl-1', 'idle');
-  await killDaemon((await withDiscoveredPid(ui, first)).pid);
+test('in-process Claude signals cannot replace a newer launch identity', async (t) => {
+  const f = await fixture(t);
+  const { root, ui, fake, launch } = f;
+  const first = await launch('impl-1', { role: 'coordinator', harness: 'claude-code' });
+
+  fake.exit('impl-1');
   await eventually('the first process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
 
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const mark = ui.frames.length;
-  const second = await launch(ui, 'impl-1', { role: 'coordinator', harness: 'claude-code' });
-  await clauseTurnDone(ui, 'impl-1', mark);
+  const second = await launch('impl-1', { role: 'coordinator', harness: 'claude-code' });
+
   const row = await harness(ui, 'impl-1');
   assert.equal(row.sessionId, second.sessionId);
 
   // the first launch's hooks, late: its own conversation id, a turn start
-  await hook(t, root, 'session-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
-  await hook(t, root, 'turn-start', { session: 'impl-1', launch: first.sessionId, payload: { session_id: first.harnessSessionId } }).done;
+  await f.signal('impl-1', first.sessionId, 'session-start', { session_id: first.harnessSessionId });
+  await f.signal('impl-1', first.sessionId, 'turn-start', { session_id: first.harnessSessionId });
   const after = await harness(ui, 'impl-1');
   assert.equal(after.harnessSessionId, row.harnessSessionId, "the replacement keeps its own conversation id");
   assert.equal(after.state, 'idle', 'and its own state');
@@ -223,171 +136,51 @@ test('a signal from an earlier launch under the same name changes nothing of the
   assert.match(await hubLog(root), /"event":"signal-other-launch","session":"impl-1"/);
 });
 
-test('a late SessionStart does not revive a session whose process is gone', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const launched = await launch(ui, 'impl-1', { role: 'implementer', harness: 'claude-code' });
-  await presentAs(ui, 'impl-1', 'idle');
-  await killDaemon((await withDiscoveredPid(ui, launched)).pid);
+test('in-process Claude SessionStart leaves an exited session inactive', async (t) => {
+  const f = await fixture(t);
+  const { root, ui, fake, launch } = f;
+  const launched = await launch('impl-1', { role: 'implementer', harness: 'claude-code' });
+
+  fake.exit('impl-1');
   await eventually('the process gone', async () => ((await harness(ui, 'impl-1')).status === 'exited' ? true : undefined));
 
-  await hook(t, root, 'session-start', { session: 'impl-1', launch: launched.sessionId, payload: { session_id: launched.harnessSessionId } }).done;
+  await f.signal('impl-1', launched.sessionId, 'session-start', { session_id: launched.harnessSessionId });
   const row = await harness(ui, 'impl-1');
   assert.equal(row.status, 'exited');
   assert.equal(row.state, 'unknown');
 });
 
-test("a message the spoke accepted during the launch is injected once the launch's early bridge and SessionStart are in", async (t) => {
-  const root = await tempProject(t);
-  // `--bg` returns only after the SessionStart hook ran and the mod's bridge was answered: both wait for the row
-  const fake = await fakeClaude(t, { lateBg: 'bridged' });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  // no coordinator yet: the message waits for the role, and the launching session's spoke takes it
-  const id = await sendGeneral(ui, 'waiting for you');
-  await launch(ui, 'coord', { role: 'coordinator' });
+
+for (const rename of [false, true]) test(rename
+  ? 'renaming an in-process Claude session preserves a pending input confirmation'
+  : 'in-process Claude injection remembers an idle received before its rejection', async t => {
+  const f = await fixture(t);
+  const { ui, fake, clock } = f;
+  const launched = await f.launch('coord', { role: 'coordinator' });
+  const peer = await f.peer('coord', launched);
+  await peer.waitForPresence(['coord']);
+  // Carried clauses are already confirmed at spawn. This message exercises the same
+  // unconfirmed-inject state machine without pretending to execute the harness's first turn.
+  fake.scriptInject('coord', { outcome: 'reject', afterMs: 1000 }, 'accept');
+  const sent = await ui.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'pending input' });
+  assert.equal(sent.ok, true, sent.error);
+  const id = (sent.value as { message: { id: string } }).message.id;
+  await peer.waitForEvent(e => e.params.content.includes('pending input'));
+  await eventually('the pending inject starts', () => fake.injections.some(i => i.message.id === id) || undefined);
+  // Signals carry transport timestamps, independently of the policy clock.
+  const at = realClock.now().getTime() + 1;
+  await f.signal('coord', launched.sessionId, 'turn-start', { at });
+  await f.signal('coord', launched.sessionId, 'turn-end', { at: at + 1 });
+  if (rename) {
+    const renamed = await peer.call<{ ok: boolean; error?: string }>('rename', { name: 'pool-1' });
+    assert.equal(renamed.ok, true, renamed.error);
+  }
+  await clock.advance(1000);
+  await ui.waitFor(frame => frame.type === 'delivery' && frame.message === id && frame.stage === 'injected');
+  const attempts = fake.injections.filter(i => i.message.id === id);
+  assert.equal(attempts.length, 2, 'the remembered idle retries the unconfirmed input once');
+  assert.equal(attempts.at(-1)!.process.name, rename ? 'pool-1' : 'coord');
+  assert.equal((await harness(ui, rename ? 'pool-1' : 'coord')).state, 'idle');
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  assert.match(await hubLog(root), /"event":"session-launched".*"early":1/, 'the early SessionStart was replayed');
-  await injected(ui, id);
-  await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: waiting for you', 15_000);
-});
-
-test('an idle that comes while an inject waits for its confirmation retries it once that inject gave up', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { injectTimeoutMs: 3000, dropFirst: true, awaitSignals: true });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  await launch(ui, 'coord', { role: 'coordinator' });
-  await presentAs(ui, 'coord', 'idle');
-
-  // the first prompt, the role clause, is dropped inside the harness: never confirmed, it waits 3 s
-  const clause = await clauseId(root, 'coord');
-  const second = await sendGeneral(ui, 'second'); // its turn ends idle while the clause still waits
-  await injected(ui, second);
-  // no other turn, no other trigger: the idle that came during the clause's wait is not lost
-  await eventually('the clause injected', async () => ((await hubLog(root)).includes(`"event":"injected","id":"${clause}"`) ? true : undefined));
-  await clauseAnswered(ui, 'coord');
-});
-
-test('a session renamed while a message waits for its inject still gets it, and its confirmation counts', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { injectTimeoutMs: 1000, dropFirst: true, awaitSignals: true });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  await launch(ui, 'coord', { role: 'coordinator' });
-  await presentAs(ui, 'coord', 'idle');
-
-  // the first prompt, the role clause, is dropped inside the harness: delivered, never injected
-  const clause = await clauseId(root, 'coord');
-  // Ignore an early missing-bridge failure: the deliberately dropped submission must actually time out.
-  await eventually('the dropped clause inject timed out', async () => ((await hubLog(root)).includes(`"event":"inject-unconfirmed","session":"coord","id":"${clause}","error":"the mod did not confirm the turn within `) ? true : undefined));
-  const rename = await sendGeneral(ui, 'rename to pool-1'); // the session renames itself in this turn
-  await injected(ui, rename);
-  await presentAs(ui, 'pool-1', 'idle');
-  // retried at the next idle under the new name, and its confirmation finds it
-  await eventually('the clause injected', async () => ((await hubLog(root)).includes(`"event":"injected","id":"${clause}","session":"pool-1"`) ? true : undefined));
-  await clauseAnswered(ui, 'pool-1');
-});
-
-test('Claude process resume never adopts another session that reuses the pid: no identity match, no resume', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  const first = await projectHub(t, root, fake.env);
-  const { discovery } = first;
-  const ui = await connectUi(t, discovery);
-  const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await presentAs(ui, 'coord', 'idle');
-  const discovered = await withDiscoveredPid(ui, launched);
-  ui.close();
-  await first.stop();
-
-  // the session dies while no hub runs, and its pid is taken by another session (the table is made to say so)
-  await killDaemon(discovered.pid);
-  await new Promise<void>((resolve) =>
-    execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['--bg', '--name', 'other'], { cwd: root, env: { ...process.env, ...fake.env } }, () => resolve()),
-  );
-  const other = (await fake.sessions()).find((s) => s.name === 'other');
-  assert.ok(other && pidAlive(other.pid));
-  const db = new DatabaseSync(join(root, '.cland', 'hub.db'));
-  db.prepare('update harness_processes set pid = ? where name = ?').run(other.pid, 'coord');
-  db.close();
-
-  const second = await projectHub(t, root, fake.env);
-  const ui2 = await connectUi(t, second.discovery);
-  const row = await eventually('coord not resumed', async () => {
-    const h = (await status(ui2)).harnesses.find((x) => x.name === 'coord');
-    return h?.status === 'exited' ? h : undefined;
-  });
-  assert.equal(row.state, 'unknown');
-  assert.equal((await ui2.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  assert.doesNotMatch(await hubLog(root), /"event":"session-resumed","session":"coord"/);
-  assert.ok(pidAlive(other.pid), 'the other session is left alone');
-});
-
-test('a stop whose `claude stop` fails falls back to SIGTERM and stops the session', { skip: NO_PS }, async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { stopCrash: true, stopGraceMs: 1000 });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await presentAs(ui, 'coord', 'idle');
-  const discovered = await withDiscoveredPid(ui, launched);
-  const r = await ui.request({ type: 'session.stop', session: 'coord' }, 15_000);
-  assert.equal(r.ok, true, r.error);
-  assert.equal((r.value as { process: Harness }).process.status, 'stopped');
-  assert.ok(!pidAlive(discovered.pid));
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  assert.match(await hubLog(root), /"event":"harness-stop-failed","session":"coord"/);
-  assert.doesNotMatch(await hubLog(root), /"event":"harness-exited"/, 'a stop is no crash');
-});
-
-test('stop kills a Claude Code process that ignores SIGTERM and waits for its exit', async (t) => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t, { stopCrash: true, ignoreTerm: true, stopGraceMs: 500 });
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  const launched = await launch(ui, 'coord', { role: 'coordinator' });
-  await presentAs(ui, 'coord', 'idle');
-  const discovered = await withDiscoveredPid(ui, launched);
-  const r = await ui.request({ type: 'session.stop', session: 'coord' }, 15_000);
-  assert.equal(r.ok, true, r.error);
-  assert.equal((await harness(ui, 'coord')).status, 'stopped');
-  assert.equal(pidAlive(discovered.pid), false, 'stop returns only after exit');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-  assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"harness-ended"/);
-});
-
-// Run the real registered teardown after a controlled exception without failing the outer test.
-// This scope captures only node:test's after registration; the production ownership steps are unchanged.
-test('a held Claude hook is reaped before fixture removal after a pre-release failure', async t => {
-  const cleanups: Array<() => unknown | Promise<unknown>> = [];
-  const scope = { after: (cleanup: () => unknown | Promise<unknown>) => cleanups.push(cleanup) } as unknown as TestContext;
-  const root = await tempProject(scope);
-  const held = hook(scope, root, 'turn-end', { session: 'unlaunched', held: true });
-  const cleanup = async () => { for (const step of cleanups) await step(); };
-  t.after(cleanup); // Covers failures in this regression probe itself too; owned disposers are idempotent.
-  let closedBeforeRemoval = false;
-  beforeDirectories(scope, async () => {
-    await held.done;
-    assert.equal(pidAlive(held.pid), false, 'the held child has exited');
-    assert.equal(existsSync(root), true, 'completion is observed while the fixture still exists');
-    closedBeforeRemoval = true;
-  });
-  afterCleanup(scope, () => {
-    assert.equal(closedBeforeRemoval, true);
-    assert.equal(existsSync(root), false, 'directory removal follows the completion receipt');
-  });
-  const failure = new Error('controlled failure before releasing the hook');
-  await assert.rejects(async () => {
-    try {
-      await held.started;
-      assert.equal(pidAlive(held.pid), true, 'the child is still held when the body fails');
-      throw failure;
-    } finally { await cleanup(); }
-  }, error => error === failure);
+  assert.ok((await hubLog(f.root)).includes(`"event":"injected","id":"${id}"`));
 });

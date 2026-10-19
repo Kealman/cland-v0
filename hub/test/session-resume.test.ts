@@ -1,31 +1,26 @@
-// T3 lifecycle: Claude native resume relaunches a stopped conversation with its original identity;
-// Codex resume refusal and CLI --fresh create a new native conversation carrying the recorded artifact brief.
+// T2: injected resume refusal/fresh fallback and role/claim restoration. Native PID/conversation resume is in the lifecycle split.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { nativeProjectHub as projectHub, withDiscoveredPid, connectUi, eventually, fakeClaude, fakeCodex, cland } from './harness.ts';
-import { preparedProject } from './prepared-project.ts';
+import { cland, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { FakeClock } from './fake-clock.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-
 type Resumed = { found: boolean; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; reason?: string; fresh?: { brief: string | null } };
 
-test('a stopped Claude Implementer resumes its conversation, role and item claim and receives its clause again', async t => {
-  const root = await preparedProject(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+test('in-process Claude resume restores role, item claim and clause', async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Resume work' })).ok, true);
-  const launch = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', model: 'claude-fake-1', item: 'T-1' }, 30_000);
-  assert.equal(launch.ok, true, launch.error);
-  const before = await withDiscoveredPid(ui, (launch.value as { process: HarnessProcessView }).process);
-  await eventually('first clause reaches fake Claude', async () => (await fake.log(before.harnessId!)).includes('you hold the role Implementer') || undefined);
-  assert.equal((await ui.request({ type: 'session.stop', session: 'impl' }, 30_000)).ok, true);
-  const r = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
-  assert.equal(r.ok, true, r.error);
-  const after = r.value as Resumed;
-  after.process = await withDiscoveredPid(ui, after.process);
+  const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'claude-code', model: 'claude-fake-1', item: 'T-1' });
+  assert.equal(launched.ok, true, launched.error);
+  const before = (launched.value as { process: HarnessProcessView }).process;
+  const peer = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: before.sessionId, launchToken: fakes['claude-code']!.spawns[0]!.launchToken! });
+  await peer.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('you hold the role Implementer'));
+  assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
+  await peer.close();
+  const result = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true });
+  assert.equal(result.ok, true, result.error);
+  const after = result.value as Resumed;
   assert.equal(after.found, true);
   assert.equal(after.role, 'implementer');
   assert.equal(after.claim, 'T-1');
@@ -34,20 +29,23 @@ test('a stopped Claude Implementer resumes its conversation, role and item claim
   assert.equal(after.process.sessionId, before.sessionId);
   assert.equal(after.process.harnessSessionId, before.harnessSessionId);
   assert.equal(after.process.cwd, before.cwd);
-  assert.notEqual(after.process.pid, before.pid);
-  await eventually('new role clause delivered on resumed hello', async () => {
-    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
-    const log = await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
-    return log.split('\n').filter(line => line.includes('"event":"role-clause","session":"impl"')).length >= 2 || undefined;
-  });
+  const resumed = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: before.sessionId });
+  await resumed.waitForEvent(e => e.params.meta?.kind === 'role' && e.params.content.includes('you hold the role Implementer'));
   const view = (await ui.request({ type: 'task.view', item: 'T-1' })).value as { item: { claim: { sessionId: string } } };
   assert.equal(view.item.claim.sessionId, before.sessionId);
 });
 
-test('a refused Codex resume offers and launches fresh with its recorded artifact id brief', async t => {
-  const root = await preparedProject(t);
-  const fake = await fakeCodex(t);
-  const { discovery } = await projectHub(t, root, fake.env);
+test('refused in-process Codex resume offers a fresh conversation with its artifact brief', async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const fake = fakes.codex!;
+  const spawn = fake.spawn.bind(fake);
+  let conversation = 0;
+  fake.spawn = async (...args) => {
+    const process = await spawn(...args);
+    process.harnessSessionId = `scripted-codex-conversation-${++conversation}`;
+    return process;
+  };
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Fresh work' })).ok, true);
   const text = 'Implement the fresh work from this recorded brief.';
@@ -57,17 +55,13 @@ test('a refused Codex resume offers and launches fresh with its recorded artifac
   const launched = await ui.request({ type: 'session.launch', name: 'impl', role: 'implementer', harness: 'codex', model: 'gpt-fake-1', effort: 'high', item: 'T-1', brief }, 30_000);
   assert.equal(launched.ok, true, launched.error);
   const before = (launched.value as { process: HarnessProcessView }).process;
-  await eventually('the fake finishes its first turn', async () => {
-    const thread = JSON.parse(await readFile(join(fake.home, 'threads', `${before.harnessSessionId}.json`), 'utf8')) as { turns: number };
-    return thread.turns > 0 || undefined;
-  });
-  assert.equal((await ui.request({ type: 'session.stop', session: 'impl' }, 30_000)).ok, true);
-  await writeFile(join(fake.home, 'cannot-resume'), 'refuse native resume');
+  assert.equal((await ui.request({ type: 'session.stop', session: 'impl' })).ok, true);
+  fake.scriptResume('impl', 'gone', 'gone');
   const failed = await ui.request({ type: 'session.resume', session: 'impl', relaunch: true }, 30_000);
   assert.equal(failed.ok, true, failed.error);
   const offer = failed.value as Resumed;
   assert.equal(offer.found, false);
-  assert.match(offer.reason!, /resume failure/);
+  assert.match(offer.reason!, /fake conversation gone/);
   assert.deepEqual(offer.fresh, { brief });
   const cli = await cland(root, 'session', 'resume', 'impl', '--relaunch');
   assert.equal(cli.code, 1);
@@ -82,10 +76,8 @@ test('a refused Codex resume offers and launches fresh with its recorded artifac
   assert.equal(after.process.model, before.model);
   assert.equal(after.process.cwd, before.cwd);
   assert.notEqual(after.process.harnessSessionId, before.harnessSessionId);
-  const log = await eventually('the fake records its native first input', async () => {
-    const log = await fake.log(after.process.pid!);
-    return log.includes(' item: ') ? log : undefined;
-  });
-  assert.match(log, /effort=high/);
-  assert.ok(log.includes(text), 'the first turn includes the recorded brief');
+  assert.equal(fake.spawns.at(-1)!.resumeConversation, undefined, 'fresh launch starts a new conversation');
+  const input = fake.spawns.at(-1)!;
+  assert.equal(input.effort, 'high');
+  assert.ok(input.brief!.text.includes(text), 'the first turn includes the recorded brief');
 });

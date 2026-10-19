@@ -66,7 +66,13 @@ const untimed: Resumed = (write) => write();
 /** The slug of an item's file name: `T-12-fix-the-thing.md` → `fix-the-thing`. */
 const slugOf = (view: Pick<ItemView, 'id' | 'file'>): string => view.file.replace(/\.md$/, '').replace(new RegExp(`^${view.id}-?`), '');
 
+/** Git operations used by worktree policy. Production keeps the native territory implementation. */
+export type WorktreeGit = Pick<typeof import('../territory.ts'),
+  'ensureTaskWorktree' | 'taskBase' | 'listTaskWorktrees' | 'commitsAhead' | 'removeTaskWorktree'>;
+const nativeGit: WorktreeGit = { ensureTaskWorktree, taskBase, listTaskWorktrees, commitsAhead, removeTaskWorktree };
+
 export class TaskWorktrees {
+  readonly #git: WorktreeGit;
   readonly #env: NodeJS.ProcessEnv;
   readonly #hasTerritory: typeof hasTerritory;
   readonly #tracker: Tracker;
@@ -78,7 +84,8 @@ export class TaskWorktrees {
    *  leaves their worktrees alone, a second launch is refused, and only the launch that reserved an item releases it. */
   readonly #launching = new Map<string, symbol>();
 
-  constructor(options: { hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+  constructor(options: { git?: WorktreeGit; hasTerritory?: typeof hasTerritory; env?: NodeJS.ProcessEnv; tracker: Tracker; log?: LogFn; sessions?: () => SessionCwd[] }) {
+    this.#git = options.git ?? nativeGit;
     this.#env = options.env ?? process.env;
     this.#hasTerritory = options.hasTerritory ?? hasTerritory;
     this.#tracker = options.tracker;
@@ -107,7 +114,7 @@ export class TaskWorktrees {
 
   /** Make or reuse the worktree of an eligible item; the branch goes into the item, a creation into the journal. */
   async #make(view: ItemView, session: string | null, resumed: Resumed = untimed, authorize: () => void = () => {}): Promise<TaskWorktree> {
-    const worktree = await ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env);
+    const worktree = await this.#git.ensureTaskWorktree(this.root, { id: view.id, slug: slugOf(view), branch: view.branch }, resumed, authorize, this.#env);
     // the item as it is now: it may have changed while Git worked
     const current = await this.#tracker.viewAsync(view.id, resumed);
     resumed(authorize);
@@ -333,9 +340,9 @@ export class TaskWorktrees {
   /** Git's facts first, then queued item reads and the current sessions. */
   async #list(resumed: Resumed): Promise<WorktreeEntry[]> {
     const root = this.root;
-    const base = await taskBase(root, undefined, this.#env).catch(() => null);
+    const base = await this.#git.taskBase(root, undefined, this.#env).catch(() => null);
     const found: Array<Awaited<ReturnType<typeof listTaskWorktrees>>[number] & { ahead: string[] }> = [];
-    for (const w of await listTaskWorktrees(root, this.#env)) found.push({ ...w, ahead: w.branch ? await commitsAhead(root, w.branch, base, this.#env) : [] });
+    for (const w of await this.#git.listTaskWorktrees(root, this.#env)) found.push({ ...w, ahead: w.branch ? await this.#git.commitsAhead(root, w.branch, base, this.#env) : [] });
     const observed = await this.#observe(found, resumed);
     return resumed(() => {
       return found.map((w, i): WorktreeEntry => {
@@ -372,7 +379,7 @@ export class TaskWorktrees {
     if (pruned.failed[0]?.error !== `${item} has no worktree`) return pruned;
     return this.serial(async () => {
       try {
-        const done = await removeTaskWorktree(this.root, item, async () => {
+        const done = await this.#git.removeTaskWorktree(this.root, item, async () => {
           const view = await this.#tracker.viewAsync(item, resumed);
           return resumed(() => {
             const indexed = this.#tracker.list().find(row => row.id === item);
@@ -407,7 +414,7 @@ export class TaskWorktrees {
             if (entry.sessions.length) throw new Error(`${item}: ${entry.sessions.join(', ')} still ${entry.sessions.length === 1 ? 'stands' : 'stand'} inside its worktree`);
             return entry;
           });
-          const done = await removeTaskWorktree(this.root, item, async () => {
+          const done = await this.#git.removeTaskWorktree(this.root, item, async () => {
             const observed = await this.#observe([entry], resumed);
             return resumed(() => {
               const { view, sessions: now, validate } = observed[0]!;

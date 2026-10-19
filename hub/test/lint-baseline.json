@@ -59,10 +59,8 @@
     },
     "hub/test/claude-code-environment.test.ts": {},
     "hub/test/claude-code-schedule.test.ts": {},
-    "hub/test/claude-code-sessions.test.ts": {
-      "spawnSpoke": 2,
-      "fakeClaude": 10
-    },
+    "hub/test/claude-code-sessions-lifecycle.test.ts": {},
+    "hub/test/claude-code-sessions.test.ts": {},
     "hub/test/cli-identity.test.ts": {
       "startDaemon": 2,
       "fakeClaude": 1,
@@ -384,11 +382,8 @@
     },
     "hub/test/session-archive-merge.test.ts": {},
     "hub/test/session-archive.test.ts": {},
-    "hub/test/session-async-processes.test.ts": {
-      "wall-clock-wait": 1,
-      "startDaemon": 1,
-      "fakeCodex": 3
-    },
+    "hub/test/session-async-processes-lifecycle.test.ts": {},
+    "hub/test/session-async-processes.test.ts": {},
     "hub/test/session-brief-component.test.ts": {},
     "hub/test/session-brief.test.ts": {},
     "hub/test/session-events-component.test.ts": {},
@@ -405,10 +400,8 @@
       "fakeCodex": 1
     },
     "hub/test/session-launch-component.test.ts": {},
-    "hub/test/session-launch.test.ts": {
-      "spawnSpoke": 1,
-      "fakeClaude": 2
-    },
+    "hub/test/session-launch-lifecycle.test.ts": {},
+    "hub/test/session-launch.test.ts": {},
     "hub/test/session-model.test.ts": {},
     "hub/test/session-native-lifecycle.test.ts": {
       "startDaemon": 2,
@@ -417,10 +410,8 @@
       "fakeCodex": 3
     },
     "hub/test/session-resume-component.test.ts": {},
-    "hub/test/session-resume.test.ts": {
-      "fakeClaude": 1,
-      "fakeCodex": 1
-    },
+    "hub/test/session-resume-lifecycle.test.ts": {},
+    "hub/test/session-resume.test.ts": {},
     "hub/test/session-stop-races-cleanup.test.ts": {},
     "hub/test/session-stop-races-component.test.ts": {},
     "hub/test/session-stop-races.test.ts": {
@@ -529,10 +520,8 @@
     "hub/test/task-plan.test.ts": {},
     "hub/test/task-prefixes.test.ts": {},
     "hub/test/task-size.test.ts": {},
-    "hub/test/task-worktrees.test.ts": {
-      "spawnSpoke": 3,
-      "fakeClaude": 2
-    },
+    "hub/test/task-worktrees-lifecycle.test.ts": {},
+    "hub/test/task-worktrees.test.ts": {},
     "hub/test/termination-ownership.test.ts": {
       "wall-clock-wait": 1,
       "startDaemon": 1,

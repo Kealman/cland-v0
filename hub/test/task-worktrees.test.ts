@@ -1,111 +1,119 @@
-// Task branches and worktrees (T-58; T-20 decisions D3, D7, D8): real Git on disk in a temporary project with a
-// territory, a real hub, the CLI as its own process, a Coordinator spoke over MCP and the fake Claude Code at the
-// harness boundary (the launch cwd, the claim, the WorktreeCreate hook it runs).
+// T2: worktree policy uses injected territory facts/operations, real tracker persistence and in-process MCP.
+// Native Git branch identity, first-turn cwd/hook enforcement and interactive prune are in the lifecycle split.
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { CLI_ENTRY, cland, clandWithEnv, connectUi, connectWsUi, startHub, eventually, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject, type CliResult, type FrameClient } from './harness.ts';
-import { preparedProject } from './prepared-project.ts';
-import type { HarnessProcessView } from '../src/protocol.ts';
-import type { Sessions } from '../src/adapters/sessions.ts';
+import { TaskWorktrees, type WorktreeGit, type Resumed } from '../src/hub/worktrees.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
-import { provisionTerritory } from '../src/territory.ts';
-import { Report } from '../src/init/files.ts';
-import { manualTips } from './freshness-harness.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
+import { projectSessions } from '../src/adapters/index.ts';
+import { parseRoles } from '../src/roles/config.ts';
+import type { HarnessProcessView } from '../src/protocol.ts';
+import { fakeHarness, FAKE_FLAVOURS } from './fakes/harness.ts';
+import { FakeClock } from './fake-clock.ts';
+import { cland, connectUi, inProcessSpoke, projectHub, startHub, tempProject } from './harness.ts';
 
-const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-const ok = (r: CliResult): CliResult => {
-  assert.equal(r.code, 0, `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
-  return r;
-};
-const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
-
-type Worktree = { item: string; branch: string; path: string; base: string | null; createdBranch: boolean; createdWorktree: boolean };
-type Claimed = { id: string; claim: { session: string; sessionId: string } | null; worktree?: Worktree | null; reason?: string };
-type Entry = { item: string; path: string; branch: string | null; state: string | null; title: string | null; sessions: string[]; base: string | null; ahead: string[] };
-
-/** A Git project on `main` with one commit, put on its territory by `cland init` (the root moves to `dev`). */
-async function project(t: TestContext, options: { territory?: boolean } = {}): Promise<string> {
-  const root = await preparedProject(t, options.territory === false ? 'repository' : 'territory', 'cland-worktrees-');
-  return root;
+const human = { id: 'human', name: 'human', role: null };
+type Worktree = Awaited<ReturnType<WorktreeGit['ensureTaskWorktree']>>;
+async function fixture(t: TestContext, options: { territory?: boolean; levels?: string[]; sessionsList?: () => Array<{ name: string; cwd: string }> } = {}) {
+  const root = await tempProject(t, 'cland-worktrees-policy-');
+  const clock = new FakeClock();
+  const records: Array<Record<string, unknown>> = [];
+  const log = (entry: Record<string, unknown>) => { records.push(entry); };
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), clock, log, git: async () => null,
+    ...(options.levels ? { levels: options.levels } : {}) });
+  onCleanup(t, () => tracker.stop());
+  const guard = new RequestGuard({ log, now: () => clock.now().getTime() });
+  const roles = parseRoles('[coordinator]\n[implementer]\n[reviewer]\n');
+  const hub = await startHub({ root, clock, tracker, log, roles: { get: () => roles }, requestGuard: guard,
+    hasTerritory: async () => false, git: async () => null });
+  onCleanup(t, () => hub.close());
+  const project = projectSessions({ core: hub.core, root, discoveryFile: '', log, tracker,
+    adapters: FAKE_FLAVOURS.map(flavour => (host, clock) => fakeHarness(flavour, { host, clock })) });
+  onCleanup(t, () => project.close());
+  hub.dispatcher.useSessions(project.sessions);
+  const calls: Array<{ root: string; item: { id: string; slug: string; branch: string | null } }> = [];
+  const entries = new Map<string, Worktree>();
+  let base: string | null = 'dev';
+  let refusal: Error | null = null;
+  let listed: Array<Awaited<ReturnType<WorktreeGit['listTaskWorktrees']>>[number]> = [];
+  const git: WorktreeGit = {
+    ensureTaskWorktree: async (root, item, resumed = work => work(), authorize = () => {}) => {
+      calls.push({ root, item });
+      resumed(authorize);
+      if (refusal) throw refusal;
+      const existing = entries.get(item.id);
+      if (existing) return { ...existing, base: null, createdBranch: false, createdWorktree: false };
+      const path = join(root, '.cland/worktrees', item.id);
+      await mkdir(path, { recursive: true });
+      const value = { item: item.id, path, branch: item.branch ?? `t/${item.id}-${item.slug}`, base, createdBranch: true, createdWorktree: true };
+      entries.set(item.id, value);
+      return value;
+    },
+    taskBase: async () => base,
+    listTaskWorktrees: async () => listed,
+    commitsAhead: async () => [],
+    removeTaskWorktree: async () => { throw new Error('removal belongs to native prune proof'); },
+  };
+  const worktrees = new TaskWorktrees({ tracker, log, git, hasTerritory: async () => options.territory !== false,
+    sessions: options.sessionsList ?? (() => project.sessions.list().map(p => ({ name: p.name, cwd: p.cwd }))) });
+  const create = (title: string, kind = 'task') => tracker.create(human, { title, kind });
+  const claim = async (id: string) => {
+    const result = await tracker.claim(human, id);
+    return { ...result, ...await worktrees.afterClaim(id, 'human') };
+  };
+  return { root, clock, records, tracker, hub, guard, project, worktrees, calls, entries, create, claim,
+    set base(value: string | null) { base = value; }, set refusal(value: Error | null) { refusal = value; },
+    set listed(value: typeof listed) { listed = value; } };
 }
 
-type Notice = { text: string; kind?: string; detail?: Record<string, unknown> };
-const agentsNotices = async (ui: FrameClient, kind: string): Promise<Notice[]> => {
-  const r = await ui.request({ type: 'topic.history', topic: 'agents', limit: 200 });
-  assert.equal(r.ok, true, r.error);
-  return (r.value as { messages: Notice[] }).messages.filter((m) => m.kind === kind);
-};
-
-test('the first claim of an open task makes t/T-<n>-<slug> at dev and its worktree, writes branch: and tells Agents; later claims reuse both', async (t) => {
-  const root = await project(t);
-  // dev moves ahead of main: the branch starts at dev's tip
-  git(root, 'commit', '--allow-empty', '-qm', 'On dev');
-  const devTip = git(root, 'rev-parse', 'dev');
-  assert.notEqual(devTip, git(root, 'rev-parse', 'main'));
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Fix the parser', '--kind', 'task'));
-
-  const first = json<Claimed>(await cland(root, 'task', 'claim', 'T-1', '--json'));
+test('task worktree policy links creation once and reuses the territory result on reclaim', async t => {
+  const f = await fixture(t);
+  await f.create('Fix the parser');
+  const first = await f.claim('T-1');
+  const path = join(f.root, '.cland/worktrees/T-1');
   assert.equal(first.claim?.session, 'human');
-  const path = join(root, '.cland', 'worktrees', 'T-1');
   assert.deepEqual(first.worktree, { item: 'T-1', branch: 't/T-1-fix-the-parser', path, base: 'dev', createdBranch: true, createdWorktree: true });
-  assert.equal(git(root, 'rev-parse', 't/T-1-fix-the-parser'), devTip);
-  assert.equal(git(path, 'branch', '--show-current'), 't/T-1-fix-the-parser');
-  // linked to the project's own repository (D3): one common Git directory
-  assert.equal(git(path, 'rev-parse', '--git-common-dir'), join(root, '.git'));
-  assert.match(await readFile(join(root, '.cland', 'tasks', 'T-1-fix-the-parser.md'), 'utf8'), /^branch: t\/T-1-fix-the-parser$/m);
-  const notice = await eventually('the worktree notice', async () => (await agentsNotices(ui, 'worktree'))[0]);
-  assert.equal(notice.text, 'T-1: branch t/T-1-fix-the-parser from dev and worktree .cland/worktrees/T-1 created for human');
-  assert.equal(notice.detail?.item, 'T-1');
-  // the text output names the worktree too
-  assert.match(ok(await cland(root, 'task', 'claim', 'T-1')).stdout, /worktree {2}.*\.cland\/worktrees\/T-1 on t\/T-1-fix-the-parser\n/);
-
-  // a work commit, then a release and a claim again: the same branch and worktree, the commit kept, no new notice
-  await writeFile(join(path, 'work.txt'), 'work\n');
-  git(path, 'add', 'work.txt');
-  git(path, 'commit', '-qm', 'Work');
-  const tip = git(path, 'rev-parse', 'HEAD');
-  ok(await cland(root, 'task', 'claim', 'T-1', '--release'));
-  const again = json<Claimed>(await cland(root, 'task', 'claim', 'T-1', '--json'));
+  assert.deepEqual(f.calls[0], { root: f.root, item: { id: 'T-1', slug: 'fix-the-parser', branch: null } });
+  assert.match(await readFile(join(f.root, '.cland/tasks/T-1-fix-the-parser.md'), 'utf8'), /^branch: t\/T-1-fix-the-parser$/m);
+  const notice = f.records.find(entry => entry.event === 'task-worktree')!;
+  assert.equal(notice.id, 'T-1');
+  assert.equal(notice.session, 'human');
+  assert.equal(notice.path, '.cland/worktrees/T-1');
+  await f.tracker.claim(human, 'T-1', { release: true });
+  const again = await f.claim('T-1');
   assert.deepEqual(again.worktree, { item: 'T-1', branch: 't/T-1-fix-the-parser', path, base: null, createdBranch: false, createdWorktree: false });
-  assert.equal(git(root, 'rev-parse', 't/T-1-fix-the-parser'), tip);
-  assert.equal((await agentsNotices(ui, 'worktree')).length, 1);
-  // a branch the item already names is the one used (cland's own items carry theirs)
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Named branch', '--kind', 'task'));
-  ok(await cland(root, 'task', 'link', 'T-2', '--branch', 't/T-2-short'));
-  assert.equal(json<Claimed>(await cland(root, 'task', 'claim', 'T-2', '--json')).worktree?.branch, 't/T-2-short');
+  assert.equal(f.records.filter(entry => entry.event === 'task-worktree').length, 1);
+  await f.create('Named branch');
+  await f.tracker.link(human, 'T-2', { branch: 't/T-2-short' });
+  assert.equal((await f.claim('T-2')).worktree?.branch, 't/T-2-short');
+  assert.equal(f.calls.at(-1)!.item.branch, 't/T-2-short');
 });
 
-test('configured container worktree refusals choose an article from the kind', async t => {
-  const root = await project(t);
-  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
-  await projectHub(t, root);
+test('worktree policy uses configured container articles without Git operations', async t => {
+  const f = await fixture(t, { levels: ['initiative', 'feature'] });
   for (const [kind, article, id] of [['initiative', 'an', 'I-1'], ['feature', 'a', 'F-2']]) {
-    ok(await cland(root, 'task', 'create', ...((kind!) === 'task' ? ['--size', 'M'] : []), `Planning ${kind}`, '--kind', kind!));
-    const result = json<Claimed>(await cland(root, 'task', 'claim', id!, '--json'));
+    await f.create(`Planning ${kind}`, kind!);
+    const result = await f.claim(id!);
     assert.equal(result.worktree, null);
     assert.equal(result.reason, `${id} is ${article} ${kind}: only a task gets a branch and a worktree`);
   }
-  assert.equal(existsSync(join(root, '.cland/worktrees')), false);
+  assert.equal(existsSync(join(f.root, '.cland/worktrees')), false);
+  assert.deepEqual(f.calls, []);
 });
 
-test('a release, epic, spec, question or map, a closed task, or a project without a territory gets no worktree; the claim works and says why', async (t) => {
-  const root = await project(t);
-  await projectHub(t, root);
-  for (const kind of ['epic', 'spec', 'question', 'map']) ok(await cland(root, 'task', 'create', ...((kind) === 'task' ? ['--size', 'M'] : []), `A ${kind}`, '--kind', kind));
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Done already', '--kind', 'task'));
-  ok(await cland(root, 'task', 'close', 'T-5'));
-  ok(await cland(root, 'task', 'create', 'A release', '--kind', 'release'));
+test('worktree policy keeps ineligible claims without creating a branch', async t => {
+  const f = await fixture(t);
+  for (const kind of ['epic', 'spec', 'question', 'map']) await f.create(`A ${kind}`, kind);
+  await f.create('Done already');
+  await f.tracker.close(human, 'T-5');
+  await f.create('A release', 'release');
   const reasons: string[] = [];
   for (const id of ['T-1', 'T-2', 'T-3', 'T-4', 'T-5', 'T-6']) {
-    const r = json<Claimed>(await cland(root, 'task', 'claim', id, '--json'));
+    const r = await f.claim(id);
     assert.equal(r.claim?.session, 'human', id);
     assert.equal(r.worktree, null, id);
     reasons.push(r.reason ?? '');
@@ -118,285 +126,116 @@ test('a release, epic, spec, question or map, a closed task, or a project withou
     'T-5 is closed: no worktree',
     'R-6 is a release: only a task gets a branch and a worktree',
   ]);
-  assert.match(ok(await cland(root, 'task', 'claim', 'T-1')).stdout, /worktree {2}none: E-1 is an epic/);
-  assert.equal(existsSync(join(root, '.cland', 'worktrees')), false);
-  assert.equal(git(root, 'branch', '--list', 't/*'), '');
-
-  const bare = await project(t, { territory: false });
-  await projectHub(t, bare);
-  ok(await cland(bare, 'task', 'create', '--size', 'M', 'No territory', '--kind', 'task'));
-  const r = json<Claimed>(await cland(bare, 'task', 'claim', 'T-1', '--json'));
-  assert.equal(r.claim?.session, 'human');
-  assert.equal(r.worktree, null);
-  assert.equal(r.reason, 'the project has no territory (cland init makes one): no branch or worktree');
+  assert.equal(existsSync(join(f.root, '.cland/worktrees')), false);
+  assert.deepEqual(f.calls, []);
+  const bare = await fixture(t, { territory: false });
+  await bare.create('No territory');
+  const result = await bare.claim('T-1');
+  assert.equal(result.claim?.session, 'human');
+  assert.equal(result.worktree, null);
+  assert.equal(result.reason, 'the project has no territory (cland init makes one): no branch or worktree');
+  assert.deepEqual(bare.calls, []);
 });
 
-test("the territory's cland.taskBase decides the base branch over dev (cland's own repository starts from main until T-59)", async (t) => {
-  const root = await project(t);
-  git(root, 'commit', '--allow-empty', '-qm', 'On dev');
-  git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'main');
-  await projectHub(t, root);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'From main', '--kind', 'task'));
-  const r = json<Claimed>(await cland(root, 'task', 'claim', 'T-1', '--json'));
-  assert.equal(r.worktree?.base, 'main');
-  assert.equal(git(root, 'rev-parse', 't/T-1-from-main'), git(root, 'rev-parse', 'main'));
-  git(join(root, '.cland', 'territory.git'), 'config', 'cland.taskBase', 'gone');
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Bad base', '--kind', 'task'));
-  const bad = json<Claimed>(await cland(root, 'task', 'claim', 'T-2', '--json'));
+test('worktree policy propagates the territory base or missing-ref refusal without releasing ownership', async t => {
+  const f = await fixture(t);
+  f.base = 'main';
+  await f.create('From main');
+  const result = await f.claim('T-1');
+  assert.equal(result.worktree?.base, 'main');
+  f.refusal = new Error("the territory's cland.taskBase names gone, which has no local branch");
+  await f.create('Bad base');
+  const bad = await f.claim('T-2');
   assert.equal(bad.claim?.session, 'human');
   assert.equal(bad.reason, "no worktree: the territory's cland.taskBase names gone, which has no local branch");
 });
 
-test('cland session launch --item starts the Implementer in the worktree with the claim taken over from the Coordinator; its Claude Code refuses a worktree of its own', async (t) => {
-  const root = await project(t);
-  const fake = await fakeClaude(t);
-  const { discovery } = await projectHub(t, root, fake.env);
-  const ui = await connectUi(t, discovery);
-  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  onCleanup(t, () => coord.close());
+test('item launch policy uses its injected worktree and refuses cwd or conflicting ownership', async t => {
+  const f = await fixture(t);
+  f.hub.core.assignRole('coord', 'coordinator');
+  const coord = await inProcessSpoke(t, { hub: f.hub, name: 'coord', role: 'coordinator', cwd: f.root });
   await coord.waitForPresence(['coord']);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Ship it', '--kind', 'task'));
-  // the Coordinator claimed it first: no worktree yet (its spoke's claim makes one)
-  const coordClaim = await coord.call<Claimed & { ok: boolean }>('task.claim', { id: 'T-1' });
-  assert.equal(coordClaim.claim?.session, 'coord');
-  const path = join(root, '.cland', 'worktrees', 'T-1');
-  assert.equal(coordClaim.worktree?.path, path);
-
-  const launched = json<{ process: HarnessProcessView; claim: { session: string; sessionId: string }; worktree: Worktree }>(
-    await cland(root, 'session', 'launch', 'impl-1', '--role', 'implementer', '--harness', 'claude-code', '--item', 'T-1', '--json'),
-  );
-  assert.equal(launched.process.cwd, path);
-  assert.equal(launched.process.item, 'T-1');
-  assert.equal(launched.worktree.createdWorktree, false);
-  assert.deepEqual([launched.claim.session, launched.claim.sessionId], ['impl-1', launched.process.sessionId]);
-  const session = (await fake.sessions()).find((s) => s.name === 'impl-1');
-  assert.equal(session?.cwd, path);
-  // T-1 beside impl-1: the item's live claim is the session's
-  const view = json<{ item: { claim: { session: string } } }>(await cland(root, 'task', 'view', 'T-1', '--json'));
-  assert.equal(view.item.claim.session, 'impl-1');
-  const took = await eventually('the takeover notice', async () => (await agentsNotices(ui, 'claim')).find((n) => n.text.includes('impl-1')));
-  assert.match(took.text, /impl-1 \[Implementer\] claimed T-1 \(taken over from coord\)/);
-  // the text form names the worktree
-  assert.equal(launched.process.status, 'running');
-
-  // the session's Claude Code has the WorktreeCreate hook; a worktree of its own is refused, naming its own
-  const context = JSON.parse(await readFile(join(fake.home, 'jobs', `${session?.id}.context.json`), 'utf8')) as { hooks: Record<string, string[]> };
-  assert.equal(context.hooks.WorktreeCreate?.length, 1);
-  const command = await ui.request({ type: 'topic.send', topic: 'general', text: '@impl-1 worktree side-quest' });
-  assert.equal(command.ok, true);
-  const answer = await ui.waitFor((f) => f.type === 'message' && (f.message as { from: string }).from === 'impl-1' && (f.message as { text: string }).text.startsWith('worktree side-quest: '), 30_000);
-  assert.deepEqual([(answer.topic as { id: string }).id, (answer.message as { replyTo?: string }).replyTo], ['general', (command.value as { message: { id: string } }).message.id]);
-  const text = (answer.message as { text: string }).text;
-  assert.match(text, /^worktree side-quest: refused \(exit 2\): cland: impl-1 works in its own task worktree /);
-  assert.ok(text.includes(path), text);
-  const refused = await eventually('the refusal in the journal', async () =>
-    (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>).find((e) => e.event === 'worktree-refused'),
-  );
-  assert.deepEqual([refused.session, refused.worktree, refused.requested, refused.item], ['impl-1', path, 'side-quest', 'T-1']);
-
-  // a session launched without an item gets no such hook (D8: the Coordinator's sub-agent worktrees stay)
-  ok(await cland(root, 'session', 'launch', 'rev-1', '--role', 'reviewer', '--harness', 'claude-code', '--cwd', path));
-  const reviewer = (await fake.sessions()).find((s) => s.name === 'rev-1');
-  const reviewerContext = JSON.parse(await readFile(join(fake.home, 'jobs', `${reviewer?.id}.context.json`), 'utf8')) as { hooks: Record<string, string[]> };
-  assert.equal(reviewerContext.hooks.WorktreeCreate, undefined);
-  assert.equal(reviewer?.cwd, path);
-
-  // cland worktree list: the item, its branch and state, the sessions standing inside
-  const listed = json<{ worktrees: Entry[] }>(await cland(root, 'worktree', 'list', '--json')).worktrees;
-  assert.equal(listed.length, 1);
-  assert.deepEqual({ ...listed[0], sessions: [...(listed[0]?.sessions ?? [])].sort() }, { item: 'T-1', path, branch: 't/T-1-ship-it', state: 'open', title: 'Ship it', kind: 'task', sessions: ['impl-1', 'rev-1'], base: 'dev', ahead: [] });
-  assert.match(ok(await cland(root, 'worktree', 'list')).stdout, /^T-1 {2}open {2}t\/T-1-ship-it {2}\.cland\/worktrees\/T-1\n {4}Ship it\n {4}nothing beyond dev; sessions inside: (impl-1, rev-1|rev-1, impl-1)\n$/);
-});
-
-test('the spoke\'s session.launch with item launches in the worktree; item with cwd or another session\'s claim is refused', async (t) => {
-  const root = await project(t);
-  const fake = await fakeClaude(t);
-  await projectHub(t, root, fake.env);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  onCleanup(t, () => coord.close());
-  await coord.waitForPresence(['coord']);
-  ok(await cland(root, 'task', 'create', '--size', 'M', 'Spoke item', '--kind', 'task'));
-  ok(await cland(root, 'task', 'create', 'An epic', '--kind', 'epic'));
-  const tool = (await coord.client.listTools()).tools.find((x) => x.name === 'session.launch');
+  await f.create('Spoke item');
+  await f.create('An epic', 'epic');
+  const tool = (await coord.client.listTools()).tools.find(x => x.name === 'session.launch');
   assert.ok(tool?.inputSchema.properties?.item);
-
-  type Launch = { ok: boolean; error?: string; process: HarnessProcessView; claim: { session: string } | null; worktree: Worktree | null; reason?: string };
-  const both = await coord.call<Launch>('session.launch', { name: 'impl-1', role: 'implementer', harness: 'claude-code', item: 'T-1', cwd: '.' });
-  assert.equal(both.ok, false);
-  assert.match(both.error ?? '', /give `item` or `cwd`, not both/);
-  // the worktree exists before the session: nothing was made or launched by the refusals
-  assert.equal(existsSync(join(root, '.cland', 'worktrees', 'T-1')), false);
-  assert.deepEqual(await fake.sessions(), []);
-
-  const launched = await coord.call<Launch>('session.launch', { name: 'impl-1', role: 'implementer', harness: 'claude-code', item: 'T-1' });
-  assert.equal(launched.ok, true, launched.error);
-  const path = join(root, '.cland', 'worktrees', 'T-1');
+  const launch = (name: string, item: string, extra: Record<string, unknown> = {}) => f.worktrees.launch(f.project.sessions, { name, item, role: 'implementer', harness: 'claude-code', ...extra });
+  await assert.rejects(launch('impl-1', 'T-1', { cwd: '.' }), /give `item` or `cwd`, not both/);
+  assert.equal(existsSync(join(f.root, '.cland/worktrees/T-1')), false);
+  assert.deepEqual(f.project.sessions.list(), []);
+  const launched = await launch('impl-1', 'T-1');
+  const path = join(f.root, '.cland/worktrees/T-1');
   assert.equal(launched.process.cwd, path);
   assert.equal(launched.worktree?.createdWorktree, true);
   assert.equal(launched.claim?.session, 'impl-1');
-  assert.equal(git(path, 'branch', '--show-current'), 't/T-1-spoke-item');
-  // another Implementer for an item impl-1 holds: refused, before any launch
-  const second = await coord.call<Launch>('session.launch', { name: 'impl-2', role: 'implementer', harness: 'claude-code', item: 'T-1' });
-  assert.equal(second.ok, false);
-  assert.match(second.error ?? '', /T-1 is claimed by impl-1 \(implementer\): release it before launching another session for it/);
-  assert.equal((await fake.sessions()).some((s) => s.name === 'impl-2'), false);
-  // an epic: launched at the project root, with the claim, and the reason
-  const epic = await coord.call<Launch>('session.launch', { name: 'impl-3', role: 'implementer', harness: 'claude-code', item: 'T-2' });
-  assert.equal(epic.ok, true, epic.error);
-  assert.equal(epic.process.cwd, root);
+  assert.equal(f.calls[0]!.item.slug, 'spoke-item');
+  await assert.rejects(launch('impl-2', 'T-1'), /T-1 is claimed by impl-1 \(implementer\): release it before launching another session for it/);
+  assert.equal(f.project.sessions.list().some(s => s.name === 'impl-2'), false);
+  const epic = await launch('impl-3', 'T-2');
+  assert.equal(epic.process.cwd, f.root);
   assert.equal(epic.process.item, 'E-2');
   assert.equal(epic.worktree, null);
   assert.equal(epic.reason, 'E-2 is an epic: only a task gets a branch and a worktree');
   assert.equal(epic.claim?.session, 'impl-3');
 });
 
-test("cland worktree prune shows a closed item's unmerged commits and removes its worktree and branch only after y; a session's shell is refused", async (t) => {
-  const root = await project(t);
-  await projectHub(t, root);
-  for (const title of ['Merged work', 'Kept work', 'Still open']) ok(await cland(root, 'task', 'create', '--size', 'M', title, '--kind', 'task'));
-  for (const id of ['T-1', 'T-2', 'T-3']) ok(await cland(root, 'task', 'claim', id));
-  const wt = (id: string) => join(root, '.cland', 'worktrees', id);
-  await writeFile(join(wt('T-1'), 'one.txt'), '1\n');
-  git(wt('T-1'), 'add', '.');
-  git(wt('T-1'), 'commit', '-qm', 'Unmerged change');
-  ok(await cland(root, 'task', 'close', 'T-1'));
-  ok(await cland(root, 'task', 'close', 'T-2'));
-
-  // from a session's shell: refused as the human's, before anything is listed or removed
-  const spoke = await spawnSpoke({ discover: true, cwd: root, name: 'impl-9', sessionId: 'sess-impl-9', role: 'implementer' });
-  onCleanup(t, () => spoke.close());
-  await spoke.waitForPresence(['impl-9']);
-  const refused = await clandWithEnv(root, { CLAND_SESSION_NAME: 'impl-9', CLAND_SESSION_ID: 'sess-impl-9' }, 'worktree', 'prune', '--yes');
-  assert.equal(refused.code, 1, refused.stdout);
-  assert.match(refused.stderr, /forbidden: worktree\.prune \(only the human may do this/);
-  assert.ok(existsSync(wt('T-1')));
-  // listing is anyone's
-  assert.equal(json<{ worktrees: Entry[] }>(await clandWithEnv(root, { CLAND_SESSION_NAME: 'impl-9', CLAND_SESSION_ID: 'sess-impl-9' }, 'worktree', 'list', '--json')).worktrees.length, 3);
-
-  // the human answers y for T-1 and n for T-2; T-3 is open and never offered
-  const pruned = await new Promise<CliResult>((resolve, reject) => {
-    const env: Record<string, string> = {};
-    for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
-    const p = spawn(process.execPath, [CLI_ENTRY, 'worktree', 'prune'], { cwd: root, env });
-    let stdout = '';
-    let stderr = '';
-    p.stdout.on('data', (c: Buffer) => (stdout += String(c)));
-    p.stderr.on('data', (c: Buffer) => (stderr += String(c)));
-    p.on('error', reject);
-    p.on('close', (code) => resolve({ code, stdout, stderr }));
-    p.stdin.end('y\nn\n');
-  });
-  ok(pruned);
-  assert.match(pruned.stdout, /T-1 {2}closed {2}t\/T-1-merged-work/);
-  assert.match(pruned.stdout, /unmerged commits \(not on dev\):\n {6}[0-9a-f]+ Unmerged change\n/);
-  assert.match(pruned.stdout, /remove \.cland\/worktrees\/T-1 and t\/T-1-merged-work\? \[y\/N\]/);
-  assert.match(pruned.stdout, /removed T-1: \.cland\/worktrees\/T-1 and t\/T-1-merged-work\n/);
-  assert.match(pruned.stdout, /kept T-2\n/);
-  assert.doesNotMatch(pruned.stdout, /T-3/);
-  assert.equal(existsSync(wt('T-1')), false);
-  assert.equal(git(root, 'branch', '--list', 't/T-1-merged-work'), '');
-  assert.ok(existsSync(wt('T-2')));
-  assert.ok(existsSync(wt('T-3')));
-  // --yes takes all that is left
-  const all = json<{ removed: Array<{ item: string }>; failed: unknown[]; kept: string[] }>(await cland(root, 'worktree', 'prune', '--yes', '--json'));
-  assert.deepEqual(all.removed.map((r) => r.item), ['T-2']);
-  assert.equal(existsSync(wt('T-2')), false);
-  assert.equal(git(root, 'branch', '--list', 't/T-2-kept-work'), '');
-  assert.match(ok(await cland(root, 'worktree', 'prune')).stdout, /no worktrees of closed items/);
-});
-
-// ------------------------------------------------------------------ the request budget (T-67) after the awaits
-
-/** A Git project on its territory, with a real tracker and an in-process hub whose sessions are a stand-in. */
-async function guardedHub(t: TestContext, options: { clock?: { now: number }; sessionsList?: () => HarnessProcessView[] } = {}) {
-  const root = await tempProject(t, 'cland-worktrees-guard-');
-  git(root, 'init', '-q', '-b', 'main');
-  git(root, 'config', 'user.name', 'Test');
-  git(root, 'config', 'user.email', 'test@example.com');
-  git(root, 'config', 'commit.gpgsign', 'false');
-  await writeFile(join(root, 'README.md'), 'project\n');
-  git(root, 'add', '.');
-  git(root, 'commit', '-qm', 'Initial');
-  provisionTerritory(new Report(root), root);
-  const records: Array<Record<string, unknown>> = [];
-  const log = (r: Record<string, unknown>) => records.push(r);
-  // Only foreground work belongs to these budget assertions; tip events have their own tests.
-  const tips = manualTips();
-  const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), log, scheduleTips: tips.scheduleTips });
-  tracker.start();
-  onCleanup(t, () => tracker.stop());
-  const guard = new RequestGuard({ log, ...(options.clock ? { now: () => options.clock!.now } : {}) });
-  const hub = await startHub({ log, tracker, requestGuard: guard });
-  onCleanup(t, () => hub.close());
-  const process = { name: 'impl-1', harness: 'claude-code', role: 'implementer', sessionId: 'sess-impl-1', cwd: join(root, '.cland', 'worktrees', 'T-1'), item: 'T-1', status: 'running' } as HarnessProcessView;
-  hub.dispatcher.useSessions({ retainedPool: () => false, launch: async () => process, list: options.sessionsList ?? (() => []), pendingStops: () => [] } as unknown as Sessions);
-  return { root, records, tracker, hub, guard };
-}
-
-test("session.launch with an item: a synchronous branch-link subscriber after Git is timed once as resumed", async (t) => {
-  const clock = { now: 0 };
-  const { records, tracker, hub } = await guardedHub(t, { clock });
-  const ui = await connectWsUi(t, hub, 'launcher-ui');
-  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Guarded', kind: 'task' })).ok, true);
+test('item launch policy measures the post-Git branch-link subscriber as resumed work', async t => {
+  const f = await fixture(t);
+  await f.create('Guarded');
   let measured = false;
-  tracker.onChange(change => {
-    if (!measured && change.id === 'T-1' && change.item?.branch) {
-      measured = true;
-      clock.now += 400;
-    }
+  f.tracker.onChange(change => {
+    if (!measured && change.id === 'T-1' && change.item?.branch) { measured = true; f.clock.block(400); }
   });
-  records.length = 0;
-  const r = await ui.request({ type: 'session.launch', name: 'impl-1', role: 'implementer', item: 'T-1' }, 30_000);
-  assert.equal(r.ok, true, r.error);
-  const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'session.launch');
-  assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'launcher-ui']], JSON.stringify(slow));
-  assert.equal(measured, true, 'the real branch-link event reached its synchronous subscriber');
+  f.records.length = 0;
+  await f.worktrees.launch(f.project.sessions, { name: 'impl-1', role: 'implementer', item: 'T-1', harness: 'claude-code' }, f.guard.resumer('session.launch', 'launcher-ui'));
+  const slow = f.records.filter(entry => entry.event === 'slow-request' && entry.tool === 'session.launch');
+  assert.deepEqual(slow.map(entry => [entry.phase, entry.client]), [['resumed', 'launcher-ui']], JSON.stringify(slow));
+  assert.equal(measured, true, 'the branch-link event reached its synchronous subscriber');
   assert.equal(slow[0]?.ms, 400);
 });
 
-test('worktree.list: its work after the Git reads is timed as phase resumed (a slow one is logged once)', async (t) => {
-  const clock = { now: 0 };
+test('worktree list policy measures its post-Git projection once across interleaved inbox reads', async t => {
   let slowSessions = false;
   let snapshots = 0;
   let inListContinuation = false;
-  const { records, tracker, hub, guard } = await guardedHub(t, {
-    clock,
-    sessionsList: () => {
-      // Inbox publication and hold projection also list sessions; only count this request's snapshots.
-      if (!inListContinuation) return [];
-      snapshots++;
-      // Initial and final snapshots now surround async item/path reads: charge one continuation.
-      if (slowSessions) { slowSessions = false; clock.now += 400; }
-      return [];
-    },
-  });
-  const measure = guard.measure.bind(guard);
-  t.mock.method(guard, 'measure', <T>(tool: string, client: string, work: () => T, phase?: 'resumed' | 'answer'): T => {
+  const f = await fixture(t, { sessionsList: () => {
+    if (!inListContinuation) return [];
+    snapshots++;
+    if (slowSessions) { slowSessions = false; f.clock.block(400); }
+    return [];
+  } });
+  await f.create('Listed');
+  assert.equal((await f.claim('T-1')).worktree?.item, 'T-1');
+  f.listed = [{ item: 'T-1', path: join(f.root, '.cland/worktrees/T-1'), branch: 't/T-1-listed', head: 'fixture-tip', prunable: false }];
+  const resumed: Resumed = work => {
     const previous = inListContinuation;
-    inListContinuation = tool === 'worktree.list' && client === 'list-ui' && phase === 'resumed';
-    try { return measure(tool, client, work, phase); }
+    inListContinuation = true;
+    try { return f.guard.measure('worktree.list', 'list-ui', work, 'resumed'); }
     finally { inListContinuation = previous; }
-  });
-  const ui = await connectWsUi(t, hub, 'list-ui');
-  assert.equal((await ui.request({ size: 'M', type: 'task.create', title: 'Listed', kind: 'task' })).ok, true);
-  assert.equal(((await ui.request({ type: 'task.claim', item: 'T-1' })).value as Claimed).worktree?.item, 'T-1');
-  records.length = 0;
-  snapshots = 0;
-  const viewAsync = tracker.viewAsync.bind(tracker);
-  t.mock.method(tracker, 'viewAsync', async (...args: Parameters<typeof viewAsync>) => {
+  };
+  const viewAsync = f.tracker.viewAsync.bind(f.tracker);
+  t.mock.method(f.tracker, 'viewAsync', async (...args: Parameters<typeof viewAsync>) => {
     const value = await viewAsync(...args);
-    // Deterministically interleave the projection that the 250 ms inbox timer can run during these reads.
-    hub.core.inbox.list();
+    f.hub.core.inbox.list();
     return value;
   });
+  f.records.length = 0;
   slowSessions = true;
-  const r = await ui.request({ type: 'worktree.list' }, 30_000);
-  slowSessions = false;
-  assert.equal(r.ok, true, r.error);
-  assert.deepEqual((r.value as { worktrees: Entry[] }).worktrees.map((w) => w.item), ['T-1']);
+  const listed = await f.worktrees.list(resumed);
+  assert.deepEqual(listed.map(w => w.item), ['T-1']);
   assert.equal(snapshots, 2, 'both the initial snapshot and the post-I/O snapshot must run');
-  const slow = records.filter((x) => x.event === 'slow-request' && x.tool === 'worktree.list');
-  assert.deepEqual(slow.map((x) => [x.phase, x.client]), [['resumed', 'list-ui']], JSON.stringify(slow));
+  const slow = f.records.filter(entry => entry.event === 'slow-request' && entry.tool === 'worktree.list');
+  assert.deepEqual(slow.map(entry => [entry.phase, entry.client]), [['resumed', 'list-ui']], JSON.stringify(slow));
   assert.ok((slow[0]?.ms as number) >= 400, `${String(slow[0]?.ms)} ms`);
+});
+
+// The CLI is the subject here: injected hub facts keep this formatting proof at T2.
+test('claim CLI displays the injected container worktree refusal', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'task.create', kind: 'epic', title: 'A container' })).ok, true);
+  const result = await cland(root, 'task', 'claim', 'T-1');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /worktree {2}none: E-1 is an epic/);
 });
