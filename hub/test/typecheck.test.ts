@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { fixtureSource, sourceFixtureFiles } from './source-fixture.ts';
 
 const source = fileURLToPath(new URL('../../', import.meta.url));
 const require = createRequire(import.meta.url);
@@ -19,15 +20,17 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
   t.after(() => rm(root, { recursive: true, force: true }));
   // Keep the real workspace scripts, launcher and configs. Compiler resolution
   // needs only a small source in each project, not repeated full-repository checks.
-  for (const path of ['package.json', 'hub/package.json', 'hub/tsconfig.json', 'hub/bin/typecheck.ts', 'nvim/tsconfig.json']) {
+  const assets = ['package.json', 'hub/package.json', 'hub/tsconfig.json', 'nvim/tsconfig.json'];
+  const generated = ['hub/src/fixture.ts', 'nvim/bin/fixture.ts'];
+  const read = fixtureSource(source);
+  const readSource = async (file: string) => generated.includes(file)
+    ? "import { basename } from 'node:path';\nimport { assertTestAdmission } from '../../test-support/admission.ts';\nexport const name: string = basename(import.meta.filename);\nexport const admission: () => Promise<void> = assertTestAdmission;\n"
+    : read(file);
+  for (const path of await sourceFixtureFiles(readSource, ['hub/bin/typecheck.ts', ...generated], assets)) {
     await mkdir(dirname(join(root, path)), { recursive: true });
-    await cp(join(source, path), join(root, path));
+    if (assets.includes(path)) await cp(join(source, path), join(root, path));
+    else await writeFile(join(root, path), (await readSource(path))!);
   }
-  for (const path of ['hub/src/fixture.ts', 'nvim/bin/fixture.ts']) {
-    await mkdir(dirname(join(root, path)), { recursive: true });
-    await writeFile(join(root, path), "import { basename } from 'node:path';\nimport { assertTestAdmission } from '../../test-support/admission.ts';\nexport const name: string = basename(import.meta.filename);\nexport const admission: () => Promise<void> = assertTestAdmission;\n");
-  }
-  for (const path of ['shared', 'test-support']) await cp(join(source, path), join(root, path), { recursive: true });
   const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 30_000 });
   git('init', '-q');
   git('add', 'package.json', 'hub', 'nvim', 'shared', 'test-support');

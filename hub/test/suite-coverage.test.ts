@@ -10,6 +10,7 @@ import { findPackageJSON } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tempProject } from './harness.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
+import { fixtureSource, sourceFixtureFiles } from './source-fixture.ts';
 
 const exec = promisify(execFile);
 const repository = fileURLToPath(new URL('../../', import.meta.url));
@@ -43,8 +44,23 @@ test('package capture retains real process coverage and a successful exit beside
   await mkdir(join(root, '.cland/run'), { recursive: true });
   // Copy the production entries so raw V8 URLs name this fixture's own sources.
   // No fake dispatcher, spoke transport or CLI is introduced by this proof.
-  for (const path of ['hub/src', 'hub/bin', 'hub/test/fakes', 'hub/package.json', 'package.json', 'shared', 'test-support']) await cp(join(repository, path), join(root, path), { recursive: true, filter: path => !path.endsWith('.test.ts') });
-  for (const file of ['harness.ts', 'until.ts', 'tier-cli.ts', 'account-fixture-env.ts', 'case-deadlines.ts', 'cover-quiet.ts', 'hub-resources.ts', 'process-cleanup.ts']) await cp(join(repository, 'hub/test', file), join(root, 'hub/test', file));
+  // C1: a previously unknown harness dependency must travel with the carrier.
+  // Plant through the source reader, leaving the repository and copy entries alone.
+  const planted = 'hub/test/planted-carrier-module.ts';
+  const readSource = async (file: string): Promise<string | undefined> => {
+    if (file === planted) return "import { writeFileSync } from 'node:fs';\nwriteFileSync(new URL('../../.cland/run/planted.txt', import.meta.url), 'import closure');\n";
+    const text = await fixtureSource(repository)(file);
+    return file === 'hub/test/harness.ts' ? text + "\nimport './planted-carrier-module.ts';\n" : text;
+  };
+  // Executable entries launched through URLs/shell wrappers are graph roots;
+  // package metadata and the shell wrapper are the only non-import assets.
+  const entries = ['hub/test/harness.ts', 'hub/test/cover-quiet.ts', 'hub/bin/cland.ts', 'hub/bin/cland-spoke.ts', 'hub/test/fakes/codex/fake-codex.ts'];
+  const assets = ['package.json', 'hub/package.json', 'hub/test/fakes/codex/codex'];
+  for (const file of await sourceFixtureFiles(readSource, entries, assets)) {
+    await mkdir(dirname(join(root, file)), { recursive: true });
+    if (assets.includes(file)) await cp(join(repository, file), join(root, file));
+    else await writeFile(join(root, file), (await readSource(file))!);
+  }
   const dependencies = dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!));
   await symlink(dependencies, join(root, 'node_modules'), 'dir');
   const file = 'hub/test/processes.test.ts';
@@ -89,6 +105,7 @@ test('daemon lifecycle and descendant attribution', async t => {
   const env = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection), CLAND_COVERAGE_OUTPUT: output };
   const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env, maxBuffer: 8 * 1024 * 1024 }).catch(error => { throw new Error(`fixture package failed\n${error.stdout}\n${error.stderr}`); });
   assert.match(result.stdout, /suite coverage map/);
+  assert.equal(await readFile(join(root, '.cland/run/planted.txt'), 'utf8'), 'import closure', 'the planted harness dependency executes inside the coverage carrier');
   assert.match(result.stderr, /suite coverage: skipping .*coverage-0-truncated\.json \(163840 bytes\): invalid JSON/);
   assert.match(result.stderr, /suite coverage: skipping .*coverage-0-missing\.json: Error: ENOENT/);
   assert.match(result.stderr, /suite coverage: skipping .*coverage-0-unclaimable\.json: unclaimable receipt/);

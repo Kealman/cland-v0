@@ -13,6 +13,7 @@ import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 import { readDurationManifest } from '../src/suite-durations.ts';
 import { readFile } from 'node:fs/promises';
 import { projectRoot } from '../src/project.ts';
+import { sourceFixtureFiles } from './source-fixture.ts';
 
 const options = process.argv.slice(2);
 const replayOptions = [...options];
@@ -35,9 +36,11 @@ let selectCoverage = coverageSelection;
 try {
   if (selectorRef) {
     scratch = await mkdtemp(join(tmpdir(), 'cland-selection-replay-'));
-    // New selectors depend on neutral roots; historical selectors predate them.
-    const shared = git('ls-tree', '--name-only', '-z', selectorRef, '--', 'shared', 'test-support').split('\0').filter(Boolean);
-    const archive = execFileSync('git', ['archive', selectorRef, 'hub/src', 'hub/package.json', 'package.json', ...shared], { maxBuffer: 32 * 1024 * 1024 });
+    // Resolve against the requested tree, including refs predating neutral roots.
+    const files = new Set(git('ls-tree', '-r', '--name-only', '-z', selectorRef).split('\0'));
+    const paths = await sourceFixtureFiles(async file => files.has(file) ? git('show', `${selectorRef}:${file}`) : undefined,
+      ['hub/src/suite-selection.ts', 'hub/src/suite-coverage.ts'], ['hub/package.json', 'package.json']);
+    const archive = execFileSync('git', ['archive', selectorRef, ...paths], { maxBuffer: 32 * 1024 * 1024 });
     execFileSync('tar', ['-x', '-C', scratch], { input: archive });
     await symlink(dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!)), join(scratch, 'node_modules'), 'dir');
     const module = join(scratch, 'hub/src/suite-selection.ts');
