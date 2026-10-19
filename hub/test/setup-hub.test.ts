@@ -23,6 +23,7 @@ function fixture(t: test.TestContext) {
     session: async () => null,
     launch: async request => { calls.push(request); },
     resume: async name => { calls.push(['resume', name]); },
+    attach: async () => { throw new Error('unexpected attach'); },
   };
   const options: SetupOptions = { root, env: {}, interactive: true, yes: false, hub: client, kind: async () => 'empty', prompter: scriptedPrompter([]), machine: {
     requiredHarnesses: async () => ['codex'],

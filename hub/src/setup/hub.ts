@@ -10,6 +10,7 @@ export type SetupHub = {
   session(name: string): Promise<Pick<HarnessProcessView, 'status'> | null>;
   launch(request: { name: string; role: 'aide'; harness: HarnessId; brief: string }): Promise<void>;
   resume(name: string): Promise<void>;
+  attach(name: string): Promise<string>;
 };
 
 /** Setup uses the normal project daemon and session protocol, with its updated installer PATH. */
@@ -44,6 +45,10 @@ export function setupHub(root: string, env: NodeJS.ProcessEnv): SetupHub {
     async resume(name) {
       const result = await request({ type: 'session.resume', session: name, relaunch: true }, 60_000) as { found: boolean; reason?: string };
       if (!result.found) throw new Error(result.reason ?? 'could not resume aide-1');
+    },
+    async attach(name) {
+      const result = await request({ type: 'session.attach', session: name }) as { command: string };
+      return result.command;
     },
   };
 }

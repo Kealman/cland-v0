@@ -5,7 +5,8 @@ import { projectRoot } from '../project.ts';
 import { readlinePrompter, type Prompter } from '../setup/prompter.ts';
 import { setupMachine } from '../setup/machine.ts';
 import { setup } from '../setup/runner.ts';
-import type { SetupHub } from '../setup/hub.ts';
+import { setupHub, type SetupHub } from '../setup/hub.ts';
+import { clandCommand, handOver, type HandoverOptions } from '../setup/handover.ts';
 import type { SetupMachine } from '../setup/types.ts';
 import { VERSION } from '../version.ts';
 import { HARNESS_ORDER } from '../setup/steps/harnesses.ts';
@@ -21,6 +22,7 @@ type SetupIO = {
   prompter: Prompter;
   machine: SetupMachine;
   hub: SetupHub;
+  run: NonNullable<HandoverOptions['run']>;
 };
 
 /** The CLI owns roots, terminal policy and rendering; the runner owns the ordered steps. */
@@ -29,7 +31,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   let dir: string | undefined;
   let harness: HarnessId | undefined;
   let install: HarnessId | undefined;
-  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-aide]');
+  const usage = () => new Error('usage: cland setup [dir] [--json] [--yes] [--harness claude-code|codex|opencode] [--install <harness>] [--no-aide] [--attach]');
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--install') {
@@ -42,7 +44,7 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
       if (!chosen || harness) throw usage();
       harness = chosen;
       i++;
-    } else if (arg === '--json' || arg === '--yes' || arg === '--no-aide') continue;
+    } else if (arg === '--json' || arg === '--yes' || arg === '--no-aide' || arg === '--attach') continue;
     else if (arg.startsWith('--') || dir !== undefined) throw usage();
     else dir = arg;
   }
@@ -58,10 +60,11 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
   // Keep installer folders available to later steps and the hub child without changing the caller's env.
   const setupEnv = { ...env };
   const yes = args.includes('--yes');
+  const prompter = io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr });
   const actions = [install ? `install ${install} requested` : '', harness ? `favourite ${harness} requested` : '', yes ? '--yes allows harmless writes' : ''].filter(Boolean).join('; ') || 'detection only';
   narrate(`cland setup ${VERSION} in ${root}${interactive ? '' : ` — without a terminal: ${actions}`}\n`);
   const { report, code } = await setup({ root, rootSpelling: target, env: setupEnv, interactive, json, yes, noAide: args.includes('--no-aide'), ...(io.hub ? { hub: io.hub } : {}), ...(harness ? { harness } : {}), ...(install ? { install } : {}), narrate,
-    prompter: io.prompter ?? readlinePrompter({ input: process.stdin, output: process.stderr }),
+    prompter,
     machine: io.machine ?? setupMachine(root, setupEnv),
   });
   if (json) write(`${JSON.stringify(report)}\n`);
@@ -70,6 +73,9 @@ export async function runSetup(args: string[], cwd = process.cwd(), env: NodeJS.
     write(`${Object.entries(report.summary).map(([verdict, count]) => `${count} ${verdict}`).join(', ')}\n`);
   }
   if (!interactive || code !== 0) narrate('continue: cland setup in a terminal\n');
-  else narrate(`next: ${report.next}\n`);
+  await handOver({ root, env: setupEnv, interactive, noAide: args.includes('--no-aide'), attach: args.includes('--attach'),
+    aideRunning: code !== 130 && report.steps.some(line => line.name === 'aide' && (line.verdict === 'ok' || line.verdict === 'done')),
+    cland: clandCommand(setupEnv), prompter, hub: io.hub ?? setupHub(root, setupEnv), say: narrate, ...(io.run ? { run: io.run } : {}),
+  });
   return code;
 }
