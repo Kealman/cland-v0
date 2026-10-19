@@ -65,12 +65,11 @@ const ownsProject = (lockFile: string, pid: number): boolean => liveHolder(lockF
  * What `hub.json` says and whether it is true: a live hub, a stale file (its pid is gone, or is a live
  * process that does not hold the project's lock — a reused pid), a hub that does not answer, or nothing.
  */
-async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery; status: HubStatus }> {
+export async function inspect(l: Layout): Promise<{ kind: 'none' } | { kind: 'stale'; d: Discovery; why: string } | { kind: 'mute'; d: Discovery } | { kind: 'live'; d: Discovery }> {
   const d = readDiscovery(l.discovery);
   if (!d) return { kind: 'none' };
   if (!pidAlive(d.pid)) return { kind: 'stale', d, why: `pid ${d.pid} is gone` };
-  const status = await probe(d);
-  if (status) return { kind: 'live', d, status };
+  if (await probe(d)) return { kind: 'live', d };
   return ownsProject(l.lock, d.pid) ? { kind: 'mute', d } : { kind: 'stale', d, why: `pid ${d.pid} is not this project's hub` };
 }
 
@@ -92,7 +91,7 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
   }
   const found = await inspect(l);
   if (found.kind === 'live') {
-    io.out(`hub already running for ${root}\n${describe(found.status)}`);
+    io.out(`hub already running for ${root} (pid ${found.d.pid})\n`);
     return 0;
   }
   if (found.kind === 'mute') {
@@ -127,13 +126,12 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
     }
     const d = readDiscovery(l.discovery);
     if (d && (d.pid === child.pid || d.pid === holder?.pid)) {
-      const status = await probe(d);
-      if (status) {
+      if (await probe(d)) {
         for (const entry of readJournal(journalPath(l.dir), { since: since.toISOString(), kinds: ['orphan-ended', 'orphan-preserved', 'orphan-sweep-failed'] })) {
           io.out(entry.event === 'orphan-ended' ? `ended orphan ${entry.kind} pid ${entry.pid}: ${entry.reason}\n` : entry.event === 'orphan-preserved' ? `preserved possible orphan pid ${entry.pid}: ${entry.reason}\n` : `orphan sweep: ${entry.reason}\n`);
         }
         io.out('orphan cleanup runs in the background; cland doctor reports what ended\n');
-        io.out(d.pid === child.pid ? `hub started for ${root}\n${describe(status)}` : `hub already running for ${root}\n${describe(status)}`);
+        io.out(d.pid === child.pid ? `hub started for ${root} (pid ${d.pid})\n` : `hub already running for ${root} (pid ${d.pid})\n`);
         return 0;
       }
     }
@@ -158,9 +156,17 @@ async function status(l: Layout, json: boolean, io: Io): Promise<number> {
   const root = l.root;
   const found = await inspect(l);
   switch (found.kind) {
-    case 'live':
-      io.out(json ? `${JSON.stringify(found.status)}\n` : `hub running for ${found.status.root}\n${describe(found.status)}`);
+    case 'live': {
+      try {
+        const full = await askHub(found.d, 'hub.status') as HubStatus;
+        io.out(json ? `${JSON.stringify(full)}\n` : `hub running for ${full.root}\n${describe(full)}`);
+      } catch (error) {
+        const statusError = error instanceof Error ? error.message : String(error);
+        io.out(json ? `${JSON.stringify({ running: true, root: found.d.root ?? root, pid: found.d.pid, statusError })}\n`
+          : `hub running for ${found.d.root ?? root} (pid ${found.d.pid})\nfull status unavailable: ${statusError}\n`);
+      }
       return 0;
+    }
     case 'none':
       io.out(json ? `${JSON.stringify({ running: false, root })}\n` : `no hub running for ${root}\n`);
       return 1;
@@ -391,7 +397,8 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
   const d = overridden ? readDiscovery(discovery) : null;
   let target = overridden ? d?.root ?? null : root;
   if (overridden && sub === 'stop' && target === null) {
-    target = (d && await probe(d))?.root ?? null;
+    try { target = d ? (await askHub(d, 'hub.status') as HubStatus).root : null; }
+    catch { target = null; }
   }
   const l = { ...layout(target ?? root), discovery };
   switch (sub) {

@@ -127,6 +127,7 @@
     "hub/test/harness-import.test.ts": "T1",
     "hub/test/heartbeat.test.ts": "T2",
     "hub/test/hook-bridge-doctor.test.ts": "T3",
+    "hub/test/hub-status-component.test.ts": "T2",
     "hub/test/human-routing.test.ts": "T2",
     "hub/test/hygiene.test.ts": "T2",
     "hub/test/import-github-lifecycle.test.ts": "T3",

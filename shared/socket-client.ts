@@ -24,12 +24,24 @@ const PLUMBING: ReadonlySet<string> = new Set(['session.signal', 'session.bridge
  * says whose it is (`as`, from `sessionOf`), unless the caller already named an actor.
  */
 export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { type: string } & Record<string, unknown>, timeoutMs = 3000, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock): Promise<unknown> {
-  const session = frame.as === undefined && !PLUMBING.has(frame.type) ? sessionOf(env) : undefined;
+  return exchange(d, frame, timeoutMs, env, clock);
+}
+
+/** An authenticated welcome proves liveness without collecting a full status.
+ * This handshake also works with older hubs that have no dedicated ping frame. */
+export async function probeHub(d: Pick<Discovery, 'socket' | 'secret'>, timeoutMs = 3000): Promise<void> {
+  await exchange(d, null, timeoutMs, {}, realClock);
+}
+
+function exchange(d: Pick<Discovery, 'socket' | 'secret'>, frame: ({ type: string } & Record<string, unknown>) | null, timeoutMs: number, env: NodeJS.ProcessEnv, clock: Clock): Promise<unknown> {
+  const session = frame && frame.as === undefined && !PLUMBING.has(frame.type) ? sessionOf(env) : undefined;
   const request = session ? { ...frame, as: session } : frame;
   return new Promise((resolve, reject) => {
     const socket = createConnection(d.socket);
     const id = randomUUID();
-    let buffer = '';
+    // Keep incomplete lines as chunks. Scanning/flattening an accumulated string
+    // on every read makes large status replies quadratic in their byte count.
+    let parts: string[] = [];
     let settled = false;
     let requestSent = false;
     const done = (err: Error | null, value?: unknown) => {
@@ -47,13 +59,16 @@ export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { ty
       socket.write(`${JSON.stringify(hello)}\n`);
     });
     socket.on('data', (chunk: string) => {
-      buffer += chunk;
+      let start = 0;
       let nl: number;
-      while ((nl = buffer.indexOf('\n')) >= 0) {
-        const frame = parseFrame(buffer.slice(0, nl));
-        buffer = buffer.slice(nl + 1);
+      while (!settled && (nl = chunk.indexOf('\n', start)) >= 0) {
+        parts.push(chunk.slice(start, nl));
+        const frame = parseFrame(parts.join(''));
+        parts = [];
+        start = nl + 1;
         if (!frame) continue;
         if (frame.type === 'welcome') {
+          if (request === null) { done(null); continue; }
           socket.write(`${JSON.stringify({ ...request, id })}\n`, error => { if (!error) requestSent = true; });
         }
         else if (frame.type === 'error') done(new Error(`the hub refused: ${String(frame.message)}`));
@@ -62,6 +77,7 @@ export function askHubFrame(d: Pick<Discovery, 'socket' | 'secret'>, frame: { ty
           else done(new Error(String(frame.error)));
         }
       }
+      if (!settled && start < chunk.length) parts.push(chunk.slice(start));
     });
     socket.on('error', (err) => done(err));
     socket.on('close', () => done(new Error(`the hub closed ${d.socket} before answering`)));
