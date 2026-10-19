@@ -2,7 +2,7 @@
 // anywhere inside it).
 import { AutostartDeferred, autostartDeferred, markHubStop, type Starter } from '../hub/startup.ts';
 import { spawn } from 'node:child_process';
-import { closeSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { closeSync, fstatSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
@@ -106,6 +106,7 @@ async function start(root: string, io: Io, starter: Starter, autostart: boolean)
 
   mkdirSync(l.logDir, { recursive: true });
   const logFd = openSync(l.log, 'a');
+  const logStart = fstatSync(logFd).size;
   const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve', '--starter', JSON.stringify(starter), ...(autostart ? ['--autostart'] : [])], { cwd: root, detached: true, stdio: ['ignore', logFd, logFd], env: process.env });
   closeSync(logFd);
   child.unref();
@@ -138,14 +139,18 @@ async function start(root: string, io: Io, starter: Starter, autostart: boolean)
     }
     await sleep(50);
   }
-  if (exited === null && child.pid !== undefined) child.kill('SIGKILL');
+  let log = '';
   let tail = '';
   try {
-    tail = readFileSync(l.log, 'utf8').split('\n').slice(-15).join('\n');
+    // Ignore earlier starts, including their stalled operations and suite sizes.
+    log = readFileSync(l.log).subarray(logStart).toString('utf8');
+    tail = log.split('\n').slice(-15).join('\n');
   } catch {
     /* no log */
   }
-  io.err(`cland: the hub did not start${exited !== null ? ` (exited with ${exited})` : ` within ${START_DEADLINE_MS / 1000} s`}; ${l.log}:\n${tail}\n`);
+  const { startupDiagnostic } = await import('./startup-diagnostic.ts');
+  io.err(`cland: the hub did not start${exited !== null ? ` (exited with ${exited})` : ` within ${START_DEADLINE_MS / 1000} s`}; ${startupDiagnostic(log)}; ${l.log}:\n${tail}\n`);
+  if (exited === null && child.pid !== undefined) child.kill('SIGKILL');
   return 1;
 }
 

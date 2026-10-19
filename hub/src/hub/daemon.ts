@@ -184,10 +184,16 @@ export async function serveProject(root: string, options: { publishRelease?: imp
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
   try {
-    tracker.start();
+    log({ event: 'hub-startup-step', step: 'indexing tracker', pid: process.pid });
+    // Finish index recovery/migrations before exposing the hub, but do not queue
+    // background readiness ahead of that barrier or the status listeners.
+    tracker.start({ deferReadyChecks: true });
     await tracker.rescanAsync();
+    log({ event: 'hub-startup-step', step: 'loading roles', pid: process.pid });
     await roles.start();
+    log({ event: 'hub-startup-step', step: 'loading rules', pid: process.pid });
     await rules.start();
+    log({ event: 'hub-startup-step', step: 'loading crew', pid: process.pid });
     await crew.start();
     // The live cache must share the journal's recent groups, including ones beyond the
     // first page. Read the tail before creating the core so startup log producers cannot
@@ -211,6 +217,9 @@ export async function serveProject(root: string, options: { publishRelease?: imp
       // still rejects and releases the project lock through the normal cleanup.
       log({ event: 'events-restore-failed', error: err instanceof Error ? err.message : String(err) });
     }
+    log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
+    const store = new Store(l.db, options.openDatabase);
+    log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
       clock,
       secret,
@@ -226,7 +235,7 @@ export async function serveProject(root: string, options: { publishRelease?: imp
       ...(options.droplet ? { droplet: options.droplet } : {}),
       ...(options.selectSuite ? { selectSuite: options.selectSuite } : {}),
       verification: { ...(options.compatibility ? { compatibility: options.compatibility } : {}), ...(options.candidate ? { candidate: options.candidate } : {}), ...(options.durationContext !== undefined ? { durationContext: options.durationContext } : {}), executor: config?.verification.executor ?? 'local', localFallback: config?.verification.localFallback ?? true, lifetimeMs: config?.verification.lifetimeMs ?? 6600000, runTimeoutMs: config?.verification.runTimeoutMs ?? 4500000, runTimeout: config?.verification.runTimeout ?? '75m', cacheMaxAgeMs: config?.verification.cacheMaxAgeMs ?? 86400000, waitP90TargetMs: config?.verification.waitP90TargetMs ?? 1200000, budget: config?.verification.budget ?? 1, remoteBudget: config?.verification.remoteBudget ?? 4, shards: config?.verification.shards ?? 2, locks: [config?.verification.lockPath ?? '/tmp/cland-suite.lock', config?.verification.lockPath && config.verification.lockPath !== '/tmp/cland-suite.lock' ? `${config.verification.lockPath}-nvim` : '/tmp/cland-suite-nvim.lock'] },
-      store: new Store(l.db, options.openDatabase),
+      store,
       log,
       requestGuard,
       ...(config ? { rateLimit: config.hygiene.rateLimit, eventLimit: config.hygiene.eventLimit, loopBreaker: config.hygiene.loopBreaker, maxTextBytes: config.hygiene.maxTextBytes } : {}),
@@ -328,6 +337,7 @@ export async function serveProject(root: string, options: { publishRelease?: imp
 
   if (listen !== 'never') {
     try {
+      log({ event: 'hub-startup-step', step: 'binding listeners', pid: process.pid });
       ws = await createWebSocketEdge(hub.dispatcher, { port: 0, host: '127.0.0.1', secret, log });
       edge = await createSocketEdge({ path: l.socket, dispatcher: hub.dispatcher, log });
     } catch (err) {
@@ -351,12 +361,14 @@ export async function serveProject(root: string, options: { publishRelease?: imp
   if (ws === null || edge === null) {
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
+    tracker.resumeReadyChecks();
     lintWarmer.request(devTip);
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   try {
+    log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
     adapters = projectSessions({ ...(options.openDatabase ? { openDatabase: options.openDatabase } : {}), core: hub.core, root, db: l.db, discoveryFile: l.discovery, log, tracker, env, cleanup: config?.sessions, ...(options.adapters ? { adapters: options.adapters } : {}) });
     hub.dispatcher.useSessions(adapters.sessions);
     adapters.sessions.sweepArchive();
@@ -370,6 +382,7 @@ export async function serveProject(root: string, options: { publishRelease?: imp
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
+  tracker.resumeReadyChecks();
   lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);
   hub.dispatcher.useAccountPoller(accountPoller);

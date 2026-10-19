@@ -296,6 +296,7 @@ export class Tracker {
   /** Each item's freshness as last announced: an answer that arrives later is announced only when it differs. */
   readonly #revisions = new Map<string, number>();
   readonly #readyChecks = new Set<string>();
+  #deferredReady: Set<string> | null = null;
   readonly #readyAgain = new Set<string>();
   readonly #readyRetries = new Map<string, ClockTimer>();
   readonly #clock: Clock;
@@ -509,6 +510,7 @@ export class Tracker {
 
   /** Freshness, verdicts and branch changes converge on one queued workflow check. */
   #scheduleReady(id: string, retry = false): void {
+    if (this.#deferredReady) { this.#deferredReady.add(id); return; }
     if (!retry) { this.#retryCounts.delete(id); this.#readyErrors.delete(id); }
     const indexed = this.#index.get(id);
     if (this.#readyRetries.has(id)) return;
@@ -686,7 +688,8 @@ export class Tracker {
   }
 
   /** Bring the index level with the folder, then watch it. */
-  start(): void {
+  start(options: { deferReadyChecks?: boolean } = {}): void {
+    if (options.deferReadyChecks) this.#deferredReady = new Set();
     this.#recoverCriterionCaptures();
     this.rescan();
     // Membership is checked after every file has been indexed, including newly added children.
@@ -722,6 +725,14 @@ export class Tracker {
     this.#polled = this.#folderStamp();
     this.#fresh.start();
     for (const [id, candidate] of this.#planCandidates) if (candidate.item.fm.state === 'open' && this.#index.plan(id)) this.#schedulePlanned(id);
+  }
+
+  /** Start background readiness only after the daemon can answer status probes. */
+  resumeReadyChecks(): void {
+    const pending = this.#deferredReady;
+    this.#deferredReady = null;
+    if (this.#stopping) return;
+    for (const id of pending ?? []) this.#scheduleReady(id);
   }
 
   /** The item files with their times and sizes: what a poll compares when the folder cannot be watched. */
