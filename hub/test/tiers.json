@@ -400,6 +400,7 @@
     "hub/test/tracker-ready.test.ts": "T2",
     "hub/test/tracker-status-component.test.ts": "T2",
     "hub/test/tracker-status.test.ts": "T3",
+    "hub/test/tracker-summary.test.ts": "T1",
     "hub/test/tracker.test.ts": "T3",
     "hub/test/typecheck.test.ts": "T3",
     "hub/test/v01-migration.test.ts": "T3",
