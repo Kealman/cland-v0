@@ -26,7 +26,23 @@ async function select(c:Client,key:string) {
 }
 
 async function shown(c:Client,id:string,text:string) {
-  await c.lua("local id,text=...; local e=require('cland.explorer'); assert(vim.wait(5000,function() return e.card.key==id and e.card.lines and table.concat(e.card.lines,'\\n'):find(text,1,true)~=nil end),'card '..id..' expects '..text..'\\n'..table.concat(e.card.lines or {},'\\n'))",id,text);
+  // nvim_input queues navigation. Yield between RPC observations so it can
+  // finish before reading a card, including when its old text is cached.
+  await eventually('explorer row under cursor for '+id, async()=>
+    await c.lua<boolean>(`
+      local id=...
+      local e=require('cland.explorer')
+      local win=e.tree_win()
+      return win~=-1 and vim.api.nvim_win_is_valid(win)
+        and e.key_at(vim.api.nvim_win_get_cursor(win)[1])==id
+    `,id) || undefined,5000);
+  await eventually('rendered card '+id+' expects '+text, async()=>
+    await c.lua<boolean>(`
+      local id,text=...
+      local e=require('cland.explorer')
+      return e.card.key==id and e.card.drawn_key==id
+        and e.card.lines~=nil and table.concat(e.card.lines,'\\n'):find(text,1,true)~=nil
+    `,id,text) || undefined,5000);
 }
 
 const fixture: Scenario={coordinator:'coord',processes:[{name:'coord',role:'coordinator',status:'running',state:'idle'}],items:[
