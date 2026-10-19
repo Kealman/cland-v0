@@ -2,8 +2,8 @@
 id: T-884
 kind: task
 title: A failed compatibility sweep overwrites the suite worker's primary failure cause
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-618
 branch: t/T-884-a-failed-compatibility-sweep-overwrites
 created: 2026-10-19T15:59:36.589Z
-updated: 2026-10-19T16:22:01.095Z
+updated: 2026-10-19T19:12:15.016Z
+closed: 2026-10-19T19:12:15.016Z
 ---
 
 ## Summary
@@ -61,3 +62,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, C1 verified. A-6204 audits exact-head A-6203/c28f73f1: 1577/1577 ordinary, 497 groups 5/5, both owned cause-reporting controls pass ordinarily and five repetitions. Four inherited T-856 Git reports covered by T-877; T3 remains landing evidence.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:12:15.016Z
+
+Merged e628f5e2bb87dec064df8518f910ac250a59b9ea onto dev.

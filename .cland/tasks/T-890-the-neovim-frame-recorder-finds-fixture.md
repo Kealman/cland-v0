@@ -8,13 +8,13 @@ size: S
 labels:
   - v0.1.4
   - needs-triage
-assignee: impl-882
+assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T18:39:30.696Z
-updated: 2026-10-19T18:39:35.265Z
+updated: 2026-10-19T19:08:57.741Z
 ---
 
 ## Summary

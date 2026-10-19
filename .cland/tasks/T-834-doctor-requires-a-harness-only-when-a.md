@@ -2,8 +2,8 @@
 id: T-834
 kind: task
 title: Doctor requires a harness only when a role uses it, and `gh` only with a `github` remote
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-578
 branch: t/T-834-doctor-requires-a-harness-only-when-a
 created: 2026-10-19T06:34:12.522Z
-updated: 2026-10-19T16:09:33.809Z
+updated: 2026-10-19T19:08:39.956Z
+closed: 2026-10-19T19:08:39.956Z
 ---
 
 ## Summary
@@ -160,3 +161,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final integration clear; A-6194 audits full A-6193 / 5a81d2ce at unchanged source-clear head. Ordinary 1586/1586 zero fail/cancel/skip/TODO; all 506 groups 5/5. Doctor requirement/auth/gh/no-harness, named-account resolver and combined flow/favourite/trust/CLI files pass with retained assertions. C1–C5 verified using unchanged baseline audit plus A-6174 integration and current runtime. Four inherited T-856 push tripwire rows retained under T-877; no owned setup/doctor trip. Existing report-only debt remains, T-874 separate. T3 landing evidence deferred; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T19:08:39.956Z
+
+Merged 09bac06278bee7b35454e56b4b20f81442fba439 onto dev.

@@ -2,8 +2,8 @@
 id: T-868
 kind: task
 title: "remote-clock's native-I/O guard is inactive: scripted machines never call remoteWaits.track()"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-613
 branch: t/T-868-remote-clock-s-native-i-o-guard-is
 created: 2026-10-19T11:41:10.800Z
-updated: 2026-10-19T15:57:30.496Z
+updated: 2026-10-19T19:08:22.196Z
+closed: 2026-10-19T19:08:22.196Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6186 audits full A-6185 / ba0b14f5 at unchanged reviewed head. Ordinary 1560/1560 zero fail/cancel/skip/TODO; all 480 groups 5/5. Both owned held-publication regressions pass ordinarily and each 5/5, retaining pre-release zero-advance and post-completion receipts. Existing admission-lock/prepare/safety files pass with shared driver. C1 verified with A-6160 source. Four inherited T-856 push tripwire rows remain under T-877; no owned test trip. Existing report-only debt retained; T3 landing deferred. No Reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:08:22.196Z
+
+Merged b0a18d8f9729a2d62d66af38c10686fe3e5bb94d onto dev.

@@ -3,7 +3,7 @@ id: T-839
 kind: task
 title: Every harness a role uses is checked for a login and signed in on yes, and the second check decides
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ parent: E-613
 blocked_by:
   - T-838
   - T-834
-topic: null
-branch: null
+topic: topic-627
+branch: t/T-839-every-harness-a-role-uses-is-checked-for
 created: 2026-10-19T06:34:12.988Z
-updated: 2026-10-19T06:34:12.988Z
+updated: 2026-10-19T19:10:06.576Z
 ---
 
 ## Summary

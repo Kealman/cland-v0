@@ -3,7 +3,7 @@ id: T-667
 kind: task
 title: Another stack's verify runs its test in full and reports the test's output
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-619
 branch: t/T-667-another-stack-s-verify-runs-its-test-in
 created: 2026-10-16T16:35:24.761Z
-updated: 2026-10-19T16:50:31.045Z
+updated: 2026-10-19T19:12:15.649Z
 ---
 
 ## Summary

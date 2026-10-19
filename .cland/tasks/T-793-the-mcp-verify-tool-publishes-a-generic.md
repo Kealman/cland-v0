@@ -2,8 +2,8 @@
 id: T-793
 kind: task
 title: The MCP verify tool publishes a generic object schema and refuses a missing field with only "invalid verify request"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-612
 branch: t/T-793-the-mcp-verify-tool-publishes-a-generic
 created: 2026-10-18T09:29:02.859Z
-updated: 2026-10-19T15:56:11.242Z
+updated: 2026-10-19T19:02:52.772Z
+closed: 2026-10-19T19:02:52.772Z
 ---
 
 ## Summary
@@ -68,3 +69,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6182 audits full A-6181 / d5581c21 at unchanged reviewed head. Ordinary 1561/1561 zero fail/cancel/skip/TODO; all 481 groups 5/5. All three owned public MCP schema/default/override/malformed-field tests pass ordinarily and each 5/5, no owned tier trip. C1/C2 verified with A-6159 source audit. Four inherited T-856 push tripwire rows retained under T-877; existing report-only debt remains. T3 remains landing evidence; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T19:02:52.772Z
+
+Merged fc46edb11a5463406f57b03c262205e052506ccd onto dev.

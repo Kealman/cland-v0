@@ -2,8 +2,8 @@
 id: T-882
 kind: task
 title: Six T2 cases run 3–14 s against the 2 s T2 budget
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-617
 branch: t/T-882-six-t2-cases-run-3-14-s-against-the-2-s
 created: 2026-10-19T15:38:55.994Z
-updated: 2026-10-19T18:26:02.108Z
+updated: 2026-10-19T19:02:41.762Z
+closed: 2026-10-19T19:02:41.762Z
 ---
 
 ## Summary
@@ -180,3 +181,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-6318 independently audits exact-head run 02916802/A-6317: 1589/1589, zero fail/cancel/skip/TODO. All seven owned ordinary Linux bodies <2 s (maximum publication 1.163978830 s; oracle 1.073857978 s), no owned raw budget row. A-6314 delta source clear retains source-identical prior Mac/load proof from A-6289; this refreshed-baseline run has no repetition result groups and is not claimed as fresh 5/5 evidence. Unowned T-883 budget identities and inherited T-856/T-877 resource rows retain separate disposition. Native T3 remains landing evidence. Standards and Spec findings: none.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:02:41.762Z
+
+Merged afb18695d12580acb25754fca9fde78be17159ff onto dev.

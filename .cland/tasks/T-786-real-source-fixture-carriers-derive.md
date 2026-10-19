@@ -2,8 +2,8 @@
 id: T-786
 kind: task
 title: Real-source fixture carriers derive their copied file set from the import graph instead of hand-written lists
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by: []
 topic: topic-610
 branch: t/T-786-real-source-fixture-carriers-derive
 created: 2026-10-18T07:21:29.054Z
-updated: 2026-10-19T15:58:07.555Z
+updated: 2026-10-19T19:08:33.012Z
+closed: 2026-10-19T19:08:33.012Z
 ---
 
 ## Summary
@@ -75,3 +76,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no findings. Spec: no findings. Independently audited A-6187 / 709338b6 at the source-cleared head: 1560 ordinary passes, all 480 gates 5/5. The two new source-fixture controls pass ordinarily and 5/5; both selector-package controls also pass. No owned budget/resource violations. C1 verified across the source-reviewed planted actual-carrier proof, A-6157's disclosed exact-head host carrier/compiler and archived-selector results, and this same-head configured task receipt. Host native results are summaries, not independently parsed raw transcripts; coverage/compiler T3 cases were not executed by this Linux task and remain landing-batch evidence. The final evidence artifact retains all 26 external budget rows and four known onboarding trips (T-877 overlap); roles-editor overlaps T-875.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:08:33.012Z
+
+Merged 3666d4d1afdde022e47607b91ee26001487b4eff onto dev.

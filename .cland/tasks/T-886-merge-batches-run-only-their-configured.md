@@ -2,8 +2,8 @@
 id: T-886
 kind: task
 title: Merge batches run only their configured tiers, and T3 runs on dev every two hours and gates the release
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-621
 branch: t/T-886-merge-batches-run-only-their-configured
 created: 2026-10-19T16:17:30.236Z
-updated: 2026-10-19T17:59:09.666Z
+updated: 2026-10-19T19:02:30.083Z
+closed: 2026-10-19T19:02:30.083Z
 ---
 
 ## Summary
@@ -195,3 +196,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final merged-head evidence clear; A-6305. A-6304 ordinary 1599/1599 and 519 groups 5/5; owned batch/periodic/release and member-attachment cases meet tiers. A-6291 post-integration native filtered-tree contract retained separately from deferred Linux T3. C1–C4 reverified. Three inherited onboarding resource rows retained/routed under existing T-877 chain; pinned head predates its separate landing. No further run requested. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6305-t-886-final-d68-integrated-evidence-at-8898f47d.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T19:02:30.083Z
+
+Merged 93be29ea694b4f64359656489051f641c9785659 onto dev.

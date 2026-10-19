@@ -3,7 +3,7 @@ id: T-887
 kind: task
 title: A red periodic dev T3 run finds the landed merge that broke it and files a Bug
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-624
 branch: t/T-887-a-red-periodic-dev-t3-run-finds-the
 created: 2026-10-19T16:17:32.779Z
-updated: 2026-10-19T18:42:05.272Z
+updated: 2026-10-19T19:08:24.446Z
 ---
 
 ## Summary
@@ -71,3 +71,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6316. A-6315 ordinary 1606/1606 and all 18 selected groups 5/5. Seven owned search/proof/reuse/Bug/flake/concurrent-batch controls each pass ordinarily and five repetitions within T1/T2 bounds. A-6310 original targeted outputs retained. C1–C3 verified with source audit; no claim of native checkout execution by fake-repository tests. Inherited T856/T877 rows qualified; native T3 remains landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6316-t-887-final-durable-search-evidence-at-f621acf9.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-30 · 2026-10-19T19:08:24.446Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-887-squash-integration-source
+commit: 2be4b50401ce235ecc3a3472043a721c34098050
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6338 source delta clear. Integrated task patch against dev fc46edb1 preserves the original reviewed patch's exact 17 files and ordered added/deleted lines (+472/-21); new modules/dedicated tests blob-identical. Reviewed conflict wiring retains T-886/T-882/T-793 behavior. Coordinator 770f1f61 authorized merge. Known targeted verify-tool 2/3 failures in A-6332 are inherited unchanged dev fixture/admission, not passing runtime evidence; shared disposition remains pending. No C1–C3 verification transferred to new head. Prior runtime historical; new exact-head mode-free gate follows disposition, with fresh review if shared correction changes head.

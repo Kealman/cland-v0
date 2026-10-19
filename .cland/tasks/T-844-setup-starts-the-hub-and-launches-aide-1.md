@@ -3,7 +3,7 @@ id: T-844
 kind: task
 title: Setup starts the hub and launches `aide-1` with the onboarding brief
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-614
 branch: t/T-844-setup-starts-the-hub-and-launches-aide-1
 created: 2026-10-19T06:34:13.450Z
-updated: 2026-10-19T16:19:26.541Z
+updated: 2026-10-19T19:12:09.875Z
 ---
 
 ## Summary
@@ -110,3 +110,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear: A-6201 audits same-head run 69c65bc8/A-6199 (1584/1584, zero fail/cancel/skip/TODO; 504 groups 5/5). C1–C5 source and owned execution receipts established; corrected inventory controls have no owned tier trip. Four inherited T-856 Git rows remain covered by T-877/Coordinator disposition. T3 remains merge-batch landing evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-19T19:12:09.875Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-844-requirements-integration-source
+commit: 4dfe7a07dfb3b92d54e023c805ae62a84a186da5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6351 Integration source clear. Compared all 16 task-delta files to original reviewed patch: only two requiredHarnesses fixture-method additions differ; assertions unchanged. Owned production modules byte-identical. Landed T-834 installer/login requirements compose with onboarding's required all-installed harness list. Coordinator 07a73582 authorized merge/repair. No current-head criteria verification until exact-head mode-free receipt; old runtime historical.

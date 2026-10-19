@@ -2,8 +2,8 @@
 id: T-881
 kind: task
 title: suite-timeouts fast-exit pipe cleanup case times out waiting for its one cleanup warning
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-616
 branch: t/T-881-suite-timeouts-fast-exit-pipe-cleanup
 created: 2026-10-19T15:30:17.413Z
-updated: 2026-10-19T16:27:30.156Z
+updated: 2026-10-19T19:12:28.262Z
+closed: 2026-10-19T19:12:28.262Z
 ---
 
 ## Problem
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; C1 verified. A-6215: exact-head A-6213 task gate 451/451, 223 groups 5/5, zero tier trips, combined with A-6198's independently audited 20+20 serial Mac passes under identical final test bytes and qualified prior-base provenance. Task receipt does not execute native T3; Linux T3 remains merge-batch evidence.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:12:28.262Z
+
+Merged 0420324e4ee9266c2c29149356589d0dbea742a2 onto dev.
