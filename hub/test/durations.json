@@ -4789,11 +4789,12 @@
       "owner": "E-677",
       "legacy": true
     },
-    "hub/test/executor-run.test.ts::host typecheck failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
-      "seconds": 10.980641,
-      "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+    "hub/test/executor-run.test.ts::host check failure creates no machine; remote typecheck stops tests and failed tests retain failures": {
+      "seconds": 16.476,
       "owner": "E-677",
-      "legacy": true
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-668 renamed the host typecheck failure identity to host check failure; retains nested verification workers and fake provider/SSH failure paths. A-6763/A-6767 observed up to 13.73 s; allow 20% headroom."
     },
     "hub/test/executor-run.test.ts::incremental byte logs survive SSH failure and hub restart and report once": {
       "seconds": 10.493271,
@@ -4975,6 +4976,13 @@
       "expires": "2026-10-24",
       "reason": "Retains three real harness sessions, SIGKILL death notification, confirmed stops and inherited hierarchy routing. Linux droplet run 83b8bc38 (A-4357) observed 7.387011 seconds; Mac 5/5 medians were below five seconds."
     },
+    "hub/test/merge-checkout-lifecycle.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": {
+      "seconds": 7.812,
+      "owner": "E-677",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-896–T-903 process-helper migration isolates the real hub crash/restart and Git checkout recovery lifecycle proof. A-6763/A-6767 observed up to 6.51 s; allow 20% headroom."
+    },
     "hub/test/merge-checkout.test.ts::a blocked prelanding restore reports its durable recovery receipt and repairs before a later merge": {
       "seconds": 4.706272,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
@@ -4993,6 +5001,20 @@
       "owner": "E-677",
       "legacy": true
     },
+    "hub/test/merge-recovery-native.test.ts::a close write failure reports merged follow-up failure; retry closes and prunes without a second commit": {
+      "seconds": 6.1788,
+      "owner": "E-677",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-896–T-903 process-helper migration retains native Git merge, close-write failure and cleanup retry without a second commit. A-6763/A-6767 observed up to 5.149 s; allow 20% headroom."
+    },
+    "hub/test/merge-recovery-native.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": {
+      "seconds": 6.9468,
+      "owner": "E-677",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-896–T-903 process-helper migration moves the native Git retry proof while retaining staged deletion and reversion assertions. A-6763/A-6767 observed up to 5.789 s; allow 20% headroom."
+    },
     "hub/test/merge-recovery.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": {
       "seconds": 4.520955,
       "reason": "Runs a real merge and deferred worktree cleanup, switches to an unrelated branch, then retries cleanup after restoration to prove unrelated work survives.",
@@ -5001,12 +5023,6 @@
     },
     "hub/test/merge-recovery.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": {
       "seconds": 2.582777,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "hub/test/merge-recovery.test.ts::retrying a completed merge preserves staged deletion and reversion of its touched files": {
-      "seconds": 3.456362,
       "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
       "owner": "E-677",
       "legacy": true
@@ -5359,6 +5375,13 @@
       "owner": "E-677",
       "added": "2026-10-17",
       "expires": "2026-10-24"
+    },
+    "hub/test/session-resume-lifecycle.test.ts::a stopped Claude Implementer resumes its conversation, role and item claim and receives its clause again": {
+      "seconds": 8.1996,
+      "owner": "E-677",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-896–T-903 process-helper migration isolates the real Claude stop/resume lifecycle with conversation, role, claim and clause delivery assertions. A-6763/A-6767 observed up to 6.833 s; allow 20% headroom."
     },
     "hub/test/session-stop-races-cleanup.test.ts::held stop cleanup survives assertion failure and test-runner cancellation": {
       "seconds": 3.077361,
