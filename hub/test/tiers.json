@@ -293,7 +293,7 @@
     "hub/test/shared-defects-report.test.ts": "T3",
     "hub/test/shared-defects.test.ts": "T1",
     "hub/test/skills-invocation.test.ts": "T1",
-    "hub/test/skills-onboarding.test.ts": "T1",
+    "hub/test/skills-onboarding.test.ts": "T2",
     "hub/test/skills-qa.test.ts": "T3",
     "hub/test/skills-tracker-jq.test.ts": "T3",
     "hub/test/skills-tracker.test.ts": "T2",

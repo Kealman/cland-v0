@@ -49,13 +49,22 @@ For example: "The human decides the product; the crew decides the stack and expl
 
 Once the human agrees the text, record each rule with `rule.add`: `text` the sentence, `title` a short name (the hub cuts titles at 80 characters, and `rule.edit` cannot change one), `scope` `all` (or the roles it binds), `reason` `onboarding <date>: <the human's words>`. Read them back with `rule.list`.
 
+If an agreed rule gives epic plan approval to the human ("I approve epic plans"), on that same yes run `cland config set plan.approval human`. Say in one line: "From now on, the hub asks you to approve every epic plan before its work starts."
+
 From here on the rules choose your questions: put a decision to the human when a rule gives it to them; otherwise propose it, give the reason in their terms, and carry on unless they object.
 
 ## 3. The first plan
 
 Plan with the human, visibly: the Coordinator runs the work but never decides what to build. Follow `EMPTY.md` or `EXISTING.md` (this folder) to its last step. Show each item you file and where the human sees it: "in the workbench, space then i shows them".
 
-When `cland task list --kind category` lists none, propose the four categories, one line each on what they hold (Bugs, Tech debt, Follow-ups, Ideas), and create them on yes with `cland task create "<title>" --kind category`: every role files work found aside there.
+Read `cland task list --kind category` and explain the four categories that init seeded, one line each: every role files work found aside there.
+
+- **Bugs**: defects found outside the current item.
+- **Tech debt**: code or design cleanup found during work.
+- **Follow-ups**: further work on something already merged.
+- **Ideas**: proposals outside the current release or epic.
+
+Only when the list is empty (a project initialised before 0.1.4), propose those four categories and create them on yes with `cland task create "<title>" --kind category`.
 
 ## 4. The stack
 

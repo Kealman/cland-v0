@@ -1,9 +1,12 @@
-// T1: the skill's documented commands match CLI usage and configuration keys in-process.
+// T2: documented commands match CLI usage; the Aide's config CLI runs against an in-process hub.
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import * as usage from '../src/cli/usage.ts';
 import { configKeys } from '../src/init/config-set.ts';
+import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
+import { clandWithEnv, connectUi, projectHub, tempProject } from './harness.ts';
 
 const SKILL = new URL('../../.agents/skills/onboarding/', import.meta.url);
 const FILES = ['SKILL.md', 'EMPTY.md', 'EXISTING.md', 'WELCOME.md', 'TOUR.md'];
@@ -48,4 +51,24 @@ test('the onboarding command check rejects unknown commands and config keys', ()
   ]);
   assert.deepEqual(commandProblems('`cland config set plan.approval "human"`'), []);
   assert.deepEqual(commandProblems('`cland config set plan.unknown "human"`'), ['unknown config key: plan.unknown']);
+});
+
+test('the onboarding Aide sets human epic plan approval through the config CLI', async t => {
+  const root = await tempProject(t);
+  const path = join(root, '.cland/config.toml');
+  const config = defaultConfig('Onboarding');
+  config.verification.lockPath = join(root, 'suite.lock');
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(path, renderConfig(config));
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  assert.equal(parseConfig(await readFile(path, 'utf8'), root).plan.approval, 'none');
+
+  const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide' },
+    'config', 'set', 'plan.approval', 'human', '--json');
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { key: 'plan.approval', value: 'human', applies: 'now' });
+  assert.equal(parseConfig(await readFile(path, 'utf8'), root).plan.approval, 'human');
 });
