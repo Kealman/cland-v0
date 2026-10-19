@@ -9,6 +9,19 @@ const config = (root: string, budget: number) => `[verification]\nlock_path=${JS
 
 const roles = (model: string) => `[implementer.launch]\nharness="codex"\nmodel="${model}"\n`;
 
+// T2: command reload is a hub rule; no process lifecycle is involved.
+test('hub reload applies changed verification commands without a restart', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const path = join(root, '.cland/config.toml');
+  await writeFile(path, config(root, 2) + 'test="before"\n');
+  await projectHub(t, root);
+  await writeFile(path, config(root, 2) + 'prepare="install"\ncheck="compile"\ntest="after"\n');
+  const result = await cland(root, 'hub', 'reload');
+  assert.equal(result.code, 0, result.stderr);
+  for (const key of ['prepare', 'check', 'test']) assert.ok(result.stdout.includes(`verification.${key}`), result.stdout);
+});
+
 test('hub reload publishes config and roles together and retains both after either file fails', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });

@@ -16,6 +16,7 @@ import { clandWithEnv, connectUi, projectHub, tempProject } from './harness.ts';
 import { captureCli } from './cli-in-process.ts';
 import { FakeClock } from './fake-clock.ts';
 import { REPO, VERSION, run, runCli, gitRepo, gitStatus, tree, changed, shipped, sh, assertNoMachinePath } from './init-fixture.ts';
+import { parseConfig } from '../src/init/config.ts';
 
 test('init writes tracker levels and update preserves a changed or empty ladder', async t => {
   const root = await tempProject(t);
@@ -37,6 +38,16 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   assert.equal(await readFile(crewPath, 'utf8'), customCrew, 'init and update preserve project staffing');
   const path = join(root, '.cland/config.toml');
   const initial = await readFile(path, 'utf8');
+  // Existing init/update contract: the command keys are empty until configured.
+  for (const key of ['prepare', 'check', 'test'] as const) {
+    assert.equal(parseConfig(initial, root).verification[key], '');
+    assert.match(initial, new RegExp(`# ${key} [^\\n]+\\n${key} = ""`));
+  }
+  assert.match(initial, /cland config set verification.test '<command>'/);
+  const command = 'python3 -m unittest discover -s "test cases" && echo passed | cat';
+  await writeFile(path, initial.replace('test = ""', `test = ${JSON.stringify(command)}`));
+  await run(root, 'update');
+  assert.equal(parseConfig(await readFile(path, 'utf8'), root).verification.test, command);
   assert.match(initial, /\[tracker\]\nlevels = \[\["release","category"\],"epic"\]/);
   await writeFile(path, initial.replace(/levels = \[[^\n]*\]/, 'levels = ["release", "epic"]'));
   const upgraded = await run(root, 'update');

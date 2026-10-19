@@ -16,7 +16,7 @@ import { isManagedFile, readText, writeIfChanged, type Report } from './files.ts
 export type ProjectConfig = {
   name: string;
   merge: { queue: boolean; batch: number; batchWaitMs: number };
-  verification: { soak: string; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { prepare: string; check: string; test: string; soak: string; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -31,7 +31,7 @@ const MINUTE = 60_000;
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   merge: { queue: false, batch: 3, batchWaitMs: 600_000 },
-  verification: { soak: '', executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { prepare: '', check: '', test: '', soak: '', executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -52,6 +52,13 @@ export function renderConfig(c: ProjectConfig): string {
 name = ${JSON.stringify(c.name)}
 
 [verification]
+# cland verify runs nothing until test is set; use cland config set verification.test '<command>'.
+# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally.
+prepare = ${JSON.stringify(c.verification.prepare)}
+# check is the fast gate; runs first and on the host before a droplet is made.
+check = ${JSON.stringify(c.verification.check)}
+# test is the suite; its exit code decides the run.
+test = ${JSON.stringify(c.verification.test)}
 executor = ${JSON.stringify(c.verification.executor)}
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = ${c.verification.localFallback}
@@ -173,6 +180,11 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     }
   }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
+  for (const key of ['prepare', 'check', 'test'] as const) {
+    if (verification[key] === undefined) continue;
+    if (typeof verification[key] !== 'string') throw new Error(`verification.${key} must be a command string`);
+    c.verification[key] = verification[key];
+  }
   if (verification.soak !== undefined) {
     if (typeof verification.soak !== 'string' || verification.soak !== '' && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(verification.soak)) throw new Error('verification.soak must be HH:MM UTC or empty');
     c.verification.soak = verification.soak;

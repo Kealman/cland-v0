@@ -1,3 +1,4 @@
+// T2: config CLI argument handling requires the CLI against an in-process project hub.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, symlink, unlink, writeFile } from 'node:fs/promises';
@@ -16,6 +17,23 @@ async function fixture(t: Parameters<typeof tempProject>[0]) {
   const hub = await projectHub(t, root);
   return { root, path, ...hub };
 }
+
+test('config set keeps verification command arguments verbatim and applies them now', async t => {
+  const { root, path } = await fixture(t);
+  for (const [key, value] of [
+    ['test', 'python3 -m unittest discover -s tests'],
+    ['check', 'python3 -m compileall . && printf "checked" | cat'],
+    ['prepare', '  python3 -m pip install -r "dev requirements.txt"  '],
+    ['test', 'true'],
+    ['check', '"printf"'],
+    ['prepare', "'printf'"],
+  ] as const) {
+    const result = await cland(root, 'config', 'set', `verification.${key}`, value);
+    assert.equal(result.code, 0, result.stderr);
+    assert.ok(result.stdout.includes(`verification.${key} = ${JSON.stringify(value)}; applies now`), result.stdout);
+    assert.equal(parseConfig(await readFile(path, 'utf8'), root).verification[key], value);
+  }
+});
 
 test('config set without a running hub refuses and leaves the managed file unchanged', async t => {
   const root = await tempProject(t);

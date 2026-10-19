@@ -5,6 +5,35 @@ import assert from 'node:assert/strict';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 
+// T1: verification command parsing and rendering need no hub or process.
+test('verification commands retain literal shell syntax through the config template', () => {
+  const commands = {
+    prepare: '  python3 -m pip install -r "dev requirements.txt"  ',
+    check: "python3 -m compileall . && printf 'checked' | cat",
+    test: 'python3 -m unittest discover -s tests',
+  };
+  const config = parseConfig(`[verification]\n${Object.entries(commands).map(([key, value]) => `${key} = ${JSON.stringify(value)}`).join('\n')}`, 'scratch');
+  for (const [key, value] of Object.entries(commands)) assert.equal(Reflect.get(config.verification, key), value);
+  const rendered = renderConfig(config);
+  assert.deepEqual(parseConfig(rendered, 'scratch'), config);
+  assert.match(rendered, /# cland verify runs nothing until test is set; use cland config set verification.test '<command>'\./);
+  assert.match(rendered, /# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally\.\nprepare =/);
+  assert.match(rendered, /# check is the fast gate; runs first and on the host before a droplet is made\.\ncheck =/);
+  assert.match(rendered, /# test is the suite; its exit code decides the run\.\ntest =[^\n]*\nexecutor =/);
+});
+
+test('verification commands default empty and refuse non-string values', () => {
+  const absent = parseConfig('', 'scratch');
+  for (const key of ['prepare', 'check', 'test'] as const) {
+    assert.equal(absent.verification[key], '');
+    for (const value of ['3', 'false', '[]', '{}']) {
+      assert.throws(() => parseConfig(`[verification]\n${key} = ${value}`, 'scratch'), {
+        message: `verification.${key} must be a command string`,
+      });
+    }
+  }
+});
+
 test('tracker config accepts peer levels and rejects malformed, duplicate and colliding kind names', () => {
   for (const levels of [['release', 'epic'], [['release', 'category'], 'epic']]) {
     assert.deepEqual(parseConfig(`[tracker]\nlevels = ${JSON.stringify(levels)}`, 'scratch').tracker.levels, levels);
