@@ -1,0 +1,89 @@
+{
+  "items": [
+    {
+      "id": "E-1",
+      "kind": "epic",
+      "rank": 10,
+      "title": "Led epic",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-19T12:00:00.000Z",
+      "updated": "2026-10-19T12:00:00.000Z",
+      "file": "E-1-led-epic.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/E-1-led-epic.md",
+      "ancestry": [
+        {
+          "id": "E-1",
+          "kind": "epic",
+          "title": "Led epic"
+        }
+      ],
+      "body": "## Notes",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": {
+        "session": "lead-1",
+        "sessionId": "834ef4b3-6898-4e56-95b0-0a991f2db098",
+        "role": "lead",
+        "claimedAt": "2026-10-19T12:00:00.000Z"
+      },
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    }
+  ],
+  "processes": [
+    {
+      "name": "lead-1",
+      "harness": "claude-code",
+      "account": null,
+      "role": "lead",
+      "label": "lead-1 [Lead]",
+      "model": "claude-fable-5-1",
+      "cwd": "@root@",
+      "item": "E-1",
+      "holds": [
+        {
+          "item": "E-1",
+          "role": "item"
+        }
+      ],
+      "pid": null,
+      "harnessId": "fake:834ef4b3-6898-4e56-95b0-0a991f2db098",
+      "sessionId": "834ef4b3-6898-4e56-95b0-0a991f2db098",
+      "harnessSessionId": "834ef4b3-6898-4e56-95b0-0a991f2db098",
+      "startedAt": "2026-10-19T12:00:00.000Z",
+      "stoppedAt": null,
+      "archived": false,
+      "archivedAt": null,
+      "archivedBy": null,
+      "status": "running",
+      "state": "unknown",
+      "attach": "fake claude-code attach 834ef4b3-6898-4e56-95b0-0a991f2db098",
+      "layer": "watch"
+    }
+  ]
+}

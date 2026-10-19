@@ -1,0 +1,181 @@
+{
+  "items": [
+    {
+      "id": "R-1",
+      "kind": "release",
+      "rank": 10,
+      "version": "1.0.0",
+      "title": "Current release",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-1-item.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-1-item.md",
+      "ancestry": [
+        {
+          "id": "R-1",
+          "kind": "release",
+          "title": "Current release",
+          "version": "1.0.0"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "E-2",
+      "kind": "epic",
+      "rank": 20,
+      "title": "Closed container",
+      "state": "closed",
+      "labels": [],
+      "assignee": null,
+      "parent": "R-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-2-item.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-2-item.md",
+      "ancestry": [
+        {
+          "id": "R-1",
+          "kind": "release",
+          "title": "Current release",
+          "version": "1.0.0"
+        },
+        {
+          "id": "E-2",
+          "kind": "epic",
+          "title": "Closed container"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "approval": {
+        "required": false,
+        "state": "not required"
+      },
+      "stages": [],
+      "planHistory": [],
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "T-3",
+      "kind": "task",
+      "rank": 30,
+      "title": "Closed task",
+      "state": "closed",
+      "status": "done",
+      "labels": [],
+      "assignee": null,
+      "parent": "E-2",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-19T12:00:00.000Z",
+      "file": "T-3-item.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-3-item.md",
+      "ancestry": [
+        {
+          "id": "R-1",
+          "kind": "release",
+          "title": "Current release",
+          "version": "1.0.0"
+        },
+        {
+          "id": "E-2",
+          "kind": "epic",
+          "title": "Closed container"
+        },
+        {
+          "id": "T-3",
+          "kind": "task",
+          "title": "Closed task"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    }
+  ],
+  "processes": []
+}

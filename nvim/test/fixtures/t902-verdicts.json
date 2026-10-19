@@ -1,0 +1,111 @@
+{
+  "items": [
+    {
+      "id": "T-1",
+      "kind": "task",
+      "rank": 10,
+      "title": "Reviewed",
+      "state": "open",
+      "status": "backlog",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": "t/test",
+      "created": "2026-10-19T12:00:00.000Z",
+      "updated": "2026-10-19T12:00:00.000Z",
+      "file": "T-1-reviewed.md",
+      "verdictBase": "main",
+      "size": "M",
+      "path": ".cland/tasks/T-1-reviewed.md",
+      "ancestry": [
+        {
+          "id": "T-1",
+          "kind": "task",
+          "title": "Reviewed"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [
+        {
+          "author": "human",
+          "at": "2026-10-19T12:00:00.000Z",
+          "text": "Checked.",
+          "verdict": {
+            "verdict": "review",
+            "result": "clear",
+            "by": "human",
+            "run": "r-1",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "scope": "full"
+          }
+        },
+        {
+          "author": "qa-1",
+          "at": "2026-10-08T10:06:00.000Z",
+          "text": "Imported.",
+          "verdict": {
+            "verdict": "qa",
+            "result": "clear",
+            "by": "qa-1 [qa]",
+            "run": "q-1"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "human",
+          "run": "r-1",
+          "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "scope": "full",
+          "author": "human",
+          "at": "2026-10-19T12:00:00.000Z",
+          "source": "hub",
+          "writer": {
+            "sessionId": "human",
+            "role": null
+          },
+          "current": false
+        },
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-1 [qa]",
+          "run": "q-1",
+          "author": "qa-1",
+          "at": "2026-10-08T10:06:00.000Z",
+          "source": "file",
+          "current": false
+        }
+      ],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    }
+  ],
+  "processes": []
+}

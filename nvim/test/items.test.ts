@@ -1,47 +1,10 @@
-// The items panel, the item view and the board (#36) against a real hub: item files written by hand into
-// `.cland/tasks`, claims taken through `cland task claim`, the hub's index and its `task` events. The panel
-// follows a hand edit within a second; `e` opens the file and a save re-indexes it.
+// T2: recorded hub item snapshots and the headless client; hub rules in nvim-items-rules.test.ts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, fakeClaude, startDaemon, tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
-import { waitInitialSnapshots } from './readiness.ts';
-
-const nvim = await nvimOrSkip();
-const skip = 'skip' in nvim ? nvim.skip : false;
-const bin = 'bin' in nvim ? nvim.bin : '';
-
-const AT = '2026-10-08T10:00:00.000Z';
-
-/** An item file as the tracker writes it (spec 4.6): frontmatter, the body, the comments. */
-function itemFile(id: string, title: string, fm: Record<string, string> = {}, rest = ''): string {
-  const fields: Record<string, string> = { id, kind: 'task', title, state: 'open', labels: '[]', assignee: 'null', parent: 'null', blocked_by: '[]', topic: 'null', branch: 'null', created: AT, updated: AT, ...fm };
-  return `---\n${Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\n')}\n---\n${rest ? `\n${rest}\n` : ''}`;
-}
-
-const verdictComment = (who: string, role: string, kind: string, result: string, run: string, min: number, text: string) =>
-  `### ${who} · 2026-10-08T10:${String(min).padStart(2, '0')}:00.000Z\n\nverdict: ${kind}\nresult: ${result}\nby: ${who} [${role}]\nrun: ${run}\n\n${text}\n`;
-
-const FIXTURE: Record<string, string> = {
-  'T-1-workbench-shell.md': itemFile('T-1', 'Workbench shell', { kind: 'epic' }),
-  'T-2-items-panel.md': itemFile('T-2', 'Items panel', { parent: 'T-1', branch: 't/2-items-panel' }),
-  'T-3-board-view.md': itemFile(
-    'T-3',
-    'Board view',
-    { parent: 'T-1', status: 'review' },
-    `Six columns derived from the item.\n\n## Comments\n\n### impl-1 · 2026-10-08T10:02:00.000Z\n\nReady for review.\n\n${verdictComment('rev-1', 'reviewer', 'review', 'not clear', 'r-2', 5, 'The qa column is missing.')}`,
-  ),
-  'T-4-item-view.md': itemFile('T-4', 'Item view', { parent: 'T-1', state: 'closed' }, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-3', 4, 'Fine.')}\n${verdictComment('qa-1', 'qa', 'qa', 'clear', 'q-1', 6, 'Checked.')}`),
-  'T-5-slice-2-map.md': itemFile('T-5', 'Slice 2 map', { kind: 'map' }),
-  'T-6-which-store.md': itemFile('T-6', 'Which store', { kind: 'question', parent: 'T-5', state: 'closed' }),
-  'T-7-transport.md': itemFile('T-7', 'Transport', { kind: 'question', parent: 'T-5' }),
-  'T-8-auth-scheme.md': itemFile('T-8', 'Auth scheme', { kind: 'question', parent: 'T-5', blocked_by: '[T-7]' }),
-  'T-9-review-passed.md': itemFile('T-9', 'Review passed', {parent: 'T-1', status: 'qa'}, `## Comments\n\n${verdictComment('rev-1', 'reviewer', 'review', 'clear', 'r-4', 7, 'Good.')}`),
-};
-
+import { startItems } from './items-replay.ts';
+import { skip } from './shell-fixture.ts';
 const leftOf = (text: string): string =>
   text
     .split('\n')
@@ -52,18 +15,8 @@ const leftOf = (text: string): string =>
     .join('\n');
 const statusLine = (s: string) => s.split('\n')[43] ?? '';
 
-test('the all tree keeps closed container and task titles in the done colour', { skip }, async t => {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.cland/tasks'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic"]\n');
-  for (const [id, title, fields] of [
-    ['T-1', 'Current release', { kind: 'release', version: '1.0.0' }],
-    ['T-2', 'Closed container', { kind: 'epic', parent: 'T-1', state: 'closed' }],
-    ['T-3', 'Closed task', { parent: 'T-2', state: 'closed' }],
-  ] as const) await writeFile(join(root, `.cland/tasks/${id}-item.md`), itemFile(id, title, fields));
-  await startDaemon(t, root);
-  const c = await startClient(t, bin, root);
-  await waitInitialSnapshots(c);
+test('recorded item trees render closed titles in the done colour', { skip }, async t => {
+  const c = await startItems(t, 'closed');
   await c.input('<Esc><Space>i6zR');
   await c.waitScreen(s => s.includes('Closed container') && s.includes('Closed task'), 'closed tree unfolded');
   const marks = await c.lua<Record<string, string>>(`
@@ -78,18 +31,9 @@ test('the all tree keeps closed container and task titles in the done colour', {
   assert.deepEqual(marks, { 'Closed container': 'ClandDone', 'Closed task': 'ClandDone' });
 });
 
-test('the epic row, item fields and sessions panel show its launched Lead', { skip }, async t => {
-  const root = await tempProject(t);
-  const fake = await fakeClaude(t);
-  await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["epic"]\n');
-  await startDaemon(t, root, fake.env);
-  const created = await cland(root, 'task', 'create', 'Led epic', '--kind', 'epic');
-  assert.equal(created.code, 0, created.stderr);
-  const launched = await clandWithEnv(root, fake.env, 'session', 'launch', 'lead-1', '--role', 'lead', '--item', 'T-1', '--harness', 'claude-code');
-  assert.equal(launched.code, 0, launched.stderr);
-  const c = await startClient(t, bin, root);
-  await waitInitialSnapshots(c);
+
+test('recorded Lead claims appear in epic rows, item fields and session rows', { skip }, async t => {
+  const c = await startItems(t, 'lead');
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,85)");
@@ -101,16 +45,9 @@ test('the epic row, item fields and sessions panel show its launched Lead', { sk
   await c.waitScreen(s => s.includes('lead-1 [Lead]') && s.includes('E-1'), 'the Lead session and its epic');
 });
 
-test('configured containers with no children show container counts in the panel and stay outside board cards', { skip }, async t => {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.cland/tasks'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["initiative", "feature"]\n');
-  for (const [id, kind] of [['T-1', 'initiative'], ['T-2', 'feature'], ['T-3', 'task'], ['T-4', 'question'], ['T-5', 'spec'], ['T-6', 'map']]) {
-    await writeFile(join(root, `.cland/tasks/${id}-${kind}.md`), itemFile(id!, kind!, { kind: kind!, ...(['task', 'question', 'spec'].includes(kind!) ? {parent: 'T-1'} : {}) }));
-  }
-  await startDaemon(t, root);
-  const c = await startClient(t, bin, root);
-  await waitInitialSnapshots(c);
+
+test('recorded configured containers show counts without entering board cards', { skip }, async t => {
+  const c = await startItems(t, 'containers');
   await c.waitScreen(s => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
@@ -126,18 +63,10 @@ test('configured containers with no children show container counts in the panel 
   assert.ok(screen.includes('feature'), 'the empty container remains visible in the items panel');
 });
 
-test('against a real hub: the tree, the map grouping, the item view and the board from hand-written item files; a hand edit shows within a second; e edits the file and a save re-indexes', { skip }, async (t) => {
-  const root = await tempProject(t);
-  const tasks = join(root, '.cland', 'tasks');
-  await mkdir(tasks, { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["epic"]\n');
-  for (const [name, text] of Object.entries(FIXTURE)) await writeFile(join(tasks, name), text);
-  await startDaemon(t, root);
-  const claimed = await cland(root, 'task', 'claim', 'T-2', '--as', 'impl-1', '--role', 'implementer');
-  assert.equal(claimed.code, 0, claimed.stderr);
 
-  const c = await startClient(t, bin, root);
-  await waitInitialSnapshots(c);
+test('recorded item frames render trees, map groups, details, board and edited files', { skip }, async (t) => {
+  const c = await startItems(t, 'tree');
+  const root = c.root;
   await c.waitScreen((s) => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
@@ -197,11 +126,8 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
   await c.input('<Esc><C-h>6zR<C-l>');
   await c.waitScreen(x => /○ Q-7 Transport/.test(leftOf(x)), 'map children in the all-items tree');
-  const written = Date.now();
-  await writeFile(join(tasks, 'T-10-born-by-hand.md'), itemFile('T-10', 'Born by hand', { parent: 'T-5', kind: 'question' }));
-  await c.waitScreen((x) => /^ +○ Q-10 Born by hand +$/m.test(leftOf(x)), 'Q-10 in the panel', 3000);
-  const took = Date.now() - written;
-  assert.ok(took < 1000, `the panel followed the file in ${took} ms`);
+  await c.pushItems('added');
+  await c.waitScreen(x => /^ +○ Q-10 Born by hand +$/m.test(leftOf(x)), 'Q-10 in the panel within one second', 1000);
 
   // e opens the file in a normal buffer; a save re-indexes it
   await c.input(':Cland view item T-7<CR>');
@@ -211,46 +137,17 @@ test('against a real hub: the tree, the map grouping, the item view and the boar
   assert.equal(await c.lua<string>('return vim.fn.expand("%:t")'), 'T-7-transport.md');
   assert.equal(await c.lua<string>('return vim.bo.buftype'), '');
   await c.input(':%s/^title: Transport$/title: Transport over QUIC/<CR>:w<CR>');
-  const saved = Date.now();
-  await c.waitScreen((x) => /^ +○ Q-7 Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel', 3000);
-  const took2 = Date.now() - saved;
-  assert.ok(took2 < 1000, `the panel followed the save in ${took2} ms`);
-  const list = JSON.parse((await cland(root, 'task', 'list', '--json')).stdout) as { items: Array<{ id: string; title: string }> };
-  assert.equal(list.items.find((i) => i.id === 'Q-7')?.title, 'Transport over QUIC', 'the hub re-indexed the save');
+  await c.pushItems('saved');
+  await c.waitScreen(x => /^ +○ Q-7 Transport over QUIC +$/m.test(leftOf(x)), 'the new title in the panel within one second', 1000);
+  assert.match(await readFile(join(root, '.cland/tasks/T-7-transport.md'), 'utf8'), /title: Transport over QUIC/);
 });
 
-
-test('the item view shows verdict commits, red stale marks, and file-only provenance', { skip }, async (t) => {
-  const root = await tempProject(t);
-  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
-  git('init', '-b', 'main');
-  git('config', 'user.name', 'Test');
-  git('config', 'user.email', 'test@example.com');
-  await writeFile(join(root, 'feature'), 'base\n');
-  git('add', 'feature');
-  git('commit', '-m', 'base');
-  git('checkout', '-b', 't/test');
-  await writeFile(join(root, 'feature'), 'feature\n');
-  git('add', 'feature');
-  git('commit', '-m', 'feature');
-  const sha = git('rev-parse', 'HEAD');
-  await startDaemon(t, root);
-  const created = await cland(root, 'task', 'create', '--size', 'M', 'Reviewed', '--branch', 't/test', '--json');
-  assert.equal(created.code, 0, created.stderr);
-  const item = JSON.parse(created.stdout).item as { path: string };
-  const recorded = await cland(root, 'task', 'comment', 'T-1', 'Checked.', '--verdict', 'review', '--scope', 'full', '--result', 'clear', '--run', 'r-1');
-  assert.equal(recorded.code, 0, recorded.stderr);
-  const file = join(root, item.path);
-  await writeFile(file, (await readFile(file, 'utf8')) + '\n' + verdictComment('qa-1', 'qa', 'qa', 'clear', 'q-1', 6, 'Imported.'));
-  await writeFile(join(root, 'feature'), 'changed\n');
-  git('add', 'feature');
-  git('commit', '-m', 'changed');
-  const c = await startClient(t, bin, root);
-  await waitInitialSnapshots(c);
+test('recorded verdict frames retain commit, stale colour and provenance', { skip }, async (t) => {
+  const c = await startItems(t, 'verdicts');
   await c.waitScreen((s) => s.includes('General'), 'the workbench');
   await c.input('<Esc>:Cland view item T-1<CR>');
   const screen = await c.waitScreen((s) => s.includes('VERDICTS · 2') && s.includes('stale'), 'the stale verdict');
-  assert.match(screen, new RegExp(sha.slice(0, 8)));
+  assert.match(screen, /aaaaaaaa/);
   assert.match(screen, /from the file/);
   assert.match(screen, /from the hub/);
   const redStale = await c.lua<boolean>(`

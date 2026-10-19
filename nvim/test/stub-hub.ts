@@ -36,6 +36,8 @@ import { createScenarioArtifact, changeScenarioArtifact } from './artifact-scena
 import { STUB_NOW } from './fixtures/clock.ts';
 
 export type Scenario = {
+  // T-902: source-shaped account snapshots for the sessions panel.
+  accounts?: Array<Record<string, unknown>>;
   events?: EventRow[];
   verification?: VerificationQueue;
   crew?: { config: Record<string, unknown>; summary: string };
@@ -170,6 +172,26 @@ const ok = (id: unknown, value: unknown) => {
 };
 const fail = (id: unknown, error: string) => write({ type: 'result', id, ok: false, error });
 
+// T-902: alternate kind prefixes resolve by tracker identity, not by spelling.
+function canonicalItem(reference: unknown) {
+  const id = String(reference);
+  return scenario.items?.find(item => item.id === id)
+    ?? (/^[A-Z]-\d+$/.test(id) ? scenario.items?.find(item => String(item.id).split('-')[1] === id.split('-')[1]) : undefined);
+}
+
+// Recorded history rows carry the same explicit facts used by hub filtering.
+// Do not search arbitrary metadata: a hygiene rule named loop is not a session.
+function filteredHistory(f: Frame) {
+  return (scenario.messages?.[String(f.topic)] ?? []).filter(m => {
+    const detail = m.detail as Record<string, unknown> | undefined;
+    const item = f.item === undefined || detail?.item === canonicalItem(f.item)?.id;
+    const session = f.session === undefined || m.from === f.session
+      || (m.to as unknown[] | undefined)?.includes(f.session)
+      || detail?.session === f.session;
+    return item && session;
+  });
+}
+
 function topicMessage(f: Frame): Record<string, unknown> {
   // a reply (`replyTo`, the Agents log's `r`) addresses the sender of the message replied to, as the hub does
   const original = typeof f.replyTo === 'string' ? Object.values(scenario.messages ?? {}).flat().find((m) => m.id === f.replyTo) : undefined;
@@ -295,7 +317,7 @@ function answer(f: Frame) {
     case 'topic.history': {
       const topic = scenario.topics?.find((t) => t.id === f.topic);
       if (!topic) return fail(f.id, `no topic ${String(f.topic)}`);
-      const messages = scenario.messages?.[String(f.topic)] ?? [];
+      const messages = filteredHistory(f);
       const end = f.before === undefined ? messages.length : messages.findIndex(m => m.id === f.before);
       return ok(f.id, { topic, messages: messages.slice(Math.max(0, end - Number(f.limit ?? 50)), end) });
     }
@@ -407,6 +429,9 @@ function answer(f: Frame) {
     case 'inbox.dismiss':
     case 'inbox.dismiss_all':
       return fail(f.id, 'Inbox notifications retired: use the events view (events.list) to see what happened.');
+    // T-902: accounts use the ordinary snapshot/event projection seam.
+    case 'account.list':
+      return scenario.accounts ? ok(f.id, { accounts: scenario.accounts }) : fail(f.id, 'the stub hub does not answer account.list');
     case 'task.list':
       return ok(f.id, { items: scenario.items ?? [] });
     case 'task.rank': {
@@ -440,7 +465,7 @@ function answer(f: Frame) {
     case 'task.view': {
       // the whole item: a scenario item may carry `body` and `comments` beside its summary fields
       if (scenario.holdView) return;
-      const item = scenario.items?.find((i) => i.id === f.item);
+      const item = canonicalItem(f.item);
       if (!item) return fail(f.id, `no item ${String(f.item)}`);
       return ok(f.id, { item: { body: '', comments: [], verdicts: [], ...item, ...criteria(item), path: `.cland/tasks/${String(item.file)}` } });
     }

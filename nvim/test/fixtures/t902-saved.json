@@ -1,0 +1,653 @@
+{
+  "items": [
+    {
+      "id": "E-1",
+      "kind": "epic",
+      "rank": 10,
+      "title": "Workbench shell",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-1-workbench-shell.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-1-workbench-shell.md",
+      "ancestry": [
+        {
+          "id": "E-1",
+          "kind": "epic",
+          "title": "Workbench shell"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "T-2",
+      "kind": "task",
+      "rank": 20,
+      "title": "Items panel",
+      "state": "open",
+      "status": "in progress",
+      "labels": [],
+      "assignee": null,
+      "parent": "E-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": "t/2-items-panel",
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-19T12:00:00.000Z",
+      "file": "T-2-items-panel.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-2-items-panel.md",
+      "ancestry": [
+        {
+          "id": "E-1",
+          "kind": "epic",
+          "title": "Workbench shell"
+        },
+        {
+          "id": "T-2",
+          "kind": "task",
+          "title": "Items panel"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": {
+        "session": "impl-1",
+        "sessionId": "cli:impl-1",
+        "role": "implementer",
+        "claimedAt": "2026-10-19T12:00:00.000Z"
+      },
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "now"
+    },
+    {
+      "id": "T-3",
+      "kind": "task",
+      "rank": 30,
+      "title": "Board view",
+      "state": "open",
+      "status": "review",
+      "labels": [],
+      "assignee": null,
+      "parent": "E-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-3-board-view.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-3-board-view.md",
+      "ancestry": [
+        {
+          "id": "E-1",
+          "kind": "epic",
+          "title": "Workbench shell"
+        },
+        {
+          "id": "T-3",
+          "kind": "task",
+          "title": "Board view"
+        }
+      ],
+      "body": "Six columns derived from the item.",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [
+        {
+          "author": "impl-1",
+          "at": "2026-10-08T10:02:00.000Z",
+          "text": "Ready for review."
+        },
+        {
+          "author": "rev-1",
+          "at": "2026-10-08T10:05:00.000Z",
+          "text": "The qa column is missing.",
+          "verdict": {
+            "verdict": "review",
+            "result": "not clear",
+            "by": "rev-1 [reviewer]",
+            "run": "r-2"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "not clear",
+          "by": "rev-1 [reviewer]",
+          "run": "r-2",
+          "author": "rev-1",
+          "at": "2026-10-08T10:05:00.000Z",
+          "source": "file",
+          "current": false
+        }
+      ],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "now"
+    },
+    {
+      "id": "T-4",
+      "kind": "task",
+      "rank": 40,
+      "title": "Item view",
+      "state": "closed",
+      "status": "done",
+      "labels": [],
+      "assignee": null,
+      "parent": "E-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-19T12:00:00.000Z",
+      "file": "T-4-item-view.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-4-item-view.md",
+      "ancestry": [
+        {
+          "id": "E-1",
+          "kind": "epic",
+          "title": "Workbench shell"
+        },
+        {
+          "id": "T-4",
+          "kind": "task",
+          "title": "Item view"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [
+        {
+          "author": "rev-1",
+          "at": "2026-10-08T10:04:00.000Z",
+          "text": "Fine.",
+          "verdict": {
+            "verdict": "review",
+            "result": "clear",
+            "by": "rev-1 [reviewer]",
+            "run": "r-3"
+          }
+        },
+        {
+          "author": "qa-1",
+          "at": "2026-10-08T10:06:00.000Z",
+          "text": "Checked.",
+          "verdict": {
+            "verdict": "qa",
+            "result": "clear",
+            "by": "qa-1 [qa]",
+            "run": "q-1"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-1 [reviewer]",
+          "run": "r-3",
+          "author": "rev-1",
+          "at": "2026-10-08T10:04:00.000Z",
+          "source": "file",
+          "current": false
+        },
+        {
+          "verdict": "qa",
+          "result": "clear",
+          "by": "qa-1 [qa]",
+          "run": "q-1",
+          "author": "qa-1",
+          "at": "2026-10-08T10:06:00.000Z",
+          "source": "file",
+          "current": false
+        }
+      ],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "M-5",
+      "kind": "map",
+      "rank": 50,
+      "title": "Slice 2 map",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-5-slice-2-map.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-5-slice-2-map.md",
+      "ancestry": [
+        {
+          "id": "M-5",
+          "kind": "map",
+          "title": "Slice 2 map"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "Q-6",
+      "kind": "question",
+      "rank": 60,
+      "title": "Which store",
+      "state": "closed",
+      "labels": [],
+      "assignee": null,
+      "parent": "M-5",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-6-which-store.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-6-which-store.md",
+      "ancestry": [
+        {
+          "id": "M-5",
+          "kind": "map",
+          "title": "Slice 2 map"
+        },
+        {
+          "id": "Q-6",
+          "kind": "question",
+          "title": "Which store"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "Q-7",
+      "kind": "question",
+      "rank": 70,
+      "title": "Transport over QUIC",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": "M-5",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-7-transport.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-7-transport.md",
+      "ancestry": [
+        {
+          "id": "M-5",
+          "kind": "map",
+          "title": "Slice 2 map"
+        },
+        {
+          "id": "Q-7",
+          "kind": "question",
+          "title": "Transport over QUIC"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "Q-8",
+      "kind": "question",
+      "rank": 80,
+      "title": "Auth scheme",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": "M-5",
+      "blocked_by": [
+        "Q-7"
+      ],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-8-auth-scheme.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-8-auth-scheme.md",
+      "ancestry": [
+        {
+          "id": "M-5",
+          "kind": "map",
+          "title": "Slice 2 map"
+        },
+        {
+          "id": "Q-8",
+          "kind": "question",
+          "title": "Auth scheme"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "T-9",
+      "kind": "task",
+      "rank": 90,
+      "title": "Review passed",
+      "state": "open",
+      "status": "qa",
+      "labels": [],
+      "assignee": null,
+      "parent": "E-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-9-review-passed.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-9-review-passed.md",
+      "ancestry": [
+        {
+          "id": "E-1",
+          "kind": "epic",
+          "title": "Workbench shell"
+        },
+        {
+          "id": "T-9",
+          "kind": "task",
+          "title": "Review passed"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [
+        {
+          "author": "rev-1",
+          "at": "2026-10-08T10:07:00.000Z",
+          "text": "Good.",
+          "verdict": {
+            "verdict": "review",
+            "result": "clear",
+            "by": "rev-1 [reviewer]",
+            "run": "r-4"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "review",
+          "result": "clear",
+          "by": "rev-1 [reviewer]",
+          "run": "r-4",
+          "author": "rev-1",
+          "at": "2026-10-08T10:07:00.000Z",
+          "source": "file",
+          "current": false
+        }
+      ],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "now"
+    },
+    {
+      "id": "Q-10",
+      "kind": "question",
+      "rank": 100,
+      "title": "Born by hand",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": "M-5",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-10-born-by-hand.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-10-born-by-hand.md",
+      "ancestry": [
+        {
+          "id": "M-5",
+          "kind": "map",
+          "title": "Slice 2 map"
+        },
+        {
+          "id": "Q-10",
+          "kind": "question",
+          "title": "Born by hand"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    }
+  ],
+  "processes": []
+}

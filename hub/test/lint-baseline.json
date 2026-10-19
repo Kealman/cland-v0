@@ -248,11 +248,15 @@
     "hub/test/models.test.ts": {},
     "hub/test/name-reservation.test.ts": {},
     "hub/test/names.test.ts": {},
+    "hub/test/nvim-agents-filters-rules.test.ts": {},
     "hub/test/nvim-artifacts-rules.test.ts": {},
     "hub/test/nvim-crew-rules.test.ts": {},
     "hub/test/nvim-fixture-boundary.test.ts": {},
     "hub/test/nvim-inbox-requests-rules.test.ts": {},
+    "hub/test/nvim-item-prefixes-rules.test.ts": {},
+    "hub/test/nvim-items-rules.test.ts": {},
     "hub/test/nvim-needs-you-rules.test.ts": {},
+    "hub/test/nvim-sessions-rules.test.ts": {},
     "hub/test/open.test.ts": {},
     "hub/test/opencode-adapter.test.ts": {
       "startDaemon": 2,
@@ -597,10 +601,7 @@
       "startDaemon": 4
     },
     "nvim/test/account-poll.test.ts": {},
-    "nvim/test/agents-filters.test.ts": {
-      "startDaemon": 2,
-      "spawnSpoke": 6
-    },
+    "nvim/test/agents-filters.test.ts": {},
     "nvim/test/artifact-browser-component.test.ts": {},
     "nvim/test/artifact-browser.test.ts": {
       "spawnSpoke": 5
@@ -648,15 +649,8 @@
     "nvim/test/inbox-sections.test.ts": {
       "wall-clock-assertion": 12
     },
-    "nvim/test/item-prefixes.test.ts": {
-      "startDaemon": 2,
-      "spawnSpoke": 2
-    },
-    "nvim/test/items.test.ts": {
-      "wall-clock-assertion": 2,
-      "startDaemon": 5,
-      "fakeClaude": 1
-    },
+    "nvim/test/item-prefixes.test.ts": {},
+    "nvim/test/items.test.ts": {},
     "nvim/test/layers-component.test.ts": {},
     "nvim/test/layers.test.ts": {
       "startDaemon": 1,
@@ -686,13 +680,8 @@
     },
     "nvim/test/session-archive.test.ts": {},
     "nvim/test/session-resume.test.ts": {},
-    "nvim/test/sessions.test.ts": {
-      "wall-clock-wait": 1,
-      "startDaemon": 5,
-      "spawnSpoke": 2,
-      "fakeClaude": 2,
-      "fakeCodex": 2
-    },
+    "nvim/test/sessions-lifecycle.test.ts": {},
+    "nvim/test/sessions.test.ts": {},
     "nvim/test/shell-component.test.ts": {},
     "nvim/test/shell.test.ts": {
       "wall-clock-wait": 11

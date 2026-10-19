@@ -1,53 +1,39 @@
-// T-56: the human filters the Agents log against a real hub, then follows live entries and shortcuts.
+// T2: recorded history frames and live traffic; independent hub filtering in nvim-agents-filters-rules.test.ts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import type { TopicMessage } from '../../hub/src/protocol.ts';
-import { connectUi, spawnSpoke, startDaemon, tempProject, type FrameClient } from '../../hub/test/harness.ts';
-import { centreOf, nvimOrSkip, startClient } from './harness.ts';
-import { waitInitialSnapshots } from './readiness.ts';
+import { centreOf } from './stub-client.ts';
+import { proc, skip, startShell, ts } from './shell-fixture.ts';
+import type { Shell } from './shell-fixture.ts';
 
-const nvim = await nvimOrSkip();
-const skip = 'skip' in nvim ? nvim.skip : false;
-const bin = 'bin' in nvim ? nvim.bin : '';
-
-async function ok<T>(ui: FrameClient, frame: { type: string } & Record<string, unknown>): Promise<T> {
-  const r = await ui.request(frame);
-  assert.equal(r.ok, true, r.error);
-  return r.value as T;
+const msg = (id: string, from: string, to: string[], text: string, kind = 'report', detail = {}) => ({
+  id, from, fromKind: 'agent', fromRole: from === 'beta' ? 'reviewer' : 'implementer', via: 'spoke',
+  to, text, kind, detail, ts: ts(1), topic: 'agents',
+});
+async function traffic(c: Shell, row: ReturnType<typeof msg>, history: ReturnType<typeof msg>[]) {
+  history.push(row);
+  await c.control({ set: { messages: { agents: history } }, emit: { type: 'message', topic: { id: 'agents', title: 'Agents' }, message: row } });
 }
-
-test('f completes items and sessions, filters history and live notices; F clears; L opens from an item or session row', { skip }, async (t) => {
-  const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectUi(t, discovery);
-  await ok(ui, { size: 'M', type: 'task.create', title: 'First', assignee: 'alpha' });
-  await ok(ui, { size: 'M', type: 'task.create', title: 'Second', assignee: 'other' });
-  const topic = (await ok<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'First topic', item: 'T-1' })).topic;
-  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
-  t.after(() => alpha.close());
-  const other = await spawnSpoke({ discover: true, cwd: root, name: 'other', sessionId: 'sess-other', role: 'implementer' });
-  t.after(() => other.close());
-  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
-  t.after(() => beta.close());
-  await alpha.waitForPresence(['alpha', 'other', 'beta']);
-  await alpha.call('task.claim', { id: 'T-1' });
-  await other.call('task.claim', { id: 'T-2' });
-  await beta.call('send', { to: ['alpha'], text: 'message to alpha' });
-  const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => s.includes('General') && s.includes('alpha [Implementer]'), 'connected workbench');
-  await waitInitialSnapshots(c);
+test('recorded Agents history supports completion, live filters, clearing and shortcuts', { skip }, async (t) => {
+  const history = [
+    msg('claim-1', 'alpha', [], 'T-1 claimed T-1', 'claim', { item: 'T-1', session: 'alpha' }),
+    msg('claim-2', 'other', [], 'T-2 claimed T-2', 'claim', { item: 'T-2', session: 'other' }),
+    msg('report-1', 'beta', ['alpha'], 'message to alpha'),
+  ];
+  const c = await startShell(t, s => {
+    s.processes = ['alpha', 'other', 'beta'].map(name => proc(name, name === 'beta' ? 'reviewer' : 'implementer', 'idle'));
+    s.messages!.agents = history;
+    s.items = [1, 2].map(n => ({ id: `T-${n}`, kind: 'task', title: n === 1 ? 'First' : 'Second', state: 'open', labels: [], blocked_by: [], claim: null }));
+  });
   await c.input('<Esc><Space>L');
   await c.waitScreen((s) => centreOf(s).includes('claimed T-2'), 'unfiltered history');
   await c.input('fT-1<Tab><CR>');
   let s = await c.waitScreen((s) => centreOf(s).includes('AGENTS · T-1') && centreOf(s).includes('claimed T-1'), 'item filter');
   assert.ok(!centreOf(s).includes('claimed T-2'));
   assert.ok(!centreOf(s).includes('message to alpha'));
-  await alpha.call('send', { topic: topic.id, to: ['beta'], text: 'in first topic' });
+  await traffic(c, msg('bound', 'alpha', ['beta'], 'in "First topic"', 'agent-message', { item: 'T-1', topic: 'first' }), history);
   await c.waitScreen((s) => centreOf(s).includes('in "First topic"'), 'matching bound-topic notice');
-  await other.call('task.claim', { id: 'T-2', release: true });
-  await alpha.call('task.claim', { id: 'T-1', release: true });
+  await traffic(c, msg('release-2', 'other', [], 'T-2 released', 'release', { item: 'T-2', session: 'other' }), history);
+  await traffic(c, msg('release-1', 'alpha', [], 'T-1 released', 'release', { item: 'T-1', session: 'alpha' }), history);
   s = await c.waitScreen((s) => centreOf(s).includes('T-1 released'), 'matching live notice');
   assert.ok(!centreOf(s).includes('T-2 released'));
   await c.input('F');
@@ -56,8 +42,8 @@ test('f completes items and sessions, filters history and live notices; F clears
   await c.input('fal<Tab><CR>');
   s = await c.waitScreen((s) => centreOf(s).includes('AGENTS · alpha') && centreOf(s).includes('message to alpha'), 'session completion and filter');
   assert.ok(!centreOf(s).includes('claimed T-2'));
-  await other.call('send', { to: ['beta'], text: 'only other' });
-  await alpha.call('send', { to: ['beta'], text: 'live from alpha' });
+  await traffic(c, msg('other', 'other', ['beta'], 'only other'), history);
+  await traffic(c, msg('alpha', 'alpha', ['beta'], 'live from alpha'), history);
   s = await c.waitScreen((s) => centreOf(s).includes('live from alpha'), 'matching live sender');
   assert.ok(!centreOf(s).includes('only other'));
   await c.input(':Cland view item T-2<CR>');
@@ -72,34 +58,19 @@ test('f completes items and sessions, filters history and live notices; F clears
   assert.ok(!centreOf(s).includes('claimed T-1'));
 });
 
-test('a session named loop excludes another pair’s loop metadata in live entries, frames and spoke history', { skip }, async (t) => {
-  const root = await tempProject(t);
-  await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[hygiene]\nloop_breaker_max = 1\n');
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectUi(t, discovery);
-  const loop = await spawnSpoke({ discover: true, cwd: root, name: 'loop', sessionId: 'sess-loop', role: 'implementer' });
-  t.after(() => loop.close());
-  const alpha = await spawnSpoke({ discover: true, cwd: root, name: 'alpha', sessionId: 'sess-alpha', role: 'implementer' });
-  t.after(() => alpha.close());
-  const beta = await spawnSpoke({ discover: true, cwd: root, name: 'beta', sessionId: 'sess-beta', role: 'reviewer' });
-  t.after(() => beta.close());
-  await loop.waitForPresence(['loop', 'alpha', 'beta']);
-  const c = await startClient(t, bin, root);
-  await c.waitScreen((s) => s.includes('loop [Implementer]'), 'connected sessions');
-  await waitInitialSnapshots(c);
+test('recorded Agents frames exclude another pair’s loop metadata from a loop session', { skip }, async (t) => {
+  const history = [msg('role', 'hub', [], 'loop assigned Implementer', 'role-assign', { session: 'loop' })];
+  const c = await startShell(t, s => {
+    s.processes = ['loop', 'alpha', 'beta'].map(name => proc(name, name === 'beta' ? 'reviewer' : 'implementer', 'idle'));
+    s.messages!.agents = history;
+  });
   await c.input('<Esc><Space>L');
   await c.waitScreen((s) => centreOf(s).includes('loop assigned Implementer'), 'history loaded');
   await c.input('floop<CR>');
   await c.waitScreen((s) => centreOf(s).includes('AGENTS · loop'), 'loop session filter');
-  await alpha.call('send', { to: ['beta'], text: 'first' });
-  await alpha.call('send', { to: ['beta'], text: 'trip loop breaker' });
-  await loop.call('send', { to: ['beta'], text: 'loop sentinel' });
+  await traffic(c, msg('first', 'alpha', ['beta'], 'first'), history);
+  await traffic(c, msg('mute', 'hub', ['alpha', 'beta'], 'muted: loop', 'event', { rule: 'loop' }), history);
+  await traffic(c, msg('sentinel', 'loop', ['beta'], 'loop sentinel'), history);
   const screen = await c.waitScreen((s) => centreOf(s).includes('loop sentinel'), 'matching live entry after unrelated mute');
   assert.ok(!centreOf(screen).includes('muted:'), 'the rule named loop does not name the session loop');
-  const history = await ok<{ messages: TopicMessage[] }>(ui, { type: 'topic.history', topic: 'agents', session: 'loop' });
-  assert.deepEqual(history.messages.map((m) => m.kind), ['role-assign', 'report']);
-  assert.deepEqual(history.messages.filter(m => m.kind === 'report').map(m => m.text), ['loop sentinel']);
-  const spoke = await beta.call<{ messages: Array<{ msg_id: string }> }>('history', { topic: 'agents', session: 'loop' });
-  assert.deepEqual(spoke.messages.map((m) => m.msg_id), history.messages.map((m) => m.id));
 });

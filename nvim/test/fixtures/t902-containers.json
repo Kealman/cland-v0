@@ -1,0 +1,324 @@
+{
+  "items": [
+    {
+      "id": "I-1",
+      "kind": "initiative",
+      "rank": 10,
+      "title": "initiative",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-1-initiative.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-1-initiative.md",
+      "ancestry": [
+        {
+          "id": "I-1",
+          "kind": "initiative",
+          "title": "initiative"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "F-2",
+      "kind": "feature",
+      "rank": 20,
+      "title": "feature",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-2-feature.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-2-feature.md",
+      "ancestry": [
+        {
+          "id": "F-2",
+          "kind": "feature",
+          "title": "feature"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "approval": {
+        "required": false,
+        "state": "not required"
+      },
+      "stages": [],
+      "planHistory": [],
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "T-3",
+      "kind": "task",
+      "rank": 30,
+      "title": "task",
+      "state": "open",
+      "status": "backlog",
+      "labels": [],
+      "assignee": null,
+      "parent": "I-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-19T12:00:00.000Z",
+      "file": "T-3-task.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-3-task.md",
+      "ancestry": [
+        {
+          "id": "I-1",
+          "kind": "initiative",
+          "title": "initiative"
+        },
+        {
+          "id": "T-3",
+          "kind": "task",
+          "title": "task"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "verify": null,
+      "merged": false,
+      "qaSatisfied": false,
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "Q-4",
+      "kind": "question",
+      "rank": 40,
+      "title": "question",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": "I-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-4-question.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-4-question.md",
+      "ancestry": [
+        {
+          "id": "I-1",
+          "kind": "initiative",
+          "title": "initiative"
+        },
+        {
+          "id": "Q-4",
+          "kind": "question",
+          "title": "question"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "S-5",
+      "kind": "spec",
+      "rank": 50,
+      "title": "spec",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": "I-1",
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-5-spec.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-5-spec.md",
+      "ancestry": [
+        {
+          "id": "I-1",
+          "kind": "initiative",
+          "title": "initiative"
+        },
+        {
+          "id": "S-5",
+          "kind": "spec",
+          "title": "spec"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    },
+    {
+      "id": "M-6",
+      "kind": "map",
+      "rank": 60,
+      "title": "map",
+      "state": "open",
+      "labels": [],
+      "assignee": null,
+      "parent": null,
+      "blocked_by": [],
+      "topic": null,
+      "branch": null,
+      "created": "2026-10-08T10:00:00.000Z",
+      "updated": "2026-10-08T10:00:00.000Z",
+      "file": "T-6-map.md",
+      "verdictBase": null,
+      "path": ".cland/tasks/T-6-map.md",
+      "ancestry": [
+        {
+          "id": "M-6",
+          "kind": "map",
+          "title": "map"
+        }
+      ],
+      "body": "",
+      "plan": null,
+      "criteria": [],
+      "criteriaWarnings": [],
+      "criteriaCounts": {
+        "total": 0,
+        "done": 0,
+        "verified": 0,
+        "stale": 0,
+        "failed": 0
+      },
+      "qaPolicy": {
+        "scope": "none",
+        "when": "per-item"
+      },
+      "qaCriteria": [],
+      "comments": [],
+      "verdicts": [],
+      "claim": null,
+      "holds": [],
+      "usage": {
+        "subagents": []
+      },
+      "layer": "background"
+    }
+  ],
+  "processes": []
+}
