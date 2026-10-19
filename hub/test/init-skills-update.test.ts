@@ -1,4 +1,5 @@
-// T1: whole-skill update decisions through filesystem provisioning; no processes or clocks.
+// T1: whole-skill provisioning and project-file doctor checks with injected process/Git readers;
+// no sockets, child processes or clocks.
 import assert from 'node:assert/strict';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -59,6 +60,65 @@ test('a dropped untouched skill is removed with the folders it leaves empty', t 
   });
   assert.equal(existsSync(join(f.target, 'tdd')), false);
   assert.equal(Object.hasOwn(f.manifest(), 'tdd'), false);
+});
+
+test('a legacy manifest migrates once before project edits gain whole-skill protection', t => {
+  const f = fixture(t);
+  for (const name of ['tdd', 'grilling']) f.put(f.source, `${name}/SKILL.md`, 'abc');
+  f.put(f.target, 'tdd/SKILL.md', 'project edit before hashes');
+  f.put(f.target, 'tdd/local.md', 'project addition');
+  f.put(f.target, 'grilling/SKILL.md', 'abc');
+  f.put(f.target, 'dropped/SKILL.md', 'edited dropped skill');
+  f.put(f.target, 'dropped-untouched/SKILL.md', 'old dropped skill');
+  f.put(f.target, MANIFEST, JSON.stringify({ managed: 'managed by cland 0.1.3', skills: {
+    tdd: ['SKILL.md'], grilling: ['SKILL.md'], dropped: ['SKILL.md'], 'dropped-untouched': ['SKILL.md'],
+  } }));
+
+  const first = f.update();
+  const warnings = first.filter(c => c.note?.startsWith('warning:'));
+  assert.equal(warnings.length, 1);
+  assert.equal(warnings[0]?.path, `.agents/skills/${MANIFEST}`);
+  assert.match(warnings[0]?.note ?? '', /no hashes/);
+  assert.match(warnings[0]?.note ?? '', /overwrit.*this once/);
+  assert.match(warnings[0]?.note ?? '', /edits.*lost/);
+  assert.match(warnings[0]?.note ?? '', /differed.*dropped, dropped-untouched, tdd.*git/);
+  assert.match(warnings[0]?.note ?? '', /from now on.*keeps.*edited in the project/i);
+  assert.equal(readFileSync(join(f.target, 'tdd/SKILL.md'), 'utf8'), 'abc');
+  assert.equal(readFileSync(join(f.target, 'tdd/local.md'), 'utf8'), 'project addition');
+  for (const name of ['dropped', 'dropped-untouched']) assert.equal(existsSync(join(f.target, name)), false);
+  const hash = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+  const installed = { grilling: { 'SKILL.md': hash }, tdd: { 'SKILL.md': hash } };
+  assert.deepEqual(f.manifest(), installed, 'record the written bytes, excluding project additions');
+
+  f.put(f.target, 'grilling/SKILL.md', 'project edit after hashes');
+  f.put(f.source, 'grilling/SKILL.md', 'new release');
+  const second = f.update();
+  assert.deepEqual(second.find(c => c.path === '.agents/skills/grilling'), {
+    path: '.agents/skills/grilling', action: 'kept', note: 'edited in the project; cland ships a newer version',
+  });
+  assert.equal(second.some(c => c.note?.startsWith('warning:')), false);
+  assert.equal(readFileSync(join(f.target, 'grilling/SKILL.md'), 'utf8'), 'project edit after hashes');
+  assert.equal(readFileSync(join(f.target, 'tdd/local.md'), 'utf8'), 'project addition');
+  assert.deepEqual(f.manifest(), installed, 'retain install hashes rather than adopting project edits');
+});
+
+test('doctor recommends migrating a legacy skill manifest without changing it', async t => {
+  const f = fixture(t);
+  mkdirSync(join(f.root, '.cland'));
+  f.put(f.source, 'tdd/SKILL.md', 'abc');
+  f.put(f.target, 'tdd/SKILL.md', 'project edit');
+  f.put(f.target, MANIFEST, JSON.stringify({ managed: 'managed by cland 0.1.3', skills: { tdd: ['SKILL.md'] } }));
+  const before = f.snapshot(f.target);
+  const { checkProject } = await import('../src/doctor/project.ts');
+  const check = async () => (await checkProject(f.root, { started: async () => null, territoryProblems: () => null }))
+    .find(c => c.name === 'skills manifest');
+  const legacy = await check();
+  assert.equal(legacy?.verdict, 'warn');
+  assert.match(legacy?.detail ?? '', /no hashes/);
+  assert.equal(legacy?.fix, 'cland update');
+  assert.deepEqual(f.snapshot(f.target), before, 'doctor is read-only');
+  f.update();
+  assert.equal((await check())?.verdict, 'ok');
 });
 
 test('a dropped edited skill becomes the project\'s own even if cland ships its name again', t => {

@@ -199,7 +199,10 @@ function checkSkills(root: string): Check[] {
     else {
       managed = Object.keys(read.manifest.skills);
       const missing = managed.filter((n) => !isSkill(join(target, n)));
-      out.push(missing.length ? fail('skills manifest', `lists ${missing.length} skill${missing.length === 1 ? '' : 's'} missing from .agents/skills/: ${missing.join(', ')}`, 'cland update') : ok('skills manifest', `present: ${managed.length} skills`));
+      const legacy = managed.filter(n => Array.isArray(read.manifest.skills[n]));
+      if (missing.length) out.push(fail('skills manifest', `lists ${missing.length} skill${missing.length === 1 ? '' : 's'} missing from .agents/skills/: ${missing.join(', ')}`, 'cland update'));
+      else if (legacy.length) out.push(warn('skills manifest', `no hashes for ${legacy.join(', ')}: the next cland update overwrites their listed files once, losing prior edits, then records hashes to keep future project edits`, 'cland update'));
+      else out.push(ok('skills manifest', `present: ${managed.length} skills`));
     }
   }
 

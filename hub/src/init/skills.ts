@@ -182,6 +182,8 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
     return [];
   }
   const previous = read.kind === 'ok' ? read.manifest.skills : {};
+  const legacy = Object.keys(previous).filter(name => Array.isArray(previous[name])).sort();
+  const differed = new Set<string>();
   const manifest: Manifest = { managed: `${MANAGED_BY} — cland update refreshes untouched skills listed here and keeps edited ones; a skill folder not listed is the project's own`, skills: {} };
   for (const name of shippedSkills(source)) {
     const dir = join(target, name);
@@ -218,7 +220,12 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
     // Clear obsolete paths first: a release can replace a file with a directory or vice versa.
     for (const rel of beforePaths) {
       if (files.includes(rel)) continue;
-      if (removeFile(report, join(dir, rel), target)) wrote = true;
+      const path = join(dir, rel);
+      const hadFile = exists(path) === 'file';
+      if (removeFile(report, path, target)) {
+        wrote = true;
+        if (Array.isArray(before) && hadFile) differed.add(name);
+      }
       else retain(rel);
     }
     for (const rel of files) {
@@ -247,6 +254,7 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
       }
       owned.set(rel, hash);
       wrote = true;
+      if (Array.isArray(before) && had && kind === 'file') differed.add(name);
     }
     report.add(dir, wrote ? (before !== undefined ? 'updated' : 'created') : 'unchanged');
     // A refused legacy path has no hash to carry forward. Keep its skill in the
@@ -276,11 +284,21 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
         continue;
       }
     }
-    const left = paths(files).filter((rel) => !removeFile(report, join(dir, rel), target));
+    const left = paths(files).filter((rel) => {
+      const path = join(dir, rel);
+      const hadFile = exists(path) === 'file';
+      const removed = removeFile(report, path, target);
+      if (removed && Array.isArray(files) && hadFile) differed.add(name);
+      return !removed;
+    });
     if (left.length) manifest.skills[name] = Array.isArray(files) ? left : Object.fromEntries(left.map(rel => [rel, files[rel]!]));
     else report.add(dir, 'removed', "no longer in cland's set");
   }
   writeIfChanged(report, manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const change = report.changes.at(-1);
+  if (legacy.length && change && change.action !== 'kept') {
+    change.note = `warning: manifest had no hashes for ${legacy.join(', ')}; listed skills were overwritten this once (or removed if no longer shipped), subject to reported path refusals; prior edits to their listed files are lost; copies that differed from cland's current set: ${[...differed].sort().join(', ') || 'none'} (recover prior copies from git); from now on cland update keeps a skill edited in the project`;
+  }
   return Object.keys(manifest.skills).filter((name) => exists(join(target, name)) === 'dir');
 }
 

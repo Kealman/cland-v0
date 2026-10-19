@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import type { Change } from '../src/init/files.ts';
 
-test('update reports each kept skill with the same note in text and JSON', async t => {
+test('update reports whole-skill decisions consistently in text and JSON', async t => {
   const scratch = mkdtempSync(join(tmpdir(), 'cland-skill-report-'));
   t.after(() => rmSync(scratch, { recursive: true, force: true }));
   const home = join(scratch, 'home');
@@ -47,4 +47,47 @@ test('update reports each kept skill with the same note in text and JSON', async
     { path: '.agents/skills/tdd', action: 'kept', note: 'edited in the project; cland ships a newer version' },
   ]);
   assert.deepEqual(readFileSync(join(root, '.agents/skills/.cland-manifest.json')), manifest);
+
+  const { readManifest, MANIFEST } = await import('../src/init/skills.ts');
+  const target = join(root, '.agents/skills');
+  const hash = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+  const expectedHashes = { grilling: { 'SKILL.md': hash }, tdd: { 'SKILL.md': hash } };
+  let textWarning = '';
+  for (const args of [[], ['--json']]) {
+    // Hand-written pre-hash manifest, not one produced by the new provisioner.
+    writeFileSync(join(target, MANIFEST), JSON.stringify({ managed: 'managed by cland 0.1.3', skills: {
+      tdd: ['SKILL.md'], grilling: ['SKILL.md'],
+    } }));
+    for (const name of ['tdd', 'grilling']) writeFileSync(join(source, name, 'SKILL.md'), 'abc');
+    writeFileSync(join(target, 'grilling/SKILL.md'), 'abc');
+    writeFileSync(join(target, 'tdd/SKILL.md'), 'legacy edit');
+    output = '';
+    assert.equal(await runUpdate(args, root, text => { output += text; }), 0);
+    const migrated = readManifest(target);
+    assert.equal(migrated.kind, 'ok');
+    if (migrated.kind !== 'ok') throw new Error('missing migrated manifest');
+    assert.deepEqual(migrated.manifest.skills, expectedHashes);
+    assert.equal(readFileSync(join(target, 'tdd/SKILL.md'), 'utf8'), 'abc');
+    if (args.length === 0) {
+      const lines = output.split('\n').filter(line => line.includes('warning:'));
+      assert.equal(lines.length, 1);
+      assert.match(lines[0] ?? '', /\.cland-manifest\.json/);
+      textWarning = /\((warning:.*)\)$/.exec(lines[0] ?? '')?.[1] ?? '';
+      assert.match(textWarning, /no hashes/);
+      assert.match(textWarning, /differed from cland's current set: tdd \(recover prior copies from git\)/);
+    } else {
+      const changes = (JSON.parse(output) as { changes: Change[] }).changes;
+      const warnings = changes.filter(c => c.note?.startsWith('warning:'));
+      assert.deepEqual(warnings, [{ path: `.agents/skills/${MANIFEST}`, action: 'updated', note: textWarning }]);
+    }
+    const installed = readFileSync(join(target, MANIFEST));
+    writeFileSync(join(target, 'grilling/SKILL.md'), 'new project edit');
+    writeFileSync(join(source, 'grilling/SKILL.md'), 'newer release');
+    output = '';
+    assert.equal(await runUpdate(args, root, text => { output += text; }), 0);
+    assert.equal(output.includes('warning:'), false);
+    assert.match(output, /edited in the project/);
+    assert.equal(readFileSync(join(target, 'grilling/SKILL.md'), 'utf8'), 'new project edit');
+    assert.deepEqual(readFileSync(join(target, MANIFEST)), installed, 'second run retains the install hashes');
+  }
 });

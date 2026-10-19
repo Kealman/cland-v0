@@ -436,10 +436,13 @@ test('legacy skill lists migrate only when every retained file has a known hash'
   const initial = await read();
   const legacy = { managed: initial.managed, skills: { tdd: ['NOTES.md', 'SKILL.md'] } };
   await writeFile(manifestPath, JSON.stringify(legacy));
-  assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest')?.verdict, 'ok');
+  const legacyCheck = (await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest');
+  assert.equal(legacyCheck?.verdict, 'warn');
+  assert.equal(legacyCheck?.fix, 'cland update');
   update();
   assert.deepEqual((await read()).skills, initial.skills, 'unchanged cland bytes acquire hashes too');
   assert.equal(((await read()).skills.tdd as Record<string, string>)['SKILL.md'], 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  assert.equal((await checkProject(root, { started: async () => null, territoryProblems: () => null })).find(c => c.name === 'skills manifest')?.verdict, 'ok');
 
   await writeFile(manifestPath, JSON.stringify(legacy));
   const notes = join(target, 'tdd', 'NOTES.md');
