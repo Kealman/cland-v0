@@ -1,3 +1,4 @@
+import type { Clock } from '../hub/clock.ts';
 // The spoke: the MCP stdio server a session's harness spawns, and the hub client behind it. Every tool
 // answers JSON text; a failure is `{ ok: false, error }` with isError set.
 //
@@ -276,6 +277,7 @@ const deliverToSession = (server: SpokeServer, message: Message, topic?: TopicRe
 export type SpokeRuntime = { server: SpokeServer; hub: HubClient | null };
 
 export type SpokeOptions = {
+  clock?: Clock;
   transport?: Transport;
   exit?: (code: number) => void;
   /** Discovery and hello use this directory without changing the host process's cwd. */
@@ -554,6 +556,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
   const role = env.CLAND_ROLE?.trim();
   if (discoveryFile) log(`found the hub through ${discoveryFile}`);
   hub = new HubClient({
+    ...(options.clock ? { clock: options.clock } : {}),
     url,
     secret,
     ...(endpoint ? { endpoint } : {}),

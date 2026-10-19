@@ -3,6 +3,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile, readdir, rm, rename } from 'node:fs/promises';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
+import { TrackerIndex } from '../src/tracker/index-db.ts';
+import { parseItem } from '../src/tracker/item.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { cland, connectUi, connectWsUi, eventually, inProcessSpoke, projectHub, startHub, tempProject, type Session } from './harness.ts';
@@ -218,10 +222,25 @@ test('removing a planned legacy epic drops its candidate; prefix renames preserv
 test('task publication lookup work stays bounded with two thousand unrelated items', async t => {
   const root = await tempProject(t), dir = join(root, '.cland/tasks');
   await mkdir(dir, { recursive: true });
-  await Promise.all(Array.from({ length: 2000 }, (_, i) => writeFile(join(dir, `T-${i + 1}-item.md`), legacy(`T-${i + 1}`, 'task', 'status: backlog\n'))));
-  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: join(root, '.cland/hub.db') });
+  const source = (id: string) => legacy(id, 'task', 'status: backlog\n');
+  await writeFile(join(dir, 'T-1-item.md'), source('T-1'));
+  // T2: publication needs a large real index, not 2,000 startup announcements
+  // and their freshness/ready work. Start with the edited item, then seed the
+  // unrelated rows through the real index API. All source files remain real.
+  const db = new DatabaseSync(':memory:');
+  const tracker = new Tracker({ git: async () => null, readBase: async () => null, root, db: ':memory:', openDatabase: () => db, watch: () => ({ close() {} }) });
   tracker.start();
   t.after(() => tracker.stop());
+  const index = new TrackerIndex(':memory:', tracker.kinds, () => db);
+  const template = parseItem(source('T-1'));
+  const writes: Promise<void>[] = [];
+  for (let i = 2; i <= 2000; i++) {
+    const id = `T-${i}`, file = `${id}-item.md`, text = source(id);
+    index.put({ ...template, fm: { ...template.fm, id } }, { file, hash: createHash('sha256').update(text).digest('hex'), source: 'hand', indexedAt: 0 });
+    writes.push(writeFile(join(dir, file), text));
+  }
+  await Promise.all(writes);
+  assert.equal(tracker.list().length, 2000, 'all 2,000 items reach the real publication read model');
   const hub = await startHub({ tracker });
   t.after(() => hub.close());
   const ui = await connectWsUi(t, hub);

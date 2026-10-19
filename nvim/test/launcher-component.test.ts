@@ -203,6 +203,13 @@ test('failed or empty model answers keep free text with a one-line reason', { sk
   for (const [error, hint] of [['catalog unavailable\ntry again', 'catalog unavailable try again'], ['', 'the hub returned no models']]) {
     await c.control({ set: { models: [], holdSnapshots: error ? ['models.list'] : [] } });
     await c.lua("require('cland.launcher').open({ name = 'models', role = 'reviewer', field = 'model' })");
+    // The model reply can draw its reason before open()'s deferred startinsert takes effect.
+    // In Normal mode, <C-u>custom-model instead moves to and changes the name field (T-889).
+    await eventually('the launcher model field accepts Insert input', async () => await c.lua<boolean>(`
+      local f = require('cland.launcher').cur
+      return f ~= nil and vim.api.nvim_get_current_win() == f.win
+        and vim.api.nvim_win_get_cursor(f.win)[1] == 4 and vim.api.nvim_get_mode().mode == 'i'
+    `) ? true : undefined);
     if (error) {
       await c.control({ waitSnapshot: 'models.list' });
       await c.control({ releaseSnapshots: ['models.list'], snapshotError: error });

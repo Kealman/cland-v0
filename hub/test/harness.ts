@@ -62,6 +62,7 @@ export async function startHub(options: Partial<HubOptions> = {}): Promise<Hub> 
 }
 
 export type SpokeOptions = {
+  clock?: Clock;
   /** The in-process hub to reach through CLAND_HUB_URL; absent with `discover` or `unconfigured`. */
   hub?: { url: string };
   secret?: string;
@@ -189,6 +190,7 @@ export async function inProcessSpoke(t: TestContext, options: SpokeOptions): Pro
   try {
     runtime = await resources.run(() => runSpoke(env, {
       transport: serverTransport,
+      ...(options.clock ? { clock: options.clock } : {}),
       cwd: workDir,
       exit: () => {},
       log: line => { log += `cland-spoke: ${line}\n`; },

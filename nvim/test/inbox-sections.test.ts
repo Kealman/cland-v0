@@ -1,3 +1,4 @@
+import { localClock } from './local-clock.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -70,12 +71,17 @@ for (const view of ['panel', 'full']) test(`${view} inbox shows four now section
 
 test('waiting ages advance on the local clock with no inbox request or hub frame', { skip }, async t => {
   const root = await tempProject(t), path = join(root, 'stub.sock');
-  const since = new Date(Date.now() - 55000).toISOString();
+  const now = Date.parse('2026-10-19T12:00:00Z');
+  const since = new Date(now - 55000).toISOString();
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path, CLAND_STUB_SCENARIO_JSON: JSON.stringify({ inbox: { messages: [{ id: 'm', topic: { id: 'general', title: 'General' }, from: 'qa', text: 'Aging row', since, layer: 'now' }] } }) });
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
-  await waitInitialSnapshots(c); await c.input('<Esc> N');
+  await waitInitialSnapshots(c);
+  const clock = await localClock(c, 'cland.inbox', now);
+  await c.input('<Esc> N');
   await c.waitScreen(s => /Aging row.*0 m/.test(s), 'initial age');
-  await c.waitScreen(s => /Aging row.*1 m/.test(s), 'age reaches one minute', 10000);
+  // Advance the same clock that schedules the real aging callback; no hub frame or redraw call.
+  await clock.advance(5000);
+  await c.waitScreen(s => /Aging row.*1 m/.test(s), 'age reaches one minute');
   const calls = (await stubControl(path, { requests: true })).requests as Array<{ type: string }>;
   assert.equal(calls.filter(f => f.type === 'inbox.list').length, 1, 'the local timer does not fetch snapshots');
 });

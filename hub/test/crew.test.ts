@@ -1,4 +1,5 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
+import { FakeClock } from './fake-clock.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -118,7 +119,8 @@ test('idle validation selects the configured C root beside the release, excludin
 
 test('crew CLI and protocol validate changes, reload hand edits, and retain the last good policy with a notice', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const path = join(root, '.cland/crew.toml');
@@ -152,12 +154,14 @@ test('crew CLI and protocol validate changes, reload hand edits, and retain the 
   assert.equal(leads.code, 0, leads.stderr);
   const good = await readFile(path, 'utf8');
   await writeFile(path, good.replace('size = 2', 'size = 3'));
+  await clock.advance(500);
   await eventually('hand edit reloaded', async () => (await show()).config.crew.reviewer!.size === 3 ? true : undefined);
   const status = await ui.request({ type: 'hub.status' });
   assert.match((status.value as { crew: View }).crew.summary, /rev pool 3.*leads: epic/);
   for (const broken of ['[crew.reviewer]\nsize = 0\n', '[crew.reviewer\n', 'model = "codex"\n', '[crew.reviewer]\nkeep_context = 1\n']) {
     const previous = ui.frames.length;
     await writeFile(path, broken);
+    await clock.advance(500);
     await eventually('refusal recorded', () => ui.frames.slice(previous).find(f => f.type === 'message' && String((f.message as { text?: string })?.text).includes('crew refused')));
     assert.equal((await show()).config.crew.reviewer!.size, 3);
     const rejectedSet = await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 4 });
@@ -165,12 +169,14 @@ test('crew CLI and protocol validate changes, reload hand edits, and retain the 
     assert.equal(await readFile(path, 'utf8'), broken);
   }
   await unlink(path);
+  await clock.advance(500);
   await eventually('missing file refusal', async () => {
     const result = await ui.request({ type: 'topic.history', topic: 'agents' });
     return JSON.stringify(result.value).includes('ENOENT') ? true : undefined;
   });
   assert.equal((await show()).config.crew.reviewer!.size, 3);
   await writeFile(path, initial);
+  await clock.advance(500);
   await eventually('restored policy reloaded', async () => (await show()).config.crew.reviewer!.size === 1 ? true : undefined);
 });
 
@@ -191,7 +197,8 @@ test('crew set observes the session role boundary from CLI', async t => {
 
 test('non-table crew values are refused and cannot replace the last good staffing', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
   const ui = await connectUi(t, discovery);
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'reviewer.size', value: 3 })).ok, true);
@@ -202,6 +209,7 @@ test('non-table crew values are refused and cannot replace the last good staffin
     for (const text of [`crew = ${value}\n`, `[crew]\nreviewer = ${value}\n`]) {
       const previous = ui.frames.length;
       await writeFile(path, text);
+      await clock.advance(500);
       // A crew event may still be arriving from the preceding valid set. Only
       // the refusal notice proves this invalid hand edit has been processed.
       await eventually('invalid source refused', () => ui.frames.slice(previous).find(f => f.type === 'message' && String((f.message as { text?: string })?.text).includes('crew refused')));

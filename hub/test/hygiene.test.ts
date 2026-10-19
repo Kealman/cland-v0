@@ -86,12 +86,11 @@ test('an oversized message is refused with the size, and nothing is delivered', 
 });
 
 test('a socket that misses two heartbeats is closed and the spoke reconnects with a fresh hello', async (t) => {
-  // The windows are wide against a loaded machine: the hub cuts a socket silent for two of its 1 s intervals; beta
-  // pings every 250 ms and gives the hub 250 ms per answer (two misses in a row before it leaves on its own), so only
-  // a stall of seconds could cut it, while alpha, whose first ping is 10 s away, is cut within 3 s.
-  const hub = await startHub({ keepaliveMs: 1000 });
-  const alpha = await inProcessSpoke(t, { hub, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 10_000 }); // never heartbeats in time
-  const beta = await inProcessSpoke(t, { hub, name: 'beta', sessionId: 'sess-b', keepaliveMs: 250 });
+  // T2: both the edge sweep and the spoke heartbeats use the same clock.
+  const clock = new FakeClock();
+  const hub = await startHub({ clock, transportClock: clock, keepaliveMs: 1000 });
+  const alpha = await inProcessSpoke(t, { hub, clock, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 10_000 }); // never heartbeats in time
+  const beta = await inProcessSpoke(t, { hub, clock, name: 'beta', sessionId: 'sess-b', keepaliveMs: 250 });
   try {
     await alpha.waitForPresence(['alpha', 'beta']);
     await beta.waitForPresence(['alpha', 'beta']);
@@ -99,9 +98,18 @@ test('a socket that misses two heartbeats is closed and the spoke reconnects wit
     const before = await connectedAt('alpha');
     const betaBefore = await connectedAt('beta');
     assert.ok(before && betaBefore, 'both connected');
-    // the hub closes alpha after two missed heartbeats (≤ 3 s); alpha reconnects with a fresh hello: poll, never sleep
+    const pings = t.mock.method(hub.core, 'ping');
+    // Observe beta's real heartbeat at the hub before advancing the next interval.
+    // No tool traffic keeps beta alive during these sweeps.
+    for (let i = 0; i < 12; i++) {
+      await clock.advance(250);
+      await until(() => pings.mock.callCount() > i, { what: 'beta heartbeat received' });
+    }
+    // Socket close and reconnect scheduling cross I/O turns; advance the clock
+    // while observing the fresh hello rather than assuming a close acknowledgement.
     let after: string | undefined;
     await until(async () => {
+      await clock.advance(50);
       after = await connectedAt('alpha');
       return after !== undefined && after !== before;
     }, { what: 'a fresh alpha hello after heartbeat reconnect' });

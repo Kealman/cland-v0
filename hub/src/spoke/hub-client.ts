@@ -1,6 +1,7 @@
 // The spoke's side of the hub protocol: one WebSocket, reconnecting for ever with capped backoff,
 // requests correlated by id, deliveries emitted as events. It never throws out of its loop and never
 // exits the process — a harness does not restart a stdio MCP server that died.
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import WebSocket from 'ws';
@@ -9,6 +10,7 @@ import type { TaskRequest } from '../tracker/requests.ts';
 import type { SessionRequest } from '../adapters/requests.ts';
 
 export type HubClientOptions = {
+  clock?: Clock;
   url: string;
   secret: string;
   /** Asked before every connect, when present: a hub found through `.cland/hub.json` may come back on a new
@@ -81,8 +83,8 @@ export class Refused extends Error {
   }
 }
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
-type ReadinessWaiter = { resolve: () => void; reject: (e: Error) => void; timer: NodeJS.Timeout };
+type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ClockTimer };
+type ReadinessWaiter = { resolve: () => void; reject: (e: Error) => void; timer: ClockTimer };
 
 /** `Omit` over a union, member by member (a plain `Omit` keeps only the common keys). */
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -102,16 +104,17 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   #nameRefusals = 0;
   /** The next reconnect is a retry of the requested name: a short fixed delay, not the transport backoff. */
   #retryingName = false;
-  #timer: NodeJS.Timeout | null = null;
+  #timer: ClockTimer | null = null;
   #lastRefusal: string | null = null;
   #fatal = false;
-  #keepalive: NodeJS.Timeout | null = null;
+  #keepalive: ClockTimer | null = null;
   #missedKeepalives = 0;
   /** Armed when the hello goes out, cleared by the hub's answer: the liveness check before keepalives start. */
-  #welcomeTimer: NodeJS.Timeout | null = null;
+  #welcomeTimer: ClockTimer | null = null;
   /** The ids of the messages already handed to the session: a re-sent deliver is acked again, never emitted twice. */
   readonly #seen = new Set<string>();
   readonly #options: HubClientOptions;
+  readonly #clock: Clock;
   /** The hello's fixed fields — the requested name is kept apart, because a refusal changes it. */
   readonly #hello: Omit<HubClientOptions['hello'], 'name'>;
   readonly #log: (line: string) => void;
@@ -119,6 +122,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   constructor(options: HubClientOptions) {
     super();
     this.#options = options;
+    this.#clock = options.clock ?? realClock;
     const { name, ...fixed } = options.hello;
     this.#hello = fixed;
     this.#requestedName = name;
@@ -155,7 +159,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     if (this.#closing) return this.#closing;
     this.#stopped = true;
     this.#failReadiness(new Error('the spoke stopped before the hub welcome'));
-    if (this.#timer) clearTimeout(this.#timer);
+    if (this.#timer) this.#clock.clearTimeout(this.#timer);
     this.#stopKeepalive();
     this.#clearWelcomeTimer();
     const ws = this.#ws;
@@ -180,14 +184,14 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     const id = randomUUID();
     const ws = this.#ws;
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = this.#clock.setTimeout(() => {
         if (!this.#pending.delete(id)) return;
         reject(new ReplyTimeout(`the hub did not answer within ${timeoutMs / 1000} s`));
       }, timeoutMs);
       this.#pending.set(id, { resolve, reject, timer });
       ws.send(JSON.stringify({ ...frame, id }), (err) => {
         if (err && this.#pending.delete(id)) {
-          clearTimeout(timer);
+          this.#clock.clearTimeout(timer);
           reject(err);
         }
       });
@@ -196,7 +200,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
 
   #waitForWelcome(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const waiter: ReadinessWaiter = { resolve, reject, timer: setTimeout(() => {
+      const waiter: ReadinessWaiter = { resolve, reject, timer: this.#clock.setTimeout(() => {
         this.#readiness.delete(waiter);
         reject(new Error(`the hub did not become ready within ${READINESS_TIMEOUT_MS / 1000} s (waiting for welcome)`));
       }, READINESS_TIMEOUT_MS) };
@@ -206,7 +210,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
 
   #failReadiness(error: Error): void {
     for (const waiter of this.#readiness) {
-      clearTimeout(waiter.timer);
+      this.#clock.clearTimeout(waiter.timer);
       waiter.reject(error);
     }
     this.#readiness.clear();
@@ -218,7 +222,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     const every = this.#options.keepaliveMs;
     if (every === undefined) return;
     this.#missedKeepalives = 0;
-    this.#keepalive = setInterval(() => {
+    this.#keepalive = this.#clock.setInterval(() => {
       if (this.#ws !== ws || ws.readyState !== WebSocket.OPEN) return;
       this.request({ type: 'ping' }, every).then(
         () => {
@@ -239,7 +243,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   }
 
   #stopKeepalive(): void {
-    if (this.#keepalive) clearInterval(this.#keepalive);
+    if (this.#keepalive) this.#clock.clearInterval(this.#keepalive);
     this.#keepalive = null;
   }
 
@@ -262,7 +266,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
     this.#state = state;
     if (state.kind === 'connected') {
       for (const waiter of this.#readiness) {
-        clearTimeout(waiter.timer);
+        this.#clock.clearTimeout(waiter.timer);
         waiter.resolve();
       }
       this.#readiness.clear();
@@ -294,7 +298,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       // The keepalive starts only with the welcome: until then this deadline is the liveness check. A hub
       // that took the connection and stays silent is left, and the close schedules the reconnect.
       const within = this.#options.welcomeTimeoutMs ?? WELCOME_TIMEOUT_MS;
-      this.#welcomeTimer = setTimeout(() => {
+      this.#welcomeTimer = this.#clock.setTimeout(() => {
         if (this.#ws !== ws || this.#state.kind === 'connected') return;
         this.#log(`the hub did not welcome this spoke within ${within / 1000} s — closing the connection and reconnecting`);
         ws.terminate();
@@ -318,7 +322,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       const why = reason.toString() || `code ${code}`;
       this.#failReadiness(new Error(`the hub connection closed (${why}) before the welcome`));
       for (const [id, p] of this.#pending) {
-        clearTimeout(p.timer);
+        this.#clock.clearTimeout(p.timer);
         p.reject(new Error(`the hub connection closed (${why}) before the reply`));
         this.#pending.delete(id);
       }
@@ -351,7 +355,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
   }
 
   #clearWelcomeTimer(): void {
-    if (this.#welcomeTimer) clearTimeout(this.#welcomeTimer);
+    if (this.#welcomeTimer) this.#clock.clearTimeout(this.#welcomeTimer);
     this.#welcomeTimer = null;
   }
 
@@ -402,7 +406,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
         const p = this.#pending.get(frame.id);
         if (!p) return;
         this.#pending.delete(frame.id);
-        clearTimeout(p.timer);
+        this.#clock.clearTimeout(p.timer);
         if (frame.ok) p.resolve(frame.value);
         else if (frame.code === 'forbidden') p.reject(new Forbidden(frame.error, frame.permission ?? '', frame.role ?? null, frame.reason ?? ''));
         else if (frame.code !== undefined) p.reject(new Refused(frame.error, frame.code, frame.missing, frame.files));
@@ -451,7 +455,7 @@ export class HubClient extends EventEmitter<{ deliver: [Message, TopicRef | unde
       this.#attempt += 1;
     }
     this.#setState({ kind: 'disconnected', reason, retryInMs: delay });
-    this.#timer = setTimeout(() => this.#connect(), delay);
+    this.#timer = this.#clock.setTimeout(() => this.#connect(), delay);
   }
 
   /** The presence table is not cached; `who` asks the hub. */

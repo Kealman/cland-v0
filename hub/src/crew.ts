@@ -1,4 +1,5 @@
 // Staffing policy only; role clauses, permissions and harness defaults stay in roles.toml.
+import { realClock, type Clock, type ClockTimer } from './hub/clock.ts';
 import { durationMs } from './duration.ts';
 import { readFile, writeFile, rename, unlink } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -137,7 +138,7 @@ export class CrewFile implements CrewSource {
   #config = defaultCrew();
   #text: string | null = null;
   #error: string | null = null;
-  #timer: NodeJS.Timeout | null = null;
+  #timer: ClockTimer | null = null;
   #queue: Promise<unknown> = Promise.resolve();
   #stopped = false;
   readonly path: string;
@@ -146,19 +147,20 @@ export class CrewFile implements CrewSource {
   readonly levels: LadderInput;
   readonly resumed: Resumed;
   readonly tracker: Tracker;
-  constructor(path: string, log: LogFn, changed: (config: CrewConfig) => void, tracker: Tracker, resumed: Resumed = work => work()) {
+  readonly clock: Clock;
+  constructor(path: string, log: LogFn, changed: (config: CrewConfig) => void, tracker: Tracker, resumed: Resumed = work => work(), clock: Clock = realClock) {
     this.path = path; this.log = log; this.changed = changed; this.levels = tracker.ladder; this.resumed = resumed;
-    this.tracker = tracker;
+    this.tracker = tracker; this.clock = clock;
   }
   get(): CrewConfig { return this.#config; }
   async start(): Promise<void> {
     try { await writeFile(this.path, DEFAULT_CREW_TOML, { flag: 'wx' }); }
     catch (err) { if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err; }
     await this.#enqueue(() => this.#reload());
-    this.#timer = setInterval(() => { void this.#enqueue(() => this.#reload()); }, 500);
+    this.#timer = this.clock.setInterval(() => { void this.#enqueue(() => this.#reload()); }, 500);
     this.#timer.unref();
   }
-  async stop(): Promise<void> { this.#stopped = true; if (this.#timer) clearInterval(this.#timer); await this.#queue; }
+  async stop(): Promise<void> { this.#stopped = true; if (this.#timer) this.clock.clearInterval(this.#timer); await this.#queue; }
   #enqueue<T>(work: () => Promise<T>): Promise<T> {
     const next = this.#queue.then(work);
     this.#queue = next.catch(() => {});

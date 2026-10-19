@@ -4703,12 +4703,6 @@
       "added": "2026-10-17",
       "expires": "2026-10-24"
     },
-    "hub/test/crew.test.ts::non-table crew values are refused and cannot replace the last good staffing": {
-      "seconds": 6.087286,
-      "reason": "Tries multiple invalid crew configurations against a live hub and checks that the last valid staffing survives.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "hub/test/default-subscriptions-lifecycle.test.ts::a lead death while the hub is down reaches the offline Coordinator once after restart": {
       "seconds": 5.406137,
       "owner": "E-677",
@@ -5790,12 +5784,6 @@
       "expires": "2026-10-25",
       "reason": "T4 retains the existing 200-verdict visibility volume claim through the same assertions as the representative T2 case. A-5000 observed 6.263449173 seconds for these assertions; Coordinator disposition 85d1b1c3-5f15-45b3-abad-5a1f091939f7 moves the volume out of T2. E-677 owns this temporary allowance."
     },
-    "nvim/test/inbox-sections.test.ts::waiting ages advance on the local clock with no inbox request or hub frame": {
-      "seconds": 5.430579,
-      "reason": "Waits for multiple real local-clock updates in Neovim without any hub frame, proving displayed waiting ages advance independently.",
-      "owner": "E-677",
-      "legacy": true
-    },
     "nvim/test/shell.test.ts::the workbench reads sessions and presence once per connect; events update the panel without polling (T-71)": {
       "seconds": 6.30856,
       "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling.",
@@ -5805,12 +5793,6 @@
     "nvim/test/thread.test.ts::generated live appends, ask evictions and delivery changes equal a full render": {
       "seconds": 10.987651,
       "reason": "Iterates generated live appends, ask evictions and delivery changes against a real Neovim buffer, comparing every incremental result to a complete render.",
-      "owner": "E-677",
-      "legacy": true
-    },
-    "nvim/test/verification-view.test.ts::verify summary opens the ordered queue and ages locally; palette and keys expose the view": {
-      "seconds": 6.189014,
-      "reason": "Exercises the Neovim verification view against a real queue and waits for its local age clock while proving navigation and commands.",
       "owner": "E-677",
       "legacy": true
     }

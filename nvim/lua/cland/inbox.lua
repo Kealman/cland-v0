@@ -5,6 +5,8 @@ local visibility = require('cland.visibility')
 local ask_card = require('cland.ask_card')
 
 local M = {}
+-- Time and scheduling travel together, so aging can use a deterministic local clock.
+local local_clock = { now = function() return os.time() * 1000 end, new_timer = function() return (vim.uv or vim.loop).new_timer() end }
 
 local function clock(ts)
   return require('cland.thread').clock(ts)
@@ -21,7 +23,7 @@ local function first_line(s) return tostring(s or ''):match('[^\r\n]*') end
 function M.age(ts)
   local at = require('cland.thread').epoch(ts)
   if not at then return '?' end
-  local m = math.max(0, math.floor((os.time() - at) / 60))
+  local m = math.max(0, math.floor((local_clock.now() / 1000 - at) / 60))
   if m < 60 then return m .. ' m' end
   if m < 1440 then return math.floor(m / 60) .. ' h ' .. m % 60 .. ' m' end
   return math.floor(m / 1440) .. ' d ' .. math.floor(m % 1440 / 60) .. ' h'
@@ -182,9 +184,13 @@ end
 
 -- Only displayed ages cause a redraw. This local clock never requests a hub frame.
 local timer
-local function start_clock()
+function M.start_clock(clock)
+  if clock then
+    if timer then timer:stop(); timer:close(); timer = nil end
+    local_clock = clock
+  end
   if timer then return end
-  timer = (vim.uv or vim.loop).new_timer()
+  timer = local_clock.new_timer()
   local previous
   timer:start(1000, 1000, vim.schedule_wrap(function()
     local visible = false
@@ -200,7 +206,7 @@ local function start_clock()
     local current = table.concat(signature, '|')
     if current ~= previous then previous = current; state.changed() end
   end))
-  api.nvim_create_autocmd('VimLeavePre', { once = true, callback = function() timer:stop(); timer:close() end })
+  api.nvim_create_autocmd('VimLeavePre', { group = api.nvim_create_augroup('cland.inbox.clock', { clear = true }), once = true, callback = function() timer:stop(); timer:close() end })
 end
 
 -- Acting from a row ------------------------------------------------------------------------------------------
@@ -274,7 +280,7 @@ end
 
 --- The inbox's keys on `buf` (the panel's buffer or the full-width one).
 function M.keys(buf)
-  start_clock()
+  M.start_clock()
   api.nvim_create_autocmd('CursorMoved', { buffer = buf, callback = function() M.cursor(buf) end })
   local function map(lhs, fn, desc)
     require('cland.actions').map('n', lhs, fn, { buffer = buf, nowait = true, silent = true, desc = 'cland: ' .. desc })

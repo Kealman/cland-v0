@@ -3,15 +3,16 @@ local api = vim.api
 local state = require('cland.state')
 local M = {}
 local received, timer
+local local_clock = { now = function() return vim.uv.now() end, new_timer = function() return vim.uv.new_timer() end }
 
 function M.set(queue)
   if state.S.verification == queue then return end
   state.S.verification = type(queue) == 'table' and queue or nil
-  received = vim.uv.now()
+  received = local_clock.now()
 end
 
 local function elapsed()
-  return received and math.max(0, vim.uv.now() - received) or 0
+  return received and math.max(0, local_clock.now() - received) or 0
 end
 
 local function duration(ms)
@@ -76,9 +77,14 @@ function M.lines()
   return lines
 end
 
-function M.start_clock()
+function M.start_clock(clock)
+  if clock then
+    if timer then timer:stop(); timer:close(); timer = nil end
+    local_clock = clock
+    if received then received = local_clock.now() end
+  end
   if timer then return end
-  timer = vim.uv.new_timer()
+  timer = local_clock.new_timer()
   timer:start(1000, 1000, vim.schedule_wrap(function()
     local queue = state.S.verification
     if not queue or not (type(queue.holder) == 'table' or #(queue.waiters or {}) > 0) then return end
@@ -87,7 +93,7 @@ function M.start_clock()
       if role == 'sessions' or role == 'verification' then state.changed(); return end
     end
   end))
-  api.nvim_create_autocmd('VimLeavePre', { once = true, callback = function() timer:stop(); timer:close() end })
+  api.nvim_create_autocmd('VimLeavePre', { group = api.nvim_create_augroup('cland.verification.clock', { clear = true }), once = true, callback = function() timer:stop(); timer:close() end })
 end
 
 return M

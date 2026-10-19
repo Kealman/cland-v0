@@ -331,7 +331,7 @@ async function start(t: TestContext, scenario: Scenario, timeZone = 'UTC', chart
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await waitInitialSnapshots(c);
   if (!scenario.holdSnapshots?.includes('topic.history')) {
-    await c.lua("assert(vim.wait(5000, function() for journal in pairs(require('cland').client.snapshots) do if journal.request.type == 'topic.history' then return false end end; return true end), 'initial thread history has not landed')");
+    await c.lua("assert(vim.wait(5000, function() for journal in pairs(require('cland').client.snapshots) do if journal.request.type == 'topic.history' then return false end end; return true end,1), 'initial thread history has not landed')");
   }
   if (charting) await c.input('<Esc>:Cland preset charting<CR>');
   return Object.assign(c, { control: (cmd: Record<string, unknown>) => new Promise<Record<string, unknown>>((resolve, reject) => {
@@ -720,7 +720,7 @@ test('a retained answer becomes standalone when its older ask leaves the 200-mes
 test('generated live appends, ask evictions and delivery changes equal a full render', { skip }, async t => {
   // A public Neovim snapshot includes the virtual decorations and row gutters, not extmark ids.
   const snapshot = `
-    local t=_G.thread_oracle or require('cland.views').topic('general').thread
+    local t=...
     local marks={}
     for _,m in ipairs(vim.api.nvim_buf_get_extmarks(t.buf,vim.api.nvim_get_namespaces()['cland.thread'],0,-1,{details=true})) do
       marks[#marks+1]={row=m[2],col=m[3],details=m[4]}
@@ -738,22 +738,19 @@ test('generated live appends, ask evictions and delivery changes equal a full re
     end)
     return {lines=vim.api.nvim_buf_get_lines(t.buf,0,-1,false),marks=marks,groups=groups,folds=folds}
   `;
-  type Snapshot = { lines: string[]; marks: Array<Record<string, unknown>>; groups: unknown[]; folds: unknown[] };
-  const canonical = (value: unknown): unknown => {
-    if (Array.isArray(value)) return value.map(canonical);
-    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, canonical(v)]));
-    return value;
-  };
-  const markKey = (m: Record<string, unknown>) => JSON.stringify(canonical(m));
-  const normalise = (s: Snapshot) => ({ ...s, marks: s.marks.sort((a, b) => markKey(a).localeCompare(markKey(b))) });
+  // Differential equality depends on crossing the retained-window boundary,
+  // not its production size. Nearby tests independently assert the 200 default.
+  const limit = 48;
   const plan = threadSeedPlan(process.env.CLAND_TEST_SOAK === '1');
   t.diagnostic(`thread oracle: ${plan.seeds.length} seeds x ${plan.renders} renders`);
+  let client: Awaited<ReturnType<typeof start>> | undefined;
   for (const seed of plan.seeds) {
     const messages: Array<Record<string, unknown>> = [];
     let number = 0;
+    let corpus: string[] = [];
     for (let day = 8; day <= 10; day++) {
       // Several early asks ensure unanswered and answered cards both cross the eviction boundary.
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 3; i++) {
         const id = `ask-${seed}-${day}-${i}`;
         const answered = (seed + i) % 2 === 0;
         messages.push({ ...msg(id), ts: `2026-10-${day.toString().padStart(2, '0')}T10:00:00Z`, ask: { state: answered ? 'answered' : 'closed', options: ['choice'], free: true, option: answered ? 1 : null } });
@@ -761,13 +758,53 @@ test('generated live appends, ask evictions and delivery changes equal a full re
         if (answered) messages.push({ ...msg(`answer-${id}`, 'human', `Answer ${id}\nkept body`), ts: `2026-10-${(day + 1).toString().padStart(2, '0')}T09:00:00Z`, answerTo: id });
       }
       const bodies = ['Body **T-58**\n[brief](https://example.com/long/destination)', 'Body `history`\n- list text', 'Body fenced\n```lua\nprint(1)\n```', 'Body unclosed\n```sh\nnot a later message', 'Body table\n\n| Item | Description |\n|---|---|\n| T-58 | ' + 'detail '.repeat(10) + '|', 'Body multiline [the\nbrief](https://example.com/multiline)', 'Body references [brief][ref] and [ref][]\n\n[ref]: https://example.com/reference', 'Body header-only\n\n| ' + 'wide '.repeat(20) + '| **State** |\n|---|---|', 'Body duplicates [a]\n\n[a]: /first\n[a]: /second', 'Body autolinks <https://example.com> <a@example.com>', 'Body sparse\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short |\n| ' + 'long '.repeat(16) + '| present |', 'Body surplus\n\n| First | [Second](https://example.com/second) |\n|---|---|\n| short | [extra](https://example.com/extra) | [surplus](https://example.com/surplus) |\n| ' + 'long '.repeat(16) + '| present | tail |', 'Body linked headers\n\n| [Item](https://example.com/' + 'long/'.repeat(15) + ') | **State** |\n|---|---|\n| T-58 | open |'];
-      for (let i = 0; i < 62; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 13 === 0 ? 'qa' : i % 3 === 0 ? 'human' : 'implementer', i % 13 === 0 ? (i % 2 ? 'qa not clear T-58\nC3 failed: preserve this note.' : 'qa clear T-58\nDetails omitted from compact clear verdict.') : bodies[i % bodies.length]), kind: ['report', 'question', 'decision', 'progress'][i % 4], to: [i % 3 === 0 ? 'coordinator' : 'reviewer'], ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
+      if (day === 9) corpus = [...bodies.slice(1), 'qa clear T-58\nDetails omitted from compact clear verdict.', 'qa not clear T-58\nC3 failed: preserve this note.'];
+      // The middle-day rich corpus stays in every retained window. The
+      // other messages establish day/fold/eviction boundaries; short bodies
+      // avoid repeatedly exercising the same Markdown input at those positions.
+      // Include slot 13 as well: it carries the failed QA verdict after the
+      // clear verdict in slot zero, while all sender/kind variants remain.
+      for (let i = 0; i < bodies.length + 1; i++) messages.push({ ...msg(`generated-${seed}-${number++}`, i % 13 === 0 ? 'qa' : i % 3 === 0 ? 'human' : 'implementer', i % 13 === 0 ? (i % 2 ? 'qa not clear T-58\nC3 failed: preserve this note.' : 'qa clear T-58\nDetails omitted from compact clear verdict.') : day === 9 && i < bodies.length ? bodies[i] : 'Body'), kind: ['report', 'question', 'decision', 'progress'][i % 4], to: [i % 3 === 0 ? 'coordinator' : 'reviewer'], ts: `2026-10-${day.toString().padStart(2, '0')}T11:00:00Z` });
     }
-    // Cover exactly 200 messages and oversized snapshots requiring initial trimming.
+    // Cover a full window and oversized snapshots requiring initial trimming.
     messages.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
-    const c = await start(t, { messages: { general: messages.slice(0, seed === 1 ? 200 : 200 + seed) } }, 'UTC', false);
-    await c.lua(`vim.o.columns=${seed % 2 ? 80 : 120}`);
-    await c.waitScreen(s => s.includes('Body'), 'generated history');
+    const initial = messages.slice(0, seed === 1 ? limit : limit + seed);
+    if (!client) {
+      client = await start(t, { holdSnapshots: ['topic.history'], messages: { general: initial } }, 'UTC', false);
+      await client.control({ waitSnapshot: 'topic.history' });
+      await client.lua(`
+        assert(require('cland.thread').LIMIT==200,'production retained window defaults to 200')
+        require('cland.thread').LIMIT=...
+        vim.o.columns=80
+      `, limit);
+      await client.control({ releaseSnapshots: ['topic.history'] });
+      await client.waitScreen(s => s.includes('Body'), 'generated history');
+      // Subsequent assertions inspect real buffer/mark/fold data, not pixels.
+      await client.rpc.request('nvim_ui_detach');
+    } else {
+      // Reuse the process, retaining fresh thread state and the production
+      // history projection (including message layers) for every seed.
+      await client.control({ set: { holdSnapshots: [], messages: { general: initial } } });
+      await client.lua(`
+        local columns,count=...
+        vim.o.columns=columns
+        local view=require('cland.views').topic('general')
+        local old=view.thread
+        vim.api.nvim_buf_set_name(old.buf,'cland://topic/previous')
+        view.thread=require('cland.thread').new(old.topic)
+        vim.api.nvim_win_set_buf(require('cland.layout').centre(),view.thread.buf)
+        vim.api.nvim_buf_delete(old.buf,{force=true})
+        local ready,failure=false,nil
+        require('cland').client:snapshot({type='topic.history',topic='general',limit=count},function(err,value)
+          failure=err
+          if not err then view.thread:merge(value.messages) end
+          ready=true
+        end)
+        assert(vim.wait(5000,function() return ready end,1),'seed history has not landed')
+        assert(not failure,tostring(failure))
+      `, seed % 2 ? 80 : 120, initial.length);
+    }
+    const c = client;
     // T2 client/frame seam: this handler follows the thread's synchronous
     // delivery handler, so the last frame acknowledges the entire render burst.
     await c.lua(`
@@ -778,39 +815,66 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       end)
     `);
     const compare = async (label: string) => {
-      const incremental = normalise(await c.lua<Snapshot>(snapshot));
       await c.lua(`
+        local label,corpus,limit=...
+        local retained={}
+        for _,message in ipairs(require('cland.views').topic('general').thread.messages) do retained[message.text]=true end
+        for _,body in ipairs(corpus) do assert(retained[body],label..': Markdown corpus left retained window') end
+        local snapshot=function(...) ${snapshot} end
         local t=require('cland.views').topic('general').thread
+        assert(#t.messages==limit,label..': retained window is full')
         local win=require('cland.layout').centre()
+        local incremental=snapshot(t)
+        local opened,closed=false,false
+        for _,fold in ipairs(incremental.folds) do
+          opened=opened or fold.open; closed=closed or not fold.open
+        end
+        assert(opened and closed,label..': both native fold states remain represented')
         local oracle=require('cland.thread').new({id='differential',title=t.topic.title})
-        _G.thread_oracle=oracle
         local states=t:_fold_states(win)
         vim.api.nvim_win_set_buf(win,oracle.buf)
+        -- Supply captured fold state before rendering; the normal settle
+        -- builds native folds once with the intended state.
+        oracle.fold_states[win]=states
+        oracle.fold_ready[win]=nil
         oracle:merge(t.messages)
-        oracle:_build_folds(win,states)
-      `);
-      const full = normalise(await c.lua<Snapshot>(snapshot));
-      await c.lua(`
-        local t=require('cland.views').topic('general').thread
-        local win=require('cland.layout').centre()
+        local full=snapshot(oracle)
         vim.api.nvim_win_set_buf(win,t.buf)
-        vim.api.nvim_buf_delete(_G.thread_oracle.buf,{force=true})
-        _G.thread_oracle=nil
-      `);
-      for (let i = 0; i < Math.max(incremental.lines.length, full.lines.length); i++) {
-        assert.equal(incremental.lines[i], full.lines[i], `${label}: line ${i}`);
-      }
-      assert.deepEqual(incremental.groups, full.groups, label + ': row metadata');
-      assert.deepEqual(incremental.folds, full.folds, label + ': fold membership, ranges and window state');
-      for (let i = 0; i < Math.max(incremental.marks.length, full.marks.length); i++) {
-        assert.deepEqual(incremental.marks[i], full.marks[i], `${label}: extmark ${i}`);
-      }
+        vim.api.nvim_buf_delete(oracle.buf,{force=true})
+        local function same(actual,expected,what)
+          if not vim.deep_equal(actual,expected) then
+            error(label..': '..what..'\\nactual: '..vim.inspect(actual)..'\\nexpected: '..vim.inspect(expected))
+          end
+        end
+        same(#incremental.lines,#full.lines,'line count')
+        for i,line in ipairs(incremental.lines) do same(line,full.lines[i],'line '..i) end
+        same(incremental.groups,full.groups,'row metadata')
+        same(incremental.folds,full.folds,'fold membership, ranges and window state')
+        same(#incremental.marks,#full.marks,'extmark count')
+        -- Extmark ids/order are incidental. Match the entire public mark at its
+        -- row/column, consuming each match so duplicate decorations still count.
+        local by_position={}
+        for _,mark in ipairs(full.marks) do
+          local key=mark.row..':'..mark.col
+          by_position[key]=by_position[key] or {}
+          table.insert(by_position[key],mark)
+        end
+        for i,mark in ipairs(incremental.marks) do
+          local bucket=by_position[mark.row..':'..mark.col] or {}
+          local match
+          for j,candidate in ipairs(bucket) do if vim.deep_equal(mark,candidate) then match=j; break end end
+          if not match then error(label..': extmark '..i..' differs: '..vim.inspect(mark)) end
+          table.remove(bucket,match)
+        end
+      `, label, corpus, limit);
     };
     await c.lua(`
       local t=require('cland.views').topic('general').thread
       local states={}
       for i,r in ipairs(t:_runs()) do if i%2==0 then for _,m in ipairs(r.messages) do states[m.id]=true end end end
-      t:_build_folds(require('cland.layout').centre(),states)
+      local win=require('cland.layout').centre()
+      t.fold_states[win]=states
+      t:_build_folds(win,states)
     `);
     await compare(`seed ${seed}: initial history and trimming equal full render`);
     for (let step = 0; step < plan.renders - 1; step++) {
@@ -842,7 +906,7 @@ test('generated live appends, ask evictions and delivery changes equal a full re
       // boundary message, before comparing both presentations. Screen visibility
       // is unrelated to whether the incremental render has consumed the burst.
       assert.ok(await c.lua<boolean>(`
-        assert(vim.wait(5000,function() return _G.oracle_delivered end), 'generated append delivery burst has not landed')
+        assert(vim.wait(5000,function() return _G.oracle_delivered end,1), 'generated append delivery burst has not landed')
         local id,text=...
         local block=require('cland.views').topic('general').thread.block_of[id]
         return block and table.concat(block.lines,'\\n'):find(text,1,true)~=nil or false

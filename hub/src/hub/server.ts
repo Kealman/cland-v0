@@ -1,6 +1,7 @@
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
 // The hub's network edge: one HTTP server, WebSocket upgrades gated by the per-project secret,
 // one socket per spoke, every frame handed to the shared dispatcher (`./dispatch.ts`).
+import { realClock, type Clock } from './clock.ts';
 import { join } from 'node:path';
 import { projectSessions, type AdapterFactory, type ProjectSessions } from '../adapters/index.ts';
 import { createServer, type IncomingMessage, type Server as HttpServer } from 'node:http';
@@ -51,6 +52,8 @@ export type HubOptions = HubBaseOptions & {
   host?: string;
   /** The spokes' keepalive interval; a socket silent for two of them is closed (default 30 s). */
   keepaliveMs?: number;
+  /** Socket liveness uses real I/O time unless explicitly simulated. */
+  transportClock?: Clock;
 };
 
 export type HubBase = {
@@ -163,9 +166,10 @@ export function createHubBase(options: HubBaseOptions): HubBase {
 /** The WebSocket edge for spokes on `host:port`; rejects when it cannot listen, leaving nothing bound. */
 export async function createWebSocketEdge(
   dispatcher: Dispatcher,
-  options: { port: number; host?: string; secret: string; keepaliveMs?: number; log?: HubBaseOptions['log'] },
+  options: { port: number; host?: string; secret: string; keepaliveMs?: number; clock?: Clock; log?: HubBaseOptions['log'] },
 ): Promise<WebSocketEdge> {
   const log = options.log ?? (() => {});
+  const clock = options.clock ?? realClock;
   const http: HttpServer = createServer((_req, res) => {
     res.writeHead(404).end();
   });
@@ -186,10 +190,10 @@ export async function createWebSocketEdge(
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     sockets.add(ws);
-    lastSeen.set(ws, Date.now());
+    lastSeen.set(ws, clock.now().getTime());
     // Bytes arriving are a live peer: a large frame arriving slowly must not be cut off by the keepalive sweep.
     req.socket.on('data', () => {
-      if (lastSeen.has(ws)) lastSeen.set(ws, Date.now());
+      if (lastSeen.has(ws)) lastSeen.set(ws, clock.now().getTime());
     });
     const conversation = dispatcher.open(
       {
@@ -203,7 +207,7 @@ export async function createWebSocketEdge(
       { authenticated: true, edge: 'websocket' },
     );
     ws.on('message', (data) => {
-      lastSeen.set(ws, Date.now());
+      lastSeen.set(ws, clock.now().getTime());
       conversation.receive(data.toString());
     });
     ws.on('close', () => {
@@ -222,8 +226,8 @@ export async function createWebSocketEdge(
   });
   // Two missed keepalives: the socket is dead as far as the hub is concerned — close it, which lets a
   // live spoke reconnect with a fresh hello.
-  const keepaliveTimer = setInterval(() => {
-    const now = Date.now();
+  const keepaliveTimer = clock.setInterval(() => {
+    const now = clock.now().getTime();
     for (const [ws, seen] of lastSeen) {
       if (now - seen > 2 * keepaliveMs) {
         log({ event: 'keepalive-timeout', silentMs: now - seen });
@@ -243,7 +247,7 @@ export async function createWebSocketEdge(
     url,
     port: address.port,
     close: async () => {
-      clearInterval(keepaliveTimer);
+      clock.clearInterval(keepaliveTimer);
       for (const ws of sockets) ws.terminate();
       // HTTP close does not await upgraded sockets. Their conversations must
       // disconnect while the hub's store is still open.
@@ -266,7 +270,7 @@ export async function createHub(options: HubOptions): Promise<Hub> {
       sessions = projectSessions({ core: base.core, root: options.root, discoveryFile: join(options.root, '.cland/hub.json'), log: options.log ?? (() => {}), adapters: options.adapters, ...(options.env ? { env: options.env } : {}) });
       base.dispatcher.useSessions(sessions.sessions);
     }
-    edge = await createWebSocketEdge(base.dispatcher, options);
+    edge = await createWebSocketEdge(base.dispatcher, { ...options, clock: options.transportClock ?? realClock });
   } catch (err) {
     // nothing may outlive a hub that never listened
     try { sessions?.close(); }

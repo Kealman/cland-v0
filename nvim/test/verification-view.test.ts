@@ -1,4 +1,5 @@
 // The queue's human-facing seam: hub frames, real keys and screenstring().
+import { localClock } from './local-clock.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -27,6 +28,7 @@ test('verify summary opens the ordered queue and ages locally; palette and keys 
     socket.write(`${JSON.stringify({ emit: { type: 'verification.queue', queue } })}\n`);
   });
   await c.waitScreen(s => s.includes('verify: idle'), 'idle summary');
+  const clock = await localClock(c, 'cland.verification', 0);
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.right, 90)");
   const busy: VerificationQueue = { ...idle,
     holder: { kind: 'run', id: 'run-1', session: 'impl-3', item: 'T-3', mode: 'nvim', pid: 42, worktree: '/candidate', since: idle.at, runMs: 235000, etaMs: 360000 },
@@ -36,6 +38,7 @@ test('verify summary opens the ordered queue and ages locally; palette and keys 
     ] };
   await emit(busy);
   await c.waitScreen(s => s.includes('verify: impl-3 3m · 2 waiting · next ~6m'), 'holder summary');
+  await clock.advance(5000);
   await c.waitScreen(s => s.includes('verify: impl-3 4m · 2 waiting'), 'run clock without another frame');
   // Accounts precede verification; select the summary by its visible text.
   await c.input('<Esc><C-l>gg/^verify:<CR><CR>');
