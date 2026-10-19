@@ -6,7 +6,7 @@ import { artifactEntry } from '../hub/artifact-folder.ts';
 //
 //   delivered → inject: when a session's spoke accepts a message (stage `delivered`), the session's adapter
 //   injects it; the adapter's confirmation moves it to `injected`. An unconfirmed inject stays `delivered`, is
-//   logged, and is retried at the session's next `idle` (and when its in-session bridge connects).
+//   logged once per episode, and is retried at idle with capped backoff (or immediately on reconnect).
 //
 //   state: signals from inside the session (`session.signal`, sent by `cland hook`) and the adapter's own poll.
 //   A signal older than the last one applied is dropped; a polled one counts only while no push signal came
@@ -73,6 +73,8 @@ export type SessionsOptions = {
 export const USAGE_EVENT_MS = 1000;
 /** A failed delivery left unconfirmed this long needs attention. */
 export const INJECT_STALLED_MS = 60_000;
+const INJECT_RETRY_MAX_MS = 15 * 60_000;
+type UnconfirmedInject = { timer: ClockTimer; delay: number; retryAt: number };
 
 const untimed: Resumed = (work) => work();
 
@@ -95,9 +97,9 @@ export class Sessions {
   /** Injects in flight, `<session id>:<message id>`, with when each went out: a retry never doubles one. A
    *  retry asked for while one is in flight — by an idle the harness fired after it went out, or a bridge
    *  that connected — is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
-  readonly #inflight = new Map<string, { sentAt: number; again: boolean }>();
+  readonly #inflight = new Map<string, { sentAt: number; again: boolean; reconnected: boolean }>();
   /** One notice per failed-delivery episode; individual confirmations cancel their deadlines. */
-  readonly #unconfirmed = new Map<string, { noticed: boolean; messages: Map<string, ClockTimer> }>();
+  readonly #unconfirmed = new Map<string, { noticed: boolean; messages: Map<string, UnconfirmedInject> }>();
   /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
    *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
   readonly #launching = new Map<string, SignalFrame[]>();
@@ -411,7 +413,7 @@ export class Sessions {
         const p = this.#table.bySessionId(sessionId);
         if (!p || p.status !== 'running') return;
         this.#log({ event: 'adapter-reconnected', session: p.name });
-        this.#retry(p);
+        this.#retry(p, undefined, true);
       },
       recordPid: (sessionId, pid) => {
         const p = this.#table.bySessionId(sessionId);
@@ -1459,7 +1461,7 @@ export class Sessions {
     if (!adapter.bridge) throw new Error(`the ${p.harness} adapter takes no bridge`);
     const disconnect = adapter.bridge(p, send);
     this.#log({ event: 'bridge-connected', session });
-    this.#retry(p);
+    this.#retry(p, undefined, true);
     return () => {
       disconnect();
       this.#log({ event: 'bridge-closed', session });
@@ -1470,18 +1472,18 @@ export class Sessions {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
     this.adapter(p.harness).confirm(p, this.#core.store.deliveryRoot(messageId, name));
     this.#core.markInjected(messageId, name);
-    this.#injectionConfirmed(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
+    this.#clearUnconfirmedMessage(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
   }
 
   /** Everything the session's spoke accepted and its adapter has not confirmed: injected again. */
-  #retry(p: HarnessProcess, at?: number): void {
+  #retry(p: HarnessProcess, at?: number, reconnected = false): void {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
-    for (const m of this.#core.store.uninjected(name)) this.#inject(p.sessionId, m.id, at);
+    for (const m of this.#core.store.uninjected(name)) this.#inject(p.sessionId, m.id, at, reconnected);
   }
 
   /** `at`: when the idle that asks for this happened; an idle from before an inject in flight went out is no
    *  news to it (that inject already counted on it). */
-  #inject(sessionId: string, messageId: string, at?: number): void {
+  #inject(sessionId: string, messageId: string, at?: number, reconnected = false): void {
     if (this.#closed) return;
     const p = this.#table.bySessionId(sessionId);
     // a session no adapter launched has nobody to inject: its messages stay `delivered`
@@ -1490,14 +1492,22 @@ export class Sessions {
     const inflight = this.#inflight.get(key);
     if (inflight) {
       if (at === undefined || at > inflight.sentAt) inflight.again = true;
+      if (reconnected) inflight.reconnected = true;
       return;
     }
+    // A new transport connection ends the disconnected episode. Its first failed
+    // submission needs its own completion log and immediate idle retry, even if
+    // a missing-bridge attempt failed earlier. Do this after any old flight ends.
+    if (reconnected) this.#clearUnconfirmedMessage(sessionId, messageId);
+    const pending = this.#unconfirmed.get(sessionId)?.messages.get(messageId);
+    if (!reconnected && pending && this.#core.clock.now().getTime() < pending.retryAt) return;
     const message = this.#core.store.deliveryMessage(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
     if (!message) return;
     if ((message.detail?.event === 'heartbeat' || message.digest?.some(note => note.detail?.event === 'heartbeat')) && this.#core.sessionState(sessionId) !== 'idle') return;
     const adapter = this.#adapters.get(p.harness);
     if (!adapter) return;
-    const flight = { sentAt: realClock.now().getTime(), again: false };
+    // Hook/adapter signal timestamps use transport time, independently of policy backoff time.
+    const flight = { sentAt: realClock.now().getTime(), again: false, reconnected: false };
     this.#inflight.set(key, flight);
     if (message.fromKind !== 'hub') this.#core.store.setMeta(`pool-handoff:${sessionId}`, '');
     const topic = message.topic !== undefined ? this.#core.topicRef(message.topic) : null;
@@ -1506,15 +1516,18 @@ export class Sessions {
       .then(() => {
         if (this.#closed) return;
         this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
-        this.#injectionConfirmed(sessionId, messageId);
+        this.#clearUnconfirmedMessage(sessionId, messageId);
       })
       .catch((err: unknown) => {
         if (this.#closed) return;
         // the request reached the harness and no answer came: never replayed on its own
-        if (err instanceof InjectUncertain) this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message);
+        if (err instanceof InjectUncertain) {
+          this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message);
+          // Automatic retry policy no longer applies; only an explicit human retry may replay it.
+          this.#clearUnconfirmedMessage(sessionId, messageId);
+        }
         else {
           const error = err instanceof Error ? err.message : String(err);
-          this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error });
           this.#injectionUnconfirmed(sessionId, messageId, error);
         }
       })
@@ -1525,7 +1538,7 @@ export class Sessions {
         // Adapter close may settle the promise after Sessions and its storage have closed.
         if (this.#closed || !flight.again) return;
         const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
-        if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId);
+        if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId, undefined, flight.reconnected);
       });
   }
 
@@ -1536,14 +1549,21 @@ export class Sessions {
       episode = { noticed: false, messages: new Map() };
       this.#unconfirmed.set(sessionId, episode);
     }
-    if (episode.messages.has(messageId)) return;
+    const pending = episode.messages.get(messageId);
+    if (pending) {
+      pending.delay = Math.min(pending.delay ? pending.delay * 2 : INJECT_STALLED_MS, INJECT_RETRY_MAX_MS);
+      pending.retryAt = this.#core.clock.now().getTime() + pending.delay;
+      return;
+    }
+    const p = this.#table.bySessionId(sessionId)!;
+    this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error });
     const current = episode;
     const timer = this.#core.clock.setTimeout(() => {
       const p = this.#table.bySessionId(sessionId);
       if (this.#closed || !p || p.status !== 'running' || current.noticed) return;
       const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
       if (!this.#core.store.uninjected(name).some(message => message.id === messageId)) {
-        this.#injectionConfirmed(sessionId, messageId);
+        this.#clearUnconfirmedMessage(sessionId, messageId);
         return;
       }
       current.noticed = true;
@@ -1555,20 +1575,22 @@ export class Sessions {
       });
     }, INJECT_STALLED_MS);
     timer.unref();
-    current.messages.set(messageId, timer);
+    // One immediate idle retry tolerates a transient failure. Repeated failures then
+    // wait 1, 2, 4, 8 and at most 15 minutes; reconnects bypass the wait.
+    current.messages.set(messageId, { timer, delay: 0, retryAt: this.#core.clock.now().getTime() });
   }
 
   #clearUnconfirmed(sessionId: string): void {
     const episode = this.#unconfirmed.get(sessionId);
     if (!episode) return;
-    for (const timer of episode.messages.values()) this.#core.clock.clearTimeout(timer);
+    for (const pending of episode.messages.values()) this.#core.clock.clearTimeout(pending.timer);
     this.#unconfirmed.delete(sessionId);
   }
 
-  #injectionConfirmed(sessionId: string, messageId: string): void {
+  #clearUnconfirmedMessage(sessionId: string, messageId: string): void {
     const episode = this.#unconfirmed.get(sessionId);
     if (!episode) return;
-    this.#core.clock.clearTimeout(episode.messages.get(messageId));
+    this.#core.clock.clearTimeout(episode.messages.get(messageId)?.timer);
     episode.messages.delete(messageId);
     if (!episode.messages.size) this.#unconfirmed.delete(sessionId);
   }
