@@ -3,17 +3,17 @@ id: T-888
 kind: task
 title: The thread oracle's extended soak plan needs a budget-correct placement
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - v0.1.4
-assignee: null
+assignee: impl-882
 parent: C-216
 blocked_by: []
-topic: null
-branch: null
+topic: topic-625
+branch: t/T-888-the-thread-oracle-s-extended-soak-plan
 created: 2026-10-19T16:36:08.592Z
-updated: 2026-10-19T16:36:08.592Z
+updated: 2026-10-19T18:35:15.961Z
 ---
 
 ## Summary

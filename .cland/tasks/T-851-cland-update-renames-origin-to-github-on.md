@@ -17,7 +17,7 @@ blocked_by: []
 topic: topic-600
 branch: t/T-851-cland-update-renames-origin-to-github-on
 created: 2026-10-19T07:35:48.835Z
-updated: 2026-10-19T15:48:07.619Z
+updated: 2026-10-19T17:42:59.396Z
 ---
 
 ## Summary
@@ -33,6 +33,7 @@ Found aside while rehearsing the E-615 QA brief on 2026-10-19 at dev 87b626ed (C
 - [x] C1. `cland update` on a project whose recorded territory or origin path differs from the current one only by symlink resolution recognises it as the same territory: no remote is renamed or added. A regression test sets up a v0.1.3-style project under a symlinked parent.
   - done: impl-851 · 2026-10-19T14:52:36.396Z
   - verified: rev-30 [reviewer] · run rev-20261019-851-final · 2026-10-19T15:01:11.200Z · commit 6d36f7a084605101c5afc329e87f41b82d651ae1
+  - verified: rev-30 [reviewer] · run rev-20261019-851-integration-final · 2026-10-19T17:42:58.729Z · commit 7398d761e19681d370abaee321569b794090c2a3
 
 ## Comments
 
@@ -79,3 +80,39 @@ Criteria: C1 verified.
 ### impl-851 · 2026-10-19T15:48:07.619Z
 
 Landing blocked: hub batch 7654a430-b150-41c3-87e9-5c8474d14182 reports 'cannot identify batch candidate tree'. Queue confirms T-851 remains pinned at reviewed/verified 6d36f7a084605101c5afc329e87f41b82d651ae1, with T-862/T-857/T-666. Task worktree clean; source head unchanged. Reported to supervising lead for Coordinator batch recovery; no new item run needed.
+
+### impl-851 · 2026-10-19T17:34:22.971Z
+
+Resolved merge-conflict drop per Coordinator: merged origin/dev once (parent f6cacadf), combining only conflicting imports in territory-cli.test.ts while retaining T-861 regressions and unchanged T-851 fix/test assertions. New pushed head 7398d761e19681d370abaee321569b794090c2a3. Typecheck pass; touched file 25/25 pass in 43.227s (symlink-origin 1.794s). Fresh-fetch merge-tree before push clean e90fcab41c13a0b60d275f07d4946ef7802bd4af. Requesting delta source review before mode-free verification.
+
+### rev-30 · 2026-10-19T17:35:17.711Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-851-integration-source
+commit: 7398d761e19681d370abaee321569b794090c2a3
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integration delta clear; A-6292. Coordinator07627a76 authorizes this merge. Import union retains T851 identity helpers and T861 native Git/worktree helpers/tests; predicate and full symlink regression body byte-identical to prior clear head. Reported host25/25 qualified; no current Linux native claim. C1 awaits new mode-free exact-head gate; retain existing touched-file output for final provenance, no rerun requested. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6292-t-851-integration-delta-review-at-7398d761.md
+
+### impl-851 · 2026-10-19T17:42:35.389Z
+
+Post-conflict exact-head mode-free verify c96498d8-7ec9-44c4-99f8-b7c000253a4e passed at 7398d761e19681d370abaee321569b794090c2a3: 455/455, zero failures/cancellations/skips/TODO. Linux x64 c-8 lon1, lifetime 363s, cost $0.0252. Durable log A-6295: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6295-suite-c96498d8-7ec9-44c4-99f8-b7c000253a4e-auto-at-7398d76.log. Current-head native 25/25 receipt is A-6293; T3 Linux remains merge-batch evidence. Final Reviewer evidence verdict pending before reporting ready for Coordinator re-enqueue.
+
+### rev-30 · 2026-10-19T17:42:58.729Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-851-integration-final
+commit: 7398d761e19681d370abaee321569b794090c2a3
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integration evidence clear; A-6296. A-6295 ordinary 455/455, all 227 groups 5/5, zero tier mismatch. Native territory-cli is excluded; A-6293 retained merged-source host capture supplies 25/25, owned symlink case 1.794 s plus landed whitespace/worktree controls. Tested-tree provenance qualified separately from Linux gate. C1 verified; T3 Linux remains landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6296-t-851-final-integrated-head-evidence-at-7398d761.md
+
+Criteria: C1 verified.

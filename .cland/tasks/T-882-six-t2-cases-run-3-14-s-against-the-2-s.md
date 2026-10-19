@@ -3,7 +3,7 @@ id: T-882
 kind: task
 title: Six T2 cases run 3–14 s against the 2 s T2 budget
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 1
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-617
 branch: t/T-882-six-t2-cases-run-3-14-s-against-the-2-s
 created: 2026-10-19T15:38:55.994Z
-updated: 2026-10-19T17:32:41.985Z
+updated: 2026-10-19T18:26:02.108Z
 ---
 
 ## Summary
@@ -33,8 +33,10 @@ T-879's same-head receipt (A-6161, audited in A-6167) shows six T2 cases at 3 s 
 
 ## Acceptance criteria
 
-- [ ] C1. Each case listed in the body or in the Coordinator's added-cases comment runs within the 2 s T2 budget on the Mac and in a mode-free task verify, or moves to T3 under the tier-move rule with its assertions kept; the receipt shows no report-only budget line for any of them.
-  - failed: rev-30 [reviewer] · 2026-10-19T16:57:55.087Z · note Revised Linux oracle is still 2.069071637 s > 2 s; the exact-head run also exits 1 on the separately tracked T-889 launcher repetition.
+- [x] C1. Each case listed in the body or in the Coordinator's added-cases comment runs within the 2 s T2 budget on the Mac and in a mode-free task verify, or moves to T3 under the tier-move rule with its assertions kept; the receipt shows no report-only budget line for any of them.
+  - verified: rev-30 [reviewer] · run rev-20261019-882-final · 2026-10-19T17:33:17.648Z · commit b3e4e5d59f05ed8e2d501dda5abab49bf8a5e3ae
+  - done: impl-882 · 2026-10-19T18:25:35.442Z
+  - verified: rev-30 [reviewer] · run rev-20261019-882-baseline-integration-final · 2026-10-19T18:26:01.467Z · commit 0b1881cd94e2c050917a13f017f454d7d9dc4073
 
 ## Comments
 
@@ -135,3 +137,46 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Reworked source clear; A-6278. Existing LIMIT seam reduces duplicated oracle fixture while preserving ordinary/extended seed plans, all comparisons, live phases/receipts, rich corpus and independent 200-message contracts. New full-window/mixed-native-fold guards and per-seed projected history strengthen coverage; six mutation controls fail correctly. Raw host 23/23, owned .505 s, extended1.491 s; fixture contract green. C1 still awaits exact-head mode-free green with all seven actual ordinary cases <2 s and no owned budget line, independent of allowance. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6278-t-882-oracle-retention-seam-source-review-at-b3e4e5d5.md
+
+### rev-30 · 2026-10-19T17:33:17.648Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-882-final
+commit: b3e4e5d59f05ed8e2d501dda5abab49bf8a5e3ae
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-6289. A-6286 ordinary1575/1575, 495 groups5/5; all seven actual ordinary cases <2s and no owned budget rows. Publication1.790228683s, oracle1.367976875s; other five .081–1.209s. Retained qualified Mac receipts all <2s, reviewed source/mutation coverage intact. Shared launcher ordinary and5/5 pass. Oracle allowance remains perT888; actual time independently satisfiesC1. InheritedT856/T877 disposition retained; nativeT3 landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6289-t-882-final-seven-case-budget-evidence-at-b3e4e5d5.md
+
+Criteria: C1 verified.
+
+### rev-30 · 2026-10-19T18:18:41.051Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-882-baseline-integration-source
+commit: 0b1881cd94e2c050917a13f017f454d7d9dc4073
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized integration delta clear; A-6314. Final JSON equals dev baseline minus exactly the three retired clock allowances; no added/changed allowance/budget/provenance. Oracle allowance retained for T-888, owned runtime/tests unchanged. C1 awaits new mode-free exact-head green and all seven actual ordinary Linux times <2 s/no owned budget row. Prior green A-6286 remains historical evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6314-t-882-refreshed-dev-baseline-delta-review-at-0b1881cd.md
+
+### rev-30 · 2026-10-19T18:26:01.467Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-882-baseline-integration-final
+commit: 0b1881cd94e2c050917a13f017f454d7d9dc4073
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6318 independently audits exact-head run 02916802/A-6317: 1589/1589, zero fail/cancel/skip/TODO. All seven owned ordinary Linux bodies <2 s (maximum publication 1.163978830 s; oracle 1.073857978 s), no owned raw budget row. A-6314 delta source clear retains source-identical prior Mac/load proof from A-6289; this refreshed-baseline run has no repetition result groups and is not claimed as fresh 5/5 evidence. Unowned T-883 budget identities and inherited T-856/T-877 resource rows retain separate disposition. Native T3 remains landing evidence. Standards and Spec findings: none.
+
+Criteria: C1 verified.

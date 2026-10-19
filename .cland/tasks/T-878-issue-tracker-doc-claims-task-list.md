@@ -2,8 +2,8 @@
 id: T-878
 kind: task
 title: issue-tracker doc claims task.list summaries carry every frontmatter field, but github is omitted
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-609
 branch: t/T-878-issue-tracker-doc-claims-task-list
 created: 2026-10-19T14:41:41.049Z
-updated: 2026-10-19T15:51:59.966Z
+updated: 2026-10-19T18:41:49.699Z
+closed: 2026-10-19T18:41:49.699Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6176 audits full A-6175 / 2f519ef1 at unchanged source-clear head. Ordinary 1559/1559 zero fail/cancel/skip/TODO; all 479 groups 5/5. New populated list/view test passes ordinarily .043083554 s and all five repetitions .039990409–.045665248 s. C1 verified with A-6152 source/documentation audit. Four inherited T-856 push tripwire rows retained under Coordinator c322ebda/T-877; none from tracker-summary. Existing report-only debt remains. T3 landing evidence deferred; no Reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T18:41:49.699Z
+
+Merged 1c0f3c633f175c29d780460ba99f4c017de32e23 onto dev.

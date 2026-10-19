@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-621
 branch: t/T-886-merge-batches-run-only-their-configured
 created: 2026-10-19T16:17:30.236Z
-updated: 2026-10-19T17:27:05.095Z
+updated: 2026-10-19T17:59:09.666Z
 ---
 
 ## Summary
@@ -31,19 +31,24 @@ D67 (the human, 2026-10-19 16:16Z): a merge batch runs only T1 (about 2 minutes)
 ## Acceptance criteria
 
 - [x] C1. With `[merge] batch_tiers = ["T1"]`, a merge batch plans and runs T1 only and lands on green; with the setting absent it plans T1+T3 as today (T1 tests over batch planning).
-  - done: impl-886 · 2026-10-19T17:26:40.190Z
   - verified: rev-30 [reviewer] · run rev-20261019-886-final · 2026-10-19T17:27:03.132Z · commit 2ecec97363badccbb3958cda17ebd099fbaa9268
+  - done: impl-886 · 2026-10-19T17:58:16.541Z
+  - verified: rev-30 [reviewer] · run rev-20261019-886-d68-integration-final · 2026-10-19T17:59:07.653Z · commit 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
 - [x] C2. With `dev_t3_every = "2h"`, a clock-driven hub starts one `dev-t3` run on dev's head after two hours when dev moved, starts none when dev did not move, and never starts a second while one runs (T1 or T2 test with a fake clock and executor).
-  - done: impl-886 · 2026-10-19T17:26:40.664Z
   - verified: rev-30 [reviewer] · run rev-20261019-886-final · 2026-10-19T17:27:03.132Z · commit 2ecec97363badccbb3958cda17ebd099fbaa9268
+  - done: impl-886 · 2026-10-19T17:58:17.051Z
+  - verified: rev-30 [reviewer] · run rev-20261019-886-d68-integration-final · 2026-10-19T17:59:07.653Z · commit 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
 - [x] C3. `cland release --dry-run` refuses when no green T3 covers the release head's tree, naming the missing run, and passes when one does (T2 test).
-  - done: impl-886 · 2026-10-19T17:26:41.252Z
   - verified: rev-30 [reviewer] · run rev-20261019-886-final · 2026-10-19T17:27:03.133Z · commit 2ecec97363badccbb3958cda17ebd099fbaa9268
+  - done: impl-886 · 2026-10-19T17:58:17.641Z
+  - verified: rev-30 [reviewer] · run rev-20261019-886-d68-integration-final · 2026-10-19T17:59:07.653Z · commit 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
 - [x] C4. This repository's `.cland/config.toml` sets `batch_tiers = ["T1"]` and `dev_t3_every = "2h"`, and docs/agents/tests.md describes batch tiers, the periodic dev T3 run and the release gate. (T1: the repository-config regression in init-config.test.ts; T0: config and docs inspection.)
   - verified: rev-30 [reviewer] · run rev-20261019-886-source-final · 2026-10-19T16:44:07.533Z · commit 265ded939070a863125a50513e94a6d0cbb8f606
   - verified: rev-30 [reviewer] · run rev-20261019-886-reporting-source · 2026-10-19T17:06:38.797Z · commit 2ecec97363badccbb3958cda17ebd099fbaa9268
-  - done: impl-886 · 2026-10-19T17:26:41.744Z
   - verified: rev-30 [reviewer] · run rev-20261019-886-final · 2026-10-19T17:27:03.133Z · commit 2ecec97363badccbb3958cda17ebd099fbaa9268
+  - verified: rev-30 [reviewer] · run rev-20261019-886-d68-integration-source · 2026-10-19T17:36:10.199Z · commit 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
+  - done: impl-886 · 2026-10-19T17:58:18.220Z
+  - verified: rev-30 [reviewer] · run rev-20261019-886-d68-integration-final · 2026-10-19T17:59:07.653Z · commit 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
 
 ## Comments
 
@@ -150,5 +155,43 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final clear; A-6284. A-6283 ordinary1593/1593, 513 groups5/5, all owned batch/periodic/release costs within tiers. Corrected General publication .232s ordinary/.324–.347s repetitions resolves M5. C1–C4 verified with current controls plus retained qualified A-6234 native filtered-tree/publication host contracts; prior H1/M1–M4 resolved. Inherited T-856/T-877 exception retained, Linux T3 remains landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6284-t-886-final-configurable-batch-and-periodic-t3-evidence-at-2ecec973.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### impl-886 · 2026-10-19T17:34:45.401Z
+
+Coordinator-authorized one merge completed after D68 committed: head 8898f47d, parents 2ecec973 and 1d81bd6e. Kept daily_spend_usd=20 plus batch_tiers=[T1] and dev_t3_every=2h. Dispatch conflict combines T-860 per-member resultText/artifact links with periodic dev-t3 General wrapping/detail. Targeted protocol/periodic/batch/config/release-tree proofs and npm run check are green. Fresh delta source review follows; old a9440e1e remains prior-head evidence only.
+
+### rev-30 · 2026-10-19T17:36:10.199Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-886-d68-integration-source
+commit: 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integration delta clear; A-6294. Authorized merge d94213b9 preserves D68 cap and D67 keys. Dispatch keeps topic-local batch artifact/resultText identities and independent periodic General structured detail. Raw host protocol13/13, periodic9/9, batch34/34, config7/7, native filtered-tree1/1 pass; qualified as host evidence. C4 reverified; C1–C3 await new mode-free exact-head gate. Prior A-6283 remains prior-head evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6294-t-886-d68-integration-delta-review-at-8898f47d.md
+
+Criteria: C4 verified.
+
+### impl-886 · 2026-10-19T17:58:30.299Z
+
+Post-D68 merged-head mode-free verify 1c0dc6e1 at unchanged 8898f47d is green: 1599/1599, hub and Neovim complete; owned ordinary and 5/5 repetition durations fit tiers. Log A-6304. Linux c-8 lon1 lifetime 1267 s, cost $0.0880. Claimant done calls refreshed C1–C4; awaiting final Reviewer new-head evidence settlement and ready event.
+
+### rev-30 · 2026-10-19T17:59:07.653Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-886-d68-integration-final
+commit: 8898f47d2f14ba1e9186cfd9b1c42d7b23154abd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head evidence clear; A-6305. A-6304 ordinary 1599/1599 and 519 groups 5/5; owned batch/periodic/release and member-attachment cases meet tiers. A-6291 post-integration native filtered-tree contract retained separately from deferred Linux T3. C1–C4 reverified. Three inherited onboarding resource rows retained/routed under existing T-877 chain; pinned head predates its separate landing. No further run requested. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6305-t-886-final-d68-integrated-evidence-at-8898f47d.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

@@ -2,8 +2,8 @@
 id: T-877
 kind: task
 title: T-856's real-Git push proof trips the T2 process boundary; move it to an allowed tier or seam
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-611
 branch: t/T-877-t-856-s-real-git-push-proof-trips-the-t2
 created: 2026-10-19T13:52:09.532Z
-updated: 2026-10-19T15:39:12.014Z
+updated: 2026-10-19T18:41:38.962Z
+closed: 2026-10-19T18:41:38.962Z
 ---
 
 ## Summary
@@ -60,3 +61,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no findings. Spec: no findings. A-6168 / 552957d0 matches the source-cleared head and branch ref: all 440 ordinary finishes pass, all 212 gates 5/5. The 11 remaining onboarding T2 cases pass with 55 passing repetitions and no tier-mismatch receipts anywhere in the full log; no owned budgets. C1 verified across source-preserved native T3 proof (four original assertions including actual territory-dev advancement), pre-review host push-file evidence and this task gate. The moved native T3 proof was not executed by this Linux task gate and remains subject to the merge batch. One external roles-editor budget 0.608 > 0.5 s is retained in the final evidence artifact, overlapping T-875.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T17:55:26.347Z
+
+Landing evidence (Coordinator): batch d64e7778 (T-877, T-878, T-869), run e2e1fea1, tree f23c7b1f, Linux c-8 droplet, T1+T3, exit 0, 1781 passed, 0 failed (A-6303). hub/test/push.test.ts (T3, real territory push): 25 finishes, 0 failures.
+
+### coord · 2026-10-19T18:41:38.962Z
+
+Merged 816cb9d657093d24cd094f98d65b2ef35b98f4f6 onto dev.
