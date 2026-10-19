@@ -241,6 +241,55 @@ test('a red singleton posts its bisection refusal to the member lead after appea
   assert.ok(history.messages.some(message => /merge-queue-dropped.*merge-bisected.*hub\/test\/parser.test.ts::rejects stale input/s.test(message.text) && message.to.includes('coord')));
 });
 
+test('refusing a cancelled live batch member preserves its re-enqueued request', async t => {
+  // T2: public merge frames through projectHub; only the executor and Git edges are fake.
+  const started = Promise.withResolvers<RunRef>();
+  let receipt: RunStatus = { state: 'running' };
+  t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'holder', async () => null);
+  t.mock.method(LocalExecutor.prototype, 'occupied', async () => false);
+  t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string): Promise<Lease> => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null }));
+  t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
+  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => {
+    await writeFile(run.log, '# tests 1\n# pass 1\n'); started.resolve(run);
+  });
+  t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);
+  t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
+  t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
+  const head = 'f'.repeat(40), tree = 'e'.repeat(40);
+  const { ui, item, clock } = await fixture(t, { durationContext: null, candidate: {
+    head: async () => head, tree: async () => tree,
+    inspect: async () => ({ head, tree, branch: '', selection: { mode: 'full', files: [], reason: 'batch' }, tierPlan: [], budgetBase: undefined }),
+  }, batchRepository: {
+    git: async args => args[0] === 'rev-parse' ? args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40) : args[0] === 'merge-tree' ? tree + '\0' : head,
+    facts: async () => ({ context: null, workers: 1 }), identity: async () => tree,
+    checkout: async () => {}, remove: async () => {},
+  } });
+  await value(ui, { type: 'merge', item: item.id });
+  await clock.advance(601_000);
+  const run = await started.promise;
+  const original = await value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
+  assert.equal((await value<{ cancelled: boolean }>(ui, { type: 'merge', item: item.id, cancel: true })).cancelled, true);
+  assert.equal((await value<{ queued: number }>(ui, { type: 'merge', item: item.id })).queued, 1);
+  const replacement = await value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
+  assert.notDeepEqual(replacement.entries, original.entries, 'the new request has a fresh enqueue time at the same head');
+  assert.equal(replacement.batch.id, original.batch.id, 'the live worker keeps its pinned batch');
+  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status' })).suites.length, 1);
+  receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
+  await until(async () => {
+    await clock.advance(1000);
+    const suites = (await value<{ suites: Array<{ id: string; reported: boolean }> }>(ui, { type: 'hub.status' })).suites;
+    return suites.some(job => job.id === run.id && job.reported);
+  }, { what: 'live batch worker completion receipt', timeoutMs: 1500 });
+  await until(async () => {
+    await clock.advance(1000);
+    return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null;
+  }, { what: 'cancelled batch resolves', timeoutMs: 1500 });
+  assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, replacement.entries);
+  assert.equal((await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.state, 'open');
+});
+
 test('a code movement rebuild notice survives the original green result notice', async t => {
   const started = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };

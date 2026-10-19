@@ -47,6 +47,26 @@ test('malformed branch output cannot authorize drops even for parsed head change
   }
 });
 
+test('drop removes and reports only the matching pinned request', async t => {
+  const { queue, drops } = await fixture(t), expected = queue.entries();
+  const entry = expected[0]!;
+  for (const stale of [
+    { ...entry, item: 'T-99' },
+    { ...entry, head: 'f'.repeat(40) },
+    { ...entry, enqueued: '2026-10-15T12:00:00.000Z' },
+  ]) {
+    queue.drop(stale, 'stale batch refusal');
+    assert.deepEqual(queue.entries(), expected);
+    assert.deepEqual(drops, [], 'a stale refusal must not report removal of a newer request');
+  }
+  queue.drop({ ...entry }, 'matching refusal');
+  assert.deepEqual(queue.entries(), expected.slice(1));
+  assert.deepEqual(drops, ['T-1: matching refusal']);
+  queue.drop(entry, 'already removed');
+  assert.deepEqual(queue.entries(), expected.slice(1));
+  assert.deepEqual(drops, ['T-1: matching refusal']);
+});
+
 test('uncertain refreshes retain all six entries without partial reconciliation', async t => {
   const f = await fixture(t), expected = f.queue.entries();
   f.heads.set('t/1', 'f'.repeat(40));

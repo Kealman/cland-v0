@@ -87,6 +87,8 @@ export class MergeQueue {
 
   drop(entry: MergeQueueEntry, reason: string): void {
     this.store.transaction(() => {
+      // A live batch may still refuse an old request after cancellation and re-enqueue.
+      if (!this.entries().some(current => current.item === entry.item && current.head === entry.head && current.enqueued === entry.enqueued)) return;
       this.store.dropMerge(entry.item);
       this.dropped(entry, reason);
     });
