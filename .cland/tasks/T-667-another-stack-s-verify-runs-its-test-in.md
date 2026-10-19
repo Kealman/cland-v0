@@ -3,7 +3,7 @@ id: T-667
 kind: task
 title: Another stack's verify runs its test in full and reports the test's output
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-619
 branch: t/T-667-another-stack-s-verify-runs-its-test-in
 created: 2026-10-16T16:35:24.761Z
-updated: 2026-10-19T20:29:18.485Z
+updated: 2026-10-19T20:39:00.484Z
 ---
 
 ## Summary
@@ -191,3 +191,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Combined delta source clear, A-6635. Direct Coordinator history confirms merges and exact T-907 exception to C5 unchanged-file wording. Independent task-patch comparison shows only new landed-identity lookup runner guard and posted one-line obsolete T4 expectation fix; all other owned patches unchanged. Preserves T-885 proof persistence/exact-head lookup, T-893 periodic tiers and arbitrary-stack full/no-cland-planning behavior. Raw A-6630 fifteen files184/184; C3 shell3.179 s, C5 selection96/96+coverage/report passes qualified local. C1–C5 await fresh exact-head mode-free gate; previous evidence historical. QA none.
+
+### rev-30 · 2026-10-19T20:39:00.484Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261019-667-landed-proof-runtime
+commit: 35effc9e31a5b2fdee4c4c4d6d51c2bcd05ea571
+scope: evidence
+findings: [{"severity":"medium","text":"Exact-head A-6654 exits 1: red-singleton history assertion cannot find its expected T1,T3 notice; the code-movement case at line 337 also cannot find the original green notice. These two non-report-only assertion failures prevent final gate settlement; lead/Coordinator disposition is required before shared diagnosis/fix/retry.","file":"hub/test/merge-queue.test.ts","line":240}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-6660 records independent raw A-6654 audit: ordinary 1510/1508/2, all 155 completed load groups 5/5, no tier/resource mismatch. Source A-6635 remains clear, but final C1–C5 are not newly verified because current-head gate af62ebd2 is red. Retain failed receipt/head; no defect attribution or diagnosis beyond the raw assertions, and no Reviewer tests/reruns. Request lead/Coordinator disposition under rule 11.

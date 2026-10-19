@@ -2,8 +2,8 @@
 id: T-902
 kind: task
 title: "Process-helper migration: Neovim tests (sessions, items, item prefixes, agent filters)"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-639
 branch: t/T-902-process-helper-migration-neovim-tests
 created: 2026-10-19T19:27:17.295Z
-updated: 2026-10-19T20:23:47.598Z
+updated: 2026-10-19T20:38:42.606Z
+closed: 2026-10-19T20:38:42.606Z
 ---
 
 ## Summary
@@ -39,9 +40,11 @@ Part of T-775 C1 (E-677 stage 3, D63): these test files still call process helpe
   - verified: rev-31 [reviewer] · run rev-20261019-902-final · 2026-10-19T20:14:52.314Z · commit 3506aba1ee105e070237729594c59ba19181dd0f
   - verified: rev-31 [reviewer] · run rev-20261019-902-integration-source · 2026-10-19T20:19:53.849Z · commit 743e1f94e2284a4e29adf03d06b71e9a67b1f773
   - verified: rev-31 [reviewer] · run rev-20261019-902-integration-source-2 · 2026-10-19T20:23:47.598Z · commit 9019bb4d4a86ebdf88d0636e039d0f966109b446
+  - verified: rev-31 [reviewer] · run rev-20261019-902-integration-final · 2026-10-19T20:33:43.585Z · commit 9019bb4d4a86ebdf88d0636e039d0f966109b446
 - [x] C2. (T1/T2) Every assertion in the listed files is kept, whether moved or retained. Each moved case passes in a mode-free task verify, including its five load repetitions, and no new duration allowance is added. Retained T3 lifecycle cases pass locally before enqueue; their Linux run is landing evidence.
   - done: impl-902 · 2026-10-19T20:14:20.597Z
   - verified: rev-31 [reviewer] · run rev-20261019-902-final · 2026-10-19T20:14:52.314Z · commit 3506aba1ee105e070237729594c59ba19181dd0f
+  - verified: rev-31 [reviewer] · run rev-20261019-902-integration-final · 2026-10-19T20:33:43.585Z · commit 9019bb4d4a86ebdf88d0636e039d0f966109b446
 
 ## Comments
 
@@ -135,3 +138,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-6617: post-T-903 integration authorized by primary Coordinator 2bdffcb8 is clear on Standards and Spec. Both parent stub handler blocks retained; all 21 other non-map/non-main-catalogue owned blobs unchanged. Manifest/baseline preserve every dev entry and only apply owned migration reductions. Catalogue independently +237 records/+1112 nodes versus pinned dev 70f695cc, zero existing keys changed/removed; all four owned slices match. A-6612 recorder/replay/integrity/boundary/discovery controls pass. Native source/dependencies remain unchanged from prior local green A-6599. C1 reverified; C2 requires fresh same-head configured mode-free green receipt and all 25 moved identities ordinary plus actual 5/5, with zero owned tier/budget issues. All 25 keys remain absent from unchanged dev duration baseline; no allowance edit.
 
 Criteria: C1 verified.
+
+### rev-31 · 2026-10-19T20:33:43.585Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-902-integration-final
+commit: 9019bb4d4a86ebdf88d0636e039d0f966109b446
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6645 independently audits complete post-T-903 same-head configured mode-free 42012c68/A-6643: 1776/1776 ordinary, 960/960 load finishes including nested tests, all 186 groups 5/5, zero non-pass/tier mismatch/load failure. All 25 owned identities pass once ordinarily plus five distinct repetitions each (125 owned repetitions); largest owned body .929007126s and file 2.753749593s, no owned budget rows. Prior prefix case .728639538s ordinary/.825354925s max repeat; all 13 client identities actually repeat. A-6617 source/integration/catalogue review and A-6612 post-integration recorder controls remain applicable; native source/dependencies unchanged from A-6599 local green. No allowance increase. Claimant C1/C2 done present; both now final verified at this head. Native Linux T3 remains periodic/integrated landing evidence. Known external report-only diagnostics retained without duplicate aside.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T20:38:42.606Z
+
+Merged c388c844af4dc1cdd5b6f690def59acc71f0b44a onto dev.

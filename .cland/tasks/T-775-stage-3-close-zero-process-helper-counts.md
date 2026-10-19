@@ -3,7 +3,7 @@ id: T-775
 kind: task
 title: "Stage-3 close: zero process-helper counts outside contract, scenario and T3-header files, and measure T3 seconds and hub starts"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -32,7 +32,7 @@ blocked_by:
 topic: topic-628
 branch: t/T-775-stage-3-close-zero-process-helper-counts
 created: 2026-10-18T04:49:35.780Z
-updated: 2026-10-19T19:40:31.742Z
+updated: 2026-10-19T20:43:54.892Z
 ---
 
 ## Summary
@@ -45,11 +45,13 @@ Zero the process-helper counts outside contract, scenario and T3-header lifecycl
 
 ## Acceptance criteria
 
-- [ ] C1. The process-helper counts in the lint baseline are zero outside contract, scenario and T3-header files, and a planted `spawnSpoke` in a T2 file is refused, proved by the lint run and a lint test.
+- [ ] C1. The process-helper counts in the lint baseline are zero outside contract, scenario, T3-header and T4-lifecycle-header files (the T4 exemption T-901 added, e.g. orphan-servers-perf), and a planted `spawnSpoke` in a T2 file is refused, proved by the lint run and a lint test.
 - [x] C2. A durations refresh from a green full run after the stage-3 merges shows T3 manifest seconds of 2150 s or less, recorded on this item with the per-tier totals. (D66: the measured value is recorded on this item and accepted for v0.1.4; reaching the target is studied later in E-880 under Ideas.)
   - done: impl-775 · 2026-10-19T19:25:10.188Z
+  - verified: rev-30 [reviewer] · run rev-20261019-775-source · 2026-10-19T20:43:54.892Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
 - [x] C3. A spawn census against T-708's 150-start goal: not measured in v0.1.4, because the local census run starved the shared hub on the crew machine (2026-10-19 19:34–19:39Z, load 51). The measurement is carried into E-880 under Ideas (D66).
   - done: impl-775 · 2026-10-19T19:40:31.742Z
+  - verified: rev-30 [reviewer] · run rev-20261019-775-source · 2026-10-19T20:43:54.892Z · commit 10ebf1267b67136d78fcdbfa70be4459c00ddddc
 
 ## Comments
 
@@ -72,3 +74,22 @@ C3 remains OPEN. A-6441 retains the incomplete local census at 1d81bd6e: exit 14
 ### impl-775 · 2026-10-19T19:40:31.668Z
 
 C3 disposition supersedes my earlier partial-census comment: not measured in v0.1.4; the census run starved the shared hub on the crew machine. Coordinator decision 44c61115 confirms the deliberate SIGTERM stop during 19:34–19:39Z hub starvation and directs no restart. Under revised C3/D66, E-880 (Ideas) owns the later measurement. Partial census output is discarded as measurement evidence; A-6441 is withdrawn/archived. No partial process count or target assessment is claimed. Prepared detached worktree kept. C3 claimant done against the revised disposition. Source review continues to wait on T-895–T-903.
+
+### impl-775 · 2026-10-19T20:42:05.888Z
+
+Source review requested from reviewer at pushed head 10ebf1267b67136d78fcdbfa70be4459c00ddddc (base c388c844, all migration blockers landed); assigned rev-30. A-6667 contains the final 485-file baseline/direct-call audit, full per-file CSV/JSON and reproducible script: all 341 non-exempt files are zero. Single nonzero T4 row: orphan-servers-perf/startDaemon 1 under the authorized T-901 exemption now reflected in C1. Six-file delta only: four lifecycle headers, T1 regression, baseline shrink adding 60 empty entries. Fresh merged-source tests 50 pass, no failures/skips; typecheck/lint/static/tiers and own-delta whitespace pass. Pre-push fetch/merge-tree clean. C2 and C3 done under their revised D66 dispositions (A-6408/A-6454). Awaiting source verdict before exact-head mode-free verify; no further dev merge after this first review unless Coordinator directs.
+
+### rev-30 · 2026-10-19T20:43:54.892Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-775-source
+commit: 10ebf1267b67136d78fcdbfa70be4459c00ddddc
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear, A-6674; Standards/Spec no findings. Six-file scope preserves lifecycle assertions/tiers and all old baseline counts; exactly 60 empty entries added. Independent manifest/baseline/header audit agrees with all 485 rows, 341 non-exempt zero-helper files, sole nonzero T4 orphan-servers-perf/startDaemon:1 under revised C1. Raw local 50/50 passes; new T1 planted-spawnSpoke refusal .001199083 s. C1 final runtime awaits exact-head mode-free gate. C2 verified under revised D66: independently recomputed accepted historical T3 2356.811994 s, gap 206.811994 s, not current-head timings/target attainment. C3 verified as explicit Coordinator stop/no-restart/not-measured disposition with E-880 owning later measurement; no partial census accepted. QA none; no Reviewer execution.
+
+Criteria: C2 verified, C3 verified.

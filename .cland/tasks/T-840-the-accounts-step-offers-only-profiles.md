@@ -2,8 +2,8 @@
 id: T-840
 kind: task
 title: The accounts step offers only profiles with their own directory, asks with the default No, and never registers a harness's default profile
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-644
 branch: t/T-840-the-accounts-step-offers-only-profiles
 created: 2026-10-19T06:34:13.082Z
-updated: 2026-10-19T20:28:25.146Z
+updated: 2026-10-19T20:44:01.025Z
+closed: 2026-10-19T20:44:01.025Z
 ---
 
 ## Summary
@@ -44,21 +45,27 @@ Setup shows the signed-in profiles not yet in `~/.config/cland/accounts.toml`, e
 - [x] C1. With signed-in default Claude Code and Codex profiles and a signed-in `~/.claude-work`, the only candidate is `claude-work` with `config_dir = "~/.claude-work"` (T1).
   - done: impl-840 · 2026-10-19T20:23:43.671Z
   - verified: rev-30 [reviewer] · run rev-20261019-840-final · 2026-10-19T20:24:18.354Z · commit c2833c29167f2569189860d8f58b006bb33d8e62
+  - verified: rev-30 [reviewer] · run rev-20261019-840-handover-integration-final · 2026-10-19T20:39:38.079Z · commit 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
 - [x] C2. Enter at the question writes nothing and leaves `accounts.toml` absent, and a second run asks nothing and reports `ok` naming the declined profile (T1).
   - done: impl-840 · 2026-10-19T20:23:44.284Z
   - verified: rev-30 [reviewer] · run rev-20261019-840-final · 2026-10-19T20:24:18.354Z · commit c2833c29167f2569189860d8f58b006bb33d8e62
+  - verified: rev-30 [reviewer] · run rev-20261019-840-handover-integration-final · 2026-10-19T20:39:38.079Z · commit 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
 - [x] C3. Yes appends the entry to an existing registry, keeping its other bytes, and no line written holds an email or org (T1).
   - done: impl-840 · 2026-10-19T20:23:44.878Z
   - verified: rev-30 [reviewer] · run rev-20261019-840-final · 2026-10-19T20:24:18.354Z · commit c2833c29167f2569189860d8f58b006bb33d8e62
+  - verified: rev-30 [reviewer] · run rev-20261019-840-handover-integration-final · 2026-10-19T20:39:38.079Z · commit 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
 - [x] C4. No run of the step ever writes a path-less `claude-code` entry or `config_dir = "~/.claude"` (T1 over every candidate set in the test).
   - done: impl-840 · 2026-10-19T20:23:45.487Z
   - verified: rev-30 [reviewer] · run rev-20261019-840-final · 2026-10-19T20:24:18.354Z · commit c2833c29167f2569189860d8f58b006bb33d8e62
+  - verified: rev-30 [reviewer] · run rev-20261019-840-handover-integration-final · 2026-10-19T20:39:38.079Z · commit 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
 - [x] C5. `--no-accounts` reads no profile and reports `skip`, and `--yes` without a terminal leaves `accounts.toml` absent (T1).
   - done: impl-840 · 2026-10-19T20:23:46.098Z
   - verified: rev-30 [reviewer] · run rev-20261019-840-final · 2026-10-19T20:24:18.354Z · commit c2833c29167f2569189860d8f58b006bb33d8e62
+  - verified: rev-30 [reviewer] · run rev-20261019-840-handover-integration-final · 2026-10-19T20:39:38.079Z · commit 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
 - [x] C6. The Codex identity read starts one app-server and ends its process group when it returns (T1 with an injected spawner recording the kill).
   - done: impl-840 · 2026-10-19T20:23:46.590Z
   - verified: rev-30 [reviewer] · run rev-20261019-840-final · 2026-10-19T20:24:18.355Z · commit c2833c29167f2569189860d8f58b006bb33d8e62
+  - verified: rev-30 [reviewer] · run rev-20261019-840-handover-integration-final · 2026-10-19T20:39:38.079Z · commit 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
 
 ## Comments
 
@@ -121,3 +128,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Delta source clear, A-6632. Both --no-accounts and --attach parser/help/routing retained; setup and post-summary handOver share one prompter. Accounts production/config/all criterion controls unchanged. Independent task-patch comparison finds only expected CLI context integration and extended existing T1 handover combinations with original assertions retained. Reported targeted24/24/typecheck qualified as claimant evidence. C1–C6 await fresh exact-head mode-free runtime evidence; prior A-6621 historical. QA none.
+
+### rev-30 · 2026-10-19T20:39:38.079Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-840-handover-integration-final
+commit: 1796322540b1e2b20edf93d8ad0c55b2c4c6b135
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear, A-6661. Independent raw A-6653 audit: 1760/1760, zero fail/cancel/skip/TODO, all 170 load groups 5/5, zero tier/resource mismatch or owned budget overrun. All eight account controls ordinary+five repetitions fit T1 (maximum .040957777 s), including C6 process-group cleanup and timeout; nine handover controls ordinary+five also pass. Source A-6632 integration and retained full source basis settle C1–C6 at this head. Covered report-only rows follow Coordinator 798ff31d. Injected control evidence; no native harness claim. QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T20:44:01.025Z
+
+Merged 1d7e6137087296a474048414443404156fd82360 onto dev.

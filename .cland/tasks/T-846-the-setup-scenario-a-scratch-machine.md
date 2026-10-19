@@ -3,7 +3,7 @@ id: T-846
 kind: task
 title: "The setup scenario: a scratch machine runs `cland setup` end to end, and a second run reports `ok` throughout"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -16,9 +16,9 @@ blocked_by:
   - T-842
   - T-845
 topic: null
-branch: null
+branch: t/T-846-the-setup-scenario-a-scratch-machine
 created: 2026-10-19T06:34:13.631Z
-updated: 2026-10-19T06:34:13.631Z
+updated: 2026-10-19T20:44:23.364Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-717
 kind: task
 title: "[verification] gains per-tier test commands, so any project's task runs, merge batches and soaks follow the tier model"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -21,7 +21,8 @@ blocked_by:
 topic: topic-602
 branch: t/T-717-verification-gains-per-tier-test
 created: 2026-10-16T19:59:44.369Z
-updated: 2026-10-19T20:27:41.790Z
+updated: 2026-10-19T20:43:48.307Z
+closed: 2026-10-19T20:43:48.307Z
 ---
 
 ## Summary
@@ -42,26 +43,30 @@ The tier model is cland's product rule, not this repository's file lists (memo �
   - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.517Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
   - verified: rev-30 [reviewer] · run rev-20261019-717-tier-composition-final · 2026-10-19T19:37:21.957Z · commit 9d9e23143ce60e3ed104398b90b9d8bc7cf300ce
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-search-integrated-final · 2026-10-19T20:01:17.308Z · commit 1a07ce958a4b0f87b3bf99960fae0371068a96c2
-  - done: impl-717 · 2026-10-19T20:18:35.807Z
   - verified: rev-30 [reviewer] · run rev-20261019-717-landed-proof-integrated-final · 2026-10-19T20:18:53.337Z · commit 434877d326a1f4ac062a970bac9e7c6dfe8d861d
+  - done: impl-717 · 2026-10-19T20:38:03.834Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-t2-composition-final · 2026-10-19T20:38:22.344Z · commit 32c0843d842604304104995ee66971909da5f31c
 - [x] C2. A project with only `test` set runs it whole per task with `[merge] queue` off, proved by a suite test.
   - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.517Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
   - verified: rev-30 [reviewer] · run rev-20261019-717-tier-composition-final · 2026-10-19T19:37:21.957Z · commit 9d9e23143ce60e3ed104398b90b9d8bc7cf300ce
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-search-integrated-final · 2026-10-19T20:01:17.308Z · commit 1a07ce958a4b0f87b3bf99960fae0371068a96c2
-  - done: impl-717 · 2026-10-19T20:18:36.427Z
   - verified: rev-30 [reviewer] · run rev-20261019-717-landed-proof-integrated-final · 2026-10-19T20:18:53.337Z · commit 434877d326a1f4ac062a970bac9e7c6dfe8d861d
+  - done: impl-717 · 2026-10-19T20:38:04.455Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-t2-composition-final · 2026-10-19T20:38:22.344Z · commit 32c0843d842604304104995ee66971909da5f31c
 - [x] C3. `cland init` writes the four keys empty with their comment lines, and `cland config set verification.test_unit '<cmd>'` stores the command verbatim, proved by init and config tests.
   - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.518Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
   - verified: rev-30 [reviewer] · run rev-20261019-717-tier-composition-final · 2026-10-19T19:37:21.957Z · commit 9d9e23143ce60e3ed104398b90b9d8bc7cf300ce
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-search-integrated-final · 2026-10-19T20:01:17.308Z · commit 1a07ce958a4b0f87b3bf99960fae0371068a96c2
-  - done: impl-717 · 2026-10-19T20:18:36.922Z
   - verified: rev-30 [reviewer] · run rev-20261019-717-landed-proof-integrated-final · 2026-10-19T20:18:53.337Z · commit 434877d326a1f4ac062a970bac9e7c6dfe8d861d
+  - done: impl-717 · 2026-10-19T20:38:04.982Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-t2-composition-final · 2026-10-19T20:38:22.344Z · commit 32c0843d842604304104995ee66971909da5f31c
 - [x] C4. This repository's config names its four tier commands, and a task verify at the merge head plans the same files as before the change, proved by a planning test.
   - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.518Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
   - verified: rev-30 [reviewer] · run rev-20261019-717-tier-composition-final · 2026-10-19T19:37:21.957Z · commit 9d9e23143ce60e3ed104398b90b9d8bc7cf300ce
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-search-integrated-final · 2026-10-19T20:01:17.308Z · commit 1a07ce958a4b0f87b3bf99960fae0371068a96c2
-  - done: impl-717 · 2026-10-19T20:18:37.517Z
   - verified: rev-30 [reviewer] · run rev-20261019-717-landed-proof-integrated-final · 2026-10-19T20:18:53.337Z · commit 434877d326a1f4ac062a970bac9e7c6dfe8d861d
+  - done: impl-717 · 2026-10-19T20:38:05.644Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-t2-composition-final · 2026-10-19T20:38:22.344Z · commit 32c0843d842604304104995ee66971909da5f31c
 - [x] C5. `docs/agents/tests.md` and `hub/README.md` describe the per-tier commands and the batch settings.
   - verified: rev-30 [reviewer] · run rev-20261019-717-source-corrected · 2026-10-19T16:29:09.242Z · commit bebb22657d665133cf850547a7ae369642f7673b
   - verified: rev-30 [reviewer] · run rev-20261019-717-budget-source · 2026-10-19T16:58:47.485Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
@@ -72,9 +77,10 @@ The tier model is cland's product rule, not this repository's file lists (memo �
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-search-integration-source · 2026-10-19T19:47:14.251Z · commit 1a07ce958a4b0f87b3bf99960fae0371068a96c2
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-search-integrated-final · 2026-10-19T20:01:17.308Z · commit 1a07ce958a4b0f87b3bf99960fae0371068a96c2
   - verified: rev-30 [reviewer] · run rev-20261019-717-landed-proof-integration-source · 2026-10-19T20:10:39.786Z · commit 434877d326a1f4ac062a970bac9e7c6dfe8d861d
-  - done: impl-717 · 2026-10-19T20:18:38.032Z
   - verified: rev-30 [reviewer] · run rev-20261019-717-landed-proof-integrated-final · 2026-10-19T20:18:53.337Z · commit 434877d326a1f4ac062a970bac9e7c6dfe8d861d
   - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-t2-composition-source · 2026-10-19T20:27:41.790Z · commit 32c0843d842604304104995ee66971909da5f31c
+  - done: impl-717 · 2026-10-19T20:38:06.204Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-periodic-t2-composition-final · 2026-10-19T20:38:22.344Z · commit 32c0843d842604304104995ee66971909da5f31c
 
 ## Blocked by
 
@@ -336,3 +342,30 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear, A-6629. Canonical occasion policy now supplies periodic tiers; regression checks delivered selection and check+recorded tier commands while all three literal batch controls remain. Separate landed T-893 matrix retains literal T2/T3 expectation. Independent 24-file task-patch comparison finds only disclosed test correction, no production/other assertion change. Raw A-6628 36/36 green plus retained exact red. C5 verified; C1–C4 await replacement exact-head mode-free evidence. Coordinator T-667-first enqueue hold remains in effect separately. QA none.
 
 Criteria: C5 verified.
+
+### impl-717 · 2026-10-19T20:38:11.714Z
+
+Corrected exact-head mode-free5d6ff537/A-6651 at32c0843d passes1760/1760, all171groups5/5, zero tier mismatch. Canonical periodic composition .038s ordinary/.069s max5, planner/writer also meet T1 budgets. Three inherited budget rows covered T-883/T-904; tracker body/comments checked, no new aside. Raw audit A-6655. Linux c-8 lon1 lifetime554s cost$0.0385. All claimant done marks refreshed; final Reviewer settlement pending. Head/claim held and merge enqueue remains behind Coordinator's T-667 landing confirmation.
+
+### rev-30 · 2026-10-19T20:38:22.344Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-717-periodic-t2-composition-final
+commit: 32c0843d842604304104995ee66971909da5f31c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final current-head evidence clear, A-6656. Independently audited A-6651/5d6ff537: 1760/1760, zero fail/cancel/skip/TODO, all 171 load groups 5/5 and zero tier/resource mismatch. Planner/writer/corrected composition ordinary+five repetitions fit T1 budgets; literal CLI .619904262 s ordinary fits T2 (no repeat group claimed). Source A-6629 plus retained local native Python/legacy proofs A-6379 settle C1–C5. Known report-only accounting/admission/events rows follow Coordinator 798ff31d. Linux T3 periodic/integrated; QA none. Coordinator's T-667-first merge-enqueue hold remains unchanged.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-717 · 2026-10-19T20:38:46.236Z
+
+Ready at32c0843d: C1–C5 current/verified and final clear rev-20261019-717-periodic-t2-composition-final/A-6656 confirmed. Gate5d6ff537/A-6651 passes1760/1760 and171groups5/5; corrected periodic composition in budget. Linux c-8 lon1 lifetime554s cost$0.0385. Clean head matches origin. Readiness reported to Coordinator; enqueue held until Coordinator confirms T-667 landed, claim kept.
+
+### coord · 2026-10-19T20:43:48.307Z
+
+Merged 66f1c1883f1e99098081877ee429111a9adce4c6 onto dev.
