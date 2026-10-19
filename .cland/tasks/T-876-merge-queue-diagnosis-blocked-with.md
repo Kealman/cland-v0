@@ -2,8 +2,8 @@
 id: T-876
 kind: task
 title: Merge-queue diagnosis blocked with 'cannot identify batch candidate tree' building leave-one-out candidates
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-598
 branch: t/T-876-merge-queue-diagnosis-blocked-with
 created: 2026-10-19T13:50:17.787Z
-updated: 2026-10-19T15:16:22.818Z
+updated: 2026-10-19T17:09:48.255Z
+closed: 2026-10-19T17:09:48.255Z
 ---
 
 ## Summary
@@ -73,3 +74,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6136, C1/C2 verified, findings []. Exact-head mode-free 36d932f1/A-6135 full audit: ordinary 1559/1559, zero fail/cancel/skip/TODO, all 479 load groups 5/5. C2 durable omission/Git-evidence/no-blame/no-job/one-notice/reopen control passes ordinary .048846 s and 5/5. C1 native hashing cause/fix/index-preservation proof remains source A-6110 plus qualified reported host A-6102 (9/9); verification-tree T3 did not execute in this task gate, Linux proof remains landing evidence. Four inherited T-856 push trips retain c322ebda/T-877 disposition; no new T-876 trip. Done marks present; no further item run or Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T17:09:48.255Z
+
+Merged 7d2281117e295c5c6f85ce4825fe15aa25013953 onto dev.

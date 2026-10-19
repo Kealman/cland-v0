@@ -3,7 +3,7 @@ id: T-834
 kind: task
 title: Doctor requires a harness only when a role uses it, and `gh` only with a `github` remote
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-578
 branch: t/T-834-doctor-requires-a-harness-only-when-a
 created: 2026-10-19T06:34:12.522Z
-updated: 2026-10-19T15:49:33.850Z
+updated: 2026-10-19T16:09:33.809Z
 ---
 
 ## Summary
@@ -38,26 +38,32 @@ On a bare machine doctor fails nine checks, because every missing harness and `g
 
 - [x] C1. In a project whose roles all launch on claude-code, doctor with Codex and OpenCode missing has no `fail` row for them and exits 0 when the rest passes (T1/T2 with injected probes).
   - verified: rev-30 [reviewer] · run rev-20261019-834-final · 2026-10-19T12:11:09.833Z · commit 1b01ab4ac66e9f586981d4eb4f8b0ca106a12b6c
-  - done: impl-834 · 2026-10-19T12:11:22.192Z
   - verified: rev-30 [reviewer] · run rev-20261019-834-installer-integration-final · 2026-10-19T13:27:10.495Z · commit 64fb7d81e41e624f5996d7814aed15cedb3f2cfb
+  - verified: rev-30 [reviewer] · run rev-20261019-834-favourite-trust-final · 2026-10-19T16:09:17.893Z · commit d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+  - done: impl-834 · 2026-10-19T16:09:31.388Z
 - [x] C2. The same project with Claude Code signed out has a `fail` row for `claude-code auth` naming `claude auth login`.
   - verified: rev-30 [reviewer] · run rev-20261019-834-final · 2026-10-19T12:11:09.833Z · commit 1b01ab4ac66e9f586981d4eb4f8b0ca106a12b6c
-  - done: impl-834 · 2026-10-19T12:11:22.755Z
   - verified: rev-30 [reviewer] · run rev-20261019-834-installer-integration-final · 2026-10-19T13:27:10.495Z · commit 64fb7d81e41e624f5996d7814aed15cedb3f2cfb
+  - verified: rev-30 [reviewer] · run rev-20261019-834-favourite-trust-final · 2026-10-19T16:09:17.893Z · commit d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+  - done: impl-834 · 2026-10-19T16:09:32.012Z
 - [x] C3. A role naming an account adds that account's harness to the harnesses in use (T1 over the function).
   - verified: rev-30 [reviewer] · run rev-20261019-834-source · 2026-10-19T11:51:10.432Z · commit 1b01ab4ac66e9f586981d4eb4f8b0ca106a12b6c
   - verified: rev-30 [reviewer] · run rev-20261019-834-final · 2026-10-19T12:11:09.833Z · commit 1b01ab4ac66e9f586981d4eb4f8b0ca106a12b6c
-  - done: impl-834 · 2026-10-19T12:11:23.233Z
   - verified: rev-30 [reviewer] · run rev-20261019-834-installer-integration-source · 2026-10-19T13:07:49.561Z · commit 64fb7d81e41e624f5996d7814aed15cedb3f2cfb
   - verified: rev-30 [reviewer] · run rev-20261019-834-installer-integration-final · 2026-10-19T13:27:10.495Z · commit 64fb7d81e41e624f5996d7814aed15cedb3f2cfb
+  - verified: rev-30 [reviewer] · run rev-20261019-834-favourite-trust-source · 2026-10-19T15:51:19.576Z · commit d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+  - verified: rev-30 [reviewer] · run rev-20261019-834-favourite-trust-final · 2026-10-19T16:09:17.893Z · commit d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+  - done: impl-834 · 2026-10-19T16:09:32.686Z
 - [x] C4. Without a `github` remote, doctor runs no `gh` probe and shows the "not needed" row. With one, a missing `gh` fails as today (T1 with injected remotes and probes).
   - verified: rev-30 [reviewer] · run rev-20261019-834-final · 2026-10-19T12:11:09.833Z · commit 1b01ab4ac66e9f586981d4eb4f8b0ca106a12b6c
-  - done: impl-834 · 2026-10-19T12:11:23.790Z
   - verified: rev-30 [reviewer] · run rev-20261019-834-installer-integration-final · 2026-10-19T13:27:10.495Z · commit 64fb7d81e41e624f5996d7814aed15cedb3f2cfb
+  - verified: rev-30 [reviewer] · run rev-20261019-834-favourite-trust-final · 2026-10-19T16:09:17.893Z · commit d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+  - done: impl-834 · 2026-10-19T16:09:33.204Z
 - [x] C5. Outside a project, doctor with no harness installed has exactly one harness `fail` row, "cland needs at least one harness", and with one harness installed it has none.
   - verified: rev-30 [reviewer] · run rev-20261019-834-final · 2026-10-19T12:11:09.833Z · commit 1b01ab4ac66e9f586981d4eb4f8b0ca106a12b6c
-  - done: impl-834 · 2026-10-19T12:11:24.262Z
   - verified: rev-30 [reviewer] · run rev-20261019-834-installer-integration-final · 2026-10-19T13:27:10.495Z · commit 64fb7d81e41e624f5996d7814aed15cedb3f2cfb
+  - verified: rev-30 [reviewer] · run rev-20261019-834-favourite-trust-final · 2026-10-19T16:09:17.893Z · commit d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+  - done: impl-834 · 2026-10-19T16:09:33.809Z
 
 ## Comments
 
@@ -122,5 +128,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Integration final clear; A-6052 audits exact-head A-6051 / 57686dfd. Ordinary 1550/1550, zero fail/cancel/skip/TODO, all 470 load groups 5/5, zero tier-mismatch rows. Doctor C1–C5 and twelve installer/requirements flow cases pass, including current requirements after exact-template rebuild. All criterion marks refreshed. Existing report-only findings retained; T3 remains landing evidence. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-30 · 2026-10-19T15:51:19.576Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-834-favourite-trust-source
+commit: d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Integration source clear; A-6174, no findings. Coordinator b7fd5554/bfdfa48a authorize one dev integration. All five landed steps retained with installer/decline, favourite/trust and project required-harness behavior. Conflict resolution preserves requirement cases, exact-template rebuild and scratch HOME/trust setup; incoming fixtures receive requiredHarnesses. Doctor/resolver/parser and original criterion tests byte-unchanged. A-6172 records seven serial host files/typecheck green. C3 refreshed; C1/C2/C4/C5 await new same-head mode-free gate. Prior A-6051 historical; T-874 remains separate. No Reviewer execution.
+
+Criteria: C3 verified.
+
+### rev-30 · 2026-10-19T16:09:17.893Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-834-favourite-trust-final
+commit: d05111ce75c8c4f043e1c15b341e0f61602b8cfd
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integration clear; A-6194 audits full A-6193 / 5a81d2ce at unchanged source-clear head. Ordinary 1586/1586 zero fail/cancel/skip/TODO; all 506 groups 5/5. Doctor requirement/auth/gh/no-harness, named-account resolver and combined flow/favourite/trust/CLI files pass with retained assertions. C1–C5 verified using unchanged baseline audit plus A-6174 integration and current runtime. Four inherited T-856 push tripwire rows retained under T-877; no owned setup/doctor trip. Existing report-only debt remains, T-874 separate. T3 landing evidence deferred; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

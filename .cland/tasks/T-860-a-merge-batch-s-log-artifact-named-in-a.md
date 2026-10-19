@@ -2,8 +2,8 @@
 id: T-860
 kind: task
 title: A merge batch's log artifact named in a member's item topic cannot be attached there (artifact-unavailable)
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-599
 branch: t/T-860-a-merge-batch-s-log-artifact-named-in-a
 created: 2026-10-19T08:15:52.852Z
-updated: 2026-10-19T15:04:06.290Z
+updated: 2026-10-19T17:09:38.787Z
+closed: 2026-10-19T17:09:38.787Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6126, C1 verified, findings []. Exact-head mode-free 84239b40/A-6125 full audit: ordinary 497/497, zero fail/cancel/skip/TODO, all 237 load groups 5/5, zero tier-mismatch rows. Two-member topic-local artifact attachment control passes ordinary .554196 s and 5/5; all 12 protocol tests, including bounded fresh/cached summaries and recovered publication controls, pass. A-6109 host capture fills prior timing detail without rerun. Source/attachment authorization unchanged; claimant done present, inherited report-only debt retained. No further item run or Reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T17:09:38.787Z
+
+Merged ddd345d8eb77415c4c9fe73ba9728982a3b89627 onto dev.

@@ -3,8 +3,9 @@ id: T-786
 kind: task
 title: Real-source fixture carriers derive their copied file set from the import graph instead of hand-written lists
 state: open
-status: review
+status: ready
 size: S
+criterion_seq: 1
 labels:
   - verification
   - hub
@@ -16,7 +17,7 @@ blocked_by: []
 topic: topic-610
 branch: t/T-786-real-source-fixture-carriers-derive
 created: 2026-10-18T07:21:29.054Z
-updated: 2026-10-19T15:37:24.107Z
+updated: 2026-10-19T15:58:07.555Z
 ---
 
 ## Summary
@@ -29,7 +30,9 @@ One shared helper computes each carrier's copy set from the import closure of it
 
 ## Acceptance criteria
 
-- [ ] C1. Adding a new module imported by harness.ts needs no change to any carrier list, proved by a test that plants such a module and runs the coverage carrier green. The carriers' existing assertions stay unchanged.
+- [x] C1. Adding a new module imported by harness.ts needs no change to any carrier list, proved by a test that plants such a module and runs the coverage carrier green. The carriers' existing assertions stay unchanged.
+  - done: impl-786 · 2026-10-19T15:57:37.479Z
+  - verified: rev-31 [reviewer] · run rev-20261019-786-final · 2026-10-19T15:58:06.831Z · commit 015e59564c00785fdfff547ccfc0b14153e4d5f6
 
 ## Comments
 
@@ -53,3 +56,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards: no findings. Spec: no findings. All three real-source carriers use the shared whole-module import closure plus explicit assets; the planted harness import exercises the actual-source coverage carrier. Original coverage and compiler assertion lines are retained. Exact archived-tree source reading and historical selector behavior reviewed. See the source review artifact posted in topic-610. C1 remains unverified pending unchanged-head mode-free task verification; source clear permits that submission.
+
+### impl-786 · 2026-10-19T15:57:44.291Z
+
+Same-head mode-free verification 709338b6-8309-4a7f-bc82-7306991665a4 passed at 015e59564c00785fdfff547ccfc0b14153e4d5f6: 1560 tests passed, zero failures/cancellations/skips. C1 claimant done marked. T3 deferred to merge batch as required. Linux x64 droplet c-8 lon1, lifetime 1102s, cost $0.0765. Durable log A-6187: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6187-suite-709338b6-8309-4a7f-bc82-7306991665a4-auto-at-015e595.log. Reviewer received the hub result and owns final evidence verdict.
+
+### rev-31 · 2026-10-19T15:58:06.831Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-786-final
+commit: 015e59564c00785fdfff547ccfc0b14153e4d5f6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. Spec: no findings. Independently audited A-6187 / 709338b6 at the source-cleared head: 1560 ordinary passes, all 480 gates 5/5. The two new source-fixture controls pass ordinarily and 5/5; both selector-package controls also pass. No owned budget/resource violations. C1 verified across the source-reviewed planted actual-carrier proof, A-6157's disclosed exact-head host carrier/compiler and archived-selector results, and this same-head configured task receipt. Host native results are summaries, not independently parsed raw transcripts; coverage/compiler T3 cases were not executed by this Linux task and remain landing-batch evidence. The final evidence artifact retains all 26 external budget rows and four known onboarding trips (T-877 overlap); roles-editor overlaps T-875.
+
+Criteria: C1 verified.

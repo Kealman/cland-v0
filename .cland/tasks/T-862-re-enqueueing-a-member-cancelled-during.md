@@ -2,8 +2,8 @@
 id: T-862
 kind: task
 title: Re-enqueueing a member cancelled during a live batch loses the new entry when the batch drops the old one
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-595
 branch: t/T-862-re-enqueueing-a-member-cancelled-during
 created: 2026-10-19T09:55:24.388Z
-updated: 2026-10-19T15:00:23.787Z
+updated: 2026-10-19T16:12:54.841Z
+closed: 2026-10-19T16:12:54.841Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6119, C1 verified, findings []. Exact-head mode-free 08193e6f/A-6118 full audit: ordinary 442/442, zero fail/cancel/skip/TODO, all 214 load groups 5/5, zero tier-mismatch rows. New pinned-identity T1 and live-batch cancel/re-enqueue T2 each pass ordinary and 5/5 (.040885/.266138 s ordinary). Source A-6098 and red→green A-6097 retain transaction/notice and replacement-queue contract. Claimant done present; no post-merge criterion wait needed. Inherited report-only budget/baseline debt retained; T3 landing remains Coordinator-owned. No further item run.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T16:12:54.841Z
+
+Merged 9ede6ee77195755ae71edd334f9a77a416db529f onto dev.

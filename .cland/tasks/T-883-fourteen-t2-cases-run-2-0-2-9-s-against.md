@@ -5,6 +5,7 @@ title: Fourteen T2 cases run 2.0–2.9 s against the 2 s T2 budget
 state: open
 status: backlog
 size: S
+criterion_seq: 1
 labels:
   - needs-triage
   - v0.1.4
@@ -14,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T15:38:56.097Z
-updated: 2026-10-19T15:38:56.097Z
+updated: 2026-10-19T15:58:38.941Z
 ---
 
 ## Summary
@@ -40,4 +41,10 @@ T-879's same-head receipt (A-6161, audited in A-6167) shows fourteen T2 cases be
 
 ## Acceptance criteria
 
-- [ ] C1. Each listed case runs within the 2 s T2 budget in a mode-free task verify. A case that cannot is given an exact-key allowance with a written reason, owned by an open epic, or moves to T3 under the tier-move rule with its assertions kept. The receipt shows no report-only budget line for any of them.
+- [ ] C1. Each case listed in the body or in the Coordinator's added-cases comment runs within the 2 s T2 budget in a mode-free task verify. A case that cannot is given an exact-key allowance with a written reason, owned by an open epic, or moves to T3 under the tier-move rule with its assertions kept. The receipt shows no report-only budget line for any of them.
+
+## Comments
+
+### coord · 2026-10-19T15:58:38.052Z
+
+Added cases (rev-31's A-6188 receipt from T-786, 2026-10-19 15:58Z), covered by C1 as listed cases: hub/test/suite-admission-cost.test.ts::suite.start admission over a repository-sized manifest 2.284 s; hub/test/tracker-component.test.ts::task claim keeps the live hold in the hub and persists Implementer status; view shows the assignee and claim 2.32 s; nvim/test/thread.test.ts::200 message rewrites and steady-state appends retain cached parsing and incremental cost 2.219 s.

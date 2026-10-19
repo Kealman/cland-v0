@@ -2,8 +2,8 @@
 id: T-857
 kind: task
 title: On an existing project the Aide imports the open GitHub issues on yes itself, and files "what next" as the first release
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-594
 branch: t/T-857-on-an-existing-project-the-aide-imports
 created: 2026-10-19T08:10:03.027Z
-updated: 2026-10-19T15:05:12.549Z
+updated: 2026-10-19T16:13:07.823Z
+closed: 2026-10-19T16:13:07.823Z
 ---
 
 ## Summary
@@ -106,3 +107,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6128, C1–C3 verified, findings []. Exact-head mode-free 06c615a2/A-6127: ordinary 1559/1559, zero fail/cancel/skip/TODO, all 479 load groups 5/5. New import/link/size/planned C3 control passes ordinary 1.236407 s plus 5/5; whole 13-test file green. No tier trips from new import case; four inherited T-856 push trips at 54276–54279 match Coordinator c322ebda/T-877 disposition, not a new waiver. Corrected source A-6096 unchanged, M1 native setup removed. C1/C2 wording and T-844 later-landing matching obligation retained. Claimant marks present, report-only debt retained, T3 landing remains Coordinator-owned. No further item run.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T16:13:07.823Z
+
+Merged 116c8cf97cb8bc8331ab9bb3242919e3e564ed5b onto dev.

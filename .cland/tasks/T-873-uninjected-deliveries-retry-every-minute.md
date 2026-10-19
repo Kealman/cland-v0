@@ -3,7 +3,7 @@ id: T-873
 kind: task
 title: Uninjected deliveries retry every minute without bound and log every attempt, flooding hub.log
 state: open
-status: ready
+status: review
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-597
 branch: t/T-873-uninjected-deliveries-retry-every-minute
 created: 2026-10-19T12:24:05.900Z
-updated: 2026-10-19T15:18:29.537Z
+updated: 2026-10-19T17:09:39.417Z
 ---
 
 ## Summary
@@ -85,3 +85,20 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6139 records independent A-6137/run32637e62 audit at exact source-2 head. 1562 ordinary pass outcomes, zero fail/cancel/skip; all482 admitted load gates5/5. All six inject-stalled cases pass ordinary plus5/5 each (30 repetitions), including fake-hour one-log/bounded-attempt controls and both A-6107 recovery regressions. Hour case1.341064765s; explicit retry0.208821958s; transport ordering0.155137973s; file test-seconds2.766049633s. All owned cases/file below T2 budgets and no owned runtime trip. C1 verified across source and positive same-head receipt. Full run's22 unrelated report-only budget identities and4 tripwire resource rows on one skills-onboarding push fixture are fully retained in A-6139 and reported Bugs/S to lead for deduplication; no external diagnosis/fix. Linux c-8 lon1, lifetime989s, cost$0.0687; native T3 landing evidence remains deferred. No additional task run needed.
 
 Criteria: C1 verified.
+
+### impl-873 · 2026-10-19T16:43:58.867Z
+
+Coordinator authorized batch-regression fix after A-6226/A-6229/A-6233 and attribution in A-6240. Added fake-clock red/green coverage for early disconnected failure→reconnect→held connected failure with remembered idle: prior source made two attempts, expected three. Reconnect now begins a fresh per-message connection episode once the earlier flight ends, restoring both its first failure log and immediate idle retry allowance. No T3 assertions weakened or changed. Local claude-code-sessions.test.ts passed all 13 tests in 20.08s wall; changed component file 7/7 passed in 1.73s. Running the second requested T3 file before fresh review.
+
+### rev-31 · 2026-10-19T16:45:42.036Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-873-source-3
+commit: 85022b97d6d8c96f2a3a265b699081d3acfdf9fc
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. Spec: no findings. Reconnect-triggered injection clears the prior per-message failure episode only after any old flight ends, restoring the connected attempt's diagnostic and immediate remembered-idle retry. Same-connection capped backoff, uncertain explicit retry and transport ordering remain. New fake-clock regression asserts three attempts and one log in each connection episode; old concurrency assertions retained. Independently read Coordinator 42f56b54 authorizing this exact recovery. Retained A-6241/A-6242 outputs positively show all three batch failures green with native assertions unchanged (13/13 sessions; 6/6 adapter, correcting its title typo). A-6244 reports component 7/7 and static checks green. C1 final verification is pending a fresh mode-free configured task receipt at this head; earlier task evidence does not verify the changed head. See the batch-recovery source artifact in topic-597.

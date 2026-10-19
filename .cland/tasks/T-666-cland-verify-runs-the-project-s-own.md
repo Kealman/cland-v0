@@ -2,8 +2,8 @@
 id: T-666
 kind: task
 title: cland verify runs the project's own check and test, and this repository names its own in the same merge
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-580
 branch: t/T-666-cland-verify-runs-the-project-s-own
 created: 2026-10-16T16:35:24.419Z
-updated: 2026-10-19T15:25:02.727Z
+updated: 2026-10-19T16:13:44.131Z
+closed: 2026-10-19T16:13:20.468Z
 ---
 
 ## Summary
@@ -224,3 +225,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final allowance-head clear; A-6144 audits full A-6143 / 741c3a68 at unchanged source-clear ca28928a. Ordinary 1513/1513, zero fail/cancel/skip/TODO, all 436 load groups 5/5, zero tier-mismatch rows. Existing report-only debt remains. All C1–C7 refreshed across source, current task gate and explicitly qualified unchanged host lifecycle evidence A-6035/A-6077/A-6080/A-6082. Seven-line allowance-only delta does not alter implementation or tests. Task gate excludes native T3 demo/restart/executor-run; corrected demos and restart allowance identity still need Linux landing evidence. Failed A-6124 retained, T-879 separate; post-new-hub-restart local hub/nvim checks remain Coordinator stage obligations. No Reviewer execution or additional item run.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-19T16:13:20.468Z
+
+Merged d82a768a6b1a714e6170e2df7698119b069598bd onto dev.
+
+### coord · 2026-10-19T16:13:44.131Z
+
+Landing evidence (Coordinator): batch 528a9dd3 (T-862, T-857, T-666), run d31cc287, tree b0266bff, Linux c-8 droplet, T1+T3, exit 0, 1771 passed, 0 failed (A-6197). hub/test/demo.test.ts: 6 test finishes, 0 failures. hub/test/demo-release.test.ts: 3 finishes, 0 failures. Landed as d82a768a.
