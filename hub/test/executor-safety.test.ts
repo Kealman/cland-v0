@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, writeFile, rm, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { fixture } from './remote-fixture.ts';
+import { fixture, remoteWaitMs } from './remote-fixture.ts';
 import { nativeProjectHub as projectHub, cland, connectUi, eventually, flushProjectLogs, startDaemon, tempProject } from './harness.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';
@@ -104,7 +104,12 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
   assert.match((await f.result(crash.id, ui)).text, /remote machine lifetime expired/);
   assert.equal((await f.messages(crash.id, ui)).length, 1);
-  // The shortened lifetime can publish the crash result before the fallback lease's release settles.
+  // The shortened lifetime can publish the crash result while restart recovery
+  // still releases the fallback lease. executor.reap joins the startup sweep
+  // (dispatch.ts: #dropletReady) before the separate lease-empty window starts.
+  // Startup reconciliation + startup reap + requested reap each allow 15 s
+  // (droplet.ts); the remaining 15 s covers native I/O/reporting headroom.
+  assert.equal((await ui.request({ type: 'executor.reap' }, remoteWaitMs(60_000))).ok, true);
   await eventually('all executor leases finish releasing', async () => {
     const status = (await ui.request({ type: 'executor.status' })).value as { leases: unknown[] };
     return status.leases.length === 0 ? true : undefined;

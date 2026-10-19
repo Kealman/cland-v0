@@ -15,7 +15,7 @@ import type { Lease, RunRef } from '../src/executor/executor.ts';
 import { warningSeverity } from '../src/hub/visibility.ts';
 import type { HubStatus } from '../src/protocol.ts';
 import { projectTag } from '../src/executor/droplet/droplet.ts';
-import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
+import { readLeases, writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 
 async function lease(root: string): Promise<{ value: DropletLease; path: string }> {
   const dir = join(root, '.cland/run/executor/leases');
@@ -23,34 +23,57 @@ async function lease(root: string): Promise<{ value: DropletLease; path: string 
   const records = await Promise.all(ids.map(async id => { const path = join(dir, id, 'lease.json'); return { path, value: JSON.parse(await readFile(path, 'utf8')) as DropletLease }; }));
   return records.sort((a, b) => a.value.created.localeCompare(b.value.created)).at(-1)!;
 }
+// Bound native receipts independently of downstream report publication.
+async function receipt<T>(what: string, work: Promise<T>): Promise<T> {
+  let done = false;
+  const completed = work.finally(() => { done = true; });
+  void completed.catch(() => {});
+  await eventually(what, () => done ? true : undefined);
+  return completed;
+}
 async function finish(f: Awaited<ReturnType<typeof fixture>>, id: string) {
-  await drive(f, f.machine.started(id));
-  await eventually('remote execution is durably queued', async () => {
-    const status = (await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; state: string }[] };
-    return status.suites.some(run => run.id === id && (run.state === 'running' || run.state === 'finished')) ? true : undefined;
-  });
+  await receipt('remote start persisted', f.machine.started(id));
+  await receipt('remote admission settled', f.verificationSettled());
+  // Complete the scripted worker explicitly, then observe its done receipt.
+  // A scheduler tick is permission to collect that receipt, not worker completion.
+  f.machine.finish(id);
+  const record = (await readLeases(f.root)).find(lease => lease.run === id)!;
+  const completed = await receipt('remote worker completion', f.dependencies.run!.status(record));
+  assert.equal(completed.state, 'done');
   await f.clock.advance(1000);
+  await receipt('remote completion collected', f.verificationSettled());
   return f.result(id);
 }
 
 async function sameNameCase(t: TestContext, failBeforeRelease = false) {
   const state = await tempProject(t, 'key-host-state-');
-  const first = await fixture(t, { machine: 'scripted', name: 'same', env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
-  const second = await fixture(t, { machine: 'scripted', name: 'same', api: first.api, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '200' } });
+  // Ownership is swept explicitly below; periodic sweeps must not race the
+  // native spend-ledger writes while this test controls worker completion.
+  const first = await fixture(t, { machine: 'scripted', script: { afterMs: 5000 }, name: 'same', env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
+  const second = await fixture(t, { machine: 'scripted', script: { outcome: 'slow' }, clock: first.clock, name: 'same', api: first.api, env: { CLAND_EXECUTOR_STATE: state, CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
+  const startEntered = Promise.withResolvers<void>();
+  const startRelease = Promise.withResolvers<void>();
+  const start = second.dependencies.run!.start;
+  t.mock.method(second.dependencies.run!, 'start', async (...args: Parameters<typeof start>) => {
+    startEntered.resolve();
+    await startRelease.promise;
+    return start(...args);
+  });
   let resume!: () => void;
   const blocked = new Promise<void>(resolve => { resume = resolve; });
   let creates = 0;
   first.api.beforeCreate(() => { creates++; return blocked; });
   const runs: OwnedRemoteRun[] = [];
   let cleanupWork: ReturnType<typeof cancelAndDrain> | undefined;
-  const cleanup = () => cleanupWork ??= cancelAndDrain(runs, resume);
+  const cleanup = () => cleanupWork ??= cancelAndDrain(runs, () => { resume(); startRelease.resolve(); });
   onCleanup(t, cleanup);
   try {
     const a = await first.launch(); runs.push({ fixture: first, id: a.id });
+    // Leave the first acquisition in flight at provider create before admitting
+    // the second, so neither needs a shared spend-lock retry during native I/O.
+    await eventually('first create blocked', () => creates === 1 ? true : undefined);
     const b = await second.launch(); runs.push({ fixture: second, id: b.id });
-    // Both acquisitions can admit a shared-spend-lock retry. Drive only those
-    // product-requested delays while observing both pre-release create receipts.
-    await drive(first, drive(second, eventually('both creates blocked with durable key identities', () => creates === 2 ? true : undefined)));
+    await eventually('both creates blocked with durable key identities', () => creates === 2 ? true : undefined);
     const left = await lease(first.root); const right = await lease(second.root);
     const tagA = projectTag(first.root, 'same'), tagB = projectTag(second.root, 'same');
     assert.ok(left.value.keyName.startsWith(`${tagA}-`)); assert.ok(right.value.keyName.startsWith(`${tagB}-`));
@@ -83,7 +106,22 @@ async function sameNameCase(t: TestContext, failBeforeRelease = false) {
     assert.ok(first.api.keys.some(key => key.name === 'cland-same-live'));
     foreignKey.name = originalName; right.value.keyName = originalName; delete right.value.keyImportStarted;
     await writeLease(second.root, right.value);
+    const beforeStarts = first.clock.now().getTime();
     resume();
+    let ready = false;
+    const readiness = Promise.all([first.machine.started(a.id), second.machine.started(b.id)])
+      .then(() => Promise.all([first.verificationSettled(), second.verificationSettled()]))
+      .then(() => { ready = true; });
+    try {
+      await receipt('second native start entered', startEntered.promise);
+      await receipt('first start persisted while second is held', first.machine.started(a.id));
+      // A native socket round trip progresses both hubs while second's admitted
+      // start remains held. Readiness must not drive their shared product clock.
+      assert.equal((await first.ui.request({ type: 'suite.queue' })).ok, true);
+      assert.equal(ready, false);
+      assert.equal(first.clock.now().getTime(), beforeStarts);
+    } finally { startRelease.resolve(); }
+    await receipt('both starts and admission persisted', readiness);
     await finish(first, a.id); await finish(second, b.id);
     assert.deepEqual(first.api.droplets, []);
   } catch (error) {
