@@ -5,7 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, clandWithEnv, flushProjectLogs, connectUi, connectWsUi, inProcessSpoke, startHub, projectHub, tempProject, eventually } from './harness.ts';
+import { cland, clandWithEnv, flushProjectLogs, connectUi, connectWsUi, inProcessSpoke, startHub, projectHub, tempProject } from './harness.ts';
+import type { Session } from './harness.ts';
 import type { TopicMessage, Inbox, Topic } from '../src/protocol.ts';
 
 test('an unseen Coordinator successor adopts pending asks before rename and another handover', async t => {
@@ -310,17 +311,34 @@ test('a question climbs an epic and release one level per forward, reaching each
   await impl.call('task.claim', { id: item.id });
   const { topic } = await impl.call<{ topic: { id: string } }>('topic.create', { title: 'Work', item: item.id });
   const text = '  Which release policy?\nKeep this whitespace.  ';
+  // Controlled adapter delay: an injection attempt is not a completed harness receipt.
+  fake.scriptInject('epic-lead', 'hold');
+  fake.scriptInject('release-lead', 'hold');
   await impl.call('send', { topic: topic.id, to: [`lead ${item.id}`], kind: 'question', text });
   const messages = async () => ((await ui.request({ type: 'topic.history', topic: topic.id })).value as { messages: TopicMessage[] }).messages;
+  const receiveQuestion = async (lead: { name: string; spoke: Session }, ask: string) => {
+    await lead.spoke.waitForEvent(e => e.params.meta?.msg_id === ask);
+    await ui.waitFor(f => f.type === 'delivery' && f.message === ask && f.stage === 'delivered');
+    assert.equal((await messages()).find(m => m.id === ask)?.stage, 'delivered', 'the controlled delay holds acceptance after spoke receipt');
+    // Release is permission to finish, not completion. Observe the exact receipt
+    // before forwarding or checking the downstream harness, with separate bounds.
+    fake.settle(lead.name, ask);
+    await ui.waitFor(f => f.type === 'delivery' && f.message === ask && f.stage === 'injected');
+    assert.equal((await messages()).find(m => m.id === ask)?.stage, 'injected', 'the receiving harness accepted the question before forwarding');
+  };
   const original = (await messages()).find(m => m.text === text)!;
   assert.deepEqual(original.to, ['epic-lead']);
+  await receiveQuestion(leads[1]!, original.id);
   const epicForward = await leads[1]!.spoke.call<{ ok: boolean; ask: string }>('ask.forward', { ask: original.id });
   assert.equal(epicForward.ok, true, JSON.stringify(epicForward));
   assert.deepEqual((await messages()).find(m => m.id === epicForward.ask)?.to, ['release-lead']);
+  await receiveQuestion(leads[0]!, epicForward.ask);
   assert.equal(coord.events.some(e => e.params.content.includes('Which release policy?')), false);
   for (const lead of leads) {
-    await eventually(`question reaches ${lead.name}'s harness`, () => fake.injections.some(i => i.process.name === lead.name && i.message.text.includes('Which release policy?')) || undefined);
-    assert.match(fake.injections.filter(i => i.process.name === lead.name).map(i => envelope(i.message, i.topic)).join('\n'), /To answer, call the cland `ask.answer` tool/, 'the harness gets the one-call action hint');
+    const ask = lead.name === 'epic-lead' ? original.id : epicForward.ask;
+    const injection = fake.injections.find(i => i.process.name === lead.name && i.message.id === ask);
+    assert.ok(injection, `question reaches ${lead.name}'s harness`);
+    assert.match(envelope(injection.message, injection.topic), /To answer, call the cland `ask.answer` tool/, 'the harness gets the one-call action hint');
   }
   const releaseForward = await leads[0]!.spoke.call<{ ok: boolean; ask: string }>('ask.forward', { ask: epicForward.ask });
   assert.equal(releaseForward.ok, true, JSON.stringify(releaseForward));
