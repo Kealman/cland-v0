@@ -2,8 +2,8 @@
 id: T-646
 kind: task
 title: cland init makes an empty folder a repository whose first commit is cland's files, then the territory, ending on a clean dev
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 7
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-539
 branch: t/T-646-cland-init-makes-an-empty-folder-a
 created: 2026-10-16T16:23:59.380Z
-updated: 2026-10-19T01:32:13.487Z
+updated: 2026-10-19T01:32:23.454Z
+closed: 2026-10-19T01:32:23.454Z
 ---
 
 ## Summary
@@ -431,3 +432,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5701.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-19T01:32:23.454Z
+
+Merged cae47c7cedf8860c9802654a525ef5330e0d46f3 onto dev.
