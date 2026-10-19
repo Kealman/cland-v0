@@ -279,6 +279,7 @@
     "hub/test/session-async-processes.test.ts": "T3",
     "hub/test/session-brief-component.test.ts": "T2",
     "hub/test/session-brief.test.ts": "T3",
+    "hub/test/session-cwd.test.ts": "T1",
     "hub/test/session-events-component.test.ts": "T2",
     "hub/test/session-events.test.ts": "T3",
     "hub/test/session-holds-component.test.ts": "T2",

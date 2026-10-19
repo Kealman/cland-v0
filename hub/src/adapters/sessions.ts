@@ -16,6 +16,7 @@ import { artifactEntry } from '../hub/artifact-folder.ts';
 //   were started with). One from an earlier launch under the same name is ignored: it never touches the row
 //   of the process that replaced it. A signal never revives a row that is not running (only resume does).
 import { readFile, stat } from 'node:fs/promises';
+import { sessionCwdRefusal } from './session-cwd.ts';
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { nameRefusal, ROLE_NAMES, withRole } from '../names.ts';
@@ -1085,13 +1086,15 @@ export class Sessions {
   async resume(name: string, relaunch = false, resumed: Resumed = untimed, authorize: () => void = () => {}, fresh = false): Promise<SessionResumeAnswer> {
     authorize();
     if (fresh) return this.#freshResume(name, resumed, authorize);
-    const identity = this.#process(name).sessionId;
+    const original = this.#process(name);
+    const identity = original.sessionId;
     if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
     const slot = this.#lifecycleSlot(identity);
     this.#resuming++;
     try {
       if (slot.ready) await slot.ready;
-      if (relaunch && this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
+      const cwdRefusal = relaunch ? await resumed(() => sessionCwdRefusal(original.cwd)) : null;
+      if (relaunch && !cwdRefusal && this.#core.roles?.fresh) await this.#core.roles.fresh(resumed);
       return await resumed(() => {
         if (this.#closed) throw new Error('the hub is closing');
         authorize();
@@ -1099,6 +1102,12 @@ export class Sessions {
         if (this.#reusing.has(identity)) throw new Error(`session "${name}" is reserved for a pool handoff`);
         if (!current) throw new Error(`session "${name}" was replaced while waiting for its lifecycle slot`);
         if ([...this.#pendingStops.values()].some(entry => entry.process.sessionId === identity || entry.process.name === current.name)) throw new Error(`failed launch of "${current.name}" is still supervised; cleanup is pending`);
+        if (cwdRefusal) {
+          const work = this.#resumeWork(current);
+          const item = current.item ? this.#tracker?.summary(current.item) : null;
+          if (item?.state === 'open') work.notes.push(`launch a fresh session for ${item.id}: cland session launch <new-name>${current.role ? ` --role ${current.role}` : ''} --item ${item.id}`);
+          return { found: false, reason: cwdRefusal, process: this.view(current), ...work };
+        }
         return this.#resume(current.name, relaunch, resumed);
       });
     } finally { resumed(() => { this.#resuming--; slot.release(); }); }

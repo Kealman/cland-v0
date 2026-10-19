@@ -42,6 +42,7 @@ import { mergeLimits, codexWindows, fullWindowReset, type LimitWindow } from '..
 import { envelope, envelopeIds, InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapter, type HarnessProcess, type Interpretation, type SubagentLaunch, type LaunchPolicy, type ResumeResult, type SpawnRequest } from './contract.ts';
 import { AppServerClient, RpcError, RpcNoAnswer, type ServerRequest } from './codex/app-server.ts';
 import { processAlive } from './processes.ts';
+import { sessionCwdRefusal } from './session-cwd.ts';
 import { endProcess } from '../system-processes.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 
@@ -372,6 +373,8 @@ export class CodexAdapter implements HarnessAdapter {
 
   async #checkVersion(cwd: string, accountEnv: Record<string, string> | null | undefined, resumed: Resumed = untimed): Promise<void> {
     return continueWith((function* (this: CodexAdapter): Generator<Promise<unknown>, void, unknown> {
+      const refusal = yield* wait(sessionCwdRefusal(cwd));
+      if (refusal) throw new Error(refusal);
       const key = JSON.stringify(accountEnv ?? null);
       if (this.#versionChecked.has(key))
         return;
