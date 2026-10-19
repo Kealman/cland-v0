@@ -2,8 +2,8 @@
 id: T-853
 kind: task
 title: The rules round records "I approve epic plans" as `[plan] approval = "human"`, and the first plan names the categories that init seeded
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-576
 branch: t/T-853-the-rules-round-records-i-approve-epic
 created: 2026-10-19T08:10:02.660Z
-updated: 2026-10-19T09:55:09.968Z
+updated: 2026-10-19T11:00:07.080Z
+closed: 2026-10-19T11:00:07.080Z
 ---
 
 ## Summary
@@ -82,3 +83,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-5946. Complete A-5943/6a9298a8 audited: 1489/1489 ordinary passed, zero fail/cancel/skip/TODO, zero tier-mismatch rows, all 412 load groups 5/5. Aide config CLI round-trip passes ordinarily (.378092327s) and 5/5; both onboarding guard controls retained and green. C3 established; C1/C2 source A-5941 remains valid. C1–C3 verified, no findings. T3 remains landing evidence; report-only lint/budget diagnostics disclosed.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T11:00:07.080Z
+
+Merged aab9e9f2081def267eebbb2344548c3791c25aca onto dev.

@@ -2,8 +2,8 @@
 id: T-836
 kind: task
 title: "The scratch machine for setup: fake harnesses that install, sign in, take trust and say who they are"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-564
 branch: t/T-836-the-scratch-machine-for-setup-fake
 created: 2026-10-19T06:34:12.708Z
-updated: 2026-10-19T09:13:23.720Z
+updated: 2026-10-19T12:20:11.867Z
+closed: 2026-10-19T12:20:11.867Z
 ---
 
 ## Summary
@@ -43,16 +44,19 @@ The setup scenario (N15) and QA's demo need fake harnesses that answer every sur
   - verified: rev-30 [reviewer] · run rev-20261019-836-integration-final · 2026-10-19T08:55:17.339Z · commit eb183527f6a22f7d5539b017403a32cbe70bdf7a
   - done: impl-836 · 2026-10-19T08:56:04.619Z
   - verified: rev-30 [reviewer] · run rev-20261019-836-second-integration-final · 2026-10-19T09:13:22.088Z · commit 77a5c64645a55395c45ce99acf72ae8c634248a9
+  - verified: rev-30 [reviewer] · run rev-20261019-836-recovery-integration-final · 2026-10-19T11:43:23.668Z · commit 934f883c1e05de5c731cb64d3625d4e0ab526c49
 - [x] C2. Each fake's login writes its profile's marker, and the status probe afterwards reports signed in, while the `login-fails` switch leaves it signed out with exit 0.
   - verified: rev-30 [reviewer] · run rev-20261019-836-final · 2026-10-19T06:59:52.764Z · commit 1940480b30f6af5c0cf0f6728dfe5f5dfdb54d2b
   - verified: rev-30 [reviewer] · run rev-20261019-836-integration-final · 2026-10-19T08:55:17.340Z · commit eb183527f6a22f7d5539b017403a32cbe70bdf7a
   - done: impl-836 · 2026-10-19T08:56:05.205Z
   - verified: rev-30 [reviewer] · run rev-20261019-836-second-integration-final · 2026-10-19T09:13:22.088Z · commit 77a5c64645a55395c45ce99acf72ae8c634248a9
+  - verified: rev-30 [reviewer] · run rev-20261019-836-recovery-integration-final · 2026-10-19T11:43:23.668Z · commit 934f883c1e05de5c731cb64d3625d4e0ab526c49
 - [x] C3. The fake Codex app-server answers `account/read` and `config/batchWrite`, and no fake Codex process remains after its input closes.
   - verified: rev-30 [reviewer] · run rev-20261019-836-final · 2026-10-19T06:59:52.764Z · commit 1940480b30f6af5c0cf0f6728dfe5f5dfdb54d2b
   - verified: rev-30 [reviewer] · run rev-20261019-836-integration-final · 2026-10-19T08:55:17.340Z · commit eb183527f6a22f7d5539b017403a32cbe70bdf7a
   - done: impl-836 · 2026-10-19T08:56:05.600Z
   - verified: rev-30 [reviewer] · run rev-20261019-836-second-integration-final · 2026-10-19T09:13:22.088Z · commit 77a5c64645a55395c45ce99acf72ae8c634248a9
+  - verified: rev-30 [reviewer] · run rev-20261019-836-recovery-integration-final · 2026-10-19T11:43:23.668Z · commit 934f883c1e05de5c731cb64d3625d4e0ab526c49
 - [x] C4. The fixture never reads or writes the real HOME: every inner test runs under a poisoned scratch inherited HOME whose stand-in `.claude.json`, `.codex/` and `.config/cland/` are snapshotted unchanged before and after, and descendants run with a second scratch HOME and an allowlisted environment, so no test needs to open the human's real account files.
   - verified: rev-30 [reviewer] · run rev-20261019-836-final · 2026-10-19T06:59:52.764Z · commit 1940480b30f6af5c0cf0f6728dfe5f5dfdb54d2b
   - verified: rev-30 [reviewer] · run rev-20261019-836-integration-source · 2026-10-19T08:37:15.537Z · commit eb183527f6a22f7d5539b017403a32cbe70bdf7a
@@ -60,6 +64,8 @@ The setup scenario (N15) and QA's demo need fake harnesses that answer every sur
   - done: impl-836 · 2026-10-19T08:56:06.106Z
   - verified: rev-30 [reviewer] · run rev-20261019-836-second-integration-source · 2026-10-19T08:57:44.372Z · commit 77a5c64645a55395c45ce99acf72ae8c634248a9
   - verified: rev-30 [reviewer] · run rev-20261019-836-second-integration-final · 2026-10-19T09:13:22.088Z · commit 77a5c64645a55395c45ce99acf72ae8c634248a9
+  - verified: rev-30 [reviewer] · run rev-20261019-836-recovery-integration-source · 2026-10-19T11:26:38.923Z · commit 934f883c1e05de5c731cb64d3625d4e0ab526c49
+  - verified: rev-30 [reviewer] · run rev-20261019-836-recovery-integration-final · 2026-10-19T11:43:23.668Z · commit 934f883c1e05de5c731cb64d3625d4e0ab526c49
 
 ## Comments
 
@@ -154,3 +160,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final second integrated-head clear; A-5932. Full A-5931/27e803d5 audited: 1477/1477 ordinary pass, zero fail/cancel/skip/TODO, zero tier-mismatch rows and all 400 global repetition groups 5/5. Source A-5927 plus current host self-test A-5926 establish C1–C4, refreshed. Host outer 1/1 asserts inner exit/titles/snapshots; raw-inner-output limitation retained. Linux task does not execute setup-machine T3; landing batch owns Linux T3 evidence. Accepted poisoned scratch HOME control preserved, no real account reads. No findings; report-only lint/budget diagnostics retained.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-19T11:26:38.924Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-836-recovery-integration-source
+commit: 934f883c1e05de5c731cb64d3625d4e0ab526c49
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Queue-recovery integration source clear; A-5956. Coordinator 9262f75a authority confirmed. All original task-specific fake/profile/curl and setup-machine bytes unchanged against 77a5c646; incoming dev's tier entries retained beside setup-machine T3, original ten-file task shape preserved. A-5955 current host self-test 1/1 (10.920157167s), checks and merge-tree proof retained. No findings; C4 refreshed. C1–C3 await new-head mode-free gate; historical batch A-5951 is not a new-head task/landing receipt. Raw-inner-output limitation and isolated scratch HOME control retained.
+
+Criteria: C4 verified.
+
+### rev-30 · 2026-10-19T11:43:23.668Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-836-recovery-integration-final
+commit: 934f883c1e05de5c731cb64d3625d4e0ab526c49
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Queue-recovery final clear; A-5985. Full A-5984/415dd985 audited: 1507/1507 ordinary passed, zero fail/cancel/skip/TODO, zero tier-mismatch rows and all 430 global load groups 5/5. Source A-5956 plus current host A-5955 1/1 self-test refresh C1–C4. Outer assertions/inner-output limitation and accepted scratch HOME isolation retained. No owned Linux T3 execution claimed; historical A-5951 not reused as new-head landing evidence. No findings; report-only lint/budget diagnostics retained.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T12:20:11.867Z
+
+Merged ebd6cafc4ceea161cca518d4b2689460d686511b onto dev.

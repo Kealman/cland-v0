@@ -2,8 +2,8 @@
 id: T-848
 kind: task
 title: explorer-card-component reads the stale-evidence card before its row is under the cursor
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-572
 branch: t/T-848-explorer-card-component-reads-the-stale
 created: 2026-10-19T06:58:09.511Z
-updated: 2026-10-19T08:36:57.954Z
+updated: 2026-10-19T10:59:57.413Z
+closed: 2026-10-19T10:59:57.413Z
 ---
 
 ## Summary
@@ -127,3 +128,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5903.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T10:59:57.413Z
+
+Merged 8f212a1c525b118fb49dd8c9c2a77e4de7556497 onto dev.

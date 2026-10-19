@@ -2,8 +2,8 @@
 id: T-837
 kind: task
 title: "`cland setup` reports the project, the harnesses and their logins, one line each; without a terminal it exits 1 while a step is open, and `--json` prints doctor's shape"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-575
 branch: t/T-837-cland-setup-reports-the-project-the
 created: 2026-10-19T06:34:12.801Z
-updated: 2026-10-19T09:54:42.778Z
+updated: 2026-10-19T10:59:46.966Z
+closed: 2026-10-19T10:59:46.966Z
 ---
 
 ## Summary
@@ -192,3 +193,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Integrated final clear; A-5944. A-5942/7ae81f13 full log audited: 1499/1499 ordinary passed, zero fail/cancel/skip/TODO, zero tier-mismatch rows and all 422 load groups 5/5. All eleven setup cases, corrected account policy and both onboarding guards pass; setup and onboarding cases also pass 5/5. Source A-5939 plus evidence establish C1–C6 at this head. Pending setup exception removal obligation fulfilled; no findings. Historical failed A-5916 retained. T3 remains landing evidence; report-only lint/budget diagnostics retained.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T10:59:46.966Z
+
+Merged 87bb35cf04ea83cd35cfa05257e3ea0a033d1cbf onto dev.

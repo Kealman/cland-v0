@@ -3,7 +3,7 @@ id: T-856
 kind: task
 title: On the human's ok the Aide commits the onboarding's files on `dev`, runs `cland push` and launches the Coordinator with "Work release R-<n>"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -13,9 +13,9 @@ parent: E-616
 blocked_by:
   - T-855
 topic: null
-branch: null
+branch: t/T-856-on-the-human-s-ok-the-aide-commits-the
 created: 2026-10-19T08:10:02.941Z
-updated: 2026-10-19T08:10:09.229Z
+updated: 2026-10-19T13:28:35.530Z
 ---
 
 ## Summary

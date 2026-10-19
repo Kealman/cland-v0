@@ -2,8 +2,8 @@
 id: T-833
 kind: task
 title: The release-time OpenCode check reports and never refuses
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-574
 branch: t/T-833-the-release-time-opencode-check-reports
 created: 2026-10-19T06:34:12.430Z
-updated: 2026-10-19T08:56:45.814Z
+updated: 2026-10-19T11:47:56.892Z
+closed: 2026-10-19T11:47:56.892Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-5925. Full A-5922/b7b80b25 audited: 1484/1484 ordinary pass, zero fail/cancel/skip/TODO, zero tier-mismatch rows and all 403 repetition groups 5/5. Seven OpenCode check cases pass; changed/compatible/error cases each pass 5/5 with recorded-document byte-preservation assertion retained. Source A-5908/A-5907 establish informational release wording and provisioning. C1/C2 verified, no findings. T3 remains landing evidence; report-only budget/lint diagnostics retained. No live provider or release action claimed.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T11:47:56.892Z
+
+Merged 03d6ec443d2662d410bf7262111d0562f94eb645 onto dev.

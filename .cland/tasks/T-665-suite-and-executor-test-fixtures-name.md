@@ -2,8 +2,8 @@
 id: T-665
 kind: task
 title: Suite and executor test fixtures name their commands and carry a stub of cland's runner
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-569
 branch: t/T-665-suite-and-executor-test-fixtures-name
 created: 2026-10-16T16:35:23.892Z
-updated: 2026-10-19T08:56:00.477Z
+updated: 2026-10-19T11:47:44.718Z
+closed: 2026-10-19T11:47:44.718Z
 ---
 
 ## Summary
@@ -164,3 +165,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-5924. A-5919 / 0daf4073 exact-head gate audited: 1476/1476 ordinary passed, zero fail/cancel/skip/TODO; zero tier-mismatch rows, all 396 load groups 5/5. Previously failing rapid-j explorer-card case now passes ordinarily and 5/5; historical A-5881/A-5899 retained. Source A-5871/A-5906 plus qualified host A-5868/A-5870 suite/executor, shards/typecheck and corrected T1 carrier evidence establish C1–C4. Linux task T3 not claimed; landing batch owns it. No findings; report-only lint/duration findings disclosed.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T11:47:44.718Z
+
+Merged 62963541f35ac22ff35886df6e0b601b0dde01f1 onto dev.
