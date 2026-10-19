@@ -1,30 +1,27 @@
-// Plan-driven statuses through real hub, CLI and spoke boundaries.
+// T2: stage rules through injected Git, store reopen and in-process spoke/socket edges.
 import test from 'node:test';
-import { execFileSync } from 'node:child_process';
-import { copyPreparedProject } from './prepared-project.ts';
-import { taskWriteGate } from './tracker-write-gate.ts';
-import { seedStageCover } from './stage-cover-fixture.ts';
+import { beforeDirectories } from './process-cleanup.ts';
+import { FakeClock } from './fake-clock.ts';
+import { planStageHub, writeBarrier, seedPlanStageCover, PlanGit } from './plan-stage-fixture.ts';
 import { withPlan } from '../src/tracker/plan.ts';
 import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import assert from 'node:assert/strict';
-import files, { mkdir, readFile, writeFile } from 'node:fs/promises';
+import files, { mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
-import { Store } from '../src/hub/store.ts';
-import { createSocketEdge } from '../src/hub/socket.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
-import { cland, connectUi, connectWsUi, eventually, nativeProjectHub as projectHub, spawnSpoke, startDaemon, startHub, tempProject, TEST_SECRET } from './harness.ts';
+import { cland, connectUi, connectWsUi, dispatcherUi, eventually, projectHub, inProcessSpoke, startHub, tempProject } from './harness.ts';
 
-async function fixture(t: test.TestContext, approval = false, territory = false, gated = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
+async function fixture(t: test.TestContext, approval = false, gated = false) {
   const root = await tempProject(t);
-  if (territory) await copyPreparedProject(root);
   if (approval) {
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
   }
-  const gate = gated ? await taskWriteGate(t, root) : undefined;
-  const { discovery } = await serve(t, root, gate?.env);
+  const gate = gated ? writeBarrier(t) : undefined;
+  let component = await planStageHub(t, root, undefined, { approval, gate });
+  const { discovery } = component;
   let ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
     const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent });
@@ -42,42 +39,31 @@ async function fixture(t: test.TestContext, approval = false, territory = false,
     const r = await cland(root, 'task', 'plan', 'set', epic.id, '--file', file, '--json');
     assert.equal(r.code, 0, r.stderr);
   };
-  const read = async (id: string) => ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item;
+  const read = async (id: string) => { await component.clock.advance(100); return ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item; };
   const status = (id: string, expected: string) => eventually(`${id} becomes ${expected}`, async () => (await read(id)).status === expected ? true : undefined);
-  const cover = async (settleBeforeHub = false) => {
+  const reopen = async (settleBeforeHub = false, seed = false) => {
     ui.close();
-    assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-    await seedStageCover(root);
-    if (settleBeforeHub) {
-      const db = join(root, '.cland/hub.db');
-      const tracker = new Tracker({ root, db });
-      tracker.start(); t.after(() => tracker.stop());
-      await eventually('restart tree checks finish before persisted suites bind', async () =>
-        (await tracker.viewAsync(epic.id)).stages?.[0]?.cover?.tree ? true : undefined);
-      // The tree callback queues a planned check. Admit the next read behind it
-      // so a later tree completion cannot accidentally supply the missing wakeup.
-      await new Promise<void>(resolve => setImmediate(resolve));
-      const before = await tracker.viewAsync(epic.id);
-      assert.deepEqual(before.stages?.[0]?.cover?.missing, ['Linux droplet', 'macOS']);
-      assert.equal((await tracker.viewAsync(c.id)).status, 'backlog');
-      const hub = await startHub({ tracker, store: new Store(db), control: {
-        status: () => ({ root, pid: process.pid, port: 0, socket: '', version: 'test', startedAt: '', uptimeMs: 0 }), stop() {},
-      } });
-      t.after(() => hub.close());
-      const socket = join(root, 'late-cover.sock');
-      const edge = await createSocketEdge({ path: socket, dispatcher: hub.dispatcher });
-      t.after(() => edge.close());
-      ui = await connectUi(t, { root, socket, secret: TEST_SECRET });
-      return;
-    }
-    const restarted = await startDaemon(t, root, gate?.env);
-    ui = await connectUi(t, restarted.discovery);
+    assert.equal(await component.stop(), undefined, 'in-process hub/store stop succeeds');
+    if (seed) await seedPlanStageCover(root, component.facts.head);
+    component = await planStageHub(t, root, component.facts, { approval, gate,
+      ...(settleBeforeHub ? { settleBeforeHub: async (tracker: Tracker) => {
+        await eventually('reopen tree checks finish before persisted suites bind', async () =>
+          (await tracker.viewAsync(epic.id)).stages?.[0]?.cover?.tree ? true : undefined);
+        await new Promise<void>(resolve => setImmediate(resolve));
+        const before = await tracker.viewAsync(epic.id);
+        assert.deepEqual(before.stages?.[0]?.cover?.missing, ['Linux droplet', 'macOS']);
+        assert.equal((await tracker.viewAsync(c.id)).status, 'backlog');
+      } } : {}),
+    });
+    ui = await connectUi(t, component.discovery);
   };
-  return { root, get ui() { return ui; }, create, epic, a, b, c, plan, set, read, status, gate, cover };
+  return { root, get ui() { return ui; }, get component() { return component; }, create, epic, a, b, c, plan, set, read, status, gate,
+    reopen, cover: (settleBeforeHub = false) => reopen(settleBeforeHub, true) };
+
 }
 
-test('CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across restart', async t => {
-  const f = await fixture(t, false, false, false, startDaemon);
+test('CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across store reopen (in-process)', async t => {
+  const f = await fixture(t);
   assert.equal((await f.read(f.a.id)).status, 'backlog', 'an epic without a plan moves nothing');
   assert.equal((await f.ui.request({ type: 'task.link', item: f.b.id, blocked_by: [f.a.id] })).ok, true);
   assert.equal((await f.ui.request({ type: 'task.edit', item: f.c.id, status: 'in progress' })).ok, true);
@@ -91,15 +77,14 @@ test('CLI plan sets only current backlog tasks, preserves hand statuses, and rem
   f.plan.stages[0]!.lanes[0]!.push(added.id); await f.set(); await f.status(added.id, 'planned');
   assert.equal((await f.read(f.a.id)).status, 'backlog');
   assert.equal((await f.read(f.c.id)).status, 'in progress');
-  f.ui.close(); assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, f.root);
+  await f.reopen();
   const again = await cland(f.root, 'task', 'view', f.a.id, '--json');
   assert.equal(JSON.parse(again.stdout).item.status, 'backlog');
 });
 
-test('pending approval moves nothing; approval moves backlog tasks and journals one subscribed status event each', async t => {
+test('pending approval moves nothing; approval moves backlog tasks and journals one subscribed status event each (in-process)', async t => {
   const f = await fixture(t, true);
-  const coord = await spawnSpoke({ discover: true, cwd: f.root, name: 'coord', role: 'coordinator' });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   assert.equal((await coord.call<{ ok: boolean }>('subscribe', { subject: { subtree: f.epic.id }, events: ['task'] })).ok, true);
   await f.set();
@@ -121,7 +106,7 @@ test('pending approval moves nothing; approval moves backlog tasks and journals 
   assert.deepEqual(moves.map(row => [row.id, row.by]), [[f.a.id, 'hub'], [f.b.id, 'hub']]);
 });
 
-test('closed epic stages read closed without task writes; reopening restores derived stages', async t => {
+test('closed epic stages read closed without task writes; reopening restores derived stages (in-process)', async t => {
   const f = await fixture(t);
   await f.set(); await f.status(f.a.id, 'planned');
   const epicPath = join(f.root, f.epic.path), text = await readFile(epicPath, 'utf8');
@@ -141,29 +126,26 @@ test('closed epic stages read closed without task writes; reopening restores der
   assert.equal((await f.read(f.a.id)).status, 'backlog');
 });
 
-for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]] as const) test(`landing stage one advances stage two${qa ? ' only after clear stage QA' : ''}${settleBeforeHub ? ' with platform receipts bound after startup checks' : ''}`, async t => {
-  const f = await fixture(t, false, true, false, qa ? startDaemon : projectHub);
+for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]] as const) test(`landing stage one advances stage two${qa ? ' only after clear stage QA' : ''}${settleBeforeHub ? ' with platform receipts bound after startup checks' : ''} (in-process)`, async t => {
+  const f = await fixture(t);
   if (qa) f.plan.stages[0]!.qa = { scope: 'affected', when: 'after-stage' };
   if (settleBeforeHub) f.plan.stages[0]!.lanes = [[f.a.id]];
   const active = await f.create('Already in progress', 'task', f.epic.id);
   f.plan.stages[1]!.lanes[0]!.push(active.id);
   assert.equal((await f.ui.request({ type: 'task.edit', item: active.id, status: 'in progress' })).ok, true);
   await f.set(); await f.status(f.a.id, 'planned');
-  const rev = await spawnSpoke({ discover: true, cwd: f.root, name: 'rev', role: 'reviewer' });
+  const rev = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'rev', role: 'reviewer' });
   t.after(() => rev.close());
-  const verifier = await spawnSpoke({ discover: true, cwd: f.root, name: 'qa-stage', role: 'qa' });
+  const verifier = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'qa-stage', role: 'qa' });
   t.after(() => verifier.close());
   for (const item of settleBeforeHub ? [f.a] : [f.a, f.b]) {
     const claim = await f.ui.request({ type: 'task.claim', item: item.id });
     assert.equal(claim.ok, true, claim.error);
-    const work = (claim.value as { worktree: { path: string } }).worktree.path;
-    const git = (...args: string[]) => execFileSync('git', args, { cwd: work, encoding: 'utf8' }).trim();
-    await writeFile(join(work, `feature-${item.id}`), 'stage feature\n');
-    git('add', `feature-${item.id}`); git('commit', '-qm', 'Stage feature');
+    await f.component.branch(item.id);
     assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: `review-${item.id}` })).ok, true);
     await f.status(item.id, 'ready');
-    const merged = await cland(f.root, 'merge', item.id, '--json');
-    assert.equal(merged.code, 0, merged.stderr);
+    const merged = await f.component.merge(item.id);
+    assert.equal(merged.ok, true, merged.error);
     if (item === f.a || qa) assert.equal((await f.read(f.c.id)).status, 'backlog');
   }
   if (qa) {
@@ -179,8 +161,8 @@ for (const [qa, settleBeforeHub] of [[false, false], [true, false], [true, true]
   assert.equal((await f.read(f.epic.id)).stages?.[0]?.state, 'closed');
 });
 
-test('valid hand plans and offline plan changes move only newly joined current-stage tasks', async t => {
-  const f = await fixture(t, false, false, false, startDaemon);
+test('valid hand plans and offline plan changes move only newly joined current-stage tasks (in-process)', async t => {
+  const f = await fixture(t);
   const path = join(f.root, f.epic.path);
   const source = await readFile(path, 'utf8');
   // Write a valid plan as an editor would, before any CLI plan set.
@@ -190,13 +172,13 @@ test('valid hand plans and offline plan changes move only newly joined current-s
   await f.status(f.a.id, 'planned'); await f.status(f.b.id, 'planned');
   assert.equal((await f.ui.request({ type: 'task.edit', item: f.a.id, status: 'backlog' })).ok, true);
   const added = await f.create('Offline addition', 'task', f.epic.id);
-  f.ui.close(); assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  f.ui.close(); assert.equal(await f.component.stop(), undefined, 'in-process hub/store stop succeeds');
   f.plan.stages[0]!.lanes[0]!.push(added.id);
   const offline = parseItem(await readFile(path, 'utf8'), f.epic.file);
   offline.body = withPlan(offline.body, f.plan);
   await writeFile(path, serializeItem(offline));
-  const { discovery } = await startDaemon(t, f.root);
-  const ui = await connectUi(t, discovery);
+  await f.reopen();
+  const ui = f.ui;
   await eventually('startup plans newly joined backlog task', async () => {
     const r = await ui.request({ type: 'task.view', item: added.id });
     return (r.value as { item: ItemView }).item.status === 'planned' ? true : undefined;
@@ -205,22 +187,25 @@ test('valid hand plans and offline plan changes move only newly joined current-s
   assert.equal((a.value as { item: ItemView }).item.status, 'backlog');
 });
 
-test('stage landing and ten close frames keep a fixed query budget with unrelated items and plans', async t => {
+test('stage landing and ten close frames keep a fixed query budget with unrelated items and plans (in-process)', async t => {
   const { DatabaseSync } = await import('node:sqlite');
-  const { serveProject } = await import('../src/hub/daemon.ts');
-  const root = await tempProject(t); await copyPreparedProject(root);
-  const daemon = await serveProject(root, { log: () => {} });
+  const root = await tempProject(t);
+  // Native watcher delivery is independent of the SQL work being measured.
+  // Index editor setup explicitly so a delayed watch cannot enter the measurement.
+  // This case measures SQLite query work; persistence cases keep file-backed indexes.
+  const daemon = await planStageHub(t, root, undefined, { memory: true, watch: () => ({ close() {} }) });
   t.after(() => daemon.stop());
   assert.ok(daemon.discovery);
   const ui = await connectUi(t, daemon.discovery);
+  const setupUi = await dispatcherUi(t, daemon.hub.dispatcher, root);
   const create = async (title: string, kind = 'task', parent?: string) => {
-    const r = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
+    const r = await setupUi.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent }); assert.equal(r.ok, true, r.error);
     return (r.value as { item: ItemView }).item;
   };
   const set = async (epic: ItemView, first: ItemView[], later?: ItemView[]) => {
     const plan: EpicPlan = { stages: [{ name: 'first', qa: { scope: 'none', when: 'per-item' }, lanes: [first.map(i => i.id)] },
       ...(later ? [{ name: 'later', qa: { scope: 'none' as const, when: 'per-item' as const }, lanes: [later.map(i => i.id)] }] : [])] };
-    assert.equal((await ui.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(plan) })).ok, true);
+    assert.equal((await setupUi.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(plan) })).ok, true);
   };
   for (let i = 0; i < 64; i++) await create(`Unrelated ${i}`);
   for (let i = 0; i < 8; i++) {
@@ -236,20 +221,20 @@ test('stage landing and ten close frames keep a fixed query budget with unrelate
     const path = join(root, refused.path), item = parseItem(await readFile(path, 'utf8'), refused.file);
     item.body = withPlan(item.body, plan); await writeFile(path, serializeItem(item));
     await eventually('unrelated refused plan indexed', async () => {
-      const r = await ui.request({ type: 'task.plan', item: refused.id, op: 'show' });
+      const r = await setupUi.request({ type: 'task.plan', item: refused.id, op: 'show' });
       return (r.value as { planError?: string }).planError?.includes('no criterion C99') ? true : undefined;
     });
   }
+  await daemon.tracker.rescanAsync();
   const epic = await create('Measured epic', 'epic'), first = await create('Measured landing', 'task', epic.id);
   const later: ItemView[] = [];
   for (let i = 0; i < 10; i++) later.push(await create(`Measured close ${i}`, 'task', epic.id));
   await set(epic, [first], later);
-  const rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer' }); t.after(() => rev.close());
+  const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', role: 'reviewer' }); t.after(() => rev.close());
   const claim = await ui.request({ type: 'task.claim', item: first.id }); assert.equal(claim.ok, true, claim.error);
-  const work = (claim.value as { worktree: { path: string } }).worktree.path;
-  execFileSync('git', ['commit', '--allow-empty', '-qm', 'Measured landing'], { cwd: work });
+  await daemon.branch(first.id);
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: first.id, verdict: 'review', scope: 'full', result: 'clear', run: 'measured-review' })).ok, true);
-  const read = async (id: string) => ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item;
+  const read = async (id: string) => { await daemon.clock.advance(100); return ((await ui.request({ type: 'task.view', item: id })).value as { item: ItemView }).item; };
   await eventually('measured task ready', async () => (await read(first.id)).status === 'ready' ? true : undefined);
   let observing = false, queries = 0, turn = 0, refusedReads = 0;
   const checks: Array<{ key: string; turn: number }> = [];
@@ -257,27 +242,29 @@ test('stage landing and ten close frames keep a fixed query budget with unrelate
   const tick = () => { turn++; ticker = setImmediate(tick); ticker.unref(); };
   tick(); t.after(() => clearImmediate(ticker));
   const prepare = DatabaseSync.prototype.prepare;
-  t.mock.method(DatabaseSync.prototype, 'prepare', function(this: InstanceType<typeof DatabaseSync>, ...args: Parameters<typeof prepare>) {
+  // Observe native calls without retaining thousands of mock call records.
+  t.after(() => { DatabaseSync.prototype.prepare = prepare; });
+  DatabaseSync.prototype.prepare = function(this: InstanceType<typeof DatabaseSync>, ...args: Parameters<typeof prepare>) {
     if (observing && args[0].includes('tracker_')) queries++;
     const statement = prepare.apply(this, args);
     if (args[0] === 'select criteria_ids from tracker_items where id = ?') {
       const get = statement.get;
-      t.mock.method(statement, 'get', function(this: typeof statement, ...bindings: unknown[]) {
+      statement.get = function(this: typeof statement, ...bindings: unknown[]) {
         if (observing && refusedChildren.includes(String(bindings[0]))) refusedReads++;
         return Reflect.apply(get, this, bindings);
-      });
+      };
     }
     if (args[0] === 'select value from tracker_meta where key = ?') {
       const get = statement.get;
-      t.mock.method(statement, 'get', function(this: typeof statement, ...bindings: unknown[]) {
+      statement.get = function(this: typeof statement, ...bindings: unknown[]) {
         if (observing && String(bindings[0]).startsWith('planned-entry:')) checks.push({ key: String(bindings[0]), turn });
         return Reflect.apply(get, this, bindings);
-      });
+      };
     }
     return statement;
-  });
+  };
   observing = true;
-  const merged = await cland(root, 'merge', first.id, '--json'); assert.equal(merged.code, 0, merged.stderr);
+  const merged = await daemon.merge(first.id); assert.equal(merged.ok, true, merged.error);
   await eventually('next stage planned', async () => (await read(later.at(-1)!.id)).status === 'planned' ? true : undefined);
   observing = false;
   assert.equal(refusedReads, 0, 'landing never validates unrelated refused plans');
@@ -303,8 +290,8 @@ test('stage landing and ten close frames keep a fixed query budget with unrelate
   assert.ok(queries < 10000, `ten closes used ${queries} tracker queries`);
 });
 
-test('a hand status save during a deferred planned write wins and stays through later recomputes', async t => {
-  const f = await fixture(t, false, false, true);
+test('a hand status save during a deferred planned write wins and stays through later recomputes (in-process)', async t => {
+  const f = await fixture(t, false, true);
   await f.set(); await f.status(f.b.id, 'planned');
   const added = await f.create('New member', 'task', f.epic.id);
   f.plan.stages[0]!.lanes[0]!.push(added.id);
@@ -327,14 +314,14 @@ test('a hand status save during a deferred planned write wins and stays through 
   assert.equal((await f.read(added.id)).status, 'backlog');
 });
 
-test('a late in-place save after the publication hash read retains its status and source', async t => {
+test('a late in-place save after the publication hash read retains its status and source (in-process)', async t => {
   const root = await tempProject(t);
   let editor: files.FileHandle | undefined, path = '', saved = '', captured: string | undefined;
   const save = async () => {
     if (!editor) return;
     await editor.truncate(0); await editor.writeFile(saved, 'utf8'); await editor.close(); editor = undefined;
   };
-  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), files: { ...files,
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), git: new PlanGit().read, readBase: async () => 'dev', clock: new FakeClock(), stageTree: async () => 'f'.repeat(40), files: { ...files,
     rename: async (from, to) => {
       if (String(from) === path && String(to).endsWith('.conflict')) captured ??= String(to);
       if (String(to) === path && String(from).endsWith('.tmp')) await save();
@@ -369,7 +356,7 @@ test('a late in-place save after the publication hash read retains its status an
   assert.equal(await readFile(path, 'utf8'), saved);
 });
 
-test('an indexed refused candidate recovers when its containing feature is reparented', async t => {
+test('an indexed refused candidate recovers when its containing feature is reparented (in-process)', async t => {
   const root = await tempProject(t); await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = ["release", "epic", "feature"]\n');
   const { discovery } = await projectHub(t, root), ui = await connectUi(t, discovery);
@@ -393,4 +380,79 @@ test('an indexed refused candidate recovers when its containing feature is repar
   });
   const recovered = await ui.request({ type: 'task.plan', item: epic.id, op: 'show' });
   assert.equal((recovered.value as { planError?: string }).planError, undefined);
+});
+
+
+test('plan fixture drains startup failure, held cancellation and close failure before root removal (in-process)', async t => {
+  const { Journal } = await import('../src/hub/journal.ts');
+  for (const mode of ['startup failure', 'held cancellation', 'close failure'] as const) {
+    const root = await tempProject(t);
+    const controller = new AbortController();
+    const cleanups: Array<() => unknown> = [];
+    const owner = { signal: controller.signal, after: (fn: () => unknown) => cleanups.push(fn) } as unknown as test.TestContext;
+    let tracker: Tracker | undefined, journal: InstanceType<typeof Journal> | undefined;
+    let trackerStopStarted = false, trackerStopped = false, journalClosed = false;
+    let callbackFinished = false, cleanupFinished = false;
+    const nativeStop = Tracker.prototype.stop, nativeClose = Journal.prototype.close, nativeWrite = Journal.prototype.write;
+    const stopSpy = t.mock.method(Tracker.prototype, 'stop', async function(this: Tracker) {
+      if (this === tracker) trackerStopStarted = true;
+      await nativeStop.call(this); if (this === tracker) trackerStopped = true;
+    });
+    const writeSpy = t.mock.method(Journal.prototype, 'write', function(this: InstanceType<typeof Journal>, ...args: Parameters<typeof nativeWrite>) {
+      journal = this; return nativeWrite.apply(this, args);
+    });
+    const closeSpy = t.mock.method(Journal.prototype, 'close', async function(this: InstanceType<typeof Journal>) {
+      await nativeClose.call(this); if (this === journal) journalClosed = true;
+    });
+    // Fallback ownership keeps the deliberately failing pre-fix regression clean.
+    beforeDirectories(t, async () => { await tracker?.stop(); await journal?.close(); });
+    const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+    t.after(() => release.resolve());
+    const starting = planStageHub(owner, root, undefined, { settleBeforeHub: async current => {
+      tracker = current;
+      await current.create({ id: 'human', name: 'human', role: null }, { size: 'S', title: 'Accepted before startup settles' });
+      entered.resolve();
+      if (mode !== 'close failure') await release.promise;
+      if (mode === 'startup failure') throw new Error('controlled startup failure');
+      if (mode === 'held cancellation') {
+        await current.create({ id: 'human', name: 'human', role: null }, { size: 'S', title: 'Callback write after release' });
+        await writeFile(join(root, 'callback-finished'), 'callback fully drained');
+      }
+      callbackFinished = true;
+    } });
+    await entered.promise;
+    if (mode === 'startup failure') {
+      release.resolve();
+      await assert.rejects(starting, /controlled startup failure/);
+      for (const cleanup of cleanups) await cleanup();
+    } else if (mode === 'held cancellation') {
+      const rejected = assert.rejects(starting, /startup cancelled/);
+      controller.abort();
+      const cleaning = Promise.all(cleanups.map(cleanup => cleanup())).then(() => { cleanupFinished = true; });
+      // An I/O turn lets the cancellation continuation run while the callback is held.
+      await new Promise<void>(resolve => setImmediate(resolve));
+      assert.equal(callbackFinished, false);
+      assert.equal(trackerStopStarted, false, 'cancellation cannot stop the tracker ahead of its held callback');
+      assert.equal(cleanupFinished, false, 'directory cleanup remains held until the callback completes');
+      release.resolve();
+      await rejected;
+      await cleaning;
+      assert.equal(callbackFinished, true, 'callback completion precedes cleanup receipt');
+      assert.equal(await readFile(join(root, 'callback-finished'), 'utf8'), 'callback fully drained');
+      assert.match(await readFile(join(root, '.cland/journal.jsonl'), 'utf8'), /callback-write-after-release/);
+    } else {
+      const component = await starting;
+      const close = component.hub.close;
+      component.hub.close = async () => { await close(); throw new Error('controlled close failure'); };
+      await assert.rejects(component.stop(), /cleanup failed/);
+      for (const cleanup of cleanups) await assert.rejects(async () => cleanup(), /cleanup failed/);
+    }
+    assert.equal(trackerStopped, true, `${mode}: tracker stop completes before removal`);
+    assert.equal(journalClosed, true, `${mode}: accepted journal records drain before removal`);
+    assert.match(await readFile(join(root, '.cland/journal.jsonl'), 'utf8'), /accepted-before-startup-settles/);
+    await rm(root, { recursive: true });
+    await assert.rejects(tracker!.create({ id: 'human', name: 'human', role: null }, { size: 'S', title: 'Late write' }));
+    await assert.rejects(readFile(join(root, '.cland/journal.jsonl')), { code: 'ENOENT' });
+    stopSpy.mock.restore(); writeSpy.mock.restore(); closeSpy.mock.restore();
+  }
 });

@@ -1,23 +1,24 @@
-// Plans, approval and lane drafting at the real CLI/MCP and fake harness boundaries.
+// T2: approval, inbox and lane drafting with injected adapters; reopen the store for persistence.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { runInNewContext } from 'node:vm';
+import { FakeClock } from './fake-clock.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
-import { CLI_ENTRY, eventually, cland, clandWithEnv, connectUi, fakeClaude, spawnSpoke, startDaemon, tempProject } from './harness.ts';
-import { copyPreparedProject } from './prepared-project.ts';
+import { eventually, cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { fileURLToPath } from 'node:url';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { EpicPlan } from '../src/tracker/plan.ts';
 
-test('draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives restart', async t => {
+test('draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives store reopen (in-process)', async t => {
   const root = await tempProject(t);
-  await copyPreparedProject(root);
-  const draft = join(root, '.agents/skills/plan-epic/draft.mjs');
+  const draft = fileURLToPath(new URL('../../.agents/skills/plan-epic/draft.mjs', import.meta.url));
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
-  const fake = await fakeClaude(t);
-  const { discovery } = await startDaemon(t, root, fake.env);
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const { discovery } = hub;
+  const fake = hub.fakes['claude-code']!;
   const ui = await connectUi(t, discovery);
   const create = async (title: string, kind = 'task', parent?: string) => {
     const result = await ui.request({ ...(['task'].includes(kind) ? { size: 'M' } : {}), type: 'task.create', title, kind, parent, body: '## Acceptance criteria\n- [ ] C1. Works' });
@@ -31,8 +32,28 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   assert.equal((await ui.request({ type: 'task.link', item: d.id, blocked_by: [b.id, c.id] })).ok, true);
   assert.equal((await ui.request({ type: 'task.link', item: b.id, blocked_by: [a.id, outside.id] })).ok, true);
   assert.equal((await ui.request({ type: 'crew.set', key: 'implementer.policy', value: 'per-group' })).ok, true);
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
-  const yaml = execFileSync(process.execPath, [draft, epic.id], { cwd: root, encoding: 'utf8', env: { ...env, CLAND: CLI_ENTRY, CLAND_HUB_FILE: join(root, '.cland/hub.json') } });
+  // Execute the shipped draft algorithm with captured read-only CLI responses.
+  // Its native stdio contract is separate from the lane grouping rule.
+  const responses = [
+    (await ui.request({ type: 'task.view', item: epic.id })).value,
+    (await ui.request({ type: 'crew.show' })).value,
+    (await ui.request({ type: 'task.list', under: epic.id })).value,
+  ];
+  const commands = [
+    ['task', 'view', epic.id, '--json'],
+    ['crew', 'show', '--json'],
+    ['task', 'list', '--under', epic.id, '--json'],
+  ];
+  let yaml = '';
+  runInNewContext((await readFile(draft, 'utf8')).replace("import { spawnSync } from 'node:child_process';", ''), {
+    spawnSync: (command: string, args: string[]) => {
+      assert.equal(command, 'cland');
+      assert.deepEqual([...args], commands.shift());
+      return { status: 0, stdout: JSON.stringify(responses.shift()) };
+    },
+    process: { argv: ['node', draft, epic.id], env: {}, stdout: { write: (text: string) => { yaml += text; } }, stderr: { write: (text: string) => { throw new Error(text); } } },
+  });
+  assert.equal(responses.length, 0);
   const set = await ui.request({ type: 'task.plan', op: 'set', item: epic.id, yaml });
   assert.equal(set.ok, true, set.error);
   const value = set.value as { plan: EpicPlan; approval: ItemView['approval'] };
@@ -48,8 +69,8 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   const epicLaunch = await ui.request({ type: 'session.launch', name: 'impl-epic', role: 'implementer', harness: 'claude-code', item: epic.id });
   assert.equal(epicLaunch.ok, false);
   assert.match(epicLaunch.error!, /awaiting human plan approval/);
-  assert.equal((await fake.sessions()).length, 0);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
+  assert.equal(fake.spawns.length, 0);
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator' });
   t.after(() => coord.close());
   const denied = await coord.call<{ ok: boolean; permission: string }>('task.plan', { id: epic.id, op: 'approve' });
   assert.equal(denied.ok, false);
@@ -65,8 +86,10 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   const launched = await launch();
   assert.equal(launched.ok, true, launched.error);
   assert.equal((await ui.request({ type: 'session.stop', session: 'impl-lane' })).ok, true);
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const restarted = await startDaemon(t, root, fake.env);
+  ui.close();
+  await coord.close();
+  assert.equal(await hub.stop(), undefined, 'in-process hub/store stop succeeds');
+  const restarted = await projectHub(t, root, {}, { clock: new FakeClock() });
   const again = await connectUi(t, restarted.discovery);
   const show = async () => (await again.request({ type: 'task.plan', item: epic.id, op: 'show' })).value as { approval: ItemView['approval'] };
   assert.equal((await show()).approval?.state, 'approved');
@@ -74,7 +97,7 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   changed.stages[0]!.name = 'Revised demo';
   assert.equal((await again.request({ type: 'task.plan', item: epic.id, op: 'set', yaml: stringify(changed) })).ok, true);
   assert.equal((await show()).approval?.state, 'pending');
-  const aide = await spawnSpoke({ discover: true, cwd: root, name: 'aide-demo', role: 'aide' });
+  const aide = await inProcessSpoke(t, { discover: true, cwd: root, name: 'aide-demo', role: 'aide' });
   t.after(() => aide.close());
   const aideApproved = await aide.call<{ ok: boolean; error?: string; approval: ItemView['approval'] }>('task.plan', { id: epic.id, op: 'approve' });
   assert.equal(aideApproved.ok, true, aideApproved.error);
@@ -83,9 +106,9 @@ test('draft chains into per-group lanes, holds launches for approval, authorizes
   assert.notEqual(cliDenied.code, 0, 'a task cannot be approved as an epic');
 });
 
-test('approval none is the default; no-plan and broken-plan approvals refuse', async t => {
+test('approval none is the default; no-plan and broken-plan approvals refuse (in-process)', async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
   const result = await ui.request({ type: 'task.create', title: 'Empty', kind: 'epic' });
   const epic = (result.value as { item: ItemView }).item;
@@ -99,11 +122,11 @@ test('approval none is the default; no-plan and broken-plan approvals refuse', a
   assert.equal((await ui.request({ type: 'task.plan', op: 'approve', item: epic.id })).ok, false);
 });
 
-test('the inbox sees a refused plan recover when its missing child is created', async t => {
+test('the inbox sees a refused plan recover when its missing child is created (in-process)', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[plan]\napproval = "human"\n');
-  const { discovery } = await startDaemon(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const ui = await connectUi(t, discovery);
   const created = await ui.request({ type: 'task.create', title: 'Future child', kind: 'epic' });
   const epic = (created.value as { item: ItemView }).item;

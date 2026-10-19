@@ -121,9 +121,7 @@
     "hub/test/edges.test.ts": {
       "startDaemon": 1
     },
-    "hub/test/epic-close.test.ts": {
-      "spawnSpoke": 2
-    },
+    "hub/test/epic-close.test.ts": {},
     "hub/test/events-quiet.test.ts": {},
     "hub/test/events.test.ts": {
       "wall-clock-assertion": 1
@@ -291,19 +289,9 @@
       "fakeCodex": 1
     },
     "hub/test/plan-approval-reload.test.ts": {},
-    "hub/test/plan-approval.test.ts": {
-      "startDaemon": 4,
-      "spawnSpoke": 2,
-      "fakeClaude": 1
-    },
-    "hub/test/plan-gate.test.ts": {
-      "startDaemon": 1,
-      "spawnSpoke": 2
-    },
-    "hub/test/planned-stage.test.ts": {
-      "startDaemon": 3,
-      "spawnSpoke": 4
-    },
+    "hub/test/plan-approval.test.ts": {},
+    "hub/test/plan-gate.test.ts": {},
+    "hub/test/planned-stage.test.ts": {},
     "hub/test/prepared-project.test.ts": {},
     "hub/test/presence.test.ts": {},
     "hub/test/process-cleanup.test.ts": {},
