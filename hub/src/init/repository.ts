@@ -1,31 +1,49 @@
-// Empty-folder init's Git bootstrap. Existing repositories keep their history and index.
+// Init's first-commit bootstrap. Repositories with history keep their history and index.
 import { lstatSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { territoryGit } from '../territory.ts';
-import { readText, Report, writeIfChanged } from './files.ts';
+import { readText, Report, symlinkOnPath, writeIfChanged } from './files.ts';
 import { readManifest } from './skills.ts';
 
 const CLAND_PATHS = ['AGENTS.md', '.cland', '.agents', '.claude', 'docs/agents'];
 
-/** Create main only outside any repository and without adopting the project's own files. */
+/** Inventory existing leaves before provisioning; never adopt a file init merely updates or merges. */
+export function existingClandFiles(root: string): Set<string> {
+  const files = new Set<string>();
+  function visit(path: string): void {
+    try {
+      const stat = lstatSync(join(root, path));
+      if (stat.isDirectory()) for (const name of readdirSync(join(root, path))) visit(`${path}/${name}`);
+      else files.add(path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+  for (const path of CLAND_PATHS) {
+    if (symlinkOnPath(root, join(root, path)) === null) visit(path);
+  }
+  return files;
+}
+
+/** Create main outside any repository; return whether init must make a first commit. */
 export function createRepository(report: Report, root: string): boolean {
   try {
     territoryGit(root, ['rev-parse', '--git-dir']);
+  } catch {
+    territoryGit(root, ['init', '-q', '-b', 'main']);
+    report.add(join(root, '.git'), 'created', 'git init -b main');
+    const exclude = join(root, '.git', 'info', 'exclude');
+    writeIfChanged(report, exclude, `${readText(exclude) ?? ''}\n/.DS_Store\n`);
+    return true;
+  }
+  try {
+    territoryGit(root, ['rev-parse', '--verify', 'HEAD']);
     return false;
-  } catch { /* no repository yet */ }
-  const allowed = new Set(['AGENTS.md', '.cland', '.agents', '.claude', 'docs', '.DS_Store']);
-  if (readdirSync(root).some(name => !allowed.has(name))) return false;
-  if (readdirSync(root).includes('docs') && readdirSync(join(root, 'docs')).some(name => name !== 'agents')) return false;
-  territoryGit(root, ['init', '-q', '-b', 'main']);
-  report.add(join(root, '.git'), 'created', 'git init -b main');
-  // Finder metadata is explicitly allowed beside the empty project, but is never part of its history.
-  const exclude = join(root, '.git', 'info', 'exclude');
-  writeIfChanged(report, exclude, `${readText(exclude) ?? ''}\n/.DS_Store\n`);
-  return true;
+  } catch { return true; } // An unborn branch needs the same first commit.
 }
 
 /** Commit the managed set, respecting .cland/.gitignore and bypassing machine commit hooks/signing. */
-export function commitClandFiles(report: Report, root: string): void {
+export function commitClandFiles(report: Report, root: string, existing: ReadonlySet<string> = new Set()): string | null {
   const skills = readManifest(join(root, '.agents', 'skills'));
   const kept = report.changes.filter(change => change.action === 'kept').map(change => change.path);
   const provisioned = report.changes.filter(change =>
@@ -38,6 +56,7 @@ export function commitClandFiles(report: Report, root: string): void {
     const owned = skills.kind === 'ok' ? skills.manifest.skills[skill] : undefined;
     return owned ? (Array.isArray(owned) ? owned : Object.keys(owned)).map(file => `${change.path}/${file}`) : [];
   }).filter(path => {
+    if (existing.has(path)) return false;
     if (kept.some(own => path === own || path.startsWith(`${own}/`))) return false;
     try {
       const stat = lstatSync(join(root, path));
@@ -48,11 +67,17 @@ export function commitClandFiles(report: Report, root: string): void {
       throw error;
     }
   });
-  if (!provisioned.length) return;
+  if (!provisioned.length) return null;
   const candidates = territoryGit(root, ['--literal-pathspecs', 'ls-files', '--others', '--exclude-standard', '-z', '--', ...provisioned]).split('\0').filter(Boolean);
-  if (!candidates.length) return;
+  const ignored = territoryGit(root, ['--literal-pathspecs', 'ls-files', '--others', '--ignored', '--exclude-standard', '-z', '--', ...provisioned]).split('\0').filter(Boolean);
+  for (const path of ignored) {
+    const change = report.changes.find(change => change.path === path);
+    if (change) change.note = [change.note, 'not committed: ignored by Git'].filter(Boolean).join('; ');
+    else report.add(join(root, path), 'kept', 'not committed: ignored by Git');
+  }
+  if (!candidates.length) return null;
   territoryGit(root, ['--literal-pathspecs', 'add', '--', ...candidates]);
-  const files = territoryGit(root, ['diff', '--cached', '--name-only']).split('\n').filter(Boolean);
+  const branch = territoryGit(root, ['symbolic-ref', '--short', 'HEAD']);
   const paths = CLAND_PATHS.map(path => path === 'AGENTS.md' ? path : `${path}/`).join(', ');
   // Git's guessed login/hostname identity is not an explicit identity. Inspect keys,
   // including empty/partial settings, so those remain Git's to validate unchanged.
@@ -61,10 +86,12 @@ export function commitClandFiles(report: Report, root: string): void {
   const identityEnv = ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'EMAIL'];
   const fallback = !configured && !identityEnv.some(key => process.env[key] !== undefined);
   const identity = fallback ? ['-c', 'user.name=cland', '-c', 'user.email=cland@local'] : [];
-  territoryGit(root, [...identity, '-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'Initial commit: cland init', '-m', paths]);
+  // --only builds Git's temporary index for these paths, retaining every other staged entry.
+  territoryGit(root, ['--literal-pathspecs', ...identity, '-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'commit', '--only', '-q', '-m', 'Initial commit: cland init', '-m', paths, '--', ...candidates]);
   const head = territoryGit(root, ['rev-parse', '--short', 'HEAD']);
   const attribution = fallback ? ' as cland <cland@local>: no Git identity is set' : '';
-  report.add(join(root, '.git', 'refs', 'heads', 'main'), 'created', `first commit ${head}: ${paths} (${files.length} files)${attribution}`);
+  report.add(join(root, '.git', 'refs', 'heads', branch), 'created', `first commit ${head}: ${paths} (${candidates.length} files)${attribution}`);
+  return territoryGit(root, ['rev-parse', 'HEAD']);
 }
 
 /** Keep the original write action and the final observation when the territory runs twice. */

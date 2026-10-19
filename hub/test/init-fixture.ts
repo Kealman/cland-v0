@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readdir, readFile, readlink } from 'node:fs/promises';
+import { readdir, readFile, readlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clandWithEnv } from './harness.ts';
@@ -30,6 +30,9 @@ export const sh = (cwd: string, command: string, env: Record<string, string> = {
 export async function gitRepo(root: string): Promise<void> {
   const r = await sh(root, 'git init -q && git config user.email t@example.com && git config user.name t');
   assert.equal(r.code, 0, r.stderr);
+  await writeFile(join(root, 'README.md'), '# Fixture project\n');
+  const commit = await sh(root, 'git add README.md && git -c core.hooksPath= -c commit.gpgsign=false commit -qm Seed');
+  assert.equal(commit.code, 0, commit.stderr);
 }
 
 export async function run(root: string, command: 'init' | 'update', env: Record<string, string> = {}): Promise<Change[]> {

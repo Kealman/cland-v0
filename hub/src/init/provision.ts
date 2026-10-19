@@ -29,7 +29,7 @@ import { isManagedFile, readText, refuseSymlink, Report, writeIfChanged, type Ch
 import { provisionAgentsMd, provisionClaudeMd, provisionDocs } from './instructions.ts';
 import { provisionClaudeSkills, provisionSkills, SKILLS_SOURCE } from './skills.ts';
 import { provisionTerritory } from '../territory.ts';
-import { commitClandFiles, createRepository, foldReport } from './repository.ts';
+import { commitClandFiles, createRepository, existingClandFiles, foldReport } from './repository.ts';
 
 export type ProvisionOptions = {
   /** Where the shipped skills are read from; this repository's `.agents/skills/` unless a test says otherwise. */
@@ -50,7 +50,8 @@ export const TASKS_KEEP = `# ${MANAGED_BY}: keeps .cland/tasks/ in git until it 
 export async function provision(root: string, options: ProvisionOptions = {}): Promise<Change[]> {
   const report = new Report(root);
   const l = layout(root);
-  const createdRepository = options.territory !== false && options.repository !== false && createRepository(report, root);
+  const needsFirstCommit = options.territory !== false && options.repository !== false && createRepository(report, root);
+  const existing = needsFirstCommit ? existingClandFiles(root) : new Set<string>();
   mkdirSync(l.dir, { recursive: true });
   if (options.territory !== false) provisionTerritory(report, root);
 
@@ -121,10 +122,10 @@ export async function provision(root: string, options: ProvisionOptions = {}): P
   provisionAgentsMd(report, root);
   provisionClaudeMd(report, root);
   provisionClaudeSettings(report, root);
-  if (createdRepository) {
-    commitClandFiles(report, root);
+  if (needsFirstCommit) {
+    const firstCommit = commitClandFiles(report, root, existing);
     const again = new Report(root);
-    provisionTerritory(again, root);
+    provisionTerritory(again, root, firstCommit);
     foldReport(report, again);
   }
   return report.changes;

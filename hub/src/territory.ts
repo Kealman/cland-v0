@@ -156,7 +156,7 @@ function unpreservedUndoRefs(root: string, territory: string): string[] {
 }
 
 /** Provision remotes, refs and the protection hook, under the shared lock; report even unchanged Git steps. */
-export function provisionTerritory(report: Report, root: string): void {
+export function provisionTerritory(report: Report, root: string, firstCommit: string | null = null): void {
   const path = territoryPath(root);
   if (!gitProject(root)) {
     report.add(path, 'unchanged', 'not a git repository: no territory');
@@ -211,8 +211,9 @@ export function provisionTerritory(report: Report, root: string): void {
 
     const main = ref(root, 'refs/heads/main');
     const dev = ref(root, 'refs/heads/dev');
-    if (dev === null && main !== null) territoryGit(root, ['branch', 'dev', 'main']);
-    report.add(join(path, 'local-dev'), dev === null && main !== null ? 'created' : 'unchanged', main === null && dev === null ? 'main has no commit yet: create main, then run cland init' : 'dev starts from main when absent');
+    const base = main ?? firstCommit;
+    if (dev === null && base !== null) territoryGit(root, ['branch', 'dev', base]);
+    report.add(join(path, 'local-dev'), dev === null && base !== null ? 'created' : 'unchanged', base === null && dev === null ? 'main has no commit yet: create main, then run cland init' : firstCommit !== null ? 'dev starts from the first commit when absent' : 'dev starts from main when absent');
     for (const branch of ['main', 'dev']) {
       const local = ref(root, `refs/heads/${branch}`);
       const seeded = ref(path, `refs/heads/${branch}`) !== null;
@@ -234,10 +235,12 @@ export function provisionTerritory(report: Report, root: string): void {
     report.add(join(path, 'remotes/origin/HEAD'), setHead ? 'updated' : 'unchanged', originHead === 'refs/remotes/origin/dev' || setHead ? 'origin/HEAD is origin/dev' : 'no territory dev yet');
 
     const branch = maybeGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
-    if (branch === 'main' && clean && ref(root, 'refs/heads/dev') !== null) {
-      territoryGit(path, ['config', 'cland.originalBranch', 'main']);
+    // Init's new commit and dev have identical trees: switching preserves even a dirty index/worktree.
+    const justCommitted = firstCommit !== null && ref(root, 'HEAD') === firstCommit && ref(root, 'refs/heads/dev') === firstCommit;
+    if (((branch === 'main' && clean) || justCommitted) && branch !== 'dev' && ref(root, 'refs/heads/dev') !== null) {
+      territoryGit(path, ['config', 'cland.originalBranch', branch!]);
       territoryGit(root, ['switch', 'dev']);
-      report.add(join(path, 'root-branch'), 'updated', 'clean root switched from main to dev');
+      report.add(join(path, 'root-branch'), 'updated', justCommitted ? `root switched from ${branch} to dev after first commit` : 'clean root switched from main to dev');
     } else report.add(join(path, 'root-branch'), 'unchanged', `${branch === 'dev' ? 'root already on dev' : `root left on ${branch ?? 'detached HEAD'}`}${clean ? '' : ': uncommitted changes'}`);
   });
 }

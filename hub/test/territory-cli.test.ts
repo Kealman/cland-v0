@@ -201,7 +201,7 @@ test('dirty roots and other branches stay in place, with a reason in the init re
   }
 });
 
-test('projects without a remote get only origin; non-Git folders get a note and keep the existing push rule', async (t) => {
+test('projects without a remote get only origin; non-Git folders get a first commit', async (t) => {
   const { root, territory } = await fixture(t, false);
   await init(root);
   assert.equal(git(root, 'remote'), 'origin');
@@ -211,9 +211,12 @@ test('projects without a remote get only origin; non-Git folders get a note and 
   const folder = await tempProject(t);
   await writeFile(join(folder, 'README.md'), 'The human\'s non-Git project\n');
   const report = await init(folder);
-  assert.match(report.find((c) => c.path === '.cland/territory.git')?.note ?? '', /not a git repository/);
+  assert.equal(report.find((c) => c.path === '.git')?.action, 'created');
+  assert.equal(git(folder, 'branch', '--show-current'), 'dev');
+  assert.equal(git(folder, 'ls-tree', '--name-only', 'HEAD', '--', 'README.md'), '');
+  assert.equal(git(folder, 'status', '--porcelain'), '?? README.md');
   const agents = await readFile(join(folder, 'AGENTS.md'), 'utf8');
-  assert.match(agents, /Push to GitHub only on the Coordinator/);
+  assert.match(agents, /Only cland release pushes to GitHub/);
   ok(await captureCli(write => runUpdate([], folder, write)));
   assert.equal(await readFile(join(folder, 'AGENTS.md'), 'utf8'), agents);
 });

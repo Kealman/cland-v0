@@ -93,7 +93,7 @@ test('cland init provisions exactly the 20 curated skills in its manifest and fo
   assert.deepEqual(recorded, installed);
 });
 
-test('cland init on an empty repository: git status shows exactly the committed set, with no machine path in it', async (t) => {
+test('cland init on a repository with history: git status shows exactly the committed set, with no machine path in it', async (t) => {
   const root = await tempProject(t, 'cland-init-');
   await gitRepo(root);
   const configHome = join(root, 'user-config');

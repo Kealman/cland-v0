@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { emptyFolder, gitIn, initIn, scratchMachine, snapshot, type InitMachine } from './init-machine.ts';
 import { provision } from '../src/init/provision.ts';
 import { Report } from '../src/init/files.ts';
@@ -198,7 +198,7 @@ test('first commit omits pre-existing files in managed directories', async t => 
   for (const path of own) assert.equal(await readFile(join(root, path), 'utf8'), 'private content');
 });
 
-test('legacy skill refresh commits owned leaves without adopting an unlisted private file', async t => {
+test('legacy skill refresh commits only newly created leaves', async t => {
   const machine = await scratchMachine(t, { identity: true });
   const root = await emptyFolder(machine);
   await mkdir(join(root, '.agents/skills/tdd'), { recursive: true });
@@ -214,33 +214,129 @@ test('legacy skill refresh commits owned leaves without adopting an unlisted pri
   assert.ok(report.changes.some(change => change.path === '.agents/skills/tdd' && change.action === 'updated'));
   assert.equal(await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', privateFile), '');
   assert.equal(await readFile(join(root, privateFile), 'utf8'), 'private content');
-  assert.match(await git(machine, root, 'show', 'HEAD:.agents/skills/tdd/SKILL.md'), /Test-Driven Development/);
+  assert.equal(await git(machine, root, 'ls-tree', '--name-only', 'HEAD', '--', '.agents/skills/tdd/SKILL.md', '.agents/skills/.cland-manifest.json'), '');
+  assert.match(await readFile(join(root, '.agents/skills/tdd/SKILL.md'), 'utf8'), /Test-Driven Development/);
+  assert.match(await git(machine, root, 'show', 'HEAD:.agents/skills/tdd/mocking.md'), /When to Mock/);
 });
 
-test('init commits already current managed files in a previously provisioned non-Git folder', async t => {
+test('init does not adopt pre-existing managed files in a previously provisioned folder', async t => {
   const machine = await scratchMachine(t, { identity: true });
   const root = await emptyFolder(machine);
   await provision(root, { territory: false, categories: true, env: machine.env });
+  await rm(join(root, '.cland/crew.toml'));
   assert.equal((await gitIn(machine, root, 'rev-parse', '--git-dir')).code, 128);
   const result = await initIn(machine, root, 'init');
   assert.equal(result.code, 0, result.stderr);
   assert.equal(await git(machine, root, 'rev-list', '--all', '--count'), '1');
   assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
-  assert.equal(await git(machine, root, 'status', '--porcelain'), '');
-  assert.match(await git(machine, root, 'show', 'HEAD:AGENTS.md'), /managed by cland/);
+  assert.equal(await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD'), '.cland/crew.toml');
+  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /managed by cland/);
+});
+
+// Native Git is required to prove the committed tree, untouched files and identical root/territory refs.
+test('a folder with project files receives only cland files in its first commit', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const root = await emptyFolder(machine);
+  await mkdir(join(root, 'src'));
+  await writeFile(join(root, 'README.md'), '# My project\n');
+  await writeFile(join(root, 'src/app.js'), 'console.log("hello");\n');
+  const before = await snapshot(root);
+  const mtimes = await Promise.all(['README.md', 'src/app.js'].map(path => stat(join(root, path)).then(s => s.mtimeMs)));
+  const result = await initIn(machine, root, 'init');
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(await git(machine, root, 'rev-list', '--all', '--count'), '1');
+  assert.equal(await git(machine, root, 'status', '--porcelain'), '?? README.md\n?? src/');
+  const after = await snapshot(root);
+  assert.deepEqual(Object.fromEntries(Object.keys(before).map(path => [path, after[path]])), before);
+  assert.deepEqual(await Promise.all(['README.md', 'src/app.js'].map(path => stat(join(root, path)).then(s => s.mtimeMs))), mtimes);
+  assert.equal(await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', 'README.md', 'src'), '');
+  assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
+  const head = await git(machine, root, 'rev-parse', 'HEAD');
+  for (const branch of ['main', 'dev']) {
+    assert.equal(await git(machine, root, 'rev-parse', branch), head);
+    assert.equal(await git(machine, join(root, '.cland/territory.git'), 'rev-parse', branch), head);
+  }
+});
+
+// Native Git owns unborn refs and the staged blob/index contract; no hub is needed.
+test('an unborn repository keeps the human staged file out of its first commit', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  for (const branch of ['main', 'master']) {
+    const root = await emptyFolder(machine);
+    await git(machine, root, 'init', '-q', '-b', branch);
+    await writeFile(join(root, 'notes.txt'), 'staged notes\n');
+    await git(machine, root, 'add', 'notes.txt');
+    const staged = await git(machine, root, 'ls-files', '--stage', '--', 'notes.txt');
+    await writeFile(join(root, 'notes.txt'), 'working notes\n');
+    const result = await initIn(machine, root, 'init', '--json');
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(await git(machine, root, 'rev-list', '--all', '--count'), '1');
+    assert.equal(await git(machine, root, 'ls-tree', '--name-only', 'HEAD', '--', 'notes.txt'), '');
+    assert.equal(await git(machine, root, 'ls-files', '--stage', '--', 'notes.txt'), staged);
+    assert.equal(await git(machine, root, 'show', ':notes.txt'), 'staged notes');
+    assert.equal(await readFile(join(root, 'notes.txt'), 'utf8'), 'working notes\n');
+    assert.equal(await git(machine, root, 'status', '--porcelain'), 'AM notes.txt');
+    assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
+    const head = await git(machine, root, 'rev-parse', 'HEAD');
+    assert.equal(await git(machine, root, 'rev-parse', branch), head);
+    assert.equal(await git(machine, join(root, '.cland/territory.git'), 'rev-parse', 'dev'), head);
+    const report = JSON.parse(result.stdout) as { changes: { path: string; note?: string }[] };
+    assert.match(report.changes.find(change => change.path === `.git/refs/heads/${branch}`)?.note ?? '', /first commit/);
+  }
+});
+
+// Native Git proves pre-existing merged files never enter the initial tree or lose their staged blobs.
+test('init leaves pre-existing instructions and settings outside its first commit', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const root = await emptyFolder(machine);
+  await git(machine, root, 'init', '-q', '-b', 'main');
+  await mkdir(join(root, '.claude'));
+  await mkdir(join(root, 'docs/agents'), { recursive: true });
+  await writeFile(join(root, 'AGENTS.md'), '# My instructions\n');
+  await writeFile(join(root, 'CLAUDE.md'), '# Claude instructions\n');
+  await writeFile(join(root, '.claude/settings.json'), '{"env":{"MY_SETTING":"yes"}}\n');
+  await writeFile(join(root, '.claude/private.txt'), 'private\n');
+  await writeFile(join(root, 'docs/agents/private.md'), 'private docs\n');
+  await git(machine, root, 'add', '.claude/settings.json');
+  const staged = await git(machine, root, 'ls-files', '--stage');
+  const result = await initIn(machine, root, 'init');
+  assert.equal(result.code, 0, result.stderr);
+  const own = ['AGENTS.md', 'CLAUDE.md', '.claude/settings.json', '.claude/private.txt', 'docs/agents/private.md'];
+  assert.equal(await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD', '--', ...own), '');
+  assert.equal(await git(machine, root, 'ls-files', '--stage', '--', 'AGENTS.md', '.claude/settings.json'), staged);
+  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /^# My instructions[\s\S]*cland:begin/);
+  assert.match(await readFile(join(root, 'CLAUDE.md'), 'utf8'), /@AGENTS.md/);
+  const settings = JSON.parse(await readFile(join(root, '.claude/settings.json'), 'utf8'));
+  assert.deepEqual(settings.env, { MY_SETTING: 'yes' });
+  assert.ok(settings.hooks.SessionStart.length > 0);
+  assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
+});
+
+// Native Git's ignore matching must agree with the reported initial tree; no hub process is involved.
+test('init reports ignored managed paths without forcing them into the first commit', async t => {
+  const machine = await scratchMachine(t, { identity: true });
+  const root = await emptyFolder(machine);
+  await writeFile(join(root, '.gitignore'), '/AGENTS.md\n');
+  const result = await initIn(machine, root, 'init', '--json');
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(await git(machine, root, 'ls-tree', '--name-only', 'HEAD', '--', 'AGENTS.md'), '');
+  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /cland:begin/);
+  const report = JSON.parse(result.stdout) as { changes: { path: string; note?: string }[] };
+  assert.match(report.changes.find(change => change.path === 'AGENTS.md')?.note ?? '', /not committed: ignored by Git/);
+  assert.equal(await git(machine, root, 'status', '--porcelain'), '?? .gitignore');
+  assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
 });
 
 test('init with no root category includes the task placeholder in its first commit', async t => {
   const machine = await scratchMachine(t, { identity: true });
   const root = await emptyFolder(machine);
-  await provision(root, { territory: false, env: machine.env });
-  const config = join(root, '.cland/config.toml');
-  await writeFile(config, (await readFile(config, 'utf8')).replace(/^levels = .*$/m, 'levels = []'));
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[tracker]\nlevels = []\n');
   const result = await initIn(machine, root, 'init');
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, /categories skipped: the ladder has no root category/);
   assert.deepEqual(await readdir(join(root, '.cland/tasks')), ['.gitkeep']);
   assert.equal(await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD', '.cland/tasks'), '.cland/tasks/.gitkeep');
-  assert.equal(await git(machine, root, 'status', '--porcelain'), '');
+  assert.equal(await git(machine, root, 'status', '--porcelain'), '?? .cland/config.toml');
   assert.equal(await git(machine, root, 'branch', '--show-current'), 'dev');
 });
