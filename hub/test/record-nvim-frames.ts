@@ -7,6 +7,8 @@ import { tmpdir, loadavg } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { recordedOutput } from './nvim-frame-source.ts';
+import { frameConsumers } from './nvim-frame-consumers.ts';
+import { fixtureSource } from './source-fixture.ts';
 import { recordingKey, FRAME_FIXTURES, FRAME_SLICES, frameSlicePath, selectRecordings, serializeRecordings, parseRecordings, type Recording } from '../../nvim/test/frame-fixtures.ts';
 const preload = new URL('./nvim-recorder-preload.ts', import.meta.url).href;
 function run(file: string, env: NodeJS.ProcessEnv, pattern?: string): Promise<void> {
@@ -49,8 +51,6 @@ export async function refresh(files: string[], retain = false, slice = false): P
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const tiers = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8')).tests;
-  const files = new Set(Object.keys(tiers).filter(file => file.startsWith('nvim/test/') && tiers[file] === 'T2'));
-  for await (const file of glob('nvim/test/**/*.test.ts')) if ((await readFile(file, 'utf8')).includes('stub-hub.ts')) files.add(file);
   const slice = process.argv.includes('--slice');
   const requested = process.argv.slice(2).filter(arg => arg !== '--slice');
   if (requested[0] === '--from-recordings') {
@@ -62,6 +62,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       const keys = Object.keys(parseRecordings(await readFile(path, 'utf8')));
       await writeFile(path, serializeRecordings(selectRecordings(recordings, keys)));
     }
-  } else await refresh(requested.length ? requested : [...files].sort(), requested.length > 0, slice);
+  } else {
+    const candidates: string[] = [];
+    if (!requested.length) for await (const file of glob('nvim/test/**/*.test.ts')) candidates.push(file);
+    const files = requested.length ? requested : await frameConsumers(
+      candidates, tiers,
+      fixtureSource(fileURLToPath(new URL('../../', import.meta.url))),
+    );
+    await refresh(files, requested.length > 0, slice);
+  }
   if (!requested.length || requested[0] === '--from-recordings') await run('nvim/test/scenarios/workbench.test.ts', { ...process.env, CLAND_REWRITE_NVIM_FIXTURES: '1' }, 'recorded protocol fixtures');
 }

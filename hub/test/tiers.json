@@ -174,6 +174,7 @@
     "hub/test/name-reservation.test.ts": "T2",
     "hub/test/names.test.ts": "T2",
     "hub/test/nvim-fixture-boundary.test.ts": "T1",
+    "hub/test/nvim-frame-consumers.test.ts": "T1",
     "hub/test/open.test.ts": "T3",
     "hub/test/opencode-adapter.test.ts": {
       "tier": "T3",
