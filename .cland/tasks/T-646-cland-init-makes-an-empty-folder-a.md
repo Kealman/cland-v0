@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-539
 branch: t/T-646-cland-init-makes-an-empty-folder-a
 created: 2026-10-16T16:23:59.380Z
-updated: 2026-10-19T00:06:32.795Z
+updated: 2026-10-19T00:07:48.357Z
 ---
 
 ## Summary
@@ -167,3 +167,50 @@ Findings: Standards 0; Spec 1 medium.
 Evidence: A-5660.
 
 Criteria: C1 failed (An empty managed selector expands ls-files to all untracked files; explicit empty guards are missing.), C2 failed (Unchanged managed outputs are omitted from the first commit and stay untracked, preventing clean dev.).
+
+### rev-31 · 2026-10-19T00:07:48.357Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-source-4
+commit: 5beb685186194aecd5d4e53edff3a8a7b415f772
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-646 source review: clear
+
+Head: 5beb685186194aecd5d4e53edff3a8a7b415f772
+Fixed base: 4b196c6208da89a4852be654cd05acd9978de83f
+Correction comparisons: bbddf4c4 → 87dedc05 → 08eb2107 → reviewed head.
+Scope: full. No dev merge after the first review. Branch tip independently matches this head.
+
+## Standards
+
+Clear; no remaining findings. The new repository module uses the territory Git runner, command-local hook/signing suppression, literal pathspecs and Git's ignore rules. Managed selection admits created/updated/unchanged owned outputs, excludes kept paths, expands skill directories only through validated manifest leaves, and retains only files/symlinks. Both empty leaf and empty candidate lists return before broad Git listing/staging. The .DS_Store exclusion uses the existing symlink-aware atomic writer in local Git configuration.
+
+Scratch CLI/Git invocations now receive the test AbortSignal and immediate PID ownership. Pre-directory cleanup stops/reaps the process and joins close plus result within a named five-second drain bound. The separate T3 lifecycle test proves a held writer's PID is gone and its result settled while the root exists, then checks removal. Its native-process lifecycle header and tier justify the seam. CLI contract cases remain T2, and the empty-selector negative control is T1: it performs no Git work in a non-Git scratch folder. Empty process cleanup returns before process inspection.
+
+Original contract assertions and the prior corrections are retained. No new sleep, native harness or hub startup is introduced. Changes to existing init-next text/JSON tests preserve their assertion meanings while splitting per-test cost. Scratch HOME/XDG/Git identity and provider/account isolation stay inside the fixture.
+
+## Spec
+
+Clear; no remaining findings. For the admitted empty-folder path, provisioning creates main, runs the initial territory step, provisions the managed files, makes one Initial commit: cland init with a managed-path body, then repeats/folds territory setup. Existing repositories retain history/index. Update explicitly disables repository creation/commit. The second territory step seeds root/territory main and dev, sets both default refs and switches a clean main root to dev. Folded reporting removes stale unborn-main observations.
+
+Coverage maps to C1–C7:
+- The original CLI case observes one commit, the allowed tree prefixes and exact nonvolatile .cland leaf set, clean root dev, both root/territory refs and HEADs.
+- Idempotence preserves the head/count and reports nothing to change.
+- A global failing pre-commit hook plus signing configuration proves command-local bypass.
+- Update controls cover non-Git and unborn repositories.
+- Corrections cover preserved/excluded .DS_Store, custom skill/private-doc siblings, an unlisted private leaf inside a refreshed legacy skill, and previously provisioned/no-Git clean dev.
+- The empty-report T1 control prevents no-path selection from adopting private content.
+- A-5649 records the scratch-HOME demonstration with one Initial commit on clean dev; A-5656/A-5659/A-5661 document the correction controls.
+
+Reported final local validation: eight CLI cases, 9.09 s file, each below 2 s; empty-selector file 0.11 s/test 0.005 s; unchanged lifecycle 0.34 s, machine 3.97 s, next-step file 3.12 s. Host lint/typecheck pass is recorded in the review request and A-5661. These are source-readiness receipts, not an exact-head post-source task run.
+
+Result: clear source. C1–C7 remain unverified until the same-head execution receipt is audited with the existing demo evidence. One mode-free droplet verification may follow at this unchanged head; no full-run request and no per-item QA. A head change requires fresh source review.
+
+Findings: Standards 0; Spec 0.
+
+Evidence: A-5664.
