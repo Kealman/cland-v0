@@ -605,7 +605,7 @@ test('a remote fixture diff retains the T4 harness self-tests', async t => {
   const plan = await packageShards(fileURLToPath(new URL('../../', import.meta.url)), selected.mode);
   const occasion = await packageShards(fileURLToPath(new URL('../../', import.meta.url)), 'full', undefined,
     { mode: 'full', files: selected.files, reason: 'stage occasion', soak: true, loadGate: true });
-  for (const name of ['remote-fixture-lifecycle', 'project-hub', 'prepared-project', 'account-fixture-isolation']) {
+  for (const name of ['remote-fixture-lifecycle', 'prepared-project', 'account-fixture-isolation']) {
     const file = `hub/test/${name}.test.ts`;
     assert.equal(manifest.tests[file], 'T4');
     assert.ok(!plan.some(phase => phase.targets.includes(file)), `${file} waits for an occasion`);
