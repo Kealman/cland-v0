@@ -1,82 +1,36 @@
-// The real hub's count, the top-bar chip and both inbox views must agree after classification.
+// T2: recorded protocol frames drive both inbox views; injected rules live in hub/test/nvim-needs-you-rules.test.ts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { Inbox, EventsPage } from '../../hub/src/protocol.ts';
-import { Store } from '../../hub/src/hub/store.ts';
-import { connectUi, eventually, fakeClaude, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
-
-const nvim = await nvimOrSkip();
-const skip = 'skip' in nvim ? nvim.skip : false;
-const bin = 'bin' in nvim ? nvim.bin : '';
-
-const cases = [
-  { name: 'defaults with events', config: '', count: 3, layers: ['now', 'now', 'now'] },
-  {
-    name: 'events raised to Now',
-    config: 'inbox.other = "now"\ninbox.clear = "now"\ninbox.not_clear = "now"\ninbox.death = "now"\n',
-    count: 3, layers: ['now', 'now', 'now'],
-  },
-  {
-    name: 'responses in Watch, Background and Archive with Now events',
-    config: 'inbox.ask = "watch"\ninbox.approval = "background"\ninbox.waiting = "archive"\ninbox.other = "now"\ninbox.clear = "now"\n',
-    count: 0, layers: ['watch', 'background', 'archive'],
-  },
-];
-
+import { fileURLToPath } from 'node:url';
+import { nvimOrSkip, startClient } from './stub-client.ts';
+import { tempProject, eventually } from './fixture.ts';
+import { cases } from './needs-you-fixture.ts';
+import { stubControl } from './stub-control.ts';
+import { STUB_NOW } from './fixtures/clock.ts';
+const nvim = await nvimOrSkip(), skip = 'skip' in nvim ? nvim.skip : false, bin = 'bin' in nvim ? nvim.bin : '';
+const STUB = fileURLToPath(new URL('./stub-hub.ts', import.meta.url));
 for (const scenario of cases) {
-  test(`needs-you chip and both inbox views agree: ${scenario.name}`, { skip }, async t => {
+  test(`recorded frames: needs-you chip and both inbox views agree: ${scenario.name}`, { skip }, async t => {
     const root = await tempProject(t);
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), `[visibility]\n${scenario.config}`);
-    // Reproduce a topic left waiting by an earlier hub, without an open ask (as in asks.test.ts).
-    const store = new Store(join(root, '.cland/hub.db'));
-    store.createTopic('waiting', 'Left waiting', null, new Date().toISOString());
-    store.setTopicStatus('waiting', 'waiting for human');
-    store.record({ id: 'waiting-report', from: 'legacy', fromKind: 'agent', via: 'session', to: ['coord'], kind: 'report', text: 'Waiting for your response', topic: 'waiting', ts: new Date().toISOString() }, [], Date.now());
-    store.close();
-    // Keep pushed approval and idle states authoritative throughout the workbench assertions.
-    const fake = await fakeClaude(t, { pollMs: 60_000, pushTrustMs: 120_000 });
-    const { discovery } = await startDaemon(t, root, fake.env);
-    const ui = await connectUi(t, discovery);
-    const request = async <T>(frame: { type: string } & Record<string, unknown>): Promise<T> => {
-      const result = await ui.request(frame);
-      assert.equal(result.ok, true, `${frame.type}: ${result.error}`);
-      return result.value as T;
-    };
-    await request({ type: 'subscribe' });
-    const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-    t.after(() => coord.close());
-    await coord.waitForPresence(['coord']);
-    const asking = await coord.call<{ ok: boolean; error?: string }>('ask', { topic: 'general', question: 'Choose direction?', options: ['Continue'], free: true });
-    assert.equal(asking.ok, true, asking.error);
-    await request({ type: 'session.launch', name: 'worker', role: 'implementer', harness: 'claude-code' });
-    await ui.waitFor(f => f.type === 'session.usage' && f.session === 'worker');
-    await eventually('worker idle after its role clause', async () => {
-      const status = await request<{ sessions: Array<{ name: string; state: string }> }>({ type: 'hub.status' });
-      return status.sessions.some(s => s.name === 'worker' && s.state === 'idle') ? true : undefined;
-    });
-    await request({ type: 'session.signal', session: 'worker', event: 'permission', at: Date.now(), payload: { tool_name: 'Bash' } });
-    const { item } = await request<{ item: { id: string } }>({ size: 'M', type: 'task.create', title: 'Count evidence' });
-    for (const result of ['clear', 'not clear']) {
-      await request({ type: 'task.comment', item: item.id, text: `Review ${result}.`, verdict: { verdict: 'review', scope: 'full', result, run: `count-${result.replace(' ', '-')}` }, as: { name: 'rev', role: 'reviewer' } });
-    }
-    const c = await startClient(t, bin, root);
-    await c.waitScreen(s => s.includes('hub: connected'), 'real hub connected');
-
+    const topic = (id: string) => ({ id, title: id, status: 'open', standing: true, createdAt: STUB_NOW, updatedAt: STUB_NOW });
+    const controlPath = join(root, 'stub.sock');
+    const snapshot = { topics: [topic('general'), topic('agents'), topic('waiting')],
+      processes: [{ name: 'worker', sessionId: 'worker-id', role: 'implementer', harness: 'claude-code', status: 'running', state: 'waiting for approval' }],
+      inbox: { asks: [{ id: 'ask-1', question: 'Choose direction?', options: ['Continue'], free: true, from: 'coord', topic: topic('general'), ts: STUB_NOW }],
+        approvals: [{ id: 'approval-1', session: 'worker', command: 'Bash', since: STUB_NOW }],
+        waiting: [{ ...topic('waiting'), status: 'waiting for human' }],
+        messages: [{ id: 'waiting-report', topic: topic('waiting'), text: 'Waiting for your response', since: STUB_NOW, layer: scenario.layers[2] }]  } };
+    const start = () => startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(snapshot), CLAND_STUB_CONTROL: controlPath });
+    const c = await start();
+    await c.waitScreen(s => s.includes('hub: connected'), 'recorded hub connected');
     const check = async (expected: number, layers: string[]) => {
-      const inbox = await request<Inbox>({ type: 'inbox.list' });
-      assert.equal(inbox.needsYou, expected);
-      assert.equal((await request<{ needsYou: number }>({ type: 'hub.status' })).needsYou, expected);
-      assert.deepEqual([inbox.asks.length, inbox.approvals.length, inbox.waiting.length], [1, 1, 1], 'the ask topic is not counted twice as waiting');
-      assert.deepEqual([inbox.asks[0]?.layer, inbox.approvals[0]?.layer, inbox.waiting[0]?.layer], layers);
-      assert.equal('notifications' in inbox, false);
-      const events = await request<EventsPage>({ type: 'events.list' });
-      assert.ok(events.rows.some(r => r.kind === 'session' && r.text.includes('is Coordinator')));
-      assert.ok(events.rows.some(r => r.kind === 'verdict' && r.text.includes('review clear')));
-      assert.ok(events.rows.some(r => r.kind === 'verdict' && r.text.includes('review not clear') && r.warning));
+      // Inbox messages carry the hub's authoritative classification; the paired rule test proves it.
+      snapshot.inbox.messages[0]!.layer = layers[2];
+      await stubControl(controlPath, { set: { inbox: snapshot.inbox }, emit: { type: 'inbox', inbox: { ...snapshot.inbox, needsYou: expected } } });
       // Compare literal expectations with rendered text, rather than deriving a count from local rows.
       for (const keys of ['<Esc><Space>n', '<Esc><Space>N']) {
         if (keys.includes('<Space>n')) {
@@ -116,7 +70,9 @@ for (const scenario of cases) {
     };
 
     await check(scenario.count, scenario.layers);
-    const set = (surface: string, target: string, mode: string) => request({ type: 'visibility.set', surface, target, mode });
+    const set = async (surface: string, target: string, mode: string) => {
+      await c.lua(`local done = false; require('cland').client:request({ type = 'visibility.set', surface = ..., target = select(2, ...), mode = select(3, ...) }, function(err) assert(not err, err); done = true end); assert(vim.wait(5000, function() return done end))`, surface, target, mode);
+    };
     const muted = scenario.layers.map(layer => ({ now: 'watch', watch: 'background', background: 'archive', archive: 'archive' })[layer]!);
     // Muting required topics/session removes their contributions, even while their inbox rows remain.
     await set('topics', 'general', 'mute');
@@ -137,7 +93,7 @@ for (const scenario of cases) {
     await set('topics', 'waiting', 'pin');
     await set('sessions', 'worker', 'pin');
     await check(scenario.count, scenario.layers);
-    const fresh = await startClient(t, bin, root);
+    const fresh = await start();
     await fresh.waitScreen(s => s.includes('hub: connected'), 'cold client connected');
     await fresh.input('<Esc><Space>t');
     await fresh.waitScreen(s => s.includes('TOPICS'), 'cold topics panel');

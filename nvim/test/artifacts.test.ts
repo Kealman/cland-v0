@@ -1,27 +1,19 @@
+// T2: artifact screens replay recorded frames; persistence and send rules live in hub/test/nvim-artifacts-rules.test.ts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { cland, connectUi, eventually, nativeProjectHub as projectHub, spawnSpoke, startDaemon, tempProject } from '../../hub/test/harness.ts';
-import { nvimOrSkip, startClient } from './harness.ts';
+import { eventually, tempProject } from './fixture.ts';
+import { artifactScreen, skip } from './artifact-screen-fixture.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 
-const nvim = await nvimOrSkip();
-const skip = 'skip' in nvim ? nvim.skip : false;
-const bin = 'bin' in nvim ? nvim.bin : '';
-
-test('keeping an agent artifact updates the thread and palette across unkeep and hub restart', { skip }, async t => {
+test('recorded frames: keeping an agent artifact updates the thread and palette across unkeep and reconnect', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await startDaemon(t, root);
-  let ui = await connectUi(t, discovery);
-  const topic = ((await ui.request({ type: 'topic.create', title: 'Reports' })).value as { topic: { id: string } }).topic.id;
-  const impl = await spawnSpoke({ discover: true, cwd: root, name: 'impl', role: 'implementer' });
-  t.after(() => impl.close()); await impl.waitForPresence(['impl']);
-  await ui.request({ type: 'topic.send', topic, text: '@impl share your report' });
-  const result = await impl.call<{ ok: boolean; artifact: { id: string } }>('artifact.create', { kind: 'note', title: 'Agent report', topic, content: 'Report bytes' });
-  assert.equal(result.ok, true, JSON.stringify(result));
-  const a = result.artifact;
-  const c = await startClient(t, bin, root);
+  const scene = await artifactScreen(t, root);
+  const topic = 'reports';
+  scene.scenario.topics!.push({ id: topic, title: 'Reports', status: 'open', standing: false, createdAt: '2026-10-08T10:00:00.000Z', updatedAt: '2026-10-08T10:00:00.000Z' });
+  const a = await scene.create({ kind: 'note', title: 'Agent report', topic, content: 'Report bytes' }, { name: 'impl', role: 'implementer', kind: 'agent' });
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='thread', id=${JSON.stringify(topic)}}, {insert=false})`);
@@ -46,7 +38,7 @@ test('keeping an agent artifact updates the thread and palette across unkeep and
   `);
   assert.deepEqual(await placement(), ['background', 'background', true]);
   const change = async (kept: boolean) => {
-    assert.equal((await ui.request({ type: 'artifact.keep', artifact: a.id, kept })).ok, true);
+    await scene.change({ type: 'artifact.keep', artifact: a.id, kept });
     const expected = kept ? ['watch', 'watch', false] : ['background', 'background', true];
     await eventually('thread and palette share the updated layer', async () => {
       const actual = await placement();
@@ -54,24 +46,17 @@ test('keeping an agent artifact updates the thread and palette across unkeep and
     });
   };
   await change(true);
-  await impl.close();
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  const restarted = await startDaemon(t, root);
-  ui = await connectUi(t, restarted.discovery);
+  await c.lua("require('cland').client:stop(); require('cland').client:start()");
   await c.waitScreen(s => s.includes('hub: connected'), 'reconnected');
   await eventually('kept placement restored', async () => JSON.stringify(await placement()) === JSON.stringify(['watch', 'watch', false]) ? true : undefined);
   await change(false);
 });
 
-test('Coordinator artifacts in Agents open from the log and its topic list', { skip }, async (t) => {
+test('recorded frames: Coordinator artifacts in Agents open from the log and its topic list', { skip }, async (t) => {
   const root = await tempProject(t);
-  await projectHub(t, root);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const result = await coord.call<{ ok: boolean }>('artifact.create', { kind: 'note', title: 'Plan', content: '# Shared plan', topic: 'agents' });
-  assert.equal(result.ok, true);
-  const c = await startClient(t, bin, root);
+  const scene = await artifactScreen(t, root);
+  await scene.create({ kind: 'note', title: 'Plan', content: '# Shared plan', topic: 'agents' }, { name: 'coord', role: 'coordinator', kind: 'agent' });
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.input('<Esc><Space>L');
   await c.waitScreen((s) => s.includes('▣ A-1 note · Plan') && s.includes('1 artifacts'), 'Agents chip and count');
@@ -88,16 +73,14 @@ test('Coordinator artifacts in Agents open from the log and its topic list', { s
   await c.waitScreen((s) => s.includes('# Shared plan'), 'source from Agents list');
 });
 
-test('artifact chip opens editable Mermaid source and the browser renderer, topic list and picker open artifacts', { skip }, async (t) => {
+test('recorded frames: artifact chip opens editable Mermaid source and the browser renderer, topic list and picker open artifacts', { skip }, async (t) => {
   const root = await tempProject(t);
-  await projectHub(t, root);
-  const create = await cland(root, 'artifact', 'create', '--kind', 'diagram', '--title', 'Merge flow', '--content', 'graph TD\n A-->B', '--topic', 'general', '--json');
-  assert.equal(create.code, 0, create.stderr);
-  const a = JSON.parse(create.stdout).artifact;
+  const scene = await artifactScreen(t, root);
+  const a = await scene.create({ kind: 'diagram', title: 'Merge flow', content: 'graph TD\n A-->B', topic: 'general' });
   const opened = join(root, 'opened.txt');
   const opener = join(root, 'opener');
   await writeFile(opener, `#!/bin/sh\nprintf '%s\\n' "$1" >> '${opened}'\n`, { mode: 0o755 });
-  const c = await startClient(t, bin, root, { CLAND_OPENER: opener });
+  const c = await scene.start({ CLAND_OPENER: opener });
   await waitInitialSnapshots(c);
   await c.waitScreen((s) => s.includes('▣ A-1 diagram · Merge flow') && s.includes('1 artifacts'), 'artifact chip and count');
   await c.input('<Esc>');
@@ -122,8 +105,7 @@ test('artifact chip opens editable Mermaid source and the browser renderer, topi
   await c.waitScreen((s) => s.includes('palette ›') && s.includes('A-1 diagram · Merge flow'), 'artifacts picker');
   await c.input('<CR>');
   await c.waitScreen((s) => s.includes('graph TD') && !s.includes('palette ›'), 'source from picker');
-  const page = await cland(root, 'artifact', 'create', '--kind', 'page', '--title', 'Preview', '--content', '<h1>Preview</h1>', '--topic', 'general', '--json');
-  const p = JSON.parse(page.stdout).artifact;
+  const p = await scene.create({ kind: 'page', title: 'Preview', content: '<h1>Preview</h1>', topic: 'general' });
   await c.input('<Space>a');
   await c.waitScreen((s) => s.includes('A-2 page · Preview'), 'new page in picker');
   await c.input('A-2<CR>');
@@ -131,13 +113,10 @@ test('artifact chip opens editable Mermaid source and the browser renderer, topi
   assert.equal(await readFile(a.path, 'utf8'), 'graph TD\n A-->B');
 });
 
-test('prompt drafts are editable full buffers, survive hub events, reopen, and send saved text', { skip }, async (t) => {
+test('recorded frames: prompt drafts are editable full buffers, survive hub events, reopen, and send saved text', { skip }, async (t) => {
   const root = await tempProject(t);
-  await projectHub(t, root);
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close());
-  await coord.waitForPresence(['coord']);
-  const c = await startClient(t, bin, root);
+  const scene = await artifactScreen(t, root);
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected before drafting');
   await c.input('<Esc>:Cland prompt Brief for T-12<CR>');
@@ -152,7 +131,7 @@ test('prompt drafts are editable full buffers, survive hub events, reopen, and s
   assert.equal(await readFile(path, 'utf8'), 'First line\nSecond line');
   await c.input('A unsaved');
   const before = await c.lua('return {vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0), vim.api.nvim_buf_get_lines(0,0,-1,false), vim.fn.mode()}');
-  await coord.call('send', { topic: 'general', text: 'An event while drafting' });
+  await scene.emit([{ type: 'message', topic: { id: 'general', title: 'General' }, message: { id: 'draft-event', from: 'coord', fromRole: 'coordinator', fromKind: 'agent', via: 'hub', to: [], topic: 'general', ts: '2026-10-08T10:00:00.000Z', text: 'An event while drafting' } }]);
   await eventually('hub event received', async () => await c.lua("return #require('cland.views').topic('general').thread.messages > 0") || undefined);
   assert.deepEqual(await c.lua('return {vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0), vim.api.nvim_buf_get_lines(0,0,-1,false), vim.fn.mode()}'), before);
   await c.input('<Esc>q<Space>a');
@@ -160,18 +139,17 @@ test('prompt drafts are editable full buffers, survive hub events, reopen, and s
   await c.input('<CR>');
   await c.waitScreen(s => s.includes('First line') && s.includes('Second line'), 'reopened draft');
   await c.input(':Cland prompt send<CR>');
-  await coord.waitForEvent(e => e.params.content === 'First line\nSecond line unsaved');
+  await eventually('saved sent text', async () => (await readFile(path, 'utf8')) === 'First line\nSecond line unsaved' || undefined);
   await eventually('sent status', async () => await c.lua("return require('cland.artifacts').entries[1].status == 'sent'") || undefined);
   await c.input(':Cland view thread general<CR>');
   await c.waitScreen(s => s.includes('Second line unsaved') && s.includes('▣ A-1 prompt'), 'sent inline text and artifact chip in the thread');
 });
 
-test('p in a topic artifact list promotes it and updates the list and picker marks', { skip }, async (t) => {
+test('recorded frames: p in a topic artifact list promotes it and updates the list and picker marks', { skip }, async (t) => {
   const root = await tempProject(t);
-  await projectHub(t, root);
-  const create = await cland(root, 'artifact', 'create', '--kind', 'note', '--title', 'Keep', '--content', '# Keep', '--topic', 'general', '--json');
-  const a = JSON.parse(create.stdout).artifact;
-  const c = await startClient(t, bin, root);
+  const scene = await artifactScreen(t, root);
+  const a = await scene.create({ kind: 'note', title: 'Keep', content: '# Keep', topic: 'general' });
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('1 artifacts'), 'artifact loaded');
   await c.input('<Esc>');
@@ -188,29 +166,28 @@ test('p in a topic artifact list promotes it and updates the list and picker mar
   await c.waitScreen(s => s.includes('palette ›') && s.includes('promoted: docs/keep.md'), 'promoted picker mark');
 });
 
-test('topic lists follow archive events and lists and pickers mark retained entries whose files were deleted', { skip }, async (t) => {
+test('recorded frames: topic lists follow archive events and lists and pickers mark retained entries whose files were deleted', { skip }, async (t) => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[artifacts]\nretention_days = 0\n');
-  const { discovery } = await startDaemon(t, root);
-  const ui = await connectUi(t, discovery);
-  const topic = ((await ui.request({ type: 'topic.create', title: 'Archive' })).value as { topic: { id: string } }).topic.id;
-  const coord = await spawnSpoke({ discover: true, cwd: root, name: 'coord', role: 'coordinator' });
-  t.after(() => coord.close()); await coord.waitForPresence(['coord']);
-  const a = (await coord.call<{ artifact: { id: string } }>('artifact.create', { kind: 'note', title: 'Old note', content: 'old bytes', topic })).artifact;
-  await coord.close();
-  const c = await startClient(t, bin, root);
+  const scene = await artifactScreen(t, root);
+  const topic = 'archive';
+  scene.scenario.topics!.push({ id: topic, title: 'Archive', status: 'open', standing: false, createdAt: '2026-10-08T10:00:00.000Z', updatedAt: '2026-10-08T10:00:00.000Z' });
+  const a = await scene.create({ kind: 'note', title: 'Old note', content: 'old bytes', topic }, { name: 'coord', role: 'coordinator', kind: 'agent' });
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await c.lua(`require('cland.layout').show({kind='artifacts', id=${JSON.stringify(topic)}}, {insert=false})`);
   await c.input('zR');
   await c.waitScreen(s => s.includes(a.id) && s.includes('shared'), 'shared artifact mark');
-  await ui.request({ type: 'topic.close', topic });
+  Object.assign(scene.scenario.artifacts![0]!, { status: 'archived' });
+  await scene.publish([{ type: 'artifact', artifact: scene.scenario.artifacts![0] }]);
   await c.waitScreen(s => s.includes('Archived (1)') && !s.includes(a.id + ' note'), 'artifact leaves live sections');
   await c.input('A');
   await c.waitScreen(s => s.includes(a.id) && s.includes('archived'), 'live archived artifact mark');
-  assert.equal((await cland(root, 'hub', 'stop')).code, 0);
-  await startDaemon(t, root);
+  Object.assign(scene.scenario.artifacts![0]!, { fileDeleted: true });
+  await scene.publish();
+  await c.lua("require('cland').client:stop(); require('cland').client:start()");
   await c.waitScreen(s => s.includes(a.id) && s.includes('file deleted'), 'deleted list mark after restart');
   await c.input('<Space>a');
   await c.waitScreen(s => s.includes('palette ›') && s.includes('file deleted'), 'deleted picker mark');
@@ -218,19 +195,18 @@ test('topic lists follow archive events and lists and pickers mark retained entr
   await c.waitScreen(s => s.includes('artifact: file deleted'), 'deleted entry cannot open');
 });
 
-test('folder chips open their entry and old moved-file chips open inside the folder', { skip }, async t => {
+test('recorded frames: folder chips open their entry and old moved-file chips open inside the folder', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  const folder = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Folder', topic: 'general', folder: true, content: '# Folder entry' })).value as { artifact: { id: string; path: string } }).artifact;
-  const source = ((await ui.request({ type: 'artifact.create', kind: 'note', title: 'Source', topic: 'general', content: '# Moved note' })).value as { artifact: { id: string } }).artifact;
-  const c = await startClient(t, bin, root);
+  const scene = await artifactScreen(t, root);
+  const folder = await scene.create({ kind: 'note', title: 'Folder', topic: 'general', folder: true, content: '# Folder entry' });
+  const source = await scene.create({ kind: 'note', title: 'Source', topic: 'general', content: '# Moved note' });
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('Folder') && s.includes('Source'), 'folder and source chips');
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(folder.id)})`);
   await c.waitScreen(s => s.includes('# Folder entry'), 'folder entry');
   await c.input('q');
-  assert.equal((await ui.request({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' })).ok, true);
+  await scene.change({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' });
   await eventually('live source redirect', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}).movedTo ~= nil`) || undefined);
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
   await c.waitScreen(s => s.includes('# Moved note'), 'old chip resolves to the moved file');
@@ -239,13 +215,12 @@ test('folder chips open their entry and old moved-file chips open inside the fol
 });
 
 
-test('moving an already-open prompt rebinds its editable buffer before the next save', { skip }, async t => {
+test('recorded frames: moving an already-open prompt rebinds its editable buffer before the next save', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
+  const scene = await artifactScreen(t, root);
+  const make = (folder = false) => scene.create({ kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder });
   const source = await make(), folder = await make(true);
-  const c = await startClient(t, bin, root);
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await eventually('source artifact list loaded', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}) ~= nil`) || undefined);
@@ -253,20 +228,19 @@ test('moving an already-open prompt rebinds its editable buffer before the next 
   await c.waitScreen(s => s.includes('Draft bytes'), 'editable draft');
   await c.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, {'Unsaved moved bytes'})");
   const destination = join(folder.path, 'moved.md');
-  assert.equal((await ui.request({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' })).ok, true);
+  await scene.change({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' });
   await eventually('open buffer rebound', async () => await c.lua('return vim.api.nvim_buf_get_name(0)') === destination ? true : undefined);
   await c.input(':w<CR>');
   await eventually('save reaches moved file', async () => (await readFile(destination, 'utf8')).includes('Unsaved moved bytes') ? true : undefined);
   await assert.rejects(readFile(source.path), { code: 'ENOENT' });
 });
 
-test('a draft moved while disconnected resolves and rebinds on reconnect before saving', { skip }, async t => {
+test('recorded frames: a draft moved while disconnected resolves and rebinds on reconnect before saving', { skip }, async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
-  const ui = await connectUi(t, discovery);
-  const make = async (folder = false) => ((await ui.request({ type: 'artifact.create', kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder })).value as { artifact: { id: string; path: string } }).artifact;
+  const scene = await artifactScreen(t, root);
+  const make = (folder = false) => scene.create({ kind: 'prompt', title: 'Draft', topic: 'general', status: 'draft', content: 'Draft bytes', folder });
   const source = await make(), folder = await make(true);
-  const c = await startClient(t, bin, root);
+  const c = await scene.start();
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('hub: connected'), 'connected');
   await eventually('source artifact list loaded', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}) ~= nil`) || undefined);
@@ -274,9 +248,11 @@ test('a draft moved while disconnected resolves and rebinds on reconnect before 
   await c.waitScreen(s => s.includes('Draft bytes'), 'editable draft');
   await c.lua("vim.api.nvim_buf_set_lines(0, 0, -1, false, {'Unsaved moved bytes'})");
   await c.lua("require('cland').client:stop()");
+  scene.disconnect();
   const destination = join(folder.path, 'moved.md');
-  assert.equal((await ui.request({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' })).ok, true);
+  await scene.change({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' });
   assert.equal(await c.lua('return vim.api.nvim_buf_get_name(0)'), source.path);
+  await scene.reconnect();
   await c.lua("require('cland').client:start()");
   await eventually('open buffer rebound after reconnect', async () => await c.lua('return vim.api.nvim_buf_get_name(0)') === destination ? true : undefined);
   await c.input(':w<CR>');

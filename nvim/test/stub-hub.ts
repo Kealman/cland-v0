@@ -32,6 +32,7 @@ import { replayFrame } from './frame-fixtures.ts';
 import { controlRequestName } from './stub-control.ts';
 import { parse as parseToml } from 'smol-toml';
 import { writeFileSync, mkdirSync } from 'node:fs';
+import { createScenarioArtifact, changeScenarioArtifact } from './artifact-scenario.ts';
 import { STUB_NOW } from './fixtures/clock.ts';
 
 export type Scenario = {
@@ -269,12 +270,26 @@ function answer(f: Frame) {
     }
     case 'subscribe':
       return ok(f.id, { subscribed: true });
+    // T-903 artifact/prompt screen requests. Hub rules are asserted separately in-process.
+    case 'artifact.create': {
+      const { artifact, events } = createScenarioArtifact(scenario, process.cwd(), f);
+      for (const event of events) write(event);
+      return ok(f.id, { artifact });
+    }
+    case 'artifact.keep':
+    case 'artifact.promote':
+    case 'artifact.move':
+    case 'prompt.send': {
+      const { artifact, events } = changeScenarioArtifact(scenario, process.cwd(), f);
+      for (const event of events) write(event);
+      return ok(f.id, { artifact });
+    }
     case 'artifact.list':
       if (f.artifact !== undefined) {
         const artifact = (scenario.artifacts ?? []).find(a => a.id === f.artifact);
         return artifact ? ok(f.id, { artifact }) : fail(f.id, 'no such artifact');
       }
-      return ok(f.id, { artifacts: (scenario.artifacts ?? []).filter((a) => f.topic === undefined || a.topic === f.topic) });
+      return ok(f.id, { artifacts: (scenario.artifacts ?? []).filter((a) => !a.movedTo).filter((a) => f.topic === undefined || a.topic === f.topic) });
     case 'topic.list':
       return ok(f.id, { topics: scenario.topics });
     case 'topic.history': {

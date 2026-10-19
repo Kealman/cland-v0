@@ -252,7 +252,11 @@
     "hub/test/models.test.ts": {},
     "hub/test/name-reservation.test.ts": {},
     "hub/test/names.test.ts": {},
+    "hub/test/nvim-artifacts-rules.test.ts": {},
+    "hub/test/nvim-crew-rules.test.ts": {},
     "hub/test/nvim-fixture-boundary.test.ts": {},
+    "hub/test/nvim-inbox-requests-rules.test.ts": {},
+    "hub/test/nvim-needs-you-rules.test.ts": {},
     "hub/test/open.test.ts": {},
     "hub/test/opencode-adapter.test.ts": {
       "startDaemon": 2,
@@ -632,20 +636,14 @@
     "nvim/test/artifact-browser.test.ts": {
       "spawnSpoke": 5
     },
-    "nvim/test/artifacts.test.ts": {
-      "startDaemon": 4,
-      "spawnSpoke": 4
-    },
+    "nvim/test/artifacts.test.ts": {},
     "nvim/test/client-component.test.ts": {},
     "nvim/test/client.test.ts": {
       "wall-clock-wait": 2,
       "startDaemon": 2,
       "spawnSpoke": 1
     },
-    "nvim/test/crew.test.ts": {
-      "wall-clock-wait": 1,
-      "startDaemon": 1
-    },
+    "nvim/test/crew.test.ts": {},
     "nvim/test/criteria-component.test.ts": {},
     "nvim/test/criteria.test.ts": {
       "startDaemon": 2
@@ -677,11 +675,7 @@
       "wall-clock-wait": 1
     },
     "nvim/test/inbox-actions.test.ts": {},
-    "nvim/test/inbox-requests.test.ts": {
-      "startDaemon": 1,
-      "spawnSpoke": 1,
-      "fakeClaude": 1
-    },
+    "nvim/test/inbox-requests.test.ts": {},
     "nvim/test/inbox-sections.test.ts": {
       "wall-clock-assertion": 12
     },
@@ -700,11 +694,7 @@
       "spawnSpoke": 1,
       "fakeClaude": 1
     },
-    "nvim/test/needs-you.test.ts": {
-      "startDaemon": 1,
-      "spawnSpoke": 1,
-      "fakeClaude": 1
-    },
+    "nvim/test/needs-you.test.ts": {},
     "nvim/test/nvim-path.test.ts": {
       "wall-clock-wait": 1
     },
