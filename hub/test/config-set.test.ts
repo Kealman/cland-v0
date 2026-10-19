@@ -20,13 +20,10 @@ async function fixture(t: Parameters<typeof tempProject>[0]) {
 
 test('config set keeps verification command arguments verbatim and applies them now', async t => {
   const { root, path } = await fixture(t);
+  // The CLI proves literal argv handling; writer permutations live at T1.
   for (const [key, value] of [
-    ['test', 'python3 -m unittest discover -s tests'],
-    ['check', 'python3 -m compileall . && printf "checked" | cat'],
-    ['prepare', '  python3 -m pip install -r "dev requirements.txt"  '],
-    ['test', 'true'],
-    ['check', '"printf"'],
-    ['prepare', "'printf'"],
+    ['test_unit', '  python3 -m pytest "unit tests" && echo unit | cat  '],
+    ['test_unit', 'true'],
   ] as const) {
     const result = await cland(root, 'config', 'set', `verification.${key}`, value);
     assert.equal(result.code, 0, result.stderr);

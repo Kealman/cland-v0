@@ -4,7 +4,7 @@ import test from 'node:test';
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { coverageSelection, type CoverageMap } from '../src/suite-coverage.ts';
+import { coverageSelection, mergeCoverageMaps, type CoverageMap } from '../src/suite-coverage.ts';
 
 async function fixture(t: import('node:test').TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'cland-coverage-selection-'));
@@ -52,4 +52,20 @@ test('an old ancestor map selects translated hunks and reports its age, but unma
   assert.match(selected.notes.join('; '), /age 259200s.*limit 172800s.*hunks map/);
   assert.deepEqual(await select('@@ -3 +3 @@', '@@ -1,0 +2,2 @@', oldAge), { fallback: 'coverage hunk changed since map: hub/src/example.ts:3' });
   assert.deepEqual(await select('@@ -7 +7 @@', '', oldAge, false), { fallback: 'coverage map has no ancestor of task merge base' });
+});
+
+// T1: tier maps must retain every covering test while refusing another candidate.
+test('tier command coverage combines attribution at one admitted tree', () => {
+  const first: CoverageMap = { version: 1, head: 'a'.repeat(40), tree: 'b'.repeat(40), created: '2026-10-19T00:00:00Z',
+    testFiles: ['hub/test/unit.test.ts'], files: { 'hub/src/rule.ts': { functions: [
+      { name: 'rule', start: 0, end: 30, startLine: 1, endLine: 2, tests: ['hub/test/unit.test.ts'] },
+    ] } } };
+  const second = structuredClone(first);
+  second.testFiles = ['hub/test/component.test.ts'];
+  second.files['hub/src/rule.ts']!.functions[0]!.tests = ['hub/test/component.test.ts'];
+  const merged = mergeCoverageMaps(first, second);
+  assert.deepEqual(merged.testFiles, ['hub/test/component.test.ts', 'hub/test/unit.test.ts']);
+  assert.deepEqual(merged.files['hub/src/rule.ts']!.functions[0]!.tests, merged.testFiles);
+  assert.deepEqual(first.testFiles, ['hub/test/unit.test.ts']);
+  assert.throws(() => mergeCoverageMaps(first, { ...second, tree: 'c'.repeat(40) }), /provenance mismatch/);
 });

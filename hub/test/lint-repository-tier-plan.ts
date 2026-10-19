@@ -5,6 +5,7 @@ import { readFile, glob } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packageShards, type TierManifest } from '../src/suite-shards.ts';
+import { taskSuiteSelection, tierSuiteSelection } from '../src/suite-selection.ts';
 import { readDurationManifest } from '../src/suite-durations.ts';
 
 async function lintRepositoryTierPlan(): Promise<void> {
@@ -25,6 +26,18 @@ async function lintRepositoryTierPlan(): Promise<void> {
     { name: 'hub machine', resource: 'machine', workers: 4, targets: hub.filter(path => !hermetic(path)) },
     { name: 'Neovim', resource: 'machine', workers: 4, targets: ['nvim/test/**/*.test.ts'] },
   ]);
+  // Whole-repository command equivalence belongs to this T0 inventory guard;
+  // T1 proves flag/selection/lock permutations against a small literal fixture.
+  const task = taskSuiteSelection({ mode: 'full', files: [], reason: 'task fallback inventory' }, 't/T-717', 'auto', true);
+  const before = await packageShards(root, task.mode, undefined, task, { workers: 4, legacyKeys });
+  const after = [];
+  for (const tier of ['T1', 'T2'] as const) {
+    const selection = tierSuiteSelection(task, tier);
+    after.push(...await packageShards(root, selection.mode, undefined, selection, { workers: 4, legacyKeys }));
+  }
+  const membership = (phases: typeof before) => phases.flatMap(phase => phase.targets.map(file => [file, phase.resource, phase.workers] as const)).sort(([a], [b]) => a.localeCompare(b));
+  assert.deepEqual(membership(after), membership(before), 'tier commands retain repository task files, resources and workers');
+
 }
 
 await lintRepositoryTierPlan();

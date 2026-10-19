@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
 import { defaultConfig, parseConfig, provisionConfig, renderConfig } from '../src/init/config.ts';
+import { setConfigValue } from '../src/init/config-set.ts';
 import { Report } from '../src/init/files.ts';
 
 test('update keeps setup declines when refreshing the managed config', t => {
@@ -40,15 +41,39 @@ test('verification commands retain literal shell syntax through the config templ
   for (const [key, value] of Object.entries(commands)) assert.equal(Reflect.get(config.verification, key), value);
   const rendered = renderConfig(config);
   assert.deepEqual(parseConfig(rendered, 'scratch'), config);
-  assert.match(rendered, /# cland verify runs nothing until test is set; use cland config set verification.test '<command>'\./);
+  assert.match(rendered, /# cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'\./);
   assert.match(rendered, /# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally\.\nprepare =/);
   assert.match(rendered, /# check is the fast gate; runs first and on the host before a droplet is made\.\ncheck =/);
-  assert.match(rendered, /# test is the suite; its exit code decides the run\.\ntest =[^\n]*\nexecutor =/);
+  assert.match(rendered, /# test is the suite; its exit code decides the run\.\ntest =[^\n]*\n# test_unit/);
+});
+
+// T1: every command key's literal values pass through the public settings writer.
+test('verification settings writer preserves command permutations verbatim', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-command-values-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  writeFileSync(path, renderConfig(defaultConfig('Command values')));
+  for (const [key, value] of [
+    ['test', 'python3 -m unittest discover -s tests'],
+    ['test_unit', '  python3 -m pytest "unit tests" && echo unit | cat  '],
+    ['test_component', 'python3 -m pytest component'],
+    ['test_integration', 'python3 -m pytest integration'],
+    ['test_soak', 'python3 -m pytest soak'],
+    ['check', 'python3 -m compileall . && printf "checked" | cat'],
+    ['prepare', '  python3 -m pip install -r "dev requirements.txt"  '],
+    ['test', 'true'],
+    ['check', '"printf"'],
+    ['prepare', "'printf'"],
+  ] as const) {
+    assert.equal(setConfigValue(root, path, `verification.${key}`, value, {}), value);
+    assert.equal(parseConfig(readFileSync(path, 'utf8'), root).verification[key], value);
+  }
 });
 
 test('verification commands default empty and refuse non-string values', () => {
   const absent = parseConfig('', 'scratch');
-  for (const key of ['prepare', 'check', 'test'] as const) {
+  for (const key of ['prepare', 'check', 'test', 'test_unit', 'test_component', 'test_integration', 'test_soak'] as const) {
     assert.equal(absent.verification[key], '');
     for (const value of ['3', 'false', '[]', '{}']) {
       assert.throws(() => parseConfig(`[verification]\n${key} = ${value}`, 'scratch'), {

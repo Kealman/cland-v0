@@ -7,7 +7,7 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { taskSuiteSelection, type SuiteSelection } from '../src/suite-selection.ts';
-import { packageShards, type TierManifest } from '../src/suite-shards.ts';
+import { packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { packageSuitePlan } from './run-suite.ts';
 import { verificationCommands } from '../src/verification-commands.ts';
@@ -21,7 +21,10 @@ after(async () => { if (repositoryRoot) await rm(repositoryRoot, { recursive: tr
 
 async function fixture() {
   const root = repositoryRoot = await mkdtemp(join(tmpdir(), 'task-tier-plan-'));
-  const source = await readFile(new URL('./tiers.json', import.meta.url), 'utf8');
+  return plannerFixture(root, await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
+}
+
+async function plannerFixture(root: string, source: string) {
   const manifest = JSON.parse(source) as TierManifest;
   const files = Object.keys(manifest.tests);
   // These bounded empty-file writes need no asynchronous workers or repeated
@@ -46,6 +49,39 @@ test('task cadence plans all T1 plus selected T2 from the repository manifest', 
   assert.deepEqual(selection.tiers, ['T1', 'T2']);
   assert.equal(selection.loadGate, true);
   assert.deepEqual(await verificationCommands(f.root, f.root), { prepare: '', check: 'npm run check', test: 'npm test' });
+});
+
+test('per-tier commands preserve the repository task file plan', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'tier-selection-plan-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  // T0 inventories the repository manifest. Selection permutations need only
+  // enough files to distinguish whole T1, selected T2, smoke and soak exclusions.
+  const small = await plannerFixture(root, serializeTierManifest({ version: 1, tests: {
+    'hub/test/unit.test.ts': 'T1', 'nvim/test/unit.test.ts': 'T1',
+    'hub/test/merge-queue.test.ts': 'T2', 'hub/test/other-component.test.ts': 'T2',
+    'nvim/test/client-component.test.ts': 'T2', 'nvim/test/other-component.test.ts': 'T2',
+    'hub/test/scenarios/hub-lifecycle.test.ts': 'T3', 'nvim/test/scenarios/workbench.test.ts': 'T3',
+    'hub/test/soak.test.ts': 'T4',
+  } }));
+  for (const source of [
+    { mode: 'full', files: [], reason: 'fallback' },
+    { mode: 'hub-selected', files: [], reason: 'coverage', tests: ['hub/test/merge-queue.test.ts'], nvimTests: ['nvim/test/client-component.test.ts'] },
+    { mode: 'nvim-only', files: [], reason: 'Neovim' },
+  ] satisfies SuiteSelection[]) {
+    const f = small;
+    const admitted = taskSuiteSelection(source, 't/T-717', 'auto', true);
+    const before = await f.plan(admitted);
+    const split: string[] = [];
+    for (const tier of ['T1', 'T2']) {
+      const plan = await packageSuitePlan(f.root, 'auto', ['--tier', tier], { hub: 'hub.lock', nvim: 'nvim.lock' }, { CLAND_SUITE_SELECTION: JSON.stringify(admitted), CLAND_SUITE_WORKERS: '2' });
+      assert.deepEqual(plan.lockDirs, ['hub.lock', 'nvim.lock']);
+      assert.equal(plan.targeted, false);
+      split.push(...plan.phases.flatMap(phase => phase.targets));
+    }
+    split.sort();
+    assert.deepEqual(split, before, source.mode);
+    assert.ok(before.every(file => ['T1', 'T2'].includes(f.tier(file))));
+  }
 });
 
 test('a task coverage fallback widens T2 without admitting T3 or T4', async () => {

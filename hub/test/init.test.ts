@@ -39,7 +39,7 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   const path = join(root, '.cland/config.toml');
   const initial = await readFile(path, 'utf8');
   // Existing init/update contract: the command keys are empty until configured.
-  for (const key of ['prepare', 'check', 'test'] as const) {
+  for (const key of ['prepare', 'check', 'test', 'test_unit', 'test_component', 'test_integration', 'test_soak'] as const) {
     assert.equal(parseConfig(initial, root).verification[key], '');
     assert.match(initial, new RegExp(`# ${key} [^\\n]+\\n${key} = ""`));
   }

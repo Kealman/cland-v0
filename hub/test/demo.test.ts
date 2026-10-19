@@ -17,10 +17,10 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   const configPath = join(root, '.cland/config.toml');
   const config = parseConfig(await readFile(configPath, 'utf8'), 'demo commands');
   const commands = { prepare: 'printf admitted-prepare', check: 'printf admitted-check', test: 'printf admitted-test' };
-  Object.assign(config.verification, commands);
+  Object.assign(config.verification, commands, { test_unit: 'printf admitted-unit', test_soak: 'printf admitted-soak' });
   await writeFile(configPath, renderConfig(config));
   api.beforeCreate(async () => {
-    Object.assign(config.verification, { prepare: 'false', check: 'false', test: 'false' });
+    Object.assign(config.verification, { prepare: 'false', check: 'false', test: 'false', test_unit: 'false', test_soak: 'false' });
     await writeFile(configPath, renderConfig(config));
   });
   const made = await ui.request({ type: 'task.create', title: 'Demo', kind: 'epic' });
@@ -32,10 +32,14 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   assert.ok((started.value as { lease: string }).lease);
   assert.ok((started.value as { lifetimeMs: number }).lifetimeMs > 0);
   const dir = join(root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
-  assert.deepEqual((await readLease(dir)).demo?.commands, commands);
+  const pinned = { ...commands, tiers: { T1: 'printf admitted-unit', T4: 'printf admitted-soak' }, plan: [
+    { name: 'check', command: commands.check }, { name: 'T1', command: 'printf admitted-unit' }, { name: 'T4', command: 'printf admitted-soak' },
+  ] };
+  assert.deepEqual((await readLease(dir)).demo?.commands, pinned);
   const script = await readFile(join(dir, 'run.sh'), 'utf8');
   assert.match(script, /\/bin\/sh -c 'printf admitted-check'/);
-  assert.match(script, /\/bin\/sh -c 'printf admitted-test'/);
+  assert.match(script, /tier T1: exit %s/);
+  assert.match(script, /tier T4: exit %s/);
   assert.doesNotMatch(script, /\/bin\/sh -c 'false'/);
   const result = await ui.request({ type: 'demo.exec', epic, command: ['sh', '-c', 'git rev-parse HEAD; printf problem >&2; exit 7'] });
   assert.equal(result.ok, true, result.error);
@@ -45,7 +49,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   await killDaemon(discovery.pid);
   const restarted = await startDaemon(t, root, env);
   const next = await connectUi(t, restarted.discovery);
-  assert.deepEqual((await readLease(dir)).demo?.commands, commands);
+  assert.deepEqual((await readLease(dir)).demo?.commands, pinned);
   const stopped = await next.request({ type: 'demo.stop', epic });
   assert.equal(stopped.ok, true, stopped.error);
   assert.deepEqual(api.droplets, []);

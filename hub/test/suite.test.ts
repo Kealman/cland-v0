@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, eventually, startDaemon, spawnSpoke, tempProject, pidAlive, fakeCodex } from './harness.ts';
-import { fixture, type ResultMessage } from './suite-fixture.ts';
+import { fixture, writeSuiteFixture, type ResultMessage } from './suite-fixture.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { DatabaseSync } from 'node:sqlite';
@@ -313,9 +313,12 @@ async function verificationLines(f: Awaited<ReturnType<typeof fixture>>, command
 }
 
 // T3: a detached worker executes shell commands and durably receipts their ordered exits.
-test('verify executes configured shell lines instead of package scripts', async t => {
+test('legacy task verify executes its whole test with the merge queue off', async t => {
   const f = await fixture(t, 'exit 91', 'exit 92');
   const commands = { prepare: 'exit 93', check: 'printf check > executions', test: 'printf test >> executions' };
+  const git = await cacheRepository(f);
+  await git('branch', '-m', 't/T-717-legacy');
+  assert.equal(parseConfig(await readFile(join(f.root, '.cland/config.toml'), 'utf8'), 'fixture').merge.queue, false);
   await verificationLines(f, commands);
   const job = await f.launch();
   const result = await eventually('configured commands reported', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
@@ -360,5 +363,45 @@ for (const check of ['', 'exit 7']) test(`verify ${check ? 'stops on the configu
     assert.match(result.text, /exit 0/);
     assert.match(log, /check: not set/);
     assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'ran');
+  }
+});
+
+// T3: real workers write their durable receipts before the task and batch runs are reported.
+test('Python command stubs execute the recorded task and batch plans', async t => {
+  const { Store } = await import('../src/hub/store.ts');
+  const { Suites } = await import('../src/hub/suites.ts');
+  const root = await tempProject(t, 'tier-worker-');
+  await writeSuiteFixture(root, '', undefined, { stack: 'other', check: './python3 -m compileall .', test: '',
+    text: '[merge]\nqueue=true\n', verification: 'test_unit="./python3 -m pytest unit"\ntest_integration="./python3 -m pytest integration"\n' });
+  await writeFile(join(root, 'python3'), `#!${process.execPath}
+const fs = require('node:fs');
+const phase = process.argv.includes('compileall') ? 'check' : process.argv.at(-1);
+fs.appendFileSync('executions', phase + '\\n');
+console.log('python ' + phase);
+`, { mode: 0o700 });
+  await writeFile(join(root, '.gitignore'), '.cland/\nexecutions\nworker.lock*\n');
+  const git = (...args: string[]) => promisify(execFile)('git', args, { cwd: root });
+  await git('init', '-b', 't/T-717');
+  await git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'add', '.');
+  await git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-m', 'Python fixture');
+  const config = parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), 'python');
+  const store = new Store(join(root, '.cland/test.db'));
+  const suites = new Suites(store, root, async () => {}, { projectConfig: () => config, locks: [join(root, 'worker.lock')] });
+  onCleanup(t, async () => { await suites.close(); store.close(); });
+  for (const kind of ['task', 'batch'] as const) {
+    await writeFile(join(root, 'executions'), '');
+    const submitted = await suites.start({ cwd: root, mode: kind === 'task' ? 'auto' : 'all', topic: 'python', to: [], actor: null, fresh: true,
+      ...(kind === 'batch' ? { occasion: 'batch' } : {}) }, () => {});
+    assert.ok('id' in submitted);
+    const job = await eventually('worker admission', () => suites.status().find(job => job.id === submitted.id && job.pid));
+    ownProcess(t, job.pid!);
+    await eventually('durable worker result reported', () => suites.status().find(job => job.id === submitted.id && job.reported));
+    const directory = join(root, '.cland/run/suites', submitted.id);
+    const output = await readFile(join(directory, 'suite.log'), 'utf8');
+    assert.equal(JSON.parse(await readFile(join(directory, 'result.json'), 'utf8')).code, 0, output);
+    assert.equal(await readFile(join(root, 'executions'), 'utf8'), kind === 'task' ? 'check\nunit\n' : 'unit\nintegration\n');
+    assert.match(output, /tier T1: exit 0; duration \d+ s; output tail: python unit/);
+    if (kind === 'task') assert.doesNotMatch(output, /python integration/);
+    else assert.match(output, /tier T3: exit 0; duration \d+ s; output tail: python integration/);
   }
 });

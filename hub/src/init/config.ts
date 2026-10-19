@@ -18,7 +18,7 @@ export type ProjectConfig = {
   name: string;
   setup: { declinedInstalls: HarnessId[] };
   merge: { queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
-  verification: { prepare: string; check: string; test: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  verification: { prepare: string; check: string; test: string; test_unit: string; test_component: string; test_integration: string; test_soak: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -34,7 +34,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   setup: { declinedInstalls: [] },
   merge: { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
-  verification: { prepare: '', check: '', test: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  verification: { prepare: '', check: '', test: '', test_unit: '', test_component: '', test_integration: '', test_soak: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -59,13 +59,21 @@ name = ${JSON.stringify(c.name)}
 declined_installs = ${JSON.stringify(c.setup.declinedInstalls)}
 
 [verification]
-# cland verify runs nothing until test is set; use cland config set verification.test '<command>'.
+# cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'.
 # prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally.
 prepare = ${JSON.stringify(c.verification.prepare)}
 # check is the fast gate; runs first and on the host before a droplet is made.
 check = ${JSON.stringify(c.verification.check)}
 # test is the suite; its exit code decides the run.
 test = ${JSON.stringify(c.verification.test)}
+# test_unit runs per task, in merge batches and at occasions (T1).
+test_unit = ${JSON.stringify(c.verification.test_unit)}
+# test_component runs per task and at occasions (T2).
+test_component = ${JSON.stringify(c.verification.test_component)}
+# test_integration runs in T3-enabled batches, periodic dev checks and at occasions (T3).
+test_integration = ${JSON.stringify(c.verification.test_integration)}
+# test_soak runs at occasions and in the nightly soak (T4).
+test_soak = ${JSON.stringify(c.verification.test_soak)}
 executor = ${JSON.stringify(c.verification.executor)}
 # Allow default droplet requests to use the local slot when remote is unavailable.
 local_fallback = ${c.verification.localFallback}
@@ -107,8 +115,10 @@ image = ${JSON.stringify(c.verification.droplet.image)}
 [merge]
 # Queue reviewed code heads for batch landing. Documentation and human overrides land immediately.
 queue = ${c.merge.queue}
+# Maximum reviewed heads in one batch.
 batch = ${c.merge.batch}
 batch_tiers = ${JSON.stringify(c.merge.batchTiers)}
+# Start a partial batch after this wait from its oldest request.
 batch_wait = "${c.merge.batchWaitMs / 1000}s"
 
 [sessions]
@@ -202,7 +212,7 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     }
   }
   const verification = (doc.verification ?? {}) as Record<string, unknown>;
-  for (const key of ['prepare', 'check', 'test'] as const) {
+  for (const key of ['prepare', 'check', 'test', 'test_unit', 'test_component', 'test_integration', 'test_soak'] as const) {
     if (verification[key] === undefined) continue;
     if (typeof verification[key] !== 'string') throw new Error(`verification.${key} must be a command string`);
     c.verification[key] = verification[key];

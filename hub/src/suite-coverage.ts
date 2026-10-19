@@ -27,6 +27,22 @@ export function parseCoverageMap(text: string): CoverageMap {
   return map;
 }
 
+/** Combine disjoint tier command receipts from the same admitted tree. */
+export function mergeCoverageMaps(previous: CoverageMap, next: CoverageMap): CoverageMap {
+  if (previous.head !== next.head || previous.tree !== next.tree) throw new Error('tier coverage provenance mismatch');
+  const merged = structuredClone(next);
+  merged.testFiles = [...new Set([...previous.testFiles, ...next.testFiles])].sort();
+  for (const [file, entry] of Object.entries(previous.files)) {
+    const target = merged.files[file] ??= { functions: [] };
+    for (const fn of entry.functions) {
+      const prior = target.functions.find(f => f.start === fn.start && f.end === fn.end);
+      if (prior) prior.tests = [...new Set([...prior.tests, ...fn.tests])].sort();
+      else target.functions.push(structuredClone(fn));
+    }
+  }
+  return merged;
+}
+
 export async function coverageMaps(root: string): Promise<Array<{ map: CoverageMap; pointer: CoveragePointer }>> {
   const dir = coveragePointers(root);
   const names = await readdir(dir).catch(error => { if (error.code === 'ENOENT') return []; throw error; });

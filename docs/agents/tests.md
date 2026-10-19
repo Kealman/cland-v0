@@ -13,6 +13,39 @@ planted strict-option/import errors before the switch.
 
 ## Tiers and the merge queue
 
+### Project commands
+
+`[verification]` records POSIX shell command strings, independent of the stack.
+`check` is the fast gate. `prepare` installs dependencies on the remote executor.
+Set available runtime tiers with `cland config set verification.test_unit '<command>'`
+and the corresponding `test_component`, `test_integration` and `test_soak` keys.
+Empty tier commands are unset. A candidate worktree with a nonempty `test` and
+no nonempty tier commands keeps its whole-test execution even under a tiered
+hub root. Candidates with no test commands inherit the root's commands.
+Commands are pinned at admission, including the
+selected tier plan; queued runs keep those commands after a config reload.
+
+| Run | Commands after check |
+| --- | --- |
+| Task with hosting merge queue enabled | `test_unit`, `test_component` |
+| Merge batch | Commands matching `merge.batch_tiers` (default unit/integration; this repo unit only) |
+| Periodic `dev-t3` | `test_integration` |
+| Integrated dev, explicit all, or task without batch protection | unit, component, integration |
+| Stage, epic, release or nightly soak | all four |
+
+Each executed tier reports its exit code, duration and output tail. Projects
+without cland file/duration manifests still use the command plan; the configured
+`run_timeout` bounds their nightly run without cland-specific repetition estimates. A project
+with only `test` set runs that whole command per task and retains the default
+`[merge] queue = false`; it has no tier split. Set `merge.queue = true` for batch
+landing. `merge.batch` (default 3) caps heads per batch; `merge.batch_wait`
+(default `"10m"`) starts a partial batch after the oldest request has waited.
+Both settings are writable with `cland config set`.
+
+This repository uses `node hub/test/run-suite.ts --tier T1` through `T4`.
+The runner narrows the admitted file selection to that tier, preserving all T1
+rules and coverage-selected T2 files.
+
 ### Test levels (D53)
 
 Every test belongs to one of four runtime tiers, T1–T4. T0 is the static check before a run. D53 (docs/spec/v0.1.4.md) makes moving tests to the lowest adequate tier the project's top priority. The study is A-4143. `hub/test/tiers.json` declares runtime tiers; manifest lint, source guards and the resource tripwire check their boundaries. Reviewers apply the rules below where enforcement is still report-only.

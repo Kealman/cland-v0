@@ -1,3 +1,4 @@
+import { verificationSteps, verificationStepCommand } from '../../verification-plan.ts';
 import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, MachineTransport } from './dependencies.ts';
 import { execFile } from 'node:child_process';
@@ -61,14 +62,18 @@ export class DropletRun {
     const transport = selectionTransport(run.selection, join(local, 'selection.json'));
     if (transport.file) await writeFile(join(local, 'selection.json'), transport.file, { mode: 0o600 });
     const selectionEnv = transport.file ? `unset CLAND_SUITE_SELECTION\nexport CLAND_SUITE_SELECTION_FILE=${dir}/selection.json` : `unset CLAND_SUITE_SELECTION_FILE\nexport CLAND_SUITE_SELECTION=${quote(transport.env.CLAND_SUITE_SELECTION!)}`;
-    const env = `${run.limits ? `export CLAND_SUITE_LIMITS=${quote(JSON.stringify(run.limits))}\nexport CLAND_SUITE_LIMITS_CWD="$(pwd -P)"\n` : ''}export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}${selectionEnv}\nexport FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
+    const env = `${run.limits ? `export CLAND_SUITE_LIMITS=${quote(JSON.stringify(run.limits))}\nexport CLAND_SUITE_LIMITS_CWD="$(pwd -P)"\n` : ''}export CLAND_SUITE_EXECUTOR=droplet\n${run.workers === undefined ? '' : `export CLAND_SUITE_WORKERS=${run.workers}\n`}${selectionEnv}\n${run.commands?.plan ? 'export CLAND_COVERAGE_APPEND=1\n' : 'unset CLAND_COVERAGE_APPEND\n'}export FORCE_COLOR=0\nexport NO_COLOR=1\n${run.selection?.recordCoverage ? `export CLAND_COVERAGE_OUTPUT=${dir}/coverage-map.json\n` : ''}`;
     await writeFile(join(local, 'env'), env, { mode: 0o600 });
     const lines = recordedCommands(run);
-    const commands = (['check', 'test'] as const).map(name => {
-      const line = lines[name];
-      if (!line) return "echo 'check: not set'";
-      const command = `echo ${quote(`$ ${line}`)}\n/bin/sh -c ${quote(line)} || exit $?`;
-      if (name === 'test') return `rmdir /tmp/cland-suite.lock; trap - EXIT\n${command}`;
+    let released = false;
+    const commands = (!lines.check ? ["echo 'check: not set'"] : []).concat(verificationSteps(lines).map(step => {
+      const { name, command: line } = step;
+      const command = `echo ${quote(`$ ${line}`)}\n/bin/sh -c ${quote(verificationStepCommand(step))} || exit $?`;
+      if (name !== 'check') {
+        const release = released ? '' : 'rmdir /tmp/cland-suite.lock; trap - EXIT\n';
+        released = true;
+        return `${release}${command}`;
+      }
       const gate = run.hostGate;
       const fallback = `echo 'typecheck: droplet'\n${command}`;
       if (!gate?.tree || gate.code !== 0 || gate.command !== line) return fallback;
@@ -85,7 +90,7 @@ git rm --quiet -r --cached --ignore-unmatch -- '.cland/tasks' '.cland/RULES.md' 
 git write-tree
 )`;
       return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nelse\n${fallback}\nfi`;
-    }).join('\n');
+    })).join('\n');
     // The typecheck owns the machine compatibility lock; the package runner then
     // takes its own compatibility leases, including cross-package smoke phases.
     const config = run.config ?? await readFile(join(this.#root, '.cland/config.toml'), 'utf8').then(text => parseConfig(text, basename(this.#root), this.#env), error => { if (error.code === 'ENOENT') return defaultConfig(basename(this.#root)); throw error; });

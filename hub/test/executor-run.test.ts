@@ -203,24 +203,27 @@ test('droplet delivery uses recorded shell lines after the project config change
   const f = await fixture(t, { hub: projectHub, test: 'exit 91', typecheck: 'exit 92' });
   const path = join(f.root, '.cland/config.toml');
   const config = parseConfig(await readFile(path, 'utf8'), 'recorded commands');
-  Object.assign(config.verification, { prepare: 'exit 93', check: 'printf recorded-check', test: 'printf recorded-test' });
+  Object.assign(config.verification, { prepare: 'exit 93', check: 'printf recorded-check', test: 'exit 96', test_unit: 'printf recorded-test', test_component: 'printf recorded-component; exit 7', test_integration: 'printf must-not-run' });
   await writeFile(path, renderConfig(config));
   f.api.beforeCreate(async () => {
-    Object.assign(config.verification, { check: 'exit 94', test: 'exit 95' });
+    Object.assign(config.verification, { check: 'exit 94', test: 'exit 95', test_unit: 'exit 98' });
     await writeFile(path, renderConfig(config));
   });
   const job = await f.launch('--fresh');
   const result = await f.result(job.id);
-  assert.match(result.text, /exit 0/, result.text);
+  assert.match(result.text, /exit 7/, result.text);
   const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
-  assert.match(log, /Commands: check printf recorded-check · test printf recorded-test/);
+  assert.match(log, /Commands: check printf recorded-check · test exit 96/);
   assert.match(log, /Host gate: printf recorded-check/);
-  assert.match(log, /recorded-test/);
+  assert.match(result.text, /tier T1: exit 0; duration \d+ s; output tail: recorded-test/);
+  assert.match(result.text, /tier T2: exit 7; duration \d+ s; output tail: recorded-component/);
+  assert.doesNotMatch(log, /\$ printf must-not-run|\$ exit 98/);
   assert.equal(f.api.machineDirs.size, 1);
   for (const directory of f.api.machineDirs.values()) {
     const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
     assert.match(script, /\/bin\/sh -c 'printf recorded-check' \|\| exit \$\?/);
-    assert.match(script, /\/bin\/sh -c 'printf recorded-test' \|\| exit \$\?/);
+    assert.match(script, /tier T1: exit %s/);
+    assert.match(script, /tier T2: exit %s/);
     assert.doesNotMatch(script, /exit 9[1-5]/);
   }
   assert.deepEqual(f.api.droplets, []);

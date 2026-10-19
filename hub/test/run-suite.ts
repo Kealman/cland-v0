@@ -1,3 +1,5 @@
+import { mergeCoverageMaps, parseCoverageMap } from '../src/suite-coverage.ts';
+import { tierSuiteSelection } from '../src/suite-selection.ts';
 // One machine ticket admits an invocation; full runs retain both locks across phases.
 import { createConnection } from 'node:net';
 import { promisify } from 'node:util';
@@ -249,7 +251,11 @@ process.chdir(cwd);`);
       if (loadResult.failed) return 1;
     }
     if (recording && output && coverageRaw && !interruption.signal) {
-      const map = await reduceCoverage(resolve(options.cwd ?? process.cwd()), coverageRaw, recording, [...coverageFiles]);
+      let map = await reduceCoverage(resolve(options.cwd ?? process.cwd()), coverageRaw, recording, [...coverageFiles]);
+      if (process.env.CLAND_COVERAGE_APPEND === '1') {
+        const previous = await readFile(output, 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+        if (previous !== null) map = mergeCoverageMaps(parseCoverageMap(previous), map);
+      }
       await writeFile(output, JSON.stringify(map), { mode: 0o600 });
       process.stdout.write(`suite coverage map ${output}; head ${map.head}; tree ${map.tree}; ${map.testFiles.length} test files; ${Object.keys(map.files).length} source files\n`);
       await rm(coverageRaw, { recursive: true, force: true });
@@ -364,6 +370,13 @@ async function humanQueue(cwd: string, selection: SuiteSelection, token: string,
 
 /** Plan package entry points without acquiring locks or starting test processes. */
 export async function packageSuitePlan(cwd: string, mode: string, extra: string[], locks: { hub: string; nvim: string }, env: NodeJS.ProcessEnv = process.env) {
+  const tierIndex = extra.indexOf('--tier');
+  const tier = tierIndex < 0 ? undefined : extra[tierIndex + 1];
+  if (tierIndex >= 0) {
+    if (!['T1', 'T2', 'T3', 'T4'].includes(tier ?? '')) throw new Error('--tier requires T1, T2, T3 or T4');
+    extra = extra.filter((_, i) => i !== tierIndex && i !== tierIndex + 1);
+    if (extra.length) throw new Error('--tier cannot be combined with explicit test targets');
+  }
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
   let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv(env) ?? await selectPackageSuite(cwd, mode as SuiteRequest);
   if (!extra.length && mode === 'all' && selection.tiers?.join(',') === 'T1,T2') {
@@ -371,6 +384,7 @@ export async function packageSuitePlan(cwd: string, mode: string, extra: string[
     selection = { ...full, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
   }
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
+  if (tier) selection = tierSuiteSelection(selection, tier as 'T1' | 'T2' | 'T3' | 'T4');
   const executor = env.CLAND_SUITE_EXECUTOR === 'droplet' ? 'droplet' : 'local';
   const workers = env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor, env)).workers : Number(env.CLAND_SUITE_WORKERS);
   if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
@@ -381,7 +395,7 @@ export async function packageSuitePlan(cwd: string, mode: string, extra: string[
   // while holding machine would deadlock a live legacy Neovim-first waiter.
   // A single ticket/lease spans both phases; single-phase admission is unchanged.
   const lockDirs = extra.length && mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
-  return { selection, phases, tierPlan, suites, lockDirs };
+  return { selection, phases, tierPlan, suites, lockDirs, targeted: extra.length > 0 };
 }
 
 export async function runPackageSuite(mode: string, extra: string[] = [], options: { cwd?: string; lockDirs?: { hub: string; nvim: string } } = {}): Promise<number> {
@@ -391,7 +405,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
   const inherited = inheritedLease();
   const locks = options.lockDirs ?? { hub: inherited?.dirs[0] ?? '/tmp/cland-suite.lock', nvim: inherited?.dirs[1] ?? '/tmp/cland-suite-nvim.lock' };
-  const { selection, phases, tierPlan, suites, lockDirs: plannedLocks } = await packageSuitePlan(cwd, mode, extra, locks);
+  const { selection, phases, tierPlan, suites, lockDirs: plannedLocks, targeted } = await packageSuitePlan(cwd, mode, extra, locks);
   let lockDirs = plannedLocks;
   const interruption: Interruption = { signal: null };
   // Keep the first signal latched through final cleanup, after runSuite evaluates its return.
@@ -407,7 +421,7 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
       queue = await humanQueue(cwd, selection, token, force, () => interruption.signal !== null);
       if (queue?.locks && !options.lockDirs) lockDirs = queue.locks;
     }
-    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, tierPlan, phaseNames: phases.map(phase => phase.name), workers: phases.map(phase => phase.workers), ...(!extra.length ? { resources: phases.map(phase => phase.resource) } : {}) });
+    const code = await runSuite(suites, { cwd, lockDirs, interruption, selection, force, token, tierPlan, phaseNames: phases.map(phase => phase.name), workers: phases.map(phase => phase.workers), ...(!targeted ? { resources: phases.map(phase => phase.resource) } : {}) });
     return interruption.signal ? (interruption.signal === 'SIGINT' ? 130 : 143) : code;
   } catch (error) {
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
@@ -425,5 +439,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const mode = filtered[0] && ['auto', 'all', 'hub', 'nvim'].includes(filtered[0]) ? filtered.shift()! : 'auto';
   const packageRoot = fileURLToPath(new URL('../../', import.meta.url));
   const cwd = resolve(process.cwd()) === resolve(packageRoot, 'hub') ? packageRoot : process.cwd();
-  process.exitCode = await runPackageSuite(forceAll ? 'all' : mode, forceAll || mode === 'all' ? filtered.filter(arg => arg === '--force') : filtered, { cwd });
+  process.exitCode = await runPackageSuite(forceAll ? 'all' : mode, forceAll || mode === 'all' ? filtered.filter((arg, i) => arg === '--force' || arg === '--tier' || filtered[i - 1] === '--tier') : filtered, { cwd });
 }

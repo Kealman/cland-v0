@@ -21,6 +21,17 @@ export function taskSuiteSelection(selection: SuiteSelection, branch: string, re
     tiers: ['T1', 'T2'], loadGate: true };
 }
 
+/** Narrow an admitted package plan for one configured tier command. */
+export function tierSuiteSelection(selection: SuiteSelection, tier: NonNullable<SuiteSelection['tiers']>[number]): SuiteSelection {
+  const narrowed = { ...selection, tiers: [tier], soak: tier === 'T4' };
+  // Task coverage narrows components only; the unit command still proves all rules.
+  if (tier === 'T1' && selection.tiers?.join(',') === 'T1,T2' && !selection.shard) {
+    const { tests: _tests, nvimTests: _nvimTests, ...whole } = narrowed;
+    return { ...whole, mode: 'full', nvimFull: true };
+  }
+  return narrowed;
+}
+
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
 export const HUB_SMOKE = ['hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/startup-smoke.test.ts'];
 export const NVIM_SMOKE = ['nvim/test/scenarios/workbench.test.ts'];

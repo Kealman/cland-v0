@@ -72,7 +72,8 @@ When the rules give the stack to the crew, propose it with the reason in the hum
 
 On that same yes, record the commands with:
 
-- `cland config set verification.test "<line>"`: required; `cland verify` refuses to run without a real test command.
+- `cland config set verification.test "<line>"`: the whole suite when the stack has no tiers. Verification requires a real test command or at least one tier command.
+- When the stack has tiers, set `verification.test_unit`, `verification.test_component`, `verification.test_integration` and `verification.test_soak` to its available commands with `cland config set`. Leave unavailable tiers empty. Include the tier commands in the agreed stack rule; tasks run unit/component, merge batches their configured `merge.batch_tiers` (unit/integration by default), periodic dev checks integration, and occasions all four. Set `merge.queue` to `true` for batch protection; `merge.batch` and `merge.batch_wait` control batch size and wait.
 - `cland config set verification.check "<line>"`: optional, when the stack has a fast gate.
 - `cland config set verification.prepare "<line>"`: optional, when its checks need an install.
 

@@ -1,3 +1,4 @@
+import { verificationSteps, verificationStepCommand } from '../verification-plan.ts';
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
 import { execFile } from 'node:child_process';
 import { readFile, access, rename, writeFile } from 'node:fs/promises';
@@ -63,10 +64,10 @@ export async function suiteWorker(input: string): Promise<void> {
     process.stdout.write(`platform ${platform.os} ${platform.arch} ${platform.release} · Node ${node} · Neovim ${nvim}\n`);
     const commands = recordedCommands(job);
     if (!admitted) code = 1;
-    for (const name of (admitted ? ['check', 'test'] as const : [])) {
-      const line = commands[name];
-      if (!line) { process.stdout.write('check: not set\n'); continue; }
-      if (name === 'test' && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
+    if (!commands.check) process.stdout.write('check: not set\n');
+    for (const step of (admitted ? verificationSteps(commands) : [])) {
+      const { name, command: line } = step;
+      if (name !== 'check' && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
       if (signal) break;
       if (name === 'check') process.stdout.write('typecheck: local\n');
       process.stdout.write(`\n$ ${line}\n`);
@@ -88,9 +89,11 @@ export async function suiteWorker(input: string): Promise<void> {
         if (transport.file) await writeFile(path, transport.file, { mode: 0o600 });
         Object.assign(env, transport.env);
       }
-      if (job.selection?.recordCoverage && name === 'test') env.CLAND_COVERAGE_OUTPUT = join(dirname(job.result), 'coverage-map.json');
+      if (job.selection?.recordCoverage && name !== 'check') env.CLAND_COVERAGE_OUTPUT = join(dirname(job.result), 'coverage-map.json');
       else delete env.CLAND_COVERAGE_OUTPUT;
-      const outcome = await suiteCommand(line, job.cwd, env);
+      if (commands.plan && name !== 'check') env.CLAND_COVERAGE_APPEND = '1';
+      else delete env.CLAND_COVERAGE_APPEND;
+      const outcome = await suiteCommand(verificationStepCommand(step), job.cwd, env);
       code = outcome.code;
       cause = outcome.cause;
       if (code !== 0) break;

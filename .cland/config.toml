@@ -21,6 +21,14 @@ prepare = ""
 check = "npm run check"
 # test is the suite; its exit code decides the run.
 test = "npm test"
+# Unit rules per task, batch and occasion.
+test_unit = "node hub/test/run-suite.ts --tier T1"
+# Coverage-selected components per task, all at occasions.
+test_component = "node hub/test/run-suite.ts --tier T2"
+# Process integration in periodic dev checks, T3-enabled batches and at occasions.
+test_integration = "node hub/test/run-suite.ts --tier T3"
+# Long-running checks at occasions and nightly.
+test_soak = "node hub/test/run-suite.ts --tier T4"
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = 1
 # D27 set 2 for the v0.1.2 build; the human raised it to 4 on 2026-10-15 (ask 35ca68c2), within the same $3 daily cap.

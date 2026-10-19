@@ -1,3 +1,5 @@
+import { VERIFY_OCCASIONS } from '../protocol.ts';
+import { pinVerificationPlan } from '../verification-plan.ts';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -67,7 +69,7 @@ export class Demos {
       const head = (await this.#git(['rev-parse', '--verify', `${commit ?? 'dev'}^{commit}`])).trim();
       await this.#git(['merge-base', '--is-ancestor', head, 'dev']);
       const config = this.executor.projectConfig?.() ?? await readFile(join(this.root, '.cland/config.toml'), 'utf8').then(s => parseConfig(s, basename(this.root), this.#env), e => { if (e.code === 'ENOENT') return defaultConfig(basename(this.root)); throw e; });
-      const commands = await verificationCommands(this.root, this.root, this.#env);
+      const commands = pinVerificationPlan(await verificationCommands(this.root, this.root, this.#env), { branch: 'dev', mode: 'all', occasion: VERIFY_OCCASIONS.epic });
       const id = `demo-${randomUUID()}`;
       authorize();
       const lease = await this.executor.acquire({ id }, new Date(this.executor.clock.now().getTime() + testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env)).toISOString(), { epic: epic.id, commit: head, commands }, config);

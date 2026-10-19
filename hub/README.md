@@ -1874,6 +1874,19 @@ clean projects and planted strict-option/import errors (T-427).
 
 ### Remote executors: droplets
 
+Project test commands are configured under `[verification]`: `test_unit` (T1),
+`test_component` (T2), `test_integration` (T3), and `test_soak` (T4).
+Each is a POSIX shell command; empty means unset. Use
+`cland config set verification.test_unit '<command>'` to store it verbatim.
+Tasks with hosting batch protection run `check`, unit and component; merge batches run commands matching `merge.batch_tiers` (default unit/integration; this repo unit only); periodic `dev-t3` runs integration;
+integrated dev, explicit `all` and tasks without batch protection run T1–T3; occasions and nightly soak run all
+four. Tier lines report exit, duration and output tail. Admission records the
+commands so config reloads cannot change queued evidence. With only `test` set,
+the whole command runs per task and `[merge] queue` defaults to `false`.
+Enable it for batch landing; `merge.batch` (default 3) and `merge.batch_wait`
+(default `"10m"`) set the maximum heads and oldest-request wait, and both are
+settable through `cland config set`. See [test guidance](../docs/agents/tests.md).
+
 Choose the project default with `[verification] executor = "local"` (the default)
 or `"droplet"` in `.cland/config.toml`; restart the hub to apply scheduling changes.
 `cland verify --executor local|droplet --report <topic>` overrides it for one run.

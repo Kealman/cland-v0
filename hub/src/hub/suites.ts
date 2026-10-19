@@ -1,3 +1,4 @@
+import { pinVerificationPlan, verificationSteps } from '../verification-plan.ts';
 import { loadProofIdentities, skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
@@ -27,7 +28,7 @@ import { machineEnv } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { ExecutorKind, HostGate, Lease, Platform, RunRef } from '../executor/executor.ts';
 import { idNumber } from '../tracker/item.ts';
-import { describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
+import { taskSuiteSelection, describeSelection, sameSuiteSelection, type SuiteSelection, type SuiteRequest } from '../suite-selection.ts';
 import { parseCoverageMap, type CoverageMap } from '../suite-coverage.ts';
 import { VerificationWait } from './verification-wait.ts';
 import { classifyCover, deriveCover, recentCovers } from './suite-cover.ts';
@@ -136,8 +137,10 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   // summaries ahead of timings and failure excerpts in the bounded delivery.
   const lintTiers = lines.filter(line => line.startsWith('test lint tier:')).length;
   const lintFindings = lines.filter(line => line.startsWith('test lint finding:')).length;
+  const executedTiers = tierLines.filter(line => /^tier T[1-4]: exit /.test(line));
   const priority = [
-    ...['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) ? [lastTiers.get(key)!] : []),
+    ...executedTiers,
+    ...['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) && !executedTiers.includes(lastTiers.get(key)!) ? [lastTiers.get(key)!] : []),
     ...new Set(lines.filter(line => line.startsWith('test lint (report only):'))),
     ...durationBudgetSummary(lines),
     ...(lintTiers || lintFindings ? [`test lint detail: ${lintTiers} tier lines; ${lintFindings} finding lines; log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
@@ -399,7 +402,7 @@ export class Suites {
     // Validate the candidate as before; only the hub owns execution policy.
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
-    const commands = await verificationCommands(input.cwd, this.#root, this.#env);
+    let commands = await verificationCommands(input.cwd, this.#root, this.#env);
     const workers = input.workers ?? limits.workers;
     if (!input.dryRun && this.#jobs.some(job => this.#active(job) && suiteOwner(job) === suiteOwner(input))) {
       // A retry needs only the current head, not another expensive candidate inspection.
@@ -417,6 +420,8 @@ export class Suites {
       const { tiers: _tiers, ...broad } = admitted;
       admitted = { ...broad, reason: `${broad.reason}; hosting merge queue disabled: retaining process coverage` };
     }
+    // Command tiers apply to any stack, without requiring cland's own file manifest.
+    if (commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
     const files = input.devT3Probe?.files ?? input.batch?.diagnostic?.files;
     if (files && (!files.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
@@ -425,12 +430,13 @@ export class Suites {
         shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length) },
         ...(nvimTests?.length ? { nvimTests } : {}) }
       : occasionSelection(admitted, input.occasion, config?.merge.batchTiers);
+    commands = pinVerificationPlan(commands, { branch, mode: input.mode, ...(input.occasion ? { occasion: input.occasion } : {}), selection, queueEnabled: config?.merge.queue ?? false });
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     if (!input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
     const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
-    if (input.occasion === 'soak') selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
+    if (input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
     if (input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 
     if (input.dryRun) {
@@ -444,7 +450,7 @@ export class Suites {
       if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during admission; try dry-run again');
       authorize();
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
-        lines: [describeSelection(selection), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), lintLines[0]!, ...budgetLines, ...lintLines.slice(1), ...(input.diagnostics ? [] : ['reachability diagnostics: `cland verify --dry-run --diagnostics`'])] };
+        lines: [describeSelection(selection), ...(commands.plan ? [`command plan: ${commands.plan.map(step => `${step.name}: ${step.command}`).join(' · ')}`] : []), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), lintLines[0]!, ...budgetLines, ...lintLines.slice(1), ...(input.diagnostics ? [] : ['reachability diagnostics: `cland verify --dry-run --diagnostics`'])] };
     }
     const existing = this.#existingSubmission(input, head, authorize);
     if (existing) return existing;
@@ -464,7 +470,7 @@ export class Suites {
     const job: SuiteJob = { ...input, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
-    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\nPrepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\n${commands.plan ? 'Tier commands: ' + commands.plan.map(step => `${step.name} ${step.command}`).join(' · ') + '\n' : ''}Prepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
@@ -584,7 +590,7 @@ export class Suites {
   #cached(tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => j.commands?.prepare === commands.prepare && j.commands.check === commands.check && j.commands.test === commands.test && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
+    const job = this.#jobs.findLast(j => JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
@@ -803,7 +809,7 @@ export class Suites {
     if (child?.pid && child.exitCode === null && child.signalCode === null) try { process.kill(-child.pid, 'SIGTERM'); } catch {}
   }
   async #hostGate(job: SuiteJob): Promise<void> {
-    const { check: command } = recordedCommands(job);
+    const command = verificationSteps(recordedCommands(job)).find(step => step.name === 'check')?.command;
     if (!command) return;
     if (this.#options.dropletServices?.hostGate) {
       job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));
