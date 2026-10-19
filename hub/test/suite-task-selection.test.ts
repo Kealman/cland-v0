@@ -1,48 +1,51 @@
-// T1: task cadence is proved through the public selection and package planners in isolated files.
-import { verificationFixture } from './verification-fixture.ts';
-import test, { before, after } from 'node:test';
+// T1: task cadence through public selection/package planners and an immutable in-memory repository.
+import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import fs from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, matchesGlob } from 'node:path';
 import { taskSuiteSelection, type SuiteSelection } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
 import { packageSuitePlan } from './run-suite.ts';
 import { verificationCommands } from '../src/verification-commands.ts';
 
-// These five planner cases read identical immutable inputs. Build their isolated
-// repository once per file instead of recreating hundreds of files per case.
-let repositoryRoot: string | undefined;
-let repository: Awaited<ReturnType<typeof fixture>>;
-before(async () => { repository = await fixture(); });
-after(async () => { if (repositoryRoot) await rm(repositoryRoot, { recursive: true, force: true }); });
-
-async function fixture() {
-  const root = repositoryRoot = await mkdtemp(join(tmpdir(), 'task-tier-plan-'));
-  return plannerFixture(root, await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
-}
-
-async function plannerFixture(root: string, source: string) {
+// T1 planners need the complete repository inventory, not hundreds of native
+// empty-file writes and reads. Model those immutable files at the filesystem edge.
+const source = await fs.readFile(new URL('./tiers.json', import.meta.url), 'utf8');
+const fixture = (t: TestContext) => plannerFixture(t, source);
+function plannerFixture(t: TestContext, source: string) {
+  const root = join(tmpdir(), 'task-tier-plan-memory');
   const manifest = JSON.parse(source) as TierManifest;
-  const files = Object.keys(manifest.tests);
-  // These bounded empty-file writes need no asynchronous workers or repeated
-  // directory creation. Every write is complete before fixture cleanup can run.
-  for (const path of new Set(files.map(file => join(root, file, '..')))) mkdirSync(path, { recursive: true });
-  for (const file of files) writeFileSync(join(root, file), '');
-  await writeFile(join(root, 'hub/test/tiers.json'), source);
-  await verificationFixture(root);
-  await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { check: 'npm run typecheck && npm run test:lint', 'test:lint': 'node lint.ts' } }));
-  await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
+  const files = new Map(Object.keys(manifest.tests).map(file => [file, '']));
+  files.set('hub/test/tiers.json', source);
+  files.set('.cland/config.toml', '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
+  const read = fs.readFile;
+  t.mock.method(fs, 'readFile', (async (...args: Parameters<typeof fs.readFile>) => {
+    const path = String(args[0]);
+    if (!path.startsWith(root + '/')) return read(...args);
+    const text = files.get(path.slice(root.length + 1));
+    if (text === undefined) throw Object.assign(new Error(`missing fixture file: ${path}`), { code: 'ENOENT' });
+    return text;
+  }) as typeof fs.readFile);
+  t.mock.method(fs, 'glob', (async function* (pattern, options) {
+    assert.equal(options?.cwd, root, 'planner reads only its fixture repository');
+    const patterns = typeof pattern === 'string' ? [pattern] : pattern;
+    const exact = new Set(patterns.filter(pattern => !['*', '?', '{', '['].some(token => pattern.includes(token))));
+    const wildcard = patterns.filter(pattern => !exact.has(pattern));
+    for (const file of files.keys()) if (exact.has(file) || wildcard.some(pattern => matchesGlob(file, pattern))) yield file;
+  }) as typeof fs.glob);
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
   const tier = (file: string) => { const value = manifest.tests[file]!; return typeof value === 'string' ? value : value.tier; };
   const plan = async (selection: SuiteSelection) => (await packageShards(root, selection.mode, undefined, selection, { workers: 2 })).flatMap(phase => phase.targets).sort();
   return { root, manifest, tier, plan };
 }
 
-test('task cadence plans all T1 plus selected T2 from the repository manifest', async () => {
-  const f = repository;
+test('task cadence plans all T1 plus selected T2 from the repository manifest', async t => {
+  const f = fixture(t);
   const selection = taskSuiteSelection({ mode: 'hub-selected', files: ['hub/src/parser.ts'], reason: 'coverage', tests: ['hub/test/merge-queue.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts'], nvimTests: ['nvim/test/client-component.test.ts', 'nvim/test/scenarios/workbench.test.ts'] }, 't/T-713', 'auto', true);
   const planned = await f.plan(selection);
   assert.deepEqual(planned, [...Object.keys(f.manifest.tests).filter(file => f.tier(file) === 'T1'), 'hub/test/merge-queue.test.ts', 'nvim/test/client-component.test.ts'].sort());
@@ -52,11 +55,9 @@ test('task cadence plans all T1 plus selected T2 from the repository manifest', 
 });
 
 test('per-tier commands preserve the repository task file plan', async t => {
-  const root = await mkdtemp(join(tmpdir(), 'tier-selection-plan-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
   // T0 inventories the repository manifest. Selection permutations need only
   // enough files to distinguish whole T1, selected T2, smoke and soak exclusions.
-  const small = await plannerFixture(root, serializeTierManifest({ version: 1, tests: {
+  const small = plannerFixture(t, serializeTierManifest({ version: 1, tests: {
     'hub/test/unit.test.ts': 'T1', 'nvim/test/unit.test.ts': 'T1',
     'hub/test/merge-queue.test.ts': 'T2', 'hub/test/other-component.test.ts': 'T2',
     'nvim/test/client-component.test.ts': 'T2', 'nvim/test/other-component.test.ts': 'T2',
@@ -84,22 +85,22 @@ test('per-tier commands preserve the repository task file plan', async t => {
   }
 });
 
-test('a task coverage fallback widens T2 without admitting T3 or T4', async () => {
-  const f = repository;
+test('a task coverage fallback widens T2 without admitting T3 or T4', async t => {
+  const f = fixture(t);
   for (const mode of ['full', 'hub-only'] as const) {
     const selection = taskSuiteSelection({ mode, files: ['hub/src/protocol.ts'], reason: 'coverage fallback', nvimTests: ['nvim/test/client-component.test.ts'] }, 't/T-713', 'auto', true);
     assert.deepEqual(await f.plan(selection), Object.keys(f.manifest.tests).filter(file => ['T1', 'T2'].includes(f.tier(file))).sort());
   }
 });
 
-test('a Neovim task still proves all T1 while running only Neovim T2', async () => {
-  const f = repository;
+test('a Neovim task still proves all T1 while running only Neovim T2', async t => {
+  const f = fixture(t);
   const selection = taskSuiteSelection({ mode: 'nvim-only', files: ['nvim/lua/cland/thread.lua'], reason: 'Neovim diff' }, 't/T-713', 'auto', true);
   assert.deepEqual(await f.plan(selection), Object.keys(f.manifest.tests).filter(file => f.tier(file) === 'T1' || file.startsWith('nvim/') && f.tier(file) === 'T2').sort());
 });
 
-test('integrated dev, explicit all and occasions retain process coverage', async () => {
-  const f = repository;
+test('integrated dev, explicit all and occasions retain process coverage', async t => {
+  const f = fixture(t);
   for (const [branch, requested, occasion] of [['dev', 'auto', undefined], ['t/T-713', 'all', undefined], ['dev', 'all', 'stage'], ['detached', 'all', 'batch']] as const) {
     const selection = occasionSelection(taskSuiteSelection({ mode: 'full', files: [], reason: 'full' }, branch, requested, true), occasion);
     const planned = await f.plan(selection);
@@ -109,8 +110,8 @@ test('integrated dev, explicit all and occasions retain process coverage', async
 });
 
 
-test('queue-disabled projects retain process coverage on task branches', async () => {
-  const f = repository;
+test('queue-disabled projects retain process coverage on task branches', async t => {
+  const f = fixture(t);
   const selection = taskSuiteSelection({ mode: 'full', files: [], reason: 'coverage fallback' }, 't/T-713', 'auto', false);
   assert.equal(selection.tiers, undefined);
   assert.ok((await f.plan(selection)).includes('hub/test/scenarios/hub-lifecycle.test.ts'));

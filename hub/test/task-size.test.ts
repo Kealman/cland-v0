@@ -1,4 +1,5 @@
 // T2 component: tracker rules over real sockets and CLI with in-process hub/MCP peers.
+import { componentTask } from './component-task.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -8,27 +9,29 @@ import { TrackerIndex } from '../src/tracker/index-db.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { cland, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 
+// Input tables use the production parser/socket helper; the next component
+// case retains native CLI framing for size and regression fields.
 test('CLI tasks require a size while other kinds refuse it', async t => {
   const root = await tempProject(t);
   await projectHub(t, root);
   for (const args of [[], ['--kind', 'task']]) {
-    const result = await cland(root, 'task', 'create', 'Missing size', ...args);
+    const result = await componentTask(root, 'task', 'create', 'Missing size', ...args);
     assert.equal(result.code, 1);
     assert.match(result.stderr, /a task needs a size: XS, S, M or L/);
   }
-  const nonTask = await cland(root, 'task', 'create', 'Container', '--kind', 'epic', '--size', 'S');
+  const nonTask = await componentTask(root, 'task', 'create', 'Container', '--kind', 'epic', '--size', 'S');
   assert.equal(nonTask.code, 1);
   assert.match(nonTask.stderr, /size.*epic/);
-  const created = await cland(root, 'task', 'create', 'Sized task', '--size', 'S', '--json');
+  const created = await componentTask(root, 'task', 'create', 'Sized task', '--size', 'S', '--json');
   assert.equal(created.code, 0, created.stderr);
   assert.equal(JSON.parse(created.stdout).item.size, 'S');
   const id = JSON.parse(created.stdout).item.id;
   for (const args of [['create', 'Too large'], ['edit', id]]) {
-    const refused = await cland(root, 'task', ...args, '--size', 'XL');
+    const refused = await componentTask(root, 'task', ...args, '--size', 'XL');
     assert.equal(refused.code, 1);
     assert.match(refused.stderr, /XL tasks must be split/);
   }
-  const unchanged = await cland(root, 'task', 'view', id, '--json');
+  const unchanged = await componentTask(root, 'task', 'view', id, '--json');
   assert.equal(JSON.parse(unchanged.stdout).item.size, 'S');
 });
 

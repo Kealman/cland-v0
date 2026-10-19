@@ -1,6 +1,7 @@
 // T2: real suite.start frames, in-process hub and Git object adapter; no native children.
 // Git startup costs use FakeClock so repository-scale admission needs no wall-clock wait.
 import { verificationFixture } from './verification-fixture.ts';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -97,10 +98,14 @@ async function fixture(t: TestContext, coldViolation = false) {
   childProcess.execFile = fakeExec as typeof childProcess.execFile;
   syncBuiltinESMExports();
   t.after(() => { childProcess.execFile = nativeExec; syncBuiltinESMExports(); });
+  // Load modules after installing Git I/O: selectPackageSuite captures its
+  // promisified execFile at module initialization.
   const { tempProject, projectHub, connectUi, eventually } = await import('./harness.ts');
   const root = await tempProject(t);
-  await mkdir(join(root, 'hub/test'), { recursive: true });
-  await Promise.all([...files].map(([path, text]) => writeFile(join(root, path), text)));
+  // Bounded fixture writes avoid flooding the native I/O pool with one worker
+  // per manifest path before the admission request under test.
+  mkdirSync(join(root, 'hub/test'), { recursive: true });
+  for (const [path, text] of files) writeFileSync(join(root, path), text);
   const commandConfig = await verificationFixture(root, { typecheck: 'true', testScript: 'true' });
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), `[verification]\n${commandConfig}`);

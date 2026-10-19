@@ -212,7 +212,7 @@ test('reserved or malformed configured levels produce a notice and keep the defa
     await mkdir(join(root, '.cland'), { recursive: true });
     await writeFile(join(root, '.cland/config.toml'), `[tracker]\nlevels = ${levels}\n`);
     await openHub(t, root);
-    assert.equal((await cland(root, 'task', 'create', 'Default', '--kind', 'epic')).code, 0);
+    assert.equal((await componentTask(root, 'task', 'create', 'Default', '--kind', 'epic')).code, 0);
     const ui = await connectUi(t, await readDiscovery(root));
     await eventually('invalid levels notice', async () => {
       const history = await ui.request({ type: 'topic.history', topic: 'agents' });

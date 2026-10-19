@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -203,9 +204,25 @@ test('parallel acquires each reserve shared spend; cap refusals stay local witho
 test('50 parallel acquirers refuse the spend cap after a stalled budget publication', async t => {
   const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 51 }, 'daily_spend_usd=0.1\nlifetime="15m"\nrun_timeout="5m"', true);
   const first = await remote(f); await running(f, first.id);
-  const executor = new DropletExecutor(f.root, f.store, undefined, {
+  // Durable leases/spend are the subject; omit the optional hub-status mirror.
+  const executor = new DropletExecutor(f.root, undefined, undefined, {
     DIGITALOCEAN_TOKEN: 'suite-unit-token', CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state'),
   }, () => f.config, { ...f.machine.dependencies, api: f.api.provider });
+  // Read the actual lease bytes without one thread-pool trip per peer for
+  // each inventory. Writes, main locks and guard contention remain native.
+  const read = fs.readFile;
+  const leaseRoot = join(executor.root, '.cland/run/executor/leases') + '/';
+  const leaseReads = t.mock.method(fs, 'readFile', (async (...args: Parameters<typeof fs.readFile>) => {
+    if (args[1] === 'utf8' && String(args[0]).startsWith(leaseRoot) && String(args[0]).endsWith('/lease.json')) return readFileSync(String(args[0]), 'utf8');
+    return read(...args);
+  }) as typeof fs.readFile);
+  // Atomic bytes/rename are observed here; power-loss flushes are not.
+  const open = fs.open;
+  const fixtureOpen = t.mock.method(fs, 'open', async (...args: Parameters<typeof fs.open>) => {
+    const handle = await open(...args);
+    if ([f.root, executor.root].some(root => String(args[0]).startsWith(join(root, '.cland') + '/'))) t.mock.method(handle, 'sync', async () => {});
+    return handle;
+  });
   const publishing = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
   const rename = fs.rename;
   let stalled = false;
@@ -227,7 +244,7 @@ test('50 parallel acquirers refuse the spend cap after a stalled budget publicat
   } finally {
     release.resolve();
     try { await completed; }
-    finally { fault.mock.restore(); syncBuiltinESMExports(); }
+    finally { fault.mock.restore(); fixtureOpen.mock.restore(); leaseReads.mock.restore(); syncBuiltinESMExports(); }
   }
   const outcomes = await completed;
   assert.equal(outcomes.length, 50);
