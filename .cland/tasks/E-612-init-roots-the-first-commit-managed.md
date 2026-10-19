@@ -3,6 +3,7 @@ id: E-612
 kind: epic
 title: "Init: roots, the first commit, managed settings, categories"
 state: open
+criterion_seq: 6
 labels:
   - epic
   - v0.1.4
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.478Z
-updated: 2026-10-16T16:24:51.547Z
+updated: 2026-10-19T06:11:24.062Z
 ---
 
 ## Summary
@@ -55,7 +56,7 @@ QA runs the demo below on `dev`, through the demo lease where no macOS is needed
 
 Under a scratch HOME holding the hub's state directory, QA runs `cland init` in an empty folder, a repository without commits, a non-empty folder without Git and without a Git identity, a clone whose default branch is `master`, a shallow clone, a subfolder of an initialised project, and HOME itself. It reads each result in `git log`, `git status`, `git branch`, the territory and `cland task list`, and checks that nothing outside the target folder changed. It then runs `cland` in a plain folder, `cland open` in a project not yet set up, `cland --version`, and `cland release --dry-run` with a version that differs from the root package's.
 
-- [ ] C1. `cland init` and `cland update` serve only the current folder or `--dir`, refuse a different discovered root naming both paths, never take HOME as a root, and the hub's state lives in `~/.local/state/cland` with the spend ledger moved there.
+- [ ] C1. `cland init` and `cland update` serve only the current folder or the positional directory argument (`cland init <dir>`, as spec v0.1.4 §3.1 records; Q-599's `--dir` was not adopted), refuse a different discovered root naming both paths, never take HOME as a root, and the hub's state lives in `~/.local/state/cland`, the spend ledger moved there on first locked access while the legacy copy is kept for older hubs.
 - [ ] C2. An empty folder, a repository without commits and a non-empty folder without Git get a first commit of cland's files only, as `cland <cland@local>` when Git has no identity, with the human's files left as they were.
 - [ ] C3. Init accepts any default branch, creates the territory, leaves the root on a clean `dev`, seeds the four categories, refuses a shallow clone with its hint, and ends with `next: cland setup` (`next` in `--json`).
 - [ ] C4. `.claude/settings.json` holds the managed `"worktree": {"bgIsolation": "none"}`, which `cland update` restores and the Claude Code launch settings carry, and `.claude/settings.local.json` overrides it untouched.
