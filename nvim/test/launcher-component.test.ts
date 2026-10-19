@@ -2,7 +2,68 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { eventually } from './fixture.ts';
-import { skip, startShell, requestsOf, onSessionRow, type Shell } from './shell-fixture.ts';
+import { skip, startShell, requestsOf, onSessionRow, proc, statusLine, type Shell } from './shell-fixture.ts';
+import { centreOf } from './stub-client.ts';
+
+const aide = proc('aide-1', 'aide', 'idle');
+// Only shell builtins: keep the stub attachment alive and report its inherited environment.
+const aideAttach = `printf 'open-session=%s\\n' "${'${CLAND_OPEN_SESSION-unset}'}"; read -r line`;
+
+test('CLAND_OPEN_SESSION opens the first listed session in the centre in Terminal mode and is absent from its environment', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.processes!.push(aide);
+    s.attach = { ...s.attach, 'aide-1': aideAttach };
+    s.holdSnapshots = ['session.list'];
+  }, { CLAND_OPEN_SESSION: 'aide-1' }, false);
+  await c.control({ waitSnapshot: 'session.list' });
+  await c.control({ releaseSnapshots: ['session.list'] });
+  const screen = await c.waitScreen(s => centreOf(s).includes('open-session=unset') && statusLine(s).includes('TERMINAL  aide-1'), 'the requested Aide terminal without the hand-over variable');
+  assert.match(centreOf(screen), /open-session=unset/);
+  assert.equal(await c.mode(), 't');
+  assert.equal(await c.lua('return vim.env.CLAND_OPEN_SESSION == nil'), true);
+  assert.equal((await requestsOf(c, 'session.attach'))[0]?.session, 'aide-1');
+});
+
+test('CLAND_OPEN_SESSION waits quietly for a later session list and opens only once across further updates', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.attach = { ...s.attach, 'aide-1': aideAttach };
+  }, { CLAND_OPEN_SESSION: 'aide-1' });
+  assert.equal((await requestsOf(c, 'session.attach')).length, 0, 'an unknown name does not attach');
+  assert.doesNotMatch((await c.screen()).join('\n'), /cannot attach|refused|CLAND_OPEN_SESSION|Press ENTER/);
+  await c.control({ set: { processes: [aide] } });
+  await c.lua("require('cland').refresh_sessions()");
+  await c.waitScreen(s => centreOf(s).includes('open-session=unset') && statusLine(s).includes('TERMINAL  aide-1'), 'the Aide after it appears in a later list');
+  await c.input('<C-\\><C-n><Space>g');
+  await c.waitScreen(s => s.includes('Starting T-12') && statusLine(s).includes('General'), 'General after leaving the terminal');
+  await c.control({ emit: { type: 'session.process', process: { ...aide, state: 'busy' } } });
+  await c.lua("require('cland').refresh_sessions(); assert(vim.wait(5000, function() return next(require('cland').client.snapshots) == nil end))");
+  await launcherBarrier(c);
+  assert.equal(await c.lua("return require('cland.state').S.ui.view.kind"), 'thread');
+  assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'general');
+  assert.equal((await requestsOf(c, 'session.attach')).length, 1, 'later lists and process events do not reopen the terminal');
+});
+
+test('a saved restart view wins over CLAND_OPEN_SESSION and still consumes it', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.processes!.push(aide);
+    s.attach = { ...s.attach, 'aide-1': aideAttach };
+  });
+  // Exercise the public restore path in-process, without restarting the owned Neovim child (T2).
+  await c.lua(`
+    local cland, state = require('cland'), require('cland.state')
+    local snap = state.snapshot()
+    snap.view = { kind = 'inbox' }
+    require('cland.restart').save(snap)
+    cland.client:stop()
+    vim.env.CLAND_OPEN_SESSION = 'aide-1'
+    cland.start({ root = state.S.root, transport = 'stdio', restore = true })
+  `);
+  await c.waitScreen(s => s.includes('Inbox · full width') && s.includes('aide-1'), 'the restored Inbox after the session list');
+  await launcherBarrier(c);
+  assert.equal(await c.lua("return require('cland.state').S.ui.view.kind"), 'inbox');
+  assert.equal(await c.lua('return vim.env.CLAND_OPEN_SESSION == nil'), true);
+  assert.equal((await requestsOf(c, 'session.attach')).length, 0, 'restore does not attach the requested session');
+});
 
 test('the launcher: ␣l opens the form, a role fills its launch defaults, typed values win, Enter submits session.launch; the session shows in the panel', { skip }, async (t) => {
   const c = await startShell(t);

@@ -14,6 +14,7 @@ nvim/bin/cland-nvim [project-dir] [nvim args…]
 - **The project** is the given directory, else the current one. The launcher and the client walk up to the nearest ancestor holding `.git` or `.cland/`, as the hub does, so both work from any directory inside the project.
 - **The hub** is found through `.cland/hub.json`. When no hub runs, or three connects in a row fail on the socket a stale `hub.json` names (a hub killed, a reboot), the client runs `cland hub start` once and connects when it answers. With `CLAND_HUB_TRANSPORT=stdio` the client spawns `cland hub serve --stdio` as its child instead and speaks the frames over its stdin and stdout. Quitting closes the child's stdin, which stops that hub.
 - **The `cland` CLI** is run as `node hub/bin/cland.ts` from this repository; `CLAND_NODE` names another `node`, and `CLAND_COMMAND` (a JSON array) replaces the whole command (the tests' stub hub).
+- **The opening session** can be named with `CLAND_OPEN_SESSION` (setup uses `aide-1`). Once the hub lists it, the client opens its terminal in the centre in Terminal mode, once. The variable is removed at startup before any child inherits it; an unknown name waits quietly, and a saved restart view takes precedence.
 
 The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that order. `NVIM_APPNAME` renames every `stdpath()`; `--clean` then `-u` skips the user's init, `plugin/` and `pack/` directories and sources only cland's `init.lua`. `:scriptnames` lists the bundled runtime and `nvim/init.lua`, nothing else.
 

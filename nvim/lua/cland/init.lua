@@ -593,6 +593,8 @@ end
 --- `cland` command as a list, instead of CLAND_COMMAND or this repository's) and serve_args (for the stdio hub).
 function M.start(opts)
   opts = opts or {}
+  local open_session = vim.env.CLAND_OPEN_SESSION
+  vim.env.CLAND_OPEN_SESSION = nil
   local start = opts.root and opts.root ~= '' and opts.root or vim.fn.getcwd()
   -- the project root as the hub finds it: the nearest ancestor holding .git or .cland
   local root = vim.fs.root(start, { '.git', '.cland' }) or vim.fn.fnamemodify(start, ':p'):gsub('/$', '')
@@ -623,6 +625,27 @@ function M.start(opts)
 
   local layout = require('cland.layout')
   state.on_change(function()
+    local listed = false
+    if open_session and open_session ~= '' then
+      for _, process in ipairs(state.S.processes) do
+        if process.name == open_session then listed = true; break end
+      end
+    end
+    if listed then
+      local name = open_session
+      open_session = nil -- consume before showing: attaching also changes state
+      local function show()
+        layout.show({ kind = 'session', id = name }, { insert = true })
+      end
+      -- Finish leaving a composer before attaching: its pending Insert-mode exit would otherwise
+      -- cancel the terminal's startinsert and leave the hand-over in Terminal-Normal mode.
+      if api.nvim_get_mode().mode:sub(1, 1) == 'i' then
+        api.nvim_create_autocmd('InsertLeave', { once = true, callback = function() vim.schedule(show) end })
+        vim.cmd('stopinsert')
+      else
+        show()
+      end
+    end
     layout.render()
     require('cland.ui').changed()
     require('cland.bars').redraw()
@@ -636,6 +659,7 @@ function M.start(opts)
   if (vim.v.startreason or ''):match('^restart') or opts.restore then
     snap = require('cland.restart').take(root)
     if snap then
+      open_session = nil
       restore(snap)
     end
   end

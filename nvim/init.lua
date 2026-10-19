@@ -4,6 +4,7 @@
 -- files under nvim/. CLAND_ROOT names the project (default: the current directory); CLAND_HUB_TRANSPORT
 -- is `socket` (the project's hub over `.cland/hub.json`, the default) or `stdio` (a hub spawned as a child).
 -- CLAND_COMMAND (a JSON array) replaces the `cland` command the client runs (the tests' stub hub).
+-- CLAND_OPEN_SESSION opens a named session's terminal once it is listed; a saved restart view wins.
 -- CLAND_QA_CASE names a QA case to run instead (`cland --headless --qa`, lua/cland/qa.lua).
 local here = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
 vim.opt.runtimepath:prepend(here)
