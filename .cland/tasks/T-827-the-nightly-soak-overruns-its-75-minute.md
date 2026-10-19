@@ -2,8 +2,8 @@
 id: T-827
 kind: task
 title: The nightly soak overruns its 75-minute run timeout and ends red with zero failures
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-715
 topic: topic-549
 branch: t/T-827-the-nightly-soak-overruns-its-75-minute
 created: 2026-10-19T04:17:22.529Z
-updated: 2026-10-19T04:46:45.849Z
+updated: 2026-10-19T05:17:13.534Z
+closed: 2026-10-19T05:17:13.534Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from corrected source A-5772 and accepted exact-head gate 2054257a/A-5773; audit A-5775. T0–T2 task receipt 1466/1466, zero fail/cancel/skip; T3 deferred, not claimed. Owned progress 5/5, hung 3/3, soak 5/5, with all 65 corresponding repetition bodies passing. Trim/pre-spend refusal, timeout-first zero-failure counts, own-timeout proof, override/unknown, bounded delivery and recovery established. FIVE report-only Git tier trips disclosed: three existing plus two new soak identities. Coordinator fd271808 explicitly covers all under shared T-803 and directs settlement without task fixture changes. M1 resolved; no outstanding task findings. C1/C2 verified; QA scope none.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T05:17:13.534Z
+
+Merged 87b626ed773c460e5159bf6f6766b00ff63e5fb2 onto dev.

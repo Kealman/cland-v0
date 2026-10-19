@@ -3,17 +3,17 @@ id: T-818
 kind: task
 title: Stage runs load-gate a T4 latency test five times in parallel, so tracker-load fails on a slow droplet disk
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-554
+branch: t/T-818-stage-runs-load-gate-a-t4-latency-test
 created: 2026-10-18T19:36:00.067Z
-updated: 2026-10-18T19:36:00.067Z
+updated: 2026-10-19T05:33:19.059Z
 ---
 
 ## Summary

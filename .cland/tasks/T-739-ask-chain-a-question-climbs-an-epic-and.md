@@ -3,7 +3,7 @@ id: T-739
 kind: task
 title: "ask-chain: 'a question climbs an epic and release one level per forward' failed once in a timed-out droplet run"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -14,10 +14,10 @@ labels:
 assignee: null
 parent: E-482
 blocked_by: []
-topic: null
-branch: null
+topic: topic-553
+branch: t/T-739-ask-chain-a-question-climbs-an-epic-and
 created: 2026-10-17T14:59:41.309Z
-updated: 2026-10-18T03:17:09.599Z
+updated: 2026-10-19T05:33:17.881Z
 ---
 
 ## Summary
