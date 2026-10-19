@@ -66,14 +66,18 @@ export type Layout = {
   tasks: string;
   logDir: string;
   log: string;
-  /** Where the hub binds its Unix socket: inside `.cland/`, or under the temp dir when that path is too long. */
+  /** Where the hub binds its Unix socket: inside `.cland/`, then the temp dir, then `/tmp` if both are too long. */
   socket: string;
 };
 
 export function layout(root: string): Layout {
   const dir = join(root, CLAND_DIR);
   const inside = join(dir, 'hub.sock');
-  const socket = Buffer.byteLength(inside) <= SOCKET_PATH_MAX ? inside : join(tmpdir(), `cland-${createHash('sha256').update(root).digest('hex').slice(0, 16)}.sock`);
+  const name = `cland-${createHash('sha256').update(root).digest('hex').slice(0, 16)}.sock`;
+  const temporary = join(tmpdir(), name);
+  // A suite can nest TMPDIR inside its own temporary root. Budget the fallback
+  // too: a short staging bind can succeed while clients reject the final name.
+  const socket = [inside, temporary].find(path => Buffer.byteLength(path) <= SOCKET_PATH_MAX) ?? join('/tmp', name);
   return {
     root,
     dir,

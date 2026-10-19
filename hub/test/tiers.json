@@ -226,6 +226,7 @@
     "hub/test/project-clock.test.ts": "T2",
     "hub/test/project-hub-lifecycle.test.ts": "T3",
     "hub/test/project-hub.test.ts": "T2",
+    "hub/test/project-layout.test.ts": "T1",
     "hub/test/project-probes.test.ts": "T2",
     "hub/test/prompt-races.test.ts": "T2",
     "hub/test/push.test.ts": "T3",
