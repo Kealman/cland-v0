@@ -33,7 +33,7 @@ const nvimHarness = new URL('../../nvim/test/harness.ts', import.meta.url).href;
 const nvimFixture = new URL('../../nvim/test/fixture.ts', import.meta.url).href;
 const nvimStubClient = new URL('../../nvim/test/stub-client.ts', import.meta.url).href;
 const runner = new URL('./run-suite.ts', import.meta.url).href;
-async function target(t: TestContext, cwd: string, module: string, env: NodeJS.ProcessEnv = {}, code = "console.log('target reached')") {
+async function target(t: TestContext, cwd: string, module: string, env: NodeJS.ProcessEnv = {}, code = "console.log('target reached')", testName?: string) {
   const tmp = await tempProject(t);
   const childEnv = { ...process.env, NODE_TEST_CONTEXT: '', TMPDIR: tmp, TMP: tmp, TEMP: tmp, ...env };
   // Harness imports are pure; request their fixture explicitly. Package-runner
@@ -41,7 +41,7 @@ async function target(t: TestContext, cwd: string, module: string, env: NodeJS.P
   const fixtureSetup = module === harness
     ? `const {tempProject} = await import(${JSON.stringify(harness)}); await tempProject(t);` : '';
   const result = await new Promise<{ code: number; stdout: string; stderr: string }>(resolve => {
-    const child = execFile(process.execPath, ['--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
+    const child = execFile(process.execPath, [...(testName ? [`--test-name-pattern=${testName}`] : []), '--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
     ownProcess(t, child.pid);
   });
   return { ...result, tmp };
@@ -105,6 +105,18 @@ test('inherited cover workers and the human override pass targeted startup', asy
     assert.equal(result.code, 0, result.stderr);
     assert.match(result.stdout, /target reached/);
   }
+});
+
+// T3: a fresh test worker must admit its inherited cover lease before scratch
+// startup strips CLAND_*; the native release CLI then stays in its own project.
+test('release worker admits its cover lease before isolated scratch startup', async t => {
+  const { root, lock, lease } = await cover(t);
+  const result = await target(t, root, new URL('./release.test.ts', import.meta.url).href,
+    { ...external(root), CLAND_SUITE_LEASE: JSON.stringify({ ...lease, dirs: [lock] }) },
+    '', '^release publishes the recorded master default without creating main$');
+  assert.equal(result.code, 0, result.stderr + result.stdout);
+  assert.match(result.stdout, /release publishes the recorded master default/);
+  assert.match(result.stdout, /pass 1/);
 });
 
 test('targeted startup passes without a project hub or with an ordinary local holder', async t => {

@@ -1,6 +1,7 @@
 // T3: native Git lifecycle regressions: rejected atomic pushes, restart recovery and conflicting sync.
 // The atomic release/sync core lives in scenarios/release.test.ts.
 import { releaseCover } from './release-support.ts';
+import { ensureAccountFixture } from './account-fixture-env.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,6 +20,8 @@ const snapshot = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')
 async function scratchHub(machine: Awaited<ReturnType<typeof scratchMachine>>, root: string) {
   // projectHub normally merges the host environment. Scope startup as well as Git/CLI commands
   // so injected Git config, credentials and native probes cannot reach the developer's state.
+  // Worker admission needs its inherited cover lease before scratch startup clears CLAND_*.
+  await ensureAccountFixture();
   const original = process.env;
   try {
     process.env = machine.env;
