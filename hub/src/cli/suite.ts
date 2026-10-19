@@ -18,7 +18,7 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
   if (workers !== undefined && (!/^[1-9][0-9]*$/.test(values.workers!) || !Number.isSafeInteger(workers))) throw new Error('--workers must be a positive integer');
   if (values.size !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(values.size)) throw new Error('--size must be a nonempty slug');
   if (values.executor !== undefined && values.executor !== 'local' && values.executor !== 'droplet') throw new Error('--executor must be local or droplet');
-  if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be batch, stage, epic, release or soak (batch is hub-owned)');
+  if (values.occasion !== undefined && !isVerifyOccasion(values.occasion)) throw new Error('--occasion must be batch, dev-t3, stage, epic, release or soak (batch and dev-t3 are hub-owned)');
   if (values.help) { out(SUITE_USAGE); return 0; }
   if (values.diagnostics && !values['dry-run']) throw new Error('--diagnostics requires --dry-run');
   if (positionals[0] === 'classify') {

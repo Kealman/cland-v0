@@ -675,10 +675,11 @@ test('a cancelled member waits for its running worker before rebuilding the rema
 
 
 test('merge batch configuration preserves defaults and explicit wait policy', () => {
-  assert.deepEqual(parseConfig('', 'batch').merge, { queue: false, batch: 3, batchWaitMs: 600_000 });
+  assert.deepEqual(parseConfig('', 'batch').merge, { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
   const config = parseConfig('[merge]\nqueue=true\nbatch=2\nbatch_wait="30s"', 'batch');
-  assert.deepEqual(parseConfig(renderConfig(config), 'batch').merge, { queue: true, batch: 2, batchWaitMs: 30_000 });
+  assert.deepEqual(parseConfig(renderConfig(config), 'batch').merge, { queue: true, batch: 2, batchWaitMs: 30_000, batchTiers: ['T1', 'T3'] });
   for (const batch of ['0', '-1', '1.5', '"3"']) assert.throws(() => parseConfig(`[merge]\nbatch=${batch}`, 'batch', {}, { strict: true }), /positive integer/);
+  for (const invalid of ['[]', '["T5"]', '["T1","T1"]', '"T1"']) assert.throws(() => parseConfig(`[merge]\nbatch_tiers=${invalid}`, 'batch'), /batch_tiers/);
   for (const role of [null, 'coordinator', 'qa', 'implementer']) assert.throws(() => authorizeVerifyOccasion(role, 'batch'), /hub-owned/);
 });
 
@@ -688,4 +689,22 @@ test('batch load gate repeats only new T3 identities', () => {
   assert.equal(loadGateRepetitions('hub/test/unit.test.ts::new', selection, {}), 0);
   assert.equal(loadGateRepetitions('hub/test/integration.test.ts::known', selection, {}), 0);
   assert.equal(loadGateRepetitions('hub/test/integration.test.ts::new', selection, {}), 5);
+});
+
+for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured tiers ${tiers ?? 'default' } and lands on green`, async t => {
+  const { f, runner, landed } = await fixture(t);
+  if (tiers) f.configure('[verification]\ntest="true"\nexecutor="droplet"\n[merge]\nbatch_tiers=["T1"]');
+  const tests = { 'hub/test/unit.test.ts': 'T1', 'hub/test/component.test.ts': 'T2', 'hub/test/process.test.ts': 'T3' } as const;
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  for (const file of Object.keys(tests)) await writeFile(join(f.root, file), '');
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
+  await runner.tick();
+  const job = (await f.jobs())[0]!;
+  assert.deepEqual(job.selection?.tiers, tiers ?? ['T1', 'T3']);
+  assert.deepEqual(job.tierPlan?.map(row => row.tier), tiers ?? ['T1', 'T3']);
+  const phases = await packageShards(f.root, 'full', undefined, job.selection, { workers: 1 });
+  assert.deepEqual(phases.flatMap(phase => phase.targets).sort(), tiers ? ['hub/test/unit.test.ts'] : ['hub/test/process.test.ts', 'hub/test/unit.test.ts']);
+  assert.deepEqual(landed, []);
+  await f.finish(job.id); await runner.tick();
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
 });

@@ -17,8 +17,8 @@ import type { HarnessId } from '../doctor/ranges.ts';
 export type ProjectConfig = {
   name: string;
   setup: { declinedInstalls: HarnessId[] };
-  merge: { queue: boolean; batch: number; batchWaitMs: number };
-  verification: { prepare: string; check: string; test: string; soak: string; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
+  merge: { queue: boolean; batch: number; batchWaitMs: number; batchTiers: Array<'T1' | 'T2' | 'T3' | 'T4'> };
+  verification: { prepare: string; check: string; test: string; soak: string; devT3Every: string; devT3EveryMs: number; executor: 'local' | 'droplet'; localFallback: boolean; workers: number; loadGateWorkers: number; budget: number; remoteBudget: number; shards: number; lockPath: string; cacheMaxAgeMs: number; waitP90TargetMs: number; coverageMaxAgeMs: number; testTimeoutMs: number; stallTimeoutMs: number; lifetimeMs: number; runTimeoutMs: number; runTimeout: string; dailySpendUsd: number; droplet: { workers?: number; size: string; prepare_size: string; regions: string[]; image: string } };
   sessions: { archiveAfterItemMs: number; archiveAfterStopMs: number };
   visibility: VisibilityOverrides;
   tracker: { levels: Levels; fatalStallMs: number };
@@ -33,8 +33,8 @@ const MINUTE = 60_000;
 export const defaultConfig = (name: string): ProjectConfig => ({
   name,
   setup: { declinedInstalls: [] },
-  merge: { queue: false, batch: 3, batchWaitMs: 600_000 },
-  verification: { prepare: '', check: '', test: '', soak: '', executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
+  merge: { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] },
+  verification: { prepare: '', check: '', test: '', soak: '', devT3Every: '', devT3EveryMs: 0, executor: 'local', localFallback: true, workers: 4, loadGateWorkers: 2, budget: 1, remoteBudget: 4, shards: 2, lockPath: '/tmp/cland-suite.lock', cacheMaxAgeMs: 86400000, waitP90TargetMs: 1200000, coverageMaxAgeMs: 172800000, testTimeoutMs: 120000, stallTimeoutMs: 600000, lifetimeMs: 6600000, runTimeoutMs: 4500000, runTimeout: '75m', dailySpendUsd: 5, droplet: { size: 'c-8', prepare_size: 'c-8', regions: ['lon1', 'nyc1', 'sfo2'], image: 'ubuntu-24-04-x64' } },
   sessions: { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 },
   visibility: {},
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
@@ -94,6 +94,8 @@ run_timeout = ${JSON.stringify(c.verification.runTimeout)}
 daily_spend_usd = ${c.verification.dailySpendUsd}
 # Nightly UTC time (HH:MM); empty disables the droplet soak.
 soak = ${JSON.stringify(c.verification.soak)}
+# Periodic dev T3 interval; empty disables it.
+dev_t3_every = ${JSON.stringify(c.verification.devT3Every)}
 
 [verification.droplet]
 ${c.verification.droplet.workers === undefined ? "# workers inherits verification.workers" : `workers = ${c.verification.droplet.workers}`}
@@ -106,6 +108,7 @@ image = ${JSON.stringify(c.verification.droplet.image)}
 # Queue reviewed code heads for batch landing. Documentation and human overrides land immediately.
 queue = ${c.merge.queue}
 batch = ${c.merge.batch}
+batch_tiers = ${JSON.stringify(c.merge.batchTiers)}
 batch_wait = "${c.merge.batchWaitMs / 1000}s"
 
 [sessions]
@@ -183,6 +186,10 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   if (typeof merge.queue === 'boolean') c.merge.queue = merge.queue;
   accepts('merge.batch', merge.batch, Number.isSafeInteger(merge.batch) && Number(merge.batch) > 0, 'a positive integer');
   if (Number.isSafeInteger(merge.batch) && Number(merge.batch) > 0) c.merge.batch = Number(merge.batch);
+  if (merge.batch_tiers !== undefined) {
+    if (!Array.isArray(merge.batch_tiers) || !merge.batch_tiers.length || merge.batch_tiers.some(tier => !['T1', 'T2', 'T3', 'T4'].includes(tier)) || new Set(merge.batch_tiers).size !== merge.batch_tiers.length) throw new Error('merge.batch_tiers must be a nonempty array of unique T1, T2, T3 or T4 tiers');
+    c.merge.batchTiers = merge.batch_tiers;
+  }
   if (merge.batch_wait !== undefined) {
     if (typeof merge.batch_wait !== 'string') throw new Error('merge.batch_wait must be a duration string');
     c.merge.batchWaitMs = durationMs(merge.batch_wait);
@@ -199,6 +206,12 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
     if (verification[key] === undefined) continue;
     if (typeof verification[key] !== 'string') throw new Error(`verification.${key} must be a command string`);
     c.verification[key] = verification[key];
+  }
+  if (verification.dev_t3_every !== undefined) {
+    if (typeof verification.dev_t3_every !== 'string') throw new Error('verification.dev_t3_every must be a duration string or empty');
+    c.verification.devT3Every = verification.dev_t3_every;
+    try { c.verification.devT3EveryMs = verification.dev_t3_every === '' ? 0 : durationMs(verification.dev_t3_every); }
+    catch { throw new Error('verification.dev_t3_every must be a positive duration string or empty'); }
   }
   if (verification.soak !== undefined) {
     if (typeof verification.soak !== 'string' || verification.soak !== '' && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(verification.soak)) throw new Error('verification.soak must be HH:MM UTC or empty');

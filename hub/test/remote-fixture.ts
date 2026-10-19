@@ -30,7 +30,7 @@ export function remoteEventually<T>(what: string, check: () => Promise<T | undef
   return eventually(what, check, remoteWaitMs(baseMs));
 }
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
-export async function fixture(t: TestContext, options: FixtureStack & { machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+export async function fixture(t: TestContext, options: FixtureStack & { git?: import('../src/tracker/verdict-git.ts').Git; machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const embedded = options.hub !== undefined && options.hub !== startDaemon;
   const scripted = options.machine === 'scripted';
   const root = await tempProject(t, 'remote-run-');
@@ -130,14 +130,14 @@ export async function fixture(t: TestContext, options: FixtureStack & { machine?
   const probes = {
     clock, droplet: dependencies, harnesses: 'fake' as const, probes: 'fake' as const, candidate: facts, durationContext,
     // Freshness and demo ancestry consume the same branch facts as admission.
-    git: async (args: string[]) => {
+    git: options.git ?? (async (args: string[]) => {
       if (args[0] === 'for-each-ref') return `${key.base} refs/heads/dev\n${candidate.head} refs/heads/${candidate.branch}`;
       if (args[0] === 'log') return key.base;
       if (args[0] === 'rev-parse') return key.base;
       if (args[0] === 'merge-base' && args[1] === '--is-ancestor') return '';
       if (args[0] === 'diff') return '';
       assert.fail(`scripted fixture needs an explicit Git fact for ${args[0]}`);
-    },
+    }),
     readBase: async () => 'dev',
   };
   const daemon = scripted ? await projectHub(t, root, env, probes) : await (options.hub ?? startDaemon)(t, root, env);

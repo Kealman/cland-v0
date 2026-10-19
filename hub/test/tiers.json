@@ -205,6 +205,7 @@
     "hub/test/quarantine-runner.test.ts": "T3",
     "hub/test/quarantine.test.ts": "T1",
     "hub/test/release-item.test.ts": "T3",
+    "hub/test/release-t3-component.test.ts": "T2",
     "hub/test/release.test.ts": "T3",
     "hub/test/remote-fixture-lifecycle.test.ts": "T4",
     "hub/test/remote-scripted.test.ts": "T2",

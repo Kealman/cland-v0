@@ -38,14 +38,15 @@ test-seconds; wall budgets project whole-file scheduling at the run's workers.
 This repository's budget manifest remains in report mode. The duration-budget
 section below describes allowances, enforcement and the T3 growth ratchet.
 
-Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets, and never admit T3. Successful coverage keeps diff-selected Neovim T2. T3 runs once per merge batch and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports say `T3: in the merge batch` with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
+Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets, and never admit T3. Successful coverage keeps diff-selected Neovim T2. T3 runs in batches whose configured tiers include it, in periodic `dev-t3` runs, and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports name whether T3 is in the merge batch or deferred to periodic dev and integrated occasions, with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
 
 | Run kind | Plan after T0 |
 | --- | --- |
 | Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages |
-| Hub-owned merge batch | All T1 and T3; five repetitions of T3 identities absent from the last green batch or stage receipt |
+| Hub-owned merge batch | Configured `batch_tiers` (default T1 and T3; this repository T1); five repetitions of T3 identities absent from the last green batch or stage receipt |
 | Ordinary integrated `dev` or explicit `all` | T1–T3 |
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
+| Periodic dev T3 | T3 only, one droplet; no load repetitions |
 | Nightly soak | T1–T4; five repetitions of identities absent from the last green soak |
 
 T4 files run only in their selected base soak phase. They never acquire extra
@@ -55,10 +56,46 @@ result name this choice as `load gate: T4 repetitions skipped`, with the file
 count. Nightly deadline planning excludes those repetitions before budgeting.
 
 Task load repetitions cover new T1/T2 identities against the duration baseline.
-The hub owns batch and soak occasions. The Coordinator requests stage, epic and
+The hub owns batch, dev-t3 and soak occasions. The Coordinator requests stage, epic and
 release occasions; QA may request epic for its demo. An explicit `all` on a task
 head requires authorization and retains T3. A flaky-gate second task receipt
 uses the same mode-free selection. T3 smoke files are filtered out of task plans.
+
+### Periodic dev T3 and release gate
+
+`[merge] batch_tiers` selects a nonempty set of T1–T4 tiers for each batch.
+Its default is `["T1", "T3"]`; this repository sets `["T1"]` (D67).
+Task verification stays T0–T2. A green batch with T1 only supplies no T3 receipt.
+
+`[verification] dev_t3_every = "2h"` enables a hub-owned `dev-t3` occasion;
+`""` (the default) disables it. The first attempt is due one interval after
+activation. Later runs are due after the interval since the last attempt/start,
+only when dev's head has moved. The cursor survives restart, and a queued,
+running or unreported periodic run prevents another. A refused admission is
+throttled for one interval. The hub requires clean root dev at freshly fetched
+origin/dev and retries unavailable candidates on later clock ticks. It uses one
+droplet under the ordinary shared remote budget and daily spend cap, selects T3
+only without load repetitions, and never holds or rebuilds a merge batch.
+Nightly soak still runs T1–T4 independently.
+
+Each periodic result goes to the Coordinator in General with head, previous green
+periodic head, first-parent commits since that green, outcome and failing files.
+The `verification-dev-t3-result` message detail exposes `run`, `head`, `tree`,
+`previousGreenHead`, `previousGreenRun`, `merges: [{head, subject}]`, `result`,
+`failingFiles`, `artifact` and `path` for T-887. Missing baseline or unavailable
+Git range is explicit (`null`), including timeout or I/O rejection; it cannot
+block publication or the next periodic run. The previous
+green is pinned at admission and retained with the durable job.
+
+`cland release`, including `--dry-run`, refuses with `release-t3` unless a
+completed, reported green dev-t3, soak, stage or release occasion covers the
+pinned release head's verification tree (excluding `.cland/tasks` and
+`.cland/RULES.md`, exactly as verification admission does). A different commit
+with the same build tree qualifies;
+T1-only batches, partial selections, cancelled or incomplete runs do not. The
+refusal names the head/tree and the needed `cland verify all --occasion release
+--report general` run. Evidence has no age limit. Recovery of an already published
+release finishes its original receipt even after dev moves.
 
 ### Nightly soak
 
@@ -132,9 +169,9 @@ With `[merge] queue = true`, reviewed code heads wait in a durable FIFO. The hub
 starts the oldest `batch` entries (default 3) when full, or after `batch_wait`
 (default `"10m"`) from the oldest request. It prepares squash objects in order,
 checks immutable merged-tree lint and duration budgets, and verifies a detached
-candidate with the hub-owned `batch` occasion. That run selects all T1 and T3
-files, with five load repetitions only for T3 identities absent from the last
-green batch or stage receipt. It uses the configured executor and Coordinator
+candidate with the hub-owned `batch` occasion. That run selects
+`[merge] batch_tiers` (default T1 and T3), with five load repetitions only for T3
+identities absent from the last green batch or stage receipt. It uses the configured executor and Coordinator
 priority, occupying one suite slot.
 
 On green, each member lands through the existing merge receipt, checkout,
@@ -180,7 +217,7 @@ edits it. The merge queue remains opt-in for other projects; this repository ena
 
 ### Named T3 scenarios
 
-The ten scenarios below prove process seams once the rules are covered in T1/T2. Each is one manifest entry with tier T3 and a unique scenario name, one whole-file scheduling unit, at most 120 seconds of manifest test time, and at most one live hub. Headers name the flow, lower-tier rule coverage and the expected hub process starts. Other T3 lifecycle regressions and the three harness contracts remain separate. The target cadence is T3 once per merge batch and at stage, epic and release; task admission excludes these T3 scenarios, which run in the merge batch and integrated occasions.
+The ten scenarios below prove process seams once the rules are covered in T1/T2. Each is one manifest entry with tier T3 and a unique scenario name, one whole-file scheduling unit, at most 120 seconds of manifest test time, and at most one live hub. Headers name the flow, lower-tier rule coverage and the expected hub process starts. Other T3 lifecycle regressions and the three harness contracts remain separate. The target cadence is T3 in configured merge batches, periodic dev runs, and at stage, epic and release; task admission excludes these T3 scenarios, which run in periodic dev and integrated occasions, plus batches configured for T3.
 
 | Scenario | File | Seam proved |
 | --- | --- | --- |
@@ -524,7 +561,7 @@ Implementers run verification through the hub, one invocation at a time per sess
 cland verify --report <item-topic> --to <reviewer-name> --to <your-name>
 ```
 
-D29: submit task runs with no mode. The diff and coverage selector chooses T2 files under the queue-enabled T0–T2 protocol above. A flaky-gate second receipt uses that same selection. The hub verifies T3 in the merge batch; the Coordinator requests integrated occasions at stage and epic close and before release. `all` is reserved to the Coordinator, the human and authorized occasions.
+D29: submit task runs with no mode. The diff and coverage selector chooses T2 files under the queue-enabled T0–T2 protocol above. A flaky-gate second receipt uses that same selection. The hub verifies T3 in configured merge batches and periodic dev runs; the Coordinator requests integrated occasions at stage and epic close and before release. `all` is reserved to the Coordinator, the human and authorized occasions.
 
 Task runs may report `hub-selected`: changed hub tests and tests covering the
 changed functions, filtered to T2 after selection. All T1 files still run.

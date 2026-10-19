@@ -194,3 +194,86 @@ test('nightly refuses a base run beyond the deadline before reserving a droplet'
   assert.match(notices[0]!, /soak deadline plan refused: base projection 301.0 s exceeds 180.0 s/);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
 });
+
+test('periodic dev T3 posts a hub-owned structured red result to the Coordinator', async t => {
+  // Reporting uses a short interval; exact two-hour admission is proved in T1.
+  const log = 'suite test failures [{"file":"hub/test/example.test.ts","name":"failed"}]\n# tests 1\n# fail 1\n';
+  const f = await fixture(t, { machine: 'scripted', script: { outcome: 'slow', log },
+    config: 'dev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; occasion: string }[] }).suites;
+  const job = jobs.find(job => job.occasion === 'dev-t3'); assert.ok(job);
+  await drive(f, f.machine.started(job.id));
+  f.machine.finish(job.id, 1, log);
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { fromKind: string; to: string[]; text: string; detail?: { event: string; head: string; previousGreenHead: string | null; result: string; failingFiles: string[] } }[] }).messages;
+  const result = history.find(m => m.detail?.event === 'verification-dev-t3-result'); assert.ok(result);
+  assert.equal(result.fromKind, 'hub');
+  assert.deepEqual(result.to, ['impl']);
+  assert.equal(result.detail!.head, f.candidate.head);
+  assert.equal(result.detail!.previousGreenHead, null);
+  assert.equal(result.detail!.result, 'red');
+  assert.deepEqual(result.detail!.failingFiles, ['hub/test/example.test.ts']);
+  assert.match(result.text, /Periodic dev T3 red/);
+});
+
+test('periodic T3 obeys the shared daily cap without changing the merge queue', async t => {
+  const notices: string[] = [];
+  const f = await suiteUnit(t, { onSoakNotice: (_id, text) => { notices.push(text); } },
+    'dev_t3_every="2h"\ndaily_spend_usd=0.1\nlifetime="15m"\nrun_timeout="5m"', true);
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  await f.tick(); await f.suites.settled();
+  f.clock.block(7_200_000);
+  const env = { CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state') };
+  await reserveShardSpend('/another-project', ['other-run'], 'c-8', 0.25, 900_000, 0.1, env, f.clock, f.machine.dependencies.processes);
+  await f.tick(); await f.suites.settled();
+  assert.equal(f.suites.status().length, 0);
+  assert.deepEqual(notices, ['periodic dev T3 skipped: daily spend cap $0.1 reached']);
+  await f.reopen(); await f.tick(); await f.suites.settled();
+  assert.equal(notices.length, 1, 'restart preserves admission throttling');
+  assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+  assert.deepEqual(f.store.mergeQueue(), []);
+});
+
+test('unavailable periodic merge range still publishes its result and permits the next run', async t => {
+  let rangeCalls = 0;
+  // The two-hour admission boundary has its own T1 proof; this tests reporting.
+  const f = await fixture(t, { machine: 'scripted',
+    config: 'dev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"',
+    git: async args => {
+      if (args[0] === 'log' && args.includes('--first-parent')) { rangeCalls++; throw new Error('Git timed out'); }
+      return null;
+    } });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  for (const [index, head] of ['a', 'b', 'c'].entries()) {
+    f.candidate.head = head.repeat(40); f.candidate.tree = ['d', 'e', 'f'][index]!.repeat(40);
+    f.candidate.selection.fetchedDev = f.candidate.head;
+    const log = index === 1 ? 'suite test failures [{"file":"hub/test/example.test.ts","name":"failed"}]\n# tests 1\n# fail 1\n' : '# tests 1\n# pass 1\n';
+    f.machine.script({ outcome: 'slow', log });
+    await f.clock.advance(1000); await drive(f, f.verificationSettled());
+    const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; occasion: string }[] }).suites.filter(job => job.occasion === 'dev-t3');
+    assert.equal(jobs.length, index + 1, 'each completed report releases periodic eligibility');
+    const job = jobs[index]!;
+    await drive(f, f.machine.started(job.id));
+    f.machine.finish(job.id, index === 1 ? 1 : 0, log);
+    await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  }
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { detail?: { event: string; head: string; previousGreenHead: string; merges: unknown; result: string; failingFiles: string[]; artifact: string } }[] }).messages;
+  const results = history.filter(m => m.detail?.event === 'verification-dev-t3-result');
+  assert.equal(results.length, 3);
+  const red = results.find(m => m.detail!.head === 'b'.repeat(40))!.detail!;
+  assert.equal(red.previousGreenHead, 'a'.repeat(40));
+  assert.equal(red.merges, null);
+  assert.equal(red.result, 'red');
+  assert.deepEqual(red.failingFiles, ['hub/test/example.test.ts']);
+  assert.match(red.artifact, /^A-/);
+  assert.equal(rangeCalls, 2);
+});

@@ -186,7 +186,7 @@ export class ProjectConfiguration implements RolesSource {
         this.#config = config; this.#roles = roles; this.#stamp = stamp; this.#attemptStamp = stamp;
         this.log({ event: 'roles-loaded', path: file, launch: Object.fromEntries([...roles].map(([role, definition]) => [role, definition.launch])) });
         if (configText !== null) this.#status = { loadedAt: new Date().toISOString(), sourceCommit };
-        const applied = ['verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.droplet', 'keys.layouts', 'plan.approval', 'roles'];
+        const applied = ['verification.prepare', 'verification.check', 'verification.test', 'verification.executor', 'verification.local_fallback', 'verification.budget (capped at 1)', 'verification.remote_budget', 'verification.load_gate_workers', 'verification.shards', 'verification.cache_max_age_minutes', 'verification.wait_p90_target', 'verification.lifetime', 'verification.run_timeout', 'verification.daily_spend_usd', 'verification.soak', 'verification.dev_t3_every', 'merge.batch_tiers', 'verification.droplet', 'keys.layouts', 'plan.approval', 'roles'];
         for (const warning of warnings) this.log({ event: 'config-reload-warning', file: this.layout.config, warning });
         this.log({ event: 'config-reloaded', ...this.#status, applied, warnings });
         return { ...this.#status, applied, warnings };

@@ -1,3 +1,4 @@
+import { committedTree } from './verification-tree.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
 // Release orchestration uses only the territory's async Git runner and lock. The annotated object is prepared
 // without a tag ref, so a rejected atomic GitHub push leaves every local ref unchanged.
@@ -93,7 +94,7 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed, env: Nod
 /** Remove recovery state only after the hub has recorded the successful result. */
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
-export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, itemRelease?: { item: string; notesPrefix: string }, env: NodeJS.ProcessEnv = process.env): Promise<ReleaseResult> {
+export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, itemRelease?: { item: string; notesPrefix: string }, env: NodeJS.ProcessEnv = process.env, requireT3?: (head: string, tree: string) => void): Promise<ReleaseResult> {
   const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
   resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
   const primary = await releaseBranch(root, env);
@@ -168,6 +169,14 @@ export async function releaseGit(root: string, version: string | undefined, dryR
     const notes = itemRelease === undefined ? commits : [itemRelease.notesPrefix, commits].filter(Boolean).join('\n\n');
     return { notes, preview: dryRun ? { version: name, commit: state.dev, notes, refs: [`${state.dev}:refs/heads/${primary}`, `refs/tags/${name}:refs/tags/${name}`], dryRun } : null };
   });
+  if (requireT3) {
+    const tree = await committedTree(root, state.dev, env);
+    resumed(() => {
+      authorize();
+      if (!tree) throw new ReleaseError('release-t3', `cannot establish verification tree for release head ${state.dev}; retry before releasing`);
+      requireT3(state.dev, tree);
+    });
+  }
   if (preview) return preview;
   const ident = await git(root, ['var', 'GIT_COMMITTER_IDENT'], undefined, undefined, env);
   const tag = await git(root, ['mktag'], false, `object ${state.dev}\ntype commit\ntag ${name}\ntagger ${ident}\n\n${notes}\n`, env);

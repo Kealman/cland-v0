@@ -101,3 +101,8 @@ test('task evidence names deferred T3 with the current merge queue state', () =>
   assert.match(taskTierEvidence(task, { enabled: false, entries: [], batch: null }, 'T-713')!, /queue disabled; process evidence unavailable/);
   assert.equal(taskTierEvidence({ mode: 'full', files: [], reason: 'integrated' }, { enabled: true, entries: [], batch: null }, null), null);
 });
+
+test('task reports defer T3 to dev occasions when batch tiers omit it', () => {
+  assert.match(taskTierEvidence({ mode: 'full', tiers: ['T1', 'T2'], files: [], reason: 'task' },
+    { enabled: true, batchTiers: ['T1'], entries: [], batch: null }, 'T-886')!, /T3: periodic dev and integrated occasions; absent from configured batch tiers/);
+});

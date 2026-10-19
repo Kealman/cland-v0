@@ -50,6 +50,7 @@ export type SuiteJob = {
   followsConfig?: boolean;
   workerPolicy?: { local: number; droplet: number };
   workersOverride?: number;
+  devT3?: { previousGreenHead: string | null; previousGreenRun: string | null };
   occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   workers?: number; fallbackWorkers?: number; size?: string;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
@@ -86,7 +87,7 @@ const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
 const KEY = 'suite-jobs';
 // Hub-derived: callers cannot accidentally rotate the key when retrying a lost reply.
-const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion'>) => input.actor?.sessionId ?? (input.occasion === 'soak' ? 'nightly-soak' : 'human');
+const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion'>) => input.actor?.sessionId ?? (input.occasion === 'dev-t3' ? 'dev-t3' : input.occasion === 'soak' ? 'nightly-soak' : 'human');
 const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
@@ -147,6 +148,19 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
 
 export { SuiteAdmissionError } from './suite-candidate.ts';
 
+/** Release evidence is an executed, reported full T3 receipt at this exact tree. */
+export function releaseT3Cover(store: Store, tree: string): { run: string; head: string } | null {
+  // Consult durable receipts so admission uses only checkpointed evidence.
+  const receipts = store.suiteJobHistory().map(text => JSON.parse(text) as { position: number; job: SuiteJob }).sort((a, b) => a.position - b.position).map(entry => entry.job);
+  const job = receipts.findLast(job => job.tree === tree && job.integrated && job.branch === 'dev'
+    && ['dev-t3', 'soak', 'stage', 'release'].includes(job.occasion ?? '')
+    && job.state === 'finished' && job.reported && job.artifact && store.resolveArtifact(job.artifact) && job.outcome?.code === 0
+    && !job.cached && !job.cancelled && !job.requesterDied && !job.batch?.diagnostic
+    && job.selection?.mode === 'full' && !job.selection.tests && !job.selection.nvimTests && !job.selection.shard
+    && (job.selection.tiers?.includes('T3') ?? job.selection.soak === true));
+  return job ? { run: job.id, head: job.head } : null;
+}
+
 export class Suites {
   readonly #candidate: SuiteCandidate;
   readonly #env: NodeJS.ProcessEnv;
@@ -164,6 +178,8 @@ export class Suites {
   readonly #timer: ClockTimer;
   #checking: Promise<void> | null = null;
   #soaking: Promise<void> | null = null;
+  #periodic: Promise<void> | null = null;
+  #nextDevT3Check = 0;
   readonly #inspecting = new Map<string, Promise<void>>();
   readonly #starting = new Set<Promise<unknown>>();
   #closed = false;
@@ -235,7 +251,7 @@ export class Suites {
     // Scheduling and metrics share hub time; local workers retain OS deadlines.
     this.#waitTimer = (options.waitClock ?? this.#clock).setInterval(() => this.#waitMetrics.record(), 1000);
     this.#waitTimer.unref();
-    this.#timer = this.#clock.setInterval(() => { void this.#check(); this.#checkSoak(); }, 1000);
+    this.#timer = this.#clock.setInterval(() => { void this.#check(); this.#checkSoak(); this.#checkDevT3(); }, 1000);
     this.#timer.unref();
   }
   configure(config: ProjectConfig): void {
@@ -406,9 +422,9 @@ export class Suites {
       ? { mode: 'full', files, reason: 'batch failing-file rerun', loadGate: false, soak: false,
         shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length) },
         ...(nvimTests?.length ? { nvimTests } : {}) }
-      : occasionSelection(admitted, input.occasion);
+      : occasionSelection(admitted, input.occasion, config?.merge.batchTiers);
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (input.occasion && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
+    if (input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
     if (input.occasion === 'soak') selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
@@ -441,7 +457,8 @@ export class Suites {
     authorize();
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, commands, ...(input.occasion === 'soak' && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const previousGreen = input.occasion === 'dev-t3' ? this.#jobs.findLast(job => job.occasion === 'dev-t3' && job.reported && job.outcome?.code === 0 && !job.cached && !job.cancelled && !job.requesterDied) : undefined;
+    const job: SuiteJob = { ...input, ...(input.occasion === 'dev-t3' ? { devT3: { previousGreenHead: previousGreen?.head ?? null, previousGreenRun: previousGreen?.id ?? null } } : {}), commands, ...((input.occasion === 'soak' || input.occasion === 'dev-t3') && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
     await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\nPrepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
@@ -631,7 +648,7 @@ export class Suites {
   #shouldPlanShards(job: SuiteJob): boolean {
     // Integrated is assigned by dispatch only to Coordinator root runs (or QA
     // epic occasions). Soaks and hub-owned merge batches use one slot and gain no stage proof.
-    return job.occasion !== 'batch' && job.occasion !== 'soak' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
+    return job.occasion !== 'batch' && job.occasion !== 'soak' && job.occasion !== 'dev-t3' && !job.shardingSkipped && Boolean(job.occasion || job.integrated && job.cwd === this.#root
       && job.branch === 'dev' && job.mode === 'all' && job.tree
       && job.selection?.mode === 'full' && job.selection.fetchedDev === job.head);
   }
@@ -790,6 +807,37 @@ export class Suites {
   #launchRemote(job: SuiteJob): void {
     const work = this.#launch(job).finally(() => this.#launchWork.delete(work));
     this.#launchWork.add(work);
+  }
+  #checkDevT3(): void {
+    if (this.#closed || this.#periodic) return;
+    const config = this.#options.projectConfig?.();
+    const interval = config?.verification.devT3EveryMs;
+    if (!interval) { this.#nextDevT3Check = 0; return; }
+    const now = this.#clock.now().getTime();
+    const last = this.#jobs.findLast(job => job.occasion === 'dev-t3');
+    if (last && (!last.outcome || !last.reported)) return;
+    const lastStarted = this.#jobs.findLast(job => job.occasion === 'dev-t3' && (job.lease as DropletLease | undefined)?.execution?.started);
+    const startedAt = (lastStarted?.lease as DropletLease | undefined)?.execution?.startedAt ?? lastStarted?.admittedAt ?? lastStarted?.queued;
+    const anchor = this.#store.meta('dev-t3-attempt');
+    if (!anchor) { this.#store.setMeta('dev-t3-attempt', String(now)); return; }
+    if (now - Math.max(Number(anchor), Date.parse(startedAt ?? '') || 0) < interval) return;
+    if (now < this.#nextDevT3Check) return;
+    this.#nextDevT3Check = now + Math.min(interval, 60_000);
+    this.#periodic = (async () => {
+      if (lastStarted && await this.#candidate.head(this.#root) === lastStarted.head) return;
+      const candidate = await this.#candidate.inspect(this.#root, 'all', config.verification.droplet.workers ?? config.verification.workers);
+      if (this.#closed || this.#options.projectConfig?.().verification.devT3EveryMs !== interval) return;
+      if (candidate.branch !== 'dev' || !candidate.tree || candidate.selection.fetchedDev !== candidate.head) return;
+      if (lastStarted?.head === candidate.head) return;
+      // Persist before async admission, including spend refusal, to avoid retry storms.
+      this.#store.setMeta('dev-t3-attempt', String(now));
+      await this.start({ mode: 'all', cwd: this.#root, topic: 'general', to: ['coordinator'], actor: null,
+        occasion: 'dev-t3', integrated: true, executor: 'droplet', fresh: true, priority: Number.MAX_SAFE_INTEGER }, () => {});
+    })().catch(error => {
+      const text = `periodic dev T3 skipped: ${error instanceof Error ? error.message : String(error)}`;
+      this.#options.onSoakNotice?.(`dev-t3-skip:${now}`, text);
+      this.#options.log?.({ event: 'verification-dev-t3-skipped', text });
+    }).finally(() => { this.#periodic = null; });
   }
   #checkSoak(): void {
     if (this.#closed || this.#soaking) return;
@@ -1192,11 +1240,11 @@ export class Suites {
 
   /** Observe completion of already admitted I/O; does not tick or advance time. */
   async settled(): Promise<void> {
-    await this.#soaking;
+    await this.#soaking; await this.#periodic;
     await this.#checking;
     await Promise.allSettled(this.#launchWork);
     await Promise.allSettled(this.#inspecting.values());
   }
 
-  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
+  async close(): Promise<void> { this.#closed = true; for (const owner of this.#humans.keys()) this.leave(owner, 'hub closing'); this.#clock.clearInterval(this.#timer); (this.#options.waitClock ?? this.#clock).clearInterval(this.#waitTimer); for (const id of this.#hostGates.keys()) this.#stopHostGate(id); await this.#soaking; await this.#periodic; await Promise.allSettled(this.#starting); await this.#checking; await Promise.allSettled(this.#launchWork); await this.#reaping; await Promise.allSettled(this.#inspecting.values()); }
 }

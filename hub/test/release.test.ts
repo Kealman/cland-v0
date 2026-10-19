@@ -1,5 +1,6 @@
 // T3: native Git lifecycle regressions: rejected atomic pushes, restart recovery and conflicting sync.
 // The atomic release/sync core lives in scenarios/release.test.ts.
+import { releaseCover } from './release-support.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,9 +39,11 @@ test('release publishes the recorded master default without creating main', asyn
   const dev = await readGit(root, 'rev-parse', 'dev');
   await scratchHub(machine, root);
   const before = await readGit(github, 'show-ref');
+  await releaseCover(root);
   const preview = json<{ refs: string[] }>(await initIn(machine, root, 'release', 'v0.1.0', '--dry-run', '--json'));
   assert.deepEqual(preview.refs, [`${dev}:refs/heads/master`, 'refs/tags/v0.1.0:refs/tags/v0.1.0']);
   assert.equal(await readGit(github, 'show-ref'), before);
+  await releaseCover(root);
   const released = json<{ commit: string; followUp?: unknown }>(await initIn(machine, root, 'release', 'v0.1.0', '--json'));
   assert.equal(released.commit, dev);
   assert.equal(released.followUp, undefined);
@@ -66,6 +69,7 @@ test('sync imports master after release refuses commits dev lacks', async t => {
   const remote = await readGit(github, 'commit-tree', 'master^{tree}', '-p', 'master', '-m', 'Collaborator work');
   await readGit(github, 'update-ref', 'refs/heads/master', remote);
   const before = await readGit(github, 'show-ref');
+  await releaseCover(root);
   const refused = await initIn(machine, root, 'release', 'v0.1.0', '--dry-run');
   assert.notEqual(refused.code, 0);
   assert.match(refused.stderr, /release-behind: github\/master has commits dev lacks/);
@@ -104,6 +108,7 @@ test('legacy publication receipts recover main without a recorded default', asyn
   const dev = await readGit(root, 'rev-parse', 'dev');
   const lock = join(root, '.git', 'refs', 'heads', 'main.lock');
   await writeFile(lock, 'fixture obstruction\n');
+  await releaseCover(root);
   const released = json<{ followUp?: { step: string } }>(await initIn(machine, root, 'release', 'v0.1.0', '--json'));
   assert.equal(released.followUp?.step, 'local refs');
   const receipt = JSON.parse(await readFile(join(root, '.cland', 'release.tmp'), 'utf8'));
@@ -111,6 +116,7 @@ test('legacy publication receipts recover main without a recorded default', asyn
   assert.equal(receipt.main, remote);
   await rm(lock);
   await readGit(root, 'commit', '--allow-empty', '-qm', 'Later dev work');
+  await releaseCover(root);
   const retry = json<{ commit: string; followUp?: unknown }>(await initIn(machine, root, 'release', 'v0.1.0', '--json'));
   assert.equal(retry.commit, dev);
   assert.equal(retry.followUp, undefined);
@@ -129,6 +135,7 @@ test('release checks the committed dev package version before preview or publica
   await writeFile(path, '{"version":"0.1.4"}\n');
   const status = git(root, 'status', '--porcelain');
   for (const flags of [['--dry-run'], []]) {
+    await releaseCover(root);
     const refused = await cland(root, 'release', 'v0.1.4', ...flags);
     assert.notEqual(refused.code, 0);
     assert.match(refused.stderr, /release-version: dev's package.json says 0\.1\.3, the release is v0\.1\.4/);
@@ -141,6 +148,7 @@ test('release checks the committed dev package version before preview or publica
   git(root, 'add', 'package.json');
   git(root, 'commit', '-qm', 'Bump package to 0.1.4');
   const bumped = snapshot(root, territory, github);
+  await releaseCover(root);
   const preview = await ui.request({ type: 'release', version: 'v0.1.4', dryRun: true });
   assert.equal(preview.ok, true, preview.error);
   assert.equal((preview.value as { commit: string }).commit, git(root, 'rev-parse', 'dev'));
@@ -155,8 +163,10 @@ test('release permits a package without a version key', { timeout: 5_000 }, asyn
   git(root, 'add', '.');
   git(root, 'commit', '-qm', 'Record unversioned package');
   const dev = git(root, 'rev-parse', 'dev');
+  await releaseCover(root);
   const preview = await ui.request({ type: 'release', version: 'v0.1.4', dryRun: true });
   assert.equal(preview.ok, true, preview.error);
+  await releaseCover(root);
   const released = await ui.request({ type: 'release', version: 'v0.1.4' });
   assert.equal(released.ok, true, released.error);
   for (const repo of [root, territory, github]) {
@@ -172,10 +182,12 @@ test('release refusals and dry-run keep every local, territory and GitHub ref, w
   const refuses = async (args: string[], message: RegExp, direct = false) => {
     const before = snapshot(root, territory, github);
     if (direct) {
+      await releaseCover(root);
       const r = await ui.request({ type: 'release', ...(args[0] ? { version: args[0] } : {}) });
       assert.equal(r.ok, false);
       assert.match(r.error ?? '', message);
     } else {
+      await releaseCover(root);
       const r = await cland(root, 'release', ...args);
       assert.notEqual(r.code, 0);
       assert.match(r.stderr, message);
@@ -188,6 +200,7 @@ test('release refusals and dry-run keep every local, territory and GitHub ref, w
   await refuses(['v0.1.0'], /release-empty/);
   await merged(root, 'Ship the parser', 'GLOSSARY.md');
   const before = snapshot(root, territory, github);
+  await releaseCover(root);
   const preview = ok(await cland(root, 'release', 'v0.1.0', '--dry-run'));
   assert.match(preview.stdout, /T-1 Ship the parser/);
   assert.match(preview.stdout, /refs\/heads\/main/);
@@ -216,11 +229,13 @@ test('a rejected atomic GitHub push retains main and tags and reports the remote
   await writeFile(hook, '#!/bin/sh\necho "Release rejected by fixture policy" >&2\nexit 1\n');
   await chmod(hook, 0o755);
   const before = snapshot(root, territory, github);
+  await releaseCover(root);
   const rejected = await cland(root, 'release', 'v0.1.0');
   assert.notEqual(rejected.code, 0);
   assert.match(rejected.stderr, /Release rejected by fixture policy/);
   assert.equal(snapshot(root, territory, github), before);
   await rm(hook);
+  await releaseCover(root);
   ok(await cland(root, 'release', 'v0.1.0'));
   assert.equal(git(github, 'rev-parse', 'main'), git(root, 'rev-parse', 'dev'));
 });
@@ -228,6 +243,7 @@ test('a rejected atomic GitHub push retains main and tags and reports the remote
 test('only the human and the Coordinator shell release; Implementer, Reviewer and QA shells cannot impersonate them', async (t) => {
   const { root, github, territory } = await project(t);
   await merged(root, 'Ship the parser', 'GLOSSARY.md');
+  await releaseCover(root);
   for (const role of ['implementer', 'reviewer', 'qa', 'coordinator']) {
     const name = `caller-${role}`;
     const sessionId = `${role}-id`;
@@ -272,6 +288,7 @@ test('a release accepted by GitHub but blocked locally reports follow-up and ret
   const main = git(root, 'rev-parse', 'main');
   const lock = join(root, '.git', 'refs', 'heads', 'main.lock');
   await writeFile(lock, 'fixture obstruction\n');
+  await releaseCover(root);
   const r = json<{ commit: string; followUp?: { error: string } }>(await cland(root, 'release', 'v0.1.0', '--json'));
   assert.equal(r.commit, dev);
   assert.match(r.followUp?.error ?? '', /released; follow-up failed.*main.lock/s);
@@ -282,6 +299,7 @@ test('a release accepted by GitHub but blocked locally reports follow-up and ret
   ok(await cland(root, 'hub', 'stop'));
   await rm(lock);
   await startDaemon(t, root);
+  await releaseCover(root);
   const retry = json<{ commit: string; followUp?: unknown }>(await cland(root, 'release', 'v0.1.0', '--json'));
   assert.equal(retry.commit, dev);
   assert.equal(retry.followUp, undefined);
@@ -297,10 +315,12 @@ test('release territory failure is recoverable without publishing later dev work
   const hook = join(territory, 'hooks', 'pre-receive');
   await writeFile(hook, '#!/bin/sh\necho "Territory unavailable" >&2\nexit 1\n');
   await chmod(hook, 0o755);
+  await releaseCover(root);
   const r = json<{ followUp?: { error: string } }>(await cland(root, 'release', 'v0.1.0', '--json'));
   assert.match(r.followUp?.error ?? '', /Territory unavailable/);
   git(root, 'commit', '--allow-empty', '-qm', 'Later work');
   await rm(hook);
+  await releaseCover(root);
   ok(await cland(root, 'release', 'v0.1.0'));
   for (const repo of [root, territory, github]) assert.equal(git(repo, 'rev-parse', 'main'), dev);
   assert.notEqual(git(root, 'rev-parse', 'dev'), dev);
@@ -317,6 +337,7 @@ test('sync territory failure retries its prepared replay and blocks release unti
   const r = json<{ main: string; dev: string; followUp?: { error: string } }>(await cland(root, 'sync', '--json'));
   assert.match(r.followUp?.error ?? '', /Territory unavailable/);
   const before = snapshot(root, territory, github);
+  await releaseCover(root);
   const release = await ui.request({ type: 'release', version: 'v0.1.0' }, 30_000);
   assert.equal(release.ok, false, 'a pending sync must finish before GitHub publication');
   assert.match(release.error ?? '', /sync-recovery/);
@@ -333,6 +354,7 @@ test('notes read Git trailers, not Item lines in prose, and retain subjects for 
   const { root, github } = await project(t);
   git(root, 'commit', '--allow-empty', '-qm', 'Explain the notation\n\nItem: T-99\n\nThis is prose after the example.');
   git(root, 'commit', '--allow-empty', '-qm', 'A removed item\n\nItem: T-42');
+  await releaseCover(root);
   ok(await cland(root, 'release', 'v0.1.0'));
   assert.equal(git(github, 'for-each-ref', '--format=%(contents)', 'refs/tags/v0.1.0'), 'T-42 A removed item\nExplain the notation');
 });
@@ -345,6 +367,7 @@ test('release refuses multiple GitHub push destinations because their refs canno
   git(root, 'config', '--add', 'remote.github.pushurl', second);
   git(root, 'commit', '--allow-empty', '-qm', 'Release this commit');
   const before = snapshot(root, territory, github, second);
+  await releaseCover(root);
   const r = await ui.request({ type: 'release', version: 'v0.1.0' });
   assert.equal(r.ok, false);
   assert.match(r.error ?? '', /release-github.*one push destination/s);
@@ -363,6 +386,7 @@ test('a lost successful GitHub push reply recovers from its receipt even after t
   const main = git(root, 'rev-parse', 'main');
   const dev = git(root, 'rev-parse', 'dev');
   await writeFile(marker, 'lose reply\n');
+  await releaseCover(root);
   const lost = await cland(root, 'release', 'v0.1.0');
   assert.notEqual(lost.code, 0);
   assert.match(lost.stderr, /Fixture lost the push reply/);
@@ -371,6 +395,7 @@ test('a lost successful GitHub push reply recovers from its receipt even after t
   assert.equal(git(github, 'rev-parse', 'main'), dev);
   const tag = git(github, 'rev-parse', 'v0.1.0');
   git(root, 'gc', '--prune=now');
+  await releaseCover(root);
   ok(await cland(root, 'release', 'v0.1.0'));
   assert.equal(git(root, 'rev-parse', 'v0.1.0'), tag);
   assert.equal(git(territory, 'rev-parse', 'main'), dev);
@@ -438,12 +463,14 @@ test('a release success-record failure retains its same-version recovery receipt
   onCleanup(t, () => hub.close());
   onCleanup(t, () => tracker.stop());
   const ui = await connectWsUi(t, hub);
+  await releaseCover(root);
   const first = await ui.request({ type: 'release', version: 'v0.1.0' }, 30_000);
   assert.equal(first.ok, true, first.error);
   const result = first.value as { commit: string; followUp?: { step: string; error: string } };
   assert.equal(result.followUp?.step, 'record');
   assert.match(result.followUp?.error ?? '', /Fixture record failure/);
   assert.equal(git(github, 'rev-parse', 'main'), result.commit);
+  await releaseCover(root);
   const retry = await ui.request({ type: 'release', version: 'v0.1.0' }, 30_000);
   assert.equal(retry.ok, true, retry.error);
   assert.deepEqual((retry.value as { commit: string }).commit, result.commit);
@@ -531,4 +558,27 @@ exec ${quote(realGit)} "$@"
   assert.equal(await readFile(join(root, 'README.md'), 'utf8'), 'finished\n');
   await rm(marker);
   git(root, 'worktree', 'prune');
+});
+
+test('release consumes genuine verification tree receipts across committed tracker and rulebook changes', async t => {
+  const { root, ui } = await project(t, undefined, undefined, true);
+  const created = await ui.request({ type: 'task.create', size: 'M', title: 'Committed tracker metadata' });
+  assert.equal(created.ok, true);
+  const rulebook = join(root, '.cland/RULES.md');
+  await writeFile(rulebook, '# Rules\n\nA project rule.\n');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Release build with metadata');
+  const cover = await releaseCover(root);
+  const { candidateTree } = await import('../src/verification-tree.ts');
+  assert.equal(cover.tree, await candidateTree(root, cover.head));
+  assert.notEqual(cover.tree, git(root, 'rev-parse', 'dev^{tree}'), 'receipt excludes committed metadata');
+  ok(await cland(root, 'release', 'v0.1.0', '--dry-run'));
+  await writeFile(rulebook, '# Rules\n\nAn amended project rule.\n');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Metadata-only later head');
+  assert.notEqual(git(root, 'rev-parse', 'dev'), cover.head);
+  ok(await cland(root, 'release', 'v0.1.0', '--dry-run'));
+  await writeFile(join(root, 'README.md'), 'A different build\n');
+  git(root, 'add', '.'); git(root, 'commit', '-qm', 'Changed executable build');
+  const missing = await cland(root, 'release', 'v0.1.0', '--dry-run');
+  assert.notEqual(missing.code, 0);
+  assert.match(missing.stderr, /release-t3: no green T3/);
 });

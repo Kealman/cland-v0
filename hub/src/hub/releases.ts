@@ -31,11 +31,14 @@ export class Releases {
   readonly tracker: Tracker;
   readonly worktrees: TaskWorktrees;
   readonly log: LogFn;
-  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, env: NodeJS.ProcessEnv = process.env) { this.#env = env; this.tracker = tracker; this.worktrees = worktrees; this.log = log; }
+  readonly #publish: typeof releaseGit;
+  readonly #lock: typeof withTerritoryLockAsync;
+  readonly requireT3: ((head: string, tree: string) => void) | undefined;
+  constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, env: NodeJS.ProcessEnv = process.env, requireT3?: (head: string, tree: string) => void, boundary: { publish?: typeof releaseGit; lock?: typeof withTerritoryLockAsync } = {}) { this.#publish = boundary.publish ?? releaseGit; this.#lock = boundary.lock ?? withTerritoryLockAsync; this.requireT3 = requireT3; this.#env = env; this.tracker = tracker; this.worktrees = worktrees; this.log = log; }
 
   push(resumed: Resumed, authorize: () => void): Promise<PushResult> {
     let published: PushResult | undefined;
-    return this.worktrees.serial(() => withTerritoryLockAsync(this.tracker.root, async () => {
+    return this.worktrees.serial(() => this.#lock(this.tracker.root, async () => {
       const pending = resumed(() => {
         authorize();
         return this.tracker.list().flatMap(item => {
@@ -76,7 +79,7 @@ export class Releases {
   release(version: string | undefined, dryRun: boolean, resumed: Resumed, authorize: () => void, actor: Actor, item?: string) {
     let published: ReleaseResult | undefined;
     return this.worktrees.serial(async () => {
-      const result = await withTerritoryLockAsync(this.tracker.root, async () => {
+      const result = await this.#lock(this.tracker.root, async () => {
         let notesPrefix: string | undefined;
         let releaseItem = item;
         if (item !== undefined) {
@@ -104,10 +107,10 @@ export class Releases {
           }
           notesPrefix = resumed(() => [section(view.body, 'Notes'), deliverables.join('\n')].filter(Boolean).join('\n\n'));
         }
-        const result = await releaseGit(this.tracker.root, version, dryRun, async id => {
+        const result = await this.#publish(this.tracker.root, version, dryRun, async id => {
           try { const view = await this.tracker.viewAsync(id, resumed); return resumed(() => view.title); }
           catch { return null; }
-        }, resumed, authorize, releaseItem === undefined ? undefined : { item: releaseItem, notesPrefix: notesPrefix! }, this.#env);
+        }, resumed, authorize, releaseItem === undefined ? undefined : { item: releaseItem, notesPrefix: notesPrefix! }, this.#env, this.requireT3);
         if (!dryRun) published = result;
         let step = 'record';
         try {
@@ -146,7 +149,7 @@ export class Releases {
   }
 
   sync(resumed: Resumed, authorize: () => void) {
-    return this.worktrees.serial(() => withTerritoryLockAsync(this.tracker.root, async () => {
+    return this.worktrees.serial(() => this.#lock(this.tracker.root, async () => {
       const items = resumed(() => {
         authorize();
         return this.tracker.list().filter(item => this.tracker.mergeReceipt(item.id));

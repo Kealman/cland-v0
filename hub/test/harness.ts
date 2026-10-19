@@ -380,6 +380,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  publishRelease?: import('../src/hub/dispatch.ts').DispatcherOptions['publishRelease'];
   batchRepository?: import('../src/hub/merge-batch-territory.ts').BatchRepository;
   /** Replace external account probes while retaining the registry and poll scheduling. */
   accountReader?: import('../src/accounts/poller.ts').AccountReader;

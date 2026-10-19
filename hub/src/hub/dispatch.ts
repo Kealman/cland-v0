@@ -1,3 +1,4 @@
+import { devT3Result } from './dev-t3-result.ts';
 import { reportSoakQuarantine } from './soak-quarantine.ts';
 import { gitIn } from '../tracker/verdict-git.ts';
 import { interruptionLines } from '../suite-progress.ts';
@@ -23,7 +24,7 @@ import { DropletExecutor } from '../executor/droplet/droplet.ts';
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
-import { Suites, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
+import { Suites, releaseT3Cover, SuiteAdmissionError, suiteSummary, machineAccounting, type SuiteJob, type SuiteSchedulerOptions } from './suites.ts';
 import { machineHealthSummary } from '../executor/droplet/health.ts';
 import { reportSharedDefects } from './shared-defects.ts';
 import { quarantineResults, recordQuarantineResults, type QuarantineHistory } from '../suite-quarantine.ts';
@@ -107,6 +108,7 @@ export type Conversation = {
 };
 
 export type DispatcherOptions = {
+  publishRelease?: typeof import('../territory-release.ts').releaseGit;
   batchRepository?: import('./merge-batch-territory.ts').BatchRepository;
   hasTerritory?: typeof import('../territory.ts').hasTerritory;
   territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync;
@@ -198,7 +200,9 @@ export class Dispatcher {
     this.#mergeQueueReady = this.#mergeQueue?.refresh().catch(error => this.#log({ event: 'merge-queue-reconcile-failed', error: String(error) })) ?? Promise.resolve();
     options.tracker?.useMergeQueue(id => this.#mergeQueue?.position(id));
     this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock, this.#mergeQueue ?? undefined) : null;
-    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env) : null;
+    this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env, (head, tree) => {
+      if (!releaseT3Cover(options.core.store, tree)) throw new ReleaseError('release-t3', `no green T3 covers release head ${head} (tree ${tree}); needs cland verify all --occasion release --report general on this dev tree (or a green dev-t3, soak or stage run)`);
+    }, { ...(options.publishRelease ? { publish: options.publishRelease } : {}), ...(options.territoryLock ? { lock: options.territoryLock } : {}) }) : null;
     this.artifacts = new ArtifactLifecycle(options.core.store, options.control?.status().root, a => options.core.artifactChanged(a), options.artifactFiles, options.core.clock);
     this.#rolesSnapshot = options.core.roles?.get();
     const root = options.control?.status().root;
@@ -787,7 +791,7 @@ export class Dispatcher {
     const interrupted = interruptionLines(log, { timeout: outcome.code === 124 });
     const selectionFallback = job.selection?.fallback ?? (job.selection?.reason.startsWith('fetch/diff unavailable:') ? `selection fallback: full; ${job.selection.reason}` : undefined);
     const fallback = selectionFallback ? `\n${selectionFallback}` : '';
-    const deferred = taskTierEvidence(job.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, job.item ?? null);
+    const deferred = taskTierEvidence(job.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, batchTiers: this.#options.projectConfig?.().merge.batchTiers, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, job.item ?? null);
     const progress = `${interrupted.length ? `\n${interrupted.join('\n')}` : ''}${fallback}${deferred ? `\n${deferred}` : ''}`;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
@@ -815,7 +819,12 @@ export class Dispatcher {
       }
       return text;
     };
-    const text = resultText(artifact);
+    const periodic = job.occasion === 'dev-t3' ? await devT3Result(job, log, artifact, this.#options.git ?? gitIn(job.cwd, this.#options.env)) : null;
+    let text = resultText(artifact);
+    if (periodic) {
+      const merges = periodic.merges?.slice(0, 10).map(merge => `${merge.head} ${merge.subject}`).join(', ') ?? 'unavailable';
+      text = core.boundedText(`Periodic dev T3 ${periodic.result} · head ${periodic.head}\nPrevious green ${periodic.previousGreenHead ?? 'none'}\n${execution}\nLog ${artifact.id}: ${artifact.path}\nFailing files ${periodic.failingFiles.slice(0, 20).join(', ') || 'none identified'}\nMerges ${periodic.merges?.length ?? 'unknown'}: ${merges}\nComplete range and failing files in message detail\n${text}`);
+    }
     const result = core.store.transaction(() => {
       if (job.batch) {
         const id = core.noticeTo(job.topic, { id: messageId, kind: 'report', text, to: job.to });
@@ -826,9 +835,9 @@ export class Dispatcher {
         core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
         return null;
       }
-      if (job.occasion === 'soak') {
+      if (job.occasion === 'soak' || periodic) {
         if (!core.noticeTo(GENERAL.id, { id: messageId, kind: 'report', to: ['coordinator'], text,
-          detail: { event: 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
+          detail: periodic ?? { event: 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
         core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
         return { message: core.store.message(messageId)! };
       }
@@ -838,8 +847,8 @@ export class Dispatcher {
       return result;
     });
     if (result && !core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
-    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name ?? (job.occasion === 'soak' ? 'hub' : undefined), topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
-    this.#log({ event: 'audit', session: job.occasion === 'soak' ? 'hub' : caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: job.occasion === 'soak' ? 'hub' : caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name ?? ((job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : undefined), topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
+    this.#log({ event: 'audit', session: (job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: (job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #batchArtifact(job: Readonly<SuiteJob>, title: string): Promise<{ id: string; path: string }> {
     const core = this.#options.core, root = this.#options.control?.status().root;
@@ -1612,7 +1621,7 @@ export class Dispatcher {
         const value = frame.ok ? frame.value as { id?: string; dryRun?: boolean; reused?: boolean } : undefined;
         if (frame.ok && value?.dryRun) {
           const preview = frame.value as SuiteDryRun;
-          const deferred = taskTierEvidence(preview.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, core.store.topic(topic)?.item ?? null);
+          const deferred = taskTierEvidence(preview.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, batchTiers: this.#options.projectConfig?.().merge.batchTiers, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, core.store.topic(topic)?.item ?? null);
           if (deferred) preview.lines.push(deferred);
         }
         const outcome = frame.ok ? value?.dryRun ? 'preview' : 'admitted' : 'refused';

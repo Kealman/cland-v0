@@ -73,11 +73,11 @@ test('tracker config accepts peer levels and rejects malformed, duplicate and co
 });
 
 test('merge queue defaults off and round-trips an explicitly enabled boolean', () => {
-  assert.deepEqual(defaultConfig('scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000 });
-  assert.deepEqual(parseConfig('', 'scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000 });
+  assert.deepEqual(defaultConfig('scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(parseConfig('', 'scratch').merge, { queue: false, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
   const configured = parseConfig('[merge]\nqueue = true\n', 'scratch');
-  assert.deepEqual(configured.merge, { queue: true, batch: 3, batchWaitMs: 600_000 });
-  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { queue: true, batch: 3, batchWaitMs: 600_000 });
+  assert.deepEqual(configured.merge, { queue: true, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
+  assert.deepEqual(parseConfig(renderConfig(configured), 'scratch').merge, { queue: true, batch: 3, batchWaitMs: 600_000, batchTiers: ['T1', 'T3'] });
   for (const invalid of ['"true"', '1', '[]']) {
     assert.throws(() => parseConfig(`[merge]\nqueue = ${invalid}`, 'scratch', {}, { strict: true }), /merge.queue must be a boolean/);
   }
@@ -88,4 +88,7 @@ test('this repository enables the merge batch queue while new projects keep it o
   const source = readFileSync(new URL('../../.cland/config.toml', import.meta.url), 'utf8');
   assert.equal(parseConfig(source, 'repository', {}).merge.queue, true);
   assert.equal(defaultConfig('new-project').merge.queue, false);
+  const config = parseConfig(source, 'repository', {});
+  assert.deepEqual(config.merge.batchTiers, ['T1']);
+  assert.equal(config.verification.devT3Every, '2h');
 });

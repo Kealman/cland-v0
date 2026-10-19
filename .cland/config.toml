@@ -5,10 +5,11 @@
 name = "v0"
 
 [merge]
-# Task receipts cover T0–T2; every code landing gains T3 in its merge batch.
+# D67: task receipts cover T0–T2; batches run T1 and periodic dev runs cover T3.
 queue = true
 # D64 (2026-10-19 15:20Z): 4 per batch until the v0.1.4 release; back to 3 (the default) if two batches in a row go red.
 batch = 4
+batch_tiers = ["T1"]
 
 [verification]
 # cland verify runs nothing until test is set; use cland config set verification.test '<command>'.
@@ -40,6 +41,8 @@ run_timeout = "75m"
 daily_spend_usd = 20
 # Nightly T1-T4 soak on one droplet (UTC).
 soak = "03:00"
+# D67: hub-owned T3 on moved dev every two hours.
+dev_t3_every = "2h"
 
 [verification.droplet]
 # D53 (2026-10-16): 2 workers per c-8 (T-655: green at peak load 9; 4 workers peaked at 16 and went red).

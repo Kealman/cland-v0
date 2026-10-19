@@ -1,6 +1,7 @@
 // T3 scenario: atomic release push and sync against a bare GitHub remote.
 // Rule coverage (T1/T2): hub/test/merge-policy.test.ts, hub/test/demo-release-component.test.ts; remaining release refusals in hub/test/release.test.ts (native Git).
 // Hub process starts: 0; one projectHub per release/sync step. Only one hub is live at a time.
+import { releaseCover } from '../release-support.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -14,6 +15,7 @@ test('release atomically publishes dev and an annotated tag with item titles, th
   await merged(root, 'Ship the renderer', 'README.md');
   git(root, 'commit', '--allow-empty', '-qm', 'Record release metadata');
   const dev = git(root, 'rev-parse', 'dev');
+  await releaseCover(root);
   ok(await cland(root, 'release', 'v0.1.0'));
   for (const repo of [root, github, territory]) assert.equal(git(repo, 'rev-parse', 'main'), dev);
   assert.equal(git(github, 'cat-file', '-t', 'v0.1.0'), 'tag');

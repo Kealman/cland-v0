@@ -1,5 +1,5 @@
 export type ReleaseCode = 'release-item' | 'release-version' | 'release-tag' | 'release-empty' | 'release-github' | 'release-behind'
-  | 'release-state' | 'release-territory' | 'release-changed' | 'sync-dirty' | 'sync-conflict' | 'sync-behind' | 'sync-recovery';
+  | 'release-t3' | 'release-state' | 'release-territory' | 'release-changed' | 'sync-dirty' | 'sync-conflict' | 'sync-behind' | 'sync-recovery';
 
 export class ReleaseError extends Error {
   readonly code: ReleaseCode;

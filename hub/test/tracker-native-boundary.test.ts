@@ -1,5 +1,6 @@
 // T-77 extends T-70/T-75 at the native boundary: tracker reads/mutations, serving-time scans,
 // and the shared Sessions launch layer. T-78 covers territory requests; native adapters remain T-79.
+import { releaseCover } from './release-support.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -122,7 +123,7 @@ test('worktree claim, listing and prune cross no synchronous native boundary', a
 });
 
 test('merge refusal, landing and recovery cross no synchronous native boundary', async t => {
-  const { ui, root, git, tracker } = await territoryHub(t);
+  const { ui, root, git, tracker, hub } = await territoryHub(t);
   await ui.request({ size: 'M', type: 'task.create', title: 'Ship it', kind: 'task' });
   await ui.request({ type: 'task.claim', item: 'T-1' });
   const view = await tracker.viewAsync('T-1');
@@ -151,13 +152,14 @@ test('merge refusal, landing and recovery cross no synchronous native boundary',
 });
 
 test('release notes, publication and sync cross no synchronous native boundary', async t => {
-  const { ui, root, git, tracker } = await territoryHub(t);
+  const { ui, root, git, tracker, hub } = await territoryHub(t);
   const github = await tempProject(t, 'cland-native-github-');
   await git('clone', '-q', '--bare', '.', github);
   await git('remote', 'add', 'github', github);
   await tracker.create({ id: 'human', name: 'human', role: null }, { title: 'A tracker title', kind: 'task' });
   await git('commit', '--allow-empty', '-qm', 'A different subject\n\nItem: T-1');
   await git('commit', '--allow-empty', '-qm', 'A removed item\n\nItem: T-42');
+  await releaseCover(root, {}, hub.core.store);
   await guarded(async () => {
     const preview = await ui.request({ type: 'release', version: 'v0.1.0', dryRun: true }, 30_000);
     assert.equal(preview.ok, true, preview.error);
@@ -181,7 +183,7 @@ test('each territory request guard rejects a planted statSync on its request pat
   for (const type of ['worktree', 'merge', 'release']) await t.test(type, async t => {
     let plant = false;
     const event = type === 'worktree' ? 'task-worktree' : type === 'merge' ? 'task-merged' : 'release-preview';
-    const { ui, root, git } = await territoryHub(t, entry => {
+    const { ui, root, git, hub } = await territoryHub(t, entry => {
       if (plant && entry.event === event) {
         try { fs.statSync(root); } catch { /* the guard still records a swallowed native call */ }
       }
@@ -198,6 +200,7 @@ test('each territory request guard rejects a planted statSync on its request pat
       await git('remote', 'add', 'github', github);
       await git('commit', '--allow-empty', '-qm', 'Release probe');
     }
+    if (type === 'release') await releaseCover(root, {}, hub.core.store);
     plant = true;
     await assert.rejects(guarded(async () => {
       await ui.request(type === 'worktree' ? { type: 'task.claim', item: 'T-1' }

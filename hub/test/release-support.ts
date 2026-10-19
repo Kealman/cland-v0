@@ -1,3 +1,7 @@
+import { committedTree } from '../src/verification-tree.ts';
+import { recordReleaseCover } from './release-cover-fixture.ts';
+import type { Store } from '../src/hub/store.ts';
+import type { SuiteJob } from '../src/hub/suites.ts';
 import { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -43,4 +47,12 @@ export async function collaborator(t: TestContext, github: string, file: string,
   git(clone, 'commit', '-qm', 'Work on GitHub');
   git(clone, 'push', '-q', 'origin', 'main');
   return git(clone, 'rev-parse', 'HEAD');
+}
+
+/** Native publication fixtures share the production verification-tree identity. */
+export async function releaseCover(root: string, overrides: Partial<SuiteJob> = {}, store?: Store) {
+  const head = git(root, 'rev-parse', 'dev');
+  const tree = await committedTree(root, head);
+  assert.ok(tree);
+  return recordReleaseCover(root, head, tree, overrides, store);
 }

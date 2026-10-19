@@ -1,4 +1,5 @@
 // T3: native Git publication, rejection hooks and pinned retry receipts preserve release refs and item closure.
+import { releaseCover } from './release-support.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -39,6 +40,7 @@ test('item release refuses a dev package version different from its version', { 
   git(root, 'commit', '-qm', 'Record release plan and package version');
   const before = refs(root, territory, github);
   const source = await readFile(join(root, item.path), 'utf8');
+  await releaseCover(root);
   const refused = await cland(root, 'release', '--item', item.id, '--dry-run');
   assert.notEqual(refused.code, 0);
   assert.match(refused.stderr, /release-version: dev's package.json says 0\.1\.3, the release is v0\.1\.4/);
@@ -53,6 +55,7 @@ test('release from an item refuses a missing version through the protocol and CL
   const item = await create(ui, 'Next release', '--kind', 'release');
   const beforeRefs = refs(root, territory, github);
   const beforeItem = await readFile(join(root, item.path), 'utf8');
+  await releaseCover(root);
   const result = await ui.request({ type: 'release', item: item.id, dryRun: true }, 30_000);
   assert.equal(result.ok, false);
   assert.match(result.error ?? '', /R-1.*no version/);
@@ -66,6 +69,7 @@ test('release from an item names non-release items, mismatched versions and open
   const task = await create(ui, 'Ordinary task', '--size', 'M');
   const refuse = async (item: string, error: RegExp, version?: string) => {
     const before = refs(root, territory, github);
+    await releaseCover(root);
     const result = await ui.request({ type: 'release', item, dryRun: true, ...(version === undefined ? {} : { version }) }, 30_000);
     assert.equal(result.ok, false);
     assert.match(result.error ?? '', error);
@@ -99,6 +103,7 @@ test('item dry-run previews its Notes, epic deliverables and existing commit not
   const beforeItem = await readFile(join(root, release.path), 'utf8');
   const beforeEpic = await readFile(join(root, epic.path), 'utf8');
   const expected = 'Highlights for people.\n\n### Compatibility\n\nKeep existing workflows.\n\nE-2 Parser: Ship v0.2.0 with fast parsing.\n\nRecord release plan\nPolish the parser';
+  await releaseCover(root);
   const result = await ui.request({ type: 'release', item: release.id, dryRun: true }, 30_000);
   assert.equal(result.ok, true, result.error);
   const preview = result.value as ReleaseResult;
@@ -107,8 +112,10 @@ test('item dry-run previews its Notes, epic deliverables and existing commit not
   assert.equal(preview.dryRun, true);
   assert.equal(preview.commit, git(root, 'rev-parse', 'dev'));
   assert.equal(preview.refs[1], 'refs/tags/v0.2.0:refs/tags/v0.2.0');
+  await releaseCover(root);
   const cli = json<ReleaseResult>(await cland(root, 'release', 'v0.2.0', '--item', release.id, '--dry-run', '--json'));
   assert.deepEqual(cli, preview);
+  await releaseCover(root);
   const plain = ok(await cland(root, 'release', '--item', release.id, '--dry-run'));
   assert.match(plain.stdout, /^Would release v0.2.0 at /);
   assert.ok(plain.stdout.includes(expected));
@@ -127,7 +134,9 @@ test('an item release publishes its notes and annotated tag, closes with a tag c
   git(root, 'add', '.');
   git(root, 'commit', '-qm', 'Record release plans');
   const dev = git(root, 'rev-parse', 'dev');
+  await releaseCover(root);
   const preview = await value<ReleaseResult>(ui, { type: 'release', item: item.id, dryRun: true });
+  await releaseCover(root);
   const result = json<ReleaseResult>(await cland(root, 'release', '--item', item.id, '--json'));
   assert.equal(result.version, 'v1.0.0-rc.1+build.2');
   assert.equal(result.commit, dev);
@@ -161,6 +170,7 @@ test('a published item release retries its pinned build after tracker closure fa
   const discovery = JSON.parse(await readFile(join(root, '.cland', 'hub.json'), 'utf8')) as { pid: number };
   const obstruction = join(root, '.cland', 'tasks', `.${item.path.split('/').at(-1)}.${discovery.pid}.tmp`);
   await mkdir(obstruction);
+  await releaseCover(root);
   const first = await value<ReleaseResult>(ui, { type: 'release', item: item.id });
   assert.match(first.followUp?.error ?? '', /released; follow-up failed/);
   for (const repo of [root, territory, github]) assert.equal(git(repo, 'rev-parse', 'main'), dev);
@@ -169,6 +179,7 @@ test('a published item release retries its pinned build after tracker closure fa
   const receipt = await readFile(join(root, '.cland', 'release.tmp'), 'utf8');
   const before = refs(root, territory, github);
   for (const fields of [{ version: 'v0.1.0' }, { item: other.id }]) {
+    await releaseCover(root);
     const wrong = await ui.request({ type: 'release', ...fields });
     assert.equal(wrong.ok, false);
     assert.match(wrong.error ?? '', /pending release.*R-1/);
@@ -179,12 +190,14 @@ test('a published item release retries its pinned build after tracker closure fa
   await hub.stop();
   const reopened = await projectHub(t, root);
   const retryUi = await dispatcherUi(t, reopened.dispatcher, root);
+  await releaseCover(root);
   const retry = await value<ReleaseResult>(retryUi, { type: 'release', item: item.id });
   assert.equal(retry.followUp, undefined);
   assert.equal(retry.commit, first.commit);
   assert.equal(retry.notes, first.notes);
   // Model a crash after the item write but before receipt deletion: replay must not duplicate the comment.
   await writeFile(join(root, '.cland', 'release.tmp'), receipt);
+  await releaseCover(root);
   const closedRetry = await value<ReleaseResult>(retryUi, { type: 'release', item: item.id });
   assert.equal(closedRetry.commit, first.commit);
   assert.equal(closedRetry.followUp, undefined);
@@ -205,6 +218,7 @@ test('a rejected item publication preserves the open release and every ref, then
   const source = await readFile(join(root, item.path), 'utf8');
   const hook = join(github, 'hooks', 'pre-receive');
   await writeFile(hook, '#!/bin/sh\necho "Release rejected by fixture" >&2\nexit 1\n', { mode: 0o755 });
+  await releaseCover(root);
   const rejected = await ui.request({ type: 'release', item: item.id });
   assert.equal(rejected.ok, false);
   assert.match(rejected.error ?? '', /Release rejected by fixture/);
@@ -221,6 +235,7 @@ test('a release without --item keeps release items and their Notes untouched', a
   git(root, 'add', '.');
   git(root, 'commit', '-qm', 'Release plan');
   const source = await readFile(join(root, item.path), 'utf8');
+  await releaseCover(root);
   const result = await value<ReleaseResult>(ui, { type: 'release', version: 'v0.1.0' });
   assert.equal(result.notes, 'Release plan');
   assert.equal(git(github, 'for-each-ref', '--format=%(contents)', 'refs/tags/v0.1.0'), 'Release plan');
@@ -238,6 +253,7 @@ test('lock cleanup failure after item closure retains the receipt for a same-ite
   const quote = (path: string) => "'" + path.replaceAll("'", "'\\''") + "'";
   // GitHub has accepted main/tag; replace the held lock with a directory so its final ownership read fails.
   await writeFile(hook, `#!/bin/sh\nrm -f ${quote(lock)}\nmkdir ${quote(lock)}\n`, { mode: 0o755 });
+  await releaseCover(root);
   const first = await value<ReleaseResult>(ui, { type: 'release', item: item.id });
   assert.equal(first.followUp?.step, 'lock-release');
   assert.match(first.followUp?.error ?? '', /released; follow-up failed.*EISDIR/s);
@@ -252,6 +268,7 @@ test('lock cleanup failure after item closure retains the receipt for a same-ite
   await rm(hook);
   await rm(lock, { recursive: true });
   git(root, 'commit', '--allow-empty', '-qm', 'Later dev work');
+  await releaseCover(root);
   const retry = await value<ReleaseResult>(ui, { type: 'release', item: item.id });
   assert.equal(retry.followUp, undefined);
   assert.equal(retry.commit, dev);
