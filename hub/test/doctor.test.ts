@@ -60,22 +60,6 @@ test('key warnings name the Ghostty LF binding and tty erase collision, with fix
   assert.ok(!missing.report.checks.some(c => c.name === 'Ghostty Shift+Enter' || c.name === 'tty erase'));
 });
 
-test('a harness version outside the tested range is a warning, not a failure', async t => {
-  const tools = await toolchain(t);
-  const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
-  const { code, report: r } = await report(root, { ...tools.env, FAKE_CLAUDE_VERSION: '2.3.0' });
-  const c = check(r, 'claude-code');
-  assert.equal(c.verdict, 'warn');
-  assert.match(c.detail, /^2\.3\.0 at .* outside the tested range >=2\.1\.294 <2\.2\.0$/);
-  assert.ok(c.fix);
-  assert.deepEqual(notOk(r).length, 1);
-  assert.equal(code, 0);
-  const older = await report(root, { ...tools.env, FAKE_CLAUDE_VERSION: '2.1.100' });
-  assert.equal(check(older.report, 'claude-code').verdict, 'warn');
-  assert.match(check(older.report, 'claude-code').fix ?? '', /upgrade claude to 2\.1\.294/);
-});
-
 test('a harness missing from the PATH fails with the fix', async t => {
   const tools = await toolchain(t);
   const root = await initialised(t, tools.env);
@@ -90,27 +74,6 @@ test('a harness missing from the PATH fails with the fix', async t => {
   // the adapter's override is honoured
   const viaOverride = await report(root, { ...tools.env, PATH: tools.path('codex'), CLAND_CODEX_BIN: join(HARNESS_DIRS.codex, 'codex') });
   assert.equal(check(viaOverride.report, 'codex').verdict, 'ok');
-});
-
-test('OpenCode 1.x needs the major upgrade and 3.x refuses compatibility with the tested range', async t => {
-  const tools = await toolchain(t);
-  const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
-  const old = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '1.19.0' });
-  assert.equal(old.code, 1);
-  assert.match(old.stdout, /fail\s+opencode\s+1\.19\.0 .*OpenCode v2 is required.*opencode upgrade --major/);
-  const next = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '3.0.0' });
-  assert.equal(next.code, 1);
-  assert.match(next.stdout, /fail\s+opencode\s+3\.0\.0 .*unsupported major; refusing compatibility.*tested range >=2\.0\.24 <2\./);
-});
-
-test('OpenCode follows a newer 2.x with a newer-than-tested warning', async t => {
-  const tools = await toolchain(t);
-  const root = await initialised(t, tools.env);
-  await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
-  const next = await doctor(root, { ...tools.env, FAKE_OPENCODE_VERSION: '2.99.0' });
-  assert.equal(next.code, 0);
-  assert.match(next.stdout, /warn\s+opencode\s+2\.99\.0 .*newer than tested.*cland follows OpenCode 2\.x/);
 });
 
 test('a missing OpenCode binary points to the v2 installer', async t => {

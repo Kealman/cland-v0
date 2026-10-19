@@ -1,6 +1,5 @@
-// The harness versions each adapter was built and tested against (spec 4.9, `cland doctor`): the one place to
-// widen when an adapter is re-verified against a newer release. Outside-range versions warn; OpenCode's
-// other majors fail because the adapter speaks v2. `npm run check:opencode` advances its exclusive bound.
+// Informational releases each adapter was built and tested against. Doctor shows the minimum as a note,
+// never a compatibility verdict. Release tooling also consumes these bounds.
 
 export type Version = readonly [number, number, number];
 

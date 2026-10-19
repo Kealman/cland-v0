@@ -27,7 +27,7 @@ test('doctor CLI renders healthy text and JSON with exit 0', async (t) => {
     for (const name of ['claude-code', 'claude-code auth', 'codex', 'codex auth', 'opencode', 'opencode auth', 'gh', 'gh auth', 'neovim', 'hub', 'hub.json', 'secret', 'roles.toml', 'config.toml', 'skills', 'skills manifest', 'claude hooks', 'cland mod', 'docs/agents', 'AGENTS.md']) {
       assert.ok(names.includes(name), `the report checks ${name}`);
     }
-    assert.match(check(r, 'claude-code').detail, /^2\.1\.294 at .*fakes\/claude-code\/claude \(tested >=2\.1\.294 <2\.2\.0\)$/);
+    assert.match(check(r, 'claude-code').detail, /^2\.1\.294 at .*fakes\/claude-code\/claude \(tested with 2\.1\.294\)$/);
     assert.match(check(r, 'neovim').detail, new RegExp(`^${NVIM_VERSION.replace(/\./g, '\\.')} at `));
     assert.match(check(r, 'hub').detail, /^running: pid \d+, holds the lock, answers hub\.status/);
   });

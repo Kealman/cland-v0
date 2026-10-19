@@ -84,7 +84,7 @@ async function main(args: string[]): Promise<number> {
   }
   if (args[0] === 'auth' && args[1] === 'list') {
     appendFileSync(join(HOME, 'auth-probes.jsonl'), JSON.stringify({ args, database: process.env.OPENCODE_DB, dataHome: process.env.XDG_DATA_HOME }) + '\n');
-    const providers = process.env.FAKE_OPENCODE_NO_AUTH === '1' ? [] : [{ id: 'fake', name: 'Fake Provider', connections: [{ type: 'env', name: 'FAKE_API_KEY' }] }];
+    const providers = process.env.FAKE_OPENCODE_NO_AUTH === '1' ? [] : [{ id: 'fake', name: 'Fake Provider', connections: [{ type: 'credential', label: 'Fake Provider' }] }];
     process.stdout.write(`${JSON.stringify(providers, null, 2)}\n`);
     return 0;
   }

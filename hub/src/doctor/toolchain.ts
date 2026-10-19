@@ -1,4 +1,4 @@
-// The machine's side of `cland doctor`: the three harnesses (installed, version in the tested range, signed in),
+// The machine's side of `cland doctor`: the three harnesses (installed, version for information, signed in),
 // `gh` (installed, signed in) and the pinned Neovim. Everything is asked of the tools themselves, through their own
 // non-interactive commands; nothing is started that outlives the check.
 //
@@ -10,7 +10,7 @@
 //   Neovim       `CLAND_NVIM`, else the pinned release in the launcher's cache; `<nvim> --version`
 import { findNvim, NVIM_VERSION } from '../../../nvim/bin/nvim-path.ts';
 import { fail, firstLine, ok, run, warn, which, type Check } from './report.ts';
-import { compareVersions, formatRange, formatVersion, inRange, parseVersion, TESTED_RANGES, type Version } from './ranges.ts';
+import { formatVersion, parseVersion, TESTED_RANGES, type HarnessId, type Version } from './ranges.ts';
 import { accountEnvironment, accountLocation, clandOpenCodeDatabase, openCodeDatabase, openCodeLogin, readAccounts } from '../accounts/registry.ts';
 import { realpath } from 'node:fs/promises';
 import { HARNESS_INSTALLATIONS, harnessInstallation, type HarnessInstallation } from './harnesses.ts';
@@ -65,47 +65,31 @@ const HARNESSES: readonly Harness[] = [
       read: (r) => {
         const name = authName('opencode');
         const v = parseJson(r.stdout);
-        const providers = Array.isArray(v) ? (v as Array<{ id?: unknown; name?: unknown }>) : null;
+        const providers = Array.isArray(v) ? (v as Array<{ id?: unknown; name?: unknown; connections?: unknown }>) : null;
         if (r.code !== 0 || providers === null) return warn(name, `cannot check: \`opencode auth list\` gave ${r.code !== 0 ? `exit ${r.code}` : 'no JSON list'}${firstLine(r.stderr) ? ` (${firstLine(r.stderr)})` : ''}`, 'opencode auth list, by hand');
-        if (providers.length === 0) return warn(name, 'no credentials: only the free OpenCode models are usable', 'opencode auth login');
-        const names = providers.map((p) => String(p.name ?? p.id ?? '?'));
+        const credentials = providers.filter(p => Array.isArray(p?.connections) && p.connections.some(c => c?.type === 'credential'));
+        if (credentials.length === 0) return warn(name, 'no stored credentials: only the free OpenCode models are usable', 'opencode auth login');
+        const names = credentials.map((p) => String(p.name ?? p.id ?? '?'));
         return ok(name, `credentials for ${names.join(', ')}`);
       },
     },
   },
 ];
 
-/** OpenCode follows 2.x; another major cannot speak the adapter's v2 API. */
-function checkOpenCodeVersion(version: Version, bin: string): Check {
-  const range = TESTED_RANGES.opencode;
-  const found = `${formatVersion(version)} at ${bin}`;
-  const tested = `tested range ${formatRange(range)}`;
-  if (version[0] < 2) return fail('opencode', `${found}: OpenCode v2 is required (${tested})`, 'opencode upgrade --major');
-  if (version[0] > 2) return fail('opencode', `${found}: unsupported major; refusing compatibility (${tested})`, `install OpenCode ${formatVersion(range.min)} (https://opencode.ai/v2/install)`);
-  if (inRange(version, range)) return ok('opencode', `${found} (tested ${formatRange(range)})`);
-  return warn('opencode', `${found}, ${compareVersions(version, range.below) >= 0 ? 'newer than tested' : 'older than tested'} (${tested}); cland follows OpenCode 2.x`, `if a session misbehaves, install ${formatVersion(range.min)} or report it`);
-}
-
-/** One harness: `<id>` (installed, version, range) and `<id> auth`. */
-async function checkHarness(h: Harness, env: NodeJS.ProcessEnv, probe: typeof run): Promise<Check[]> {
-  const range = TESTED_RANGES[h.id];
-  const { bin, missing } = await harnessInstallation(h.id, env);
-  if (!bin) return [missing!, fail(authName(h.id), 'not checked: not installed', `install ${h.bin} first`)];
+/** Shared doctor/setup detection. Command and executable lookup boundaries can be supplied without running tools. */
+export type HarnessProbe = { id: HarnessId; bin: string | null; version: Version | null; checks: Check[] };
+export async function probeHarness(id: HarnessId, env: NodeJS.ProcessEnv, probe: typeof run = run, installation: typeof harnessInstallation = harnessInstallation): Promise<HarnessProbe> {
+  const h = HARNESSES.find(h => h.id === id)!;
+  const { bin, missing } = await installation(id, env);
+  if (!bin) return { id, bin, version: null, checks: [missing!, fail(authName(id), 'not checked: not installed', `install ${h.bin} first`)] };
   const out: Check[] = [];
   const database = clandOpenCodeDatabase(env);
-  const probeEnv = h.id === 'opencode' ? accountEnvironment(env, { OPENCODE_DB: database }) : env;
+  const probeEnv = id === 'opencode' ? accountEnvironment(env, { OPENCODE_DB: database }) : env;
   const v = await probe(bin, ['--version'], probeEnv);
   const version = v.error === undefined && v.code === 0 ? parseVersion(v.stdout || v.stderr) : null;
-  if (v.error !== undefined || v.code !== 0) out.push(fail(h.id, `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, `reinstall ${h.bin}`));
-  else if (!version) out.push(warn(h.id, `${bin}: cannot read a version from "${firstLine(v.stdout)}"; cland is tested with ${formatRange(range)}`, `check ${h.bin} --version by hand`));
-  else if (h.id === 'opencode') {
-    out.push(checkOpenCodeVersion(version, bin));
-    if (version[0] !== 2) return [...out, warn(authName(h.id), 'not checked: incompatible OpenCode major', 'install OpenCode v2 first')];
-  }
-  else if (!inRange(version, range)) {
-    const newer = version[0] > range.below[0] || (version[0] === range.below[0] && version[1] >= range.below[1]);
-    out.push(warn(h.id, `${formatVersion(version)} at ${bin}, outside the tested range ${formatRange(range)}`, newer ? `it may work; if a session misbehaves, install ${formatVersion(range.min)} or report it` : `upgrade ${h.bin} to ${formatVersion(range.min)} or later`));
-  } else out.push(ok(h.id, `${formatVersion(version)} at ${bin} (tested ${formatRange(range)})`));
+  if (v.error !== undefined || v.code !== 0) out.push(fail(id, `${bin} --version failed: ${v.error ?? (firstLine(v.stderr) || `exit ${v.code}`)}`, `reinstall ${h.bin}`));
+  else if (!version) out.push(fail(id, `${bin}: cannot read a version from "${firstLine(v.stdout || v.stderr)}"`, `check ${h.bin} --version by hand`));
+  else out.push(ok(id, `${formatVersion(version)} at ${bin} (tested with ${formatVersion(TESTED_RANGES[id].min)}${id === 'opencode' ? "; cland speaks OpenCode's v2 API" : ''})`));
   const a = await probe(bin, h.auth.args, probeEnv);
   if (a.error !== undefined) out.push(warn(authName(h.id), `cannot check: ${h.bin} ${h.auth.args.join(' ')}: ${a.error}`, `run ${h.bin} ${h.auth.args.join(' ')} by hand`));
   else {
@@ -113,7 +97,7 @@ async function checkHarness(h: Harness, env: NodeJS.ProcessEnv, probe: typeof ru
     if (h.id === 'opencode' && check.fix) check.fix = openCodeLogin(database);
     out.push(check);
   }
-  return out;
+  return { id, bin, version, checks: out };
 }
 
 /** Database paths are shared with launch selection; credentials are never inspected here. */
@@ -181,6 +165,6 @@ async function checkNvim(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Che
 
 /** Every toolchain check, run concurrently, reported in a fixed order. */
 export async function checkToolchain(env: NodeJS.ProcessEnv, probe: typeof run = run): Promise<Check[]> {
-  const parts = await Promise.all([...HARNESSES.map((h) => checkHarness(h, env, probe)), checkGh(env, probe), checkNvim(env, probe).then((c) => [c]), checkOpenCodeDatabases(env)]);
+  const parts = await Promise.all([...HARNESSES.map(async (h) => (await probeHarness(h.id, env, probe)).checks), checkGh(env, probe), checkNvim(env, probe).then((c) => [c]), checkOpenCodeDatabases(env)]);
   return parts.flat();
 }

@@ -108,7 +108,7 @@ const probeTools: typeof import('../src/doctor/report.ts').run = async (bin, arg
       break;
     case 'opencode':
       if (args[0] !== '--version') assert.deepEqual(args, ['auth', 'list', '--standalone', '--format', 'json']);
-      stdout = args[0] === '--version' ? `opencode v${env.FAKE_OPENCODE_VERSION ?? '2.0.24'}` : env.FAKE_OPENCODE_NO_AUTH === '1' ? '[]' : '[{"id":"fake","name":"Fake Provider"}]';
+      stdout = args[0] === '--version' ? `opencode v${env.FAKE_OPENCODE_VERSION ?? '2.0.24'}` : env.FAKE_OPENCODE_NO_AUTH === '1' ? '[]' : '[{"id":"fake","name":"Fake Provider","connections":[{"type":"credential"}]}]';
       break;
     case 'gh':
       if (args[0] === '--version') stdout = 'gh version 2.102.0';
