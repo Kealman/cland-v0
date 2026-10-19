@@ -7,14 +7,15 @@ import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { compatibilityHolder } from '../src/suite-lock.ts';
 import { Store } from '../src/hub/store.ts';
+import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { testLintReport, type TestLintFile } from '../src/test-lint.ts';
-import { tierReport, type TierPlan } from '../src/suite-tier-report.ts';
+import { tierReport, type TierPlan, type SuiteDryRun } from '../src/suite-tier-report.ts';
 
-async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n') {
+async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n', previewSelection?: SuiteSelection) {
   const root = await tempProject(t); const clock = new FakeClock();
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), `[verification]\nlock_path=${JSON.stringify(join(root, 'held-lock'))}\n${verification}`);
@@ -31,11 +32,34 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
   const compatibility = { holder, occupied: async () => (await holder()) !== null };
   const candidate = {
     head: async () => 'a'.repeat(40), tree: async () => 'b'.repeat(40),
-    inspect: async () => { throw new Error('seeded receipts must not admit an executor'); },
+    inspect: async () => {
+      if (previewSelection) return { head: 'a'.repeat(40), tree: 'b'.repeat(40), branch: 't/T-713', selection: previewSelection, tierPlan: [], budgetBase: undefined };
+      throw new Error('seeded receipts must not admit an executor');
+    },
   };
   const hub = await projectHub(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui, compatibility };
 }
+
+test('task result and preview identify T3 as pending in the enabled merge queue', async t => {
+  const selection: SuiteSelection = { mode: 'full', files: [], reason: 'task fallback', tiers: ['T1', 'T2'], loadGate: true };
+  const tiers: TierPlan = ['T1', 'T2'].map(tier => ({ tier: tier as 'T1' | 'T2', files: ['fixture'], tests: 1, seconds: 1, projectedWall: 1, workers: 1, missing: 0 }));
+  const log = ['# tests 2', '# pass 2', ...tierReport(tiers)].join('\n');
+  const f = await seed(t, base => { const { cover: _cover, ...job } = base; return [{ ...job,
+    mode: 'auto', branch: 't/T-713', selection, reported: false, outcome: { code: 0, cause: '' }, tierPlan: tiers, tierReported: true, budgetReported: true }]; },
+    '[merge]\nqueue = true\n', log, selection);
+  await f.ui.request({ type: 'subscribe' }); await f.clock.advance(1000);
+  const frame = await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as { id: string }).id === 'suite:cover-0');
+  const text = (frame.message as { text: string }).text;
+  assert.match(text, /auto exit 0/);
+  assert.match(text, /tier T1:.*observed unavailable/);
+  assert.match(text, /tier T2:.*observed unavailable/);
+  assert.match(text, /T3: in the merge batch; queue enabled; item awaiting enqueue; batch idle/);
+  assert.doesNotMatch(text, /tier T[34]:/);
+  const preview = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, dryRun: true });
+  assert.equal(preview.ok, true, preview.error);
+  assert.ok((preview.value as SuiteDryRun).lines.includes('T3: in the merge batch; queue enabled; item awaiting enqueue; batch idle'));
+});
 
 test('repository-sized lint detail leaves the delivered integrated summary complete', async t => {
   const manifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));

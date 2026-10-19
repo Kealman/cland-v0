@@ -11,6 +11,16 @@ export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
 export type SuiteSelection = { tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateFiles?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 export type SuiteRequest = 'auto' | 'all' | 'hub' | 'nvim';
 
+/** Task receipts cover hermetic rules; process evidence belongs to the merge batch. */
+export function taskSuiteSelection(selection: SuiteSelection, branch: string, requested: SuiteRequest, queueEnabled: boolean): SuiteSelection {
+  if (!queueEnabled || !branch.startsWith('t/') || requested === 'all') return selection;
+  const fallback = selection.mode === 'full' || selection.mode === 'hub-only';
+  const { nvimTests: _nvimTests, ...whole } = selection;
+  return { ...(fallback ? whole : selection), mode: selection.mode === 'hub-only' ? 'full' : selection.mode,
+    reason: fallback ? `${selection.reason}; task fallback runs all T2` : selection.reason,
+    tiers: ['T1', 'T2'], loadGate: true };
+}
+
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
 export const HUB_SMOKE = ['hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/startup-smoke.test.ts'];
 export const NVIM_SMOKE = ['nvim/test/scenarios/workbench.test.ts'];
@@ -147,13 +157,14 @@ export async function nvimHubImports(cwd: string, files?: readonly string[]): Pr
 const exec = promisify(execFile);
 export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 'auto', env: NodeJS.ProcessEnv = process.env): Promise<SuiteSelection> {
   let task = false;
+  let branch = '';
   let dev: string | undefined;
   let fallback: string | undefined;
   const select = async (): Promise<SuiteSelection> => {
     let files: string[] = [];
     try {
       const git = async (...args: string[]) => (await exec('git', args, { cwd, env: { ...env, GIT_TERMINAL_PROMPT: '0' }, timeout: args[0] === 'fetch' ? 5000 : 10_000, maxBuffer: 8 * 1024 * 1024 })).stdout;
-      const branch = (await git('branch', '--show-current')).trim();
+      branch = (await git('branch', '--show-current')).trim();
       task = branch.startsWith('t/');
       try { dev = await fetchSuiteDev(cwd, git); }
       catch (error) {
@@ -200,7 +211,12 @@ export async function selectPackageSuite(cwd: string, requested: SuiteRequest = 
   if (dev && !fallback) selection.fetchedDev = dev;
   if (fallback) selection.fallback = fallback;
   if (task) selection.loadGate = true;
-  return selection;
+  // Older candidate packages without tier assignments retain their package contract.
+  const tiered = await readFile(resolve(cwd, 'hub/test/tiers.json'), 'utf8').then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
+  if (!tiered || !task || requested === 'all') return selection;
+  const source = await readFile(resolve(cwd, '.cland/config.toml'), 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  const config = source === null ? defaultConfig('suite') : parseConfig(source, 'suite', env);
+  return taskSuiteSelection(selection, branch, requested, config.merge.queue);
 }
 
 /** Keep large stage identity sets below OS argument/environment size limits. */

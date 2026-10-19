@@ -342,6 +342,7 @@
     "hub/test/suite-soak.test.ts": "T1",
     "hub/test/suite-stage-cover.test.ts": "T3",
     "hub/test/suite-stage-rules.test.ts": "T1",
+    "hub/test/suite-task-selection.test.ts": "T1",
     "hub/test/suite-tier-report.test.ts": "T1",
     "hub/test/suite-tiers.test.ts": "T1",
     "hub/test/suite-timeouts.test.ts": "T3",

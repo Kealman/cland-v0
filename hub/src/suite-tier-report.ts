@@ -3,6 +3,16 @@ import { glob } from 'node:fs/promises';
 import { packageShards, readTierAssignments, type Tier, type SuiteShard, type DurationHistory } from './suite-shards.ts';
 import { readDurationManifest, type TestTiming } from './suite-durations.ts';
 import type { SuiteSelection } from './suite-selection.ts';
+import type { MergeQueueEntry, MergeBatchStatus } from './protocol.ts';
+
+/** Deferred coverage is a queue observation, never a passing T3 receipt. */
+export function taskTierEvidence(selection: SuiteSelection | undefined, queue: { enabled: boolean; entries: MergeQueueEntry[]; batch: MergeBatchStatus | null }, item: string | null): string | null {
+  if (selection?.tiers?.join(',') !== 'T1,T2') return null;
+  if (!queue.enabled) return 'T3: in the merge batch; queue disabled; process evidence unavailable';
+  const position = queue.entries.findIndex(entry => entry.item === item);
+  const batch = queue.batch;
+  return `T3: in the merge batch; ${position < 0 ? 'queue enabled; item awaiting enqueue' : `queue position ${position + 1}`}; batch ${batch ? `${batch.id} (${batch.failed ? `blocked: ${batch.failed}` : batch.run ?? 'preparing'})` : 'idle'}`;
+}
 
 export type TierPlan = Array<{ tier: Tier; files: string[]; tests: number; seconds: number; projectedWall: number; workers: number; missing: number; wallBudget?: number; phases?: Array<{ weights: number[]; serial: boolean }> }>;
 export type SuiteDryRun = { dryRun: true; head: string; executor: 'local' | 'droplet'; workers: number; selection: SuiteSelection; tiers: TierPlan; lines: string[] };

@@ -192,7 +192,14 @@ export async function packageShards(cwd: string, mode: SuiteMode, selection?: { 
       for await (const file of glob(phase.targets, { cwd })) if (coverage.tiers.includes(tiers.get(file)!)) targets.push(file);
       if (targets.length) planned.push({ ...phase, targets: targets.sort() });
     }
-    return planned;
+    // Coverage restricts T2 only. Every task proves the whole T1 rule set,
+    // including when the diff selects only Neovim or a single hub function.
+    if (coverage.tiers.length === 2 && coverage.tiers.includes('T1') && coverage.tiers.includes('T2')) {
+      const units = [...tiers].filter(([, tier]) => tier === 'T1').map(([file]) => file).sort();
+      for (const phase of planned) phase.targets = phase.targets.filter(file => !units.includes(file));
+      if (units.length) planned.unshift({ name: 'T1 whole', targets: units, resource: 'free', workers: 1 });
+    }
+    return planned.filter(phase => phase.targets.length);
   }
   if (coverage?.soak) return phases;
   const tiers = await readTierAssignments(cwd);

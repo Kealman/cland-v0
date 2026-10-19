@@ -4,6 +4,10 @@
 [project]
 name = "v0"
 
+[merge]
+# Task receipts cover T0–T2; every code landing gains T3 in its merge batch.
+queue = true
+
 [verification]
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = 1

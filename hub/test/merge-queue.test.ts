@@ -1,7 +1,7 @@
 // T2: durable merge queue admission through projectHub and its public merge/task frames.
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, inProcessSpoke, projectHub, tempProject, until, type ProjectHubOptions } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
@@ -11,12 +11,14 @@ import { onCleanup } from './process-cleanup.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { VerificationQueue, MergeBatchStatus } from '../src/protocol.ts';
+import { parseConfig } from '../src/init/config.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 
 async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[merge]\nqueue = true\n');
+  const repository = parseConfig(await readFile(new URL('../../.cland/config.toml', import.meta.url), 'utf8'), 'repository', {});
+  await writeFile(join(root, '.cland/config.toml'), `[merge]\nqueue = ${repository.merge.queue}\n`);
   const clock = new FakeClock();
   const tips = manualTips();
   const heads = new Map([['dev', 'a'.repeat(40)], ['t/parser', 'b'.repeat(40)]]);

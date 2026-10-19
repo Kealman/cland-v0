@@ -1,7 +1,7 @@
 // T1: tier accounting and run-summary rendering use planted plans and receipts in-process.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planTierReport, tierReport, type TierPlan } from '../src/suite-tier-report.ts';
+import { planTierReport, tierReport, taskTierEvidence, type TierPlan } from '../src/suite-tier-report.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -62,4 +62,14 @@ test('tier planning enforces supplied legacy allowance history without a reposit
     { tier: 'T1', files: ['hub/test/one.test.ts'], tests: 1, seconds: 2 },
   ]);
   await assert.rejects(planTierReport(root, selection, 2, undefined, { legacyKeys: new Set() }), /new duration allowance cannot be legacy/);
+});
+
+test('task evidence names deferred T3 with the current merge queue state', () => {
+  const selection = { mode: 'full' as const, files: [], reason: 'task', tiers: ['T1', 'T2'] as const };
+  const task = { ...selection, tiers: [...selection.tiers] };
+  const entry = { item: 'T-713', branch: 't/T-713', head: 'head', verdictBase: 'dev', enqueued: 'time', by: { id: 'id', name: 'lead', role: 'coordinator' } };
+  assert.equal(taskTierEvidence(task, { enabled: true, entries: [], batch: null }, 'T-713'), 'T3: in the merge batch; queue enabled; item awaiting enqueue; batch idle');
+  assert.equal(taskTierEvidence(task, { enabled: true, entries: [entry], batch: { id: 'batch-1', members: [entry], run: 'run-1' } }, 'T-713'), 'T3: in the merge batch; queue position 1; batch batch-1 (run-1)');
+  assert.match(taskTierEvidence(task, { enabled: false, entries: [], batch: null }, 'T-713')!, /queue disabled; process evidence unavailable/);
+  assert.equal(taskTierEvidence({ mode: 'full', files: [], reason: 'integrated' }, { enabled: true, entries: [], batch: null }, null), null);
 });

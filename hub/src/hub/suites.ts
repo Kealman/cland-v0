@@ -386,16 +386,23 @@ export class Suites {
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
     const { head, branch, tree, budgetBase } = candidate;
+    let admitted = candidate.selection;
+    // The hosting hub owns landing. A candidate-local opt-in cannot promise
+    // batch coverage while this hub can still land code directly.
+    if (admitted.tiers?.join(',') === 'T1,T2' && !config?.merge.queue) {
+      const { tiers: _tiers, ...broad } = admitted;
+      admitted = { ...broad, reason: `${broad.reason}; hosting merge queue disabled: retaining process coverage` };
+    }
     const files = input.batch?.diagnostic?.files;
     if (files && (!files.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
     const selection: SuiteSelection = files
       ? { mode: 'full', files, reason: 'batch failing-file rerun', loadGate: false, soak: false,
         shard: { files: files.filter(file => file.startsWith('hub/')), nvim: files.some(file => file.startsWith('nvim/')) },
         nvimTests: files.filter(file => file.startsWith('nvim/')) }
-      : occasionSelection(candidate.selection, input.occasion);
+      : occasionSelection(admitted, input.occasion);
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (input.occasion && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
-    const tierPlan = input.occasion || files ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
+    const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
     if (input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 
     if (input.dryRun) {

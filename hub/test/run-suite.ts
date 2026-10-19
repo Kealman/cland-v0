@@ -371,6 +371,10 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   const locks = options.lockDirs ?? { hub: inherited?.dirs[0] ?? '/tmp/cland-suite.lock', nvim: inherited?.dirs[1] ?? '/tmp/cland-suite-nvim.lock' };
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
   let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv() ?? await selectPackageSuite(cwd, mode as SuiteRequest);
+  if (!extra.length && mode === 'all' && selection.tiers?.join(',') === 'T1,T2') {
+    const { tiers: _tiers, nvimTests: _nvimTests, ...full } = selection;
+    selection = { ...full, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
+  }
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
   const executor = process.env.CLAND_SUITE_EXECUTOR === 'droplet' ? 'droplet' : 'local';
   const workers = process.env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor)).workers : Number(process.env.CLAND_SUITE_WORKERS);

@@ -2,7 +2,7 @@
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sameSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, selectPackageSuite } from '../src/suite-selection.ts';
+import { sameSuiteSelection, taskSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, selectPackageSuite } from '../src/suite-selection.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
@@ -195,8 +195,9 @@ async function packageShardsForSelection(root: string, selection: Awaited<Return
   for (const file of [...HUB_SMOKE, ...NVIM_SMOKE]) { await mkdir(join(root, file, '..'), { recursive: true }); await writeFile(join(root, file), '// smoke'); }
   const paths = [];
   for await (const file of glob(['hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd: root })) paths.push(file);
-  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(paths.map(file => [file, 'T3'])) }));
-  return packageShards(root, selection.mode, undefined, selection, { workers: 1 });
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(paths.map(file => [file, [...HUB_SMOKE, ...NVIM_SMOKE].includes(file) ? 'T3' : 'T2'])) }));
+  const task = taskSuiteSelection(selection, 't/selection-fixture', 'auto', true);
+  return packageShards(root, task.mode, undefined, task, { workers: 1 });
 }
 
 test('criteria changes plan only Neovim runtime importers plus smoke and coverage-selected hub tests', async t => {
@@ -214,13 +215,13 @@ test('criteria changes plan only Neovim runtime importers plus smoke and coverag
   assert.deepEqual(selection.nvimTests, [...NVIM_SMOKE, 'nvim/test/direct.test.ts', 'nvim/test/indirect.test.ts'].sort());
   assert.match(selection.reason, /Neovim importers/);
   const phases = await packageShardsForSelection(root, selection);
-  assert.deepEqual(phases.at(-1)?.targets, selection.nvimTests);
+  assert.deepEqual(phases.at(-1)?.targets, ['nvim/test/direct.test.ts', 'nvim/test/indirect.test.ts']);
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await writeFile(join(root, 'hub/test/harness.ts'), '// changed shared harness');
   const shared = await selectPackageSuite(root);
   assert.equal(shared.mode, 'full');
   assert.equal(shared.nvimTests, undefined);
-  assert.deepEqual((await packageShardsForSelection(root, shared)).at(-1)?.targets, ['nvim/test/**/*.test.ts']);
+  assert.deepEqual((await packageShardsForSelection(root, shared)).at(-1)?.targets, ['nvim/test/direct.test.ts', 'nvim/test/indirect.test.ts', 'nvim/test/types.test.ts']);
 });
 
 test('fetched dev selects committed and working changes, all forces full, and integrated dev stays full', async t => {
@@ -321,8 +322,9 @@ test('empty diffs remain full while failed fetch reports use of last known dev',
   assert.equal(selected.loadGate, true, 'failed fetch does not bypass the task load gate');
 });
 
-for (const mode of ['hub-only', 'nvim-only'] as const) {
-test(`${mode} admission retains both locks through smoke, omits the other package's remaining tests, and all widens the run`, async t => {
+// Each CLI spelling crosses the native runner once; its package mode is incidental.
+for (const [mode, force] of [['hub-only', '--all'], ['nvim-only', 'all']] as const) {
+test(`${mode} integrated package admission retains both locks through smoke and all widens the run`, async t => {
   const { root, git } = await gitFixture(t);
   const journal = join(root, 'journal.jsonl');
   const locks = { hub: join(root, 'machine.lock'), nvim: join(root, 'nvim.lock') };
@@ -338,7 +340,7 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries(files.map(path => [path, 'T3'])) }));
   await writeFile(join(root, '.gitignore'), 'journal.jsonl\n*.lock*\n');
   await git('checkout', 'dev'); await git('add', '.'); await git('commit', '-m', 'fixture tests'); await git('push', 'origin', 'dev');
-  await git('checkout', 't/T-214'); await git('merge', 'dev');
+  await git('checkout', '-b', 'package-lock-contract'); await git('merge', 'dev');
   const changed = mode === 'hub-only' ? 'hub/src/tracker/tracker.ts' : 'nvim/lua/cland/thread.lua';
   await mkdir(join(root, changed, '..'), { recursive: true });
   await writeFile(join(root, changed), '// changed');
@@ -353,14 +355,12 @@ test(`${mode} admission retains both locks through smoke, omits the other packag
   assert.equal(new Set(rows.map(row => row.token)).size, 1, 'one admission spans hub and smoke');
   assert.ok(reduced.stderr.split('\n').some(line => line.startsWith('suite duration ') && line.includes(`mode ${mode}`) && line.includes(changed)), reduced.stderr);
   assert.ok(reduced.stderr.includes(`suite phase ${mode === 'hub-only' ? 'Neovim smoke' : 'hub machine smoke'}; locks held`), reduced.stderr);
-  // Both force-full CLI spellings override targets and transported selections.
-  for (const force of ['--all', 'all']) {
-    await writeFile(journal, '');
-    const full = await exec(process.execPath, [runner, force, 'hub/test/scenarios/message-tracer.test.ts'], { cwd: root, env: { ...env, CLAND_TEST_SKIP_LOCK: '1', CLAND_SUITE_SELECTION: JSON.stringify({ mode, files: [changed], reason: 'transported decision' }) } });
-    assert.match(full.stderr, /mode full/);
-    assert.match(await readFile(journal, 'utf8'), /nvim\/test\/other.test.ts/);
-    assert.match(await readFile(journal, 'utf8'), /hub\/test\/local.test.ts/);
-  }
+  // Together the two modes cover both force-full spellings without repeating
+  // the identical cross-product of full package subprocesses.
+  await writeFile(journal, '');
+  const full = await exec(process.execPath, [runner, force, 'hub/test/scenarios/message-tracer.test.ts'], { cwd: root, env: { ...env, CLAND_TEST_SKIP_LOCK: '1', CLAND_SUITE_SELECTION: JSON.stringify({ mode, files: [changed], reason: 'transported task decision', tiers: ['T1', 'T2'] }) } });
+  assert.match(full.stderr, /mode full/);
+  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').map(line => JSON.parse(line).file).sort(), files.slice().sort(), 'force-full overrides both the target and transported task tiers');
 });
 }
 
@@ -504,15 +504,29 @@ test('a missing map explicitly falls back to the package rule', async t => {
   assert.match(selection.reason, /coverage map missing/);
 });
 
-test('hub-selected executes covering tests and both smoke baselines, omitting unrelated tests', async t => {
+test('task admission requires explicit merge queue protection before reducing tiers', async t => {
+  const { root, source } = await coverageFixture(t);
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
+    'hub/test/changed.test.ts': 'T2', 'hub/test/first.test.ts': 'T1', 'hub/test/second.test.ts': 'T3',
+  } }));
+  await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 4'));
+  for (const config of [null, '[merge]\nqueue = false\n', '[merge]\nqueue = true\n']) {
+    if (config !== null) await writeFile(join(root, '.cland/config.toml'), config);
+    const selection = await selectPackageSuite(root);
+    assert.deepEqual(selection.tiers, config?.includes('true') ? ['T1', 'T2'] : undefined);
+  }
+});
+
+test('hub-selected task executes covering T2 tests while process smoke waits for its batch', async t => {
   const { root, git, source } = await coverageFixture(t);
+  await writeFile(join(root, '.cland/config.toml'), '[merge]\nqueue = true\n');
   const journal = join(root, '.cland/run/executed');
   const hub = [...['first', 'second', 'changed'].map(name => `hub/test/${name}.test.ts`), ...HUB_SMOKE];
   const nvim = [...['importer', 'other'].map(name => `nvim/test/${name}.test.ts`), ...NVIM_SMOKE];
   await mkdir(join(root, 'nvim/test'), { recursive: true });
   for (const file of [...hub, ...nvim]) { await mkdir(join(root, file, '..'), { recursive: true }); await writeFile(join(root, file), `import test from 'node:test'; import { appendFileSync } from 'node:fs'; test('execution marker', () => appendFileSync(${JSON.stringify(journal)}, ${JSON.stringify(file + '\n')}));\n`); }
   await writeFile(join(root, 'nvim/test/importer.test.ts'), "import '../../hub/src/hub/example.ts';\n" + await readFile(join(root, 'nvim/test/importer.test.ts'), 'utf8'));
-  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...hub, ...nvim].map(file => [file, 'T3'])) }));
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: Object.fromEntries([...hub, ...nvim].map(file => [file, [...HUB_SMOKE, ...NVIM_SMOKE].includes(file) ? 'T3' : 'T2'])) }));
   await git('add', '.'); await git('commit', '-m', 'executable baselines'); await git('push', 'origin', 'HEAD:dev');
   await writeFile(join(root, 'hub/src/hub/example.ts'), source.replace('return 2', 'return 3'));
   const selection = await selectPackageSuite(root);
@@ -522,7 +536,8 @@ test('hub-selected executes covering tests and both smoke baselines, omitting un
   const env: NodeJS.ProcessEnv = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection) };
   delete env.CLAND_SUITE_LEASE;
   const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env });
-  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'hub/test/second.test.ts', 'nvim/test/importer.test.ts', 'nvim/test/scenarios/workbench.test.ts']);
+  assert.deepEqual((await readFile(journal, 'utf8')).trim().split('\n').sort(), ['hub/test/second.test.ts', 'nvim/test/importer.test.ts']);
+  assert.deepEqual(selection.tiers, ['T1', 'T2']);
   assert.match(result.stderr, /suite phase Neovim selected/);
   const duration = result.stderr.split('\n').find(line => line.startsWith('suite duration '));
   assert.match(duration ?? '', /mode hub-selected.*deciding functions.*second/);

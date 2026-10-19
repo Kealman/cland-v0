@@ -2476,7 +2476,9 @@ Reports show a byte-bounded file summary with an omitted count when necessary;
 the durable log retains every deciding path. Compact reports preserve the mode,
 result and log-artifact pointer before other details when the configured cap is small.
 
-Reduced runs retain a cross-package smoke baseline. Both lists are named constants
+Queue-enabled tiered task branches plan the check step, all T1, coverage-selected hub T2 and diff-selected Neovim T2. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets without admitting T3/T4; successful coverage keeps diff-selected Neovim T2. The hosting hub must also enable its effective merge queue; candidate-local opt-in alone retains process coverage. Their result names deferred T3 evidence with the merge queue state. This repository enables `[merge] queue = true` alongside that switch, so code lands after a green T3 batch. Integrated runs and explicit `all` keep T3, and occasions keep their broader tiers. Projects with the queue disabled or absent, and legacy candidate packages without `tiers.json`, retain their previous plan.
+
+Reduced integrated/package runs retain a cross-package smoke baseline. Task plans filter out these T3 files. Both lists are named constants
 in `src/suite-selection.ts`:
 
 - `NVIM_SMOKE`: `nvim/test/scenarios/workbench.test.ts`. A hub-only run executes

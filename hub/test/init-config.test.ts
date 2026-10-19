@@ -1,4 +1,5 @@
 // T1: tracker level parsing and ladder validation are pure configuration rules.
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { configuredLevels, Ladder } from '../src/tracker/kinds.ts';
@@ -27,4 +28,11 @@ test('merge queue defaults off and round-trips an explicitly enabled boolean', (
   for (const invalid of ['"true"', '1', '[]']) {
     assert.throws(() => parseConfig(`[merge]\nqueue = ${invalid}`, 'scratch', {}, { strict: true }), /merge.queue must be a boolean/);
   }
+});
+
+
+test('this repository enables the merge batch queue while new projects keep it off', () => {
+  const source = readFileSync(new URL('../../.cland/config.toml', import.meta.url), 'utf8');
+  assert.equal(parseConfig(source, 'repository', {}).merge.queue, true);
+  assert.equal(defaultConfig('new-project').merge.queue, false);
 });

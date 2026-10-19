@@ -67,6 +67,7 @@ import { artifactEntry, folderFiles } from './artifact-folder.ts';
 import { ArtifactError, createArtifact } from './artifacts.ts';
 import type { ArtifactCreate, ArtifactList, ArtifactPromote, ArtifactKeep, ArtifactArchive, ArtifactMove } from '../protocol.ts';
 import { MergeQueue } from './merge-queue.ts';
+import { taskTierEvidence, type SuiteDryRun } from '../suite-tier-report.ts';
 import { MergeBatches, BatchRefusal, BatchRebuild } from './merge-batches.ts';
 import { prepareMergeBatch, checkoutMergeBatch, removeMergeBatch } from './merge-batch-territory.ts';
 import { TaskMerges } from './merge.ts';
@@ -775,7 +776,8 @@ export class Dispatcher {
     const interrupted = interruptionLines(log);
     const selectionFallback = job.selection?.fallback ?? (job.selection?.reason.startsWith('fetch/diff unavailable:') ? `selection fallback: full; ${job.selection.reason}` : undefined);
     const fallback = selectionFallback ? `\n${selectionFallback}` : '';
-    const progress = `${fallback}${interrupted.length ? `\n${interrupted.join('\n')}` : ''}`;
+    const deferred = taskTierEvidence(job.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, job.item ?? null);
+    const progress = `${fallback}${deferred ? `\n${deferred}` : ''}${interrupted.length ? `\n${interrupted.join('\n')}` : ''}`;
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
@@ -1591,6 +1593,11 @@ export class Dispatcher {
       const record = (frame: HubFrame): HubFrame => {
         if (frame.type !== 'result') return frame;
         const value = frame.ok ? frame.value as { id?: string; dryRun?: boolean; reused?: boolean } : undefined;
+        if (frame.ok && value?.dryRun) {
+          const preview = frame.value as SuiteDryRun;
+          const deferred = taskTierEvidence(preview.selection, { enabled: this.#options.projectConfig?.().merge.queue ?? false, entries: this.#mergeQueue?.entries() ?? [], batch: this.#batches?.snapshot() ?? null }, core.store.topic(topic)?.item ?? null);
+          if (deferred) preview.lines.push(deferred);
+        }
         const outcome = frame.ok ? value?.dryRun ? 'preview' : 'admitted' : 'refused';
         const detail = { event: 'verification-submission', submission, request: request.id, session: actor?.name ?? 'human', sessionId: actor?.sessionId ?? null, topic, cwd: request.cwd, outcome,
           ...(value?.id ? { run: value.id, reused: value.reused ?? false } : {}), ...(!frame.ok ? { code: frame.code, error: frame.error } : {}) };
