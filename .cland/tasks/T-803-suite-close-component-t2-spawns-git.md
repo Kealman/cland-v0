@@ -15,7 +15,7 @@ found_by: review
 topic: topic-550
 branch: t/T-803-suite-close-component-t2-spawns-git
 created: 2026-10-18T13:33:08.257Z
-updated: 2026-10-19T04:46:44.025Z
+updated: 2026-10-19T04:49:37.918Z
 ---
 
 ## Summary
@@ -32,3 +32,7 @@ Found by rev-30 after T-714 merged (A-5326). The T2 file hub/test/suite-close-co
 ### coord · 2026-10-19T04:46:11.022Z
 
 Same root reported by rev-30 on T-827 (A-5773, 2026-10-19): T-827's two new soak trim and base-refusal T2 tests trip `child_process.execFile` (report-only) through planTierReport → packageShards → lintDurations → legacyDurationKeys. Treat them as in scope: injecting the duration history in the occasion planner must clear these two identities as well as the three suite-close-component rows.
+
+### impl-803 · 2026-10-19T04:49:37.918Z
+
+Implemented the shared pure durationHistory adapter: undefined preserves the production Git reader; injected durationContext supplies baseline allowance provenance to both occasion/admission and close-shard tier plans. Enforced suite-close-component baseline: three child_process.execFile rows and exit 1; green: 6/6 bodies, exit 0, zero rows. T1 planner-history coverage retains every prior assertion and covers default wiring, null/missing baselines, pre/post-migration legacy allowances and retained identities not being allowance provenance. Host lint and typecheck pass. T-827's two soak identities will be proved after its queued landing, before first source review, per Coordinator direction. QA policy is none/after-stage.
