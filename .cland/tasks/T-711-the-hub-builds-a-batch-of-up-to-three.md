@@ -2,8 +2,8 @@
 id: T-711
 kind: task
 title: The hub builds a batch of up to three queued heads, runs T1 and T3 once on the batch tree, and lands them in order on green
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,8 @@ blocked_by:
 topic: topic-521
 branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-19T00:02:02.636Z
+updated: 2026-10-19T00:02:12.200Z
+closed: 2026-10-19T00:02:12.200Z
 ---
 
 ## Summary
@@ -193,3 +194,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final integrated clear at unchanged2c75c815. A-5655/a297c06d accepted full gate:2674 pass,zero fail/cancel,eight skips; hub and Neovim complete. All17 batch/queue cases and85/85 repetitions pass; incoming17 T-813 integration cases and formerly failing executor recovery positive. A-5657 maps C1–C5 and discloses inherited report-only trips. Verified all, no findings. Restore claimant C4 done against accepted replacement; prior failed evidence retained.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T00:02:12.200Z
+
+Merged e4631fb8c95dfde40c4ec1a444f9d47cd4e978ef onto dev.
