@@ -3,17 +3,19 @@ id: T-861
 kind: task
 title: Synchronous territoryGit trims -z output, so path censuses can rewrite a whitespace-prefixed filename before path policy
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
+  - v0.1.4
+  - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-601
+branch: t/T-861-synchronous-territorygit-trims-z-output
 created: 2026-10-19T08:23:21.387Z
-updated: 2026-10-19T08:23:21.387Z
+updated: 2026-10-19T14:50:34.026Z
 ---
 
 ## Summary

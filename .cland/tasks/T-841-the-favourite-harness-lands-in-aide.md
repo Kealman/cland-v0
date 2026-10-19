@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-582
 branch: t/T-841-the-favourite-harness-lands-in-aide
 created: 2026-10-19T06:34:13.175Z
-updated: 2026-10-19T13:06:51.623Z
+updated: 2026-10-19T14:37:20.314Z
 ---
 
 ## Summary
@@ -48,14 +48,18 @@ Setup asks which installed harness the human talks to. It writes the answer as `
   - verified: rev-30 [reviewer] · run rev-20261019-841-integration-source · 2026-10-19T12:21:52.441Z · commit 5781176e85b020f6db3f321fd612d08e30350e3a
   - verified: rev-30 [reviewer] · run rev-20261019-841-installer-integration-source · 2026-10-19T12:47:50.892Z · commit 7d6e52b73839788f752c5ff92c52d8e74e6feeb2
   - verified: rev-30 [reviewer] · run rev-20261019-841-installer-integration-final · 2026-10-19T13:06:49.593Z · commit 7d6e52b73839788f752c5ff92c52d8e74e6feeb2
+  - verified: rev-30 [reviewer] · run rev-20261019-841-trust-integration-source · 2026-10-19T14:17:27.135Z · commit dca23852347a0eda21e2825b2399c4b7c328aed1
+  - verified: rev-30 [reviewer] · run rev-20261019-841-trust-integration-final · 2026-10-19T14:37:18.428Z · commit dca23852347a0eda21e2825b2399c4b7c328aed1
 - [x] C2. After the write, `projectSetUp` is true, and a second run reports `favourite ok` without a question (T1).
   - done: impl-841 · 2026-10-19T11:28:48.206Z
   - verified: rev-30 [reviewer] · run rev-20261019-841-final · 2026-10-19T11:52:53.478Z · commit 595ed1f06cd84f2dad9297333cd24e53b4878b1c
   - verified: rev-30 [reviewer] · run rev-20261019-841-installer-integration-final · 2026-10-19T13:06:49.593Z · commit 7d6e52b73839788f752c5ff92c52d8e74e6feeb2
+  - verified: rev-30 [reviewer] · run rev-20261019-841-trust-integration-final · 2026-10-19T14:37:18.428Z · commit dca23852347a0eda21e2825b2399c4b7c328aed1
 - [x] C3. With one installed harness, no question is asked and that harness is written (T1).
   - done: impl-841 · 2026-10-19T11:28:48.599Z
   - verified: rev-30 [reviewer] · run rev-20261019-841-final · 2026-10-19T11:52:53.478Z · commit 595ed1f06cd84f2dad9297333cd24e53b4878b1c
   - verified: rev-30 [reviewer] · run rev-20261019-841-installer-integration-final · 2026-10-19T13:06:49.593Z · commit 7d6e52b73839788f752c5ff92c52d8e74e6feeb2
+  - verified: rev-30 [reviewer] · run rev-20261019-841-trust-integration-final · 2026-10-19T14:37:18.428Z · commit dca23852347a0eda21e2825b2399c4b7c328aed1
 - [x] C4. `--harness opencode` with OpenCode not installed is `fail` naming the installed set, and without a terminal and without flags the step is `open` and writes nothing (T1).
   - done: impl-841 · 2026-10-19T11:28:49.081Z
   - verified: rev-30 [reviewer] · run rev-20261019-841-source · 2026-10-19T11:30:10.532Z · commit b223b0035a87c20f27390de72e41db2d362b70f0
@@ -64,6 +68,8 @@ Setup asks which installed harness the human talks to. It writes the answer as `
   - verified: rev-30 [reviewer] · run rev-20261019-841-integration-source · 2026-10-19T12:21:52.442Z · commit 5781176e85b020f6db3f321fd612d08e30350e3a
   - verified: rev-30 [reviewer] · run rev-20261019-841-installer-integration-source · 2026-10-19T12:47:50.892Z · commit 7d6e52b73839788f752c5ff92c52d8e74e6feeb2
   - verified: rev-30 [reviewer] · run rev-20261019-841-installer-integration-final · 2026-10-19T13:06:49.593Z · commit 7d6e52b73839788f752c5ff92c52d8e74e6feeb2
+  - verified: rev-30 [reviewer] · run rev-20261019-841-trust-integration-source · 2026-10-19T14:17:27.135Z · commit dca23852347a0eda21e2825b2399c4b7c328aed1
+  - verified: rev-30 [reviewer] · run rev-20261019-841-trust-integration-final · 2026-10-19T14:37:18.428Z · commit dca23852347a0eda21e2825b2399c4b7c328aed1
 
 ## Comments
 
@@ -174,5 +180,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Integration final clear; A-6048 audits A-6046 / bfda2eb1 at unchanged reviewed head. Ordinary 1545/1545, zero fail/cancel/skip/TODO, all 464 load groups 5/5, zero tier-mismatch rows. Ten favourite, ten installer-flow and six CLI cases pass, including combined install+choice JSON proof. C1–C4 refreshed. Coordinator separately filed sandbox follow-up T-874 and retained this head. Report-only findings retained; T3 is landing evidence. No Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### rev-30 · 2026-10-19T14:17:27.135Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-841-trust-integration-source
+commit: dca23852347a0eda21e2825b2399c4b7c328aed1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized trust integration source clear; A-6085, findings []. Coordinator 83b75bdb read. Runner combines project/harnesses/logins/favourite/trust; CLI retains --harness and installer/JSON policy plus incoming rootSpelling/--yes trust gates. Favourite source unchanged from prior final-clear parent; trust modules and eleven tests unchanged from incoming reviewed dev. Existing controls retained with scratch HOME/trust isolation; new T1 control proves --harness writes favourite but leaves missing trust open/config absent without --yes. A-6084 reports 39/39 targeted passes and typecheck/lint/diff/merge-tree green. C1/C4 source requirements refreshed; final C1–C4 needs exact-head mode-free task receipt. T-874 separate, not fixed here. No Reviewer tests or further dev merge.
+
+Criteria: C1 verified, C4 verified.
+
+### rev-30 · 2026-10-19T14:37:18.428Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-841-trust-integration-final
+commit: dca23852347a0eda21e2825b2399c4b7c328aed1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Trust integration final clear; A-6087 audits exact-head b261667a/A-6086. Ordinary 1566/1566, zero fail/cancel/skip/TODO, all 486 load groups 5/5, zero tier-mismatch rows. All 39 relevant favourite/flow/trust/CLI tests pass ordinary plus five repetitions; combined install+choice JSON, --harness without --yes leaving trust open/config absent, and Codex original-root spelling all pass. C1–C4 verified and claimant done marks present. Source composition A-6085 unchanged; inherited report-only duration/baseline/lint debt retained. T-874 remains separate. Native T3 remains Coordinator landing evidence; no further item run or Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

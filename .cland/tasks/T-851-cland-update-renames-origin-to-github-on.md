@@ -3,18 +3,20 @@ id: T-851
 kind: task
 title: cland update renames origin to github on a v0.1.3 project initialised under a symlinked path (macOS /tmp)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - qa-found
   - needs-triage
+  - v0.1.4
+  - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-600
+branch: t/T-851-cland-update-renames-origin-to-github-on
 created: 2026-10-19T07:35:48.835Z
-updated: 2026-10-19T07:35:48.835Z
+updated: 2026-10-19T14:50:31.687Z
 ---
 
 ## Summary

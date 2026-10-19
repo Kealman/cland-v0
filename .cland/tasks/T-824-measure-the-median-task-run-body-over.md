@@ -3,7 +3,7 @@ id: T-824
 kind: task
 title: Measure the median task-run body over the first 20 droplet task runs after T-713
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-human
@@ -12,9 +12,9 @@ parent: E-678
 blocked_by:
   - T-713
 topic: null
-branch: null
+branch: t/T-824-measure-the-median-task-run-body-over
 created: 2026-10-19T01:56:44.318Z
-updated: 2026-10-19T01:56:49.257Z
+updated: 2026-10-19T14:51:21.549Z
 ---
 
 ## Summary

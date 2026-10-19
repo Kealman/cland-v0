@@ -3,17 +3,19 @@ id: T-860
 kind: task
 title: A merge batch's log artifact named in a member's item topic cannot be attached there (artifact-unavailable)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
+  - v0.1.4
+  - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-599
+branch: t/T-860-a-merge-batch-s-log-artifact-named-in-a
 created: 2026-10-19T08:15:52.852Z
-updated: 2026-10-19T08:15:52.852Z
+updated: 2026-10-19T14:50:31.502Z
 ---
 
 ## Summary

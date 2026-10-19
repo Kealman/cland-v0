@@ -3,17 +3,19 @@ id: T-865
 kind: task
 title: cland hub start kills a hub whose startup ready check stalls tracker storage past the 15 s probe deadline
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
+  - v0.1.4
+  - ready-for-agent
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-596
+branch: t/T-865-cland-hub-start-kills-a-hub-whose
 created: 2026-10-19T10:23:43.735Z
-updated: 2026-10-19T10:23:43.735Z
+updated: 2026-10-19T14:50:22.072Z
 ---
 
 ## Summary

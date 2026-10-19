@@ -3,7 +3,7 @@ id: T-717
 kind: task
 title: "[verification] gains per-tier test commands, so any project's task runs, merge batches and soaks follow the tier model"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -17,10 +17,10 @@ blocked_by:
   - T-664
   - T-665
   - T-666
-topic: null
-branch: null
+topic: topic-602
+branch: t/T-717-verification-gains-per-tier-test
 created: 2026-10-16T19:59:44.369Z
-updated: 2026-10-16T20:00:25.797Z
+updated: 2026-10-19T14:51:31.424Z
 ---
 
 ## Summary

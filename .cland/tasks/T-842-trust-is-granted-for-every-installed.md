@@ -2,8 +2,8 @@
 id: T-842
 kind: task
 title: Trust is granted for every installed harness without a question and reported in one line
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-585
 branch: t/T-842-trust-is-granted-for-every-installed
 created: 2026-10-19T06:34:13.266Z
-updated: 2026-10-19T13:04:30.773Z
+updated: 2026-10-19T14:14:27.159Z
+closed: 2026-10-19T14:14:27.159Z
 ---
 
 ## Summary
@@ -165,3 +166,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Integration final clear; A-6044 audits A-6043 / 97b56f96 at unchanged delta-reviewed head. Ordinary 1547/1547, zero fail/cancel/skip/TODO, all 466 load groups 5/5, zero tier-mismatch rows. Eleven trust, ten installer-flow and seven CLI cases complete ordinarily and 5/5, including JSON routing and root spellings. C1–C6 refreshed. Report-only findings retained; T3 is merge-batch landing evidence. No Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T14:14:27.159Z
+
+Merged 3c927021f8217b4359d7e885ba4c4a740091241c onto dev.

@@ -6,14 +6,14 @@ state: open
 status: backlog
 size: XS
 labels:
-  - v0.1.5
+  - v0.1.4
 assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T11:52:12.288Z
-updated: 2026-10-19T11:52:12.288Z
+updated: 2026-10-19T14:49:53.470Z
 ---
 
 ## Summary

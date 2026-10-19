@@ -9,14 +9,14 @@ labels:
   - verification
   - hub
   - ready-for-agent
-  - v0.1.5
+  - v0.1.4
 assignee: null
 parent: C-216
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T07:21:29.054Z
-updated: 2026-10-19T10:25:22.362Z
+updated: 2026-10-19T14:49:53.090Z
 ---
 
 ## Summary

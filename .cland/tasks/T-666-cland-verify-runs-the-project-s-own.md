@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-580
 branch: t/T-666-cland-verify-runs-the-project-s-own
 created: 2026-10-16T16:35:24.419Z
-updated: 2026-10-19T12:39:08.344Z
+updated: 2026-10-19T14:13:57.417Z
 ---
 
 ## Summary
@@ -39,28 +39,37 @@ The resolver from ticket T-663 reads `[verification] check`, `test` and `prepare
 - [x] C1. In a fixture project whose package scripts differ from its `[verification]` lines, a local `cland verify` runs the config's `check` then `test`, and its log shows `$ <check>` then `$ <test>` (suite CLI test against a temporary project's hub).
   - done: impl-666 · 2026-10-19T11:53:17.270Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.199Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 - [x] C2. A candidate whose `config.toml` sets no commands runs the root's values, and its log header names them (suite CLI test with a task worktree).
   - done: impl-666 · 2026-10-19T11:53:17.825Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.199Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 - [x] C3. A project with no `test` in either file is refused at submission with the `cland config set verification.test` line, and no run is queued (suite CLI test).
   - done: impl-666 · 2026-10-19T12:20:31.130Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.199Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 - [x] C4. With `check` unset the log shows `check: not set` and `test` runs. A failing `check` stops the run before `test`, red with its exit code.
   - done: impl-666 · 2026-10-19T11:53:18.857Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.199Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 - [x] C5. For each selection (`full`, `hub-only`, `hub-selected`, `nvim-only` and a shard), `npm test` with the selection in `CLAND_SUITE_SELECTION` plans the same phases, targets, workers and lock directories as the old per-mode script (`suite-runner.test.ts`).
   - done: impl-666 · 2026-10-19T11:53:19.444Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-source-corrected · 2026-10-19T11:56:53.849Z · commit 4faa12e1bb1aa6f00114fa73739b7041f2015780
   - verified: rev-30 [reviewer] · run rev-20261019-666-fixtures-source · 2026-10-19T12:21:07.879Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-source · 2026-10-19T13:55:26.301Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.199Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 - [x] C6. This repository's `.cland/config.toml` sets `check = "npm run check"` (typecheck plus test:lint, as the host gate runs today since T-684) and `test = "npm test"`, and the resolver resolves them for every mode (test reading the repository's own file).
   - done: impl-666 · 2026-10-19T11:53:19.921Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-source-corrected · 2026-10-19T11:56:53.849Z · commit 4faa12e1bb1aa6f00114fa73739b7041f2015780
   - verified: rev-30 [reviewer] · run rev-20261019-666-fixtures-source · 2026-10-19T12:21:07.879Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-source · 2026-10-19T13:55:26.302Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.200Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 - [x] C7. The recorded commands survive a hub restart mid-run: the restored run reports with the same lines (`suite-recovery.test.ts`), and a fake-droplet run's `run.sh` carries the recorded lines (`executor-run.test.ts`).
   - done: impl-666 · 2026-10-19T11:56:28.206Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
+  - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.200Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
 
 ## Comments
 
@@ -144,5 +153,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final clear; A-6035 audits A-6033 / c538f727 at unchanged source-clear head. Ordinary 1513/1513, zero fail/cancel/skip/TODO, all 436 load-gate groups 5/5, zero tier-mismatch rows. Prior five failed fixture identities now pass, dedicated missing-test refusal remains green. C1–C7 verified using source, this exact-head task gate, and explicitly qualified host lifecycle receipts A-6002/A-6007 whose relevant blobs are unchanged. Failed A-6020 retained. T3 and post-restart local hub/nvim checks remain landing/stage obligations; no Reviewer execution.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-30 · 2026-10-19T13:55:26.302Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-666-demo-source
+commit: 0c3be9e76538b77e579b815157b28c93fbeb756b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-6080, no findings. Three-file correction from 408d20bc addresses A-6072's missed demo RunRef constructor: resolve once before provider acquisition, persist commands in optional lease.demo metadata and pass identical values to delivery. Existing T3 test mutates config during acquisition, checks lease/script admission values and unchanged metadata after actual restart; all prior assertions retained, no process/timer growth. A-6077 seven full host files audited green; A-6079 run-entry inventory independently traced across Suites task/stage/occasion/batch/soak and Demos; prepareSnapshot has no verification RunRef. Coordinator directive 7cce8b11 read. C5/C6 unchanged source requirements refreshed; C1–C4/C7 await replacement mode-free exact-head task gate plus qualified host evidence. Prior A-6033 historical and failed landing A-6072 retained; native Linux T3/post-restart hub+nvim checks remain Coordinator landing/stage obligations.
+
+Criteria: C5 verified, C6 verified.
+
+### rev-30 · 2026-10-19T14:13:54.200Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-666-demo-final
+commit: 0c3be9e76538b77e579b815157b28c93fbeb756b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final corrected-head clear; A-6082, findings []. Exact-head mode-free 64a6a9f2/A-6081 audited in full: ordinary 1513/1513, zero fail/cancel/skip/TODO, all 436 load groups 5/5, zero tier-mismatch rows. New demo persistence/script/config-mutation/restart proof is host A-6077, independently source-audited in A-6080; task gate does not execute native T3 demo/restart files. C1–C4/C7 retain A-6035's explicitly qualified unchanged suite/recovery/executor-run host evidence, plus current same-head gate; only demos and optional lease metadata changed. C5/C6 source requirements remain intact. All C1–C7 verified; claimant marks present. Failed A-6072 retained; next landing batch must prove corrected native demos on Linux. Post-new-hub-restart local verify hub/nvim remain Coordinator stage obligations. No further item run or Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
