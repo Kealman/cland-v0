@@ -3,7 +3,7 @@ id: T-670
 kind: task
 title: The droplet runs [verification] prepare where it ran npm ci and the Neovim pin
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ parent: E-614
 blocked_by:
   - T-668
   - T-669
-topic: null
-branch: null
+topic: topic-669
+branch: t/T-670-the-droplet-runs-verification-prepare
 created: 2026-10-16T16:35:26.848Z
-updated: 2026-10-16T16:35:44.922Z
+updated: 2026-10-19T23:34:31.102Z
 ---
 
 ## Summary
@@ -41,3 +41,9 @@ The droplet executor runs the project's `prepare` in the prepared image's builde
 - [ ] C4. A failing `prepare` at delivery turns the run red with `prepare failed (exit <n>)` and its output, and neither `check` nor `test` runs. A `prepare` that leaves an unignored file fails with `prepare left the checkout dirty`.
 - [ ] C5. `node hub/bin/verify-prepare.ts` with a matching key prints `dependencies match snapshot` and `Neovim pin matches snapshot` and runs neither step. With a moved lock it prints `dependencies changed: npm ci` and runs `npm ci` (script test with a fake `npm` on the PATH).
 - [ ] C6. This repository's `.cland/config.toml` sets `prepare = "node hub/bin/verify-prepare.ts"`, and a cland-shaped fake-droplet run's delivery log shows today's two lines (`executor-run.test.ts`).
+
+## Comments
+
+### impl-670 · 2026-10-19T23:34:31.102Z
+
+Implementation: builder runs root prepare with JSON CLAND_PREPARE_KEY, delivery uses each job's recorded prepare with snapshot key, failures preserve output and dirty paths. cland's script retains exact warm lock/pin lines and uses successful-install marker plus legacy image-marker fallback (Coordinator decision in topic-669) so existing images need no re-prepare. Native focused proofs: executor-run 17/17, executor-prepare 5/5; typecheck/test:lint green. Required executor-*, droplet-*, suite-* and verify-* serial local sweep in progress. Stage close checklist for supervising Lead: after hub restart, usual sharded dev cover must show dependencies match snapshot and Neovim pin matches snapshot on every shard.
