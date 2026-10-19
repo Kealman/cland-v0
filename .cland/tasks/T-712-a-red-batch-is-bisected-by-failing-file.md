@@ -2,8 +2,8 @@
 id: T-712
 kind: task
 title: "A red batch is bisected by failing file: the culprit is refused with merge-bisected, the rest land, a culprit-less repeat proposes quarantine"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-540
 branch: t/T-712-a-red-batch-is-bisected-by-failing-file
 created: 2026-10-16T19:59:43.692Z
-updated: 2026-10-19T00:49:08.429Z
+updated: 2026-10-19T01:02:28.333Z
+closed: 2026-10-19T01:02:28.333Z
 ---
 
 ## Summary
@@ -117,3 +118,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchanged140c3707. A-5695/5eaf93cf accepted full gate:2729 pass,zero fail/cancel,eight skips; hub and Neovim complete. All34 batch/queue/shard cases pass, all31 batch/queue groups155/155 repetitions green, including H1/M2/M3 negative guards. A-5696 maps C1–C5 to named refusal, unique-tree landing, flake proposal, unresolved notice and cost report; inherited report-only trips disclosed. Verified all; no findings or per-item QA.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T01:02:28.333Z
+
+Merged cf9abfd5760c66d267620b9bd2bd153ed59c42c9 onto dev.
