@@ -17,24 +17,27 @@ import type { Released } from '../executor.ts';
 
 const exec = promisify(execFile);
 const hash = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
-export type PrepareKey = { node: string; nvim: { tag: string; digest: string }; lock: string; base: string };
+export type PrepareKey = { node: string; nvim?: { tag: string; digest: string }; lock?: string; base: string };
 export type Snapshot = { image: number; name: string; key: PrepareKey; keyHash: string; regions: string[]; sizeGb: number; minDiskSize: number; created: string };
 export const snapshotPath = (root: string): string => join(root, '.cland/run/executor/snapshot.json');
 export const keyHash = (key: PrepareKey): string => hash(JSON.stringify(key)).slice(0, 12);
-export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.nvim.tag === b.nvim.tag && a.nvim.digest === b.nvim.digest;
+export const sameKey = (a: PrepareKey, b: PrepareKey): boolean => a.node === b.node && a.base === b.base && a.lock === b.lock && a.nvim?.tag === b.nvim?.tag && a.nvim?.digest === b.nvim?.digest;
 
 export async function prepareKey(root: string, env: NodeJS.ProcessEnv = process.env): Promise<PrepareKey> {
   const git = async (...args: string[]) => (await exec('git', args, { cwd: root, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout;
   await git('fetch', 'origin', 'dev');
   const base = (await git('rev-parse', 'origin/dev')).trim();
   const node = (await exec(process.execPath, ['--version'], { cwd: root, env: machineEnv(env), timeout: 10000 })).stdout.trim();
-  const tag = (await readFile(join(root, 'nvim/NVIM_VERSION'), 'utf8')).trim();
-  const sums = await readFile(join(root, 'nvim/NVIM_SHA256SUMS'), 'utf8');
-  const digest = sums.split('\n').find(line => /\s+nvim-linux-x86_64\.tar\.gz$/.test(line))?.split(/\s+/)[0];
-  if (!/^v\d+\.\d+\.\d+$/.test(node) || !/^v\d+\.\d+\.\d+(?:[-.][a-zA-Z0-9.-]+)?$/.test(tag) || !digest || !/^[a-f0-9]{64}$/.test(digest)) throw new Error('invalid Node or Neovim prepare pin');
+  const optional = async (path: string) => (await git('ls-tree', '--name-only', base, '--', path)).trim() ? git('show', `${base}:${path}`) : undefined;
+  const tag = (await optional('nvim/NVIM_VERSION'))?.trim();
+  const sums = await optional('nvim/NVIM_SHA256SUMS');
+  const digest = sums?.split('\n').find(line => /\s+nvim-linux-x86_64\.tar\.gz$/.test(line))?.split(/\s+/)[0];
+  const hasNvim = tag !== undefined || sums !== undefined;
+  if (!/^v\d+\.\d+\.\d+$/.test(node) || hasNvim && (!tag || !/^v\d+\.\d+\.\d+(?:[-.][a-zA-Z0-9.-]+)?$/.test(tag) || !digest || !/^[a-f0-9]{64}$/.test(digest))) throw new Error('invalid Node or Neovim prepare pin');
   // Hash bytes, not decoded text: the lock input identifies the committed base.
-  const lock = hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout);
-  return { node, nvim: { tag, digest }, lock, base };
+  const hasLock = (await git('ls-tree', '--name-only', base, '--', 'package-lock.json')).trim() !== '';
+  const lock = hasLock ? hash((await exec('git', ['show', `${base}:package-lock.json`], { cwd: root, env: machineEnv(env), timeout: 30000, encoding: 'buffer', maxBuffer: 16 * 1024 * 1024 })).stdout) : undefined;
+  return { node, ...(hasNvim ? { nvim: { tag: tag!, digest: digest! } } : {}), ...(lock === undefined ? {} : { lock }), base };
 }
 /** Build the native base archive separately from snapshot lifecycle policy. */
 export async function prepareBundle(root: string, dir: string, env: NodeJS.ProcessEnv = process.env): Promise<string> {
@@ -49,13 +52,13 @@ export async function prepareBundle(root: string, dir: string, env: NodeJS.Proce
 export async function readSnapshot(root: string): Promise<Snapshot | null> {
   try {
     const snapshot = JSON.parse(await readFile(snapshotPath(root), 'utf8')) as Snapshot;
-    if (!Number.isSafeInteger(snapshot.image) || snapshot.image <= 0 || !snapshot.name || !Array.isArray(snapshot.regions) || !snapshot.regions.length || !snapshot.key || !snapshot.key.nvim || snapshot.keyHash !== keyHash(snapshot.key)) throw new Error('invalid prepared snapshot record');
+    if (!Number.isSafeInteger(snapshot.image) || snapshot.image <= 0 || !snapshot.name || !Array.isArray(snapshot.regions) || !snapshot.regions.length || !snapshot.key || !snapshot.key.node || !snapshot.key.base || snapshot.keyHash !== keyHash(snapshot.key)) throw new Error('invalid prepared snapshot record');
     return snapshot;
   }
   catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null; throw error; }
 }
 export function staleParts(snapshot: Snapshot, current: PrepareKey): string[] {
-  return (['base', 'lock', 'node', 'nvim'] as const).filter(part => JSON.stringify(snapshot.key[part]) !== JSON.stringify(current[part]));
+  return (['base', 'lock', 'node', 'nvim'] as const).filter(part => JSON.stringify(snapshot.key[part] ?? 'none') !== JSON.stringify(current[part] ?? 'none'));
 }
 
 export async function waitForMachine(root: string, lease: DropletLease, key?: PrepareKey, boundMs = 180000, signal?: AbortSignal, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}): Promise<void> {
@@ -118,7 +121,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
   try {
     step('builder');
     const template = await readFile(fileURLToPath(new URL('./provision.sh', import.meta.url)), 'utf8');
-    builder = await options.builder(template.replace('__NODE_VERSION__', key.node).replace('__NVIM_VERSION__', key.nvim.tag).replace('__NVIM_SHA256__', key.nvim.digest));
+    builder = await options.builder(template.replace('__NODE_VERSION__', key.node).replace('__NVIM_VERSION__', key.nvim?.tag ?? '').replace('__NVIM_SHA256__', key.nvim?.digest ?? ''));
     recovery.builder = builder.resource!; await saveRecovery(root, recovery);
     await waitForMachine(root, builder, undefined, 900000, options.signal, env, dependencies);
     const machine = dependencies.machine ?? new Machine(root, env);

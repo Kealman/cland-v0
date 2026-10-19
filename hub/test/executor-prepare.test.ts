@@ -2,18 +2,150 @@
 // Native snapshot bytes, shell setup and key boot hooks stay here; policy is T2.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { nativeProjectHub as projectHub, clandWithEnv, connectUi, startDaemon, tempProject, eventually, flushProjectLogs, pidAlive } from './harness.ts';
+import { nativeProjectHub as projectHub, projectHub as componentHub, clandWithEnv, connectUi, startDaemon, tempProject, eventually, flushProjectLogs, pidAlive } from './harness.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import type { TestContext } from 'node:test';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
-import { onCleanup, ownProcess } from './process-cleanup.ts';
+import { DropletRun } from '../src/executor/droplet/run.ts';
+import { prepareKey, type Snapshot } from '../src/executor/droplet/prepare.ts';
+import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
+import { FakeClock } from './fake-clock.ts';
+import { drive } from './remote-clock.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { beforeDirectories, onCleanup, ownProcess } from './process-cleanup.ts';
 
 const exec = promisify(execFile);
 const git = async (root: string, ...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
+function ownedGit(t: TestContext, wait: ReturnType<typeof caseDeadlines>['wait']) {
+  const abort = new AbortController();
+  const pending = new Set<Promise<void>>();
+  beforeDirectories(t, async () => { abort.abort(); await wait('drain Git child closes', () => Promise.allSettled([...pending])); });
+  return async (root: string, ...args: string[]) => {
+    const work = exec('git', args, { cwd: root, timeout: 30000, killSignal: 'SIGKILL', signal: AbortSignal.any([t.signal, abort.signal]) });
+    const closed = new Promise<void>(resolve => work.child.once('close', () => resolve()));
+    pending.add(closed);
+    ownProcess(t, work.child.pid);
+    try { return (await work).stdout.trim(); }
+    finally { await wait('Git child close', () => closed); pending.delete(closed); }
+  };
+}
+
+test('a project without pins prepares a reusable snapshot for delivery', async context => {
+  const { wait, fixtures: t } = caseDeadlines(context);
+  await wait('native pinless prepare and delivery', async () => {
+    // Native Git key/bundle and CLI contract; all provider/machine work is scripted.
+    const git = ownedGit(t, wait);
+    const root = await tempProject(t);
+    await git(root, 'init', '-q', '-b', 'dev');
+    await git(root, 'config', 'user.name', 'Test');
+    await git(root, 'config', 'user.email', 'test@example.com');
+    await git(root, 'config', 'commit.gpgsign', 'false');
+    await writeFile(join(root, '.gitignore'), '.cland/\n');
+    await writeFile(join(root, 'README.md'), 'Another stack\n');
+    await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Pinless base');
+    await git(root, 'remote', 'add', 'origin', root);
+    // Local pins are not part of the base archive and must not affect its key.
+    await mkdir(join(root, 'nvim'));
+    await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
+    await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
+    const key = await prepareKey(root);
+    assert.deepEqual(key, { node: process.version, base: await git(root, 'rev-parse', 'HEAD') });
+    await rm(join(root, 'nvim'), { recursive: true });
+    const clock = new FakeClock();
+    const api = await fakeDigitalOcean('sentinel-pinless', { machine: 'scripted', clock });
+    let stopHub = async () => {};
+    beforeDirectories(t, async () => { try { await stopHub(); } finally { await api.close(); } });
+    const machine = scriptedMachine(root, clock, key);
+    const commands: string[] = [];
+    const dependencies = { ...machine.dependencies, api: api.provider, machine: { ...machine.dependencies.machine,
+      exec: async (_lease: unknown, command: string) => { commands.push(command); return command.includes('.cland-image.json') ? JSON.stringify(key) : ''; },
+      put: async () => {},
+    } };
+    const env = { DIGITALOCEAN_TOKEN: 'sentinel-pinless', CLAND_EXECUTOR_STATE: join(root, '.cland/state') };
+    const hub = await componentHub(t, root, env, { clock, droplet: dependencies });
+    stopHub = () => drive(machine, hub.stop());
+    const ui = await connectUi(t, hub.discovery);
+    const submitted = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
+    assert.equal(submitted.code, 0, submitted.stderr);
+    const status = await drive(machine, eventually('pinless preparation finishes', async () => {
+      const value = (await ui.request({ type: 'executor.status' })).value as { snapshot: Snapshot & { freshness: string }; prepare?: { state: string; error?: string }; summary: string };
+      return value.prepare && value.prepare.state !== 'running' ? value : undefined;
+    }));
+    assert.equal(status.prepare!.state, 'done', status.prepare!.error);
+    assert.deepEqual(status.snapshot.key, key);
+    assert.equal(status.snapshot.freshness, 'current');
+    assert.match(status.summary, /"nvim":"none"/);
+    assert.match(status.summary, /"lock":"none"/);
+    assert.doesNotMatch(status.summary, /stale/);
+    const userData = String(api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!.user_data);
+    assert.match(userData, /NODE_VERSION=v/);
+    assert.match(userData, /NVIM_VERSION=\n/);
+    assert.match(userData, /if \[ -n "\$NVIM_VERSION" \]; then\n[\s\S]*curl[^\n]*neovim[\s\S]*\nfi/);
+    const current = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
+    assert.equal(current.code, 0, current.stderr);
+    await drive(machine, eventually('snapshot is reused', async () => {
+      const value = (await ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; result?: { state: string } } };
+      return value.prepare?.state === 'done' && value.prepare.result?.state === 'current' ? true : undefined;
+    }));
+    assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
+    const executor = new DropletExecutor(root, undefined, undefined, env, undefined, dependencies);
+    const lease = await drive(machine, executor.acquire({ id: 'pinless-run' }, new Date(clock.now().getTime() + 600000).toISOString()));
+    const runDir = join(root, '.cland/run/pinless-run');
+    await mkdir(runDir, { recursive: true });
+    const run = { id: lease.run, cwd: root, head: key.base, mode: 'auto', log: join(runDir, 'suite.log'), result: join(runDir, 'result.json'), gate: join(runDir, 'gate') };
+    try {
+      await new DropletRun(root, env, dependencies).deliver(lease, run);
+      const delivery = commands.find(command => command.includes('git checkout --detach') && command.includes('git clean'))!;
+      assert.ok(delivery);
+      assert.doesNotMatch(delivery, /package-lock|dependencies (?:changed|match)|Neovim|NVIM_VERSION/);
+      assert.equal(await readFile(join(runDir, 'delivery.log'), 'utf8'), '');
+      await executor.deliver(lease, run);
+      await executor.start(lease, run);
+      machine.finish(lease.run);
+      assert.equal((await executor.status(lease)).code, 0);
+    } finally { await drive(machine, executor.release(lease)); }
+    assert.deepEqual(api.droplets, []);
+  });
+});
+
+test('prepare accepts independent optional parts but rejects incomplete Neovim pins', async context => {
+  const { wait, fixtures: t } = caseDeadlines(context);
+  await wait('native prepare-key controls', async () => {
+    const git = ownedGit(t, wait);
+    const root = await tempProject(t);
+    await git(root, 'init', '-q', '-b', 'dev');
+    await git(root, 'config', 'user.name', 'Test'); await git(root, 'config', 'user.email', 'test@example.com');
+    await git(root, 'config', 'commit.gpgsign', 'false');
+    await writeFile(join(root, 'package-lock.json'), '{}\n');
+    await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Lock-only base');
+    await git(root, 'remote', 'add', 'origin', root);
+    const lockOnly = await prepareKey(root);
+    assert.equal(lockOnly.nvim, undefined);
+    assert.equal(lockOnly.lock, 'ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356');
+    await mkdir(join(root, 'nvim'));
+    await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
+    await git(root, 'add', 'nvim'); await git(root, 'commit', '-qm', 'Incomplete pin');
+    await assert.rejects(prepareKey(root), /invalid Node or Neovim prepare pin/);
+    await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), 'bad  nvim-linux-x86_64.tar.gz\n');
+    await git(root, 'add', 'nvim'); await git(root, 'commit', '-qm', 'Invalid checksum');
+    await assert.rejects(prepareKey(root), /invalid Node or Neovim prepare pin/);
+    await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
+    await git(root, 'rm', 'package-lock.json');
+    await git(root, 'add', 'nvim'); await git(root, 'commit', '-qm', 'Pin-only base');
+    const pinOnly = await prepareKey(root);
+    assert.equal(pinOnly.lock, undefined);
+    assert.deepEqual(pinOnly.nvim, { tag: 'v0.12.5', digest: 'a'.repeat(64) });
+    await writeFile(join(root, 'nvim/NVIM_VERSION'), 'invalid-local-edit\n');
+    assert.deepEqual(await prepareKey(root), pinOnly);
+    await rm(join(root, 'nvim'), { recursive: true });
+    assert.deepEqual(await prepareKey(root), pinOnly);
+  });
+});
+
 async function fixture(t: TestContext, overrides: Record<string, string> = {}, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   const territory = await tempProject(t, 'prepare-territory-');
@@ -38,49 +170,55 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, s
   return { root, api, env, ui, discovery, stop };
 }
 
-test('prepare builds a reusable snapshot, reports its key and replaces it after the committed lock changes', async t => {
-  const { root, api, ui } = await fixture(t);
-  const submitted = await clandWithEnv(root, {}, 'executor', 'prepare', '--report', 'general', '--json');
-  assert.equal(submitted.code, 0, submitted.stderr);
-  assert.equal(JSON.parse(submitted.stdout).state, 'submitted');
-  const status = await eventually('snapshot is prepared', async () => {
-    const result = await ui.request({ type: 'executor.status' });
-    const value = result.value as { snapshot?: { image: number; key: { node: string; nvim: { tag: string }; lock: string; base: string }; freshness: string }; prepare?: { state: string } };
-    return value?.snapshot && value.prepare?.state !== 'running' ? value : undefined;
-  }, 15000);
-  assert.equal(status.snapshot!.freshness, 'current');
-  assert.equal(status.snapshot!.key.nvim.tag, 'v0.12.5');
-  assert.equal(status.snapshot!.key.node, process.version);
-  assert.match(status.snapshot!.key.lock, /^[a-f0-9]{64}$/);
-  assert.equal(status.snapshot!.key.base, await git(root, 'rev-parse', 'HEAD'));
-  assert.equal(api.images.length, 1); assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
-  const builder = api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!;
-  assert.equal(builder.image, 'ubuntu-24-04-x64');
-  assert.match(String(builder.user_data), /NODE_VERSION=v/); assert.doesNotMatch(String(builder.user_data), /\bacct\b|sentinel-prepare/);
-  assert.deepEqual(api.images[0]!.regions, ['lon1', 'nyc1', 'sfo2']);
-  const imageDir = api.imageDirs.get(status.snapshot!.image)!;
-  assert.equal(await git(join(imageDir, 'home/runner/cland'), 'rev-parse', 'HEAD'), status.snapshot!.key.base);
-  assert.equal(await git(join(imageDir, 'home/runner/cland'), 'remote'), '');
-  assert.match(await readFile(join(imageDir, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8'), /authorized_keys/);
-  const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { from: string; text: string }[] };
-  const notices = history.messages.filter(message => message.from === 'hub' && message.text.startsWith('snapshot prepared:'));
-  assert.equal(notices.length, 1);
-  assert.match(notices[0]!.text, /key .*regions .*duration .*builder lifetime .*cost /s);
-  assert.ok(!JSON.stringify(history).includes('sentinel-prepare'));
-  const current = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
-  assert.equal(current.code, 0, current.stderr);
-  await eventually('second prepare completes', async () => {
-    const value = (await ui.request({ type: 'executor.status' })).value as { prepare: { state: string; result?: { state: string } } };
-    return value.prepare?.state === 'done' && value.prepare.result?.state === 'current' ? true : undefined;
+test('prepare builds a reusable snapshot, reports its key and replaces it after the committed lock changes', async context => {
+  const { wait, fixtures: t } = caseDeadlines(context);
+  await wait('native pinned snapshot replacement', async () => {
+    const git = ownedGit(t, wait);
+    const { root, api, ui } = await fixture(t);
+    const submitted = await clandWithEnv(root, {}, 'executor', 'prepare', '--report', 'general', '--json');
+    assert.equal(submitted.code, 0, submitted.stderr);
+    assert.equal(JSON.parse(submitted.stdout).state, 'submitted');
+    const status = await eventually('snapshot is prepared', async () => {
+      const result = await ui.request({ type: 'executor.status' });
+      const value = result.value as { snapshot?: { image: number; key: { node: string; nvim: { tag: string }; lock: string; base: string }; freshness: string }; prepare?: { state: string } };
+      return value?.snapshot && value.prepare?.state !== 'running' ? value : undefined;
+    }, 15000);
+    assert.equal(status.snapshot!.freshness, 'current');
+    assert.equal(status.snapshot!.key.nvim.tag, 'v0.12.5');
+    assert.equal(status.snapshot!.key.node, process.version);
+    assert.match(status.snapshot!.key.lock, /^[a-f0-9]{64}$/);
+    assert.equal(status.snapshot!.key.base, await git(root, 'rev-parse', 'HEAD'));
+    assert.equal(api.images.length, 1); assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
+    const builder = api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!;
+    assert.equal(builder.image, 'ubuntu-24-04-x64');
+    assert.match(String(builder.user_data), /NODE_VERSION=v/); assert.doesNotMatch(String(builder.user_data), /\bacct\b|sentinel-prepare/);
+    assert.match(String(builder.user_data), /NVIM_VERSION=v0\.12\.5/);
+    assert.match(String(builder.user_data), /curl[^\n]*neovim\/neovim\/releases/);
+    assert.deepEqual(api.images[0]!.regions, ['lon1', 'nyc1', 'sfo2']);
+    const imageDir = api.imageDirs.get(status.snapshot!.image)!;
+    assert.equal(await git(join(imageDir, 'home/runner/cland'), 'rev-parse', 'HEAD'), status.snapshot!.key.base);
+    assert.equal(await git(join(imageDir, 'home/runner/cland'), 'remote'), '');
+    assert.match(await readFile(join(imageDir, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8'), /authorized_keys/);
+    const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { from: string; text: string }[] };
+    const notices = history.messages.filter(message => message.from === 'hub' && message.text.startsWith('snapshot prepared:'));
+    assert.equal(notices.length, 1);
+    assert.match(notices[0]!.text, /key .*regions .*duration .*builder lifetime .*cost /s);
+    assert.ok(!JSON.stringify(history).includes('sentinel-prepare'));
+    const current = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
+    assert.equal(current.code, 0, current.stderr);
+    await eventually('second prepare completes', async () => {
+      const value = (await ui.request({ type: 'executor.status' })).value as { prepare: { state: string; result?: { state: string } } };
+      return value.prepare?.state === 'done' && value.prepare.result?.state === 'current' ? true : undefined;
   });
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 1);
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.6\n');
+  await git(root, 'add', 'nvim/NVIM_VERSION'); await git(root, 'commit', '-qm', 'Pin moved'); await git(root, 'push', '-q', 'origin', 'dev');
   const pinMoved = (await ui.request({ type: 'executor.status' })).value as { snapshot: { freshness: string } };
-  assert.equal(pinMoved.snapshot.freshness, 'stale: nvim');
+  assert.equal(pinMoved.snapshot.freshness, 'stale: base|nvim');
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
   await writeFile(join(root, 'package-lock.json'), (await readFile(join(root, 'package-lock.json'), 'utf8')).replaceAll('1.0.0', '1.0.1'));
   await writeFile(join(root, 'package.json'), '{"name":"prepared-fixture","version":"1.0.1"}\n');
-  await git(root, 'add', 'package.json', 'package-lock.json'); await git(root, 'commit', '-qm', 'Lock moved'); await git(root, 'push', '-q', 'origin', 'dev');
+  await git(root, 'add', 'package.json', 'package-lock.json', 'nvim/NVIM_VERSION'); await git(root, 'commit', '-qm', 'Lock moved'); await git(root, 'push', '-q', 'origin', 'dev');
   const stale = (await ui.request({ type: 'executor.status' })).value as { snapshot: { freshness: string } };
   assert.match(stale.snapshot.freshness, /stale: base\|lock/);
   assert.equal((await clandWithEnv(root, {}, 'executor', 'prepare', '--json')).code, 0);
@@ -102,6 +240,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
   };
   for (const directory of api.machineDirs.values()) await scan(directory);
   for (const directory of api.imageDirs.values()) await scan(directory);
+  });
 });
 
 test('prepared snapshots preserve the runner key hook across cloud-init clean and inject the new lease key on boot', async t => {

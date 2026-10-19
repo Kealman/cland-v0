@@ -189,6 +189,7 @@
     "hub/test/plan-approval.test.ts": "T3",
     "hub/test/plan-gate.test.ts": "T3",
     "hub/test/planned-stage.test.ts": "T3",
+    "hub/test/prepare-key.test.ts": "T1",
     "hub/test/prepared-project.test.ts": "T4",
     "hub/test/presence.test.ts": "T2",
     "hub/test/process-cleanup.test.ts": "T3",

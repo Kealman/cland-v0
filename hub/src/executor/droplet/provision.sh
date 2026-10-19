@@ -19,11 +19,13 @@ curl -fsSL "https://nodejs.org/dist/$NODE_VERSION/SHASUMS256.txt" | grep " node-
 mkdir -p /opt/node
 tar -xJf "node-$NODE_VERSION-linux-x64.tar.xz" -C /opt/node --strip-components=1
 for b in node npm npx; do ln -sf "/opt/node/bin/$b" "/usr/local/bin/$b"; done
+if [ -n "$NVIM_VERSION" ]; then
 curl -fsSLO "https://github.com/neovim/neovim/releases/download/$NVIM_VERSION/nvim-linux-x86_64.tar.gz"
 echo "$NVIM_SHA256  nvim-linux-x86_64.tar.gz" | sha256sum -c -
 mkdir -p /opt/nvim
 tar -xzf nvim-linux-x86_64.tar.gz -C /opt/nvim
 ln -sf /opt/nvim/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+fi
 useradd --create-home --shell /bin/bash runner
 install -d -m 700 -o runner -g runner /home/runner/.ssh
 install -m 600 -o runner -g runner /root/.ssh/authorized_keys /home/runner/.ssh/authorized_keys

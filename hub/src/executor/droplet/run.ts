@@ -95,9 +95,9 @@ git write-tree
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
     for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
-    const lock = quote(snapshot.key.lock);
-    const pin = quote(snapshot.key.nvim.tag);
-    const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\nif test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${lock}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\nif test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${pin}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;
+    const lock = snapshot.key.lock === undefined ? '' : `if test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${quote(snapshot.key.lock)}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\n`;
+    const pin = snapshot.key.nvim === undefined ? '' : `if test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${quote(snapshot.key.nvim.tag)}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\n`;
+    const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\n${lock}${pin}test "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;
     const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) });
     await writeFile(join(local, 'delivery.log'), output);
     await this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`);
