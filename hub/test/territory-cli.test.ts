@@ -10,6 +10,7 @@ import { runInit, runUpdate } from '../src/cli/init.ts';
 import { runDoctor } from '../src/cli/doctor.ts';
 import { captureCli } from './cli-in-process.ts';
 import { INIT_GIT_IDENTITY, withInitGitIdentity } from './git-identity-fixture.ts';
+import { commandIn, gitIn, initIn, masterClone, scratchMachine, snapshot } from './init-machine.ts';
 
 const git = (root: string, ...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
@@ -39,6 +40,135 @@ async function fixture(t: Parameters<typeof tempProject>[0], remote = true) {
   }
   return { root, github, territory: join(root, '.cland', 'territory.git') };
 }
+
+// T3: native clone HEAD discovery and ref seeding require real Git; no hub or harness starts.
+test('init seeds dev and the territory from a clone defaulting to master', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root, upstream } = await masterClone(machine);
+  const readGit = async (folder: string, ...args: string[]) => ok(await gitIn(machine, folder, ...args)).stdout.trim();
+  // A competing local main must not override origin/HEAD.
+  const initial = await readGit(root, 'rev-parse', 'master');
+  const other = await readGit(root, 'commit-tree', 'HEAD^{tree}', '-p', 'HEAD', '-m', 'Other main');
+  await readGit(root, 'branch', 'main', other);
+  const before = await readGit(upstream, 'show-ref');
+  ok(await initIn(machine, root, 'init', '--json'));
+  const territory = join(root, '.cland', 'territory.git');
+  assert.equal(await readGit(root, 'branch', '--show-current'), 'dev');
+  for (const branch of ['master', 'dev']) assert.equal(await readGit(territory, 'rev-parse', branch), initial);
+  assert.equal(await readGit(root, 'rev-parse', 'dev'), initial);
+  assert.equal(await readGit(territory, 'config', 'cland.defaultBranch'), 'master');
+  assert.equal(await readGit(territory, 'config', 'cland.originalBranch'), 'master');
+  assert.equal(await readGit(upstream, 'show-ref'), before);
+  ok(await initIn(machine, root, 'init', '--json'));
+  assert.equal(await readGit(territory, 'config', 'cland.defaultBranch'), 'master', 'rerun keeps the recorded default despite origin/HEAD now naming dev');
+});
+
+test('init seeds the remote default even when it has no local branch', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root } = await masterClone(machine);
+  const initial = ok(await gitIn(machine, root, 'rev-parse', 'HEAD')).stdout.trim();
+  ok(await gitIn(machine, root, 'switch', '-c', 'work'));
+  ok(await gitIn(machine, root, 'branch', '-D', 'master'));
+  ok(await initIn(machine, root, 'init', '--json'));
+  const territory = join(root, '.cland', 'territory.git');
+  for (const branch of ['master', 'dev']) {
+    assert.equal(ok(await gitIn(machine, territory, 'rev-parse', branch)).stdout.trim(), initial);
+  }
+  assert.equal(ok(await gitIn(machine, root, 'branch', '--show-current')).stdout.trim(), 'work');
+});
+
+test('the territory protects its recorded default branch at hook runtime', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root } = await masterClone(machine);
+  ok(await initIn(machine, root, 'init', '--json'));
+  const initial = ok(await gitIn(machine, root, 'rev-parse', 'HEAD')).stdout.trim();
+  ok(await gitIn(machine, root, 'commit', '--allow-empty', '-qm', 'Task work'));
+  for (const target of ['HEAD:master', ':master', 'HEAD:dev', ':dev']) {
+    const push = await gitIn(machine, root, 'push', 'origin', target);
+    assert.notEqual(push.code, 0, target);
+    assert.match(push.stderr, /master.*dev.*protected/);
+  }
+  ok(await gitIn(machine, root, 'push', 'origin', 'HEAD:refs/heads/t/T-1-work'));
+  ok(await gitIn(machine, root, 'push', '--force', 'origin', `${initial}:refs/heads/t/T-1-work`));
+  const territory = join(root, '.cland', 'territory.git');
+  const hook = await readFile(join(territory, 'hooks', 'update'), 'utf8');
+  ok(await gitIn(machine, territory, 'config', 'cland.defaultBranch', 't/T-1-work'));
+  const push = await gitIn(machine, root, 'push', 'origin', ':t/T-1-work');
+  assert.notEqual(push.code, 0);
+  assert.match(push.stderr, /t\/T-1-work.*protected/);
+  assert.equal(await readFile(join(territory, 'hooks', 'update'), 'utf8'), hook);
+});
+
+test('undo restores the recorded master default', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root, upstream } = await masterClone(machine);
+  ok(await initIn(machine, root, 'init', '--json'));
+  ok(await initIn(machine, root, 'init', '--undo', '--json'));
+  assert.equal(ok(await gitIn(machine, root, 'branch', '--show-current')).stdout.trim(), 'master');
+  assert.equal(ok(await gitIn(machine, root, 'remote', 'get-url', 'origin')).stdout.trim(), `file://${upstream}`);
+});
+
+test('doctor checks the recorded default branch ref', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root } = await masterClone(machine);
+  ok(await initIn(machine, root, 'init', '--json'));
+  const check = async () => {
+    const r = await initIn(machine, root, 'doctor', '--json');
+    return JSON.parse(r.stdout).checks.find((c: { name: string }) => c.name === 'territory') as { verdict: string; detail: string };
+  };
+  assert.equal((await check()).verdict, 'ok');
+  ok(await gitIn(machine, join(root, '.cland', 'territory.git'), 'update-ref', '-d', 'refs/heads/master'));
+  assert.match((await check()).detail, /territory master is missing/);
+});
+
+test('init discovers the sole trunk branch without an origin HEAD', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root } = await masterClone(machine);
+  ok(await gitIn(machine, root, 'remote', 'remove', 'origin'));
+  ok(await gitIn(machine, root, 'branch', '-m', 'trunk'));
+  const initial = ok(await gitIn(machine, root, 'rev-parse', 'HEAD')).stdout.trim();
+  ok(await initIn(machine, root, 'init', '--json'));
+  const territory = join(root, '.cland', 'territory.git');
+  assert.equal(ok(await gitIn(machine, territory, 'config', 'cland.defaultBranch')).stdout.trim(), 'trunk');
+  assert.equal(ok(await gitIn(machine, root, 'rev-parse', 'dev')).stdout.trim(), initial);
+  assert.equal(ok(await gitIn(machine, territory, 'rev-parse', 'trunk')).stdout.trim(), initial);
+});
+
+test('init refuses ambiguous local branches before any write', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root } = await masterClone(machine);
+  ok(await gitIn(machine, root, 'remote', 'remove', 'origin'));
+  ok(await gitIn(machine, root, 'branch', '-m', 'trunk'));
+  ok(await gitIn(machine, root, 'branch', 'other'));
+  const before = await snapshot(root);
+  const result = await initIn(machine, root, 'init', '--json');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /other.*trunk/);
+  assert.match(result.stderr, /git symbolic-ref.*origin\/HEAD.*main/);
+  assert.deepEqual(await snapshot(root), before);
+});
+
+test('branch readers use the recorded default with a main fallback for legacy territories', async (t) => {
+  const machine = await scratchMachine(t, { identity: true });
+  const { clone: root } = await masterClone(machine);
+  ok(await initIn(machine, root, 'init', '--json'));
+  ok(await gitIn(machine, root, 'switch', 'master'));
+  ok(await gitIn(machine, root, 'branch', '-D', 'dev'));
+  const territory = join(root, '.cland', 'territory.git');
+  const check = async (expected: string) => ok(await commandIn(machine, root, process.execPath, ['--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    import { defaultBranch, taskBase } from ${JSON.stringify(new URL('../src/territory.ts', import.meta.url).href)};
+    assert.equal(defaultBranch(process.cwd()), process.argv[1]);
+    assert.equal(await taskBase(process.cwd()), process.argv[1]);
+  `, expected]));
+  await check('master');
+  ok(await gitIn(machine, root, 'branch', 'main'));
+  ok(await gitIn(machine, territory, 'config', '--unset', 'cland.defaultBranch'));
+  await check('main');
+  const push = await gitIn(machine, root, 'push', 'origin', 'HEAD:main');
+  assert.notEqual(push.code, 0);
+  assert.match(push.stderr, /main.*dev.*protected/);
+});
 
 test('init redirects origin locally, preserves GitHub and upstreams, seeds main/dev and switches the clean root', async (t) => {
   const { root, github, territory } = await fixture(t);

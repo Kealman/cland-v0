@@ -32,6 +32,12 @@ const maybeGit = (cwd: string, args: string[]): string | null => {
   try { return territoryGit(cwd, args); } catch { return null; }
 };
 
+/** The recorded release branch; older territories without the setting use main.
+ * Async hub callers may supply the config snapshot they already read with Git. */
+export function defaultBranch(root: string, config?: ReadonlyMap<string, string>): string {
+  return (config ? config.get('cland.defaultbranch') : maybeGit(territoryPath(root), ['config', '--get', 'cland.defaultBranch'])) || 'main';
+}
+
 /** Hold synchronous or asynchronous operations exclusively until they finish. A live holder refuses. */
 export function withTerritoryLock<T>(root: string, operation: () => Promise<T>): Promise<T>;
 export function withTerritoryLock<T>(root: string, operation: () => T): T;
@@ -94,10 +100,12 @@ export async function withTerritoryLockAsync<T>(root: string, operation: () => P
 
 export const TERRITORY_HOOK = `#!/bin/sh
 # managed by cland: only guarded cland operations may update the integration and release branches.
+default_branch=$(git config --get cland.defaultBranch)
+default_branch=\${default_branch:-main}
 case "$1" in
-  refs/heads/main|refs/heads/dev)
+  "refs/heads/$default_branch"|refs/heads/dev)
     if [ "$CLAND_TERRITORY_WRITE" != "1" ]; then
-      echo "cland: main and dev are protected; use cland push for Coordinator dev commits, cland merge for tasks, and cland release (cland sync imports main)." >&2
+      echo "cland: $default_branch and dev are protected; use cland push for Coordinator dev commits, cland merge for tasks, and cland release (cland sync imports $default_branch)." >&2
       exit 1
     fi
     ;;
@@ -114,6 +122,20 @@ function gitProject(root: string): boolean {
 const ref = (cwd: string, name: string): string | null => maybeGit(cwd, ['rev-parse', '--verify', name]);
 const remote = (root: string, name: string): string | null => maybeGit(root, ['remote', 'get-url', name]);
 const pointsAtTerritory = (root: string, url: string | null): boolean => url !== null && resolve(root, url) === territoryPath(root);
+
+/** Discover before any territory write or remote rename; an unborn repository keeps its first-commit branch. */
+function repositoryDefaultBranch(root: string): string {
+  const originHead = maybeGit(root, ['symbolic-ref', '--quiet', 'refs/remotes/origin/HEAD']);
+  if (originHead?.startsWith('refs/remotes/origin/') && ref(root, originHead) !== null) return originHead.slice('refs/remotes/origin/'.length);
+  const branches = territoryGit(root, ['for-each-ref', '--format=%(refname:strip=2)', 'refs/heads/']).split('\n').filter(Boolean);
+  for (const preferred of ['main', 'master']) if (branches.includes(preferred)) return preferred;
+  if (branches.length === 1) return branches[0]!;
+  if (!branches.length && ref(root, 'HEAD') === null) {
+    const unborn = maybeGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+    if (unborn) return unborn;
+  }
+  throw new Error(`cannot choose the default branch from local branches: ${branches.join(', ') || '(none)'}; set git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/<branch>, or create a branch named main, then run cland init`);
+}
 const originUrlsAreLocal = (root: string, push = false): boolean => {
   const urls = maybeGit(root, ['remote', 'get-url', ...(push ? ['--push'] : []), '--all', 'origin']);
   return urls !== null && urls.split('\n').every((url) => pointsAtTerritory(root, url));
@@ -162,6 +184,8 @@ export function provisionTerritory(report: Report, root: string, firstCommit: st
     report.add(path, 'unchanged', 'not a git repository: no territory');
     return;
   }
+  const present = existsSync(path);
+  const baseBranch = present ? defaultBranch(root) : repositoryDefaultBranch(root);
   const clean = territoryGit(root, ['status', '--porcelain']) === '';
   withTerritoryLock(root, () => {
     const link = symlinkOnPath(root, path);
@@ -169,18 +193,23 @@ export function provisionTerritory(report: Report, root: string, firstCommit: st
     const origin = remote(root, 'origin');
     const ours = pointsAtTerritory(root, origin);
     if (origin !== null && !ours && remote(root, 'github') !== null) throw new Error('origin and github both exist: rename github before cland init');
-    const present = existsSync(path);
     if (present && maybeGit(path, ['config', '--get', 'cland.managed']) !== 'true') throw new Error(`${path} is not a cland-managed territory: move it aside before cland init`);
     if (!present) {
       territoryGit(root, ['init', '--bare', path]);
       territoryGit(path, ['config', 'cland.managed', 'true']);
+      territoryGit(path, ['config', 'cland.defaultBranch', baseBranch]);
     }
-    for (const part of ['config', 'HEAD', 'hooks/update', 'refs/heads/main', 'refs/heads/dev', 'objects']) {
+    for (const part of ['config', 'HEAD', 'hooks/update', `refs/heads/${baseBranch}`, 'refs/heads/dev', 'objects']) {
       const unsafe = symlinkOnPath(root, join(path, part));
       if (unsafe !== null) throw new Error(`territory: refusing symlink ${unsafe}`);
     }
     report.add(path, present ? 'unchanged' : 'created', 'local bare repository; nothing is sent to GitHub');
 
+    // origin/HEAD can name a remote branch that is not checked out locally.
+    if (!present && ref(root, `refs/heads/${baseBranch}`) === null) {
+      const tip = ref(root, `refs/remotes/origin/${baseBranch}`);
+      if (tip !== null) territoryGit(root, ['branch', baseBranch, tip]);
+    }
     if (origin !== null && !ours) {
       territoryGit(path, ['config', 'cland.originRenamed', 'true']);
       territoryGit(root, ['remote', 'rename', 'origin', 'github']);
@@ -209,12 +238,12 @@ export function provisionTerritory(report: Report, root: string, firstCommit: st
     if (deleteCurrent !== 'ignore') territoryGit(path, ['config', 'receive.denyDeleteCurrent', 'ignore']);
     report.add(join(path, 'config'), hooksPath === 'hooks' && deleteCurrent === 'ignore' ? 'unchanged' : 'updated', 'use the territory protection hook for all branch updates and deletions');
 
-    const main = ref(root, 'refs/heads/main');
+    const primary = ref(root, `refs/heads/${baseBranch}`);
     const dev = ref(root, 'refs/heads/dev');
-    const base = main ?? firstCommit;
+    const base = primary ?? firstCommit;
     if (dev === null && base !== null) territoryGit(root, ['branch', 'dev', base]);
-    report.add(join(path, 'local-dev'), dev === null && base !== null ? 'created' : 'unchanged', base === null && dev === null ? 'main has no commit yet: create main, then run cland init' : firstCommit !== null ? 'dev starts from the first commit when absent' : 'dev starts from main when absent');
-    for (const branch of ['main', 'dev']) {
+    report.add(join(path, 'local-dev'), dev === null && base !== null ? 'created' : 'unchanged', base === null && dev === null ? `${baseBranch} has no commit yet: create ${baseBranch}, then run cland init` : firstCommit !== null ? 'dev starts from the first commit when absent' : `dev starts from ${baseBranch} when absent`);
+    for (const branch of new Set([baseBranch, 'dev'])) {
       const local = ref(root, `refs/heads/${branch}`);
       const seeded = ref(path, `refs/heads/${branch}`) !== null;
       // Use the on-disk path, so a changed remote pushurl can never make provisioning reach GitHub.
@@ -237,10 +266,10 @@ export function provisionTerritory(report: Report, root: string, firstCommit: st
     const branch = maybeGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
     // Init's new commit and dev have identical trees: switching preserves even a dirty index/worktree.
     const justCommitted = firstCommit !== null && ref(root, 'HEAD') === firstCommit && ref(root, 'refs/heads/dev') === firstCommit;
-    if (((branch === 'main' && clean) || justCommitted) && branch !== 'dev' && ref(root, 'refs/heads/dev') !== null) {
+    if (((branch === baseBranch && clean) || justCommitted) && branch !== 'dev' && ref(root, 'refs/heads/dev') !== null) {
       territoryGit(path, ['config', 'cland.originalBranch', branch!]);
       territoryGit(root, ['switch', 'dev']);
-      report.add(join(path, 'root-branch'), 'updated', justCommitted ? `root switched from ${branch} to dev after first commit` : 'clean root switched from main to dev');
+      report.add(join(path, 'root-branch'), 'updated', justCommitted ? `root switched from ${branch} to dev after first commit` : `clean root switched from ${baseBranch} to dev`);
     } else report.add(join(path, 'root-branch'), 'unchanged', `${branch === 'dev' ? 'root already on dev' : `root left on ${branch ?? 'detached HEAD'}`}${clean ? '' : ': uncommitted changes'}`);
   });
 }
@@ -262,12 +291,13 @@ export function undoTerritory(root: string, force = false): Report {
     const unique = unpreservedUndoRefs(root, path);
     if (unique.length && !force) throw new Error(`territory or origin tracking refs hold work unreachable from surviving local refs: ${unique.join(', ')}; preserve it locally or use cland init --undo --force`);
     const original = maybeGit(path, ['config', '--get', 'cland.originalBranch']);
+    const primary = defaultBranch(root);
     const branch = maybeGit(root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
     // Generated, untracked init files do not prevent restoration; Git itself refuses an overlapping checkout.
     const clean = territoryGit(root, ['status', '--porcelain', '--untracked-files=no']) === '';
-    if (original === 'main' && branch === 'dev' && clean) {
-      territoryGit(root, ['switch', 'main']);
-      report.add(join(path, 'root-branch'), 'updated', 'root restored to main; dev kept');
+    if (original === primary && branch === 'dev' && clean) {
+      territoryGit(root, ['switch', primary]);
+      report.add(join(path, 'root-branch'), 'updated', `root restored to ${primary}; dev kept`);
     } else report.add(join(path, 'root-branch'), 'unchanged', `root left on ${branch ?? 'detached HEAD'}${clean ? '' : ': uncommitted changes'}; dev kept`);
     territoryGit(root, ['remote', 'remove', 'origin']);
     report.add(join(path, 'remotes/origin'), 'removed');
@@ -289,7 +319,7 @@ export function territoryProblems(root: string): string[] | null {
   if (!originUrlsAreLocal(root)) problems.push('origin is not the territory');
   if (!originUrlsAreLocal(root, true)) problems.push('origin push URL is not the territory');
   if (maybeGit(path, ['rev-parse', '--is-bare-repository']) !== 'true') problems.push('territory is not a bare repository');
-  for (const branch of ['main', 'dev']) {
+  for (const branch of new Set([defaultBranch(root), 'dev'])) {
     if (ref(path, `refs/heads/${branch}`) === null) problems.push(`territory ${branch} is missing`);
   }
   if (maybeGit(path, ['symbolic-ref', 'HEAD']) !== 'refs/heads/dev') problems.push('territory HEAD is not dev');
@@ -339,13 +369,13 @@ export async function hasTerritory(root: string, env: NodeJS.ProcessEnv = proces
 
 /**
  * The branch task branches start from: the territory's `cland.taskBase` when set, else `dev` when the project has
- * it, else `main`; null when none of them has a commit. The override names a local branch that must exist.
+ * it, else the recorded default branch; null when none has a commit. The override names a local branch that must exist.
  */
 export async function taskBase(root: string, tips?: ReadonlyMap<string, string>, env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
-  // Read both values together, retaining Git's config/include/last-value rules.
+  // Read the settings together, retaining Git's config/include/last-value rules.
   // Freshness supplies the branch tips it just read in this operation; other
   // callers still resolve their branches here. Nothing survives the operation.
-  const config = await maybeGitAsync(territoryPath(root), ['config', '--null', '--get-regexp', '^cland\\.(managed|taskbase)$'], env);
+  const config = await maybeGitAsync(territoryPath(root), ['config', '--null', '--get-regexp', '^cland\\.(managed|taskbase|defaultbranch)$'], env);
   const values = new Map((config ?? '').split('\0').filter(Boolean).map(entry => {
     const newline = entry.indexOf('\n');
     return [entry.slice(0, newline).toLowerCase(), entry.slice(newline + 1).trim()];
@@ -356,7 +386,7 @@ export async function taskBase(root: string, tips?: ReadonlyMap<string, string>,
     if (!await exists(configured)) throw new Error(`the territory's cland.taskBase names ${configured}, which has no local branch`);
     return configured;
   }
-  for (const branch of ['dev', 'main']) if (await exists(branch)) return branch;
+  for (const branch of ['dev', defaultBranch(root, values)]) if (await exists(branch)) return branch;
   return null;
 }
 

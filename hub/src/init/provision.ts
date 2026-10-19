@@ -52,8 +52,8 @@ export async function provision(root: string, options: ProvisionOptions = {}): P
   const l = layout(root);
   const needsFirstCommit = options.territory !== false && options.repository !== false && createRepository(report, root);
   const existing = needsFirstCommit ? existingClandFiles(root) : new Set<string>();
-  mkdirSync(l.dir, { recursive: true });
   if (options.territory !== false) provisionTerritory(report, root);
+  mkdirSync(l.dir, { recursive: true });
 
   // .cland/: the managed .gitignore (the hub's own rule: rewritten while marked), config, roles, tasks
   const ignore = readText(l.gitignore);

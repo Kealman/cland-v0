@@ -11,6 +11,8 @@ Agents produce many branches, reviews and merges that humans should not have to 
 
 ## Consequences
 
+Amendment (T-652, v0.1.4): init discovers the repository’s default branch before renaming `origin` and records it once in the territory’s `cland.defaultBranch`. Provisioning, protection, doctor, task-base fallback and undo use that branch; a territory without the setting reads `main`.
+
 - The merge gate is cland's, not git's: verdict presence and reviewer identity are enforced by the hub, which knows the calling session's role. Commit signing per role stays in the fog.
 - Tools that push to `origin` on their own reach only the territory.
 - `cland init` re-points an existing project (the GitHub remote becomes `github`, the bare repository becomes `origin`) and is reversible.
