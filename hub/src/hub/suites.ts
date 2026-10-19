@@ -7,6 +7,8 @@ import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
 import { appendFile, mkdir, readFile, writeFile, rename, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
@@ -94,6 +96,21 @@ const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) 
 const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+/** Legacy receipt migration: retain identities, never the complete log or its lines. */
+async function retainedLoadProofs(path: string): Promise<string[]> {
+  const input = createReadStream(path, { encoding: 'utf8' });
+  const lines = createInterface({ input, crlfDelay: Infinity });
+  const known = new Set<string>();
+  try {
+    for await (const line of lines) {
+      if (line.startsWith('load gate: ')) for (const identity of loadProofIdentities(line)) known.add(identity);
+    }
+  } finally {
+    lines.close();
+    input.destroy();
+  }
+  return [...known].sort();
+}
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
   return `lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
 }
@@ -208,6 +225,7 @@ export class Suites {
   #periodic: Promise<void> | null = null;
   #nextDevT3Check = 0;
   readonly #inspecting = new Map<string, Promise<void>>();
+  #landedIdentities: Promise<string[]> | undefined;
   readonly #starting = new Set<Promise<unknown>>();
   #closed = false;
   readonly #launching = new Set<string>();
@@ -586,7 +604,12 @@ export class Suites {
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
   }
-  async #landedTaskIdentities(): Promise<string[]> {
+  #landedTaskIdentities(): Promise<string[]> {
+    // Admissions can overlap while a legacy log is being read. Share the entire
+    // sequential backfill, then let later admissions recheck current landings.
+    return this.#landedIdentities ??= this.#readLandedTaskIdentities().finally(() => { this.#landedIdentities = undefined; });
+  }
+  async #readLandedTaskIdentities(): Promise<string[]> {
     const known = new Set<string>();
     for (const job of this.#jobs) {
       if (!job.item || job.integrated || job.occasion || job.cached || job.cancelled || job.requesterDied
@@ -596,7 +619,7 @@ export class Suites {
       // Backfill retained pre-upgrade receipts once; future runs store proof at reporting.
       if (!job.loadProofs) {
         const artifact = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
-        job.loadProofs = loadProofIdentities(await readFile(artifact?.path ?? job.log, 'utf8').catch(() => ''));
+        job.loadProofs = await retainedLoadProofs(artifact?.path ?? job.log).catch(() => []);
         this.#save(job);
       }
       for (const identity of job.loadProofs) known.add(identity);
