@@ -15,6 +15,11 @@ import { selectionTransport } from '../suite-selection.ts';
 import { recordedCommands } from '../verification-commands.ts';
 import { suiteCommand } from '../suite-command.ts';
 
+export function compatibilityCleanupCause(cause: string, error: unknown): string {
+  const cleanup = `compatibility cleanup failed: ${String(error)}`;
+  return cause ? `${cause}; ${cleanup}` : cleanup;
+}
+
 export async function suiteWorker(input: string): Promise<void> {
   const job = JSON.parse(await readFile(input, 'utf8')) as RunRef;
   let signal: NodeJS.Signals | null = null;
@@ -96,7 +101,7 @@ export async function suiteWorker(input: string): Promise<void> {
     try {
       if (leases.length) await sweepLease(dirs, token);
       for (const lease of leases.reverse()) await lease.release();
-    } catch (error) { code = 1; cause = `compatibility cleanup failed: ${String(error)}`; }
+    } catch (error) { code = 1; cause = compatibilityCleanupCause(cause, error); }
   }
   if (signal) { code = signal === 'SIGINT' ? 130 : 143; cause = `worker interrupted by ${signal}`; }
   process.stdout.write(`\nFinished: exit ${code}${cause ? `; ${cause}` : ''}\n`);

@@ -364,6 +364,7 @@
     "hub/test/suite-tiers.test.ts": "T1",
     "hub/test/suite-timeouts.test.ts": "T3",
     "hub/test/suite-wait-metrics.test.ts": "T2",
+    "hub/test/suite-worker-cause.test.ts": "T1",
     "hub/test/suite.test.ts": "T3",
     "hub/test/surface.test.ts": "T3",
     "hub/test/system-processes.test.ts": "T3",
