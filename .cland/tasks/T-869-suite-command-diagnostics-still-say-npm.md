@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: C-216
 blocked_by: []
-topic: null
+topic: topic-608
 branch: t/T-869-suite-command-diagnostics-still-say-npm
 created: 2026-10-19T11:52:12.288Z
-updated: 2026-10-19T15:28:15.585Z
+updated: 2026-10-19T15:28:43.972Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ Found aside by impl-666 on 2026-10-19.
 ## Acceptance criteria
 
 - [ ] C1. Both diagnostics name the command actually run (or a stack-neutral word), and a test with a non-npm command asserts the wording.
+
+## Comments
+
+### impl-869 · 2026-10-19T15:28:43.972Z
+
+Implementation plan: replace the two npm-specific diagnostics with 'command'; assert signal and inherited-pipe cleanup wording using a non-npm command, without changing execution or cleanup behavior. C1 is checkable before enqueue. QA policy scope is none.

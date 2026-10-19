@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: C-216
 blocked_by: []
-topic: null
+topic: topic-611
 branch: t/T-877-t-856-s-real-git-push-proof-trips-the-t2
 created: 2026-10-19T13:52:09.532Z
-updated: 2026-10-19T15:28:21.338Z
+updated: 2026-10-19T15:29:29.825Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ T-856's C4 proof that the Aide's `cland push` moves the territory's dev runs rea
 ## Acceptance criteria
 
 - [ ] C1. The real territory-push proof runs at a tier whose rules allow those processes (a T3 case with the `// T3:` header), or behind an injected Git seam at T2, keeping the actual territory-dev advancement assertion. The T2 tier-mismatch report for it is gone.
+
+## Comments
+
+### impl-877 · 2026-10-19T15:29:29.825Z
+
+Moved the unchanged onboarding real-publication proof from T2 skills-onboarding.test.ts into existing T3 push.test.ts with an explicit // T3: header; reused its Git helper and retained the native-territory seed, own-shell identity and actual territory dev ref equality. Before: isolated original case fails enforce mode on prepared-project execFileSync. After: all 11 remaining onboarding tests pass (2.044 s) under enforce mode with no tier-mismatch receipt. Root typecheck passes. Running the whole touched T3 file next; Linux T3 evidence remains the landing batch per assignment.

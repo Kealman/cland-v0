@@ -1,19 +1,19 @@
 ---
 id: E-880
 kind: epic
-title: "Verification speed: meet the merge-queue targets v0.1.4 measured short"
+title: "Verification speed: think through how to reach the merge-queue targets v0.1.4 measured short"
 state: open
 rank: 4110
 labels:
   - epic
-  - v0.2
+  - needs-triage
 assignee: null
-parent: R-377
+parent: C-327
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T15:24:04.550Z
-updated: 2026-10-19T15:24:19.573Z
+updated: 2026-10-19T15:29:27.845Z
 ---
 
 ## Summary
@@ -35,3 +35,9 @@ v0.1.4 shipped the merge queue (E-678), but the honest measurements accumulated 
 - [ ] C3. Over the last 50 task runs, 10 % or fewer were red and 5 % or fewer red on a flake.
 - [ ] C4. Over the last 50 merges, the median batch wall is 15 minutes or less.
 - [ ] C5. Nightly soaks on at least 5 of 7 consecutive days each finish under $0.25 and record a coverage map that task selection uses.
+
+## Comments
+
+### coord · 2026-10-19T15:29:27.845Z
+
+D66 (the human, 2026-10-19 15:28Z): the speed targets are not taken into v0.2. For v0.1.4 the measured values count as meeting E-678's targets. This item moves from R-377 to Ideas as a later study of how to reach the original targets. The measurements and Definition of done above stay as the reference.

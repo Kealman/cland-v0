@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: C-216
 blocked_by: []
-topic: null
+topic: topic-613
 branch: t/T-868-remote-clock-s-native-i-o-guard-is
 created: 2026-10-19T11:41:10.800Z
-updated: 2026-10-19T15:28:13.307Z
+updated: 2026-10-19T15:29:22.700Z
 ---
 
 ## Summary

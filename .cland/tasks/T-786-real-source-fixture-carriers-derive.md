@@ -13,10 +13,10 @@ labels:
 assignee: null
 parent: C-216
 blocked_by: []
-topic: null
+topic: topic-610
 branch: t/T-786-real-source-fixture-carriers-derive
 created: 2026-10-18T07:21:29.054Z
-updated: 2026-10-19T15:28:26.729Z
+updated: 2026-10-19T15:28:41.570Z
 ---
 
 ## Summary

@@ -3,7 +3,7 @@ id: T-875
 kind: task
 title: roles-editor sandbox round-trip case (T-872) runs 0.6 s against the 0.5 s T1 budget
 state: open
-status: in progress
+status: review
 size: XS
 labels:
   - v0.1.4
@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-607
 branch: t/T-875-roles-editor-sandbox-round-trip-case-t
 created: 2026-10-19T13:46:45.481Z
-updated: 2026-10-19T15:28:29.867Z
+updated: 2026-10-19T15:29:35.149Z
 ---
 
 ## Summary
@@ -23,3 +23,9 @@ updated: 2026-10-19T15:28:29.867Z
 ## Acceptance criteria
 
 - [ ] C1. The case runs within the T1 budget (split it, share setup, or move it to T2 with the tier-move rule), and every assertion stays.
+
+## Comments
+
+### impl-875 · 2026-10-19T15:28:43.835Z
+
+Implementation plan: keep this editor contract at T1, retain all sandbox/role/harness permutations and exact saved-key/comment assertions, reduce fixture overhead, then report targeted timings and obtain source review before mode-free verification.
