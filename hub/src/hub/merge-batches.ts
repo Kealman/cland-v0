@@ -142,7 +142,8 @@ export class MergeBatches {
     if (!job?.reported || !job.outcome || this.#closed) return;
     if (job.tree !== batch.candidate.tree || job.head !== batch.candidate.head) throw new Error('batch suite does not match its prepared candidate');
     if (batch.reportedRun !== job.id) {
-      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers T1, T3; wall ${job.runMs ?? 0} ms; exit ${job.outcome.code}\n${batch.candidate.budgetLines.join('\n')}`);
+      const tiers = job.selection?.tiers?.join(', ') || 'unavailable';
+      this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers ${tiers}; wall ${job.runMs ?? 0} ms; exit ${job.outcome.code}\n${batch.candidate.budgetLines.join('\n')}`);
       batch.reportedRun = job.id; this.#save(batch);
     }
     const evidence = await this.suites.receipt(job.id);

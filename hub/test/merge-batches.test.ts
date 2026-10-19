@@ -692,7 +692,7 @@ test('batch load gate repeats only new T3 identities', () => {
 });
 
 for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured tiers ${tiers ?? 'default' } and lands on green`, async t => {
-  const { f, runner, landed } = await fixture(t);
+  const { f, runner, landed, reports } = await fixture(t);
   if (tiers) f.configure('[verification]\ntest="true"\nexecutor="droplet"\n[merge]\nbatch_tiers=["T1"]');
   const tests = { 'hub/test/unit.test.ts': 'T1', 'hub/test/component.test.ts': 'T2', 'hub/test/process.test.ts': 'T3' } as const;
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
@@ -707,6 +707,7 @@ for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured ti
   assert.deepEqual(landed, []);
   await f.finish(job.id); await runner.tick();
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+  assert.equal(reports[0]!.split('; ').find(field => field.startsWith('tiers ')), tiers ? 'tiers T1' : 'tiers T1, T3');
 });
 
 test('merge batches form and land while periodic culprit search awaits its runner', async t => {
