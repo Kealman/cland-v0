@@ -71,6 +71,8 @@ export type SessionsOptions = {
 
 /** At most one latest usage snapshot per session per second, with a trailing update. */
 export const USAGE_EVENT_MS = 1000;
+/** A failed delivery left unconfirmed this long needs attention. */
+export const INJECT_STALLED_MS = 60_000;
 
 const untimed: Resumed = (work) => work();
 
@@ -94,6 +96,8 @@ export class Sessions {
    *  retry asked for while one is in flight — by an idle the harness fired after it went out, or a bridge
    *  that connected — is remembered (`again`) and made when it ends unconfirmed, so no trigger is lost. */
   readonly #inflight = new Map<string, { sentAt: number; again: boolean }>();
+  /** One notice per failed-delivery episode; individual confirmations cancel their deadlines. */
+  readonly #unconfirmed = new Map<string, { noticed: boolean; messages: Map<string, ClockTimer> }>();
   /** Launches in progress by name, with the signals that arrived before the process-table row (the harness's
    *  SessionStart hook can beat the launch's own return): replayed once the row is written. */
   readonly #launching = new Map<string, SignalFrame[]>();
@@ -332,6 +336,7 @@ export class Sessions {
     this.#unprocess = this.#table.subscribe((p, archived) => {
       // Quarantined status is not a verified exit. Metadata changes must leave the
       // final fact to cleanup, which publishes it only after the original process is gone.
+      if (p.status !== 'running') this.#clearUnconfirmed(p.sessionId);
       if (!this.#pendingStops.has(p.sessionId)) {
         if (p.status !== 'running') for (const [credential, first] of this.#firstHello) if (first.acceptedId === p.sessionId) this.#firstHello.delete(credential);
         this.#core.publishProcess(this.view(p), archived);
@@ -1465,6 +1470,7 @@ export class Sessions {
     const name = this.#core.connectionOf(p.sessionId)?.name ?? p.name;
     this.adapter(p.harness).confirm(p, this.#core.store.deliveryRoot(messageId, name));
     this.#core.markInjected(messageId, name);
+    this.#injectionConfirmed(p.sessionId, this.#core.store.deliveryRoot(messageId, name));
   }
 
   /** Everything the session's spoke accepted and its adapter has not confirmed: injected again. */
@@ -1500,12 +1506,17 @@ export class Sessions {
       .then(() => {
         if (this.#closed) return;
         this.#core.markInjected(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name);
+        this.#injectionConfirmed(sessionId, messageId);
       })
       .catch((err: unknown) => {
         if (this.#closed) return;
         // the request reached the harness and no answer came: never replayed on its own
         if (err instanceof InjectUncertain) this.#core.markUncertain(messageId, this.#core.connectionOf(sessionId)?.name ?? p.name, err.message);
-        else this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error: err instanceof Error ? err.message : String(err) });
+        else {
+          const error = err instanceof Error ? err.message : String(err);
+          this.#log({ event: 'inject-unconfirmed', session: p.name, id: messageId, error });
+          this.#injectionUnconfirmed(sessionId, messageId, error);
+        }
       })
       .finally(() => {
         this.#inflight.delete(key);
@@ -1516,6 +1527,50 @@ export class Sessions {
         const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
         if (this.#core.store.uninjected(name).some((m) => m.id === messageId)) this.#inject(sessionId, messageId);
       });
+  }
+
+  #injectionUnconfirmed(sessionId: string, messageId: string, error: string): void {
+    if (this.#table.bySessionId(sessionId)?.status !== 'running') return;
+    let episode = this.#unconfirmed.get(sessionId);
+    if (!episode) {
+      episode = { noticed: false, messages: new Map() };
+      this.#unconfirmed.set(sessionId, episode);
+    }
+    if (episode.messages.has(messageId)) return;
+    const current = episode;
+    const timer = this.#core.clock.setTimeout(() => {
+      const p = this.#table.bySessionId(sessionId);
+      if (this.#closed || !p || p.status !== 'running' || current.noticed) return;
+      const name = this.#core.connectionOf(sessionId)?.name ?? p.name;
+      if (!this.#core.store.uninjected(name).some(message => message.id === messageId)) {
+        this.#injectionConfirmed(sessionId, messageId);
+        return;
+      }
+      current.noticed = true;
+      const text = `${this.#core.label(name)}: injection has remained unconfirmed for ${INJECT_STALLED_MS} ms (${error}); check the session's bridge and harness connection.`;
+      this.#core.noticeTo('agents', {
+        kind: 'inject-stalled',
+        to: this.#core.store.roleOf(name) === 'coordinator' ? [] : ['coordinator'],
+        text, detail: { session: name, message: messageId },
+      });
+    }, INJECT_STALLED_MS);
+    timer.unref();
+    current.messages.set(messageId, timer);
+  }
+
+  #clearUnconfirmed(sessionId: string): void {
+    const episode = this.#unconfirmed.get(sessionId);
+    if (!episode) return;
+    for (const timer of episode.messages.values()) this.#core.clock.clearTimeout(timer);
+    this.#unconfirmed.delete(sessionId);
+  }
+
+  #injectionConfirmed(sessionId: string, messageId: string): void {
+    const episode = this.#unconfirmed.get(sessionId);
+    if (!episode) return;
+    this.#core.clock.clearTimeout(episode.messages.get(messageId));
+    episode.messages.delete(messageId);
+    if (!episode.messages.size) this.#unconfirmed.delete(sessionId);
   }
 
   /**
@@ -1534,6 +1589,7 @@ export class Sessions {
   close(): void {
     this.#closed = true;
     this.#earlyLimitHits.clear();
+    for (const sessionId of this.#unconfirmed.keys()) this.#clearUnconfirmed(sessionId);
     if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);
     if (this.#archiveTick) clearImmediate(this.#archiveTick);
     this.#untracker?.();

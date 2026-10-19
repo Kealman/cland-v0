@@ -133,6 +133,9 @@ export class InboxBoard {
             this.#notify('verdict', event.message.text.split('\n')[0] ?? '', { ...(typeof detail.item === 'string' ? { item: detail.item } : {}), ...(typeof detail.session === 'string' ? { session: detail.session } : {}), result, ...(detail.findings !== undefined ? { findings: detail.findings as Finding[], findingCounts: detail.findingCounts as FindingCounts } : {}) });
           }
         }
+        if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'inject-stalled' && event.message.to.length === 0) {
+          this.#notify('delivery-stalled', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
+        }
         if (event.message.topic === 'agents' && event.message.fromKind === 'hub' && event.message.kind === 'turn-failed') {
           this.#notify('turn-failed', event.message.text, typeof event.message.detail?.session === 'string' ? { session: event.message.detail.session } : {});
         }
