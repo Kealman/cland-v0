@@ -3,6 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
+import { mkdir } from 'node:fs/promises';
+import { verificationFixture } from './verification-fixture.ts';
 import { fixture } from './remote-fixture.ts';
 import { drive } from './remote-clock.ts';
 import { inProcessSpoke } from './harness.ts';
@@ -20,7 +22,12 @@ for (const flake of [false, true]) test(`red periodic run ${flake ? 'reports a p
     git: async args => args[0] === 'log' && args.includes('--first-parent') ? `${redHead}\0Merge regression` : null,
     devT3Repository: {
       identity: async head => head === baseline ? baselineTree : redTree,
-      checkout: async candidate => { checked.push(candidate.head); f.candidate.head = candidate.head; f.candidate.tree = candidate.tree; f.candidate.branch = 'probe'; },
+      checkout: async candidate => {
+        // Historical cland checkouts carry their package runner, like the live fixture.
+        await mkdir(candidate.cwd, { recursive: true });
+        await verificationFixture(candidate.cwd);
+        checked.push(candidate.head); f.candidate.head = candidate.head; f.candidate.tree = candidate.tree; f.candidate.branch = 'probe';
+      },
       remove: async candidate => { removed.push(candidate.head); f.candidate.head = redHead; f.candidate.tree = redTree; f.candidate.branch = 'dev'; f.candidate.selection.fetchedDev = redHead; },
     } });
   const coordinator = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'coord', sessionId: 'coord-id', role: 'coordinator' });

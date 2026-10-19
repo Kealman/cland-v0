@@ -11,7 +11,7 @@ import { appendFile, mkdir, readFile, writeFile, rename, stat, open } from 'node
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
-import { verificationCommands, recordedCommands } from '../verification-commands.ts';
+import { clandRunner, verificationCommands, recordedCommands } from '../verification-commands.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext } from '../suite-duration-budget.ts';
 import { baselineTimings, durationBudgetContext, durationHistory } from '../suite-duration-context.ts';
@@ -106,14 +106,36 @@ function durations(values: Array<number | null | undefined>): DurationStats {
   const n = sorted.length;
   return { count: n, medianMs: n ? n % 2 ? sorted[Math.floor(n / 2)]! : (sorted[n / 2 - 1]! + sorted[n / 2]!) / 2 : null, p90Ms: n ? sorted[Math.ceil(n * 0.9) - 1]! : null };
 }
+/** Pair executor-owned command boundaries; command output may itself contain '$ '. */
+function commandExcerpt(lines: string[]): { summary: string; output?: string[] } | undefined {
+  const starts = new Map<string, { index: number; name: string; line: string }>();
+  let result: ReturnType<typeof commandExcerpt>;
+  for (const [index, line] of lines.entries()) {
+    if (line.startsWith('suite command start ')) {
+      try {
+        const record = JSON.parse(line.slice('suite command start '.length));
+        if (typeof record.id === 'string' && !starts.has(record.id) && (record.name === 'check' || record.name === 'test' || /^T[1-4]$/.test(record.name)) && typeof record.line === 'string') starts.set(record.id, { index, name: record.name, line: record.line });
+      } catch { /* command output is not necessarily a command record */ }
+    }
+    const end = /^suite command end (\S+) (\d+)$/.exec(line);
+    const start = end ? starts.get(end[1]!) : undefined;
+    if (!start || !end) continue;
+    const output = lines.slice(start.index + 1, index).join('\n').trimEnd();
+    result = { summary: `${start.name} exited ${end[2]}: ${start.line}`,
+      ...(end[2] !== '0' ? { output: output ? output.split('\n').slice(-20) : [] } : {}) };
+  }
+  return result;
+}
+
 export function suiteSummary(log: string, quarantineStatus?: string[], options: { logArtifact?: string; priorityOnly?: boolean } = {}): string {
   const text = log.replace(/\x1b\[[0-9;]*m/g, '');
   const lines = text.split('\n');
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
+  const command = counts.size ? undefined : commandExcerpt(lines);
   const structured = suiteTestFailures(text);
   const admissions = suiteAdmissionTimeouts(text);
-  const failures = (structured === null ? text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: |shard failure )/.test(line))
+  const failures = command?.output ?? (structured === null ? text.split('\n').filter(line => /^(?:\s*not ok \d+|✖ |duration budget: |shard failure )/.test(line))
     : [...structured.map(f => `${f.file}::${f.name}`), ...text.split('\n').filter(line => /^(?:✖ load gate: |duration budget: |shard failure )/.test(line))]).slice(0, 12).map(line => line.slice(0, 200));
   const merged = text.includes('\n--- close shards ---\n');
   const timings = merged
@@ -145,7 +167,7 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
     ...durationBudgetSummary(lines),
     ...(lintTiers || lintFindings ? [`test lint detail: ${lintTiers} tier lines; ${lintFindings} finding lines; log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
   ];
-  const primary = `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : 'counts unavailable (suite did not finish)'}${priority.length ? `\n${priority.join('\n')}` : ''}`;
+  const primary = `${counts.size ? [...counts].map(([k, v]) => `${k} ${v}`).join('; ') : command?.summary ?? 'counts unavailable (suite did not finish)'}${priority.length ? `\n${priority.join('\n')}` : ''}`;
   if (options.priorityOnly) return primary;
   const quarantined = quarantineStatus ?? quarantineSummary(quarantineResults(text));
   return `${primary}${admissions.length ? `\nadmission timeouts ${admissions.length}\n${admissions.map(a => `${a.file ? a.file + ': ' : ''}${a.message}`).join('\n')}` : ''}${timings.length ? `\n${timings.join('\n')}` : ''}${failures.length ? `\nFailures:\n${failures.join('\n')}` : ''}${quarantined.length ? `\nQuarantine:\n${quarantined.join('\n')}` : ''}`;
@@ -403,6 +425,8 @@ export class Suites {
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
     let commands = await verificationCommands(input.cwd, this.#root, this.#env);
+    const runner = await clandRunner(input.cwd);
+    if (!runner && (input.mode === 'hub' || input.mode === 'nvim')) throw new Error("hub and nvim are cland's own suite phases; this project's test runs in full: cland verify");
     const workers = input.workers ?? limits.workers;
     if (!input.dryRun && this.#jobs.some(job => this.#active(job) && suiteOwner(job) === suiteOwner(input))) {
       // A retry needs only the current head, not another expensive candidate inspection.
@@ -411,38 +435,41 @@ export class Suites {
     }
     const id = randomUUID();
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
-    const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
+    const projectTest: SuiteSelection | undefined = runner ? undefined : { mode: 'full', files: [], reason: 'project test runs in full' };
+    const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers, projectTest, !runner && Boolean(input.occasion && input.occasion !== 'batch'));
     const { head, branch, tree, budgetBase } = candidate;
-    let admitted = candidate.selection;
+    let admitted = projectTest ? { ...projectTest, ...(candidate.selection.fetchedDev ? { fetchedDev: candidate.selection.fetchedDev } : {}) } : candidate.selection;
     // The hosting hub owns landing. A candidate-local opt-in cannot promise
     // batch coverage while this hub can still land code directly.
     if (admitted.tiers?.join(',') === 'T1,T2' && !config?.merge.queue) {
       const { tiers: _tiers, ...broad } = admitted;
       admitted = { ...broad, reason: `${broad.reason}; hosting merge queue disabled: retaining process coverage` };
     }
-    // Command tiers apply to any stack, without requiring cland's own file manifest.
-    if (commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
-    const files = input.devT3Probe?.files ?? input.batch?.diagnostic?.files;
+    // Explicit command tiers apply to any stack; cland file planning stays runner-only.
+    if (runner && commands.tiers && config?.merge.queue && !admitted.tiers) admitted = taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, true);
+    const files = runner ? (input.devT3Probe?.files ?? input.batch?.diagnostic?.files) : undefined;
     if (files && (!files.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
     let selection: SuiteSelection = files
       ? { mode: 'full', files, reason: input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: false,
         shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length) },
         ...(nvimTests?.length ? { nvimTests } : {}) }
-      : occasionSelection(admitted, input.occasion, config?.merge.batchTiers);
+      : runner ? occasionSelection(admitted, input.occasion, config?.merge.batchTiers) : admitted;
+    const commandSelection = runner || !commands.tiers ? selection : occasionSelection(taskSuiteSelection(admitted, branch, input.mode as SuiteRequest, config?.merge.queue ?? false), input.occasion, config?.merge.batchTiers);
+    if (!runner && commands.tiers && commandSelection.tiers) selection = { ...selection, tiers: commandSelection.tiers };
     commands = pinVerificationPlan(commands, { branch, mode: input.mode, ...(input.occasion ? { occasion: input.occasion } : {}), selection, queueEnabled: config?.merge.queue ?? false });
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
-    if (!input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
-    const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
+    if (runner && input.occasion && input.occasion !== 'dev-t3' && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
+    if (runner && !input.occasion && !input.integrated && selection.loadGate) selection.loadGateKnownTests = await this.#landedTaskIdentities();
+    const tierPlan = !runner ? [] : input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
     selection = skipT4LoadRepetitions(selection, tierPlan);
-    if (input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
-    if (input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
+    if (runner && input.occasion === 'soak' && (!commands.tiers || tierPlan.length)) selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
+    if (runner && input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 
     if (input.dryRun) {
-      const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
+      const context = !runner ? null : this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
       const budgetLines = context ? durationBudgetSummary(durationBudgetReport(context.manifest, context.tiers, baselineTimings(context, tierPlan.flatMap(row => row.files)), context.base)) : [];
-      const lintLines = testLintReport(await lintTests(input.cwd, { reachable: input.diagnostics ?? false }));
+      const lintLines = runner ? testLintReport(await lintTests(input.cwd, { reachable: input.diagnostics ?? false })) : [];
       if (executor === 'droplet' && input.executor === 'droplet') {
         if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
         await this.#droplet.checkSpend(input.size, config);
@@ -450,7 +477,7 @@ export class Suites {
       if (head !== 'unknown' && await this.#candidate.head(input.cwd) !== head) throw new Error('head changed during admission; try dry-run again');
       authorize();
       return { dryRun: true, head, executor, workers, selection, tiers: tierPlan,
-        lines: [describeSelection(selection), ...(commands.plan ? [`command plan: ${commands.plan.map(step => `${step.name}: ${step.command}`).join(' · ')}`] : []), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), lintLines[0]!, ...budgetLines, ...lintLines.slice(1), ...(input.diagnostics ? [] : ['reachability diagnostics: `cland verify --dry-run --diagnostics`'])] };
+        lines: [describeSelection(selection), ...(commands.plan ? [`command plan: ${commands.plan.map(step => `${step.name}: ${step.command}`).join(' · ')}`] : []), `planned tiers: ${tierPlan.map(row => row.tier).join(', ') || 'unavailable (no tier manifest)'}`, ...tierReport(tierPlan), ...lintLines.slice(0, 1), ...budgetLines, ...lintLines.slice(1), ...(runner && !input.diagnostics ? ['reachability diagnostics: `cland verify --dry-run --diagnostics`'] : [])] };
     }
     const existing = this.#existingSubmission(input, head, authorize);
     if (existing) return existing;
@@ -462,7 +489,7 @@ export class Suites {
 
     // Older candidate runners and fixture packages remain usable. Coverage is
     // recorded only by a capable runner on a clean integrated full dev run.
-    if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !cached && (await readFile(join(input.cwd, 'hub/test/run-suite.ts'), 'utf8').catch(() => '')).includes('reduceCoverage')) selection.recordCoverage = { head, tree, run: id };
+    if (input.integrated && branch === 'dev' && tree && selection.mode === 'full' && !cached && runner?.reduceCoverage) selection.recordCoverage = { head, tree, run: id };
     authorize();
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;

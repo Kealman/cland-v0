@@ -1,5 +1,6 @@
 // T3: the real verify CLI reads a native Git candidate and previews admission without starting an executor.
 import test, { type TestContext } from 'node:test';
+import { verificationFixture } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -18,6 +19,7 @@ import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 
 async function planted(t: TestContext) {
   const root = await tempProject(t, 'cland-tier-report-');
+  await verificationFixture(root);
   const tests = { 'hub/test/a.test.ts': 'T1', 'hub/test/b.test.ts': 'T2', 'hub/test/c.test.ts': 'T3', 'nvim/test/editor.test.ts': 'T4' } as const;
   for (const path of Object.keys(tests)) {
     await mkdir(join(root, path, '..'), { recursive: true });

@@ -5,6 +5,15 @@ import type { TierCommands } from './verification-plan.ts';
 
 export type VerificationCommands = TierCommands;
 
+/** File presence identifies cland's suite; older runners may lack capabilities. */
+export async function clandRunner(cwd: string): Promise<{ inheritedLease: boolean; reduceCoverage: boolean } | null> {
+  const source = await readFile(join(cwd, 'hub/test/run-suite.ts'), 'utf8').catch(error => {
+    if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null;
+    throw error;
+  });
+  return source === null ? null : { inheritedLease: source.includes('inheritedLease'), reduceCoverage: source.includes('reduceCoverage') };
+}
+
 /** Resolve once at admission. A candidate's explicit whole test takes precedence over root tiers. */
 export async function verificationCommands(cwd: string, root: string, env: NodeJS.ProcessEnv = process.env): Promise<VerificationCommands> {
   const read = async (dir: string) => {

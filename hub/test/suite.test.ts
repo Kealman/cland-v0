@@ -312,6 +312,33 @@ async function verificationLines(f: Awaited<ReturnType<typeof fixture>>, command
   await writeFile(path, renderConfig(config));
 }
 
+// T3: a detached worker executes another stack's shell test and publishes its durable receipt.
+test('another stack verifies green locally then reports a planted shell failure', async t => {
+  const f = await fixture(t, '', undefined, { stack: 'other', check: 'sh -n test.sh', test: 'sh test.sh', verification: '' });
+  await writeFile(join(f.root, 'test.sh'), 'printf "shell assertion passed\\n"\n');
+  // A directory named hub is not proof that this project uses cland's runner.
+  // Invalid cland-only manifests must not enter generic project admission.
+  await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await writeFile(join(f.root, 'hub/test/tiers.json'), '{');
+  await writeFile(join(f.root, 'hub/test/durations.json'), '{');
+  const git = await cacheRepository(f);
+  const green = await f.launch();
+  const passed = await eventually('other-stack green result', async () => (await f.results()).find(m => m.id === `suite:${green.id}`));
+  assert.match(passed.text, /exit 0/);
+  assert.match(passed.text, /mode full; project test runs in full/);
+  const repeated = await f.launch();
+  assert.equal(repeated.cached?.run, green.id, 'the same clean project tree reuses its green');
+  await eventually('other-stack cached result', async () => (await f.results()).find(m => m.id === `suite:${repeated.id}`));
+  await writeFile(join(f.root, 'test.sh'), 'printf "$ echo preparing\\nplanted assertion failed: expected green\\n" >&2\nexit 1\n');
+  await git('add', 'test.sh'); await git('commit', '-m', 'plant failing shell assertion');
+  const red = await f.launch();
+  assert.equal(red.cached, undefined);
+  const failed = await eventually('other-stack red result', async () => (await f.results()).find(m => m.id === `suite:${red.id}`));
+  assert.match(failed.text, /test exited 1: sh test.sh/);
+  assert.match(failed.text, /Failures:\n\$ echo preparing\nplanted assertion failed: expected green/);
+  assert.doesNotMatch(failed.text, /counts unavailable|load gate|coverage map/);
+});
+
 // T3: a detached worker executes shell commands and durably receipts their ordered exits.
 test('legacy task verify executes its whole test with the merge queue off', async t => {
   const f = await fixture(t, 'exit 91', 'exit 92');
@@ -403,5 +430,42 @@ console.log('python ' + phase);
     assert.match(output, /tier T1: exit 0; duration \d+ s; output tail: python unit/);
     if (kind === 'task') assert.doesNotMatch(output, /python integration/);
     else assert.match(output, /tier T3: exit 0; duration \d+ s; output tail: python integration/);
+  }
+});
+
+// T3: a real runner-absent candidate fetches origin/dev and its worker executes occasion tiers.
+test('another stack integrated occasion fetches dev proof and executes configured tiers', async t => {
+  const { Store } = await import('../src/hub/store.ts');
+  const { Suites } = await import('../src/hub/suites.ts');
+  const root = await tempProject(t, 'other-stack-occasion-');
+  await writeSuiteFixture(root, '', undefined, { stack: 'other', check: 'printf check', test: '',
+    verification: 'test_unit="printf unit"\ntest_component="printf component"\ntest_integration="printf integration"\ntest_soak="printf soak"\n' });
+  await writeFile(join(root, '.gitignore'), '.cland/\nworker.lock*\n');
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
+  await git('init', '-b', 'dev');
+  await git('remote', 'add', 'origin', root);
+  await writeFile(join(root, 'project.txt'), 'another stack\n');
+  await git('add', '.');
+  await git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-m', 'other-stack occasion');
+  await assert.rejects(stat(join(root, 'hub/test/run-suite.ts')), { code: 'ENOENT' });
+  const config = parseConfig(await readFile(join(root, '.cland/config.toml'), 'utf8'), 'other-stack');
+  const store = new Store(join(root, '.cland/test.db'));
+  const suites = new Suites(store, root, async () => {}, { projectConfig: () => config, locks: [join(root, 'worker.lock')] });
+  onCleanup(t, async () => { await suites.close(); store.close(); });
+  const submitted = await suites.start({ cwd: root, mode: 'all', occasion: 'stage', integrated: true,
+    topic: 'other-stack', to: [], actor: null, fresh: true }, () => {});
+  assert.ok('id' in submitted);
+  const job = await eventually('occasion worker admission', () => suites.status().find(job => job.id === submitted.id && job.pid));
+  ownProcess(t, job.pid!);
+  const directory = join(root, '.cland/run/suites', submitted.id);
+  const receipt = await eventually('occasion worker completion receipt', async () => readFile(join(directory, 'result.json'), 'utf8').then(JSON.parse, () => undefined));
+  assert.equal(receipt.code, 0);
+  await eventually('occasion downstream report', () => suites.status().find(job => job.id === submitted.id && job.reported));
+  assert.equal(job.selection?.fetchedDev, await git('rev-parse', 'HEAD'));
+  assert.equal(job.selection?.loadGate, undefined);
+  assert.equal(job.selection?.recordCoverage, undefined);
+  const log = await readFile(join(directory, 'suite.log'), 'utf8');
+  for (const [tier, output] of [['T1', 'unit'], ['T2', 'component'], ['T3', 'integration'], ['T4', 'soak']]) {
+    assert.match(log, new RegExp(`tier ${tier}: exit 0; duration \\d+ s; output tail: ${output}`));
   }
 });

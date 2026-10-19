@@ -2,14 +2,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tempProject } from './harness.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 import { writeSuiteFixture } from './suite-fixture.ts';
 import { parseConfig } from '../src/init/config.ts';
-import { verificationCommands, recordedCommands } from '../src/verification-commands.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
+import { clandRunner, verificationCommands, recordedCommands } from '../src/verification-commands.ts';
+
+test('cland runner presence and capabilities are resolved from the candidate', async t => {
+  const root = await tempProject(t);
+  assert.equal(await clandRunner(root), null);
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'hub/test/run-suite.ts'), '');
+  assert.deepEqual(await clandRunner(root), { inheritedLease: false, reduceCoverage: false }, 'even an empty legacy runner identifies cland');
+  await writeFile(join(root, 'hub/test/run-suite.ts'), '// inheritedLease reduceCoverage');
+  assert.deepEqual(await clandRunner(root), { inheritedLease: true, reduceCoverage: true });
+});
+
+test('regular-file ancestors mean this candidate has no cland runner', async t => {
+  for (const ancestor of ['hub', 'hub/test']) {
+    const root = await tempProject(t);
+    if (ancestor.includes('/')) await mkdir(join(root, 'hub'));
+    await writeFile(join(root, ancestor), 'another stack owns this file');
+    assert.equal(await clandRunner(root), null, ancestor);
+  }
+});
 
 test('verification resolves each command from the candidate before the hub root', async t => {
   const root = await tempProject(t), candidate = join(root, 'candidate');
@@ -109,9 +128,12 @@ test('tier command plans pin task, batch, integrated and occasion cadence', asyn
 // T1: admission dispatches named Python commands without cland-specific runner files.
 test('other-stack admission records task and batch tier plans through a reopen', async t => {
   const f = await suiteUnit(t, {}, 'check="python3 -m compileall ."\ntest_unit="python3 -m pytest unit"\ntest_integration="python3 -m pytest integration"\n');
+  await rm(join(f.root, 'hub/test/run-suite.ts'));
   f.configure('[merge]\nqueue=true\n');
   f.candidate.branch = 't/T-717';
   const task = await f.launch();
+  assert.equal(f.delivered.get(task.id)?.selection?.loadGate, undefined);
+  assert.equal(f.delivered.get(task.id)?.selection?.reason, 'project test runs in full');
   assert.deepEqual(recordedCommands(f.delivered.get(task.id)!).plan, [
     { name: 'check', command: 'python3 -m compileall .' }, { name: 'T1', command: 'python3 -m pytest unit' },
   ]);

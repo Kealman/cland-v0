@@ -16,11 +16,13 @@ import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { keyHash } from '../src/executor/droplet/prepare.ts';
 import { FakeClock } from './fake-clock.ts';
+import { verificationFixture } from './verification-fixture.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 
 export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions & { machineReceiptsOnly?: boolean } = {}, source = '', accounting = false) {
   const root = await mkdtemp(join(tmpdir(), 'suite-unit-'));
+  await verificationFixture(root);
   const clock = new FakeClock();
   const token = 'suite-unit-token';
   const api = await fakeDigitalOcean(token, { machine: 'scripted', clock });

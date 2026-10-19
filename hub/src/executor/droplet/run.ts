@@ -3,6 +3,7 @@ import { realClock, type Clock } from '../../hub/clock.ts';
 import type { DropletDependencies, MachineTransport } from './dependencies.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile, rename } from 'node:fs/promises';
@@ -68,7 +69,8 @@ export class DropletRun {
     let released = false;
     const commands = (!lines.check ? ["echo 'check: not set'"] : []).concat(verificationSteps(lines).map(step => {
       const { name, command: line } = step;
-      const command = `echo ${quote(`$ ${line}`)}\n/bin/sh -c ${quote(verificationStepCommand(step))} || exit $?`;
+      const commandId = randomUUID();
+      const command = `echo ${quote(`$ ${line}`)}\nprintf '%s\\n' ${quote(`suite command start ${JSON.stringify({ id: commandId, name, line })}`)}\nsuite_command_exit=0\n/bin/sh -c ${quote(verificationStepCommand(step))} || suite_command_exit=$?\nprintf '\\nsuite command end ${commandId} %s\\n' "$suite_command_exit"\nif test "$suite_command_exit" -ne 0; then exit "$suite_command_exit"; fi`;
       if (name !== 'check') {
         const release = released ? '' : 'rmdir /tmp/cland-suite.lock; trap - EXIT\n';
         released = true;

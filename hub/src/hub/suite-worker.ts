@@ -13,7 +13,7 @@ import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
 import { selectionTransport } from '../suite-selection.ts';
-import { recordedCommands } from '../verification-commands.ts';
+import { clandRunner, recordedCommands } from '../verification-commands.ts';
 import { suiteCommand } from '../suite-command.ts';
 
 export function compatibilityCleanupCause(cause: string, error: unknown): string {
@@ -56,8 +56,8 @@ export async function suiteWorker(input: string): Promise<void> {
     await checkHead();
     // Pre-V1 branches do not know how to borrow a worker lease. Protect their typecheck,
     // then let their unchanged package runner take the legacy locks itself.
-    const runner = await readFile(join(job.cwd, 'hub', 'test', 'run-suite.ts'), 'utf8').catch(() => null);
-    const borrowable = runner === null || runner.includes('inheritedLease');
+    const runner = await clandRunner(job.cwd);
+    const borrowable = runner === null || runner.inheritedLease;
     const node = (await promisify(execFile)('node', ['--version'], { cwd: job.cwd, env: process.env })).stdout.trim();
     const nvim = await readFile(join(job.cwd, 'nvim', 'NVIM_VERSION'), 'utf8').then(text => text.trim(), () => 'none');
     platform = { os: osPlatform(), arch: arch(), release: release(), node, nvim };
@@ -71,6 +71,8 @@ export async function suiteWorker(input: string): Promise<void> {
       if (signal) break;
       if (name === 'check') process.stdout.write('typecheck: local\n');
       process.stdout.write(`\n$ ${line}\n`);
+      const commandId = randomUUID();
+      process.stdout.write(`suite command start ${JSON.stringify({ id: commandId, name, line })}\n`);
       const env: NodeJS.ProcessEnv = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' };
       env.CLAND_SUITE_EXECUTOR = 'local';
       if (job.limits) { env.CLAND_SUITE_LIMITS = JSON.stringify(job.limits); env.CLAND_SUITE_LIMITS_CWD = job.cwd; }
@@ -94,6 +96,7 @@ export async function suiteWorker(input: string): Promise<void> {
       if (commands.plan && name !== 'check') env.CLAND_COVERAGE_APPEND = '1';
       else delete env.CLAND_COVERAGE_APPEND;
       const outcome = await suiteCommand(verificationStepCommand(step), job.cwd, env);
+      process.stdout.write(`\nsuite command end ${commandId} ${outcome.code}\n`);
       code = outcome.code;
       cause = outcome.cause;
       if (code !== 0) break;

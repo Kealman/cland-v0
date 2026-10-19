@@ -16,6 +16,13 @@ import type { VerificationQueue, MergeBatchStatus } from '../src/protocol.ts';
 import { parseConfig } from '../src/init/config.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { batchRebuildReason } from '../src/hub/merge-batch-territory.ts';
+import { verificationFixture } from './verification-fixture.ts';
+
+async function checkoutClandFixture(cwd: string) {
+  // Fake batch checkouts carry the runner that real cland candidates contain.
+  await mkdir(cwd, { recursive: true });
+  await verificationFixture(cwd);
+}
 
 async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   const root = await tempProject(t);
@@ -220,7 +227,7 @@ test('a red singleton posts its bisection refusal to the member lead after appea
   }, batchRepository: {
     git: async args => args[0] === 'rev-parse' ? args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40) : args[0] === 'merge-tree' ? tree + '\0' : candidateHead,
     facts: async () => ({ context: null, workers: 1 }), identity: async () => tree,
-    checkout: async () => {}, remove: async () => {},
+    checkout: async candidate => checkoutClandFixture(candidate.cwd), remove: async () => {},
   } });
   const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', sessionId: 'batch-requester', role: 'coordinator' });
   const topic = (await value<{ topic: { id: string } }>(ui, { type: 'topic.create', title: 'Batch report', item: item.id })).topic.id;
@@ -264,7 +271,7 @@ test('refusing a cancelled live batch member preserves its re-enqueued request',
   }, batchRepository: {
     git: async args => args[0] === 'rev-parse' ? args.at(-1) === 'refs/heads/dev' ? 'a'.repeat(40) : 'b'.repeat(40) : args[0] === 'merge-tree' ? tree + '\0' : head,
     facts: async () => ({ context: null, workers: 1 }), identity: async () => tree,
-    checkout: async () => {}, remove: async () => {},
+    checkout: async candidate => checkoutClandFixture(candidate.cwd), remove: async () => {},
   } });
   await value(ui, { type: 'merge', item: item.id });
   await clock.advance(601_000);
@@ -320,7 +327,7 @@ test('a code movement rebuild notice survives the original green result notice',
       throw new Error(`unexpected Git operation ${args}`);
     },
     facts: async () => ({ context: null, workers: 1 }), identity: async () => moved ? 'new-tree' : 'old-tree',
-    checkout: async candidate => { checkedHead = candidate.head; checkedTree = candidate.tree; }, remove: async () => {},
+    checkout: async candidate => { await checkoutClandFixture(candidate.cwd); checkedHead = candidate.head; checkedTree = candidate.tree; }, remove: async () => {},
   } });
   await value(ui, { type: 'merge', item: item.id });
   await clock.advance(601_000);

@@ -9,17 +9,21 @@ import { projectHub, connectUi, inProcessSpoke, tempProject, eventually } from '
 import { beforeDirectories, onCleanup } from './process-cleanup.ts';
 import { FakeClock } from './fake-clock.ts';
 import { runSuiteCommand } from '../src/cli/suite.ts';
+import { verificationFixture } from './verification-fixture.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
 import type { HubFrame, VerificationQueue, HubStatus } from '../src/protocol.ts';
+import type { SuiteSelection } from '../src/suite-selection.ts';
 
-async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'result') {
+async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'result', otherStack = false) {
   const root = await tempProject(t, 'verify-submit-');
+  await verificationFixture(root, otherStack ? { stack: 'other', check: '', test: 'true' } : {});
   const clock = new FakeClock();
   const cliClock = new FakeClock();
   let held = true, head = 'a'.repeat(40);
   const started = Promise.withResolvers<RunRef>();
   const receipts = new Map<string, RunStatus>();
+  const inspections: Array<SuiteSelection | undefined> = [];
   t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { started.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
@@ -27,8 +31,12 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
     compatibility: { holder: async () => null, occupied: async () => held },
-    candidate: { head: async () => head, tree: async () => null, inspect: async () => ({ head, branch: 'candidate', tree: null,
-      selection: { mode: 'hub-only', files: [], reason: 'submission fixture' }, tierPlan: [], budgetBase: undefined }) },
+    candidate: { head: async () => head, tree: async () => null, inspect: async (_cwd, _mode, _workers, projectTest) => {
+      inspections.push(projectTest);
+      return { head, branch: 'candidate', tree: null,
+        selection: { mode: 'hub-selected', files: ['hub/src/example.ts'], reason: 'cland coverage fixture', loadGate: true,
+          coverage: { artifact: 'A-1', path: '/fixture/coverage.json', head } }, tierPlan: [], budgetBase: undefined };
+    } },
   });
   const ui = await connectUi(t, hub.discovery, 'cli');
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
@@ -38,7 +46,7 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   const item = ((await ui.request({ type: 'task.create', size: 'S', title: 'Submission', assignee: 'impl' })).value as { item: { id: string } }).item.id;
   const topic = ((await ui.request({ type: 'topic.create', title: 'Submission', item })).value as { topic: { id: string } }).topic.id;
   const firstReply = Promise.withResolvers<{ frame: HubFrame; release: () => void }>();
-  let delay = true;
+  let delay = !otherStack;
   const sockets = new Set<Socket>();
   const server = createServer(socket => {
     sockets.add(socket);
@@ -68,12 +76,39 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ ...hub.discovery, socket }));
   const env = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'submission-impl', CLAND_ROLE: 'implementer' };
   const outputs: string[] = [], errors: string[] = [];
-  const submit = (mode = 'auto', ...extra: string[]) => runSuiteCommand([mode, '--report', topic, '--to', 'impl', '--json', ...extra], root,
-    { env, clock: cliClock, out: text => { outputs.push(text); }, err: text => { errors.push(text); } });
+  const submitAs = (callerEnv: NodeJS.ProcessEnv, mode: string, extra: string[]) => runSuiteCommand([mode, '--report', topic, '--to', 'impl', '--json', ...extra], root,
+    { env: callerEnv, clock: cliClock, out: text => { outputs.push(text); }, err: text => { errors.push(text); } });
+  const submit = (mode = 'auto', ...extra: string[]) => submitAs(env, mode, extra);
   const queue = async () => (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
-  return { root, clock, cliClock, ui, firstReply, submit, queue, outputs, errors, started, receipts,
+  return { root, clock, cliClock, ui, firstReply, submit, queue, outputs, errors, started, receipts, inspections,
+    human: (mode: string, ...extra: string[]) => submitAs({}, mode, extra),
     hold(value: boolean) { held = value; }, head(value: string) { head = value; } };
 }
+
+test('other-stack verify submits a full project test without cland planning', async t => {
+  const f = await fixture(t, 'result', true);
+  await writeFile(join(f.root, 'hub'), 'another stack may have a file named hub');
+  assert.equal(await f.submit(), 0);
+  const id = JSON.parse(f.outputs.pop()!).id;
+  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!;
+  const job = jobs.find(job => job.id === id)!;
+  assert.deepEqual(job.selection, { mode: 'full', files: [], reason: 'project test runs in full' });
+  assert.deepEqual(f.inspections, [{ mode: 'full', files: [], reason: 'project test runs in full' }], 'admission supplies the project plan instead of asking for coverage selection');
+  assert.equal(job.selection?.loadGate, undefined);
+  assert.equal(job.selection?.coverage, undefined);
+});
+
+test('other-stack CLI refuses cland phases while accepting default and all', async t => {
+  const f = await fixture(t, 'result', true);
+  for (const mode of ['hub', 'nvim']) await assert.rejects(f.submit(mode),
+    /hub and nvim are cland's own suite phases; this project's test runs in full: cland verify/);
+  assert.deepEqual(f.inspections, [], 'refused phases never inspect coverage');
+  assert.equal(await f.submit(), 0);
+  assert.equal(await f.human('all'), 0);
+  const all = JSON.parse(f.outputs.pop()!).id;
+  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!;
+  assert.deepEqual(jobs.find(job => job.id === all)?.selection, { mode: 'full', files: [], reason: 'project test runs in full' });
+});
 
 test('an accepted verify submission times out as unconfirmed and safely retries the active run', async t => {
   const f = await fixture(t);

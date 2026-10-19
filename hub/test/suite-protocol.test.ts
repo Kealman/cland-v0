@@ -1,6 +1,7 @@
 // T2: one real CLI/socket frame proof for cover permissions, queue/status rendering
 // and reload. Seeded suite receipts avoid workers; class permutations live in T1.
 import test from 'node:test';
+import { verificationFixture } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -17,6 +18,7 @@ import { tierReport, type TierPlan, type SuiteDryRun } from '../src/suite-tier-r
 
 async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n', previewSelection?: SuiteSelection) {
   const root = await tempProject(t); const clock = new FakeClock();
+  await verificationFixture(root);
   await mkdir(join(root, '.cland'));
   await writeFile(join(root, '.cland/config.toml'), `[verification]\ntest="true"\nlock_path=${JSON.stringify(join(root, 'held-lock'))}\n${verification}`);
   await mkdir(join(root, 'held-lock'));

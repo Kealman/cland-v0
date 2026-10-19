@@ -42,8 +42,9 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
       assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
       const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
       assert.ok(script.indexOf("echo '$ npm run typecheck'") < script.indexOf("echo '$ npm test'"));
-      assert.ok(script.includes("/bin/sh -c 'npm run typecheck' || exit $?"));
-      assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'\n/bin/sh -c 'npm test' || exit $?`));
+      assert.ok(script.includes("/bin/sh -c 'npm run typecheck' || suite_command_exit=$?"));
+      assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
+      assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
       assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
     }
     assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted state\n');
@@ -203,7 +204,8 @@ test('droplet delivery uses recorded shell lines after the project config change
   const f = await fixture(t, { hub: projectHub, test: 'exit 91', typecheck: 'exit 92' });
   const path = join(f.root, '.cland/config.toml');
   const config = parseConfig(await readFile(path, 'utf8'), 'recorded commands');
-  Object.assign(config.verification, { prepare: 'exit 93', check: 'printf recorded-check', test: 'exit 96', test_unit: 'printf recorded-test', test_component: 'printf recorded-component; exit 7', test_integration: 'printf must-not-run' });
+  const testLine = 'printf recorded-component; printf "\\n$ echo preparing\\n"; exit 7';
+  Object.assign(config.verification, { prepare: 'exit 93', check: 'printf recorded-check', test: 'exit 96', test_unit: 'printf recorded-test', test_component: testLine, test_integration: 'printf must-not-run' });
   await writeFile(path, renderConfig(config));
   f.api.beforeCreate(async () => {
     Object.assign(config.verification, { check: 'exit 94', test: 'exit 95', test_unit: 'exit 98' });
@@ -217,11 +219,13 @@ test('droplet delivery uses recorded shell lines after the project config change
   assert.match(log, /Host gate: printf recorded-check/);
   assert.match(result.text, /tier T1: exit 0; duration \d+ s; output tail: recorded-test/);
   assert.match(result.text, /tier T2: exit 7; duration \d+ s; output tail: recorded-component/);
+  assert.ok(result.text.includes(`T2 exited 7: ${testLine}`), result.text);
+  assert.match(result.text, /Failures:\nrecorded-component\n\$ echo preparing/);
   assert.doesNotMatch(log, /\$ printf must-not-run|\$ exit 98/);
   assert.equal(f.api.machineDirs.size, 1);
   for (const directory of f.api.machineDirs.values()) {
     const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
-    assert.match(script, /\/bin\/sh -c 'printf recorded-check' \|\| exit \$\?/);
+    assert.match(script, /\/bin\/sh -c 'printf recorded-check' \|\| suite_command_exit=\$\?/);
     assert.match(script, /tier T1: exit %s/);
     assert.match(script, /tier T2: exit %s/);
     assert.doesNotMatch(script, /exit 9[1-5]/);

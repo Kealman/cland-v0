@@ -14,11 +14,12 @@ import type { SuiteSelection } from '../src/suite-selection.ts';
 import { FakeClock } from './fake-clock.ts';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import type { ResultMessage } from './suite-fixture.ts';
+import { verificationFixture } from './verification-fixture.ts';
 
 export async function fixture(t: TestContext, code = 0, config = '', withDurations = false) {
   const root = await tempProject(t, 'cland-suite-component-');
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
+  await verificationFixture(root, { typecheck: 'true', testScript: 'true' });
   await writeFile(join(root, '.cland/config.toml'), `${config}\n[verification]\ncheck="npm run typecheck"\ntest="npm test"\nbudget=1\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n`);
   const clock = new FakeClock();
   const facts = { head: 'a'.repeat(40), branch: 'candidate', tree: 'b'.repeat(40),
