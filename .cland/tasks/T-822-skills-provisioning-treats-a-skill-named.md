@@ -2,8 +2,8 @@
 id: T-822
 kind: task
 title: Skills provisioning treats a skill named constructor as still shipped via Object.prototype
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-541
 branch: t/T-822-skills-provisioning-treats-a-skill-named
 created: 2026-10-18T22:31:42.667Z
-updated: 2026-10-19T00:18:25.940Z
+updated: 2026-10-19T00:18:32.672Z
+closed: 2026-10-19T00:18:32.672Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at unchangedfaab617d. A-5676/15fb1e73 accepted selected gate:329/329 pass,no fail/cancel/skip; Neovim smoke complete. Constructor untouched/edited nested cases and invalid prototype-name controls execute/pass, both new groups5/5. A-5680 mapsC1 to literal hashes/bytes, own-key removal, repeat stability and unchanged validation, with inherited C-326 trip disclosed. VerifiedC1; no findings.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T00:18:32.672Z
+
+Merged 6cd6afd6be7621d9059ab6d2486744fc13b03ffd onto dev.
