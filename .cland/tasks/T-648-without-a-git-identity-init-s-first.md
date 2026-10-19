@@ -3,7 +3,7 @@ id: T-648
 kind: task
 title: Without a Git identity, init's first commit is made as cland <cland@local>
 state: open
-status: planned
+status: in progress
 size: XS
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-612
 blocked_by:
   - T-646
-topic: null
-branch: null
+topic: topic-542
+branch: t/T-648-without-a-git-identity-init-s-first
 created: 2026-10-16T16:23:59.985Z
-updated: 2026-10-18T20:04:45.838Z
+updated: 2026-10-19T01:55:58.696Z
 ---
 
 ## Summary

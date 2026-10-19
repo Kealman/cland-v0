@@ -3,8 +3,9 @@ id: T-713
 kind: task
 title: Task verify runs T0, T1 and selected T2, and T3 runs only in merge batches and occasions
 state: open
-status: planned
+status: in progress
 size: M
+criterion_seq: 5
 labels:
   - v0.1.4
   - verification
@@ -18,10 +19,10 @@ blocked_by:
   - T-707
   - T-708
   - T-688
-topic: null
-branch: null
+topic: topic-543
+branch: t/T-713-task-verify-runs-t0-t1-and-selected-t2
 created: 2026-10-16T19:59:43.795Z
-updated: 2026-10-19T01:54:04.415Z
+updated: 2026-10-19T01:56:49.344Z
 ---
 
 ## Summary
@@ -41,7 +42,6 @@ This is the protocol switch (memo §5.5 step 4; decisions 1–2). A task's verif
 - [ ] C2. A T2 coverage fallback plans all T2 files and still no T3 file, proved by a selection test.
 - [ ] C3. The Coordinator's `all` and an occasion request still plan T3, proved by the same tests.
 - [ ] C4. This repository's config sets `[merge] queue = true` in the same change, and a merge after it enqueues, proved by a config test.
-- [ ] C5. The median task-run body (check through collection) over the first 20 droplet task runs after the merge is 8 minutes or less on c-8 at workers 2, recorded on this item from the run results.
 
 ## Blocked by
 

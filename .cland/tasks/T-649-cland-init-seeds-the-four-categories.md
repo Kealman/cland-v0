@@ -3,7 +3,7 @@ id: T-649
 kind: task
 title: "cland init seeds the four categories: Bugs, Tech debt, Follow-ups and Ideas"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ assignee: null
 parent: E-612
 blocked_by:
   - T-646
-topic: null
-branch: null
+topic: topic-544
+branch: t/T-649-cland-init-seeds-the-four-categories
 created: 2026-10-16T16:24:00.181Z
-updated: 2026-10-18T20:04:45.870Z
+updated: 2026-10-19T01:56:05.750Z
 ---
 
 ## Summary
