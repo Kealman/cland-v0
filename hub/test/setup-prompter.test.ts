@@ -1,6 +1,4 @@
-// T3: temporary admission classification; this file uses in-memory streams only and starts no process.
-// The serving hub's pre-T-835 scanner flags prompter.pause(...) as a timer. T-847 restores T1 and
-// removes this header once the scanner correction is live on the serving hub.
+// T1: readline prompts over in-memory streams; no processes, sockets or real-time waits.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';

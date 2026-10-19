@@ -291,7 +291,7 @@
     "hub/test/setup-cli.test.ts": "T2",
     "hub/test/setup-flow.test.ts": "T1",
     "hub/test/setup-machine.test.ts": "T3",
-    "hub/test/setup-prompter.test.ts": "T3",
+    "hub/test/setup-prompter.test.ts": "T1",
     "hub/test/setup-terminal.test.ts": "T1",
     "hub/test/setup-trust.test.ts": "T1",
     "hub/test/shared-defects-report.test.ts": "T3",
