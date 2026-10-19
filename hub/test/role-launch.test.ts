@@ -31,7 +31,7 @@ test('role launch CLI saves combined flags while preserving every other line', {
   assert.equal(value.launch.harness, 'codex');
   assert.equal(value.launch.model, 'gpt-6.1-sol');
   assert.equal(value.launch.effort, 'high');
-  assert.equal(await readFile(path, 'utf8'), original.replace('"claude-code"', '"codex"').replace('"old"', '"gpt-6.1-sol"').replace('"max"', '"high"'));
+  assert.equal(await readFile(path, 'utf8'), original.replace('"claude-code"', '"codex"').replace('"old"', '"gpt-6.1-sol"').replace('"max"', '"high"').replace('[reviewer.launch]', 'sandbox = "workspace-write"\n[reviewer.launch]'));
   const listed = await cland(root, 'role', 'list');
   assert.equal(listed.code, 0, listed.stderr);
   assert.match(listed.stdout, /Implementer.*launch:.*codex.*gpt-6.1-sol.*effort high/);
@@ -45,7 +45,7 @@ test('role launch accepts parser permissions and registered accounts in role lis
   }
   const listed = await cland(root, 'role', 'list');
   assert.equal(listed.code, 0, listed.stderr);
-  assert.match(listed.stdout, /Implementer.*account work.*permissions skip.*approval never.*sandbox danger-full-access/);
+  assert.match(listed.stdout, /Implementer.*account work.*permissions skip.*approval never.*sandbox workspace-write/);
 });
 
 for (const [title, role, fields, reason] of [

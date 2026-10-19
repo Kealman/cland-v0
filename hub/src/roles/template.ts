@@ -4,7 +4,7 @@ import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 
 export const ROLE_HARNESS_ORDER: readonly HarnessId[] = ['claude-code', 'codex', 'opencode'];
 const MARK = '# cland roles template v1; harnesses = ';
-const CODEX_SANDBOX: Record<string, string> = {
+export const CODEX_SANDBOX: Readonly<Record<string, string>> = {
   coordinator: 'danger-full-access', lead: 'danger-full-access',
   implementer: 'workspace-write', reviewer: 'read-only', qa: 'danger-full-access', aide: 'workspace-write',
 };

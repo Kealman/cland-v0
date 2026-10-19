@@ -1,7 +1,9 @@
 // The role launch settings command: edit source spans and publish one validated snapshot.
 import { readFile } from 'node:fs/promises';
+import { parse } from 'smol-toml';
 import { parseRoles, type LaunchDefaults, type RolesConfig } from './config.ts';
 import { setRoleKey, writeRolesFile } from './editor.ts';
+import { CODEX_SANDBOX } from './template.ts';
 import type { Resumed } from '../hub/budget.ts';
 import { namedAccount, readAccounts } from '../accounts/registry.ts';
 
@@ -27,6 +29,11 @@ export async function setRoleLaunch(path: string, role: string, fields: LaunchFi
     }
     let text = original;
     for (const key of LAUNCH_FIELDS) if (changes[key] !== undefined) text = setRoleKey(text, role, 'launch', key, changes[key]!);
+    // The parsed launch already contains compatibility defaults; only source keys show an explicit choice.
+    const written = parse(original)[role] as { launch?: { sandbox?: unknown } } | undefined;
+    if (changes.harness?.trim() === 'codex' && written?.launch?.sandbox === undefined && CODEX_SANDBOX[role] !== undefined) {
+      text = setRoleKey(text, role, 'launch', 'sandbox', CODEX_SANDBOX[role]);
+    }
     const roles = parseRoles(text);
     return { text, roles, launch: roles.get(role)!.launch, changes };
   });

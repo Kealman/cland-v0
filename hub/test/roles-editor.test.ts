@@ -4,8 +4,57 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { parse } from 'smol-toml';
 import { parseRoles } from '../src/roles/config.ts';
 import { CHOSEN, migrateAideTools, projectSetUp, setRoleKey, writeRolesFile } from '../src/roles/editor.ts';
+import { setRoleLaunch } from '../src/roles/launch.ts';
+import { rolesTemplate } from '../src/roles/template.ts';
+
+test('switching Claude-only roles to Codex writes their sandbox defaults (T-872)', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-role-launch-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, 'roles.toml');
+  const expected = {
+    coordinator: 'danger-full-access', lead: 'danger-full-access',
+    implementer: 'workspace-write', reviewer: 'read-only', qa: 'danger-full-access', aide: 'workspace-write',
+  };
+  await writeFile(path, rolesTemplate(['claude-code']));
+  const saved: Record<string, unknown> = {};
+  const effective: Record<string, unknown> = {};
+  for (const role of Object.keys(expected)) {
+    await setRoleLaunch(path, role, { harness: 'codex' }, work => work(), () => {}, {});
+    const text = await readFile(path, 'utf8');
+    saved[role] = (parse(text)[role] as { launch: { sandbox?: string } }).launch.sandbox;
+    const launch = parseRoles(text).get(role)!.launch;
+    assert.equal(launch.harness, 'codex', role);
+    effective[role] = launch.sandbox?.mode;
+  }
+  assert.deepEqual(saved, expected, 'defaults are written, not inherited from the compatibility parser');
+  assert.deepEqual(effective, expected, 'a fresh read uses the saved defaults');
+});
+
+test('role harness round trips preserve every explicit sandbox choice (T-872)', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-role-sandbox-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const path = join(root, 'roles.toml');
+  const template = rolesTemplate(['claude-code']);
+  const roles = [...parseRoles(template).keys()];
+  for (const mode of ['read-only', 'workspace-write', 'danger-full-access', '']) {
+    const setting = `"sandbox" = '${mode}' # explicit choice\n`;
+    let text = template;
+    for (const role of roles) text = text.replace(`[${role}.launch]\n`, `[${role}.launch]\n${setting}`);
+    await writeFile(path, text);
+    for (const harness of ['codex', 'claude-code', 'codex']) {
+      for (const role of roles) {
+        const { result } = await setRoleLaunch(path, role, { harness }, work => work(), () => {}, {});
+        assert.equal(result.launch.sandbox?.mode ?? null, mode || null, `${role}/${harness}/${mode}`);
+      }
+      const saved = await readFile(path, 'utf8');
+      assert.equal(saved.split(setting).length - 1, 6, 'explicit keys and comments remain byte-identical');
+      for (const role of roles) assert.equal(parseRoles(saved).get(role)!.launch.sandbox?.mode ?? null, mode || null, role);
+    }
+  }
+});
 
 test('project setup requires the chosen harness comment in valid roles TOML', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-project-setup-'));
