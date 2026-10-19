@@ -10,6 +10,26 @@ import { FakeClock } from './fake-clock.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 
+test('scripted provider native hooks block a peer clock driver until publication completes', async t => {
+  const clock = new FakeClock(0);
+  const advance = t.mock.method(clock, 'advance');
+  const api = await fakeDigitalOcean('sentinel-publication', { machine: 'scripted', clock });
+  t.after(() => api.close());
+  const peer = scriptedMachine('/unused', clock, { node: process.version, lock: 'lock', base: 'base' });
+  const entered = Promise.withResolvers<void>(), publication = Promise.withResolvers<void>();
+  api.beforeImport(() => { entered.resolve(); return publication.promise; });
+  const writer = api.provider.importKey('held', 'public');
+  await entered.promise;
+  const completion = peer.waits.run(Promise.all([writer, peer.waits.wait(60000)]));
+  try {
+    await peer.waits.run(Promise.resolve());
+    assert.equal(advance.mock.callCount(), 0, 'provider native I/O must block the peer driver');
+  } finally { publication.resolve(); await writer; await completion; }
+  assert.equal(api.keys.length, 1);
+  assert.equal(clock.now().getTime(), 60000);
+  assert.equal(clock.pending, 0, 'the completed provider deadline was cancelled before time advanced');
+});
+
 test('remote admission refusal causes retain their reason and clean up resources', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-admission-'));
   const clock = new FakeClock();

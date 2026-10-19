@@ -1,8 +1,17 @@
 import type { FakeClock } from './fake-clock.ts';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-/** Only a product-requested delay admits an advance. Pending native I/O does not. */
+const drivers = new WeakMap<FakeClock, ReturnType<typeof createRemoteWaits>>();
+
+/** Peers sharing a product clock must also share native-I/O and advance ownership. */
 export function remoteWaits(clock: FakeClock) {
+  let driver = drivers.get(clock);
+  if (!driver) { driver = createRemoteWaits(clock); drivers.set(clock, driver); }
+  return driver;
+}
+
+/** Only a product-requested delay admits an advance. Pending native I/O does not. */
+function createRemoteWaits(clock: FakeClock) {
   type Wait = { due: number; completed: Promise<void> };
   const pending = new Set<Wait>();
   const context = new AsyncLocalStorage<object>();

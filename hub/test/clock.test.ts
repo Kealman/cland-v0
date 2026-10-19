@@ -5,7 +5,45 @@ import { readFile } from 'node:fs/promises';
 import { FakeClock } from './fake-clock.ts';
 import { until } from './until.ts';
 import { remoteWaits } from './remote-clock.ts';
+import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
+import type { DropletLease } from '../src/executor/droplet/lease.ts';
+import type { RunRef } from '../src/executor/executor.ts';
 import { realClock, resolveClock, type ClockOptions } from '../src/hub/clock.ts';
+
+test('scripted native publications block peer clock drivers until their receipt completes', async t => {
+  const key = { node: process.version, lock: 'lock', base: 'base' };
+  for (const step of ['key', 'deliver', 'start', 'coverage', 'bundle'] as const) {
+    const clock = new FakeClock(0);
+    const advance = t.mock.method(clock, 'advance');
+    const publication = Promise.withResolvers<void>();
+    let held = false;
+    const write = async () => { if (held) await publication.promise; };
+    const owner = scriptedMachine('/unused', clock, key, {}, { writeFile: write, writeLease: write });
+    const peer = scriptedMachine('/peer', clock, key);
+    const lease: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: step, run: step, name: step,
+      tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 0.25, keyName: 'key', state: 'active',
+      resource: 1, keyId: 1, created: new Date(0).toISOString(), deadline: new Date(120000).toISOString() };
+    const ref: RunRef = { id: step, cwd: '/unused', head: 'head', mode: 'auto', log: 'log', result: 'result', gate: 'gate' };
+    await owner.dependencies.run.deliver(lease, ref);
+    held = true;
+    const operations = {
+      key: () => owner.dependencies.host.createKey('/unused', 'key', {}),
+      deliver: () => owner.dependencies.run.deliver(lease, ref),
+      start: () => owner.dependencies.run.start(lease),
+      coverage: () => owner.dependencies.run.collectCoverage(lease, '/unused/coverage'),
+      bundle: () => owner.dependencies.prepareBundle('/unused', '/unused'),
+    };
+    const writer = operations[step]();
+    const completion = peer.waits.run(Promise.all([writer, peer.waits.wait(60000)]));
+    try {
+      await owner.waits.run(Promise.resolve());
+      assert.equal(advance.mock.callCount(), 0, `${step}: peer must join native publication before advancing`);
+      assert.equal(clock.now().getTime(), 0);
+    } finally { publication.resolve(); await writer; await completion; }
+    assert.equal(clock.now().getTime(), 60000);
+    assert.equal(clock.pending, 0);
+  }
+});
 
 test('remote clock waits for concurrent native work before spending a lock retry deadline', async t => {
   const clock = new FakeClock(0), waits = remoteWaits(clock);

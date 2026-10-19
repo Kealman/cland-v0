@@ -1,5 +1,7 @@
 import { realClock, type Clock } from '../../../src/hub/clock.ts';
 import { pause } from '../../../src/executor/droplet/watchdog.ts';
+import { FakeClock } from '../../fake-clock.ts';
+import { remoteWaits } from '../../remote-clock.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../../../src/executor/droplet/api.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -13,6 +15,10 @@ import type { Action, SnapshotImage, Droplet, Key, Region, Size } from '../../..
 export async function fakeDigitalOcean(token: string, options: { machine?: 'scripted' | 'process'; clock?: Clock } = {}) {
   const clock = options.clock ?? realClock;
   const scripted = options.machine === 'scripted';
+  if (scripted && !(clock instanceof FakeClock)) throw new Error('scripted provider needs a FakeClock for native-I/O receipts');
+  const waits = scripted && clock instanceof FakeClock ? remoteWaits(clock) : undefined;
+  // Intentional provider delays yield ownership; native publication hooks do not.
+  const wait = waits?.wait ?? ((ms: number) => pause(ms, clock));
   const stateRoot = await mkdtemp(join(tmpdir(), 'cland-fake-do-'));
   const run = promisify(execFile);
   const publicKeys = new Map<number, string>();
@@ -67,7 +73,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
   const handle = async (method: string, url: URL, body: Record<string, unknown> | null): Promise<{ status: number; value?: unknown }> => {
     const path = url.pathname.replace(/^\/v2/, '');
     requests.push({ method, path: `${url.pathname}${url.search}`, body });
-    if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await pause(faults.delayMs, clock);
+    if (faults.delayMs && (!faults.delayPath || path === faults.delayPath && method === 'POST')) await wait(faults.delayMs);
     const answer = (status: number, value?: unknown) => ({ status, value });
     if (method === 'GET' && path === '/account') return answer(200, { account });
     if (method === 'GET' && path === '/sizes') { await beforeSizes?.(); return answer(200, { sizes }); }
@@ -179,7 +185,7 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
         const failure = faults.deleteFailures.shift();
         if (failure === 'timeout') {
           // Fault injection: exceed the caller's API deadline before returning the delete failure.
-          await pause(2000, clock);
+          await wait(2000);
           return answer(503, { id: 'unavailable', message: 'delete transport delayed' });
         }
         if (failure !== undefined) return answer(failure, { id: 'delete_failed', message: faults.echoToken ? token : 'droplet busy or provider unavailable; try later' });
@@ -212,21 +218,24 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
     return answer(404, { id: 'not_found', message: 'unknown endpoint' });
   };
   const provider = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: token }, clock, async (method, path, body, deadline) => {
-    const remaining = (deadline ?? Infinity) - clock.now().getTime();
-    if (remaining <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
-    const bound = Math.min(15000, remaining);
-    let timer: ReturnType<Clock['setTimeout']> | undefined;
-    try {
-      const result = await Promise.race([
-        handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>),
-        new Promise<never>((_, reject) => { timer = clock.setTimeout(() => reject(new DigitalOceanError(0, remaining <= 15000 ? 'deadline' : 'transport', 'request failed or exceeded its time bound')), bound); }),
-      ]);
-      if (result.status >= 400) {
-        const value = result.value as { id: string; message: string };
-        throw new DigitalOceanError(result.status, value.id, value.message.split(token).join('[redacted]'));
-      }
-      return structuredClone(result.value);
-    } finally { clock.clearTimeout(timer); }
+    const request = async () => {
+      const remaining = (deadline ?? Infinity) - clock.now().getTime();
+      if (remaining <= 0) throw new DigitalOceanError(0, 'deadline', 'request deadline reached');
+      const bound = Math.min(15000, remaining);
+      let timer: ReturnType<Clock['setTimeout']> | undefined;
+      try {
+        const result = await Promise.race([
+          handle(method, new URL(`/v2${path}`, 'http://fake'), body === undefined ? null : structuredClone(body) as Record<string, unknown>),
+          new Promise<never>((_, reject) => { timer = clock.setTimeout(() => reject(new DigitalOceanError(0, remaining <= 15000 ? 'deadline' : 'transport', 'request failed or exceeded its time bound')), bound); }),
+        ]);
+        if (result.status >= 400) {
+          const value = result.value as { id: string; message: string };
+          throw new DigitalOceanError(result.status, value.id, value.message.split(token).join('[redacted]'));
+        }
+        return structuredClone(result.value);
+      } finally { clock.clearTimeout(timer); }
+    };
+    return waits ? waits.track(request) : request();
   });
   const server = scripted ? null : createServer(async (req, res) => {
     if (req.headers.authorization !== `Bearer ${auth.token}`) { res.writeHead(401); res.end(JSON.stringify({ id: 'unauthorized', message: 'bad authorization' })); return; }

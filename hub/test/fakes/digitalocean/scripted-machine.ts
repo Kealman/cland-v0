@@ -8,8 +8,9 @@ import { writeLease, type DropletLease } from '../../../src/executor/droplet/lea
 import type { PrepareKey } from '../../../src/executor/droplet/prepare.ts';
 
 export type MachineScript = { outcome?: 'green' | 'red' | 'lost' | 'slow'; code?: number; afterMs?: number; failures?: string[]; log?: string };
-/** Semantic remote receipts, without shell parsing, SSH or a worker process. */
-export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey, initial: MachineScript = {}) {
+/** Semantic remote receipts, without shell parsing, SSH or a worker process.
+ * Native writers are injectable so tests can hold their completion receipts. */
+export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey, initial: MachineScript = {}, io = { writeFile, writeLease }) {
   const waits = remoteWaits(clock);
   const scripts: MachineScript[] = [];
   const starts = new Map<string, ReturnType<typeof Promise.withResolvers<void>>>();
@@ -28,19 +29,23 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
   };
   const run: RemoteRun = {
     async deliver(lease, ref) {
-      record('deliver', lease);
-      if (!executions.has(lease.run)) executions.set(lease.run, { script: scripts.shift() ?? initial, ref });
-      lease.execution = { head: ref.head, delivered: true };
-      await writeLease(root, lease);
+      return waits.track(async () => {
+        record('deliver', lease);
+        if (!executions.has(lease.run)) executions.set(lease.run, { script: scripts.shift() ?? initial, ref });
+        lease.execution = { head: ref.head, delivered: true };
+        await io.writeLease(root, lease);
+      });
     },
     async start(lease) {
-      record('start', lease);
-      if (!lease.execution?.delivered) throw new Error('remote run is not delivered');
-      const execution = state(lease);
-      execution.started ??= clock.now().getTime();
-      lease.execution.started = true; lease.execution.startedAt = new Date(execution.started).toISOString();
-      await writeLease(root, lease);
-      startReceipt(lease.run).resolve();
+      return waits.track(async () => {
+        record('start', lease);
+        if (!lease.execution?.delivered) throw new Error('remote run is not delivered');
+        const execution = state(lease);
+        execution.started ??= clock.now().getTime();
+        lease.execution.started = true; lease.execution.startedAt = new Date(execution.started).toISOString();
+        await io.writeLease(root, lease);
+        startReceipt(lease.run).resolve();
+      });
     },
     async status(lease): Promise<RunStatus> {
       record('status', lease);
@@ -62,16 +67,20 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
     },
     async cancel(lease) { record('cancel', lease); state(lease).cancelled = true; state(lease).finished = clock.now().getTime(); },
     async collectCoverage(lease, path) {
-      record('collect', lease);
-      const ref = state(lease).ref;
-      await writeFile(path, JSON.stringify({ version: 1, head: ref.head, tree: ref.tree ?? '0'.repeat(40), created: clock.now().toISOString(), testFiles: [], files: {} }));
+      return waits.track(async () => {
+        record('collect', lease);
+        const ref = state(lease).ref;
+        await io.writeFile(path, JSON.stringify({ version: 1, head: ref.head, tree: ref.tree ?? '0'.repeat(40), created: clock.now().toISOString(), testFiles: [], files: {} }));
+      });
     },
   };
   const armed = new Set<string>();
   const host: NonNullable<DropletDependencies['host']> = {
     async createKey(dir) {
-      await writeFile(join(dir, 'key'), 'scripted-private-key', { mode: 0o600 });
-      await writeFile(join(dir, 'key.pub'), 'ssh-ed25519 scripted-public-key');
+      return waits.track(async () => {
+        await io.writeFile(join(dir, 'key'), 'scripted-private-key', { mode: 0o600 });
+        await io.writeFile(join(dir, 'key.pub'), 'ssh-ed25519 scripted-public-key');
+      });
     },
     async armWatchdog(dir) { armed.add(dir); return { pid: 0, startedUtc: clock.now().toISOString() }; },
     async stopWatchdog(lease) { record('release', lease); armed.delete(join(root, '.cland/run/executor/leases', lease.lease)); },
@@ -95,6 +104,6 @@ export function scriptedMachine(root: string, clock: FakeClock, key: PrepareKey,
     execution.finished = clock.now().getTime();
   }
   return { calls, waits, finish, started: (id: string) => startReceipt(id).promise, script: (...next: MachineScript[]) => scripts.push(...next), dependencies: { processes: { alive: pid => pid === process.pid, started: () => null }, clock, wait: waits.wait, run, host, machine, prepareKey: async () => key,
-    prepareBundle: async (_root, dir) => { const bundle = join(dir, 'base.bundle'); await writeFile(bundle, 'scripted base bundle'); return bundle; },
+    prepareBundle: async (_root, dir) => waits.track(async () => { const bundle = join(dir, 'base.bundle'); await io.writeFile(bundle, 'scripted base bundle'); return bundle; }),
   } satisfies DropletDependencies };
 }
