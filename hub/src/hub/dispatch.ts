@@ -770,6 +770,16 @@ export class Dispatcher {
     const log = await readFile(artifact.path, 'utf8');
     await reportSharedDefects(core, job, log, artifact, callerNow);
     await reportSoakQuarantine(core, job, log, artifact, this.#options.git ?? gitIn(job.cwd, this.#options.env));
+    // Keep each member's evidence in its own topic so ordinary attachment rules apply.
+    // Copy the durable artifact, not the worker log which cleanup may already have removed.
+    const memberTopics = (job.batch?.members ?? []).map(entry => ({ entry, topic: this.#options.tracker?.summary(entry.item)?.topic ?? AGENTS.id }));
+    const memberLogs = new Map<string, { id: string; path: string }>([[job.topic, artifact]]);
+    for (const { topic } of memberTopics) {
+      if (memberLogs.has(topic)) continue;
+      const operation = this.#artifactQueue.then(() => this.#batchArtifact({ ...job, topic, log: artifact.path }, title));
+      this.#artifactQueue = operation.catch(() => {});
+      memberLogs.set(topic, await operation);
+    }
     const caller = callerNow(); // all checks after the final file read, then synchronous publication
     const quarantine = recordQuarantineResults(JSON.parse(core.store.meta('quarantine-results') ?? '{}') as QuarantineHistory, job.id, quarantineResults(log), !!job.cached);
     const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
@@ -782,32 +792,36 @@ export class Dispatcher {
     const provenance = job.cached ? `\nCached tree ${job.cached.tree}\nOriginal run ${job.cached.run} · head ${job.cached.head}` : '';
     const missing = job.occasion === 'stage' ? this.#suites!.stageMissing(job.tree, job) : [];
     const stageCover = job.occasion === 'stage' ? `\nstage cover ${missing.length ? `missing ${missing.join(', ')}` : 'complete (Linux droplet, macOS)'} · tree ${job.tree ?? 'unknown'}` : '';
-    const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}${progress}\n${summary}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
-    let text = report(2048);
-    // File counts and the artifact retain the complete decision when a broad diff
-    // or a smaller configured cap cannot fit every path in the topic message.
-    for (let bytes = 1024; !core.textFits(text) && bytes >= 0; bytes = bytes ? Math.floor(bytes / 2) : -1) text = report(bytes);
-    if (!core.textFits(text)) {
-      const priority = suiteSummary(log, [], { logArtifact: artifact.id, priorityOnly: true });
-      const header = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cached ? '; cached' : job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${progress}\nLog ${artifact.id}`;
-      const required = `${header}\n${priority}${job.cached ? `\nhead ${job.head}${provenance}\n${execution}` : ''}`;
-      // Reserve interruption identities, cache provenance and executor facts with the decision summary;
-      // optional diagnostics and metadata cannot displace those required facts.
-      if (core.textFits(required)) {
-        text = core.boundedText(`${required}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${job.cached ? '' : execution}${stageCover}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
-      } else {
-        // If the summary and cache provenance cannot fit (for example, a tiny
-        // configured cap), retain the result/mode/log and execution facts.
-        text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached${progress}${stageCover}\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${progress}${stageCover}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${summary}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
+    const resultText = (artifact: { id: string; path: string }): string => {
+      const summary = suiteSummary(log, quarantine.lines, { logArtifact: artifact.id });
+      const report = (filesBytes: number) => `suite result ${job.id}\n${job.mode} exit ${outcome.code}${outcome.cause ? `; ${outcome.cause}` : ''}${progress}\n${summary}\n${job.selection ? describeSelection(job.selection, filesBytes) : 'mode full; legacy run (selection unavailable)'}\nBranch ${job.branch} · head ${job.head}\n${execution}${provenance}${stageCover}\nLog ${artifact.id}: ${artifact.path}`;
+      let text = report(2048);
+      // File counts and the artifact retain the complete decision when a broad diff
+      // or a smaller configured cap cannot fit every path in the topic message.
+      for (let bytes = 1024; !core.textFits(text) && bytes >= 0; bytes = bytes ? Math.floor(bytes / 2) : -1) text = report(bytes);
+      if (!core.textFits(text)) {
+        const priority = suiteSummary(log, [], { logArtifact: artifact.id, priorityOnly: true });
+        const header = `suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cached ? '; cached' : job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${progress}\nLog ${artifact.id}`;
+        const required = `${header}\n${priority}${job.cached ? `\nhead ${job.head}${provenance}\n${execution}` : ''}`;
+        // Reserve interruption identities, cache provenance and executor facts with the decision summary;
+        // optional diagnostics and metadata cannot displace those required facts.
+        if (core.textFits(required)) {
+          text = core.boundedText(`${required}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${job.cached ? '' : execution}${stageCover}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${outcome.cause}\nLog ${artifact.id}: ${artifact.path}`);
+        } else {
+          // If the summary and cache provenance cannot fit (for example, a tiny
+          // configured cap), retain the result/mode/log and execution facts.
+          text = job.cached ? core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}; cached${progress}${stageCover}\n${execution}\nhead ${job.head}\nOriginal run ${job.cached.run} · head ${job.cached.head}\nTree ${job.cached.tree}\nLog ${artifact.id}`) : core.boundedText(`suite result ${job.id}\n${job.mode} exit ${outcome.code}${job.cancelled ? '; cancelled' : ''}; mode ${job.selection?.mode ?? 'full'}${progress}${stageCover}\nBranch ${job.branch.slice(0, 64)} · head ${job.head}\n${execution}\nDeciding files ${job.selection?.files.length ?? 'unknown'}; full list in log ${artifact.id}\n${job.selection?.reason ?? 'legacy run (selection unavailable)'}\n${summary}\n${outcome.cause}${provenance}\nLog ${artifact.id}: ${artifact.path}`);
+        }
       }
-    }
+      return text;
+    };
+    const text = resultText(artifact);
     const result = core.store.transaction(() => {
       if (job.batch) {
         const id = core.noticeTo(job.topic, { id: messageId, kind: 'report', text, to: job.to });
         if (!id) throw new Error('batch suite result topic unavailable');
-        for (const entry of job.batch.members) {
-          const topic = this.#options.tracker?.summary(entry.item)?.topic ?? AGENTS.id;
-          core.noticeTo(topic, { id: `${messageId}:${entry.item}`, kind: 'report', text, to: [entry.by.name, `lead ${entry.item}`] });
+        for (const { entry, topic } of memberTopics) {
+          core.noticeTo(topic, { id: `${messageId}:${entry.item}`, kind: 'report', text: resultText(memberLogs.get(topic)!), to: [entry.by.name, `lead ${entry.item}`] });
         }
         core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
         return null;
@@ -829,9 +843,11 @@ export class Dispatcher {
   }
   async #batchArtifact(job: Readonly<SuiteJob>, title: string): Promise<{ id: string; path: string }> {
     const core = this.#options.core, root = this.#options.control?.status().root;
+    const prior = core.store.artifacts(job.topic).find(a => a.title === title && a.status !== 'archived' && !a.fileDeleted);
+    if (prior) return { id: prior.id, path: prior.path };
     const artifact = await createArtifact(core.store, root, { type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log },
       { name: 'hub', cwd: root ?? '.', kind: 'agent', role: () => null },
-      artifact => { core.noticeTo(job.topic, { id: `batch-artifact:${job.id}`, kind: 'report', text: `▣ ${artifact.id} file · ${title}`, detail: { artifact: artifact.id } }); },
+      artifact => { core.noticeTo(job.topic, { id: `batch-artifact:${job.id}:${job.topic}`, kind: 'report', text: `▣ ${artifact.id} file · ${title}`, detail: { artifact: artifact.id } }); },
       work => work(), () => {}, this.#options.readArtifact ?? readFile, core.clock);
     core.artifactChanged(artifact);
     return { id: artifact.id, path: artifact.path };

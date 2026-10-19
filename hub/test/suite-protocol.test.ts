@@ -9,7 +9,7 @@ import { compatibilityHolder } from '../src/suite-lock.ts';
 import { Store } from '../src/hub/store.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
-import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
+import type { Artifact, HubStatus, TopicMessage, VerificationQueue } from '../src/protocol.ts';
 import { FakeClock } from './fake-clock.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { testLintReport, type TestLintFile } from '../src/test-lint.ts';
@@ -40,6 +40,53 @@ async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob)
   const hub = await projectHub(t, root, {}, { clock, compatibility, candidate, durationContext: null }); const ui = await connectUi(t, hub.discovery);
   return { root, clock, hub, ui, compatibility };
 }
+
+test('each lead can attach the batch log named in its member topic', async t => {
+  const log = '# tests 2\n# pass 2\n';
+  const f = await seed(t, base => {
+    const { cover: _cover, ...job } = base;
+    return [{ ...job, topic: 'agents', integrated: false, reported: false, outcome: { code: 0, cause: '' },
+      batch: { id: 'two-members', members: [1, 2].map(n => ({ item: `T-${n}`, branch: `t/${n}`, head: String(n).repeat(40),
+        verdictBase: 'dev', enqueued: '2026-10-17T12:00:00Z', by: { id: `impl-${n}`, name: `impl-${n}`, role: 'implementer' } })) } }];
+  }, '', log);
+  const reviewer = await inProcessSpoke(t, { discover: true, cwd: f.root, name: 'rev', role: 'reviewer' });
+  await reviewer.waitForPresence(['rev']);
+  const members = [];
+  for (const n of [1, 2]) {
+    const name = `impl-${n}`;
+    const created = await f.ui.request({ type: 'task.create', title: name, size: 'S', branch: `t/${n}`, assignee: name });
+    assert.equal(created.ok, true, created.error);
+    const item = (created.value as { item: { id: string } }).item.id;
+    assert.equal(item, `T-${n}`);
+    const opened = await f.ui.request({ type: 'topic.create', title: name, item });
+    assert.equal(opened.ok, true, opened.error);
+    const topic = (opened.value as { topic: { id: string } }).topic.id;
+    const lead = await inProcessSpoke(t, { discover: true, cwd: f.root, name, role: 'implementer' });
+    await lead.waitForPresence([name]);
+    const claimed = await lead.call<{ ok: boolean; error?: string }>('task.claim', { id: item });
+    assert.equal(claimed.ok, true, claimed.error);
+    members.push({ item, topic, lead });
+  }
+  await f.ui.request({ type: 'subscribe' });
+  await f.clock.advance(1000);
+  for (const { item, topic, lead } of members) {
+    const event = await f.ui.waitFor(frame => frame.type === 'message' && (frame.message as TopicMessage).id === `suite:cover-0:${item}`);
+    const message = event.message as TopicMessage;
+    assert.equal(message.topic, topic);
+    const id = message.text.match(/Log (A-\d+)/)?.[1];
+    assert.ok(id, 'member result names its log');
+    const attached = await lead.call<{ ok: boolean; error?: string }>('send', {
+      topic, to: ['reviewer'], text: 'Batch evidence for review', artifacts: [id],
+    });
+    assert.equal(attached.ok, true, attached.error);
+    const history = await f.ui.request({ type: 'topic.history', topic });
+    const sent = (history.value as { messages: TopicMessage[] }).messages.find(m => m.text === 'Batch evidence for review')!;
+    assert.equal(sent.artifacts?.[0]?.id, id);
+    assert.equal(await readFile(sent.artifacts![0]!.path, 'utf8'), log);
+    const listed = await f.ui.request({ type: 'artifact.list', topic });
+    assert.ok((listed.value as { artifacts: Artifact[] }).artifacts.some(a => a.id === id));
+  }
+});
 
 test('task result and preview identify T3 as pending in the enabled merge queue', async t => {
   const selection: SuiteSelection = { mode: 'full', files: [], reason: 'task fallback', tiers: ['T1', 'T2'], loadGate: true };
