@@ -2,7 +2,7 @@
 id: E-611
 kind: epic
 title: The Aide's reach and the settings commands
-state: open
+state: closed
 criterion_seq: 6
 labels:
   - epic
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-556
 branch: null
 created: 2026-10-16T15:34:13.285Z
-updated: 2026-10-19T06:11:29.359Z
+updated: 2026-10-19T06:12:00.518Z
+closed: 2026-10-19T06:12:00.518Z
 ---
 
 ## Summary
@@ -259,3 +260,7 @@ Evidence bundle: A-5809, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts
 Verdict report A-5810: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5810-e-611-qa-verdict-c1-c6-clear-x-failure-filed-t-829.md
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T06:12:00.518Z
+
+Closed on QA clear qa-2026-10-19-1 at e7de5ca7 (C1–C6; evidence A-5809, report A-5810). Found aside: T-829 (restart leaves live harness sessions), T-828 (push help line).
