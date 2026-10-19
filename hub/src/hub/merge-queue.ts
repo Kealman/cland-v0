@@ -20,7 +20,11 @@ export class MergeQueue {
     this.dropped = dropped;
     this.store = store; this.tracker = tracker; this.clock = clock; this.enabled = enabled;
     this.git = git ?? gitIn(tracker.root, env);
-    this.#unwatch = [tracker.onChange(() => this.reconcile()), tracker.onTipsChanged(() => this.reconcile(true)), tracker.onVerdict((id, _author, verdict) => {
+    this.#unwatch = [tracker.onChange(() => this.reconcile()), tracker.onTipsChanged(() => {
+      // Cached omissions are not facts. Recheck through the same validated read as startup;
+      // an unavailable background read leaves the durable requests for the next refresh.
+      void this.refresh().catch(() => {});
+    }), tracker.onVerdict((id, _author, verdict) => {
       if (verdict.result !== 'not clear') return;
       const entry = this.entries().find(entry => entry.item === id);
       if (entry) this.drop(entry, `${verdict.verdict} not clear`);
@@ -34,19 +38,31 @@ export class MergeQueue {
   async refresh(resumed: Resumed = work => work()): Promise<MergeQueueEntry[]> {
     if (!this.entries().length || this.#stopped) return this.entries();
     const tips = await branchTips(this.git, resumed);
-    return resumed(() => { if (!this.#stopped) this.reconcile(tips !== null, tips ?? undefined); return this.entries(); });
+    if (this.#stopped) return [];
+    if (tips === null) return this.entries();
+    const missing = resumed(() => new Set(this.entries().filter(entry => !tips.has(entry.branch)).map(entry => `refs/heads/${entry.branch}`)));
+    if (missing.size) {
+      // An omitted ref is not deletion proof: successful enumeration can be incomplete.
+      // exclude-existing emits a positive receipt for each absent ref; null/empty/partial
+      // receipts cannot authorize any drop from this snapshot.
+      const out = await this.git(['show-ref', '--exclude-existing=refs/heads/'], [...missing].join('\n') + '\n');
+      if (this.#stopped) return [];
+      const absent = new Set(out?.split('\n').filter(Boolean));
+      if (out === null || absent.size !== missing.size || [...missing].some(ref => !absent.has(ref))) return this.entries();
+    }
+    return resumed(() => { this.reconcile(tips, new Set([...missing].map(ref => ref.slice('refs/heads/'.length)))); return this.entries(); });
   }
 
-  reconcile(refreshed = false, tips?: ReadonlyMap<string, string>): void {
+  reconcile(tips?: ReadonlyMap<string, string>, absent: ReadonlySet<string> = new Set()): void {
     if (this.#stopped) return;
     for (const entry of this.entries()) {
       const item = this.tracker.summary(entry.item);
-      const head = tips ? tips.get(entry.branch) ?? null : this.tracker.freshnessTip(entry.branch);
+      const head = tips?.get(entry.branch) ?? null;
       let reason: string | undefined;
       if (item?.state === 'closed' && this.tracker.mergeReceipt(entry.item)) { this.store.dropMerge(entry.item); continue; }
       if (!item || item.state === 'closed') reason = 'item closed or removed';
       else if (item.branch !== entry.branch) reason = 'task branch changed';
-      else if ((head !== null || refreshed) && head !== entry.head) reason = 'branch head changed or deleted';
+      else if ((head !== null || absent.has(entry.branch)) && head !== entry.head) reason = 'branch head changed or deleted';
       else {
         for (const kind of ['review', 'qa'] as const) {
           const verdict = item.verdicts.filter(v => v.source === 'hub' && v.verdict === kind && v.stage === undefined).at(-1);

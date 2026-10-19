@@ -23,15 +23,16 @@ export function gitIn(root: string, env: NodeJS.ProcessEnv = process.env): Git {
 
 export const resolveCommit = (git: Git, ref: string): Promise<string | null> => git(['rev-parse', '--verify', '--end-of-options', `${ref}^{commit}`]);
 
-/** Every local branch with its tip, in one cheap call; null when the project is no Git repository. */
+/** Local branch tips in one call; null on failed or malformed output. Omission alone is not deletion proof. */
 export async function branchTips(git: Git, resumed: <T>(work: () => T) => T = work => work()): Promise<Map<string, string> | null> {
   const out = await git(['for-each-ref', '--format=%(objectname) %(refname)', 'refs/heads/']);
   return resumed(() => {
     if (out === null) return null;
     const tips = new Map<string, string>();
-    for (const line of out.split('\n')) {
-      const m = /^([0-9a-f]{40,64}) refs\/heads\/(.+)$/.exec(line.trim());
-      if (m) tips.set(m[2]!, m[1]!);
+    for (const line of out ? out.split('\n') : []) {
+      const m = /^([0-9a-f]{40}|[0-9a-f]{64}) refs\/heads\/(.+)$/.exec(line.trim());
+      if (!m || tips.has(m[2]!)) return null;
+      tips.set(m[2]!, m[1]!);
     }
     return tips;
   });

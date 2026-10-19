@@ -161,6 +161,7 @@
     "hub/test/merge-gate.test.ts": "T3",
     "hub/test/merge-override.test.ts": "T1",
     "hub/test/merge-policy.test.ts": "T3",
+    "hub/test/merge-queue-unit.test.ts": "T1",
     "hub/test/merge-queue.test.ts": "T2",
     "hub/test/merge-recovery.test.ts": "T3",
     "hub/test/merge.test.ts": "T3",

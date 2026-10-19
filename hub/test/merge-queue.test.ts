@@ -25,8 +25,9 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   const clock = new FakeClock();
   const tips = manualTips();
   const heads = new Map([['dev', 'a'.repeat(40)], ['t/parser', 'b'.repeat(40)]]);
-  const { discovery, dispatcher } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git: async args => {
+  const { discovery, dispatcher, stop } = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git: async (args, input) => {
     if (args[0] === 'for-each-ref') return [...heads].map(([branch, head]) => `${head} refs/heads/${branch}`).join('\n');
+    if (args[0] === 'show-ref' && args.includes('--exclude-existing=refs/heads/')) return input!.trim().split('\n').filter(ref => !heads.has(ref.slice('refs/heads/'.length))).join('\n');
     if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
     if (args[0] === 'merge-base') return 'a'.repeat(40);
     if (args[0] === 'diff') return args.includes('--name-only') ? 'hub/src/parser.ts\0' : 'parser patch';
@@ -39,8 +40,28 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   const { item } = await value<{ item: ItemView }>(ui, { type: 'task.create', title: 'Parser', size: 'M', branch: 't/parser' });
   assert.equal((await rev.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'review', scope: 'full', result: 'clear', run: 'review-1' })).ok, true);
   await until(async () => { await clock.advance(100); return (await value<{ item: ItemView }>(ui, { type: 'task.view', item: item.id })).item.status === 'ready'; }, { what: 'reviewed task ready', timeoutMs: 1500 });
-  return { root, ui, dispatcher, item, clock, heads, rev, tips, enqueuedAt: clock.now().toISOString() };
+  return { root, ui, dispatcher, item, clock, heads, rev, tips, stop, enqueuedAt: clock.now().toISOString() };
 }
+
+test('startup preserves the durable queue when branch enumeration omits a live ref', async t => {
+  const { root, ui, item, clock, heads, stop } = await fixture(t);
+  await value(ui, { type: 'merge', item: item.id });
+  const expected = (await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries;
+  await stop();
+  const tips = manualTips();
+  const reopened = await projectHub(t, root, {}, { clock, scheduleTips: tips.scheduleTips, readBase: async () => 'dev', git: async (args, input) => {
+    // A successful but partial listing is indistinguishable from deletion on its own.
+    if (args[0] === 'for-each-ref') return `${heads.get('dev')} refs/heads/dev`;
+    if (args[0] === 'show-ref' && args.includes('--exclude-existing=refs/heads/')) {
+      return input!.trim().split('\n').filter(ref => !heads.has(ref.replace(/^refs\/heads\//, ''))).join('\n');
+    }
+    if (args[0] === 'rev-parse') return heads.get(args.at(-1)!.replace(/^refs\/heads\//, '').replace(/\^\{commit\}$/, '')) ?? null;
+    return null;
+  } });
+  const reconnected = await connectUi(t, reopened.discovery);
+  assert.deepEqual((await value<{ mergeQueue: unknown[] }>(reconnected, { type: 'hub.status' })).mergeQueue, expected);
+  assert.deepEqual((await value<{ entries: unknown[] }>(reconnected, { type: 'merge.queue' })).entries, expected);
+});
 
 test('reviewed code is queued without landing and visible through task view and queue', async t => {
   const { ui, item, enqueuedAt } = await fixture(t);
@@ -94,6 +115,16 @@ test('changed heads, not-clear verdicts and closed items drop pinned requests', 
     assert.ok(history.messages.some(message => message.text.includes('merge-queue-dropped') && message.text.includes(change === 'verdict' ? 'not clear' : change)), change);
     assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, [], change);
   }
+});
+
+test('a confirmed deleted branch drops its request with the original reason', async t => {
+  const { ui, item, heads, tips } = await fixture(t);
+  await value(ui, { type: 'merge', item: item.id });
+  heads.delete('t/parser');
+  await tips.refresh();
+  assert.deepEqual((await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries, []);
+  const history = await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
+  assert.ok(history.messages.some(message => message.text === `merge-queue-dropped ${item.id}: branch head changed or deleted`));
 });
 
 test('merge CLI renders queue replies, ordered entries and task positions', async t => {
