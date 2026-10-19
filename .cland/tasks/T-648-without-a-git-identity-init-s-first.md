@@ -2,8 +2,8 @@
 id: T-648
 kind: task
 title: Without a Git identity, init's first commit is made as cland <cland@local>
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-542
 branch: t/T-648-without-a-git-identity-init-s-first
 created: 2026-10-16T16:23:59.985Z
-updated: 2026-10-19T02:29:09.994Z
+updated: 2026-10-19T02:29:16.558Z
+closed: 2026-10-19T02:29:16.558Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from corrected source A-5715 plus accepted exact-head gate 7e1bc212/A-5724; audit A-5725. Hub-only plus Neovim smoke: 2376 passed, 5 prerequisite skips, zero failures/cancellations. Native fallback/configured/distinct-role/partial/environment controls and actual empty-folder init pass; 10/10 ordinary first-commit cases and all 50 corresponding repetition bodies pass. Three known T-803 report-only tier trips and other budget/lint diagnostics remain disclosed. No findings; C1–C4 verified; QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T02:29:16.558Z
+
+Merged b2036d2755bc85f6d5eb22b745babfd38746d351 onto dev.
