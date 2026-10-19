@@ -7,6 +7,8 @@ name = "v0"
 [merge]
 # Task receipts cover T0–T2; every code landing gains T3 in its merge batch.
 queue = true
+# D64 (2026-10-19 15:20Z): 4 per batch until the v0.1.4 release; back to 3 (the default) if two batches in a row go red.
+batch = 4
 
 [verification]
 # Admission budget; the legacy compatibility lease remains an additional limit.

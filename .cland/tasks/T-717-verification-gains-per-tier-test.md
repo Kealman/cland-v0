@@ -20,7 +20,7 @@ blocked_by:
 topic: topic-602
 branch: t/T-717-verification-gains-per-tier-test
 created: 2026-10-16T19:59:44.369Z
-updated: 2026-10-19T14:51:31.424Z
+updated: 2026-10-19T14:52:10.328Z
 ---
 
 ## Summary
@@ -46,3 +46,9 @@ The tier model is cland's product rule, not this repository's file lists (memo Â
 ## Blocked by
 
 T-664 and T-666 (E-614's `[verification]` commands), T-665 (fixture command stubs).
+
+## Comments
+
+### impl-717 Â· 2026-10-19T14:52:10.328Z
+
+Config slice implemented: four empty command keys with tier comments, batch/batch_wait comments, parser validation and config CLI coverage. Next: recorded per-tier plan/execution after T-666 lands; acceptance seams are init/config, suite command stubs and repository package planning.

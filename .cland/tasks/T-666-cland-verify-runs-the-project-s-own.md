@@ -3,7 +3,7 @@ id: T-666
 kind: task
 title: cland verify runs the project's own check and test, and this repository names its own in the same merge
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 7
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-580
 branch: t/T-666-cland-verify-runs-the-project-s-own
 created: 2026-10-16T16:35:24.419Z
-updated: 2026-10-19T14:13:57.417Z
+updated: 2026-10-19T15:06:12.238Z
 ---
 
 ## Summary
@@ -59,6 +59,7 @@ The resolver from ticket T-663 reads `[verification] check`, `test` and `prepare
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
   - verified: rev-30 [reviewer] · run rev-20261019-666-demo-source · 2026-10-19T13:55:26.301Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
   - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.199Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
+  - verified: rev-30 [reviewer] · run rev-20261019-666-allowance-source · 2026-10-19T15:06:12.237Z · commit ca28928a13a28b298c20bbaf0117d634ea078233
 - [x] C6. This repository's `.cland/config.toml` sets `check = "npm run check"` (typecheck plus test:lint, as the host gate runs today since T-684) and `test = "npm test"`, and the resolver resolves them for every mode (test reading the repository's own file).
   - done: impl-666 · 2026-10-19T11:53:19.921Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-source-corrected · 2026-10-19T11:56:53.849Z · commit 4faa12e1bb1aa6f00114fa73739b7041f2015780
@@ -66,6 +67,7 @@ The resolver from ticket T-663 reads `[verification] check`, `test` and `prepare
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
   - verified: rev-30 [reviewer] · run rev-20261019-666-demo-source · 2026-10-19T13:55:26.302Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
   - verified: rev-30 [reviewer] · run rev-20261019-666-demo-final · 2026-10-19T14:13:54.200Z · commit 0c3be9e76538b77e579b815157b28c93fbeb756b
+  - verified: rev-30 [reviewer] · run rev-20261019-666-allowance-source · 2026-10-19T15:06:12.238Z · commit ca28928a13a28b298c20bbaf0117d634ea078233
 - [x] C7. The recorded commands survive a hub restart mid-run: the restored run reports with the same lines (`suite-recovery.test.ts`), and a fake-droplet run's `run.sh` carries the recorded lines (`executor-run.test.ts`).
   - done: impl-666 · 2026-10-19T11:56:28.206Z
   - verified: rev-30 [reviewer] · run rev-20261019-666-final · 2026-10-19T12:39:05.047Z · commit 408d20bcd3a072a63ae2f9dc3638a731c478435d
@@ -185,3 +187,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final corrected-head clear; A-6082, findings []. Exact-head mode-free 64a6a9f2/A-6081 audited in full: ordinary 1513/1513, zero fail/cancel/skip/TODO, all 436 load groups 5/5, zero tier-mismatch rows. New demo persistence/script/config-mutation/restart proof is host A-6077, independently source-audited in A-6080; task gate does not execute native T3 demo/restart files. C1–C4/C7 retain A-6035's explicitly qualified unchanged suite/recovery/executor-run host evidence, plus current same-head gate; only demos and optional lease metadata changed. C5/C6 source requirements remain intact. All C1–C7 verified; claimant marks present. Failed A-6072 retained; next landing batch must prove corrected native demos on Linux. Post-new-hub-restart local verify hub/nvim remain Coordinator stage obligations. No further item run or Reviewer execution.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### rev-30 · 2026-10-19T15:06:12.238Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-666-allowance-source
+commit: ca28928a13a28b298c20bbaf0117d634ea078233
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Allowance-only delta source clear; A-6131, findings []. Exact restart identity entry matches Coordinator 90562591/0a977630: 10 seconds, open epic E-677, 2026-10-19→2026-10-26, non-TODO lifecycle reason naming T-666/A-6124. One-file seven-line change, no source/assertion/tier/global-budget/baseline or dev merge change. A-6130 correctly distinguishes T3 10 s from legacy report-mode new-identity 5 s gate and reports public replay/live-owner lint/check green. Failed A-6124 retained, T-879 separate. C5/C6 refreshed; final C1–C7 waits for fresh exact-head mode-free gate under Coordinator direction. No Reviewer tests/replay.
+
+Criteria: C5 verified, C6 verified.

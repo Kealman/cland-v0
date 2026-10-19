@@ -3,7 +3,7 @@ id: T-857
 kind: task
 title: On an existing project the Aide imports the open GitHub issues on yes itself, and files "what next" as the first release
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-594
 branch: t/T-857-on-an-existing-project-the-aide-imports
 created: 2026-10-19T08:10:03.027Z
-updated: 2026-10-19T14:45:38.771Z
+updated: 2026-10-19T15:05:12.549Z
 ---
 
 ## Summary
@@ -39,11 +39,14 @@ The existing-project path loses its workarounds. The Aide runs `cland task impor
 - [x] C1. EXISTING.md step 3 runs `cland task import-github` on the human's yes with no refusal workaround, and says that closed issues and pull requests stay on GitHub (source review).
   - verified: rev-30 [reviewer] · run rev-20261019-857-source-corrected · 2026-10-19T14:45:31.374Z · commit 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739
   - done: impl-857 · 2026-10-19T14:45:37.582Z
+  - verified: rev-30 [reviewer] · run rev-20261019-857-final · 2026-10-19T15:05:11.004Z · commit 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739
 - [x] C2. SKILL.md "The brief" classifies a folder as `existing` when a file beside cland's paths is tracked or untracked and not ignored, as T-844 does (source review against T-844's rule).
   - verified: rev-30 [reviewer] · run rev-20261019-857-source-corrected · 2026-10-19T14:45:31.374Z · commit 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739
   - done: impl-857 · 2026-10-19T14:45:38.127Z
+  - verified: rev-30 [reviewer] · run rev-20261019-857-final · 2026-10-19T15:05:11.004Z · commit 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739
 - [x] C3. Run as an Aide against an in-process hub with a fake `gh`, the import brings the two open issues and not the closed one, and the step's link, size and status lines are accepted on an imported item (T2).
   - done: impl-857 · 2026-10-19T14:45:38.771Z
+  - verified: rev-30 [reviewer] · run rev-20261019-857-final · 2026-10-19T15:05:11.004Z · commit 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739
 
 ## Comments
 
@@ -84,3 +87,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; A-6096, M1 resolved. Filesystem-only Git metadata fixture replaces all three native setup subprocesses, matching existing aide-import-cli fixture; CLI/fake-gh remains the subject. Capturing distinct output IDs removes an unjustified allocation-order assumption while retaining exact two-task list, exclusions, initial unsized/unparented state, R-1 link, size S/planned and #10 readback. C1/C2 source wording unchanged and verified; C3 awaits exact-head mode-free receipt. A-6095 reports 13/13 full file and isolated enforce-mode new case green/no mismatch. Inherited T-856/T-877 case unchanged. No dev merge or Reviewer tests.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-857 · 2026-10-19T15:04:47.794Z
+
+Same-head verification green: run 06c615a2-da38-45c6-ba10-695f476f1532 at 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739, auto exit 0, 1559/1559 pass, no failures/cancelled/skipped. All T1 and fallback all T2; T3 deferred to merge batch by queue protocol. Linux x64 droplet c-8 lon1, Node v24.21.0 / Neovim v0.12.5; lifetime 1107s, cost $0.0769. Durable receipt A-6127: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6127-suite-06c615a2-da38-45c6-ba10-695f476f1532-auto-at-0b0b7c0.log. Head remains unchanged and clean; awaiting Reviewer's final C3 evidence verdict.
+
+### rev-30 · 2026-10-19T15:05:11.004Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-857-final
+commit: 0b0b7c00c6dcaabcdeac9aa508ee404b734a3739
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-6128, C1–C3 verified, findings []. Exact-head mode-free 06c615a2/A-6127: ordinary 1559/1559, zero fail/cancel/skip/TODO, all 479 load groups 5/5. New import/link/size/planned C3 control passes ordinary 1.236407 s plus 5/5; whole 13-test file green. No tier trips from new import case; four inherited T-856 push trips at 54276–54279 match Coordinator c322ebda/T-877 disposition, not a new waiver. Corrected source A-6096 unchanged, M1 native setup removed. C1/C2 wording and T-844 later-landing matching obligation retained. Claimant marks present, report-only debt retained, T3 landing remains Coordinator-owned. No further item run.
+
+Criteria: C1 verified, C2 verified, C3 verified.

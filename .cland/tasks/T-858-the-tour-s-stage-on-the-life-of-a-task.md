@@ -3,8 +3,9 @@ id: T-858
 kind: task
 title: The tour's stage on the life of a task names the project's own checks, and every key the tour names is a workbench key
 state: open
-status: backlog
+status: review
 size: XS
+criterion_seq: 3
 labels:
   - v0.1.4
   - ready-for-agent
@@ -12,10 +13,10 @@ assignee: null
 parent: E-616
 blocked_by:
   - T-857
-topic: null
-branch: null
+topic: topic-606
+branch: t/T-858-the-tour-s-stage-on-the-life-of-a-task
 created: 2026-10-19T08:10:03.111Z
-updated: 2026-10-19T08:10:03.111Z
+updated: 2026-10-19T15:07:56.513Z
 ---
 
 ## Summary
@@ -31,6 +32,35 @@ TOUR.md is the accepted wording, but stage 5 says verify runs "`npm run typechec
 
 ## Acceptance criteria
 
-- [ ] C1. TOUR.md stage 5 names the project's recorded check and test commands and no npm script (source review, and N3's T1 assertion still passes).
-- [ ] C2. Each workbench key TOUR.md names is bound in the Neovim workbench at the branch head (source review against the keymap source, listed in the review).
-- [ ] C3. TOUR.md keeps eight stages, each ending with a "Look now" line, and SKILL.md keeps the tour and welcome note in the human's language and rules, items and briefs in English (T1 assertion on the stage count and "Look now" lines; source review).
+- [x] C1. TOUR.md stage 5 names the project's recorded check and test commands and no npm script (source review, and N3's T1 assertion still passes).
+  - done: impl-858 · 2026-10-19T15:07:08.071Z
+- [x] C2. Each workbench key TOUR.md names is bound in the Neovim workbench at the branch head (source review against the keymap source, listed in the review).
+  - done: impl-858 · 2026-10-19T15:07:08.702Z
+  - verified: rev-30 [reviewer] · run rev-20261019-858-source · 2026-10-19T15:07:56.513Z · commit 24dff1818f7186803ce5cfd7a04d75796c7a3351
+- [x] C3. TOUR.md keeps eight stages, each ending with a "Look now" line, and SKILL.md keeps the tour and welcome note in the human's language and rules, items and briefs in English (T1 assertion on the stage count and "Look now" lines; source review).
+  - done: impl-858 · 2026-10-19T15:07:09.173Z
+
+## Comments
+
+### impl-858 · 2026-10-19T15:05:54.990Z
+
+Read E-616's decisions (including decision 6). Implementing the scoped TOUR.md stage-5 wording and auditing all named workbench keys; retaining all eight stages, Look now lines, and SKILL.md language guidance. No per-item QA required (none/after-stage).
+
+### impl-858 · 2026-10-19T15:07:09.756Z
+
+Committed and pushed 24dff181. C1–C3 implementation complete; A-6133 holds the key binding source audit and validation. Typecheck passed; skills-onboarding.test.ts 13/13 passed (3.709 s). Source review assigned to Reviewer rev-30; waiting for clear source before mode-free verification.
+
+### rev-30 · 2026-10-19T15:07:56.513Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-858-source
+commit: 24dff1818f7186803ce5cfd7a04d75796c7a3351
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-6134, findings []. TOUR uses requested recorded check/test wording, preserves Coordinator squash sentence per E-616 decision 6, all eight Look now stages and SKILL language rules. Independently audited named workbench/ask/terminal/Enter/ga bindings; actual ask key installation is ask_card.lua:94–116 (corrected citation from implementation note). C2 verified by source. New T1 stage guard checks exact count/numbering/final Look now; existing stack-neutral guard retained. A-6133 reports 13/13 and typecheck. C1/C3 final verification awaits same-head mode-free gate; no new process/wait or Reviewer tests.
+
+Criteria: C2 verified.
