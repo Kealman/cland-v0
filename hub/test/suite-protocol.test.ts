@@ -2,7 +2,7 @@
 // and reload. Seeded suite receipts avoid workers; class permutations live in T1.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { compatibilityHolder } from '../src/suite-lock.ts';
@@ -18,7 +18,7 @@ import { tierReport, type TierPlan, type SuiteDryRun } from '../src/suite-tier-r
 async function seed(t: Parameters<typeof tempProject>[0], make: (base: SuiteJob) => SuiteJob[], verification = '', logText = 'ℹ tests 1\nℹ fail 1\ntest at /home/runner/cland/hub/test/planned-stage.test.ts:208:1\n✖ stage landing query budget (6746ms)\n', previewSelection?: SuiteSelection) {
   const root = await tempProject(t); const clock = new FakeClock();
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), `[verification]\nlock_path=${JSON.stringify(join(root, 'held-lock'))}\n${verification}`);
+  await writeFile(join(root, '.cland/config.toml'), `[verification]\ntest="true"\nlock_path=${JSON.stringify(join(root, 'held-lock'))}\n${verification}`);
   await mkdir(join(root, 'held-lock'));
   const started = 'Sat Oct 17 12:00:00 2026';
   await writeFile(join(root, 'held-lock/holder.json'), JSON.stringify({ pid: process.pid, started, since: clock.now().toISOString(), token: 'hand', worktree: '/hand/worktree' }));
@@ -276,4 +276,17 @@ test('dead-requester reports stay hub-authored once across role vacancy and stor
   await reviewer.close(); await f.hub.stop(); const next = await projectHub(t, f.root, {}, { clock: f.clock, compatibility: f.compatibility, durationContext: null }); const ui = await connectUi(t, next.discovery);
   await f.clock.advance(1000); const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
   assert.equal(history.messages.filter(m => m.text.startsWith('suite result dead')).length, 1);
+});
+
+// T2: the CLI refusal itself is the process boundary; no executor is admitted.
+test('verify refuses missing test before queueing a worker', async t => {
+  const f = await seed(t, () => []);
+  const path = join(f.root, '.cland/config.toml');
+  await writeFile(path, '[verification]\n');
+  const result = await cland(f.root, 'verify', '--report', 'general', '--json');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /no \[verification\] test for this project; set it: cland config set verification.test '<command>'/);
+  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  assert.deepEqual(status.suites, []);
+  assert.deepEqual(await readdir(join(f.root, '.cland/run/suites')).catch(() => []), []);
 });

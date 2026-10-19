@@ -2,6 +2,7 @@
 // watchdog reaping and hub-crash reconciliation require real process boundaries.
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
+import { parseConfig, renderConfig } from '../src/init/config.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -195,4 +196,32 @@ test('a restored launching suite reuses only an existing ref at the same head', 
     assert.equal((await f.messages(job.id, ui)).length, 1);
     assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
   });
+});
+
+
+test('droplet delivery uses recorded shell lines after the project config changes', async t => {
+  const f = await fixture(t, { hub: projectHub, test: 'exit 91', typecheck: 'exit 92' });
+  const path = join(f.root, '.cland/config.toml');
+  const config = parseConfig(await readFile(path, 'utf8'), 'recorded commands');
+  Object.assign(config.verification, { prepare: 'exit 93', check: 'printf recorded-check', test: 'printf recorded-test' });
+  await writeFile(path, renderConfig(config));
+  f.api.beforeCreate(async () => {
+    Object.assign(config.verification, { check: 'exit 94', test: 'exit 95' });
+    await writeFile(path, renderConfig(config));
+  });
+  const job = await f.launch('--fresh');
+  const result = await f.result(job.id);
+  assert.match(result.text, /exit 0/, result.text);
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  assert.match(log, /Commands: check printf recorded-check · test printf recorded-test/);
+  assert.match(log, /Host gate: printf recorded-check/);
+  assert.match(log, /recorded-test/);
+  assert.equal(f.api.machineDirs.size, 1);
+  for (const directory of f.api.machineDirs.values()) {
+    const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
+    assert.match(script, /\/bin\/sh -c 'printf recorded-check' \|\| exit \$\?/);
+    assert.match(script, /\/bin\/sh -c 'printf recorded-test' \|\| exit \$\?/);
+    assert.doesNotMatch(script, /exit 9[1-5]/);
+  }
+  assert.deepEqual(f.api.droplets, []);
 });

@@ -24,7 +24,7 @@ async function fixture(t: TestContext, delayFrame: 'welcome' | 'result' = 'resul
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nexecutor="local"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
     compatibility: { holder: async () => null, occupied: async () => held },
     candidate: { head: async () => head, tree: async () => null, inspect: async () => ({ head, branch: 'candidate', tree: null,

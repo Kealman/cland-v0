@@ -23,7 +23,7 @@ async function fixture(t: TestContext) {
   t.mock.method(LocalExecutor.prototype, 'status', async (lease: Lease) => receipts.get(lease.run) ?? { state: 'running' });
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nexecutor="local"\nbudget=1\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\nbudget=1\n');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
     compatibility: { holder: async () => null, occupied: async () => held },
     candidate: { head: async () => head, tree: async () => 'b'.repeat(40), inspect: async () => ({ head, branch: 'dev', tree: 'b'.repeat(40), selection: { mode: 'hub-only', files: [], reason: 'human queue fixture' }, tierPlan: [], budgetBase: undefined }) },

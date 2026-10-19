@@ -1,3 +1,4 @@
+// T3: detached worker crashes, cancellation and survival across a hub process restart.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -184,4 +185,44 @@ test('suite report includes locked shard duration, free duration and queue waits
   assert.match(summary, /shard duration hub machine 55.00s/);
   assert.match(summary, /shard duration hub free 1.00s/);
   assert.match(summary, /suite duration 57.00s; lock wait 0.10s/);
+});
+
+// T3: the detached worker must survive an actual hub process restart mid-command.
+test('hub restart preserves the submitted command lines while its worker finishes', async t => {
+  const f = await fixture(t, 'exit 91', 'exit 92', undefined, undefined, undefined, undefined, startDaemon);
+  const path = join(f.root, '.cland/config.toml');
+  const config = parseConfig(await readFile(path, 'utf8'), 'restart commands');
+  const commands = { prepare: 'exit 93', check: 'printf frozen-check', test: 'node barrier.mjs' };
+  Object.assign(config.verification, commands);
+  await writeFile(path, renderConfig(config));
+  await writeFile(join(f.root, 'barrier.mjs'), `import { writeFileSync, existsSync, watch } from 'node:fs';
+await new Promise(resolve => {
+  const watcher = watch('.', () => {
+    if (!existsSync('finish')) return;
+    watcher.close();
+    resolve();
+  });
+  writeFileSync('entered', 'ready');
+});
+console.log('frozen-test');`);
+  const job = await f.launch();
+  await f.workerPid(job.id);
+  await eventually('submitted command entered', () => stat(join(f.root, 'entered')).then(() => true, () => undefined));
+  assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
+  Object.assign(config.verification, { check: 'exit 94', test: 'exit 95' });
+  await writeFile(path, renderConfig(config));
+  const restarted = await startDaemon(t, f.root);
+  const ui = await connectUi(t, restarted.discovery);
+  await writeFile(join(f.root, 'finish'), 'go');
+  const receipt = await eventually('released worker completion receipt', async () => readFile(join(f.root, '.cland/run/suites', job.id, 'result.json'), 'utf8').then(text => JSON.parse(text) as { code: number }, () => undefined));
+  assert.equal(receipt.code, 0);
+  const result = await eventually('restored command run reported', async () => {
+    const history = await ui.request({ type: 'topic.history', topic: f.topic });
+    return (history.value as { messages: ResultMessage[] }).messages.find(m => m.id === `suite:${job.id}`);
+  });
+  assert.match(result.text, /exit 0/);
+  const log = await readFile(result.artifacts[0]!.path, 'utf8');
+  assert.match(log, /Commands: check printf frozen-check · test node barrier.mjs/);
+  assert.match(log, /\$ printf frozen-check[\s\S]*\$ node barrier.mjs[\s\S]*frozen-test/);
+  assert.doesNotMatch(log, /\$ exit 9[1-5]/);
 });

@@ -19,7 +19,7 @@ import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import type { Lease, RunRef } from '../src/executor/executor.ts';
 
 const candidateConfig = '[verification]\nworkers=4\nload_gate_workers=4\ntest_timeout="11s"\nstall_timeout="12s"\n[verification.droplet]\nworkers=4\n';
-const hubConfig = '[verification]\nworkers=1\nload_gate_workers=2\ntest_timeout="31s"\nstall_timeout="32s"\n[verification.droplet]\nworkers=2\n';
+const hubConfig = '[verification]\ncheck="npm run typecheck"\ntest="true"\nworkers=1\nload_gate_workers=2\ntest_timeout="31s"\nstall_timeout="32s"\n[verification.droplet]\nworkers=2\n';
 
 test('task queue executes the hub policy with explicit worker overrides', async t => {
   const root = await tempProject(t, 'cland-queue-policy-');

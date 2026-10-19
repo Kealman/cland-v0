@@ -158,7 +158,7 @@ test('reload preserves an active verification and lease, and new admissions use 
   const old = (await readLeases(f.root))[0]!;
   const waiting = await remote(f);
   assert.ok(f.suites.snapshot().waiters.some(w => w.id === waiting.id));
-  const source = '[verification]\nremote_budget=2\nlifetime="11m"\nrun_timeout="1m"\nload_gate_workers=3\ndaily_spend_usd=0';
+  const source = '[verification]\ncheck="true"\ntest="true"\nremote_budget=2\nlifetime="11m"\nrun_timeout="1m"\nload_gate_workers=3\ndaily_spend_usd=0';
   await writeFile(join(f.root, '.cland/config.toml'), source);
   assert.equal(f.config.verification.dailySpendUsd, 5, 'disk edits alone leave loaded admission policy intact');
   f.configure(source); await f.tick();

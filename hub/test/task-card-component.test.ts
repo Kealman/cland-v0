@@ -41,6 +41,8 @@ test('indexed closed time precedes receipts and legacy fallbacks and reopening h
 
 test('a 65-row list reads no item files; a verify finishing reads one summary with bounded queries and coalesced events', async t => {
   const root = await tempProject(t);
+  await files.mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\n');
   const clock = new FakeClock();
   const admitted = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };

@@ -24,6 +24,7 @@ async function planted(t: TestContext) {
     await writeFile(join(root, path), '');
   }
   await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\n');
   await writeFile(join(root, 'hub/test/b.test.ts'), 'sleep(10);');
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'planted' }, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, allow: {}, files: {
@@ -45,7 +46,7 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   await git('init', '-qb', 'dev');
   await git('config', 'user.name', 'Tier fixture'); await git('config', 'user.email', 'fixture@example.invalid');
   await git('add', '.'); await git('commit', '-qm', 'planted baseline');
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nworkers=2\n[verification.droplet]\nsize="c-8"\nregions=["lon1"]\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nworkers=2\n[verification.droplet]\nsize="c-8"\nregions=["lon1"]\n');
   const { discovery } = await projectHub(t, root, { DIGITALOCEAN_TOKEN: 'dry-run-fixture', CLAND_DIGITALOCEAN_API: api.url });
   const ui = await connectUi(t, discovery);
   const before = (await ui.request({ type: 'hub.status' })).value as HubStatus;

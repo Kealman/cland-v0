@@ -304,3 +304,61 @@ test('restart recognizes a committed result even if its run receipt did not sett
 test('suite summary adds both phases and bounds failure excerpts', () => {
   assert.equal(suiteSummary('ℹ tests 2\nℹ pass 1\nℹ fail 1\n✖ broken\n# tests 3\n# pass 3\n# fail 0\n'), 'tests 5; pass 4; fail 1\nFailures:\n✖ broken');
 });
+
+async function verificationLines(f: Awaited<ReturnType<typeof fixture>>, commands: { check: string; test: string; prepare?: string }) {
+  const path = join(f.root, '.cland/config.toml');
+  const config = parseConfig(await readFile(path, 'utf8'), 'commands');
+  Object.assign(config.verification, { prepare: '', ...commands });
+  await writeFile(path, renderConfig(config));
+}
+
+// T3: a detached worker executes shell commands and durably receipts their ordered exits.
+test('verify executes configured shell lines instead of package scripts', async t => {
+  const f = await fixture(t, 'exit 91', 'exit 92');
+  const commands = { prepare: 'exit 93', check: 'printf check > executions', test: 'printf test >> executions' };
+  await verificationLines(f, commands);
+  const job = await f.launch();
+  const result = await eventually('configured commands reported', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
+  assert.match(result.text, /exit 0/);
+  assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'checktest');
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  assert.match(log, /Commands: check printf check > executions · test printf test >> executions/);
+  assert.ok(log.indexOf('$ ' + commands.check) < log.indexOf('$ ' + commands.test));
+  assert.doesNotMatch(log, /\$ (npm|exit 93)/);
+});
+
+test('verify inherits root commands in a task worktree without command keys', async t => {
+  const f = await fixture(t, 'exit 91', 'exit 92');
+  await verificationLines(f, { check: 'printf inherited-check', test: 'printf inherited-test' });
+  const git = await cacheRepository(f);
+  const cwd = await tempProject(t, 'command-worktree-');
+  await git('worktree', 'add', '-b', 'task-commands', cwd);
+  await mkdir(join(cwd, '.cland'), { recursive: true });
+  await writeFile(join(cwd, '.cland/config.toml'), '[project]\nname="old task"\n');
+  const launch = await clandWithEnv(cwd, { ...f.env, CLAND_HUB_FILE: join(f.root, '.cland/hub.json') }, 'verify', '--report', f.topic, '--to', 'rev', '--json');
+  assert.equal(launch.code, 0, launch.stderr);
+  const job = JSON.parse(launch.stdout) as { id: string };
+  const result = await eventually('inherited commands reported', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
+  assert.match(result.text, /exit 0/, result.text);
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  assert.match(log, /Commands: check printf inherited-check · test printf inherited-test/);
+  assert.match(log, /\$ printf inherited-check[\s\S]*\$ printf inherited-test/);
+});
+
+for (const check of ['', 'exit 7']) test(`verify ${check ? 'stops on the configured check exit' : 'runs test when check is unset'}`, async t => {
+  const f = await fixture(t, 'exit 91', 'exit 92');
+  await verificationLines(f, { check, test: 'printf ran > executions' });
+  const job = await f.launch();
+  const result = await eventually('optional check reported', async () => (await f.results()).find(m => m.id === `suite:${job.id}`));
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  if (check) {
+    assert.match(result.text, /exit 7/);
+    assert.match(log, /\$ exit 7/);
+    assert.doesNotMatch(log, /\$ printf ran/);
+    await assert.rejects(stat(join(f.root, 'executions')), { code: 'ENOENT' });
+  } else {
+    assert.match(result.text, /exit 0/);
+    assert.match(log, /check: not set/);
+    assert.equal(await readFile(join(f.root, 'executions'), 'utf8'), 'ran');
+  }
+});

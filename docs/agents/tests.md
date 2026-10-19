@@ -198,10 +198,15 @@ HUB_SMOKE selects hub-lifecycle, startup-smoke and message-tracer. NVIM_SMOKE se
 
 ### Test lint reports
 
-`npm run check` runs typecheck, then `npm run test:lint` once. Verification uses
-this check for candidates declaring it and `test:lint`; older candidate packages
-keep their typecheck command. A matching host gate reuses the whole check on the
-droplet, including the lint, so the report is not repeated there.
+`npm run check` runs typecheck, then `npm run test:lint` once. This repository
+names it as `[verification] check` and names `npm test` as `test`. Verification
+resolves each nonempty command from the candidate's `.cland/config.toml`, then
+falls back to the hub root's value. Without `test`, submission refuses before
+queueing; an empty `check` is skipped. Resolved `prepare`, `check` and `test` are
+recorded at submission and survive config changes and restarts. A matching host
+gate reuses the whole check on the droplet, including lint, so it is not repeated.
+Local runs never execute `prepare`. All request modes run the same configured
+`test` line; cland's runner receives its phases through `CLAND_SUITE_SELECTION`.
 
 The direct-source census remains a report of existing debt. The policy gate
 refuses growth, before verify reserves a queue slot or merge changes refs:

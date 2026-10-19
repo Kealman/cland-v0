@@ -21,7 +21,7 @@ async function fixture(t: TestContext, options: ProjectHubOptions = {}) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   const repository = parseConfig(await readFile(new URL('../../.cland/config.toml', import.meta.url), 'utf8'), 'repository', {});
-  await writeFile(join(root, '.cland/config.toml'), `[merge]\nqueue = ${repository.merge.queue}\n`);
+  await writeFile(join(root, '.cland/config.toml'), `[merge]\nqueue = ${repository.merge.queue}\n[verification]\ntest="true"\n`);
   const clock = new FakeClock();
   const tips = manualTips();
   const heads = new Map([['dev', 'a'.repeat(40)], ['t/parser', 'b'.repeat(40)]]);

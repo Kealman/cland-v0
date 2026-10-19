@@ -9,8 +9,8 @@ import { join } from 'node:path';
 import { taskSuiteSelection, type SuiteSelection } from '../src/suite-selection.ts';
 import { packageShards, type TierManifest } from '../src/suite-shards.ts';
 import { occasionSelection } from '../src/verification-occasion.ts';
+import { packageSuitePlan } from './run-suite.ts';
 import { verificationCommands } from '../src/verification-commands.ts';
-import { suiteCheckCommand } from '../src/suite-check.ts';
 
 // These five planner cases read identical immutable inputs. Build their isolated
 // repository once per file instead of recreating hundreds of files per case.
@@ -45,7 +45,7 @@ test('task cadence plans all T1 plus selected T2 from the repository manifest', 
   assert.deepEqual(planned, [...Object.keys(f.manifest.tests).filter(file => f.tier(file) === 'T1'), 'hub/test/merge-queue.test.ts', 'nvim/test/client-component.test.ts'].sort());
   assert.deepEqual(selection.tiers, ['T1', 'T2']);
   assert.equal(selection.loadGate, true);
-  assert.deepEqual(verificationCommands({ mode: 'auto', selection }, await suiteCheckCommand(f.root)), { check: 'npm run check', test: 'npm test' });
+  assert.deepEqual(await verificationCommands(f.root, f.root), { prepare: '', check: 'npm run check', test: 'npm test' });
 });
 
 test('a task coverage fallback widens T2 without admitting T3 or T4', async () => {
@@ -100,5 +100,39 @@ test('hosting project queue policy protects admission from a candidate-local opt
     assert.deepEqual(preview.selection.tiers, enabled ? ['T1', 'T2'] : undefined);
     const files = (await packageShards(f.root, preview.selection.mode, undefined, preview.selection, { workers: 2 })).flatMap(phase => phase.targets);
     assert.equal(files.includes('hub/test/process.test.ts'), !enabled);
+  }
+});
+
+
+// T1: entry-point equivalence is a plan comparison, with no runners or machine locks.
+test('npm test preserves the legacy entry point plan for every supplied selection', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'entry-plan-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const file of ['hub/test/free.test.ts', 'hub/test/suite-queue.test.ts', 'nvim/test/component.test.ts']) {
+    await mkdir(join(root, file, '..'), { recursive: true });
+    await writeFile(join(root, file), '');
+  }
+  await writeFile(join(root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: {
+    'hub/test/free.test.ts': 'T1', 'hub/test/suite-queue.test.ts': 'T2', 'nvim/test/component.test.ts': 'T2',
+  } }));
+  const f = { root };
+  const locks = { hub: join(f.root, 'machine.lock'), nvim: join(f.root, 'nvim.lock') };
+  const hubTest = 'hub/test/suite-queue.test.ts';
+  const cases: Array<[string, SuiteSelection]> = [
+    ['auto', { mode: 'full', files: [], reason: 'full' }],
+    ['hub', { mode: 'hub-only', files: [], reason: 'hub' }],
+    ['hub', { mode: 'hub-selected', files: ['hub/src/hub/suites.ts'], tests: [hubTest], reason: 'coverage' }],
+    ['nvim', { mode: 'nvim-only', files: [], reason: 'nvim' }],
+    ['auto', { mode: 'full', files: [hubTest], reason: 'shard', shard: { files: [hubTest], nvim: false } }],
+  ];
+  for (const [legacy, selection] of cases) {
+    const env = { CLAND_SUITE_SELECTION: JSON.stringify(selection), CLAND_SUITE_WORKERS: '3' };
+    const oldPlan = await packageSuitePlan(f.root, legacy, [], locks, env);
+    const newPlan = await packageSuitePlan(f.root, 'auto', [], locks, env);
+    assert.deepEqual(newPlan, oldPlan, selection.mode + (selection.shard ? ' shard' : ''));
+    assert.deepEqual(newPlan.selection, selection);
+    assert.deepEqual(newPlan.lockDirs, [locks.hub, locks.nvim]);
+    assert.ok(newPlan.phases.length);
+    assert.ok(newPlan.phases.every(phase => phase.resource === 'free' ? phase.workers === 1 : phase.workers === 3));
   }
 });

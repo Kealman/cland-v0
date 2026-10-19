@@ -7,17 +7,16 @@ import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { platform as osPlatform, arch, release } from 'node:os';
-import type { Platform } from '../executor/executor.ts';
+import type { Platform, RunRef } from '../executor/executor.ts';
 import { candidateTree } from '../verification-tree.ts';
 import { processStartedAsync } from './lock.ts';
 import { acquireBroker, sweepLease, type Lease } from '../suite-lock.ts';
-import { selectionTransport, type SuiteSelection } from '../suite-selection.ts';
-import { suiteCheckCommand } from '../suite-check.ts';
-import { verificationCommands } from '../verification-commands.ts';
+import { selectionTransport } from '../suite-selection.ts';
+import { recordedCommands } from '../verification-commands.ts';
 import { suiteCommand } from '../suite-command.ts';
 
 export async function suiteWorker(input: string): Promise<void> {
-  const job = JSON.parse(await readFile(input, 'utf8')) as { id: string; limits?: import('../suite-limits.ts').SuiteLimits; cwd: string; mode: string; gate: string; result: string; selection?: SuiteSelection; locks?: string[]; workers?: number; head?: string; queued?: string; tree?: string | null; integrated?: boolean };
+  const job = JSON.parse(await readFile(input, 'utf8')) as RunRef;
   let signal: NodeJS.Signals | null = null;
   for (const name of ['SIGINT', 'SIGTERM'] as const) process.on(name, () => {
     if (signal) return;
@@ -57,10 +56,11 @@ export async function suiteWorker(input: string): Promise<void> {
     const nvim = await readFile(join(job.cwd, 'nvim', 'NVIM_VERSION'), 'utf8').then(text => text.trim(), () => 'none');
     platform = { os: osPlatform(), arch: arch(), release: release(), node, nvim };
     process.stdout.write(`platform ${platform.os} ${platform.arch} ${platform.release} · Node ${node} · Neovim ${nvim}\n`);
-    const commands = verificationCommands(job, await suiteCheckCommand(job.cwd));
+    const commands = recordedCommands(job);
     if (!admitted) code = 1;
     for (const name of (admitted ? ['check', 'test'] as const : [])) {
       const line = commands[name];
+      if (!line) { process.stdout.write('check: not set\n'); continue; }
       if (name === 'test' && !borrowable) for (const lease of leases.splice(0).reverse()) await lease.release();
       if (signal) break;
       if (name === 'check') process.stdout.write('typecheck: local\n');

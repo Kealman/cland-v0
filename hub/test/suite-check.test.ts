@@ -1,4 +1,5 @@
 // T3: npm check completion and cancellation reap retained writers before fixture removal.
+import { verificationCommands } from '../src/verification-commands.ts';
 import { verificationFixture } from './verification-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,8 +8,6 @@ import { mkdir, mkdtemp, readFile, access, writeFile, realpath } from 'node:fs/p
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { suiteCheckCommand } from '../src/suite-check.ts';
-import { verificationCommands } from '../src/verification-commands.ts';
 import { ownDirectory, ownProcess, beforeDirectories, onCleanup, cleanupProcesses } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
@@ -143,9 +142,7 @@ test('check runs the report lint once after typecheck and preserves a green exit
   const git = (...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' });
   git('init', '-qb', 'dev'); git('add', '.');
   git('-c', 'user.name=Lint fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Frozen lint baseline');
-  const check = await suiteCheckCommand(cwd);
-  assert.equal(check, 'npm run check');
-  assert.deepEqual(verificationCommands({ mode: 'auto' }, check), { check: 'npm run check', test: 'npm test' });
+  const { check } = await verificationCommands(cwd, cwd);
   const command = root.attach(ownedCheck(t, cwd, check));
   const { code, stdout, stderr } = await command.result;
   assert.equal(code, 0, stderr);
@@ -164,7 +161,7 @@ test('check runs the report lint once after typecheck and preserves a green exit
   assert.deepEqual(JSON.parse(await readFile(join(cwd, 'hub/test/lint-baseline.json'), 'utf8')).files['hub/test/a.test.ts'], {});
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run typecheck"\ntest = "npm test"\n');
-  assert.equal(await suiteCheckCommand(cwd), 'npm run typecheck', 'older candidates retain their command and host-gate identity');
+  assert.equal(await verificationCommands(cwd, cwd).then(commands => commands.check), 'npm run typecheck', 'the configured typecheck retains its host-gate identity');
 });
 
 

@@ -3,6 +3,7 @@ import type { SuiteSelection } from '../suite-selection.ts';
 export type ExecutorKind = 'local' | 'droplet';
 export type HostGate = { tree: string | null; command: string; code: number };
 export type RunRef = {
+  commands?: import('../verification-commands.ts').VerificationCommands;
   hostGate?: HostGate;
   limits?: import('../suite-limits.ts').SuiteLimits;
   config?: import('../init/config.ts').ProjectConfig;

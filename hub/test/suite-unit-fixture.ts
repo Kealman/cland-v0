@@ -11,7 +11,7 @@ import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { writeLease, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { LocalExecutor } from '../src/executor/local.ts';
 import type { Lease, RunRef, RunStatus } from '../src/executor/executor.ts';
-import { parseConfig } from '../src/init/config.ts';
+import { parseConfig, renderConfig } from '../src/init/config.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { SuiteSelection } from '../src/suite-selection.ts';
 import { keyHash } from '../src/executor/droplet/prepare.ts';
@@ -29,12 +29,15 @@ export async function suiteUnit(t: TestContext, options: SuiteSchedulerOptions &
   const machine = scriptedMachine(root, clock, key, { outcome: 'slow' });
   const configSource = `[verification]\n${source}`;
   let config = parseConfig(configSource, 'suite-unit', {});
+  // Policy tests consume semantic receipts; their named commands never execute.
+  config.verification.check ||= 'true';
+  config.verification.test ||= 'true';
   config.verification.executor = options.executor ?? 'local';
   config.verification.remoteBudget = options.remoteBudget ?? 2;
   const image = { id: 900, name: 'unit-snapshot', regions: ['lon1'], size_gigabytes: 1, min_disk_size: 10, created_at: clock.now().toISOString() };
   await api.seedSnapshot(image, key);
   await mkdir(join(root, '.cland/run/executor'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), configSource);
+  await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
   await writeFile(join(root, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: 1, minDiskSize: 10, created: image.created_at }));
   const candidate = { head: 'a'.repeat(40), branch: 'candidate', tree: 'd'.repeat(40) as string | null,
     selection: { mode: 'hub-only', files: ['hub/src/example.ts'], reason: 'fixture' } as SuiteSelection };

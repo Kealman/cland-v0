@@ -9,6 +9,7 @@ import { Machine, shellQuote } from '../executor/droplet/machine.ts';
 import { testTiming } from '../executor/droplet/watchdog.ts';
 import type { Git } from '../tracker/verdict-git.ts';
 import type { Tracker } from '../tracker/tracker.ts';
+import { verificationCommands } from '../verification-commands.ts';
 
 const hub = { id: 'hub', name: 'hub', role: null, human: true };
 
@@ -66,13 +67,14 @@ export class Demos {
       const head = (await this.#git(['rev-parse', '--verify', `${commit ?? 'dev'}^{commit}`])).trim();
       await this.#git(['merge-base', '--is-ancestor', head, 'dev']);
       const config = this.executor.projectConfig?.() ?? await readFile(join(this.root, '.cland/config.toml'), 'utf8').then(s => parseConfig(s, basename(this.root), this.#env), e => { if (e.code === 'ENOENT') return defaultConfig(basename(this.root)); throw e; });
+      const commands = await verificationCommands(this.root, this.root, this.#env);
       const id = `demo-${randomUUID()}`;
       authorize();
-      const lease = await this.executor.acquire({ id }, new Date(this.executor.clock.now().getTime() + testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env)).toISOString(), { epic: epic.id, commit: head }, config);
+      const lease = await this.executor.acquire({ id }, new Date(this.executor.clock.now().getTime() + testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env)).toISOString(), { epic: epic.id, commit: head, commands }, config);
       try {
         authorize();
         const dir = leaseDir(this.root, lease);
-        await this.executor.deliver(lease, { id, config, cwd: this.root, head, mode: 'auto', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate') }, true);
+        await this.executor.deliver(lease, { id, config, commands, cwd: this.root, head, mode: 'auto', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate') }, true);
         authorize();
         if (Date.parse(lease.deadline) <= this.executor.clock.now().getTime()) throw new Error('demo deadline reached during delivery');
         lease.demo!.ready = true; await writeLease(this.root, lease);

@@ -16,7 +16,7 @@ test('status and cancellation reply before a held compatibility inspection compl
   let inspecting = false, hold = false;
   onCleanup(t, () => release.resolve());
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nexecutor="local"\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nexecutor="local"\n');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
     compatibility: { holder: async () => null, occupied: async () => {
       if (!hold) return true;

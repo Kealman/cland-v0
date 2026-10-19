@@ -25,7 +25,7 @@ test('explicit all is reserved before verification queue admission', async t => 
   await writeFile(join(root, 'hub/src/change.ts'), '// hub change\n');
   await git('add', '.'); await git('commit', '-qm', 'Hub change');
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland/config.toml'), `[verification]\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n`);
+  await writeFile(join(root, '.cland/config.toml'), `[verification]\ntest="true"\nlock_path=${JSON.stringify(join(root, 'suite.lock'))}\n`);
   await mkdir(join(root, 'suite.lock'));
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);

@@ -10,9 +10,19 @@ import { startDaemon, nativeProjectHub as projectHub, connectUi, clandWithEnv, k
 import { ownProcess } from './process-cleanup.ts';
 import { fixture } from './remote-fixture.ts';
 import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
+import { parseConfig, renderConfig } from '../src/init/config.ts';
 
 test('demo frames deliver a named dev commit, preserve command results and stop after restart', async t => {
   const { root, api, env, discovery, ui } = await fixture(t);
+  const configPath = join(root, '.cland/config.toml');
+  const config = parseConfig(await readFile(configPath, 'utf8'), 'demo commands');
+  const commands = { prepare: 'printf admitted-prepare', check: 'printf admitted-check', test: 'printf admitted-test' };
+  Object.assign(config.verification, commands);
+  await writeFile(configPath, renderConfig(config));
+  api.beforeCreate(async () => {
+    Object.assign(config.verification, { prepare: 'false', check: 'false', test: 'false' });
+    await writeFile(configPath, renderConfig(config));
+  });
   const made = await ui.request({ type: 'task.create', title: 'Demo', kind: 'epic' });
   const epic = (made.value as { item: { id: string } }).item.id;
   const head = execFileSync('git', ['rev-parse', 'dev'], { cwd: root, encoding: 'utf8' }).trim();
@@ -21,6 +31,12 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   assert.equal((started.value as { commit: string }).commit, head);
   assert.ok((started.value as { lease: string }).lease);
   assert.ok((started.value as { lifetimeMs: number }).lifetimeMs > 0);
+  const dir = join(root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
+  assert.deepEqual((await readLease(dir)).demo?.commands, commands);
+  const script = await readFile(join(dir, 'run.sh'), 'utf8');
+  assert.match(script, /\/bin\/sh -c 'printf admitted-check'/);
+  assert.match(script, /\/bin\/sh -c 'printf admitted-test'/);
+  assert.doesNotMatch(script, /\/bin\/sh -c 'false'/);
   const result = await ui.request({ type: 'demo.exec', epic, command: ['sh', '-c', 'git rev-parse HEAD; printf problem >&2; exit 7'] });
   assert.equal(result.ok, true, result.error);
   assert.deepEqual(result.value, { stdout: `${head}\n`, stderr: 'problem', code: 7 });
@@ -29,6 +45,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   await killDaemon(discovery.pid);
   const restarted = await startDaemon(t, root, env);
   const next = await connectUi(t, restarted.discovery);
+  assert.deepEqual((await readLease(dir)).demo?.commands, commands);
   const stopped = await next.request({ type: 'demo.stop', epic });
   assert.equal(stopped.ok, true, stopped.error);
   assert.deepEqual(api.droplets, []);

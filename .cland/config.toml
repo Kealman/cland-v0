@@ -11,6 +11,13 @@ queue = true
 batch = 4
 
 [verification]
+# cland verify runs nothing until test is set; use cland config set verification.test '<command>'.
+# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally.
+prepare = ""
+# check is the fast gate; runs first and on the host before a droplet is made.
+check = "npm run check"
+# test is the suite; its exit code decides the run.
+test = "npm test"
 # Admission budget; the legacy compatibility lease remains an additional limit.
 budget = 1
 # D27 set 2 for the v0.1.2 build; the human raised it to 4 on 2026-10-15 (ask 35ca68c2), within the same $3 daily cap.

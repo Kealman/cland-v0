@@ -1,7 +1,7 @@
 // T2: real CLI and MCP frames close during gated inspection; no worker or native process runs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectSocket, connectUi, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -13,6 +13,8 @@ import { replayAgentsRecord } from '../src/hub/agents-topic.ts';
 
 for (const [transport, change] of [['cli', 'none'], ['mcp', 'none'], ['mcp', 'role'], ['mcp', 'claim'], ['mcp', 'candidate'], ['mcp', 'reserved']] as const) test(`${transport} admission records its outcome after mid-inspection close (${change})`, async t => {
   const root = await tempProject(t), clock = new FakeClock();
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\n');
   const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
   const closed = Promise.withResolvers<void>(), completed = Promise.withResolvers<void>();
   const start = Suites.prototype.start;

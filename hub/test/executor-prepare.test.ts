@@ -96,7 +96,7 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
     const lease = await drive(machine, executor.acquire({ id: 'pinless-run' }, new Date(clock.now().getTime() + 600000).toISOString()));
     const runDir = join(root, '.cland/run/pinless-run');
     await mkdir(runDir, { recursive: true });
-    const run = { id: lease.run, cwd: root, head: key.base, mode: 'auto', log: join(runDir, 'suite.log'), result: join(runDir, 'result.json'), gate: join(runDir, 'gate') };
+    const run = { commands: { prepare: '', check: '', test: 'true' }, id: lease.run, cwd: root, head: key.base, mode: 'auto', log: join(runDir, 'suite.log'), result: join(runDir, 'result.json'), gate: join(runDir, 'gate') };
     try {
       await new DropletRun(root, env, dependencies).deliver(lease, run);
       const delivery = commands.find(command => command.includes('git checkout --detach') && command.includes('git clean'))!;

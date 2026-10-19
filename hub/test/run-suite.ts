@@ -362,22 +362,17 @@ async function humanQueue(cwd: string, selection: SuiteSelection, token: string,
   }
 }
 
-export async function runPackageSuite(mode: string, extra: string[] = [], options: { cwd?: string; lockDirs?: { hub: string; nvim: string } } = {}): Promise<number> {
-  if (!['auto', 'all', 'hub', 'nvim'].includes(mode)) throw new Error(`unknown suite: ${mode}`);
-  const force = extra.includes('--force');
-  extra = extra.filter(arg => arg !== '--force');
-  const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
-  const inherited = inheritedLease();
-  const locks = options.lockDirs ?? { hub: inherited?.dirs[0] ?? '/tmp/cland-suite.lock', nvim: inherited?.dirs[1] ?? '/tmp/cland-suite-nvim.lock' };
+/** Plan package entry points without acquiring locks or starting test processes. */
+export async function packageSuitePlan(cwd: string, mode: string, extra: string[], locks: { hub: string; nvim: string }, env: NodeJS.ProcessEnv = process.env) {
   // Explicit test targets retain the single-phase fixture/targeted-run interface.
-  let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv() ?? await selectPackageSuite(cwd, mode as SuiteRequest);
+  let selection: SuiteSelection = extra.length ? { mode: mode === 'hub' ? 'hub-only' : mode === 'nvim' ? 'nvim-only' : 'full', files: extra, reason: 'explicit test targets' } : selectionFromEnv(env) ?? await selectPackageSuite(cwd, mode as SuiteRequest);
   if (!extra.length && mode === 'all' && selection.tiers?.join(',') === 'T1,T2') {
     const { tiers: _tiers, nvimTests: _nvimTests, ...full } = selection;
     selection = { ...full, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
   }
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
-  const executor = process.env.CLAND_SUITE_EXECUTOR === 'droplet' ? 'droplet' : 'local';
-  const workers = process.env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor)).workers : Number(process.env.CLAND_SUITE_WORKERS);
+  const executor = env.CLAND_SUITE_EXECUTOR === 'droplet' ? 'droplet' : 'local';
+  const workers = env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor, env)).workers : Number(env.CLAND_SUITE_WORKERS);
   if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');
   const phases: SuiteShard[] = extra.length ? (mode === 'all' || mode === 'auto' ? ['hub', 'Neovim'] : [mode]).map(name => ({ name, targets: extra, resource: 'machine', workers })) : await packageShards(cwd, selection.mode, selection.shard, selection, { executor, workers });
   const tierPlan = await planTierReport(cwd, selection, workers, phases);
@@ -385,7 +380,19 @@ export async function runPackageSuite(mode: string, extra: string[] = [], option
   // Reserve both locks jointly before a full run starts. Taking Neovim later
   // while holding machine would deadlock a live legacy Neovim-first waiter.
   // A single ticket/lease spans both phases; single-phase admission is unchanged.
-  let lockDirs = extra.length && mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
+  const lockDirs = extra.length && mode === 'hub' ? [locks.hub] : [locks.hub, locks.nvim];
+  return { selection, phases, tierPlan, suites, lockDirs };
+}
+
+export async function runPackageSuite(mode: string, extra: string[] = [], options: { cwd?: string; lockDirs?: { hub: string; nvim: string } } = {}): Promise<number> {
+  if (!['auto', 'all', 'hub', 'nvim'].includes(mode)) throw new Error(`unknown suite: ${mode}`);
+  const force = extra.includes('--force');
+  extra = extra.filter(arg => arg !== '--force');
+  const cwd = options.cwd ?? fileURLToPath(new URL('../../', import.meta.url));
+  const inherited = inheritedLease();
+  const locks = options.lockDirs ?? { hub: inherited?.dirs[0] ?? '/tmp/cland-suite.lock', nvim: inherited?.dirs[1] ?? '/tmp/cland-suite-nvim.lock' };
+  const { selection, phases, tierPlan, suites, lockDirs: plannedLocks } = await packageSuitePlan(cwd, mode, extra, locks);
+  let lockDirs = plannedLocks;
   const interruption: Interruption = { signal: null };
   // Keep the first signal latched through final cleanup, after runSuite evaluates its return.
   const handlers = (['SIGINT', 'SIGTERM'] as const).map(signal => {

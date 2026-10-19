@@ -10,8 +10,7 @@ import { appendFile, mkdir, readFile, writeFile, rename, stat, open } from 'node
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
-import { verificationCommands } from '../verification-commands.ts';
-import { suiteCheckCommand } from '../suite-check.ts';
+import { verificationCommands, recordedCommands } from '../verification-commands.ts';
 import { planTierReport, tierReport, tierPlanWorkers, timingReceipts, type TierPlan, type SuiteDryRun } from '../suite-tier-report.ts';
 import { durationBudgetReport, durationBudgetSummary, type DurationBudgetContext } from '../suite-duration-budget.ts';
 import { baselineTimings, durationBudgetContext, durationHistory } from '../suite-duration-context.ts';
@@ -39,6 +38,7 @@ import { occasionSelection } from '../verification-occasion.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  commands?: import('../verification-commands.ts').VerificationCommands;
   batch?: import('../protocol.ts').BatchSuite;
   sequence?: number;
   health?: MachineHealth;
@@ -89,7 +89,7 @@ const KEY = 'suite-jobs';
 const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion'>) => input.actor?.sessionId ?? (input.occasion === 'soak' ? 'nightly-soak' : 'human');
 const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
-const runRef = (job: SuiteJob): RunRef => ({ ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
+const runRef = (job: SuiteJob): RunRef => ({ ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
   return `lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
 }
@@ -381,6 +381,7 @@ export class Suites {
     // Validate the candidate as before; only the hub owns execution policy.
     if (input.cwd !== this.#root) await suiteLimits(input.cwd, executor, this.#env);
     const limits = config ? { testTimeoutMs: config.verification.testTimeoutMs, stallTimeoutMs: config.verification.stallTimeoutMs, loadGateWorkers: config.verification.loadGateWorkers, workers: executor === 'droplet' ? config.verification.droplet.workers ?? config.verification.workers : config.verification.workers } : await suiteLimits(this.#root, executor, this.#env);
+    const commands = await verificationCommands(input.cwd, this.#root, this.#env);
     const workers = input.workers ?? limits.workers;
     if (!input.dryRun && this.#jobs.some(job => this.#active(job) && suiteOwner(job) === suiteOwner(input))) {
       // A retry needs only the current head, not another expensive candidate inspection.
@@ -430,8 +431,8 @@ export class Suites {
     if (existing) return existing;
     await mkdir(dir, { recursive: true, mode: 0o700 });
     const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
-    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, input.size, cacheExecutor, input.occasion) : undefined;
-    const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, input.size)?.executor === 'local'
+    const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
+    const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, commands, input.size)?.executor === 'local'
       ? 'explicit --executor droplet requires a droplet green; cached green ran locally' : undefined;
 
     // Older candidate runners and fixture packages remain usable. Coverage is
@@ -440,10 +441,10 @@ export class Suites {
     authorize();
     const workerPolicy = config ? { local: config.verification.workers, droplet: config.verification.droplet.workers ?? config.verification.workers } : { local: (await suiteLimits(this.#root, 'local', this.#env)).workers, droplet: (await suiteLimits(this.#root, 'droplet', this.#env)).workers };
     const fallbackWorkers = input.workers ?? workerPolicy.local;
-    const job: SuiteJob = { ...input, ...(input.occasion === 'soak' && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
+    const job: SuiteJob = { ...input, commands, ...(input.occasion === 'soak' && config ? { config: structuredClone(config) } : {}), submissionKey: submissionKey(input, head), tierPlan, ...(budgetBase ? { durationBase: budgetBase } : {}), limits, workerPolicy, ...(input.workers !== undefined ? { workersOverride: input.workers } : {}), followsConfig: input.executor === undefined, workers, fallbackWorkers, executor, requestedExecutor: executor, requireRemote: executor === 'droplet' && (input.executor === 'droplet' || !(config?.verification.localFallback ?? settings.localFallback ?? true)), integrated: input.integrated === true && branch === 'dev', queued: this.#clock.now().toISOString(), priority: input.priority ?? Number.MAX_SAFE_INTEGER, state: 'queued', locks: settings.locks ?? ['/tmp/cland-suite.lock', '/tmp/cland-suite-nvim.lock'], selection, tree, id, head, branch, log: join(dir, 'suite.log'), result: join(dir, 'result.json'), gate: join(dir, 'ready'), pid: null, started: null, outcome: null, artifact: null, reported: false, error: null };
     if (cacheBypass) job.cacheBypass = cacheBypass;
     // Persist the complete request before acknowledging it. No waiting worker exists.
-    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
+    await writeFile(job.log, `Suite ${id} · ${input.mode}\n${describeSelection(selection)}\nCommands: check ${commands.check || 'not set'} · test ${commands.test}\nPrepare: ${commands.prepare || 'not set'}\nWorktree ${input.cwd}\nBranch ${branch}\nHead ${head}\nWorkers ${workers} · source ${input.workers !== undefined ? 'explicit --workers' : 'hub config'}${input.size ? ` · size ${input.size}` : ''}\nQueued ${job.queued}\n`, { mode: 0o600 });
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
@@ -543,10 +544,10 @@ export class Suites {
     const log = await readFile(artifact?.path ?? stage.log, 'utf8').catch(() => '');
     return { run: stage.id, tests: [...new Set(timingReceipts(log).map(test => `${test.file}::${test.name}`))].sort() };
   }
-  #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
+  #cached(tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => !j.batch?.diagnostic && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
+    const job = this.#jobs.findLast(j => j.commands?.prepare === commands.prepare && j.commands.check === commands.check && j.commands.test === commands.test && !j.batch?.diagnostic && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
@@ -765,6 +766,8 @@ export class Suites {
     if (child?.pid && child.exitCode === null && child.signalCode === null) try { process.kill(-child.pid, 'SIGTERM'); } catch {}
   }
   async #hostGate(job: SuiteJob): Promise<void> {
+    const { check: command } = recordedCommands(job);
+    if (!command) return;
     if (this.#options.dropletServices?.hostGate) {
       job.hostGate = await this.#options.dropletServices.hostGate(runRef(job));
       this.#save(job);
@@ -772,7 +775,6 @@ export class Suites {
       return;
     }
     const tree = await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head);
-    const { check: command } = verificationCommands(job, await suiteCheckCommand(job.cwd));
     await appendFile(job.log, `\nHost gate: ${command}\n`);
     const env = machineEnv(this.#options.env); delete env.NODE_TEST_CONTEXT; delete env.CLAND_SUITE_LEASE;
     const fd = await open(job.log, 'a');

@@ -219,7 +219,7 @@ const ledger = async (state: string): Promise<Ledger> => JSON.parse(await readFi
 test('invalid timeout margins refuse hub startup with both values', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime="15m"\nrun_timeout="6m"');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nlifetime="15m"\nrun_timeout="6m"');
   await assert.rejects(projectHub(t, root), /lifetime 15m.*run_timeout 6m/);
 });
 

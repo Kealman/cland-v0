@@ -4829,6 +4829,13 @@
       "owner": "E-677",
       "legacy": true
     },
+    "hub/test/suite-recovery.test.ts::hub restart preserves the submitted command lines while its worker finishes": {
+      "seconds": 10,
+      "owner": "E-677",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "T-666: actual hub restart with a detached command worker and separate completion/report receipts. Linux landing batch A-6124 measured 5.036 s against the legacy 5 s new-identity gate; allow native lifecycle and host-load variance within the T3 per-test budget."
+    },
     "hub/test/suite-remote-process.test.ts::finished remote runs free both budget slots despite failed spend settlement": {
       "seconds": 12.42076,
       "reason": "Unchanged remote process proof holds provider creation and corrupts spend settlement until both terminal receipts and waiter admissions are observed; focused Mac 11.514 s.",
