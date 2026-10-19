@@ -1544,60 +1544,61 @@ export class Dispatcher {
             }
             return answer({ subscribed: true });
         }
+        const control = this.#options.control;
+        if (!control) {
+          peer.send({ type: 'result', id: frame.id, ok: false, error: 'this hub is not serving a project: no status or stop here' });
+          return;
+        }
+        switch (frame.type) {
+          case 'models.list':
+            later('models.list', this.#models!.list(frame.harness, frame.account, frame.refresh).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+            break;
+          case 'account.poll':
+            later('account.poll', (this.#accountPoller?.refresh() ?? readAccounts(this.#options.env).then(registry => core.accountLimits.list(registry))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+            break;
+          case 'account.list':
+            later('account.list', readAccounts(this.#options.env).then(registry => ({ type: 'result', id: frame.id, ok: true, value: core.accountLimits.list(registry) }), error => Dispatcher.#failure(frame.id, error)));
+            break;
+          case 'suite.queue':
+            if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
+            later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value: { ...value, batch: this.#batches?.snapshot() ?? null } }), error => Dispatcher.#failure(frame.id, error)));
+            break;
+          case 'hub.subscriptions':
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
+            break;
+          case 'merge.queue':
+            later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
+            break;
+          case 'hub.status': {
+            const status = (): HubFrame => {
+              const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : undefined;
+              const base = control.status();
+              const tracker = this.#options.tracker;
+              return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], covers: this.#suites?.covers() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+            };
+            if (frame.flushLogs === true && control.flushLogs) {
+              const resumed = this.#guard.resumer(frame.type, client);
+              const flushing = control.flushLogs();
+              let timer: NodeJS.Timeout;
+              const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('log drain exceeded 5000 ms')), 5000); timer.unref(); });
+              const draining = Promise.race([flushing, deadline]);
+              return later(frame.type, draining.then(() => resumed(() => { clearTimeout(timer); return status(); })).catch(err => resumed(() => { clearTimeout(timer); return Dispatcher.#failure(frame.id, err); })));
+            }
+            peer.send(status());
+            break;
+          }
+          case 'hub.reload':
+            later('hub.reload', (control.reload ? control.reload(this.#guard.resumer(frame.type, client)) : Promise.reject(new Error('reload is unavailable'))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
+            break;
+          case 'hub.stop':
+            log({ event: 'stop-requested', edge: transport.edge });
+            control.stop();
+            peer.send({ type: 'result', id: frame.id, ok: true, value: { stopping: true } });
+            break;
+        }
       } catch (err) {
         peer.send(Dispatcher.#failure(frame.id, err));
         return;
-      }
-      const control = this.#options.control;
-      if (!control) {
-        peer.send({ type: 'result', id: frame.id, ok: false, error: 'this hub is not serving a project: no status or stop here' });
-        return;
-      }
-      switch (frame.type) {
-        case 'models.list':
-          later('models.list', this.#models!.list(frame.harness, frame.account, frame.refresh).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
-          break;
-        case 'account.poll':
-          later('account.poll', (this.#accountPoller?.refresh() ?? readAccounts(this.#options.env).then(registry => core.accountLimits.list(registry))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
-          break;
-        case 'account.list':
-          later('account.list', readAccounts(this.#options.env).then(registry => ({ type: 'result', id: frame.id, ok: true, value: core.accountLimits.list(registry) }), error => Dispatcher.#failure(frame.id, error)));
-          break;
-        case 'suite.queue':
-          if (!this.#suites) return peer.send(Dispatcher.#failure(frame.id, new Error('no verification scheduler')));
-          later('suite.queue', this.#suites.queue().then(value => ({ type: 'result', id: frame.id, ok: true, value: { ...value, batch: this.#batches?.snapshot() ?? null } }), error => Dispatcher.#failure(frame.id, error)));
-          break;
-        case 'hub.subscriptions':
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { subscriptions: core.subscriptions().map(s => ({ ...s, subscriber: core.subscriptionOwner(s) })) } });
-          break;
-        case 'merge.queue':
-          later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
-          break;
-        case 'hub.status': {
-          const status = (): HubFrame => {
-            const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : undefined;
-            const base = control.status();
-            const tracker = this.#options.tracker;
-            return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], covers: this.#suites?.covers() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
-          };
-          if (frame.flushLogs === true && control.flushLogs) {
-            const resumed = this.#guard.resumer(frame.type, client);
-            let timer: NodeJS.Timeout;
-            const deadline = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('log drain exceeded 5000 ms')), 5000); timer.unref(); });
-            const draining = Promise.race([control.flushLogs(), deadline]);
-            return later(frame.type, draining.then(() => resumed(() => { clearTimeout(timer); return status(); })).catch(err => resumed(() => { clearTimeout(timer); return Dispatcher.#failure(frame.id, err); })));
-          }
-          peer.send(status());
-          break;
-        }
-        case 'hub.reload':
-          later('hub.reload', (control.reload ? control.reload(this.#guard.resumer(frame.type, client)) : Promise.reject(new Error('reload is unavailable'))).then(value => ({ type: 'result', id: frame.id, ok: true, value }), error => Dispatcher.#failure(frame.id, error)));
-          break;
-        case 'hub.stop':
-          log({ event: 'stop-requested', edge: transport.edge });
-          peer.send({ type: 'result', id: frame.id, ok: true, value: { stopping: true } });
-          control.stop();
-          break;
       }
     };
 
