@@ -12,10 +12,10 @@ assignee: null
 parent: E-613
 blocked_by:
   - T-841
-topic: null
+topic: topic-614
 branch: t/T-844-setup-starts-the-hub-and-launches-aide-1
 created: 2026-10-19T06:34:13.450Z
-updated: 2026-10-19T15:48:04.190Z
+updated: 2026-10-19T15:48:44.822Z
 ---
 
 ## Summary
@@ -46,3 +46,9 @@ Tracer bullet 4, the hub half. Setup starts this project's hub, which outlives s
 - [ ] C3. A second run with `aide-1` running reports `hub ok` and `aide ok` and launches nothing, while a stopped `aide-1` is resumed, not launched afresh (T1).
 - [ ] C4. A real hub served in the test process (`projectHub`) receives `session.launch` for `aide-1` with the brief and lists it running (T2, in-process fake adapter).
 - [ ] C5. `--no-aide` reports both steps `skip` and starts nothing, and without a terminal the aide step is `open` and nothing is launched (T1).
+
+## Comments
+
+### impl-844 · 2026-10-19T15:48:44.822Z
+
+Seams follow C1/C3/C5 (injected hub client), C2 (project-kind on scratch Git repo), C4 (projectHub socket protocol with in-process fake adapter). Hub/Aide remain separate ordered step modules. Avoiding T-874-owned favourite and launch helper.

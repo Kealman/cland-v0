@@ -3,7 +3,7 @@ id: T-834
 kind: task
 title: Doctor requires a harness only when a role uses it, and `gh` only with a `github` remote
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-578
 branch: t/T-834-doctor-requires-a-harness-only-when-a
 created: 2026-10-19T06:34:12.522Z
-updated: 2026-10-19T13:27:12.865Z
+updated: 2026-10-19T15:49:33.850Z
 ---
 
 ## Summary
