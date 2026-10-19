@@ -7,14 +7,18 @@ import { GENERAL, type HubCore, type TopicNotice } from './core.ts';
 import type { SuiteJob } from './suites.ts';
 
 type Green = { run: string; head: string; tree: string; log: { artifact: string; path: string } };
-export type QuarantineProposal = { identity: string; run: string; tree: string; lastGreen: Green; log: { artifact: string; path: string } };
+export type FlakeObservation = { batch: string; run: string; tree: string; log: { artifact: string; path: string }; rerun: Green };
+export type QuarantineProposal = { identity: string; run: string; tree: string; log: { artifact: string; path: string } } & ({ lastGreen: Green } | { observations: FlakeObservation[] });
 
 /** A proposal is evidence for the Coordinator, never an automatic manifest edit. */
 export function quarantineProposal(proposal: QuarantineProposal): TopicNotice {
+  const evidence = 'observations' in proposal
+    ? proposal.observations.map(observation => `Batch ${observation.batch} · failed run ${observation.run} · tree ${observation.tree}\nFailure log ${observation.log.artifact}: ${observation.log.path}\nGreen rerun ${observation.rerun.run} · tree ${observation.rerun.tree}\nRerun log ${observation.rerun.log.artifact}: ${observation.rerun.log.path}`).join('\n')
+    : `Last green ${proposal.lastGreen.run} · head ${proposal.lastGreen.head}\nLast green log ${proposal.lastGreen.log.artifact}: ${proposal.lastGreen.log.path}\nNo code change since its last green.`;
   return {
     id: `quarantine-proposal:${createHash('sha256').update(`${proposal.run}:${proposal.identity}`).digest('hex')}`,
-    kind: 'report', to: ['coordinator'], detail: { event: 'quarantine-proposal', ...proposal },
-    text: `quarantine proposal ${proposal.identity}\nTree ${proposal.tree} · run ${proposal.run}\nLast green ${proposal.lastGreen.run} · head ${proposal.lastGreen.head}\nLast green log ${proposal.lastGreen.log.artifact}: ${proposal.lastGreen.log.path}\nLog ${proposal.log.artifact}: ${proposal.log.path}\nNo code change since its last green. Coordinator: establish two independent failure receipts and five isolated greens, then file an owner item with a non-TODO reason and expiry within seven days before adding quarantine.json.`,
+    kind: 'observations' in proposal ? 'question' : 'report', to: ['coordinator'], detail: { event: 'quarantine-proposal', ...proposal },
+    text: `quarantine proposal ${proposal.identity}\nTree ${proposal.tree} · run ${proposal.run}\n${evidence}\nLog ${proposal.log.artifact}: ${proposal.log.path}\nCoordinator: establish two independent failure receipts and five isolated green repetitions, then file an owner item with a non-TODO reason and expiry within seven days before adding quarantine.json.`,
   };
 }
 

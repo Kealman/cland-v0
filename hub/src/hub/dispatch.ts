@@ -220,7 +220,7 @@ export class Dispatcher {
     this.#batches = root && this.#suites && this.#merges && this.#mergeQueue ? new MergeBatches(options.core.store, this.#suites, options.core.clock, {
       changed: () => options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }),
       entries: () => this.#mergeQueue!.entries(),
-      build: (id, members) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository)),
+      build: (id, members, base) => this.#worktrees!.serial(() => prepareMergeBatch(root, id, members, options.env, options.batchRepository, base)),
       cleanup: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.remove(candidate) : removeMergeBatch(root, candidate, options.env)),
       checkout: candidate => this.#worktrees!.serial(() => options.batchRepository ? options.batchRepository.checkout(candidate) : checkoutMergeBatch(root, candidate, options.env)),
       isLanded: entry => options.tracker!.summary(entry.item)?.state === 'closed' && !!options.tracker!.mergeReceipt(entry.item),
@@ -240,12 +240,17 @@ export class Dispatcher {
         }
       },
       drop: (entry, reason) => this.#mergeQueue!.drop(entry, reason),
+      notice: notice => { if (!options.core.noticeTo(GENERAL.id, notice)) throw new Error('batch notice topic unavailable'); },
       report: (batch, text) => {
+        const phase = batch.failed ? 'blocked' : batch.diagnosis ? 'diagnosis' : 'suite';
+        const selected = batch.diagnosis?.selected === undefined ? batch.candidate : batch.diagnosis.jobs[batch.diagnosis.selected]?.candidate;
+        const detail = { event: 'merge-batch-result', batch: batch.id, members: batch.members.map(e => e.item), tree: selected?.tree ?? null,
+          ...(batch.diagnosis ? { diagnosis: batch.diagnosis } : {}) };
         for (const entry of batch.members) {
           const topic = options.tracker!.summary(entry.item)?.topic ?? AGENTS.id;
-          options.core.noticeTo(topic, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${entry.item}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text, detail: { event: 'merge-batch-result', batch: batch.id, members: batch.members.map(e => e.item), tree: batch.candidate?.tree ?? null } });
+          options.core.noticeTo(topic, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase}:${entry.item}`, kind: 'report', to: [entry.by.name, `lead ${entry.item}`], text, detail });
         }
-        options.core.noticeTo(AGENTS.id, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}`, kind: 'report', text });
+        options.core.noticeTo(AGENTS.id, { id: `merge-batch:${batch.id}:${batch.run ?? 'blocked'}:${phase}`, kind: 'report', text, detail });
       },
     }, () => options.projectConfig?.().merge ?? { queue: false, batch: 3, batchWaitMs: 600_000 }) : null;
     void this.#mergeQueueReady.then(() => { if (!this.#closed) this.#batches?.start(); });

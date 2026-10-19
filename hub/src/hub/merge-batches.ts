@@ -3,20 +3,27 @@ import { randomUUID } from 'node:crypto';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { Store } from './store.ts';
 import type { Clock, ClockTimer } from './clock.ts';
-import type { Suites } from './suites.ts';
+import type { Suites, SuiteJob } from './suites.ts';
+import { failingTests } from './shared-defects.ts';
+import type { TopicNotice } from './core.ts';
+import { recordBatchFlakes } from './batch-flakes.ts';
 
 export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };
-export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; failed?: string; completed?: string[]; reportedRun?: string };
+type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
+export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
+export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; files: string[]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
+export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; failed?: string; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 export type BatchBoundary = {
   changed?(): void;
   entries(): MergeQueueEntry[];
-  build(id: string, members: MergeQueueEntry[]): Promise<BatchCandidate>;
+  build(id: string, members: MergeQueueEntry[], base?: string): Promise<BatchCandidate>;
   land(entry: MergeQueueEntry, candidate: BatchCandidate): Promise<void>;
   drop(entry: MergeQueueEntry, reason: string): void;
   cleanup(candidate: BatchCandidate): Promise<void>;
   checkout(candidate: BatchCandidate): Promise<void>;
   isLanded(entry: MergeQueueEntry): boolean;
   report(batch: MergeBatch, text: string): void;
+  notice(notice: TopicNotice): void;
 };
 export class BatchRebuild extends Error {}
 
@@ -24,6 +31,17 @@ export class BatchRefusal extends Error {
   readonly entry: MergeQueueEntry;
   readonly reason: string;
   constructor(entry: MergeQueueEntry, reason: string) { super(reason); this.entry = entry; this.reason = reason; }
+}
+/** Executor interruption and absence of an observed test failure cannot prove a red alternative. */
+export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'cancelled' | 'requesterDied' | 'timedOut' | 'cached'>, log: string): DiagnosticResult {
+  if (job.cancelled || job.requesterDied || job.timedOut || job.cached || job.state !== 'finished' || !job.outcome
+    || !Number.isInteger(job.outcome.code) || [124, 130, 137, 143].includes(job.outcome.code)
+    || /cancelled|abandon|unknown|remote machine lost|worker disappeared|without an exit receipt|lifetime expired/i.test(job.outcome?.cause ?? '')) {
+    return { result: 'inconclusive', reason: job.outcome?.cause || 'aborted or unavailable worker result' };
+  }
+  if (job.outcome.code === 0) return { result: 'green' };
+  try { if (failingTests(log).length) return { result: 'red' }; } catch { /* malformed evidence is inconclusive */ }
+  return { result: 'inconclusive', reason: 'no failing-test receipt' };
 }
 export class MergeBatches {
   readonly store: Store;
@@ -62,8 +80,8 @@ export class MergeBatches {
         const batch = this.snapshot();
         if (!(error instanceof BatchRefusal || error instanceof BatchRebuild) || !batch) throw error;
         if (error instanceof BatchRefusal) this.boundary.drop(error.entry, error.reason);
-        if (batch.candidate) await this.boundary.cleanup(batch.candidate);
-        const members = batch.members.filter(entry => (!(error instanceof BatchRefusal) || entry.item !== error.entry.item) && !batch.completed?.includes(entry.item) && !this.boundary.isLanded(entry));
+        await this.#cleanup(batch);
+        const members = batch.members.filter(entry => (!(error instanceof BatchRefusal) || entry.item !== error.entry.item) && !batch.diagnosis?.excluded?.includes(entry.item) && !batch.completed?.includes(entry.item) && !this.boundary.isLanded(entry));
         this.#save(members.length ? { id: randomUUID(), members } : null);
         if (!members.length) return;
       }
@@ -79,12 +97,13 @@ export class MergeBatches {
       batch = { id: randomUUID(), members: entries };
       this.#save(batch);
     }
-    const admitted = this.suites.status().find(job => job.id === batch!.run || job.batch?.id === batch!.id);
+    const admitted = this.suites.status().find(job => job.id === batch!.run || job.batch?.id === batch!.id && !job.batch.diagnostic);
     if (admitted && !batch.run) { batch.run = admitted.id; this.#save(batch); }
     // A cancellation cannot replace the candidate checkout under a live worker.
-    if (admitted && !admitted.reported) return;
+    if (admitted && !admitted.reported || this.suites.status().some(job => job.batch?.id === batch!.id && !job.reported)) return;
+    if (batch.diagnosis?.unresolved) { await this.#unresolved(batch); return; }
     for (const entry of batch.members) {
-      if (batch.completed?.includes(entry.item) || this.boundary.isLanded(entry)) continue;
+      if (batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry)) continue;
       if (!this.boundary.entries().some(current => current.item === entry.item && current.head === entry.head && current.enqueued === entry.enqueued)) throw new BatchRefusal(entry, 'queued request changed or cancelled');
     }
     if (batch.failed) return;
@@ -95,7 +114,7 @@ export class MergeBatches {
     if (this.#closed) return;
     if (!batch.run) {
       // The durable batch id binds a crash between Suites admission and this checkpoint.
-      const prior = this.suites.status().find(job => job.batch?.id === batch!.id);
+      const prior = this.suites.status().find(job => job.batch?.id === batch!.id && !job.batch.diagnostic);
       if (!prior) await this.boundary.checkout(batch.candidate);
       const run = prior ?? await this.suites.start({ mode: 'all', cwd: batch.candidate.cwd, topic: 'agents', to: [],
         actor: null, occasion: 'batch', batch: { id: batch.id, members: batch.members }, priority: 0, fresh: true }, () => {});
@@ -109,23 +128,150 @@ export class MergeBatches {
       this.boundary.report(batch, `batch ${batch.id}: ${batch.members.map(e => e.item).join(', ')}; tree ${batch.candidate.tree}; tiers T1, T3; wall ${job.runMs ?? 0} ms; exit ${job.outcome.code}\n${batch.candidate.budgetLines.join('\n')}`);
       batch.reportedRun = job.id; this.#save(batch);
     }
-    if (job.outcome.code !== 0) { batch.failed = `suite ${job.id} failed`; this.#save(batch); return; }
+    const evidence = await this.suites.receipt(job.id);
+    const original = diagnosticResult(evidence.job, evidence.log);
+    if (original.result === 'inconclusive') {
+      const artifact = this.store.resolveArtifact(evidence.job.artifact!);
+      if (!artifact) throw new Error('original batch log artifact unavailable');
+      const receipt = { run: job.id, tree: job.tree, log: { artifact: artifact.id, path: artifact.path },
+        seconds: job.runMs == null ? null : job.runMs / 1000, costUsd: evidence.job.machine?.costUsd ?? null, ...original };
+      this.#hold(batch, `original ${job.id} inconclusive: ${original.reason}`,
+        `Original run ${job.id}; tree ${job.tree}; seconds ${receipt.seconds ?? 'unavailable'}; cost ${receipt.costUsd == null ? 'pending confirmation' : '$' + receipt.costUsd.toFixed(4)}; log ${artifact.id}: ${artifact.path}`,
+        { event: 'merge-batch-inconclusive', receipt });
+      return;
+    }
+    let candidate: BatchCandidate | undefined = batch.candidate;
+    if (job.outcome.code !== 0) {
+      if (batch.members.length === 1) {
+        this.boundary.drop(batch.members[0]!, `merge-bisected: ${failingTests(evidence.log).join(', ')}`);
+        await this.#cleanup(batch); this.#save(null); return;
+      }
+      candidate = await this.#diagnose(batch);
+      if (!candidate) return;
+    }
     for (let index = 0; index < batch.members.length; index++) {
       const entry = batch.members[index]!;
-      if (batch.completed?.includes(entry.item) || this.boundary.isLanded(entry)) continue;
-      const remaining = batch.members.slice(index).filter(e => !this.boundary.isLanded(e));
+      if (batch.completed?.includes(entry.item) || batch.diagnosis?.excluded?.includes(entry.item) || this.boundary.isLanded(entry)) continue;
+      const remaining = batch.members.slice(index).filter(e => !batch!.diagnosis?.excluded?.includes(e.item) && !this.boundary.isLanded(e));
       const current = await this.boundary.build(batch.id, remaining);
       if (this.#closed) return;
-      if (current.tree !== batch.candidate.tree) {
-        await this.boundary.cleanup(batch.candidate);
+      if (current.tree !== candidate.tree) {
+        await this.#cleanup(batch);
         batch = { id: randomUUID(), members: remaining, candidate: current };
         this.#save(batch); return;
       }
       await this.boundary.land(entry, current);
       (batch.completed ??= []).push(entry.item); this.#save(batch);
     }
-    await this.boundary.cleanup(batch.candidate);
+    await this.#cleanup(batch);
     this.#save(null);
+  }
+  async #cleanup(batch: MergeBatch): Promise<void> {
+    const candidates = [batch.candidate, ...batch.diagnosis?.jobs.map(job => job.candidate) ?? []].filter((candidate): candidate is BatchCandidate => !!candidate);
+    for (const candidate of new Map(candidates.map(c => [c.cwd, c])).values()) await this.boundary.cleanup(candidate);
+  }
+  async #diagnose(batch: MergeBatch): Promise<BatchCandidate | undefined> {
+    if (!batch.diagnosis) {
+      const { job, log } = await this.suites.receipt(batch.run!);
+      const failures = failingTests(log);
+      if (!failures.length) { batch.failed = `suite ${batch.run} failed without identifiable test files`; this.#save(batch); return; }
+      const artifact = this.store.resolveArtifact(job.artifact!);
+      if (!artifact) throw new Error('batch failure log artifact unavailable');
+      batch.diagnosis = { failure: { run: job.id, tree: batch.candidate!.tree, log: { artifact: artifact.id, path: artifact.path } },
+        failures, files: [...new Set(failures.map(identity => identity.split('::')[0]!))], jobs: [] };
+      this.#save(batch);
+    }
+    const diagnosis = batch.diagnosis;
+    for (let index = 0; index < batch.members.length; index++) {
+      let job = diagnosis.jobs[index];
+      if (!job) {
+        const omitted = batch.members[index]!.item;
+        const key = `omit-${index}`;
+        job = { key, omitted, candidate: await this.boundary.build(`${batch.id}-${key}`, batch.members.filter(e => e.item !== omitted), batch.candidate!.base) };
+        diagnosis.jobs.push(job); this.#save(batch);
+      }
+      if (!await this.#fileJob(batch, job)) return;
+    }
+    const greens = diagnosis.jobs.filter(job => job.omitted && job.result === 'green');
+    if (greens.length !== 1) {
+      let repeat = diagnosis.jobs[batch.members.length];
+      if (!repeat) { repeat = { key: 'repeat', candidate: batch.candidate! }; diagnosis.jobs.push(repeat); this.#save(batch); }
+      if (!await this.#fileJob(batch, repeat)) return;
+      if (repeat.result === 'green' && recordBatchFlakes(this.store, batch.id, diagnosis.failures, await this.suites.receipt(batch.run!), await this.suites.receipt(repeat.run!), notice => this.boundary.notice(notice))) {
+        diagnosis.selected = diagnosis.jobs.indexOf(repeat);
+        if (!diagnosis.reported) {
+          this.boundary.report(batch, `batch ${batch.id}: flaky failing files; landing tree ${repeat.candidate.tree}\n${this.#fileReport(diagnosis)}`);
+          diagnosis.reported = true; this.#save(batch);
+        }
+        return repeat.candidate;
+      }
+      diagnosis.unresolved = true; this.#save(batch); await this.#unresolved(batch); return;
+    }
+    const green = greens[0]!;
+    diagnosis.selected = diagnosis.jobs.indexOf(green); diagnosis.excluded = [green.omitted!]; this.#save(batch);
+    const culprit = batch.members.find(entry => entry.item === green.omitted)!;
+    if (this.boundary.entries().some(entry => entry.item === culprit.item)) this.boundary.drop(culprit, `merge-bisected: ${diagnosis.failures.join(', ')}`);
+    if (!diagnosis.reported) {
+      this.boundary.report(batch, `batch ${batch.id}: merge-bisected ${culprit.item}\n${this.#fileReport(diagnosis)}`);
+      diagnosis.reported = true; this.#save(batch);
+    }
+    return green.candidate;
+  }
+  async #unresolved(batch: MergeBatch): Promise<void> {
+    const diagnosis = batch.diagnosis!;
+    const text = `batch ${batch.id}: merge-bisect-unresolved: ${diagnosis.failures.join(', ')}\nBatch run ${batch.run}; tree ${batch.candidate!.tree}\n${this.#fileReport(diagnosis)}`;
+    this.store.transaction(() => {
+      for (const entry of batch.members) if (this.boundary.entries().some(current => current.item === entry.item)) this.boundary.drop(entry, `merge-bisect-unresolved: ${diagnosis.failures.join(', ')}`);
+      if (!diagnosis.reported) {
+        this.boundary.report(batch, text);
+        this.boundary.notice({ id: `merge-bisect-unresolved:${batch.id}`, kind: 'report', to: ['coordinator'], text,
+          detail: { event: 'merge-bisect-unresolved', batch: batch.id, run: batch.run, diagnosis } });
+        diagnosis.reported = true;
+      }
+      this.#save(batch);
+    });
+    await this.#cleanup(batch); this.#save(null);
+  }
+  #fileReport(diagnosis: BatchDiagnosis): string {
+    return `Failure log ${diagnosis.failure.log.artifact}: ${diagnosis.failure.log.path}\n`
+      + diagnosis.jobs.map(job => `file job ${job.run}: ${diagnosis.files.join(', ')}; tree ${job.candidate.tree}; seconds ${job.seconds ?? 'unavailable'}; cost ${job.costUsd == null ? 'pending confirmation' : '$' + job.costUsd.toFixed(4)}; log ${job.log?.artifact ?? 'unavailable'}: ${job.log?.path ?? 'unavailable'}; ${job.result ?? 'pending'}${job.reason ? ': ' + job.reason : ''}`).join('\n');
+  }
+  #holdDiagnostic(batch: MergeBatch, job: FileJob): void {
+    this.#hold(batch, `diagnostic ${job.run} inconclusive: ${job.reason}`, this.#fileReport(batch.diagnosis!),
+      { event: 'merge-diagnostic-inconclusive', diagnosis: batch.diagnosis });
+  }
+  #hold(batch: MergeBatch, reason: string, evidence: string, detail: Record<string, unknown>): void {
+    this.store.transaction(() => {
+      batch.failed = reason;
+      const text = `batch ${batch.id} held: ${reason}\nCoordinator: diagnose the aborted run before recovering this batch; no member has been blamed or refused.\n${evidence}`;
+      this.boundary.notice({ id: `merge-inconclusive:${batch.id}`, kind: 'report', to: ['coordinator'], text, detail: { ...detail, batch: batch.id } });
+      this.boundary.report(batch, text); this.#save(batch);
+    });
+  }
+  async #fileJob(batch: MergeBatch, job: FileJob): Promise<boolean> {
+    if (job.result === 'inconclusive') { this.#holdDiagnostic(batch, job); return false; }
+    if (job.result) return true;
+    if (!job.run) {
+      const prior = this.suites.status().find(run => run.batch?.id === batch.id && run.batch.diagnostic?.key === job.key);
+      if (!prior) await this.boundary.checkout(job.candidate);
+      if (this.#closed) return false;
+      const run = prior ?? await this.suites.start({ mode: 'all', cwd: job.candidate.cwd, topic: 'agents', to: [], actor: null,
+        batch: { id: batch.id, members: batch.members, diagnostic: { key: job.key, files: batch.diagnosis!.files } }, priority: 0, fresh: true }, () => {});
+      if (!('id' in run)) throw new Error('file job needs an admitted suite');
+      job.run = run.id; this.#save(batch);
+    }
+    const status = this.suites.status().find(run => run.id === job.run);
+    if (!status?.reported || this.#closed) return false;
+    const { job: receipt, log } = await this.suites.receipt(job.run);
+    if (receipt.tree !== job.candidate.tree || receipt.head !== job.candidate.head) throw new Error('file job does not match its prepared candidate');
+    Object.assign(job, diagnosticResult(receipt, log));
+    job.seconds = receipt.runMs == null ? null : receipt.runMs / 1000; job.costUsd = receipt.machine?.costUsd ?? null;
+    const artifact = this.store.resolveArtifact(receipt.artifact!);
+    if (!artifact) throw new Error('file job log artifact unavailable');
+    job.log = { artifact: artifact.id, path: artifact.path };
+    this.#save(batch);
+    if (job.result === 'inconclusive') { this.#holdDiagnostic(batch, job); return false; }
+    return true;
   }
   async close(): Promise<void> {
     this.#closed = true;

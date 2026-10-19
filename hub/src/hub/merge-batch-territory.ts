@@ -16,14 +16,14 @@ export type BatchRepository = {
   remove(candidate: BatchCandidate): Promise<void>;
 };
 
-export async function prepareMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository): Promise<BatchCandidate> {
+export async function prepareMergeBatch(root: string, id: string, members: MergeQueueEntry[], env: NodeJS.ProcessEnv = process.env, provider?: BatchRepository, pinnedBase?: string): Promise<BatchCandidate> {
   const repository = provider ?? { git: (args: string[], input?: string) => territoryGitAsync(root, args, false, input, env),
     facts: (tree: string, head: string, base: string) => mergeTreeFacts(root, tree, head, base, undefined, env),
     identity: (head: string) => committedTree(root, head, env),
     checkout: (candidate: BatchCandidate) => checkoutMergeBatch(root, candidate, env),
     remove: (candidate: BatchCandidate) => removeMergeBatch(root, candidate, env) };
   const git = repository.git;
-  const base = await git(['rev-parse', 'refs/heads/dev']);
+  const base = pinnedBase ?? await git(['rev-parse', 'refs/heads/dev']);
   let head = base;
   const budgetLines: string[] = [];
   for (const entry of members) {

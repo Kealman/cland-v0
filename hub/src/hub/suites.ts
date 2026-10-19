@@ -37,7 +37,7 @@ import { occasionSelection } from '../verification-occasion.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
-  batch?: { id: string; members: import('../protocol.ts').MergeQueueEntry[] };
+  batch?: import('../protocol.ts').BatchSuite;
   sequence?: number;
   health?: MachineHealth;
   shardHealth?: ShardMachineHealth[];
@@ -354,7 +354,7 @@ export class Suites {
     return { id, cover: job.cover };
   }
   start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
-    if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}`, shell: true } };
+    if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}:${input.batch.diagnostic?.key ?? 'batch'}`, shell: true }, fresh: true };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
     this.#starting.add(work);
@@ -386,11 +386,17 @@ export class Suites {
     const dir = join(this.#root, '.cland', 'run', 'suites', id);
     const candidate = await this.#candidate.inspect(input.cwd, input.mode as SuiteRequest, workers);
     const { head, branch, tree, budgetBase } = candidate;
-    const selection = occasionSelection(candidate.selection, input.occasion);
+    const files = input.batch?.diagnostic?.files;
+    if (files && (!files.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
+    const selection: SuiteSelection = files
+      ? { mode: 'full', files, reason: 'batch failing-file rerun', loadGate: false, soak: false,
+        shard: { files: files.filter(file => file.startsWith('hub/')), nvim: files.some(file => file.startsWith('nvim/')) },
+        nvimTests: files.filter(file => file.startsWith('nvim/')) }
+      : occasionSelection(candidate.selection, input.occasion);
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
-    if (input.occasion) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
-    const tierPlan = input.occasion ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
-    if (input.occasion === 'batch') selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
+    if (input.occasion && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
+    const tierPlan = input.occasion || files ? await planTierReport(input.cwd, selection, workers) : candidate.tierPlan;
+    if (input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 
     if (input.dryRun) {
       const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(input.cwd, { ...(budgetBase ? { base: budgetBase } : {}), env: this.#env });
@@ -506,7 +512,7 @@ export class Suites {
   // Integrated dev precedes human waiters, then item rank; each group retains enqueue order.
   #ordered(): Array<SuiteJob | HumanSlot> {
     return [...this.#queue(), ...[...this.#humans.values()].filter(s => !s.left && !s.admittedAt)].sort((a, b) => {
-      const integrated = (s: SuiteJob | HumanSlot) => 'actor' in s && (s.integrated === true || s.occasion === 'batch');
+      const integrated = (s: SuiteJob | HumanSlot) => 'actor' in s && (s.integrated === true || !!s.batch);
       const rank = (s: SuiteJob | HumanSlot) => 'actor' in s ? s.priority ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
       return Number(integrated(b)) - Number(integrated(a)) || Number('actor' in a) - Number('actor' in b) || rank(a) - rank(b) || a.queued!.localeCompare(b.queued!);
     });
@@ -525,7 +531,7 @@ export class Suites {
   #cached(tree: string, selection: SuiteSelection, workers: number, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
+    const job = this.#jobs.findLast(j => !j.batch?.diagnostic && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
@@ -1091,6 +1097,14 @@ export class Suites {
     this.#save(); void this.#check();
   }
   covers(): import('../protocol.ts').CoverStatus[] { return recentCovers(this.#jobs); }
+  /** Collected immutable evidence for hub-owned batch diagnosis. */
+  async receipt(id: string): Promise<{ job: SuiteJob; log: string }> {
+    const job = this.#jobs.find(job => job.id === id);
+    if (!job?.reported || !job.outcome || !job.artifact) throw new Error(`suite ${id} has no collected receipt`);
+    const artifact = this.#store.resolveArtifact(job.artifact);
+    if (!artifact) throw new Error(`suite ${id} log artifact unavailable`);
+    return { job: structuredClone(job), log: await readFile(artifact.path, 'utf8') };
+  }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
       ...(job.batch ? { batch: job.batch } : {}),

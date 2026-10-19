@@ -163,7 +163,7 @@ test('queued merged-tree budget refusal moves no ref or checkout', async t => {
 });
 
 
-test('running batch appears in both queues and posts its result to the member lead', async t => {
+test('a red singleton posts its bisection refusal to the member lead after appearing in both queues', async t => {
   const started = Promise.withResolvers<RunRef>();
   let receipt: RunStatus = { state: 'running' };
   const lease = (run: RunRef, deadline: string): Lease => ({ kind: 'local', run: run.id, created: '2026-10-16T12:00:00Z', deadline, resource: null });
@@ -173,7 +173,7 @@ test('running batch appears in both queues and posts its result to the member le
   t.mock.method(LocalExecutor.prototype, 'acquire', async (run: RunRef, deadline: string) => lease(run, deadline));
   t.mock.method(LocalExecutor.prototype, 'prepare', async () => {});
   t.mock.method(LocalExecutor.prototype, 'deliver', async () => {});
-  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { await writeFile(run.log, '# tests 1\n# fail 1\n'); started.resolve(run); });
+  t.mock.method(LocalExecutor.prototype, 'start', async (_lease: Lease, run: RunRef) => { await writeFile(run.log, 'suite test failures [{"file":"hub/test/parser.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n'); started.resolve(run); });
   t.mock.method(LocalExecutor.prototype, 'status', async () => receipt);
   t.mock.method(LocalExecutor.prototype, 'release', async () => ({ lifetimeMs: null, costUsd: null }));
   t.mock.method(LocalExecutor.prototype, 'cancel', async () => {});
@@ -198,8 +198,9 @@ test('running batch appears in both queues and posts its result to the member le
   assert.equal(verifying.holder?.occasion, 'batch');
   receipt = { state: 'done', code: 1, finished: clock.now().toISOString() };
   await clock.advance(1000);
-  await until(async () => { await clock.advance(1000); const status = await value<{ suites: Array<{ error: string | null }> }>(ui, { type: 'hub.status' }); if (status.suites[0]?.error) throw new Error(status.suites[0].error); return (await value<{ batch: MergeBatchStatus }>(ui, { type: 'merge.queue' })).batch.failed !== undefined; }, { what: 'red batch reported', timeoutMs: 1500 });
+  await until(async () => { await clock.advance(1000); const status = await value<{ suites: Array<{ error: string | null }> }>(ui, { type: 'hub.status' }); if (status.suites[0]?.error) throw new Error(status.suites[0].error); return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null; }, { what: 'red singleton refused', timeoutMs: 1500 });
   const history = await value<{ messages: Array<{ text: string; to: string[] }> }>(ui, { type: 'topic.history', topic, limit: 100 });
   assert.ok(history.messages.some(message => message.text.startsWith(`suite result ${run.id}`) && message.to.includes('coord')));
   assert.ok(history.messages.some(message => message.text.includes(`tree ${tree}`) && message.text.includes(item.id) && /tiers T1, T3; wall \d+ ms; exit 1/.test(message.text)));
+  assert.ok(history.messages.some(message => /merge-queue-dropped.*merge-bisected.*hub\/test\/parser.test.ts::rejects stale input/s.test(message.text) && message.to.includes('coord')));
 });

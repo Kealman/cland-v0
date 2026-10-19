@@ -84,9 +84,27 @@ candidate evidence; a changed candidate tree rebuilds and reruns. Conflicts or
 landing gate refusals drop their member with a reason and rebuild the rest.
 Queue and batch state survive reopening the hub store. `cland merge queue` and
 `cland verify queue` show the current batch and its members. Results and logs go
-to Agents and each member's requester and item lead. A red batch remains held;
-red-batch isolation is the following T-712 work. Task verification admission is
-unchanged by this opt-in merge policy.
+to Agents and each member's requester and item lead. A
+red batch of one refuses its member with `merge-bisected`, naming the failed
+tests. Larger red batches rerun only the failing files on each leave-one-out
+tree, pinned to the original integration base. A unique green removal refuses
+that member and lets the others land on the green tree. Otherwise those files
+rerun once on the original batch tree: completed passing receipts for every
+original failure let it land, while red or incomplete proof refuses every
+member with `merge-bisect-unresolved` and sends the Coordinator one evidence
+notice. File jobs retain their run, tree, log, seconds and provider cost, use the
+same queue, and supply no full-suite cache proof.
+Aborted, timed-out, unavailable or otherwise inconclusive original runs or file
+jobs hold the batch with their retained receipts and one Coordinator notice. They establish
+neither a red alternative nor an unresolved red repeat; recovery is an explicit
+Coordinator decision.
+
+Executed passing identities on a green batch-tree rerun record a flake
+observation with both failure and green receipts. Two different batches produce
+one quarantine question to the Coordinator carrying those receipts. The
+Coordinator still needs five isolated greens, an owner item, a non-TODO reason
+and an expiry within seven days before editing `quarantine.json`; the hub never
+edits it. Task verification admission is unchanged by this opt-in merge policy.
 
 ### Named T3 scenarios
 

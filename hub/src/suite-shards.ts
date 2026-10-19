@@ -216,7 +216,7 @@ async function unfilteredPackageShards(cwd: string, mode: SuiteMode, selection?:
     const known = new Set(shards.flatMap(shard => shard.targets));
     for (const file of selection.files) if (!known.has(file)) throw new ShardManifestError(`unknown explicit hub shard file: ${file}`, [file]);
     return [...shards.map(shard => ({ ...shard, targets: shard.targets.filter(file => selection.files.includes(file)) })).filter(shard => shard.targets.length),
-      ...(selection.nvim ? [{ name: 'Neovim', targets: ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers }] : [])];
+      ...(selection.nvim ? [{ name: 'Neovim', targets: coverage?.nvimTests ?? ['nvim/test/**/*.test.ts'], resource: 'machine' as const, workers }] : [])];
   }
   if (mode === 'hub-selected') {
     const shards = await hubShards(cwd, false, workers, options);

@@ -1,3 +1,4 @@
+// T1: hermetic package planning with fixture manifests, without running workers.
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,5 +51,9 @@ test('explicit shard files retain resource classes and include Neovim only on it
     { name: 'hub machine', targets: ['hub/test/machine.test.ts'], resource: 'machine', workers: 4 },
   ]);
   assert.deepEqual((await packageShards(root, 'full', { files: [], nvim: true })).map(shard => shard.name), ['Neovim']);
+  const nvimTests = ['nvim/test/failing.test.ts'];
+  assert.deepEqual(await packageShards(root, 'full', { files: [], nvim: true }, { mode: 'full', files: [], reason: 'batch diagnosis', nvimTests }), [
+    { name: 'Neovim', targets: nvimTests, resource: 'machine', workers: 4 },
+  ]);
   await assert.rejects(packageShards(root, 'full', { files: ['hub/test/missing.test.ts'], nvim: false }), /unknown explicit hub shard file/);
 });

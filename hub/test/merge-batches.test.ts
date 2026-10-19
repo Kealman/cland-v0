@@ -5,8 +5,12 @@ import { TaskMerges } from '../src/hub/merge.ts';
 import { MergeQueue } from '../src/hub/merge-queue.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MergeBatches, BatchRefusal, type BatchBoundary } from '../src/hub/merge-batches.ts';
+import { MergeBatches, BatchRefusal, diagnosticResult, type BatchBoundary } from '../src/hub/merge-batches.ts';
 import type { MergeQueueEntry } from '../src/protocol.ts';
+import type { TopicNotice } from '../src/hub/core.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { prepareMergeBatch } from '../src/hub/merge-batch-territory.ts';
+import { recordBatchFlakes } from '../src/hub/batch-flakes.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 import { authorizeVerifyOccasion } from '../src/verification-occasion.ts';
@@ -22,7 +26,7 @@ async function fixture(t: Parameters<typeof suiteUnit>[0]) {
   const boundary: BatchBoundary = {
     entries: () => entries,
     cleanup: async () => {},
-    checkout: async () => {},
+    checkout: async candidate => { f.candidate.head = candidate.head; f.candidate.tree = candidate.tree; },
     isLanded: entry => landed.includes(entry.item),
     build: async (_id, members) => {
       const head = `${base}-${members.map(e => e.item).join('-')}`;
@@ -32,11 +36,302 @@ async function fixture(t: Parameters<typeof suiteUnit>[0]) {
     land: async entry => { landed.push(entry.item); entries.splice(entries.findIndex(current => current.item === entry.item), 1); base += entry.item; },
     drop: (entry, reason) => { const index = entries.findIndex(current => current.item === entry.item); if (index >= 0) entries.splice(index, 1); dropped.push(`${entry.item}: ${reason}`); },
     report: (_batch, text) => { reports.push(text); },
+    notice: () => {},
   };
   let runner = new MergeBatches(f.store, f.suites, f.clock, boundary, () => ({ queue: true, batch: 3, batchWaitMs: 600_000 }));
   t.after(() => runner.close());
   return { f, entries, landed, reports, dropped, boundary, get runner() { return runner; }, move(trackerOnly: boolean) { base += '-moved'; if (!trackerOnly) code += '-changed'; }, async reopen() { await runner.close(); await f.reopen(); runner = new MergeBatches(f.store, f.suites, f.clock, boundary, () => ({ queue: true, batch: 3, batchWaitMs: 600_000 })); } };
 }
+
+const failureLog = 'suite test failures [{"file":"hub/test/example.test.ts","name":"rejects stale input"}]\n# tests 1\n# fail 1\n';
+const passLog = 'suite progress {"event":"finish","id":"one","file":"hub/test/example.test.ts","name":"rejects stale input","at":1,"nesting":0,"outcome":"pass","seconds":0.01}\nsuite test failures []\n# tests 1\n# pass 1\n';
+
+test('a red single-member batch refuses the member with its failing identity', async t => {
+  const { f, runner, entries, dropped, landed } = await fixture(t);
+  entries.splice(1);
+  await f.clock.advance(600_000);
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog);
+  await runner.tick();
+  assert.match(dropped[0]!, /T-1: merge-bisected.*hub\/test\/example.test.ts::rejects stale input/);
+  assert.deepEqual(landed, []);
+  assert.equal(runner.snapshot(), null);
+  assert.equal(f.suites.status().length, 1, 'singleton needs no diagnostic rerun');
+});
+
+test('a red triple lands the unique green leave-one-out tree', async t => {
+  const { f, runner, boundary, dropped, landed, reports } = await fixture(t);
+  const build = boundary.build;
+  boundary.build = async (id, members) => {
+    const candidate = await build(id, members);
+    candidate.tree = members.some(e => e.item === 'T-2') ? 'with-culprit' : 'without-culprit';
+    f.candidate.tree = candidate.tree;
+    return candidate;
+  };
+  const land = boundary.land;
+  boundary.land = async (entry, candidate) => {
+    assert.equal(candidate.tree, 'without-culprit');
+    return land(entry, candidate);
+  };
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog);
+  await runner.tick();
+  for (let index = 0; index < 3; index++) {
+    const diagnostic = f.suites.status().at(-1)!;
+    assert.deepEqual(diagnostic.selection?.shard, { files: ['hub/test/example.test.ts'], nvim: false });
+    assert.equal(diagnostic.selection?.loadGate, false);
+    assert.equal(diagnostic.cached, undefined);
+    await f.finish(diagnostic.id, diagnostic.tree === 'without-culprit' ? 0 : 1, diagnostic.tree === 'without-culprit' ? undefined : failureLog);
+    await runner.tick();
+  }
+  assert.match(dropped[0]!, /T-2: merge-bisected.*rejects stale input/);
+  assert.deepEqual(landed, ['T-1', 'T-3']);
+  assert.equal(f.suites.status().length, 4, 'one batch plus at most three file jobs');
+  assert.match(reports.at(-1)!, /file job.*tree without-culprit.*seconds.*cost/s);
+});
+
+test('a red repeat without a unique culprit refuses everyone with one Coordinator notice', async t => {
+  const { f, runner, boundary, dropped, landed } = await fixture(t);
+  const notices: unknown[] = [];
+  Object.assign(boundary, { notice: (notice: unknown) => notices.push(notice) });
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog); await runner.tick();
+  for (let index = 0; index < 4; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 1, failureLog); await runner.tick();
+  }
+  assert.equal(dropped.length, 3);
+  assert.ok(dropped.every(text => text.includes('merge-bisect-unresolved') && text.includes('rejects stale input')));
+  assert.deepEqual(landed, []);
+  assert.equal(notices.length, 1);
+  await runner.tick(); assert.equal(notices.length, 1);
+  assert.equal(runner.snapshot(), null);
+});
+
+test('independent flaky batches retain both receipts in a Coordinator quarantine question', async t => {
+  const state = await fixture(t);
+  const { f, boundary, entries, landed, dropped } = state;
+  const notices: TopicNotice[] = [];
+  boundary.notice = notice => { notices.push(notice); };
+  for (let batch = 0; batch < 2; batch++) {
+    if (batch) {
+      entries.push(...[4, 5, 6].map(n => ({ item: `T-${n}`, branch: `t/${n}`, head: `${n}`.repeat(40), verdictBase: 'dev', enqueued: f.clock.now().toISOString(), by: { id: 'coord', name: 'coord', role: 'coordinator' } })));
+      await state.reopen();
+    }
+    await state.runner.tick();
+    await f.finish(f.suites.status().at(-1)!.id, 1, failureLog); await state.runner.tick();
+    for (let index = 0; index < 4; index++) {
+      await f.finish(f.suites.status().at(-1)!.id, 0, passLog); await state.runner.tick();
+    }
+    assert.equal(notices.length, batch);
+    assert.equal(state.runner.snapshot(), null);
+  }
+  assert.deepEqual(dropped, []);
+  assert.deepEqual(landed, ['T-1', 'T-2', 'T-3', 'T-4', 'T-5', 'T-6']);
+  const proposal = notices[0]!;
+  assert.equal(proposal.kind, 'question');
+  assert.deepEqual(proposal.to, ['coordinator']);
+  assert.equal(proposal.detail?.event, 'quarantine-proposal');
+  const observations = proposal.detail?.observations as Array<{ batch: string; run: string; log: { artifact: string; path: string }; rerun: { run: string; log: { artifact: string } } }>;
+  assert.equal(observations.length, 2);
+  assert.notEqual(observations[0]!.batch, observations[1]!.batch);
+  for (const observation of observations) {
+    assert.match(observation.log.artifact, /^A-/);
+    assert.match(observation.rerun.log.artifact, /^A-/);
+    assert.notEqual(observation.run, observation.rerun.run);
+  }
+  assert.match(proposal.text, /five isolated green.*owner item.*reason.*expiry/s);
+});
+
+test('diagnostic result retains every file job tree with seconds and provider cost', async t => {
+  const { f, runner, reports } = await fixture(t);
+  const release = DropletExecutor.prototype.release;
+  t.mock.method(DropletExecutor.prototype, 'release', async function(this: DropletExecutor, ...args: Parameters<typeof release>) {
+    await release.apply(this, args);
+    return { lifetimeMs: 12_500, costUsd: 0.03125 };
+  });
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog); await runner.tick();
+  for (let index = 0; index < 4; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 1, failureLog); await runner.tick();
+  }
+  const final = reports.at(-1)!;
+  const fileJobs = f.reports.filter(job => job.batch?.diagnostic);
+  assert.equal(fileJobs.length, 4);
+  for (const job of fileJobs) {
+    assert.ok(final.includes(`file job ${job.id}: hub/test/example.test.ts; tree ${job.tree}; seconds ${job.runMs! / 1000}; cost $0.0313; log ${job.artifact}:`));
+  }
+});
+
+test('reopening during diagnosis resumes the collected file sequence without duplicate jobs', async t => {
+  const state = await fixture(t);
+  const { f, landed, dropped } = state;
+  await state.runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog); await state.runner.tick();
+  const diagnostic = f.suites.status().at(-1)!;
+  await f.machine.waits.run(f.machine.started(diagnostic.id));
+  await state.reopen(); await state.runner.tick();
+  assert.equal(f.suites.status().length, 2);
+  await f.finish(diagnostic.id, 1, failureLog); await state.runner.tick();
+  for (let index = 0; index < 3; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 1, failureLog); await state.runner.tick();
+  }
+  assert.equal(f.suites.status().length, 5);
+  assert.equal(dropped.length, 3);
+  assert.deepEqual(landed, []);
+  assert.equal(state.runner.snapshot(), null);
+});
+
+test('an exit-zero skipped rerun refuses the unresolved batch', async t => {
+  const { f, runner, landed, dropped } = await fixture(t);
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog); await runner.tick();
+  for (let index = 0; index < 4; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 0, passLog.replace('"outcome":"pass"', '"outcome":"skip"'));
+    await runner.tick();
+  }
+  assert.deepEqual(landed, []);
+  assert.equal(dropped.length, 3);
+  assert.ok(dropped.every(text => text.includes('merge-bisect-unresolved')));
+  assert.equal(f.store.meta('batch-flakes'), null);
+});
+
+test('batch repeat proof rejects nonpassing or incomplete failure identities', async t => {
+  // T1: receipt validation permutations at the evidence boundary, one provider fixture.
+  const { f } = await fixture(t);
+  const failedRun = await f.launch(); await f.finish(failedRun.id, 1, failureLog);
+  const repeatRun = await f.launch(); await f.finish(repeatRun.id, 0, passLog);
+  const failed = await f.suites.receipt(failedRun.id), repeat = await f.suites.receipt(repeatRun.id);
+  const failure = 'hub/test/example.test.ts::rejects stale input';
+  const variants = [
+    ['skip', passLog.replace('"outcome":"pass"', '"outcome":"skip"')],
+    ['TODO', passLog.replace('"outcome":"pass"', '"outcome":"todo"')],
+    ['cancelled', passLog.replace('"outcome":"pass"', '"outcome":"cancelled"')],
+    ['missing receipts', '# tests 1\n# pass 1\n'],
+    ['unfinished', passLog.replace('"event":"finish"', '"event":"start"')],
+    ['malformed', passLog + 'suite progress {\n'],
+    ['partial identities', passLog.replace('rejects stale input', 'unrelated passing test')],
+  ];
+  for (const [name, log] of variants) {
+    assert.equal(recordBatchFlakes(f.store, `invalid-${name}`, [failure], failed, { ...repeat, log: log! }, () => assert.fail('invalid proof cannot propose quarantine')), false, name);
+    assert.equal(f.store.meta('batch-flakes'), null, name);
+  }
+  assert.equal(recordBatchFlakes(f.store, 'partial', [failure, 'hub/test/example.test.ts::missing second failure'], failed, repeat, () => assert.fail()), false);
+  assert.equal(f.store.meta('batch-flakes'), null, 'every failing identity must pass before any observation is stored');
+});
+
+test('a cancelled alternative after a green omission holds diagnosis without blaming a member', async t => {
+  const { f, runner, landed, dropped, boundary } = await fixture(t);
+  const notices: TopicNotice[] = [];
+  boundary.notice = notice => { notices.push(notice); };
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog); await runner.tick();
+  await f.finish(f.suites.status().at(-1)!.id, 0, passLog); await runner.tick();
+  const aborted = f.suites.status().at(-1)!;
+  await f.machine.waits.run(f.machine.started(aborted.id));
+  await f.suites.cancel(aborted.id, null, () => {});
+  await f.machine.waits.run(f.result(aborted.id));
+  await runner.tick();
+  assert.deepEqual(landed, []);
+  assert.deepEqual(dropped, []);
+  assert.match(runner.snapshot()?.failed ?? '', /diagnostic.*inconclusive.*cancelled/);
+  assert.equal(f.suites.status().length, 3, 'no further alternative is admitted under inconclusive evidence');
+  assert.equal(notices.length, 1);
+  await runner.tick(); assert.equal(notices.length, 1);
+});
+
+test('diagnostic results preserve abandoned and unknown evidence as inconclusive', () => {
+  const complete = { state: 'finished' as const, outcome: { code: 1, cause: '' } };
+  for (const receipt of [
+    { ...complete, cancelled: true },
+    { ...complete, requesterDied: true },
+    { ...complete, timedOut: true },
+    { ...complete, outcome: null },
+    { ...complete, state: 'running' as const },
+    { ...complete, outcome: { code: 1, cause: 'remote machine lost' } },
+    { ...complete, outcome: { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' } },
+    { ...complete, outcome: { code: 1, cause: 'unknown result' } },
+  ]) assert.equal(diagnosticResult(receipt, failureLog).result, 'inconclusive');
+  assert.equal(diagnosticResult(complete, '').result, 'inconclusive', 'an exit code without test failures supplies no red proof');
+  assert.equal(diagnosticResult(complete, failureLog).result, 'red');
+  assert.equal(diagnosticResult({ ...complete, outcome: { code: 0, cause: '' } }, passLog).result, 'green');
+});
+
+test('a cancelled repeat holds the batch without an unresolved refusal', async t => {
+  const { f, runner, landed, dropped } = await fixture(t);
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, failureLog); await runner.tick();
+  for (let index = 0; index < 3; index++) {
+    await f.finish(f.suites.status().at(-1)!.id, 1, failureLog); await runner.tick();
+  }
+  const repeat = f.suites.status().at(-1)!;
+  assert.equal(repeat.batch?.diagnostic?.key, 'repeat');
+  await f.machine.waits.run(f.machine.started(repeat.id));
+  await f.suites.cancel(repeat.id, null, () => {});
+  await f.machine.waits.run(f.result(repeat.id));
+  await runner.tick();
+  assert.deepEqual(landed, []);
+  assert.deepEqual(dropped, []);
+  assert.match(runner.snapshot()?.failed ?? '', /diagnostic.*inconclusive.*cancelled/);
+  assert.equal(runner.snapshot()?.diagnosis?.unresolved, undefined);
+});
+
+test('a cancelled original singleton stays queued without a culprit refusal', async t => {
+  const { f, runner, entries, dropped, landed, boundary } = await fixture(t);
+  const notices: TopicNotice[] = [];
+  boundary.notice = notice => { notices.push(notice); };
+  entries.splice(1); await f.clock.advance(600_000);
+  await runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.machine.waits.run(f.machine.started(original.id));
+  await f.suites.cancel(original.id, null, () => {});
+  await f.machine.waits.run(f.result(original.id));
+  await runner.tick();
+  assert.deepEqual(dropped, []); assert.deepEqual(landed, []);
+  assert.equal(entries.length, 1);
+  assert.match(runner.snapshot()?.failed ?? '', /original.*inconclusive.*cancelled/);
+  assert.equal(f.suites.status().length, 1);
+  assert.equal(notices.length, 1);
+});
+
+test('an aborted original with partial failures holds before diagnostic admission across reopen', async t => {
+  const state = await fixture(t);
+  const { f, entries, dropped, landed, boundary } = state;
+  const notices: TopicNotice[] = [];
+  boundary.notice = notice => { notices.push(notice); };
+  f.machine.script({ outcome: 'slow', log: failureLog });
+  await state.runner.tick();
+  const original = f.suites.status()[0]!;
+  await f.machine.waits.run(f.machine.started(original.id));
+  await f.suites.cancel(original.id, null, () => {});
+  const receipt = await f.machine.waits.run(f.result(original.id));
+  assert.ok((await f.suites.receipt(receipt.id)).log.includes('rejects stale input'));
+  await state.runner.tick();
+  assert.deepEqual(dropped, []); assert.deepEqual(landed, []);
+  assert.equal(entries.length, 3);
+  assert.equal(f.suites.status().length, 1, 'partial failures in an aborted original cannot start leave-one-out work');
+  assert.equal(state.runner.snapshot()?.diagnosis, undefined);
+  assert.match(state.runner.snapshot()?.failed ?? '', /original.*inconclusive.*cancelled/);
+  assert.equal(notices.length, 1);
+  assert.match(notices[0]!.text, /log A-\d+:/);
+  await state.reopen(); await state.runner.tick();
+  assert.equal(notices.length, 1); assert.equal(f.suites.status().length, 1);
+});
+
+test('leave-one-out preparation uses the original integration base when dev has moved', async () => {
+  const merges: string[][] = [];
+  const member: MergeQueueEntry = { item: 'T-1', branch: 't/1', head: '1'.repeat(40), verdictBase: 'dev', enqueued: '2026-10-16T12:00:00Z', by: { id: 'coord', name: 'coord', role: 'coordinator' } };
+  const candidate = await prepareMergeBatch('/isolated', 'diagnostic', [member], {}, {
+    git: async args => {
+      if (args[0] === 'rev-parse') return args.at(-1) === 'refs/heads/dev' ? 'new-dev' : member.head;
+      if (args[0] === 'merge-tree') { merges.push(args); return 'tree\0'; }
+      if (args[0] === 'commit-tree') return 'candidate';
+      throw new Error(`unexpected Git operation ${args[0]}`);
+    },
+    facts: async () => ({ context: null, workers: 1 }), identity: async () => 'tree', checkout: async () => {}, remove: async () => {},
+  }, 'original-dev');
+  assert.equal(candidate.base, 'original-dev');
+  assert.deepEqual(merges, [['merge-tree', '--write-tree', '--name-only', '-z', 'original-dev', member.head]]);
+});
 
 test('three queued heads run once on a single candidate before landing FIFO', async t => {
   const { f, runner, landed, reports, boundary, entries } = await fixture(t);

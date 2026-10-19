@@ -330,6 +330,7 @@ export type Hello = {
 export type ReleaseRequest = { type: 'release'; id: string; version?: string; item?: string; dryRun?: boolean };
 
 export type MergeQueueEntry = { item: string; branch: string; head: string; verdictBase: string; enqueued: string; by: { id: string; name: string; role: string | null } };
+export type BatchSuite = { id: string; members: MergeQueueEntry[]; diagnostic?: { key: string; files: string[] } };
 export type MergeRequest = { type: 'merge'; id: string; item: string; override?: string; cancel?: boolean };
 export type MergeQueueRequest = { type: 'merge.queue'; id: string };
 
@@ -647,7 +648,7 @@ export type CoverStatus = { id: string; head: string; branch: string; completedA
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
-  batch?: { id: string; members: MergeQueueEntry[] };
+  batch?: BatchSuite;
   cover?: CoverRecord;
   workers?: number; size?: string;
   occasion?: VerifyOccasion;
