@@ -2,8 +2,8 @@
 id: T-647
 kind: task
 title: A folder with the project's own files and a repository without commits get the same first commit, and the human's files stay as they were
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-545
 branch: t/T-647-a-folder-with-the-project-s-own-files
 created: 2026-10-16T16:23:59.744Z
-updated: 2026-10-19T03:06:41.122Z
+updated: 2026-10-19T03:06:48.806Z
+closed: 2026-10-19T03:06:48.806Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from source A-5730/A-5731 and accepted exact-head gate 8a0a3863/A-5736; audit A-5737. Hub-only plus Neovim smoke: 2388 passed, 5 skips, zero failures/cancellations. First-commit 15/15 and all 75 corresponding repetition bodies pass; init 13/13, territory CLI 14/14 and shared init-process 4/4 pass. Exact human file bytes/mtimes/status, staged and distinct working blobs on main/master, excluded merged settings/instructions, ignore reports and root/territory refs established. L1 resolved; no remaining findings. Three known T-803 report-only trips and other diagnostics disclosed. C1–C6 verified; QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-19T03:06:48.806Z
+
+Merged 716e3315cd5d4d07c3906bf2ca48101ce4750a56 onto dev.
