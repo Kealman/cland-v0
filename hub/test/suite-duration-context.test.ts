@@ -27,7 +27,7 @@ function snapshot(mode: 'report' | 'enforce' = 'enforce') {
       const ref = args[args.indexOf('-z') + 1]!, path = args.at(-1)!;
       return files[`${ref}:${path}`] === undefined ? '' : path + '\0';
     }
-    if (args[0] === 'diff') return file + '\n';
+    if (args[0] === 'diff') return file + '\0';
     throw new Error(`unexpected Git operation: ${args[0]}`);
   };
   return { files, git, fail(command: string) { fail = command; } };
@@ -40,7 +40,7 @@ test('enforce snapshots reject failed required inspections instead of disabling 
     [`ls-tree -r --name-only -z base -- ${duration}`, 'base duration manifest'],
     [`show base:${duration}`, 'base duration manifest'],
     [`show base:${tier}`, 'base tier manifest'],
-    ['diff --name-only --no-renames base head', 'candidate/base diff'],
+    ['diff --name-only -z --no-renames base head', 'candidate/base diff'],
     [`show base:${file}`, `base source ${file}`],
     [`show head:${file}`, `candidate source ${file}`],
   ]) {
@@ -81,4 +81,19 @@ test('enforce mode rejects failed new-source estimates after the base snapshot i
   f.fail(`show head:${added}`);
   await assert.rejects(durationBudgetContext('/in-memory', { head: 'head', base: 'base', git: f.git }),
     error => error instanceof DurationInspectionError && error.message === `duration inspection failed: candidate source ${added}`);
+});
+
+test('duration inspection retains exact delimited test paths', async () => {
+  const f = snapshot();
+  const paths = [' hub/test/leading.test.ts', 'hub/test/trailing.test.ts ', 'hub/test/line\nbreak.test.ts'];
+  for (const ref of ['head', 'base']) {
+    f.files[`${ref}:${tier}`] = JSON.stringify({ version: 1, tests: Object.fromEntries(paths.map(path => [path, 'T3'])) });
+    for (const path of paths) f.files[`${ref}:${path}`] = ref === 'base' ? "test('old', () => {});" : "test('new', () => {});";
+  }
+  const git = async (...args: string[]) => args[0] === 'diff' ? paths.join('\0') + '\0' : f.git(...args);
+  const context = await durationBudgetContext('/in-memory', { head: 'head', base: 'base', git });
+  for (const path of paths) {
+    assert.deepEqual(context?.base?.sources?.[path], { patterns: ['^old$'], dynamic: false });
+    assert.deepEqual(context?.candidateSources?.[path], { patterns: ['^new$'], dynamic: false });
+  }
 });

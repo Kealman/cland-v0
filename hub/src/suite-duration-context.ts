@@ -61,7 +61,7 @@ export async function durationBudgetContext(cwd: string, options: { head?: strin
     if (baseTierText === null) return context;
     const baseTiers = assignments(baseTierText);
     operation = 'candidate/base diff';
-    const changed = new Set((await git('diff', '--name-only', '--no-renames', options.base, ...(options.head ? [options.head] : []))).trim().split('\n'));
+    const changed = new Set((await git('diff', '--name-only', '-z', '--no-renames', options.base, ...(options.head ? [options.head] : []))).split('\0').filter(Boolean));
     const retained: string[] = [];
     const sources: Record<string, SourceTestIdentity> = {};
     operation = 'test source parser';

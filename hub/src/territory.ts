@@ -17,7 +17,8 @@ import { readText, Report, symlinkOnPath, writeIfChanged } from './init/files.ts
 export const territoryPath = (root: string): string => join(root, '.cland', 'territory.git');
 const lockPath = (root: string): string => join(root, '.cland', 'territory.lock');
 
-/** Run Git locally; marked pushes are reserved for cland's guarded operations. Never invoke a shell. */
+/** Run Git locally; preserve NUL-delimited streams and trim scalar output.
+ * Marked pushes are reserved for cland's guarded operations. Never invoke a shell. */
 export function territoryGit(cwd: string, args: string[], marked = false, input?: string): string {
   const r = spawnSync('git', args, {
     cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024,
@@ -25,7 +26,7 @@ export function territoryGit(cwd: string, args: string[], marked = false, input?
     env: { ...process.env, CLAND_TERRITORY_WRITE: marked ? '1' : '' },
   });
   if (r.error || r.status !== 0) throw new Error(`git ${args.join(' ')}: ${r.error?.message ?? r.stderr.trim()}`);
-  return r.stdout.trim();
+  return args.includes('-z') || args.includes('--null') ? r.stdout : r.stdout.trim();
 }
 
 const maybeGit = (cwd: string, args: string[]): string | null => {
@@ -335,7 +336,7 @@ export function territoryProblems(root: string): string[] | null {
 // or a listing never holds the hub's event loop. The hub runs them one at a time (`src/hub/worktrees.ts`); the
 // writes also hold the territory lock against other processes, taken without blocking (`withTerritoryLockAsync`).
 
-/** `territoryGit`, awaited: trimmed scalar stdout, byte-preserving -z streams,
+/** `territoryGit`, awaited: trimmed scalar stdout, byte-preserving -z/--null streams,
  * or a rejection naming the command and Git's message. */
 export class TerritoryGitError extends Error {
   readonly stdout: string;
@@ -347,7 +348,7 @@ export function territoryGitAsync(cwd: string, args: string[], marked = false, i
   return new Promise((resolvePromise, reject) => {
     const child = execFile('git', args, { cwd, encoding: 'utf8', timeout: 30_000, maxBuffer: 16 * 1024 * 1024, env: { ...env, CLAND_TERRITORY_WRITE: marked ? '1' : '' } }, (err, stdout, stderr) => {
       if (err) reject(new TerritoryGitError(`git ${args.join(' ')}: ${String(stderr).trim() || err.message}`, String(stdout), err.code));
-      else resolvePromise(args.includes('-z') ? String(stdout) : String(stdout).trim());
+      else resolvePromise(args.includes('-z') || args.includes('--null') ? String(stdout) : String(stdout).trim());
     });
     child.stdin?.on('error', () => {}); // an early Git refusal can close stdin before the input is consumed
     child.stdin?.end(input);
@@ -391,13 +392,13 @@ export async function taskBase(root: string, tips?: ReadonlyMap<string, string>,
   return null;
 }
 
-/** A linked worktree of the project's own repository, as `git worktree list --porcelain` shows it. */
+/** A linked worktree of the project's own repository, as `git worktree list --porcelain -z` shows it. */
 export type Worktree = { path: string; head: string | null; branch: string | null; prunable: boolean };
 
 async function worktrees(root: string, env: NodeJS.ProcessEnv = process.env): Promise<Worktree[]> {
   const out: Worktree[] = [];
-  for (const block of (await territoryGitAsync(root, ['worktree', 'list', '--porcelain'], undefined, undefined, env)).split('\n\n')) {
-    const lines = block.split('\n');
+  for (const block of (await territoryGitAsync(root, ['worktree', 'list', '--porcelain', '-z'], undefined, undefined, env)).split('\0\0')) {
+    const lines = block.split('\0');
     const path = lines.find((l) => l.startsWith('worktree '))?.slice('worktree '.length);
     if (!path) continue;
     const head = lines.find((l) => l.startsWith('HEAD '))?.slice('HEAD '.length) ?? null;

@@ -3,7 +3,8 @@
 import { execFile } from 'node:child_process';
 
 /**
- * One git command in the project: its trimmed output, or null when git said no (a non-zero exit). It rejects when git
+ * One git command in the project: NUL-delimited output unchanged, scalar output trimmed,
+ * or null when git said no (a non-zero exit). It rejects when git
  * could not answer at all (not started, timed out, killed): that is no fact to keep. Tests inject one to count spawns.
  */
 export type Git = (args: string[], input?: string) => Promise<string | null>;
@@ -12,7 +13,7 @@ export function gitIn(root: string, env: NodeJS.ProcessEnv = process.env): Git {
   return (args, input) =>
     new Promise((resolve, reject) => {
       const child = execFile('git', args, { cwd: root, env, encoding: 'utf8', timeout: 5000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
-        if (!err) resolve(stdout.trim());
+        if (!err) resolve(args.includes('-z') || args.includes('--null') ? stdout : stdout.trim());
         else if (typeof err.code === 'number' && !err.killed) resolve(null);
         else reject(err);
       });

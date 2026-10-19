@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { clandWithEnv, tempProject, type CliResult } from './harness.ts';
 
@@ -11,6 +11,9 @@ import { runDoctor } from '../src/cli/doctor.ts';
 import { captureCli } from './cli-in-process.ts';
 import { INIT_GIT_IDENTITY, withInitGitIdentity } from './git-identity-fixture.ts';
 import { commandIn, gitIn, initIn, masterClone, scratchMachine, snapshot } from './init-machine.ts';
+import { listTaskWorktrees, territoryGit, territoryGitAsync } from '../src/territory.ts';
+import { gitIn as verdictGit } from '../src/tracker/verdict-git.ts';
+import { refusedOverridePaths } from '../src/merge-override.ts';
 
 const git = (root: string, ...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
@@ -40,6 +43,41 @@ async function fixture(t: Parameters<typeof tempProject>[0], remote = true) {
   }
   return { root, github, territory: join(root, '.cland', 'territory.git') };
 }
+
+// T3: the native Git adapter contract needs real Git's path quoting and delimiters; no hub starts.
+test('Git runners preserve whitespace in delimited path output', async t => {
+  const root = await tempProject(t);
+  git(root, 'init', '-q', '-b', 'main');
+  await mkdir(join(root, ' docs'));
+  const paths = [' docs/input.ts', 'line\nbreak.ts', 'trailing.ts '];
+  for (const path of paths) await writeFile(join(root, path), 'source');
+  git(root, 'add', '--', ...paths);
+  git(root, 'config', 'test.path', ' leading and trailing ');
+  const runners = [
+    (args: string[]) => territoryGit(root, args),
+    (args: string[]) => territoryGitAsync(root, args),
+    verdictGit(root),
+  ];
+  for (const run of runners) {
+    const listing = await run(['ls-files', '-z']);
+    assert.equal(listing, ' docs/input.ts\0line\nbreak.ts\0trailing.ts \0');
+    assert.deepEqual(refusedOverridePaths(listing!.split('\0').filter(Boolean)), paths, 'path policy receives the original filename');
+    assert.equal(await run(['config', '--null', '--get', 'test.path']), ' leading and trailing \0');
+    assert.equal(await run(['symbolic-ref', '--short', 'HEAD']), 'main', 'scalar callers retain trimmed output');
+  }
+});
+
+// T3: native worktree porcelain quotes paths without -z; no hub starts.
+test('task worktree listings preserve whitespace in the project path', async t => {
+  const parent = await tempProject(t);
+  const root = join(parent, ' leading\ntrailing ');
+  await mkdir(root);
+  git(root, 'init', '-q', '-b', 'main');
+  git(root, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '--allow-empty', '-qm', 'Initial');
+  const path = join(root, '.cland', 'worktrees', 'T-1');
+  git(root, 'worktree', 'add', '-qb', 'task', path);
+  assert.deepEqual(await listTaskWorktrees(root), [{ path, head: git(root, 'rev-parse', 'HEAD'), branch: 'task', prunable: false, item: 'T-1' }]);
+});
 
 // T3: native clone HEAD discovery and ref seeding require real Git; no hub or harness starts.
 test('init seeds dev and the territory from a clone defaulting to master', async (t) => {

@@ -35,10 +35,10 @@ export async function releaseState(root: string, resumed: Resumed, env: NodeJS.P
   const primary = await releaseBranch(root, env);
   const main = await ref(root, `refs/heads/${primary}`, env);
   const dev = await ref(root, 'refs/heads/dev', env);
-  const checkouts = await git(root, ['worktree', 'list', '--porcelain'], undefined, undefined, env);
+  const checkouts = await git(root, ['worktree', 'list', '--porcelain', '-z'], undefined, undefined, env);
   return resumed(() => {
     if (!main || !dev) throw new ReleaseError('release-state', `${primary} and dev must both exist`);
-    if (checkouts.includes(`branch refs/heads/${primary}\n`)) throw new ReleaseError('release-state', `${primary} is checked out; use dev in the project root and free ${primary} in other worktrees`);
+    if (checkouts.split('\0').includes(`branch refs/heads/${primary}`)) throw new ReleaseError('release-state', `${primary} is checked out; use dev in the project root and free ${primary} in other worktrees`);
     return { main, dev };
   });
 }
@@ -270,8 +270,8 @@ export async function syncGit(root: string, resumed: Resumed, authorize: () => v
     await git(root, ['worktree', 'add', '--detach', scratch, state.dev], true, undefined, env);
     try { await git(scratch, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'rebase', '--rebase-merges', '--onto', github.main, state.main], true, undefined, env); }
     catch (err) {
-      const files = await git(scratch, ['diff', '--name-only', '--diff-filter=U'], undefined, undefined, env);
-      if (files) throw new ReleaseError('sync-conflict', `dev was kept; replay conflicts in:\n${files}`, resumed(() => files.split('\n')));
+      const files = (await git(scratch, ['diff', '--name-only', '-z', '--diff-filter=U'], undefined, undefined, env)).split('\0').filter(Boolean);
+      if (files.length) throw new ReleaseError('sync-conflict', `dev was kept; replay conflicts in:\n${files.join('\n')}`, resumed(() => files));
       throw err;
     }
     return git(scratch, ['rev-parse', 'HEAD'], undefined, undefined, env);
