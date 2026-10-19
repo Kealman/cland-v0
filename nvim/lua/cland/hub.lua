@@ -261,6 +261,14 @@ end
 
 --- `cland hub start`, once per streak of failures; it replaces a stale hub.json and reports a live hub.
 function Client:_hub_start(why)
+  -- The CLI checks again to close the race with a stop after this read. Avoid
+  -- spawning it at all while the operator's recorded restart window is open.
+  local stop = read_json(self.root .. '/.cland/run/hub-stop.json')
+  local sec, usec = uv.gettimeofday()
+  if stop and type(stop.expiresAt) == 'number' and stop.expiresAt < math.huge and stop.expiresAt > sec * 1000 + usec / 1000 then
+    self:_set_state('waiting', 'hub autostart deferred during the deliberate-stop grace period')
+    return self:_retry()
+  end
   self.autostarted = true
   self.failures = 0
   self:_set_state('starting', why)

@@ -2,7 +2,7 @@
 // anywhere inside it).
 import { AutostartDeferred, autostartDeferred, markHubStop, type Starter } from '../hub/startup.ts';
 import { spawn } from 'node:child_process';
-import { closeSync, fstatSync, mkdirSync, openSync, readFileSync, rmSync } from 'node:fs';
+import { closeSync, fstatSync, mkdirSync, openSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createStdioEdge } from '../hub/stdio.ts';
 import { jsonLinesLog } from '../log.ts';
@@ -16,7 +16,7 @@ import { liveHolder } from '../hub/lock.ts';
 import { formatAudit, parseSince, readAudit, type AuditFilter } from '../hub/audit.ts';
 
 const CLI_ENTRY = fileURLToPath(new URL('../../bin/cland.ts', import.meta.url));
-/** How long `start` waits for the daemon to answer, and `stop` for it to exit. */
+/** Startup inactivity deadline; progress renews it. Stop has a fixed exit deadline. */
 const START_DEADLINE_MS = 15_000;
 const STOP_DEADLINE_MS = 10_000;
 
@@ -115,8 +115,17 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
 
   // Our child serves, or — when another start got the project's lock first — exits, and the hub to report
   // is the lock's holder: either way the answer is the hub `hub.json` names once it answers.
-  const deadline = Date.now() + START_DEADLINE_MS;
-  while (Date.now() < deadline) {
+  let deadline = Date.now() + START_DEADLINE_MS;
+  let logSize = logStart;
+  for (;;) {
+    // Opening storage and restoring sessions can exceed 15 s on a healthy hub.
+    // Only this attempt's appended log bytes renew the inactivity deadline.
+    try {
+      const size = statSync(l.log).size;
+      if (size > logSize) deadline = Date.now() + START_DEADLINE_MS;
+      logSize = size;
+    } catch { /* no progress logged */ }
+    if (Date.now() >= deadline) break;
     const holder = liveHolder(l.lock);
     if (exited !== null && holder === null) {
       if (autostart && autostartDeferred(root)) {
@@ -148,7 +157,7 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
     /* no log */
   }
   const { startupDiagnostic } = await import('./startup-diagnostic.ts');
-  io.err(`cland: the hub did not start${exited !== null ? ` (exited with ${exited})` : ` within ${START_DEADLINE_MS / 1000} s`}; ${startupDiagnostic(log)}; ${l.log}:\n${tail}\n`);
+  io.err(`cland: the hub did not start${exited !== null ? ` (exited with ${exited})` : ` after ${START_DEADLINE_MS / 1000} s without startup log progress`}; ${startupDiagnostic(log)}; ${l.log}:\n${tail}\n`);
   if (exited === null && child.pid !== undefined) child.kill('SIGKILL');
   return 1;
 }

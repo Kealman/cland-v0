@@ -3,7 +3,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type Starter = { client: 'cli' | 'nvim' | 'other'; parentPid: number; cwd: string };
-export const STOP_GRACE_MS = 10_000;
+// Reserve operator restart time while leaving startup headroom before the
+// Claude Code mod bridge expires after roughly 60 s without a hub.
+export const STOP_GRACE_MS = 30_000;
 const marker = (root: string): string => join(root, '.cland', 'run', 'hub-stop.json');
 
 export function markHubStop(root: string): void {

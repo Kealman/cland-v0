@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { NVIM_DIR } from '../bin/nvim-path.ts';
 import { centreOf, nvimOrSkip, startClient } from './stub-client.ts';
 import { tempProject } from './fixture.ts';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 const nvim = await nvimOrSkip();
 
@@ -57,4 +58,52 @@ test('nothing loads from the user configuration: every sourced script is the bun
   assert.equal(await c.lua('return vim.o.scrollback'), 10000);
   assert.equal(await c.lua('return vim.o.cmdheight'), 1);
   assert.equal(await c.lua("return vim.fn.maparg('<S-CR>', 't', false, true).desc"), 'cland: Send Shift+Enter to harness');
+});
+
+
+test('workbench autostart waits for the recorded operator restart window before invoking the CLI', { skip }, async t => {
+  const root = await tempProject(t);
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]) });
+  await c.waitScreen(s => centreOf(s).includes('No messages in General yet.') && !notice(s), 'stub connected');
+  const stoppedAt = Date.parse('2026-10-19T21:33:40Z');
+  // Recorded marker contract: CLI tests cover the writer; this client consumes fixture data.
+  await mkdir(join(root, '.cland/run'), { recursive: true });
+  await writeFile(join(root, '.cland/run/hub-stop.json'), JSON.stringify({ expiresAt: stoppedAt + 30_000 }));
+  const result = await c.lua<{ inside: number[]; after: number; command: string[] }>(`
+    local Hub = require('cland.hub')
+    local gettimeofday, defer, system = vim.uv.gettimeofday, vim.defer_fn, vim.system
+    local now, timers, commands = ..., {}, {}
+    local function advance(ms)
+      local target = now + ms
+      while timers[1] and timers[1].at <= target do
+        local timer = table.remove(timers, 1)
+        now = timer.at
+        timer.fn()
+      end
+      now = target
+    end
+    vim.uv.gettimeofday = function() return math.floor(now / 1000), (now % 1000) * 1000 end
+    vim.defer_fn = function(fn, ms)
+      timers[#timers + 1] = { at = now + ms, fn = fn }
+      table.sort(timers, function(a, b) return a.at < b.at end)
+      return {}
+    end
+    vim.system = function(cmd) commands[#commands + 1] = cmd; return {} end
+    local client = Hub.new({ root = ${JSON.stringify(root)}, cli = { 'fixture-cland' } })
+    local ok, value = pcall(function()
+      client:start()
+      local inside = { #commands }
+      advance(12000); inside[#inside + 1] = #commands
+      advance(17999); inside[#inside + 1] = #commands
+      advance(5001)
+      return { inside = inside, after = #commands, command = commands[1] }
+    end)
+    client:stop()
+    vim.uv.gettimeofday, vim.defer_fn, vim.system = gettimeofday, defer, system
+    assert(ok, value)
+    return value
+  `, stoppedAt);
+  assert.deepEqual(result.inside, [0, 0, 0], 'no hub start before the 30 s window expires, including the incident at +12 s');
+  assert.equal(result.after, 1, 'fallback starts after the window');
+  assert.deepEqual(result.command, ['fixture-cland', 'hub', 'start', '--autostart', '--client', 'nvim']);
 });
