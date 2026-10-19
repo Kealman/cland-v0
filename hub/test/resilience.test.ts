@@ -156,7 +156,8 @@ test('a spoke whose session vanished (stdin ended without an MCP close) exits in
 });
 
 test('a spoke acks every deliver and hands a message re-sent under the same id to its session once', async () => {
-  // The real hub re-sends a message whose ack it never got. Beta's spoke is paused, so the deliver waits
+  // T3: the real hub re-sends across a stopped spoke's socket closure and reconnect.
+  // Beta's spoke is paused, so the deliver waits
   // unread in its socket while the hub's heartbeat sweep drops that socket; resumed, the spoke reads the
   // first copy (its ack goes to a socket the hub has closed), reconnects, and is sent the message again.
   const events: Array<Record<string, unknown>> = [];
@@ -164,11 +165,20 @@ test('a spoke acks every deliver and hands a message re-sent under the same id t
   const alpha = await spawnSpoke({ hub, name: 'alpha', sessionId: 'sess-a', keepaliveMs: 40 });
   const beta = await spawnSpoke({ hub, name: 'beta', sessionId: 'sess-b', keepaliveMs: 40 });
   let paused = false;
-  try {
-    await alpha.waitForPresence(['alpha', 'beta']);
+  // Publication and delivery share one synchronous hub turn. Stop beta only once alpha's message
+  // is committed: beta can keep heartbeating throughout any delay before alpha's send reaches the hub,
+  // and the keepalive sweep cannot run between this stop and writing the first copy to its socket.
+  const unsubscribe = hub.core.subscribe((event) => {
+    if (event.type !== 'message' || event.message.from !== 'alpha' || event.message.text !== 'only once, please') return;
     process.kill(beta.pid, 'SIGSTOP');
     paused = true;
-    const sent = await alpha.call<{ outcomes: Array<{ outcome: string }> }>('send', { to: ['beta'], text: 'only once, please' });
+  });
+  try {
+    await alpha.waitForPresence(['alpha', 'beta']);
+    const sent = await alpha.call<{ ok: boolean; outcomes?: Array<{ outcome: string }> }>('send', { to: ['beta'], text: 'only once, please' });
+    assert.equal(sent.ok, true, JSON.stringify(sent));
+    assert.ok(Array.isArray(sent.outcomes), JSON.stringify(sent));
+    assert.equal(paused, true, 'beta was stopped at message publication before delivery');
     assert.equal(sent.outcomes[0]?.outcome, 'delivered', 'the frame went out on the open socket');
     await waitForAbsence(alpha, 'beta');
     process.kill(beta.pid, 'SIGCONT');
@@ -190,6 +200,7 @@ test('a spoke acks every deliver and hands a message re-sent under the same id t
     await new Promise((r) => setTimeout(r, 100));
     assert.equal(beta.events.filter((e) => e.params.content === 'only once, please').length, 1, 'the session saw it once');
   } finally {
+    unsubscribe();
     if (paused) process.kill(beta.pid, 'SIGCONT');
     await alpha.close();
     await beta.close();
