@@ -2,8 +2,8 @@
 id: T-887
 kind: task
 title: A red periodic dev T3 run finds the landed merge that broke it and files a Bug
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-624
 branch: t/T-887-a-red-periodic-dev-t3-run-finds-the
 created: 2026-10-19T16:17:32.779Z
-updated: 2026-10-19T19:14:18.405Z
+updated: 2026-10-19T19:41:42.879Z
+closed: 2026-10-19T19:41:42.879Z
 ---
 
 ## Summary
@@ -25,14 +26,17 @@ D67, part two: when a periodic dev T3 run (T-886) goes red, the hub finds the la
 ## Acceptance criteria
 
 - [x] C1. A red `dev-t3` run with merges M1…Mn since the last green periodic run reruns only its failing files, bisecting over those landed commits, and names the first merge at which they fail. A failing file that also fails at the last green head is reported as pre-existing, not blamed (T1 test over the search with a fake runner).
-  - done: impl-887 · 2026-10-19T18:20:35.564Z
   - verified: rev-30 [reviewer] · run rev-20261019-887-final · 2026-10-19T18:21:13.744Z · commit f621acf90a1e1ebabe06c266f9346bf8e003a30b
+  - done: impl-887 · 2026-10-19T19:29:16.668Z
+  - verified: rev-30 [reviewer] · run rev-20261019-887-integrated-final · 2026-10-19T19:30:10.291Z · commit 50f5430ca24a237e2f9dc0af7f54bacedd3be214
 - [x] C2. The hub files one Bug under the Bugs category for the named merge, with the failing files, run ids and both heads. It notifies the Coordinator in General and the merge's last claimant session if live. A failing file that passes on rerun at the red head is reported as a flake and files nothing (T2 test).
-  - done: impl-887 · 2026-10-19T18:20:36.042Z
   - verified: rev-30 [reviewer] · run rev-20261019-887-final · 2026-10-19T18:21:13.744Z · commit f621acf90a1e1ebabe06c266f9346bf8e003a30b
+  - done: impl-887 · 2026-10-19T19:29:17.983Z
+  - verified: rev-30 [reviewer] · run rev-20261019-887-integrated-final · 2026-10-19T19:30:10.291Z · commit 50f5430ca24a237e2f9dc0af7f54bacedd3be214
 - [x] C3. While the search runs, merge batches keep forming and landing (T1 test over the controller).
-  - done: impl-887 · 2026-10-19T18:20:36.638Z
   - verified: rev-30 [reviewer] · run rev-20261019-887-final · 2026-10-19T18:21:13.744Z · commit f621acf90a1e1ebabe06c266f9346bf8e003a30b
+  - done: impl-887 · 2026-10-19T19:29:19.465Z
+  - verified: rev-30 [reviewer] · run rev-20261019-887-integrated-final · 2026-10-19T19:30:10.291Z · commit 50f5430ca24a237e2f9dc0af7f54bacedd3be214
 
 ## Comments
 
@@ -101,3 +105,43 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-6361 Shared-fix delta clear: only verify-tool fixture changes, final blob exactly equals T-891 source/final-reviewed a7159290; assertions unchanged. Coordinator e1f1e544 authorized pick. T-887 integration/source unchanged. T-891 A-6359 supports fix, not T-887 same-head runtime. C1–C3 await new mode-free gate.
+
+### impl-887 · 2026-10-19T19:20:46.139Z
+
+Coordinator revised shared fix applied exactly as posted: reverted old c2153c7f via 65737625, cherry-picked a7159290 as 0385319e and 67a01b6f as 50f5430c. Final delta from source-reviewed 2be4b504 is only verify-tool.test.ts +7/-1, blob identical to reviewed T-891 final. Targeted 3/3 (.151/.076/.046s) and both-package typecheck green; required fetch + merge-tree clean. Pushed 50f5430c; fresh delta review requested. Cancelled a17c4825/A-6369 remains no-runtime-proof evidence.
+
+### rev-30 · 2026-10-19T19:22:13.031Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-887-revised-shared-fixture-source
+commit: 50f5430ca24a237e2f9dc0af7f54bacedd3be214
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6393 cumulative shared-fix source clear. Net only verify-tool.test.ts+7/-1 from 2be4b504; blob exactly equals T-891 final67a01b6f. Coordinator151c645e authorization; all original task source unchanged, assertions preserved. Runtime C1–C3; cancelled A-6369 supplies no execution proof; new exact-head mode-free receipt required, no criteria verified yet.
+
+### impl-887 · 2026-10-19T19:29:20.921Z
+
+Replacement exact-head mode-free verify 75841ae8 green at unchanged source-reviewed 50f5430c: 1609/1609, hub and Neovim complete. Revised T-891 fixture covered; all owned search/probe/Bug/flake/concurrency controls fit ordinary and 5/5 load tier budgets. Linux c-8 lon1 lifetime 350s, cost $0.0243. Receipt A-6417; refreshed claimant C1–C3 done marks. Awaiting current-head final Reviewer settlement. Prior f621acf9 receipt and cancelled a17c4825 remain historical only.
+
+### rev-30 · 2026-10-19T19:30:10.291Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-887-integrated-final
+commit: 50f5430ca24a237e2f9dc0af7f54bacedd3be214
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6420 Exact-headA-6417/75841ae8 final clear: ordinary1609/1609,0fail/cancel/skip/TODO, all22groups5/5, no owned budget/resource rows. Owned criterion proofs audited; all8owned identities executed ordinary and5/5; sourceA-6338/A-6393. Allcriteria verified; unownedT883 budgets separately owned, no taskT3claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T19:41:42.879Z
+
+Merged 30e7bfe5e12ac389054acd6586a8d91a84910d53 onto dev.

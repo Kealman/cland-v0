@@ -3,7 +3,7 @@ id: T-893
 kind: task
 title: The periodic dev run covers T2 too, so post-merge T2 interactions surface within two hours
 state: open
-status: backlog
+status: review
 size: S
 labels:
   - v0.1.4
@@ -11,10 +11,10 @@ assignee: null
 parent: C-326
 blocked_by:
   - T-887
-topic: null
-branch: null
+topic: topic-643
+branch: t/T-893-the-periodic-dev-run-covers-t2-too-so
 created: 2026-10-19T19:09:07.564Z
-updated: 2026-10-19T19:09:07.564Z
+updated: 2026-10-19T19:45:48.682Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ Merge batches run T1 only (D67) and earlier ran T1+T3, so T2 tests never run on 
 
 - [ ] C1. (T1) The periodic dev run (`dev_t3_every`) plans T2 and T3, and a red T2 file in it feeds the same culprit search and Bug filing as a red T3 file (fake-runner test).
 - [ ] C2. (T0) docs/agents/tests.md says that T2 runs after merge only in the periodic dev run, the soak and close occasions.
+
+## Comments
+
+### impl-893 · 2026-10-19T19:45:48.616Z
+
+Implemented 94d8b44e: periodic dev selects T2+T3; DevT3Result unchanged. T1 fake-runner regression covers T2/T3 receipt -> culprit search -> one Bugs item; planner covers both packages. Docs updated for automated post-merge T2 cadence. Root npm run check passes; targeted suite-soak 5/5 (0.892s), suite-tiers 13/13 (0.675s), dev-t3-search 4/4 (0.520s). Required fetch/merge-tree clean; pushed origin. Source review next, then exact-head mode-free verification.

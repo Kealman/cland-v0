@@ -2,8 +2,8 @@
 id: T-874
 kind: task
 title: Setup's favourite step switches the Aide to Codex via setRoleKey and skips T-872's sandbox default
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-615
 branch: t/T-874-setup-s-favourite-step-switches-the-aide
 created: 2026-10-19T12:48:36.547Z
-updated: 2026-10-19T16:12:59.112Z
+updated: 2026-10-19T19:22:09.680Z
+closed: 2026-10-19T19:22:09.680Z
 ---
 
 ## Summary
@@ -67,3 +68,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6196 audits full A-6195 / 8a6c7dc9 at unchanged reviewed head. Ordinary 1577/1577 zero fail/cancel/skip/TODO; all 497 groups 5/5. Both new favourite missing-default/explicit-choice tests pass ordinarily and 5/5, shared role-launch file remains green. C1 verified with A-6173. Existing round-trip .5386s is known separately fixed T-875, not present on this frozen head; four inherited T-856 push trips retained under T-877. No owned regression trip, existing report-only debt retained. T3 landing deferred; no Reviewer execution.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T19:22:09.680Z
+
+Merged d679411d25c6df4c1a21b4a57f89ac0d743d32b7 onto dev.

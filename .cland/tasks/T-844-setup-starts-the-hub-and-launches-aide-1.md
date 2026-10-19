@@ -2,8 +2,8 @@
 id: T-844
 kind: task
 title: Setup starts the hub and launches `aide-1` with the onboarding brief
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-614
 branch: t/T-844-setup-starts-the-hub-and-launches-aide-1
 created: 2026-10-19T06:34:13.450Z
-updated: 2026-10-19T19:18:54.016Z
+updated: 2026-10-19T19:42:10.138Z
+closed: 2026-10-19T19:42:10.138Z
 ---
 
 ## Summary
@@ -43,20 +44,25 @@ Tracer bullet 4, the hub half. Setup starts this project's hub, which outlives s
 ## Acceptance criteria
 
 - [x] C1. With an injected hub client and no hub running, the flow starts the hub and launches `aide-1` with role `aide`, the favourite and the exact brief, `project: empty` for a folder of cland's files only (T1).
-  - done: impl-844 · 2026-10-19T16:18:29.774Z
   - verified: rev-30 [reviewer] · run rev-20261019-844-final · 2026-10-19T16:19:23.509Z · commit cdde6a6b8253f1dd535e0a45429183b3e8b82e0f
+  - done: impl-844 · 2026-10-19T19:32:28.115Z
+  - verified: rev-30 [reviewer] · run rev-20261019-844-startup-integrated-final · 2026-10-19T19:33:21.316Z · commit e391b45a06cb1f690b28b03d28e62ecb25a89166
 - [x] C2. A folder with one untracked file of the project's own gives `project: existing`, while an ignored file does not (T1 over the kind function on a temp repo, T2).
-  - done: impl-844 · 2026-10-19T16:18:30.483Z
   - verified: rev-30 [reviewer] · run rev-20261019-844-final · 2026-10-19T16:19:23.509Z · commit cdde6a6b8253f1dd535e0a45429183b3e8b82e0f
+  - done: impl-844 · 2026-10-19T19:32:30.562Z
+  - verified: rev-30 [reviewer] · run rev-20261019-844-startup-integrated-final · 2026-10-19T19:33:21.317Z · commit e391b45a06cb1f690b28b03d28e62ecb25a89166
 - [x] C3. A second run with `aide-1` running reports `hub ok` and `aide ok` and launches nothing, while a stopped `aide-1` is resumed, not launched afresh (T1).
-  - done: impl-844 · 2026-10-19T16:18:31.222Z
   - verified: rev-30 [reviewer] · run rev-20261019-844-final · 2026-10-19T16:19:23.509Z · commit cdde6a6b8253f1dd535e0a45429183b3e8b82e0f
+  - done: impl-844 · 2026-10-19T19:32:35.375Z
+  - verified: rev-30 [reviewer] · run rev-20261019-844-startup-integrated-final · 2026-10-19T19:33:21.317Z · commit e391b45a06cb1f690b28b03d28e62ecb25a89166
 - [x] C4. A real hub served in the test process (`projectHub`) receives `session.launch` for `aide-1` with the brief and lists it running (T2, in-process fake adapter).
-  - done: impl-844 · 2026-10-19T16:18:31.828Z
   - verified: rev-30 [reviewer] · run rev-20261019-844-final · 2026-10-19T16:19:23.509Z · commit cdde6a6b8253f1dd535e0a45429183b3e8b82e0f
+  - done: impl-844 · 2026-10-19T19:32:36.735Z
+  - verified: rev-30 [reviewer] · run rev-20261019-844-startup-integrated-final · 2026-10-19T19:33:21.317Z · commit e391b45a06cb1f690b28b03d28e62ecb25a89166
 - [x] C5. `--no-aide` reports both steps `skip` and starts nothing, and without a terminal the aide step is `open` and nothing is launched (T1).
-  - done: impl-844 · 2026-10-19T16:18:32.530Z
   - verified: rev-30 [reviewer] · run rev-20261019-844-final · 2026-10-19T16:19:23.509Z · commit cdde6a6b8253f1dd535e0a45429183b3e8b82e0f
+  - done: impl-844 · 2026-10-19T19:32:37.911Z
+  - verified: rev-30 [reviewer] · run rev-20261019-844-startup-integrated-final · 2026-10-19T19:33:21.318Z · commit e391b45a06cb1f690b28b03d28e62ecb25a89166
 
 ## Comments
 
@@ -123,3 +129,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-6351 Integration source clear. Compared all 16 task-delta files to original reviewed patch: only two requiredHarnesses fixture-method additions differ; assertions unchanged. Owned production modules byte-identical. Landed T-834 installer/login requirements compose with onboarding's required all-installed harness list. Coordinator 07a73582 authorized merge/repair. No current-head criteria verification until exact-head mode-free receipt; old runtime historical.
+
+### rev-30 · 2026-10-19T19:24:44.320Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-844-startup-shared-integration-source
+commit: e391b45a06cb1f690b28b03d28e62ecb25a89166
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6401 Combined source delta clear: relative-to-dev task patch retains original changes plus exact finalT891 fixture blob. hub.ts retains T865log offset/current-start diagnostic/lazy import/cleanup, with only original exported starter/env/call rename as task changes. Coordinatorb8927c7e/151c645e authorize merge/picks. A6388reported host56incl nativecli-imports3/3/18-modulebudget support source; C1–C5await exact-head mode-free green, oldredhistorical.
+
+### rev-30 · 2026-10-19T19:33:21.318Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-844-startup-integrated-final
+commit: e391b45a06cb1f690b28b03d28e62ecb25a89166
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6428 Exact-headA6423/b471d6aa final clear:1639/1639,0fail/cancel/skip/TODO,51groups5/5,no ownedbudget/resource. All9owned setup/kind/component controls pass ordinary+5/5(T1maxrep.079s,T2maxrep.171s); sharedfixturealso5/5. SourceA6401 startupintegration retained; reported nativeimportbudget proof qualified separately. AllC1–C5verified; priorredhistorical, no taskT3claim.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-19T19:42:10.138Z
+
+Merged 3147e92f993926ff24a7a96f477cfb297400c860 onto dev.

@@ -2,8 +2,8 @@
 id: T-883
 kind: task
 title: Fourteen T2 cases run 2.0–2.9 s against the 2 s T2 budget
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-623
 branch: t/T-883-fourteen-t2-cases-run-2-0-2-9-s-against
 created: 2026-10-19T15:38:56.097Z
-updated: 2026-10-19T19:16:22.417Z
+updated: 2026-10-19T19:46:44.841Z
+closed: 2026-10-19T19:46:44.841Z
 ---
 
 ## Summary
@@ -43,8 +44,9 @@ T-879's same-head receipt (A-6161, audited in A-6167) shows fourteen T2 cases be
 
 - [x] C1. Each case listed in the body or in the Coordinator's added-cases comment runs within the 2 s T2 budget in a mode-free task verify. A case that cannot is given an exact-key allowance with a written reason, owned by an open epic, or moves to T3 under the tier-move rule with its assertions kept. The receipt shows no report-only budget line for any of them.
   - verified: rev-30 [reviewer] · run rev-20261019-883-final · 2026-10-19T18:16:09.412Z · commit 11ecce1664a6e5ce6d12c1ac7f81bde7df6f04b9
-  - done: impl-882 · 2026-10-19T18:34:09.013Z
   - verified: rev-30 [reviewer] · run rev-20261019-883-baseline-integration-final · 2026-10-19T18:34:18.292Z · commit 736e3df515f193eb3006f59edca252db1006df49
+  - done: impl-883 · 2026-10-19T19:33:36.563Z
+  - verified: rev-30 [reviewer] · run rev-20261019-883-landed-integration-final · 2026-10-19T19:36:41.638Z · commit de40720d63ce144aeb0a076b410afd09a80a8a8d
 
 ## Comments
 
@@ -115,3 +117,52 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-6323 independently audits A-6321/run 9d0bf176 at the reviewed integrated head: 1589/1589, zero fail/cancel/skip/TODO; all 22 exact owned ordinary identities pass below 2 s, maximum events 1.546139361 s, no owned raw budget row. A-6320 source delta clear. Refreshed baseline selects zero new repetition groups; earlier qualified load evidence retained, no fresh 5/5 claim. Unowned T-882 costs and inherited T-856/T-877 resources retain separate disposition. Native T3 remains landing evidence. Standards/Spec findings [].
 
 Criteria: C1 verified.
+
+### impl-883 · 2026-10-19T19:20:39.141Z
+
+Conflict integration at 5341fe21ece22c29e28f6b61c6ff5933b780c94e: merged origin/dev 24ded09d once as Coordinator requested. Crew retains T-882 FakeClock changes and T-883 production-CLI role permutations, with every assertion from both parents. Full documented recorder regenerated 4,664 frames: 36 complete invocations including live contract, 307 passes. Typecheck/lint pass. All 15 owned complete files pass (160 tests), all 22 identities <2 s locally (max .911702 s). A-6382 contains raw logs and audit: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6382-t-883-conflict-resolution-and-22-case-host-evidence-at-5341fe21. No tier moves/new allowances; exact-head delta review and Linux mode-free verify pending.
+
+### rev-30 · 2026-10-19T19:23:56.474Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-883-landed-clock-integration-source
+commit: 5341fe21ece22c29e28f6b61c6ff5933b780c94e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6397 Delta clear. Every non-recording task patch change matches prior reviewed patch; both crew imports/parent assertions and combined thread changes retained. Recorder307/307 plus live contract, owned fullfiles160/160 and all22host bodies<2s independently audited. Parsed dev baseline minus only owned allowance. C1awaits exact-head Linux gate. KnownT891 inherited fixture needs shared disposition before run/newdelta review if head changes.
+
+### rev-30 · 2026-10-19T19:25:18.818Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-883-revised-shared-fixture-source
+commit: de40720d63ce144aeb0a076b410afd09a80a8a8d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6404 Source clear at final cumulative shared-fix head. Only verify-tool+7/-1 from5341fe21; exact finalT891 fixture blob, assertions preserved, Coordinator7b256524 authorization. Combined integration source basisA-6397 unchanged. Runtime C1: all22 ordinary Linux bodies<2s, no owned raw budget row and overall green pending new exact-head mode-free gate.
+
+### rev-30 · 2026-10-19T19:36:41.638Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-883-landed-integration-final
+commit: de40720d63ce144aeb0a076b410afd09a80a8a8d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6435 Exact-headA6426/da5c3269 final clear:1624/1624,0fail/cancel/skip/TODO,36groups5/5,noresource. All22ordinary exactowned keys pass<2s(max1.600065172),no ownedrawbudgetrow; baselineownedidentitiesnotfreshlyrepeated. SourceA6397/A6404 retained, host/recordingproofseparate. Two unownedcostasides reportedTechdebtS. C1verified; no taskT3claim.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-19T19:46:44.841Z
+
+Merged ff78d42c386d618866c3904be041344b34599a87 onto dev.

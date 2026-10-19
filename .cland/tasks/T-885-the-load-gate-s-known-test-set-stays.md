@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-620
 branch: t/T-885-the-load-gate-s-known-test-set-stays
 created: 2026-10-19T16:16:37.559Z
-updated: 2026-10-19T19:15:32.144Z
+updated: 2026-10-19T19:45:20.884Z
 ---
 
 ## Summary
@@ -24,16 +24,19 @@ The load gate treats every T1/T2 identity missing from hub/test/durations.json's
 ## Acceptance criteria
 
 - [x] C1. (T1, known-identity admission test) A T1/T2 identity that passed its five load-gate repetitions in the task run of an item that has since landed on dev is not repeated by later task runs, with no manual baseline refresh. A test over the gate's known-identity set shows this, and an identity introduced by an unlanded branch is still repeated.
-  - done: impl-885 · 2026-10-19T17:09:21.614Z
-  - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
+  - done: impl-885 · 2026-10-19T19:37:04.075Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final · 2026-10-19T19:38:32.635Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
 - [x] C2. `node hub/test/durations.ts refresh` given logs that each cover only some tiers keeps the previous baseline entries of files that appear in none of the given logs, and still drops tests that vanished from files the newest log ran (T1 test over refreshDurations).
-  - done: impl-885 · 2026-10-19T17:09:22.091Z
-  - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
+  - done: impl-885 · 2026-10-19T19:37:07.290Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final · 2026-10-19T19:38:32.635Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
 - [x] C3. (T0, docs inspection) docs/agents/tests.md describes the known-identity rule and the partial-log refresh in place of the stage-close-only rule.
   - verified: rev-31 [reviewer] · run rev-20261019-885-source-2 · 2026-10-19T16:26:14.684Z · commit d2c9890f799b544e30c571141988ec716788f164
-  - done: impl-885 · 2026-10-19T17:09:22.674Z
   - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
   - verified: rev-31 [reviewer] · run rev-20261019-885-integration-source · 2026-10-19T19:15:32.144Z · commit e5d0abef240b47e29f8812ca841664e46b5d625f
+  - verified: rev-31 [reviewer] · run rev-20261019-885-shared-source · 2026-10-19T19:26:35.174Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
+  - done: impl-885 · 2026-10-19T19:37:09.584Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-final · 2026-10-19T19:38:32.635Z · commit d3918a60039ab3422b03c85f788f4be582b852b2
+  - verified: rev-31 [reviewer] · run rev-20261019-885-integration-source-2 · 2026-10-19T19:45:20.884Z · commit d4792e4831895f2a7defdb8eeac38e811a3012ca
 
 ## Comments
 
@@ -117,5 +120,69 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Authorized integration delta clear; no Standards/Spec findings. Independently read Coordinator 2c3f70ba authorizing this single dev merge. Combined conflict hunks retain dev's batchTiers selection and dev-t3 baseline exclusion alongside the separate ordinary task-only landed-proof attachment. Docs combine both policies; C3 verified at the new head. Proof helper, duration refresh and new T1 controls are byte-unchanged from prior final-clear head; dev's duration/config changes remain intact. A-6360 reports both-project typecheck and four targeted files 30/30 green. C1/C2 need fresh unchanged-head mode-free task evidence; prior A-6271 is stale for execution. See integration delta artifact in topic-620.
+
+Criteria: C3 verified.
+
+### impl-885 · 2026-10-19T19:22:05.801Z
+
+Integration-head task verification ed9edc8a at e5d0abef failed (A-6387): two hub/test/verify-tool.test.ts identities failed ordinary and all five load repetitions, 12 total completed failures; ordinary hub phase 1387/1389. Reported to supervising Lead for existing T-891 shared-fix guidance. No local unrelated diagnosis, edits or retry. Linux c-8 lon1, 329s/$0.0229. Reviewed head unchanged.
+
+### rev-31 · 2026-10-19T19:26:34.016Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-integration-runtime
+commit: e5d0abef240b47e29f8812ca841664e46b5d625f
+scope: evidence
+findings: [{"severity":"medium","text":"A-6387 exits 1: both verify-tool identities fail ordinarily and all five repetitions because fixture verification commands are missing (T-891, Coordinator 7ed14ccf). Owned five cases and 25 repetitions pass, but the configured gate is red.","file":"hub/test/verify-tool.test.ts","line":43}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Complete-log evidence audit: ordinary 1387 pass/2 fail; two shared gates 0/5; all five owned controls and 25 repetitions pass. No tier mismatches; nine external report-only duration diagnostics retained in the companion artifact. Head e5d0abef remains not clear on runtime evidence; subsequent authorized shared-fix head requires its own source review and gate.
+
+Criteria: C1 failed (Required integration task receipt A-6387 is red on the two shared T-891 fixture identities.), C2 failed (Required integration task receipt A-6387 is red; positive owned refresh controls do not establish a passing configured gate.).
+
+### rev-31 · 2026-10-19T19:26:35.174Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-shared-source
+commit: d3918a60039ab3422b03c85f788f4be582b852b2
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. Exact Coordinator-authorized +7/-1 delta only verify-tool.test.ts supplies real fixture verification commands and cland-shaped candidate files through the existing helper. Fake candidate/clock seams and every assertion remain. Spec: no findings; preserves injected selection for claimed/explicit cwd, validation and empty queue controls. T-885 production changes and docs unchanged; C3 re-established at this head. C1/C2 await a new mode-free configured task receipt; old A-6387 remains failed and is not reused as green. Companion artifact records the complete runtime and source audit.
+
+Criteria: C3 verified.
+
+### rev-31 · 2026-10-19T19:38:32.635Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-integration-final
+commit: d3918a60039ab3422b03c85f788f4be582b852b2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear on c66154e4-a5b3-4eb7-98d2-43fbea693f22 / A-6437 at the unchanged current source-clear head. Independently parsed 1624 ordinary passes and all 36 load groups 5/5, with no failures or tier mismatches. All five original C1/C2 controls pass ordinarily: three duration refresh rows :35660/:35665/:35670 and two landed-proof rows :37825/:37834. Ordinary maximum 0.092609498 s, file totals 0.042542687 s and 0.176532628 s. Each has five repetitions (25). All three shared verify-tool identities also pass ordinarily and five times each (15), combined repeated maximum 0.239549398 s. No tier-mismatch row anywhere. C3 docs remain source-verified at this head. Source/spec requirements and all criteria checked across the source chain and this receipt. Complete external report-only budget inventory retained in A-6448; none owned, no unrelated diagnosis. T3 remains periodic/integrated evidence, not part of this task claim. Earlier red receipt remains retained.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-31 · 2026-10-19T19:45:20.884Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-integration-source-2
+commit: d4792e4831895f2a7defdb8eeac38e811a3012ca
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear, no Standards/Spec findings. Independently read Coordinator 79b3a85f allowing this one dev merge after conflict. Only manual conflict is Dispatcher Suites construction beside the newly landed DevT3Probes/DevT3Search setup. Combined diff and comparison to pinned dev show the complete dev constructor/search wiring retained, with only the existing taskLanding callback added: closed item summary supplies its exact merge receipt, otherwise null. Proof planner, refresh implementation, three refresh controls and two landed-load controls are byte-unchanged from the prior final-clear head. C3 docs still describe exact landed-head 5/5 proof admission, partial-log unobserved retention/empty-file pruning/provenance; reverified at this head. Separate targeted 2+3+17+8 checks and both-project typecheck reported green, functional timing only. Earlier final receipt is stale for this new head; C1/C2 await fresh mode-free configured task execution. See integration delta artifact A-6480.
 
 Criteria: C3 verified.

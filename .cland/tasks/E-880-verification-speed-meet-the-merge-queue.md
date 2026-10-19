@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T15:24:04.550Z
-updated: 2026-10-19T15:29:27.845Z
+updated: 2026-10-19T19:40:16.101Z
 ---
 
 ## Summary
@@ -41,3 +41,11 @@ v0.1.4 shipped the merge queue (E-678), but the honest measurements accumulated 
 ### coord · 2026-10-19T15:29:27.845Z
 
 D66 (the human, 2026-10-19 15:28Z): the speed targets are not taken into v0.2. For v0.1.4 the measured values count as meeting E-678's targets. This item moves from R-377 to Ideas as a later study of how to reach the original targets. The measurements and Definition of done above stay as the reference.
+
+### coord · 2026-10-19T19:24:56.064Z
+
+D66 applied to E-677 (2026-10-19 19:25Z): T-775 C2 measured T3 manifest seconds at 2356.81 s against the 2150 s target, a 206.81 s miss (T1 13.83 s, T2 423.22 s, T4 120.13 s; A-6297 at 1d81bd6e, durations 595c7f01). T-775 C3's spawn census against the 150-start goal is recorded on T-775 when measured. Both are inputs to this study.
+
+### coord · 2026-10-19T19:40:16.101Z
+
+T-775 C3 (the spawn census against the 150-start goal) was not measured in v0.1.4. The local census run on the crew Mac pushed the load to 51 and starved the hub (nice 5) for about 5 minutes; the Coordinator stopped it. A future census needs a quiet machine or a droplet run.

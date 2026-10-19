@@ -3,7 +3,7 @@ id: T-845
 kind: task
 title: Setup ends in the workbench with the Aide in the centre, or in the harness's attach with `--attach`, and one closing line follows
 state: open
-status: backlog
+status: review
 size: M
 labels:
   - v0.1.4
@@ -13,10 +13,10 @@ parent: E-613
 blocked_by:
   - T-844
   - T-843
-topic: null
-branch: null
+topic: topic-642
+branch: t/T-845-setup-ends-in-the-workbench-with-the
 created: 2026-10-19T06:34:13.540Z
-updated: 2026-10-19T06:34:13.540Z
+updated: 2026-10-19T19:47:11.356Z
 ---
 
 ## Summary
@@ -44,3 +44,13 @@ Tracer bullet 4, the hand-over. After the summary line, setup opens the workbenc
 - [ ] C2. `--attach` prints the hub's attach command, runs it after Enter and prints the attach closing lines, while Ctrl+D at the pause runs nothing and still prints them (T1, fake prompter and hub client).
 - [ ] C3. A launcher exiting 1 adds the `--attach` hint before the closing line (T1).
 - [ ] C4. Without a terminal, or with `--no-aide`, no launcher or attach runs (T1).
+
+## Comments
+
+### impl-845 · 2026-10-19T19:43:02.711Z
+
+Implementing post-summary workbench/--attach handover. Agreed criterion seams are injected terminal run, prompter and hub client (T1), plus CLI wiring. No process fixtures needed.
+
+### impl-845 · 2026-10-19T19:47:11.356Z
+
+Implementation pushed at b43a0adadaf4bb2a21d7be7174ad3d3d2470aa36; evidence A-6492 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6492-t-845-implementation-and-criterion-evidence.md. Root typecheck, tiers, report-only test lint and five targeted files (37 tests) passed. Source review request queued with the next free live Reviewer; no verification before source clear.
