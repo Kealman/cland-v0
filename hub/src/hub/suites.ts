@@ -7,9 +7,8 @@ import { realClock, type Clock, type ClockTimer } from './clock.ts';
 // Durable hub-owned suite jobs. A worker can outlive hub shutdown; restart watches its receipt/PID.
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { createInterface } from 'node:readline';
-import { appendFile, mkdir, readFile, writeFile, rename, stat, open } from 'node:fs/promises';
+import { aggregateSuiteLogs, readSuiteEvidence, retainedLoadProofs, suiteEvidence, suiteLogLines } from '../suite-log.ts';
+import { appendFile, copyFile, mkdir, readFile, writeFile, rename, rm, stat, open } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hubShards, balanceCloseShards, readTierAssignments } from '../suite-shards.ts';
 import { lintTests, testLintReport } from '../test-lint.ts';
@@ -74,6 +73,7 @@ export type SuiteJob = {
   timingEstimated?: boolean;
   tierPlan?: TierPlan; tierReported?: boolean; durationBase?: string; budgetReported?: boolean;
   loadProofs?: string[];
+  timingIdentities?: string[];
   selection?: SuiteSelection;
   integrated?: boolean;
   queued?: string; priority?: number; item?: string | null;
@@ -96,21 +96,6 @@ const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) 
 const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
-/** Legacy receipt migration: retain identities, never the complete log or its lines. */
-async function retainedLoadProofs(path: string): Promise<string[]> {
-  const input = createReadStream(path, { encoding: 'utf8' });
-  const lines = createInterface({ input, crlfDelay: Infinity });
-  const known = new Set<string>();
-  try {
-    for await (const line of lines) {
-      if (line.startsWith('load gate: ')) for (const identity of loadProofIdentities(line)) known.add(identity);
-    }
-  } finally {
-    lines.close();
-    input.destroy();
-  }
-  return [...known].sort();
-}
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
   return `lifetime ${machine.lifetimeMs === null ? 'pending confirmation' : Math.round(machine.lifetimeMs / 1000) + ' s'} · cost ${machine.costUsd === null ? 'pending confirmation' : '$' + machine.costUsd.toFixed(4)}`;
 }
@@ -123,29 +108,18 @@ function durations(values: Array<number | null | undefined>): DurationStats {
   const n = sorted.length;
   return { count: n, medianMs: n ? n % 2 ? sorted[Math.floor(n / 2)]! : (sorted[n / 2 - 1]! + sorted[n / 2]!) / 2 : null, p90Ms: n ? sorted[Math.ceil(n * 0.9) - 1]! : null };
 }
-/** Pair executor-owned command boundaries; command output may itself contain '$ '. */
+/** Command output is reduced to one bounded receipt before summary parsing. */
 function commandExcerpt(lines: string[]): { summary: string; output?: string[] } | undefined {
-  const starts = new Map<string, { index: number; name: string; line: string }>();
-  let result: ReturnType<typeof commandExcerpt>;
-  for (const [index, line] of lines.entries()) {
-    if (line.startsWith('suite command start ')) {
-      try {
-        const record = JSON.parse(line.slice('suite command start '.length));
-        if (typeof record.id === 'string' && !starts.has(record.id) && (record.name === 'check' || record.name === 'test' || /^T[1-4]$/.test(record.name)) && typeof record.line === 'string') starts.set(record.id, { index, name: record.name, line: record.line });
-      } catch { /* command output is not necessarily a command record */ }
-    }
-    const end = /^suite command end (\S+) (\d+)$/.exec(line);
-    const start = end ? starts.get(end[1]!) : undefined;
-    if (!start || !end) continue;
-    const output = lines.slice(start.index + 1, index).join('\n').trimEnd();
-    result = { summary: `${start.name} exited ${end[2]}: ${start.line}`,
-      ...(end[2] !== '0' ? { output: output ? output.split('\n').slice(-20) : [] } : {}) };
-  }
-  return result;
+  const line = lines.findLast(line => line.startsWith('suite command excerpt '));
+  if (line) try {
+    const row = JSON.parse(line.slice('suite command excerpt '.length));
+    if (row && typeof row.summary === 'string' && (row.output === undefined || Array.isArray(row.output) && row.output.length <= 20 && row.output.every((line: unknown) => typeof line === 'string'))) return row;
+  } catch { /* arbitrary stdout is not necessarily a derived command record */ }
+  return undefined;
 }
 
 export function suiteSummary(log: string, quarantineStatus?: string[], options: { logArtifact?: string; priorityOnly?: boolean } = {}): string {
-  const text = log.replace(/\x1b\[[0-9;]*m/g, '');
+  const text = suiteEvidence(log);
   const lines = text.split('\n');
   const counts = new Map<string, number>();
   for (const match of text.matchAll(/^(?:#|ℹ) (tests|pass|fail|cancelled|skipped|todo) (\d+)\s*$/gm)) counts.set(match[1]!, (counts.get(match[1]!) ?? 0) + Number(match[2]));
@@ -226,6 +200,9 @@ export class Suites {
   #nextDevT3Check = 0;
   readonly #inspecting = new Map<string, Promise<void>>();
   #landedIdentities: Promise<string[]> | undefined;
+  readonly #stageReads = new Map<string, Promise<string[]>>();
+  readonly #evidence = new Map<string, string>();
+  readonly #evidenceReads = new Map<string, Promise<string>>();
   readonly #starting = new Set<Promise<unknown>>();
   #closed = false;
   readonly #launching = new Set<string>();
@@ -519,8 +496,8 @@ export class Suites {
     if (cacheBypass) await appendFile(job.log, `Cache bypassed: ${cacheBypass}\n`);
     if (cached) {
       const artifact = this.#store.resolveArtifact(cached.artifact!)!;
-      const originalLog = await readFile(artifact.path, 'utf8').catch(() => null);
-      if (originalLog !== null && await this.#candidate.tree(input.cwd, head) === tree) {
+      const copied = await copyFile(artifact.path, job.log + '.cache.tmp').then(() => true, () => false);
+      if (copied && await this.#candidate.tree(input.cwd, head) === tree) {
         job.executor = cached.executor;
         if (cached.platform) job.platform = { ...cached.platform };
         if (cached.machine) job.machine = { ...cached.machine };
@@ -529,8 +506,9 @@ export class Suites {
         job.cached = { run: cached.id, head: cached.head, tree: tree! };
         job.finished = cached.finished!;
         job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
-        await writeFile(job.log, `Cached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nRequested head ${head}\n\n${originalLog}`, { mode: 0o600 });
-      }
+        await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nRequested head ${head}\n`);
+        await rename(job.log + '.cache.tmp', job.log);
+      } else await rm(job.log + '.cache.tmp', { force: true });
     }
     if (!job.cached && job.requireRemote) {
       if (!tree) throw new Error('dirty worktree cannot be bundled for droplet');
@@ -633,9 +611,24 @@ export class Suites {
       && job.selection?.mode === 'full' && !job.cached && !job.cancelled && !job.requesterDied
       && job.reported && job.outcome?.code === 0);
     if (!stage) return { run: null, tests: [] };
-    const artifact = stage.artifact ? this.#store.resolveArtifact(stage.artifact) : null;
-    const log = await readFile(artifact?.path ?? stage.log, 'utf8').catch(() => '');
-    return { run: stage.id, tests: [...new Set(timingReceipts(log).map(test => `${test.file}::${test.name}`))].sort() };
+    if (!stage.timingIdentities) {
+      let pending = this.#stageReads.get(stage.id);
+      if (!pending) {
+        const artifact = stage.artifact ? this.#store.resolveArtifact(stage.artifact) : null;
+        pending = (async () => {
+          const known = new Set<string>();
+          for await (const line of suiteLogLines(artifact?.path ?? stage.log)) {
+            if (line.startsWith('suite timing ')) for (const test of timingReceipts(line)) known.add(`${test.file}::${test.name}`);
+          }
+          stage.timingIdentities = [...known].sort();
+          this.#save(stage);
+          return stage.timingIdentities;
+        })().finally(() => { this.#stageReads.delete(stage.id); });
+        this.#stageReads.set(stage.id, pending);
+      }
+      return { run: stage.id, tests: await pending.catch(() => []) };
+    }
+    return { run: stage.id, tests: stage.timingIdentities };
   }
   #cached(tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
@@ -829,14 +822,9 @@ export class Suites {
       merged.testFiles.sort();
       await writeFile(join(this.#root, '.cland/run/suites', job.id, 'coverage-map.json'), JSON.stringify(merged), { mode: 0o600 });
     }
-    const logs = await Promise.all(shards.map(async shard => {
-      const log = await readFile(shard.log, 'utf8').catch(() => '');
-      // Keep counts machine-readable and label every failure in the merged log.
-      return `--- ${shard.shardName} ---\n${log.replace(/^(\s*(?:not ok \d+|✖ |duration budget: ).*)$/gm, `$1 [${shard.shardName}]`).replace(/^tier (T[1-4]:.*)$/gm, `${shard.shardName} tier $1`)}`;
-    }));
     const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}`);
-    const prefix = (await readFile(job.log, 'utf8')).split('\n--- close shards ---\n')[0];
-    await writeFile(job.log, `${prefix}\n--- close shards ---\n${job.occasion ? `occasion ${job.occasion}\n` : ''}${logs.join('\n')}\n${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    await aggregateSuiteLogs(job.log, shards, `${job.occasion ? `occasion ${job.occasion}\n` : ''}${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
+    await rename(job.log + '.shards.tmp', job.log);
     job.groupMerged = true; job.cleaned = true; this.#save(job);
     return true;
   }
@@ -1104,8 +1092,11 @@ export class Suites {
       }
       if (remote) {
         if (!job.shards && !job.shardHealth) {
-          const health = machineHealthFromLog(await readFile(job.log, 'utf8'));
-          if (health) job.health = health;
+          for await (const line of suiteLogLines(job.log)) {
+            if (!line.startsWith('suite machine health ')) continue;
+            const health = machineHealthFromLog(line);
+            if (health) job.health = health;
+          }
         }
         // A recovered receipt can already contain the finalized partial results.
         // Do not replace it with a header-only receipt on a reporting retry.
@@ -1155,45 +1146,59 @@ export class Suites {
       }
       // Final collection is over before appending derived lines: remote offsets
       // remain raw byte offsets until the machine has been released.
+      let evidence: string | undefined;
+      const logEvidence = async () => evidence ??= await (job.cached ? this.evidence(job) : readSuiteEvidence(job.log));
       if (remote && !job.cached && !job.progressReported) {
-        const log = await readFile(job.log, 'utf8');
+        const log = await logEvidence();
         const progress = suiteProgress(log, Date.parse(job.interruptedAt ?? job.finished ?? this.#clock.now().toISOString()));
         if (progress) {
           const result = JSON.parse(await readFile(job.result, 'utf8'));
           await writeFile(`${job.result}.progress.tmp`, JSON.stringify({ ...result, progress }), { mode: 0o600 });
           await rename(`${job.result}.progress.tmp`, job.result);
           if (job.outcome.code !== 0 && !log.includes('\nsuite interruption ')) {
-            await appendFile(job.log, `\nsuite interruption ${JSON.stringify({ at: job.interruptedAt })}\n${progressLines(progress, { timeout: job.outcome.code === 124 }).join('\n')}\n`);
+            const lines = `\nsuite interruption ${JSON.stringify({ at: job.interruptedAt })}\n${progressLines(progress, { timeout: job.outcome.code === 124 }).join('\n')}\n`;
+            await appendFile(job.log, lines); evidence = log + lines;
           }
         }
         job.progressReported = true; this.#save(job);
       }
       if (job.tierPlan?.length && !job.tierReported && !job.cached) {
-        const log = await readFile(job.log, 'utf8');
+        const log = await logEvidence();
         const lines = tierReport(tierPlanWorkers(job.tierPlan, job.workers ?? 4), timingReceipts(log));
-        if (!log.includes('\n' + lines.join('\n') + '\n')) await appendFile(job.log, lines.join('\n') + '\n');
+        if (!log.includes('\n' + lines.join('\n') + '\n')) {
+          const text = lines.join('\n') + '\n';
+          await appendFile(job.log, text); evidence = log + text;
+        }
         job.tierReported = true; this.#save(job);
       }
       if (!job.budgetReported && !job.cached && !job.parentRun) {
         try {
           const context = this.#options.durationContext !== undefined ? this.#options.durationContext : await durationBudgetContext(job.cwd, { head: job.head, ...(job.durationBase ? { base: job.durationBase } : {}), env: this.#env });
           if (context) {
-            const log = await readFile(job.log, 'utf8');
-            await appendFile(job.log, (log.endsWith('\n') ? '' : '\n') + durationBudgetReport(context.manifest, context.tiers, timingReceipts(log), context.base).join('\n') + '\n');
+            const log = await logEvidence();
+            const text = '\n' + durationBudgetReport(context.manifest, context.tiers, timingReceipts(log), context.base).join('\n') + '\n';
+            await appendFile(job.log, text); evidence = log + text;
           }
-        } catch { await appendFile(job.log, 'budget (report only): unavailable (report read failed)\n'); }
+        } catch {
+          const text = 'budget (report only): unavailable (report read failed)\n';
+          await appendFile(job.log, text); if (evidence !== undefined) evidence += text;
+        }
         job.budgetReported = true; this.#save(job);
       }
       if (!job.loadProofs && job.item && !job.integrated && !job.occasion && !job.cached && !job.cancelled && !job.requesterDied && job.selection?.loadGate && job.outcome.code === 0) {
-        job.loadProofs = loadProofIdentities(await readFile(job.log, 'utf8'));
+        job.loadProofs = loadProofIdentities(await logEvidence());
       }
       this.#recordTiming(job, job.completedAt ?? (!job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : this.#clock.now().toISOString()));
       if (job.integrated && !job.parentRun && !job.cover) {
-        const cover = deriveCover(job, await readFile(job.log, 'utf8'));
+        const cover = deriveCover(job, await logEvidence());
         if (cover) job.cover = cover;
+      }
+      if (job.integrated && job.occasion && !job.cached && job.outcome.code === 0 && !job.timingIdentities) {
+        job.timingIdentities = [...new Set(timingReceipts(await logEvidence()).map(test => `${test.file}::${test.name}`))].sort();
       }
       this.#save(job);
       if (job.parentRun) { job.reported = true; job.error = null; this.#save(job); return; }
+      if (!job.cached) this.#cacheEvidence(job.id, await logEvidence());
       await this.#report(job, id => {
         if (job.artifact !== null && job.artifact !== id) throw new Error('suite artifact checkpoint already settled');
         job.artifact = id; this.#save(job);
@@ -1243,7 +1248,33 @@ export class Suites {
     if (!job?.reported || !job.outcome || !job.artifact) throw new Error(`suite ${id} has no collected receipt`);
     const artifact = this.#store.resolveArtifact(job.artifact);
     if (!artifact) throw new Error(`suite ${id} log artifact unavailable`);
-    return { job: structuredClone(job), log: await readFile(artifact.path, 'utf8') };
+    return { job: structuredClone(job), log: await this.evidence(job) };
+  }
+  #cacheEvidence(id: string, text: string): string {
+    this.#evidence.delete(id); this.#evidence.set(id, text);
+    while (this.#evidence.size > METRICS_WINDOW) this.#evidence.delete(this.#evidence.keys().next().value!);
+    return text;
+  }
+  /** Immutable reporting evidence; concurrent cache hits and receipt queries share it.
+   * Bound retained reports independently of the durable receipt history. In-flight
+   * scans stay shared even when the completed-report cache rotates.
+   */
+  evidence(job: Readonly<SuiteJob>): Promise<string> {
+    const source = job.cached ? this.#jobs.find(source => source.id === job.cached!.run) ?? job : job;
+    const cached = this.#evidence.get(source.id);
+    if (cached !== undefined) return Promise.resolve(this.#cacheEvidence(source.id, cached));
+    let pending = this.#evidenceReads.get(source.id);
+    if (!pending) {
+      const artifact = source.artifact ? this.#store.resolveArtifact(source.artifact) : null;
+      pending = readSuiteEvidence(artifact?.path ?? source.log).catch(error => {
+        // A cache copy is durable evidence even after its original log expires.
+        if (source.id === job.id) throw error;
+        const copy = job.artifact ? this.#store.resolveArtifact(job.artifact) : null;
+        return readSuiteEvidence(copy?.path ?? job.log);
+      }).then(text => this.#cacheEvidence(source.id, text)).finally(() => { this.#evidenceReads.delete(source.id); });
+      this.#evidenceReads.set(source.id, pending);
+    }
+    return pending;
   }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({

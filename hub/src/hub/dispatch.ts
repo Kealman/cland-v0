@@ -787,7 +787,7 @@ export class Dispatcher {
     }
     const artifact = core.store.resolveArtifact(artifactId);
     if (!artifact || artifact.fileDeleted || artifact.status === 'archived') throw new Error('suite log artifact unavailable');
-    const log = await readFile(artifact.path, 'utf8');
+    const log = await this.#suites!.evidence(job);
     await reportSharedDefects(core, job, log, artifact, callerNow);
     await reportSoakQuarantine(core, job, log, artifact, this.#options.git ?? gitIn(job.cwd, this.#options.env));
     // Keep each member's evidence in its own topic so ordinary attachment rules apply.
