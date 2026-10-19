@@ -2,8 +2,8 @@
 id: T-653
 kind: task
 title: cland release and cland sync move the territory's recorded default branch, not a hard-coded main
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-552
 branch: t/T-653-cland-release-and-cland-sync-move-the
 created: 2026-10-16T16:24:02.732Z
-updated: 2026-10-19T05:12:02.203Z
+updated: 2026-10-19T05:38:14.689Z
+closed: 2026-10-19T05:38:14.689Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; audit A-5787 combines source A-5780, exact-head T0–T2 gate 4ab2f1c5/A-5783 (1463/1463, zero fail/cancel/skip; 383 repetition groups all 5/5), and native host evidence A-5784–A-5786. Master preview/publication/no-main, github/master ahead refusal/sync, and legacy main/receipt recovery pass; unchanged item and scenario controls pass. Host logs are pre-commit implementation-worktree evidence with the final CLI fallback edit/provenance limit explicitly disclosed, not exact-SHA T3 invocations. Three existing report-only T-803 trips disclosed. T3 remains deferred to the hub-owned merge batch; no task T3 execution claimed. C1–C4 verified; no findings, QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T05:38:14.689Z
+
+Merged a130f30f48143b7dc06b96a24a2172f965063ac4 onto dev.

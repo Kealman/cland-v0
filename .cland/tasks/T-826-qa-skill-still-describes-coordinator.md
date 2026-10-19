@@ -2,8 +2,8 @@
 id: T-826
 kind: task
 title: QA skill still describes Coordinator batch covers instead of the merge queue protocol
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-551
 branch: t/T-826-qa-skill-still-describes-coordinator
 created: 2026-10-19T03:58:09.423Z
-updated: 2026-10-19T05:03:44.962Z
+updated: 2026-10-19T05:38:01.275Z
+closed: 2026-10-19T05:38:01.275Z
 ---
 
 ## Summary
@@ -60,3 +61,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from source A-5777 and accepted same-head d0a9d4cf/A-5781; raw audit A-5782. T0–T2 fallback gate: 1463/1463 pass, zero fail/cancel/skip, including hub and Neovim T2; T3 deferred to batch, not claimed. All 383 reported repetition groups pass 5/5. Exactly three report-only legacyDurationKeys Git tier trips remain disclosed under shared T-803. Single QA paragraph matches task, hub batch, integrated/all, occasion/soak tiers and authorized non-dev verify-all protocol. No findings; C1 verified. QA scope none.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T05:38:01.275Z
+
+Merged f961edd2a95a11209e1751e43f2f30b091fed7c9 onto dev.
