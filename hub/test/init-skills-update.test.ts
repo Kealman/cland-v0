@@ -62,6 +62,66 @@ test('a dropped untouched skill is removed with the folders it leaves empty', t 
   assert.equal(Object.hasOwn(f.manifest(), 'tdd'), false);
 });
 
+test('a dropped constructor skill follows whole-skill ownership', async t => {
+  const f = fixture(t);
+  const hash = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+  const hashes = { 'SKILL.md': hash, 'docs/ref.md': hash };
+  for (const name of ['constructor', 'grilling']) {
+    f.put(f.source, `${name}/SKILL.md`, 'abc');
+    f.put(f.source, `${name}/docs/ref.md`, 'abc');
+  }
+  f.update();
+  const installed = { constructor: hashes, grilling: hashes };
+  assert.deepEqual(f.manifest(), installed);
+  for (const name of ['constructor', 'grilling']) {
+    assert.equal(readFileSync(join(f.target, name, 'SKILL.md'), 'utf8'), 'abc');
+    assert.equal(readFileSync(join(f.target, name, 'docs/ref.md'), 'utf8'), 'abc');
+  }
+  rmSync(join(f.source, 'constructor'), { recursive: true });
+  for (const edited of [false, true]) {
+    await t.test(edited ? 'edited' : 'untouched', () => {
+      f.put(f.target, MANIFEST, JSON.stringify({ managed: 'managed by cland', skills: installed }));
+      f.put(f.target, 'constructor/SKILL.md', edited ? 'project edit' : 'abc');
+      f.put(f.target, 'constructor/docs/ref.md', 'abc');
+      const before = f.snapshot(join(f.target, 'constructor'));
+      assert.deepEqual(f.update().find(c => c.path === '.agents/skills/constructor'), {
+        path: '.agents/skills/constructor', action: edited ? 'kept' : 'removed',
+        note: edited ? "edited in the project; no longer in cland's set" : "no longer in cland's set",
+      });
+      if (edited) assert.deepEqual(f.snapshot(join(f.target, 'constructor')), before);
+      else assert.equal(existsSync(join(f.target, 'constructor')), false);
+      assert.deepEqual(f.manifest(), { grilling: hashes }, 'remove only the dropped install hashes');
+      assert.equal(Object.hasOwn(f.manifest(), 'constructor'), false);
+      assert.equal(f.update().some(c => c.path === '.agents/skills/constructor'), false);
+    });
+  }
+});
+
+test('invalid prototype skill names keep project bytes and manifest hashes untouched', t => {
+  const f = fixture(t);
+  const hash = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+  f.put(f.source, 'grilling/SKILL.md', 'new release');
+  for (const name of ['__proto__', 'toString']) {
+    f.put(f.source, `${name}/SKILL.md`, 'new release');
+    f.put(f.target, `${name}/SKILL.md`, 'project edit');
+    f.put(f.target, 'grilling/SKILL.md', 'abc');
+    const skills = Object.fromEntries([name, 'grilling'].map(key => [key, { 'SKILL.md': hash }]));
+    f.put(f.target, MANIFEST, JSON.stringify({ managed: 'managed by cland', skills }));
+    rmSync(join(f.source, name), { recursive: true });
+    const before = f.snapshot(f.target);
+    assert.deepEqual(readManifest(f.target), {
+      kind: 'invalid', why: `skill name "${name}" is not [a-z0-9-]+`,
+    });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const change = f.update().find(c => c.path === `.agents/skills/${MANIFEST}`);
+      assert.equal(change?.action, 'kept');
+      assert.match(change?.note ?? '', /an invalid manifest/);
+      assert.deepEqual(f.snapshot(f.target), before, 'preserve all bytes, including the install hashes');
+      assert.deepEqual(JSON.parse(readFileSync(join(f.target, MANIFEST), 'utf8')).skills, skills);
+    }
+  }
+});
+
 test('a legacy manifest migrates once before project edits gain whole-skill protection', t => {
   const f = fixture(t);
   for (const name of ['tdd', 'grilling']) f.put(f.source, `${name}/SKILL.md`, 'abc');

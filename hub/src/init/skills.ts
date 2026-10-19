@@ -265,7 +265,7 @@ export function provisionSkills(report: Report, root: string, source = SKILLS_SO
   }
   // skills an earlier version installed that this one no longer ships
   for (const [name, files] of Object.entries(previous)) {
-    if (name in manifest.skills) continue;
+    if (Object.hasOwn(manifest.skills, name)) continue;
     const dir = join(target, name);
     const link = symlinkOnPath(root, dir);
     if (link !== null) {
