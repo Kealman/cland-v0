@@ -68,7 +68,17 @@ Only when the list is empty (a project initialised before 0.1.4), propose those 
 
 ## 4. The stack
 
-When the rules give the stack to the crew, propose it with the reason in the human's terms; when they give it to the human, it was asked in step 3; on an existing project, the study found it. Record it on yes as a rule: `Build with <stack>; checks: <the check commands>.` Today `cland verify` runs the project's `npm run typecheck`, then `npm test`, and installs nothing: name the scripts the stack needs, wrapping its own tools when it is not npm-based, and when they are missing add them to the first task as a criterion (`cland task criterion T-<n> add "<text>"`).
+When the rules give the stack to the crew, propose it with the reason in the human's terms; when they give it to the human, it was asked in step 3; on an existing project, the study found it. Record it on yes as a rule: `Build with <stack>; checks: <the check commands>.`
+
+On that same yes, record the commands with:
+
+- `cland config set verification.test "<line>"`: required; `cland verify` refuses to run without a real test command.
+- `cland config set verification.check "<line>"`: optional, when the stack has a fast gate.
+- `cland config set verification.prepare "<line>"`: optional, when its checks need an install.
+
+Each command runs under POSIX `sh -c`. Read the values back from `cland config set`'s result or `.cland/config.toml`.
+
+When the project has no test runner yet, add a criterion to the first task with `cland task criterion T-<n> add "Add a test runner and record its real command with cland config set verification.test"`. Leave `verification.test` unset until that task names a real command, then record it; verification waits for it.
 
 ## 5. The crew
 

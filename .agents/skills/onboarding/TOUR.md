@@ -28,7 +28,7 @@ Look now: the Coordinator's row and its state, and the crew line above the list.
 
 ## 5. The life of a task
 
-The Coordinator takes the next planned task and launches an Implementer for it. The Implementer works on a branch of its own (`t/T-<n>-…`) in a folder of its own (a worktree, under `.cland/worktrees/`), so tasks never step on each other. When the change is ready, it marks the acceptance criteria done and asks a Reviewer; the verdict, clear or not clear with the reasons, lands in the task's topic. After a clear review, cland verify runs the project's checks (today `npm run typecheck`, then `npm test`) and posts the result there. Then the Coordinator merges the task into `dev` as one commit, and the task closes. Nothing reaches GitHub before a release, and releases are yours to decide.
+The Coordinator takes the next planned task and launches an Implementer for it. The Implementer works on a branch of its own (`t/T-<n>-…`) in a folder of its own (a worktree, under `.cland/worktrees/`), so tasks never step on each other. When the change is ready, it marks the acceptance criteria done and asks a Reviewer; the verdict, clear or not clear with the reasons, lands in the task's topic. After a clear review, cland verify runs the project's checks recorded in `[verification]` and posts the result there. Then the Coordinator merges the task into `dev` as one commit, and the task closes. Nothing reaches GitHub before a release, and releases are yours to decide.
 
 Look now: the first task's card, its status and the session that holds it, then its topic once it has one.
 

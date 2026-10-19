@@ -4,7 +4,7 @@ Learn the project before asking about it; the cland tracker then becomes its onl
 
 1. **The study**, started before round 1, with sub-agents in parallel; they read and report, and none runs `cland` or changes a file. When your clause disables sub-agents, study after round 2 yourself.
    - structure and stack: languages, frameworks, package manager, build, entry points;
-   - tests: the commands, whether they pass now (run them only when nothing needs installing), CI, and whether `npm run typecheck` and `npm test` exist, the two `cland verify` runs;
+   - tests: the project's commands for `cland verify`'s `prepare` (install when needed), `check` (a fast gate when available) and `test` (required), whether they pass now (run them only when nothing needs installing), and CI;
    - docs: README, CONTRIBUTING, ADRs, a glossary, a changelog;
    - history: age, commits per month lately, contributors, the last tag or release;
    - the tracker: GitHub Issues of the `github` remote (`cland init` renamed `origin` to `github`; `origin` is the local territory now): open and closed counts, open pull requests, labels, milestones (`gh issue list --repo <owner/name> --state open --limit 1000 --json number,title,labels`); any other tracker the docs name.
