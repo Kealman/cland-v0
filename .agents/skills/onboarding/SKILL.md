@@ -19,7 +19,7 @@ Record through your cland tools (`rule.add`, `task.create`, `artifact.create`) o
 
 The human is attached to your terminal: talk there. Work in rounds, as the `grilling` skill does: number the questions, give your recommended answer to each, word it so "yes" accepts it, then wait. A question that depends on an open answer waits for the next round. Facts are yours to find: look, or send a sub-agent when your clause allows them.
 
-You act; the human decides. Before any change (a rule, an item, a file, a crew setting, a session), say what you will do and do it on their yes. Ask for decisions, never for keystrokes: give the human a command to type or a key to press only when they ask for one, or as the last resort a step names. When the hub refuses you a step, say so in one line and offer the choice the step names.
+You act; the human decides. Before any change (a rule, an item, a file, a crew setting, a session), say what you will do and do it on their yes. Ask for decisions, never for keystrokes: give the human a command to type or a key to press only when they ask for one. When the hub refuses you a step, report its reason in one line and stop that step; offer no other route to the same act.
 
 Explain each cland word in plain terms the first time it comes up. Speak the human's language. Rules, items and briefs are read by the crew: write them in English, and say so once. The welcome note and the tour are the human's: write them in their language.
 
@@ -107,13 +107,17 @@ Fill `WELCOME.md` and post it with `artifact.create`: `kind` note, `title` "Welc
 
 ## 7. The start
 
-Start only when work is ready: the first release's tasks filed and planned. With only a map, say plainly that the Coordinator waits for the first epic, carry on with the map as the human wishes (wayfinder's "Work through the map"), and offer the tour while the research runs.
+Launch only when work is ready: the first release's tasks filed and planned. With only a map, the commit and push still happen on ok; say plainly that the Coordinator waits for the first epic, carry on with the map as the human wishes (wayfinder's "Work through the map"), and offer the tour while the research runs.
 
-One question: "Ready to start? When you say ok, I launch the Coordinator with this brief: Commit what cland init and the onboarding wrote, on dev, and run cland push; then work release R-<n>." Recommend yes.
+One question: "Ready to start? When you say ok, I commit what cland init and this onboarding wrote on dev, publish it with cland push, and launch the Coordinator with this brief: Work release R-<n>." Recommend yes. With only a map, ask the same question with the commit and push only, saying that the Coordinator waits for the first epic.
 
-On yes, run `cland session launch coord --role coordinator --brief "<the brief>"` from your shell. Today the hub refuses launches to an Aide (v0.1 §3.3), from your tools and your terminal alike. On that refusal, say so in one line and, as the last resort, ask the human to allow one act of their own: the same line, pasted into a terminal of their own in the project; or, if they prefer, the workbench's launcher (space then l), with the role coordinator and the brief pasted. Give the exact step when they agree.
+On that one yes, do these in order, stopping if a step fails:
 
-Then watch for the Coordinator with `who`, or its first message in General with `history`, and say when it runs.
+1. **Commit.** Work on the project's root `dev`. Inspect the index and changes, then stage only what cland init and this onboarding wrote, by explicit file paths with `git add -- <file>`. The allowed paths are `AGENTS.md`, `CLAUDE.md`, and files within `.cland/`, `.agents/`, `.claude/` and `docs/agents/`, including `.cland/welcome.md` when written. Keep the human's own files and edits out of the commit; if the index already includes unrelated changes, stop and ask how they want those handled. Review the staged diff, skip the commit when nothing is staged, otherwise commit with an English message.
+2. **Push.** Run `cland push` from your own shell and confirm it succeeds.
+3. **Launch.** With a first release ready, run `cland session launch coord --role coordinator --brief "Work release R-<n>"` from your own shell, using the release's id. With only a map, skip this step. A hub refusal is reported in one line with its reason; offer no other route to the same act.
+
+After the launch, watch with `who` and `history` in General for the Coordinator and its first report, and say when it runs.
 
 ## 8. The tour
 
