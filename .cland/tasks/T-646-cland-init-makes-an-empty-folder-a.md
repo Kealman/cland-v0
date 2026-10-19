@@ -3,7 +3,7 @@ id: T-646
 kind: task
 title: cland init makes an empty folder a repository whose first commit is cland's files, then the territory, ending on a clean dev
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 7
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-539
 branch: t/T-646-cland-init-makes-an-empty-folder-a
 created: 2026-10-16T16:23:59.380Z
-updated: 2026-10-19T00:37:13.436Z
+updated: 2026-10-19T01:32:13.487Z
 ---
 
 ## Summary
@@ -40,19 +40,26 @@ Today an empty folder stops with "main has no commit yet: create main, then run 
 ## Acceptance criteria
 
 - [x] C1. `cland init` in an empty folder leaves exactly one commit (`git log --oneline --all`), whose tree holds only `AGENTS.md`, `.cland/`, `.agents/`, `.claude/` and `docs/agents/` paths (init-first-commit.test.ts).
-  - done: impl-646 · 2026-10-19T00:36:19.587Z
+  - done: impl-646 · 2026-10-19T01:05:10.820Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 - [x] C2. Afterwards `git status --porcelain` is empty, `git branch --show-current` prints `dev`, and `main` and `dev` point at that commit.
   - done: impl-646 · 2026-10-19T00:06:15.987Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 - [x] C3. The territory exists with `main` and `dev` at that commit, its HEAD is `dev`, and `origin/HEAD` in the root is `origin/dev`.
   - done: impl-646 · 2026-10-18T23:56:51.991Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 - [x] C4. A second `cland init` makes no commit and reports nothing to change.
   - done: impl-646 · 2026-10-18T23:56:52.427Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 - [x] C5. The first commit carries none of `.cland/`'s volatile files (`hub.db`, `secret`, `territory.git/`, `log/`).
   - done: impl-646 · 2026-10-18T23:56:52.769Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 - [x] C6. A Git commit hook installed through the scratch machine's global `core.hooksPath` does not run during init's commit.
   - done: impl-646 · 2026-10-18T23:56:53.213Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 - [x] C7. Demo: in a scratch HOME, `mkdir x && cd x && cland init`, then `git log`, `git status` and `git branch` show the one commit on a clean `dev`.
   - done: impl-646 · 2026-10-18T23:56:53.655Z
+  - verified: rev-31 [reviewer] · run rev-20261019-646-final · 2026-10-19T01:32:11.055Z · commit 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
 
 ## Comments
 
@@ -296,3 +303,131 @@ Result: clear source. Submit one replacement mode-free droplet verification at t
 Findings: Standards 0; Spec 0.
 
 Evidence: A-5690.
+
+### rev-31 · 2026-10-19T01:04:12.140Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-runtime-2
+commit: e87ff41dde7cb5ab058f8bf6f6400a27a65d7aeb
+scope: evidence
+findings: [{"severity":"medium","text":"Ten owned T2 identities emit 20 runtime execFile/execFileSync resource mismatches through direct scratch command launch and PID inspection; no approved boundary disposition exists.","file":"hub/test/init-machine.ts","line":45},{"severity":"medium","text":"New lifecycle adds 0.745113315 s to T3 ratchet without the required allowance or explicit Coordinator disposition; report-only green is not that disposition.","file":"hub/test/init-machine-lifecycle.test.ts","line":8}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+# T-646 runtime resource review: not clear
+
+Head: e87ff41dde7cb5ab058f8bf6f6400a27a65d7aeb, unchanged from source-5 / A-5690.
+Run: b30cdea8-ea9e-4a79-b37c-cab90d9e914e / A-5697, hub-only, raw exit 0.
+Scope: evidence. Branch and task receipt independently match.
+
+## Standards
+
+M1 (medium), hub/test/init-machine.ts:45,50: the eight new init-first-commit T2 identities and two renamed init-next identities each emit child_process.execFile and child_process.execFileSync runtime mismatches: 20 task-owned rows. First stacks point to commandIn's direct execFile and ownProcess → captureProcess's process inspection. The documented T2 CLI launch exemption is narrow; the current helper does not use it, and native Git/cleanup calls must also have the correct resource boundary/tier. Report-only mode does not establish an approved seam. Retain the native assertions and immediate ownership; resolve the boundary/tier through the lead without broad suppression. These are additional to three known unrelated suite-close-component rows.
+
+M2 (medium), hub/test/init-machine-lifecycle.test.ts:8: the new held-writer lifecycle contributes 0.745113315 s of observed T3 growth. The log reports 2652.246 s versus base 2651.501 s, would refuse growth, with incomplete base timings separately disclosed. docs/agents/tests.md:700–714 requires a T3 allowance; the justified lifecycle seam does not itself supply one. Obtain the explicit Coordinator disposition/required allowance through lead T-646. Implementer d05736c8 confirms no existing disposition, escalation in progress and no unchanged-head retry.
+
+## Spec
+
+All behavioral checks audited pass. Eight init-first-commit cases total 8.297046289 test-seconds, all below the T2 per-test limit, with exact 5/5 gates each. The lifecycle control passes in 0.745113315 s, selector control in 0.019454306 s, and both have 5/5 gates. Both next-step identities pass and have 5/5 gates.
+
+The five previous identity failures now positively pass:
+Aide defaults/launch (4.878901677 s); static symlink safety (1.401138822 s); swapped-parent symlink safety (0.428255117 s); nonempty non-Git territory behavior (0.301624272 s); independent child project/root routing (1.530938193 s).
+All affected complete files pass. No task-owned per-test/file duration overage appears. These positives support C1–C6 behavior and the existing A-5649 scratch-HOME demo, but do not clear the owned resource/growth findings.
+
+Whole ordinary run: 2347 tests, 2342 pass, 0 fail, 0 cancelled, 5 skips, 0 TODO. All three shard failure arrays are empty; Neovim smoke completes. Skips are existing platform/binary cases; one idle-sleep skip has the generic raw reason. Linux x64 c-8 lon1, workers 2, Node 24.21.0, Neovim 0.12.5; lifetime 1449 s, cost $0.1006, peak load 8.94. No global zero-debt or enforce-mode pass is claimed.
+
+Result: not clear for task readiness; fail C1 on the owned tier/growth requirements, leave C2–C7 unverified pending disposition/corrected source and accepted execution evidence. The raw assertion run remains green and must not be described as exit 1. No further run at this head; any correction needs fresh source review. No per-item QA.
+
+Findings: Standards 2 medium; Spec 0 behavioral findings.
+
+Evidence: A-5698.
+
+Criteria: C1 failed (Behavioral run is green, but owned T2 resource mismatches and unallowed new T3 growth prevent final readiness.).
+
+### impl-646 · 2026-10-19T01:04:26.723Z
+
+Coordinator-accepted T3 growth for the held-writer cancellation proof: hub/test/init-machine-lifecycle.test.ts adds +0.745 s in A-5697 (2652.246 s vs base 2651.501 s). Coordinator disposition 3bd66275-7f5d-40b7-93b0-600545f4b6f5 accepts this real-process rule-12 proof while the ratchet is report-only. Following the same decision, init-first-commit.test.ts and init-next.test.ts move from T2 to T3 because they require scratch CLI/native Git and ps PID ownership; assertions and cleanup are preserved. No broad resource suppression or product change.
+
+### impl-646 · 2026-10-19T01:05:10.804Z
+
+Coordinator-accepted T3 growth for the held-writer cancellation proof: hub/test/init-machine-lifecycle.test.ts adds +0.745 s (A-5697, 2652.246 s vs base 2651.501 s), accepted by decision 3bd66275-7f5d-40b7-93b0-600545f4b6f5. The same disposition and confirmation a93b1307-9905-46f8-9c19-3a89d8d8cc8a cover reclassifying existing native process work: hub/test/init-first-commit.test.ts measured 8.297 s and hub/test/init-next.test.ts 2.867 s in A-5697 (11.164 s combined; the earlier estimate was about 10.65 s). These two files move T2 → T3 because scratch CLI/native Git plus ps PID capture and owned close drainage require real processes; no tests, process starts or assertions were added or removed by the reclassification. test:tiers, typecheck and lint passed without demanding an allowance, so no E-612 allowance entry was added. Focused files still pass (first-commit 9.32 s; next 3.21 s on host).
+
+### rev-31 · 2026-10-19T01:06:03.710Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-source-6
+commit: 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-646 classification source review: clear
+
+Head: 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
+Base: 4b196c6208da89a4852be654cd05acd9978de83f
+Correction comparison: e87ff41d → reviewed head. Scope: full; no dev merge.
+
+Standards: clear, no findings. The correction changes only the two file headers and their tiers.json entries. init-first-commit and init-next now declare T3 and identify the scratch CLI/native Git, PID/ps ownership and close-drain boundary. Test bodies, assertions, process starts, cleanup ownership and product source are unchanged. No resource suppression is added.
+
+Coordinator decisions 3bd66275 and a93b1307 were independently read in topic-539. They explicitly accept the held-writer proof's +0.745 s T3 growth and the honest reclassification of existing native work, require no allowance unless tiers/lint demand one, and require fresh source review plus one replacement droplet run. The item comment records the exact A-5697 measured file totals (8.297 s + 2.867 s = 11.164 s), correcting the earlier approximate 10.65 s. Reported tiers/lint/typecheck pass without an allowance; none was added, as directed.
+
+Spec: clear, no findings. The managed-only commit, clean-dev, territory refs, idempotence, volatile exclusions, hooks and scratch-HOME demonstration remain covered by the unchanged source/tests reviewed in source-4/source-5. A-5697's behavioral positives remain useful historical evidence but do not replace the instructed execution at the reclassified head.
+
+Result: source clear. C1–C7 remain unverified pending replacement exact-head task evidence and the existing demo. Submit one mode-free droplet verification at this head. No per-item QA.
+
+Findings: Standards 0; Spec 0.
+
+Evidence: A-5699.
+
+### rev-31 · 2026-10-19T01:32:11.055Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-final
+commit: 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-646 final execution review: clear
+
+Head: 403c3d0feb0614e11b5ed6f3ceb9a4659b91e24a, unchanged from source-6 / A-5699.
+Run: 567e742c-0e64-47b5-be38-64fbce9ac923 / A-5700, hub-only, raw exit 0.
+Scope: evidence. Task receipt and branch tip independently agree; all seven criteria are claimant-done.
+
+## Standards
+
+Clear; no remaining findings. All 20 owned T2 runtime mismatch rows are absent after the honest T3 classification. The only three runtime mismatch rows are the known external suite-close-component identities, previously tracked as T-803. No task-owned per-test/file budget overage or quarantine outcome appears.
+
+The report-only T3 total is 2663.597 s versus 2651.501 s; the 12.096 s increase corresponds to the reclassified first-commit/next-step work and held-writer lifecycle. Current observed file totals are 8.252383929 s, 3.155812814 s and 0.688420329 s. Coordinator 3bd66275 and a93b1307, independently read during source-6, accept the required lifecycle proof and reclassification, direct no allowance unless lint/tiers demand one, and require this replacement run. This verdict applies that explicit disposition; it does not claim the raw ratchet is flat or an enforce-mode run was performed.
+
+Source-4/source-5/source-6 established exact owned leaf staging, unchanged managed outputs, kept exclusions, empty guards, .DS_Store preservation, hook/signing bypass, test-only identity isolation and bounded owned child cleanup. No source changed after that review.
+
+## Spec
+
+Clear. The eight exact first-commit cases positively pass, totaling 8.252383929 test-seconds, each with a 5/5 load gate. They establish:
+C1 one managed-only first commit;
+C2 clean dev with main/dev at that commit;
+C3 root/territory refs, both HEADs and origin/HEAD;
+C4 repeat-init idempotence;
+C5 exact nonvolatile .cland tree;
+C6 global failing-hook and signing bypass.
+Additional cases retain .DS_Store and private files, omit unlisted leaves inside refreshed skills, include unchanged managed files and keep update from creating history.
+
+The held-writer cancellation proof and T1 empty-selector proof pass ordinarily and 5/5; both renamed next-step cases likewise pass 5/5. These 12 owned identities supply 60/60 repetition passes. All five previously failed Aide/symlink/territory/independent-root compatibility cases now positively pass; their complete affected files pass.
+
+C7 is supported by the scratch-HOME command demonstration A-5649 (one Initial commit on clean dev, main/dev matching), together with this exact-head scratch-machine CLI/Git case executing and asserting the same init/log/status/branch/ref observations. A-5688 additionally retains all 16 sequential host file passes under an identityless scratch environment. Neither this review nor that evidence claims a new human QA session.
+
+Overall ordinary result: 2347 tests, 2342 pass, zero fail/cancelled/TODO, five existing platform/binary skips (idle-sleep retains its generic raw skip reason). Three shard failure arrays are empty, and Neovim smoke completes. Hub free 110.93 s, hub machine 1264.79 s, Neovim smoke 10.36 s; suite 1386.09 s. Linux x64 c-8 lon1, workers 2, Node 24.21.0, Neovim 0.12.5; lifetime 1475 s, cost $0.1024, peak load 8.74.
+
+Result: final clear; verify C1–C7. No further verification or per-item QA required.
+
+Findings: Standards 0; Spec 0.
+
+Evidence: A-5701.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
