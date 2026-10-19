@@ -12,7 +12,7 @@ export type SetupMachine = {
   requiredHarnesses(): Promise<readonly string[]>;
   harness(id: HarnessId, fresh?: boolean): Promise<HarnessProbe>;
   onPath(id: HarnessId): Promise<boolean>;
-  run(command: string, output?: TerminalOutput): Promise<number>;
+  run(command: string, output?: TerminalOutput & { env?: NodeJS.ProcessEnv }): Promise<number>;
   read(path: 'config.toml' | 'roles.toml'): Promise<string | null>;
   write(path: 'config.toml' | 'roles.toml', text: string, expected: string): Promise<void>;
 };

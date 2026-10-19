@@ -1,7 +1,7 @@
 // T1: setup actions and reports on an in-memory machine; no processes or terminal; scratch roles and trust configs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setup } from '../src/setup/runner.ts';
@@ -54,6 +54,7 @@ test('installing Codex uses the terminal runner and its re-check decides done or
       },
     }, narrate: s => output.push(s), machine: {
       ...machine,
+      requiredHarnesses: async () => [],
       run: async command => {
         assert.equal(command, 'curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh');
         assert.match(output.join(''), /chatgpt.com\/codex\/install.sh/);
@@ -73,7 +74,7 @@ test('installing Codex uses the terminal runner and its re-check decides done or
     if (installed) {
       assert.match(line.detail, /1.2.3.*open a new shell/);
       assert.ok(env.PATH.includes(join(root, '.local/bin')));
-      assert.ok(report.steps.some(s => s.name === 'codex auth'));
+      assert.ok(report.steps.some(s => s.name === 'codex login'));
     } else {
       assert.match(line.detail, /exit code 7/);
       assert.match(line.fix!, /chatgpt.com\/codex\/install.sh/);
@@ -89,7 +90,7 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.equal(code, 1);
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
     ['project', 'ok'], ['claude-code', 'ok'], ['codex', 'skip'], ['opencode', 'ok'],
-    ['claude-code auth', 'open'], ['opencode auth', 'skip'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['aide', 'skip'],
+    ['claude-code login', 'open'], ['opencode login', 'skip'], ['favourite', 'ok'], ['trust', 'open'], ['hub', 'skip'], ['aide', 'skip'],
   ]);
   assert.equal(report.steps[4]?.fix, 'run: claude auth login');
   assert.equal(report.next, 'cland setup');
@@ -99,18 +100,18 @@ test('setup reports project, harnesses and installed logins in order without ask
 
 test('setup login requirements follow the project roles', async t => {
   const root = scratch(t);
-  const { report } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+  const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
     ...machine, requiredHarnesses: async () => ['opencode'],
   } });
-  assert.deepEqual(report.steps.find(s => s.name === 'claude-code auth'), {
-    name: 'claude-code auth', verdict: 'skip', detail: 'not logged in; no role uses it', fix: 'run: claude auth login',
+  assert.deepEqual(report.steps.find(s => s.name === 'claude-code login'), {
+    name: 'claude-code login', verdict: 'skip', detail: 'no role uses it',
   });
-  assert.equal(report.steps.find(s => s.name === 'opencode auth')?.verdict, 'skip');
+  assert.equal(report.steps.find(s => s.name === 'opencode login')?.verdict, 'skip');
 });
 
 test('setup keeps an installer open when a role requires the missing harness', async t => {
   const root = scratch(t);
-  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+  const { report, code } = await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
     ...machine, requiredHarnesses: async () => ['codex'],
   } });
   assert.equal(code, 1);
@@ -123,6 +124,7 @@ test('a declined installer persists across setup runs until an explicit install'
   let runs = 0;
   const m: SetupMachine = {
     ...machine,
+    requiredHarnesses: async () => [],
     read: async path => path === 'config.toml' ? config : null,
     write: async (path, text, expected) => {
       assert.equal(path, 'config.toml');
@@ -153,6 +155,7 @@ test('nonterminal detection and --yes never install or record a decline', async 
     const config = renderConfig(defaultConfig('project'));
     await setup({ noAide: true, root, env: { HOME: root }, interactive, yes: interactive, prompter: scriptedPrompter([]), machine: {
       ...machine,
+      requiredHarnesses: async () => [],
       read: async () => config,
       run: async () => { runs++; return 0; },
       write: async () => { writes++; },
@@ -204,7 +207,7 @@ test('the first installed harness makes missing alternatives optional in the fin
   } });
   assert.equal(code, 1); // favourite still needs --harness or --yes without a terminal
   assert.deepEqual(report.steps.map(s => [s.name, s.verdict]), [
-    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex auth', 'ok'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['aide', 'skip'],
+    ['project', 'ok'], ['claude-code', 'skip'], ['codex', 'done'], ['opencode', 'skip'], ['codex login', 'skip'], ['favourite', 'open'], ['trust', 'ok'], ['hub', 'skip'], ['aide', 'skip'],
   ]);
 });
 
@@ -242,7 +245,7 @@ test('a missing project stops setup before probing harnesses', async t => {
 test('all steps ok exits zero and points to cland; installer folders explain PATH', async t => {
   const root = scratch(t);
   const { report, code } = await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
-    ...machine, onPath: async () => false,
+    ...machine, onPath: async () => false, requiredHarnesses: async () => ['claude-code', 'codex', 'opencode'],
     harness: async id => ({ id, bin: `/installer/${id}`, version: [2, 0, 24], checks: [
       { name: id, verdict: 'ok', detail: '2.0.24' },
       { name: `${id} auth`, verdict: 'ok', detail: 'logged in' },
@@ -255,7 +258,7 @@ test('all steps ok exits zero and points to cland; installer folders explain PAT
   assert.match(report.steps[1]!.detail, /not on your PATH yet: open a new shell/);
 });
 
-test('login probe-error hints preserve their instruction prose', async t => {
+test('login probe errors retain their detail with the exact login command', async t => {
   const root = scratch(t, false);
   const { report, code } = await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
     ...machine,
@@ -265,5 +268,204 @@ test('login probe-error hints preserve their instruction prose', async t => {
     ] }),
   } });
   assert.equal(code, 1);
-  assert.equal(report.steps[4]?.fix, 'run claude-code auth status by hand');
+  assert.equal(report.steps[4]?.fix, 'run: claude auth login');
+  assert.equal(report.steps[4]?.detail, 'cannot check: no answer');
+});
+
+test('Claude Code login uses a fresh check to decide done after the terminal command', async t => {
+  const root = scratch(t);
+  let runs = 0;
+  const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Sign in to Claude Code now?', answer: true }]);
+  const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter, machine: {
+    ...machine,
+    requiredHarnesses: async () => ['claude-code'],
+    harness: async (id, fresh) => {
+      const h = await machine.harness(id);
+      if (id === 'codex') return { ...h, bin: '/tools/codex' };
+      if (id === 'claude-code' && fresh) {
+        assert.equal(runs, 1);
+        return { ...h, checks: [h.checks[0]!, { name: 'claude-code auth', verdict: 'ok', detail: 'logged in' }] };
+      }
+      return h;
+    },
+    run: async command => { assert.equal(command, 'claude auth login'); runs++; return 7; },
+  } });
+  assert.equal(runs, 1);
+  assert.deepEqual(report.steps.find(s => s.name === 'claude-code login'), {
+    name: 'claude-code login', verdict: 'done', detail: 'logged in',
+  });
+  assert.deepEqual(prompter.left(), []);
+});
+
+test('a signed-out login offers exactly one retry and the fresh result decides failure', async t => {
+  const root = scratch(t);
+  for (const retry of [false, true]) {
+    let runs = 0, freshChecks = 0;
+    const prompter = scriptedPrompter([
+      { kind: 'confirm', question: 'Sign in to Claude Code now?', answer: true },
+      { kind: 'confirm', question: 'Still signed out of Claude Code. Try once more?', answer: retry },
+    ]);
+    const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter, machine: {
+      ...machine,
+      requiredHarnesses: async () => ['claude-code'],
+      harness: async (id, fresh) => {
+        if (id === 'codex') return { ...await machine.harness(id), bin: '/tools/codex' };
+        if (fresh) { assert.equal(runs, ++freshChecks); }
+        return machine.harness(id);
+      },
+      run: async () => { runs++; return 0; },
+    } });
+    assert.equal(runs, retry ? 2 : 1);
+    assert.equal(freshChecks, runs);
+    assert.deepEqual(report.steps.find(s => s.name === 'claude-code login'), {
+      name: 'claude-code login', verdict: 'fail', detail: 'not logged in', fix: 'run: claude auth login',
+    });
+    assert.deepEqual(prompter.left(), []);
+  }
+});
+
+test('OpenCode login defaults to No and uses cland database after creating its folder', async t => {
+  const root = scratch(t);
+  const env = { HOME: root, OPENCODE_DB: '/unrelated/personal.db', XDG_DATA_HOME: join(root, 'data space') };
+  let ran = false;
+  const output: string[] = [];
+  const { report } = await setup({ noAide: true, root, env, interactive: true, yes: false, json: true, narrate: s => output.push(s),
+    prompter: {
+      ...scriptedPrompter([]),
+      confirm: async (question, def) => {
+        assert.equal(question, 'Sign in to OpenCode now?');
+        assert.equal(def, false);
+        assert.match(output.join(''), /opencode auth login --standalone/);
+        return true;
+      },
+    }, machine: {
+      ...machine,
+      requiredHarnesses: async () => ['opencode'],
+      harness: async (id, fresh) => {
+        const h = await machine.harness(id);
+        if (id === 'codex') return { ...h, bin: '/tools/codex' };
+        if (id === 'opencode' && fresh) {
+          assert.equal(ran, true);
+          return { ...h, checks: [h.checks[0]!, { name: 'opencode auth', verdict: 'ok', detail: 'credentials for Fake' }] };
+        }
+        return h;
+      },
+      run: async (command, options) => {
+        assert.equal(command, 'opencode auth login --standalone');
+        assert.equal(options?.stdout, 'stderr');
+        assert.equal(options?.env?.OPENCODE_DB, join(root, 'data space/cland/opencode/opencode.db'));
+        assert.equal(existsSync(join(root, 'data space/cland/opencode')), true);
+        assert.equal(options?.env?.XDG_DATA_HOME, undefined);
+        ran = true;
+        return 0;
+      },
+    },
+  });
+  assert.equal(ran, true);
+  assert.equal(report.steps.find(s => s.name === 'opencode login')?.verdict, 'done');
+  assert.equal(env.OPENCODE_DB, '/unrelated/personal.db');
+});
+
+test('signed-out Codex unused by any role has only a skip line without a login offer', async t => {
+  const root = scratch(t);
+  const prompter = scriptedPrompter([]);
+  const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: false, prompter, machine: {
+    ...machine,
+    requiredHarnesses: async () => [],
+    harness: async id => ({ ...await machine.harness(id), bin: `/tools/${id}` }),
+  } });
+  assert.deepEqual(report.steps.find(s => s.name === 'codex login'), {
+    name: 'codex login', verdict: 'skip', detail: 'no role uses it',
+  });
+  assert.deepEqual(prompter.asked, []);
+});
+
+test('without a terminal login reports exact commands without running even with yes', async t => {
+  const root = scratch(t);
+  for (const yes of [false, true]) {
+    const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: false, yes, prompter: scriptedPrompter([]), machine: {
+      ...machine,
+      requiredHarnesses: async () => ['claude-code', 'codex', 'opencode'],
+      harness: async id => ({ ...await machine.harness(id), bin: `/tools/${id}` }),
+    } });
+    assert.deepEqual(report.steps.filter(s => s.name.endsWith(' login')).map(s => [s.name, s.verdict, s.fix]), [
+      ['claude-code login', 'open', 'run: claude auth login'],
+      ['codex login', 'open', 'run: codex login'],
+      ['opencode login', 'skip', `run: OPENCODE_DB='${root}/.local/share/cland/opencode/opencode.db' opencode auth login --standalone`],
+    ]);
+    assert.equal(existsSync(join(root, '.local/share/cland/opencode')), false);
+  }
+});
+
+test('yes in a terminal still asks the login question and a decline skips with the command', async t => {
+  const root = scratch(t);
+  const prompter = scriptedPrompter([{ kind: 'confirm', question: 'Sign in to Claude Code now?', answer: false }]);
+  const { report } = await setup({ noAide: true, root, env: { HOME: root }, interactive: true, yes: true, prompter, machine: {
+    ...machine,
+    requiredHarnesses: async () => ['claude-code'],
+    harness: async id => ({ ...await machine.harness(id), bin: `/tools/${id}` }),
+  } });
+  assert.deepEqual(prompter.left(), []);
+  assert.deepEqual(report.steps.find(s => s.name === 'claude-code login'), {
+    name: 'claude-code login', verdict: 'skip', detail: 'declined', fix: 'run: claude auth login',
+  });
+});
+
+test('Claude Code and Codex login inherit the launch profile unchanged', async t => {
+  const root = scratch(t);
+  for (const id of ['claude-code', 'codex'] as const) for (const profile of [false, true]) {
+    const variable = id === 'claude-code' ? 'CLAUDE_CONFIG_DIR' : 'CODEX_HOME';
+    const command = id === 'claude-code' ? 'claude auth login' : 'codex login';
+    const name = id === 'claude-code' ? 'Claude Code' : 'Codex';
+    const env: NodeJS.ProcessEnv = { HOME: root, ...(profile ? { [variable]: join(root, 'profile space') } : {}) };
+    // Pretrust the selected profile so the full flow cannot start Codex's app-server.
+    if (profile) {
+      mkdirSync(env[variable]!, { recursive: true });
+      if (id === 'codex') writeFileSync(join(env[variable]!, 'config.toml'), `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`);
+      else writeFileSync(join(env[variable]!, '.claude.json'), JSON.stringify({ projects: { [root]: { hasTrustDialogAccepted: true } } }));
+    }
+    let runs = 0;
+    const { report } = await setup({ noAide: true, root, env, interactive: true, yes: false, prompter: {
+      ...scriptedPrompter([]),
+      confirm: async (question, def) => { assert.equal(question, `Sign in to ${name} now?`); assert.equal(def, true); return true; },
+    }, machine: {
+      ...machine,
+      requiredHarnesses: async () => [id],
+      harness: async (h, fresh) => {
+        const found = { ...await machine.harness(h), bin: `/tools/${h}` };
+        if (h === id && fresh) return { ...found, checks: [found.checks[0]!, { name: `${h} auth`, verdict: 'ok', detail: 'logged in' }] };
+        return found;
+      },
+      run: async (actual, options) => { assert.equal(actual, command); assert.deepEqual(options?.env, env); runs++; return 0; },
+    } });
+    assert.equal(report.steps.find(s => s.name === 'trust')?.verdict, 'ok');
+    assert.equal(runs, 1);
+    assert.equal(report.steps.find(s => s.name === `${id} login`)?.verdict, 'done');
+  }
+});
+
+test('login commands preserve the probed executable for explicit harness overrides', async t => {
+  const root = scratch(t);
+  for (const [id, variable, args] of [
+    ['claude-code', 'CLAND_CLAUDE_BIN', 'auth login'],
+    ['codex', 'CLAND_CODEX_BIN', 'login'],
+    ['opencode', 'CLAND_OPENCODE_BIN', 'auth login --standalone'],
+  ] as const) {
+    const selected = join(root, "custom tools/vendor's cli");
+    const env = { HOME: root, [variable]: selected, PATH: '/unrelated' };
+    const commands: string[] = [];
+    const { report } = await setup({ noAide: true, root, env, interactive: true, yes: false, prompter: {
+      ...scriptedPrompter([]), confirm: async () => commands.length === 0,
+    }, machine: {
+      ...machine,
+      requiredHarnesses: async () => [id],
+      onPath: async () => false,
+      harness: async h => ({ ...await machine.harness(h), bin: h === id ? selected : `/tools/${h}` }),
+      run: async command => { commands.push(command); return 0; },
+    } });
+    const command = `'${root}/custom tools/vendor'"'"'s cli' ${args}`;
+    assert.deepEqual(commands, [command]);
+    const instruction = id === 'opencode' ? `OPENCODE_DB='${root}/.local/share/cland/opencode/opencode.db' ${command}` : command;
+    assert.equal(report.steps.find(s => s.name === `${id} login`)?.fix, `run: ${instruction}`);
+  }
 });
