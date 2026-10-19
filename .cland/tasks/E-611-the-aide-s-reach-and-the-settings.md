@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: R-577
 blocked_by: []
-topic: null
+topic: topic-556
 branch: null
 created: 2026-10-16T15:34:13.285Z
-updated: 2026-10-16T16:04:29.444Z
+updated: 2026-10-19T06:10:46.631Z
 ---
 
 ## Summary
@@ -124,3 +124,11 @@ On the flagged risk (existing roles.toml files list the Aide's tools explicitly 
 ### coord · 2026-10-16T16:04:29.444Z
 
 Coordinator decisions on the ticket cut (D51), 2026-10-16: (1) the migration records 'once' as a comment line in roles.toml; (2) it replaces the v0.1.3 Aide clause line ('cannot launch, stop, resume or push') when verbatim; (3) Codex sandbox for the Coordinator and Leads: danger-full-access; T-630 proves the Aide's cland push under its sandbox with a test; (4) fallback harness order Claude Code, Codex, OpenCode, model empty, that harness's default effort; (5) the template is built at init and rebuilt by setup only while unedited (rebuild in E-613); (6) cland models claude-code returns a static alias list labelled static; cache per harness and account for 24 h; (7) cland role launch: human, Coordinator and Aide, not a Lead; needs a running hub; (8) cland config set refuses a config.toml without the managed mark; (9) T-634 stays in E-611; (10) T-638 stays in E-611; (11) T-603 and T-608 have criteria (T-608 keeps the whole title); (12) this repo's Aide gets its reach after T-636 merges, the hub restarts and the Aide is relaunched: on the stage-2 close checklist, before the demo.
+
+### hub · 2026-10-19T06:00:07.599Z
+
+demo 960280c4-a6c2-4c71-bc8d-ef8f570f16d4 created: droplet cland-v0-960280c4, commit e7de5ca728a990243bcaf830fd730743195bead7, deadline 2026-10-19T07:13:51.264Z.
+
+### hub · 2026-10-19T06:10:46.631Z
+
+demo 960280c4-a6c2-4c71-bc8d-ef8f570f16d4 destroyed: lifetime 701769 ms; cost $0.0487.
