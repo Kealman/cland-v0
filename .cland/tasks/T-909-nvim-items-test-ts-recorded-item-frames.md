@@ -2,8 +2,8 @@
 id: T-909
 kind: task
 title: nvim items.test.ts 'recorded item frames render…' fails one load-gate repetition in five (T-775 run b572f618)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: droplet
 topic: topic-651
 branch: t/T-909-nvim-items-test-ts-recorded-item-frames
 created: 2026-10-19T21:01:12.135Z
-updated: 2026-10-19T21:10:34.504Z
+updated: 2026-10-19T22:10:59.423Z
+closed: 2026-10-19T22:10:59.423Z
 ---
 
 ## Summary
@@ -29,11 +30,13 @@ Find out why the recorded update can be asserted before the Items panel re-rende
 
 ## Acceptance criteria
 
-- [ ] C1. The cause is named in the task report with the failing repetition's screen from A-6697 or a local reproduction under load.
+- [x] C1. The cause is named in the task report with the failing repetition's screen from A-6697 or a local reproduction under load.
   - verified: rev-30 [reviewer] · run rev-20261019-909-source · 2026-10-19T21:04:37.255Z · commit 4232f30f8c505882ba3b1a253563c9d6e5428273
   - verified: rev-30 [reviewer] · run rev-20261019-909-final · 2026-10-19T21:10:34.504Z · commit 4232f30f8c505882ba3b1a253563c9d6e5428273
-- [ ] C2. The fixed test passes the load gate's five repetitions in one mode-free droplet verify at the reviewed head, plus 20 serial local runs of the single file, with both receipts in the task report.
+  - done: impl-909 · 2026-10-19T22:06:33.671Z
+- [x] C2. The fixed test passes the load gate's five repetitions in one mode-free droplet verify at the reviewed head, plus 20 serial local runs of the single file, with both receipts in the task report.
   - verified: rev-30 [reviewer] · run rev-20261019-909-final · 2026-10-19T21:10:34.504Z · commit 4232f30f8c505882ba3b1a253563c9d6e5428273
+  - done: impl-909 · 2026-10-19T22:06:34.279Z
 
 ## Comments
 
@@ -78,3 +81,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear, A-6707. Independent A-6706/538630db audit:810/810, zero fail/cancel/skip/TODO, all125 load groups5/5, no tier/resource mismatch or owned overrun. Affected identity ordinary .868055751 s plus five distinct pass finishes, max repeat .823071246 s; explicit5/5 at:47755. A-6701 independently supplies20 whole-file local runs100/100, affected max .524251959 s. Source/diagnosis A-6704 unchanged. C1/C2 verified; covered report-only events case follows Coordinator directive. QA none; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T22:10:59.423Z
+
+Merged 72efb483eaacad0f931e676b0e6d91c2c573e3bd onto dev.

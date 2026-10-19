@@ -2,8 +2,8 @@
 id: T-912
 kind: task
 title: "Hub runs out of heap (4 GB) 7 min after restart #22: readFile + split over large suite logs"
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ found_by: human
 topic: topic-655
 branch: t/T-912-hub-runs-out-of-heap-4-gb-7-min-after
 created: 2026-10-19T21:47:49.515Z
-updated: 2026-10-19T21:52:00.874Z
+updated: 2026-10-19T22:04:36.530Z
+closed: 2026-10-19T22:04:36.530Z
 ---
 
 ## Summary
@@ -34,11 +35,14 @@ Hub pid 71220 died at 21:43:34Z on 2026-10-19 with "FATAL ERROR: Reached heap li
 - [x] C1. The report names the culprit path, with evidence: a heap snapshot, a counter or a reproduction.
   - done: impl-912 · 2026-10-19T21:50:56.568Z
   - verified: rev-30 [reviewer] · run rev-20261019-912-source · 2026-10-19T21:52:00.874Z · commit 14e86be2a6fed798bcfe9d801da737d28a28f4cf
+  - verified: rev-30 [reviewer] · run rev-20261019-912-final · 2026-10-19T22:00:12.958Z · commit 14e86be2a6fed798bcfe9d801da737d28a28f4cf
 - [x] C2. A T2 regression test fails before the fix and passes after: concurrent callers over many large receipt logs read each log at most once, and the persisted proofs are reused across calls and hub restarts.
   - done: impl-912 · 2026-10-19T21:50:57.166Z
+  - verified: rev-30 [reviewer] · run rev-20261019-912-final · 2026-10-19T22:00:12.958Z · commit 14e86be2a6fed798bcfe9d801da737d28a28f4cf
 - [x] C3. The load-proof backfill streams each log line by line, shares one in-flight backfill between concurrent callers, and reuses persisted proofs; the report lists every other whole-log read in the hub (stage baseline, completion reporting, receipt(), dispatch reporting, shard aggregation) with its trigger and size bound, for the Coordinator to file separately.
   - done: impl-912 · 2026-10-19T21:50:58.000Z
   - verified: rev-30 [reviewer] · run rev-20261019-912-source · 2026-10-19T21:52:00.874Z · commit 14e86be2a6fed798bcfe9d801da737d28a28f4cf
+  - verified: rev-30 [reviewer] · run rev-20261019-912-final · 2026-10-19T22:00:12.958Z · commit 14e86be2a6fed798bcfe9d801da737d28a28f4cf
 
 ## Comments
 
@@ -60,3 +64,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full source clear, A-6746. Sequential readline streaming retains proof identities; shared in-flight promise coalesces concurrent admissions and clears on settlement; existing per-job save/restore persists arrays across restarts. Landing eligibility and exact 5/5 parser retained. T2 regression counts whole reads/streams over eight 2 MiB logs and six public admissions, verifies all identities and no rereads after actual store reopen. C1 verified from A-6744's counted reproduction report, qualified as reported I/O evidence rather than independently raw-audited heap measurement. C3 implementation and source-cross-checked remaining-reader inventory verified; Coordinator explicitly narrowed scope and filed T-913. C2 awaits exact-head mode-free green plus actual new regression load receipts with no owned budget/resource trips. QA none; no Reviewer tests.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-30 · 2026-10-19T22:00:12.958Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-912-final
+commit: 14e86be2a6fed798bcfe9d801da737d28a28f4cf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final exact-head evidence clear, A-6754. Independently audited A-6753/2ba77d73: 1904/1904, zero fail/cancel/skip/TODO, new backfill regression ordinary plus five distinct positive repetitions (max .312398250 s), explicit 5/5 at line 47784. Raw counter line 47675 confirms eight one-time log reads and zero whole reads; passing assertions enforce peak one stream and durable reuse across calls/store reopen. Existing landing-eligibility controls also pass. No tier/resource mismatch or budget-overrun rows. Source A-6746 plus receipt settle C2, with C1/C3 retained. Pre-fix numbers remain qualified reported reproduction; other readers remain T-913, no broader heap-bound claim. QA none; no Reviewer tests.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T22:04:36.530Z
+
+Merged 0158d343ef4a965a5554c97dad54cbff76ad4547 onto dev.

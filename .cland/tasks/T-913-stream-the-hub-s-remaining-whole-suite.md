@@ -3,7 +3,7 @@ id: T-913
 kind: task
 title: Stream the hub's remaining whole-suite-log reads (T-912 audit A-6744)
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -12,10 +12,10 @@ parent: C-216
 blocked_by:
   - T-912
 regression_of: T-885
-topic: null
-branch: null
+topic: topic-656
+branch: t/T-913-stream-the-hub-s-remaining-whole-suite
 created: 2026-10-19T21:51:09.495Z
-updated: 2026-10-19T21:51:09.495Z
+updated: 2026-10-19T22:06:30.385Z
 ---
 
 ## Summary
