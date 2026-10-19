@@ -12,10 +12,10 @@ parent: R-577
 blocked_by:
   - E-611
   - E-615
-topic: null
+topic: topic-660
 branch: null
 created: 2026-10-16T15:34:18.844Z
-updated: 2026-10-19T22:37:32.965Z
+updated: 2026-10-19T22:46:21.106Z
 ---
 
 ## Summary

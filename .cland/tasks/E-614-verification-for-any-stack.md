@@ -11,10 +11,10 @@ assignee: null
 parent: R-577
 blocked_by:
   - E-611
-topic: null
+topic: topic-666
 branch: null
 created: 2026-10-16T15:34:18.662Z
-updated: 2026-10-16T16:36:06.234Z
+updated: 2026-10-19T22:46:24.443Z
 ---
 
 ## Summary

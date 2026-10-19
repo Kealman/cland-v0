@@ -2,8 +2,8 @@
 id: T-913
 kind: task
 title: Stream the hub's remaining whole-suite-log reads (T-912 audit A-6744)
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ regression_of: T-885
 topic: topic-656
 branch: t/T-913-stream-the-hub-s-remaining-whole-suite
 created: 2026-10-19T21:51:09.495Z
-updated: 2026-10-19T22:24:43.359Z
+updated: 2026-10-19T22:45:53.930Z
+closed: 2026-10-19T22:45:53.930Z
 ---
 
 ## Summary
@@ -81,3 +82,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final exact-head evidence clear, A-6762. Independently audited A-6761/2841a1bc: 1911/1911, zero fail/cancel/skip/TODO, both new regression identities ordinary plus five distinct positive repetitions; zero tier/resource mismatch or budget-overrun rows. C1 three 20 MiB cached/stage sources pass scan/reuse/reopen/heap assertions (repetition max 1.642243160 s). C2 50 MiB command/shards pass tail/hash/sequential/heap assertions (max 1.751286524 s); ordinary diagnostic reports 16,326,160 bytes sampled heap growth and one source stream. Inherited T-912 counters remain positive. Source A-6760 plus receipt settle C1/C2; C3 retained. Ordinary-output bound and semantic-evidence limitation remain qualified; no absolute/live-hub heap claim. QA none; no Reviewer tests.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T22:45:53.930Z
+
+Merged b5f3137542766278e09cb2011ef9214e4631b82e onto dev.

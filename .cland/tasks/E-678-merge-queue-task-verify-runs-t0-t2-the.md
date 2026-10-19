@@ -14,10 +14,10 @@ parent: R-577
 blocked_by: []
 follows:
   - E-676
-topic: null
+topic: topic-665
 branch: null
 created: 2026-10-16T19:58:43.217Z
-updated: 2026-10-19T22:37:32.796Z
+updated: 2026-10-19T22:46:24.003Z
 ---
 
 ## Summary
