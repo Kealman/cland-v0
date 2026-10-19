@@ -5783,6 +5783,20 @@
       "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling.",
       "owner": "E-677",
       "legacy": true
+    },
+    "hub/test/scenarios/setup.test.ts::setup provisions a scratch machine, reuses its hub and Aide, and remembers declined installs": {
+      "seconds": 11.265835125,
+      "owner": "E-613",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "Named setup process scenario: real CLI/PTY install and login, short-lived Codex trust server, one detached hub/Aide, two idempotent reruns, and a second scratch machine for remembered installer declines. Corrected teardown proves current scratch-root ownership, including before discovery; Mac observed 11.265835125 s including confirmed process teardown."
+    },
+    "T3": {
+      "seconds": 2037,
+      "owner": "E-613",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "Adds the setup CLI/PTY flow and one cleanup ownership regression after lower-tier setup rules. Base T3 is 2016.879276 s; setup measured 11.265835125 s and the synthetic process-table regression 0.102284125 s. Before timing refresh, merge admission estimates each new T3 identity at 10 s, projecting 2036.879276 s; this allowance covers that estimate."
     }
   }
 }

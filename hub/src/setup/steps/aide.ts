@@ -9,12 +9,12 @@ import type { SetupStep } from '../types.ts';
 
 export const aide: SetupStep = async ({ root, env, machine, hub: injected, noAide, interactive, kind = projectKind }) => {
   if (noAide) return [{ name: 'aide', verdict: 'skip', detail: 'cland starts the hub with the workbench' }];
-  if (!interactive) return [{ name: 'aide', verdict: 'open', detail: 'the Aide needs a terminal', fix: 'cland setup in a terminal' }];
   let fix = 'cland setup in a terminal';
   try {
     const client = injected ?? setupHub(root, env);
-    const found = await client.session('aide-1');
+    const found = !interactive && !await client.running() ? null : await client.session('aide-1');
     if (found?.status === 'running') return [{ name: 'aide', verdict: 'ok', detail: 'aide-1 running' }];
+    if (!interactive) return [{ name: 'aide', verdict: 'open', detail: 'the Aide needs a terminal', fix: 'cland setup in a terminal' }];
     if (found) {
       fix = 'cland session resume aide-1 --relaunch';
       await client.resume('aide-1');

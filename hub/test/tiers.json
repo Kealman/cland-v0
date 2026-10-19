@@ -284,6 +284,10 @@
       "tier": "T3",
       "scenario": "release"
     },
+    "hub/test/scenarios/setup.test.ts": {
+      "tier": "T3",
+      "scenario": "setup"
+    },
     "hub/test/scenarios/stage-close.test.ts": {
       "tier": "T3",
       "scenario": "stage-close"

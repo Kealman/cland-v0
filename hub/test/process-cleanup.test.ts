@@ -52,6 +52,20 @@ cwd = 'p420002\\nn' + root + 'b\\n';
 await cleanupProcesses(root);`), []);
 });
 
+test('scratch-root cleanup preserves a historical PID reused outside the fixture and stops its current writers', () => {
+  assert.deepEqual(probe(`
+// The logged vendor and hub have already exited: their old PID numbers grant no authority.
+await cleanupProcesses(root);
+rows = [
+ { pid: 420080, parent: 1, group: 420080, started: 'Tue Oct 6 12:00:00 2026', command: 'other-app' },
+ { pid: 420081, parent: 1, group: 420081, started: start, command: 'node fixture writer' }
+];
+cwd = 'p420080\\nn/tmp/another-project\\np420081\\nn' + root + '\\n';
+await cleanupProcesses(root);
+if (rows.length !== 1 || rows[0].pid !== 420080) throw new Error('replacement was signalled or fixture writer survived');
+`), [{ pid: -420081, signal: 'SIGKILL' }]);
+});
+
 test('cleanup signals individual owned processes when their group has an unrelated member', () => {
   assert.deepEqual(probe(`
 rows = [

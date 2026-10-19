@@ -269,7 +269,7 @@ edits it. The merge queue remains opt-in for other projects; this repository ena
 
 ### Named T3 scenarios
 
-The ten scenarios below prove process seams once the rules are covered in T1/T2. Each is one manifest entry with tier T3 and a unique scenario name, one whole-file scheduling unit, at most 120 seconds of manifest test time, and at most one live hub. Headers name the flow, lower-tier rule coverage and the expected hub process starts. Other T3 lifecycle regressions and the three harness contracts remain separate. The target cadence is T3 in configured merge batches, periodic dev runs, and at stage, epic and release; task admission excludes these T3 scenarios, which run in periodic dev and integrated occasions, plus batches configured for T3.
+The eleven scenarios below prove process seams once the rules are covered in T1/T2. Each is one manifest entry with tier T3 and a unique scenario name, one whole-file scheduling unit, at most 120 seconds of manifest test time, and at most one live hub. Headers name the flow, lower-tier rule coverage and the expected hub process starts. Other T3 lifecycle regressions and the three harness contracts remain separate. The target cadence is T3 in configured merge batches, periodic dev runs, and at stage, epic and release; task admission excludes these T3 scenarios, which run in periodic dev and integrated occasions, plus batches configured for T3.
 
 | Scenario | File | Seam proved |
 | --- | --- | --- |
@@ -283,6 +283,7 @@ The ten scenarios below prove process seams once the rules are covered in T1/T2.
 | hook-bridge | [hub/test/scenarios/hook-bridge.test.ts](../../hub/test/scenarios/hook-bridge.test.ts) | A native mod bridge reconnects across hub replacement and expires while its parent stays alive |
 | workbench | [nvim/test/scenarios/workbench.test.ts](../../nvim/test/scenarios/workbench.test.ts) | Real Neovim attaches, sends and receives, answers an ask, opens an artifact, explorer, graph and plan approval |
 | message-tracer | [hub/test/scenarios/message-tracer.test.ts](../../hub/test/scenarios/message-tracer.test.ts) | Real spokes carry message metadata and a correlated reply through the hub |
+| setup | [hub/test/scenarios/setup.test.ts](../../hub/test/scenarios/setup.test.ts) | CLI prompts, fake installation/login, account decline, trust, one hub/Aide, launcher and idempotent terminal/nonterminal reruns |
 
 Add a scenario only for a new flow across processes whose rules are already covered in T1/T2. Reuse existing steps and assertion meanings; add a header with those rule files and expected hub starts, a unique scenario manifest entry, measured duration and reasoned dated allowances. Record a declaration-to-step assertion audit and a spawn census; an extra hub start needs a lifecycle reason in the header. Run the entire file five times serially on the Mac at one-minute load below 15. For Linux proof, cite a droplet merge-batch or integrated-occasion receipt that actually executes the scenario file, naming its tested head/tree and log artifact. Input and refusal permutations stay in the lower tiers.
 

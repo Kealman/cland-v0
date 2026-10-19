@@ -25,9 +25,49 @@ cland setup
 
 Setup readies the harnesses, their logins and folder trust, the accounts and your Favourite harness, then starts the hub and the Aide.
 
+It checks these steps in order: the initialised project; installed Claude Code,
+Codex and OpenCode; logins for harnesses used by roles; separate signed-in account
+profiles; your Favourite harness; folder trust; the project hub; and `aide-1`.
+Each report line starts with `ok` (already ready), `done` (changed and rechecked),
+`skip`, `open` (needs action) or `fail`, with a fix when needed. Rerunning setup
+reuses the running hub and Aide and asks only about unfinished choices. A declined
+installer is remembered in `.cland/config.toml`; `--install <harness>` retries it.
+
+The official user-level installer and the harness's login run in your terminal
+after you agree. Setup writes your Favourite to `[aide.launch]` in
+`.cland/roles.toml`. Outside the project, accepting the accounts question appends
+names, harnesses and profile paths to `~/.config/cland/accounts.toml` (under
+`XDG_CONFIG_HOME` when set); it copies no credentials. That question defaults to
+No. Setup also trusts this project for every installed harness: Claude Code's
+launch profile gets `projects["<root>"].hasTrustDialogAccepted = true` in
+`.claude.json` (`~/.claude.json` by default, or inside `CLAUDE_CONFIG_DIR`), under
+Claude Code's lock; Codex's short-lived app-server writes
+`projects."<folder>".trust_level = "trusted"` to its profile's `config.toml`
+(`~/.codex/config.toml` by default, or under `CODEX_HOME`). Selected role accounts
+receive trust too. OpenCode has no folder trust gate.
+
+| Flag | Effect |
+| --- | --- |
+| `--json` | Print one structured report; narration goes to stderr. Uses nonterminal policy. |
+| `--yes` | Allow harmless setup writes; installers still require `--install`, and logins and a new Aide require a terminal. Does not accept machine-wide accounts. |
+| `--install claude-code\|codex\|opencode` | Explicitly run that harness's installer, including after a decline. |
+| `--harness claude-code\|codex\|opencode` | Choose the Favourite from installed harnesses. |
+| `--no-accounts` | Skip the machine-wide accounts step. |
+| `--no-aide` | Skip hub/Aide startup and workbench handover. |
+| `--attach` | Attach the Aide in this terminal instead of opening the workbench. |
+
+Without a terminal, setup asks nothing and reports unfinished steps with their
+commands. It exits 1 while a step is open or failed, 0 when all applicable steps
+are ready, and 130 on cancelled input. A running hub and Aide can be detected
+without a terminal. Explicit flags can permit the actions described above.
+
 The workbench opens on the Aide, who leads the Onboarding: who decides what, a first plan you can see, the crew and a Welcome note; on your ok, the Aide commits and pushes the results and starts the Coordinator, then offers the Tour.
 
 To reopen the workbench later, run `cland` in your project folder.
+
+Closing the workbench or leaving an attach can leave the Aide running. Stop it
+with `x` on its row in the sessions panel or `cland session stop aide-1`. Then
+`cland hub stop` stops the project hub. Both commands run from the project folder.
 
 The cland hub: the per-project service sessions talk through, the spoke each session runs, and the `cland` CLI. Node 24, TypeScript run by type stripping (no build step), `node:sqlite`, `ws`, the MCP SDK.
 
@@ -2819,6 +2859,12 @@ either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 `CLAND_TEST_SKIP_LOCK=1` skips the lock in isolated CI jobs.
 
 ### Trying setup on a scratch machine
+
+`node --test hub/test/scenarios/setup.test.ts` runs the complete setup scenario
+through a pseudo-terminal: missing Codex, signed-out Claude Code, a declined
+account profile, a stand-in workbench launcher, and one real scratch hub/Aide.
+It checks terminal and nonterminal reruns, trust files and remembered installer
+declines, then observes stopped processes before removing the scratch HOME.
 
 `test/setup-machine.ts` builds a temporary HOME, XDG directories, Git identity
 and project through the real `cland init`. Its PATH contains only allowlisted

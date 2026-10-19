@@ -54,6 +54,24 @@ test('a running Aide is reused; a stopped Aide resumes its conversation', async 
   assert.deepEqual(calls, [['resume', 'aide-1']]);
 });
 
+test('nonterminal setup detects a running hub and Aide without writes or launches', async t => {
+  const { options, client, calls } = fixture(t);
+  const nonterminal = { ...options, interactive: false };
+  client.running = async () => ({ pid: 7 });
+  client.session = async () => ({ status: 'running' });
+  assert.deepEqual(await hub(nonterminal), [{ name: 'hub', verdict: 'ok', detail: 'pid 7' }]);
+  assert.deepEqual(await aide(nonterminal), [{ name: 'aide', verdict: 'ok', detail: 'aide-1 running' }]);
+  for (const status of ['stopped', 'exited', null] as const) {
+    client.session = async () => status === null ? null : { status };
+    assert.equal((await aide(nonterminal))[0]?.verdict, 'open');
+  }
+  client.running = async () => null;
+  assert.equal((await hub(nonterminal))[0]?.verdict, 'open');
+  client.session = async () => { throw new Error('no hub: session detection must not connect'); };
+  assert.equal((await aide(nonterminal))[0]?.verdict, 'open');
+  assert.deepEqual(calls, []);
+});
+
 test('no-aide skips both steps; nonterminal policy permits only a yes hub start', async t => {
   const { options, calls } = fixture(t);
   for (const interactive of [false, true]) {
@@ -110,6 +128,19 @@ test('the ordered setup flow reruns without starting another hub or Aide', async
   const second = await setup(options);
   assert.equal(second.code, 0);
   assert.deepEqual(second.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
+  const nonterminal = { ...options, interactive: false, yes: false };
+  const third = await setup(nonterminal);
+  assert.equal(third.code, 0);
+  assert.deepEqual(third.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'ok'], ['aide', 'ok']]);
+  client.session = async () => null;
+  const missingAide = await setup(nonterminal);
+  assert.equal(missingAide.code, 1);
+  assert.deepEqual(missingAide.report.steps.at(-1), { name: 'aide', verdict: 'open', detail: 'the Aide needs a terminal', fix: 'cland setup in a terminal' });
+  client.running = async () => null;
+  const missingHub = await setup(nonterminal);
+  assert.equal(missingHub.code, 1);
+  assert.deepEqual(missingHub.report.steps.slice(-2).map(s => [s.name, s.verdict]), [['hub', 'open'], ['aide', 'open']]);
+  assert.equal(missingHub.report.steps.at(-2)?.fix, 'cland hub start');
   assert.deepEqual(calls, []);
 });
 
