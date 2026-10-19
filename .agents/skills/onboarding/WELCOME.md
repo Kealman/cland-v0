@@ -21,7 +21,7 @@ cland runs a crew of AI coding agents on this project: you decide, and the sessi
 | Reviewer | <harness · model> | checks each change: clear, or not clear with the reasons; a pool of <1> |
 | QA | <harness · model> | runs the product and checks that it works, once there is something to run |
 
-<Claude Code sessions run commands without asking (permissions skip) | Claude Code sessions ask before each command>.
+<Claude Code sessions run in auto mode: routine commands run, risky ones are stopped | Claude Code sessions run commands without asking (permissions skip)>.
 
 ## Your rules
 

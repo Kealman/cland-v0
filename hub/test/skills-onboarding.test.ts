@@ -1,4 +1,4 @@
-// T1 source assertions; T2 Aide config CLI cases run against an in-process hub.
+// T1 source assertions; T2 Aide settings CLI cases run against an in-process hub with fake adapters.
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -6,6 +6,8 @@ import { test } from 'node:test';
 import * as usage from '../src/cli/usage.ts';
 import { configKeys } from '../src/init/config-set.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
+import type { CrewConfig } from '../src/crew.ts';
+import { rolesTemplate } from '../src/roles/template.ts';
 import { clandWithEnv, connectUi, projectHub, tempProject } from './harness.ts';
 
 const SKILL = new URL('../../.agents/skills/onboarding/', import.meta.url);
@@ -62,6 +64,19 @@ test('onboarding verification instructions are independent of npm', async () => 
   }
 });
 
+// T1: source guidance uses the shipped settings commands instead of file edits.
+test('onboarding records crew settings through commands', async () => {
+  const markdown = await readFile(new URL('SKILL.md', SKILL), 'utf8');
+  const crew = markdown.split('## 5. The crew')[1]!.split('## 6.')[0]!;
+  assert.ok(crew.includes('cland crew set <key> <value>'));
+  assert.ok(crew.includes('cland role launch <role>'));
+  for (const file of await readdir(SKILL, { recursive: true, withFileTypes: true })) {
+    if (!file.isFile()) continue;
+    const text = await readFile(join(file.parentPath, file.name), 'utf8');
+    assert.doesNotMatch(text, /\b(?:edit|write|change|update)\b[^\n]*(?:roles|crew)\.toml/i, file.name);
+  }
+});
+
 test('the onboarding Aide sets human epic plan approval through the config CLI', async t => {
   const root = await tempProject(t);
   const path = join(root, '.cland/config.toml');
@@ -104,4 +119,59 @@ test('the onboarding Aide records the stack verification commands verbatim throu
     assert.deepEqual(JSON.parse(result.stdout), { key: `verification.${key}`, value, applies: 'now' });
     assert.equal(parseConfig(await readFile(path, 'utf8'), root).verification[key], value);
   }
+});
+
+// T2: the CLI is the subject; projectHub supplies the hub and in-process fake harnesses.
+test('the onboarding Aide records staffing through the crew CLI', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  const env = { CLAND_SESSION_NAME: 'onboarding-aide' };
+  // Start away from the recommended values so the readback proves each change.
+  for (const [key, value] of [['reviewer.size', 2], ['leads', ['epic']], ['aide.subagents', false]] as const) {
+    assert.equal((await ui.request({ type: 'crew.set', key, value })).ok, true);
+  }
+  for (const [key, value] of [['reviewer.size', '1'], ['leads', '[]'], ['aide.subagents', 'true']]) {
+    const result = await clandWithEnv(root, env, 'crew', 'set', key!, value!);
+    assert.equal(result.code, 0, result.stderr);
+  }
+  const show = await clandWithEnv(root, env, 'crew', 'show', '--json');
+  assert.equal(show.code, 0, show.stderr);
+  const { config } = JSON.parse(show.stdout) as { config: CrewConfig };
+  assert.equal(config.crew.reviewer!.size, 1);
+  assert.deepEqual(config.leads, []);
+  assert.equal(config.crew.aide!.subagents, true);
+});
+
+test('the onboarding Aide records launch fields through the role CLI', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/roles.toml'), rolesTemplate(['claude-code']));
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  const env = { CLAND_SESSION_NAME: 'onboarding-aide' };
+  for (const args of [
+    ['implementer', '--harness', 'codex', '--model', '', '--effort', 'high'],
+    ['coordinator', '--permissions', 'skip'],
+  ]) {
+    const result = await clandWithEnv(root, env, 'role', 'launch', ...args);
+    assert.equal(result.code, 0, result.stderr);
+  }
+  const list = await clandWithEnv(root, env, 'role', 'list');
+  assert.equal(list.code, 0, list.stderr);
+  assert.match(list.stdout, /Implementer.*launch:.*codex.*model harness default.*effort high/);
+  assert.match(list.stdout, /Coordinator.*launch:.*permissions skip/);
+});
+
+test('the onboarding Aide own launch change returns the next-launch note', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  assert.equal((await ui.request({ type: 'role.set', session: 'onboarding-aide', role: 'aide' })).ok, true);
+  const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide' },
+    'role', 'launch', 'aide', '--permissions', 'skip');
+  assert.equal(result.code, 0, result.stderr);
+  assert.match(result.stdout, /applies from the role's next launch; your own session keeps its settings until its next launch/);
 });
