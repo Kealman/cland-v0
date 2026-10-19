@@ -84,9 +84,11 @@ process.exitCode = result.status ?? 1;
   await writeFile(held, 'hold');
   try {
     const pid = await eventually('admission probe held', async () => readFile(probe, 'utf8').then(Number, () => undefined));
-    const status = await f.ui.request({ type: 'hub.status' }, 500);
+    // The T2 held-inspection case proves replies precede admission completion.
+    // Use the normal socket watchdog here; host scheduling is not a latency SLA.
+    const status = await f.ui.request({ type: 'hub.status' });
     assert.equal(status.ok, true);
-    const cancel = await f.ui.request({ type: 'suite.cancel', suite: job.id }, 500);
+    const cancel = await f.ui.request({ type: 'suite.cancel', suite: job.id });
     assert.equal(cancel.ok, true, cancel.error);
     await eventually('held admission probe terminated at its deadline', () => !pidAlive(pid) ? true : undefined, 7000);
   } finally {
