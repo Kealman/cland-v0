@@ -11,9 +11,11 @@ the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installe
 not provide. T-427 records matching diagnostics on both clean projects and
 planted strict-option/import errors before the switch.
 
-## Test levels (D53)
+## Tiers and the merge queue
 
-Every test has a level, and most belong lower than where they're written today. D53 (docs/spec/v0.1.4.md) makes this the project's top priority. The study is A-4143. The hub enforces declared tiers through `hub/test/tiers.json` and its manifest lint. Further tier import rules and per-tier budgets are landing incrementally. Implementers and Reviewers apply the level rules below by hand where enforcement has not landed, and a review that finds a breach records it as a finding.
+### Test levels (D53)
+
+Every test belongs to one of four runtime tiers, T1–T4. T0 is the static check before a run. D53 (docs/spec/v0.1.4.md) makes moving tests to the lowest adequate tier the project's top priority. The study is A-4143. `hub/test/tiers.json` declares runtime tiers; manifest lint, source guards and the resource tripwire check their boundaries. Reviewers apply the rules below where enforcement is still report-only.
 
 | Tier | What it holds | What it may use | Budget per test |
 | --- | --- | --- | --- |
@@ -23,7 +25,36 @@ Every test has a level, and most belong lower than where they're written today. 
 | T3 integration | a curated set of real-process scenarios, plus true process-lifecycle files and one real-binary contract file per harness | anything | 10 s |
 | T4 soak | load repetitions, long waits, macOS-only checks | anything | |
 
+`hub/test/durations.json` declares the tier budgets. File budgets sum top-level
+test-seconds; wall budgets project whole-file scheduling at the run's workers.
+
+| Tier | Per test | Per file | Projected wall |
+| --- | --- | --- | --- |
+| T1 | 0.5 s | 10 s | 120 s |
+| T2 | 2 s | 30 s | 480 s |
+| T3 | 10 s | 120 s | 900 s |
+| T4 | none | none | none |
+
+This repository's budget manifest remains in report mode. The duration-budget
+section below describes allowances, enforcement and the T3 growth ratchet.
+
 Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets, and never admit T3. Successful coverage keeps diff-selected Neovim T2. T3 runs once per merge batch and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports say `T3: in the merge batch` with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
+
+| Run kind | Plan after T0 |
+| --- | --- |
+| Queue-enabled task, no mode | All T1, selected T2; fallback is all T2 in both packages |
+| Hub-owned merge batch | All T1 and T3; five repetitions of T3 identities absent from the last green batch or stage receipt |
+| Ordinary integrated `dev` or explicit `all` | T1–T3 |
+| Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
+| Nightly soak | T1–T4; five repetitions of identities absent from the last green soak |
+
+Task load repetitions cover new T1/T2 identities against the duration baseline.
+The hub owns batch and soak occasions. The Coordinator requests stage, epic and
+release occasions; QA may request epic for its demo. An explicit `all` on a task
+head requires authorization and retains T3. A flaky-gate second task receipt
+uses the same mode-free selection. T3 smoke files are filtered out of task plans.
+
+### Nightly soak
 
 `[verification] soak = "03:00"` enables a nightly UTC run; `""` disables it
 (the default for new projects). The hub attempts at most once per UTC day after
@@ -49,6 +80,8 @@ and malformed/unknown outcome receipts supply no green evidence. The shared
 for Coordinator triage; the independent receipts, isolated repetitions, owner
 item, reason and expiry required below still govern manifest additions.
 
+### Test placement and review
+
 **When you write or change a test (Implementer):**
 
 - Choose the lowest tier that can prove the behaviour, and state it in the file header or the test's comment. A new file is T1 or T2 unless its header names the process-lifecycle behaviour it proves.
@@ -63,11 +96,22 @@ item, reason and expiry required below still govern manifest additions.
 
 - Count `startDaemon(`, `spawnSpoke(`, `cland(` and `sleep(` in each new or changed test. For each one, ask which is the frame proof and why a lower tier can't prove the rest.
 - A new file that spawns a process with no lifecycle sentence in its header, or a new wall-clock wait, is a finding of at least medium severity.
-- Don't ask for a full run on a task head. A task verify plus the integrated cover (later, the merge-queue batch) is sufficient evidence.
+- Use the task's same-head verify receipt and the hub's green merge batch as the runtime evidence for a queued landing.
 
 Deterministic whole-repository source guards run through `npm run test:static`, included in the task host gate’s `npm run test:lint`.
 
 ### Queued merge batches
+
+On an item's final `ready` event, its supervising Lead or the Coordinator calls
+`cland merge T-<n>`. Reviewed heads with paths outside the documentation/tracker
+allowlist enqueue; the CLI returns `queued <n>`, their current FIFO position.
+Allowlisted-only changes still use the immediate gate with their required
+verdicts. The allowlist is the human-override scope in the merge skill; skills
+and role configuration are outside it. `cland merge queue [--json]` lists pinned
+heads, requesters and the current batch. `cland merge T-<n> --cancel` removes a
+request through the same role/subtree permission check as merge. Cancellation
+waits for any active worker to finish before the candidate checkout is replaced.
+A changed or deleted head, a closed item or a not-clear verdict drops its entry.
 
 With `[merge] queue = true`, reviewed code heads wait in a durable FIFO. The hub
 starts the oldest `batch` entries (default 3) when full, or after `batch_wait`
@@ -97,7 +141,14 @@ same queue, and supply no full-suite cache proof.
 Aborted, timed-out, unavailable or otherwise inconclusive original runs or file
 jobs hold the batch with their retained receipts and one Coordinator notice. They establish
 neither a red alternative nor an unresolved red repeat; recovery is an explicit
-Coordinator decision.
+Coordinator decision. `merge-bisected` goes to the rejected item's lead for a fix,
+fresh review and task verification. `merge-bisect-unresolved` goes to the
+Coordinator for diagnosis before re-enqueueing. A `merge-conflict` goes to the
+item lead to integrate dev in its worktree, then repeat review and verification.
+For `merge-budget`, the item lead reduces the named tier growth or records a
+valid allowance under the budget rules before retrying. The supervising Lead or
+Coordinator submits the repaired item through the gate again. The merge skill
+has the command and refusal workflow.
 
 Executed passing identities on a green batch-tree rerun record a flake
 observation with both failure and green receipts. Two different batches produce
@@ -123,7 +174,7 @@ The ten scenarios below prove process seams once the rules are covered in T1/T2.
 | workbench | [nvim/test/scenarios/workbench.test.ts](../../nvim/test/scenarios/workbench.test.ts) | Real Neovim attaches, sends and receives, answers an ask, opens an artifact, explorer, graph and plan approval |
 | message-tracer | [hub/test/scenarios/message-tracer.test.ts](../../hub/test/scenarios/message-tracer.test.ts) | Real spokes carry message metadata and a correlated reply through the hub |
 
-Add a scenario only for a new flow across processes whose rules are already covered in T1/T2. Reuse existing steps and assertion meanings; add a header with those rule files and expected hub starts, a unique scenario manifest entry, measured duration and reasoned dated allowances. Record a declaration-to-step assertion audit and a spawn census; an extra hub start needs a lifecycle reason in the header. Run the entire file five times serially on the Mac at one-minute load below 15 and once through task droplet verification. Input and refusal permutations stay in the lower tiers.
+Add a scenario only for a new flow across processes whose rules are already covered in T1/T2. Reuse existing steps and assertion meanings; add a header with those rule files and expected hub starts, a unique scenario manifest entry, measured duration and reasoned dated allowances. Record a declaration-to-step assertion audit and a spawn census; an extra hub start needs a lifecycle reason in the header. Run the entire file five times serially on the Mac at one-minute load below 15. For Linux proof, cite a droplet merge-batch or integrated-occasion receipt that actually executes the scenario file, naming its tested head/tree and log artifact. Input and refusal permutations stay in the lower tiers.
 
 HUB_SMOKE selects hub-lifecycle, startup-smoke and message-tracer. NVIM_SMOKE selects workbench, covering attach and the main views in one file.
 
@@ -441,17 +492,19 @@ Implementers run verification through the hub, one invocation at a time per sess
 cland verify --report <item-topic> --to <reviewer-name> --to <your-name>
 ```
 
-D29: task runs use the diff selection with no mode: hub-only, Neovim-only or full. Use `all` only when the selection or the Coordinator asks for a full run. Full suites are the Coordinator's integrated `dev` runs per batch of about three merges, at stage and epic close, and before release.
+D29: submit task runs with no mode. The diff and coverage selector chooses T2 files under the queue-enabled T0–T2 protocol above. A flaky-gate second receipt uses that same selection. The hub verifies T3 in the merge batch; the Coordinator requests integrated occasions at stage and epic close and before release. `all` is reserved to the Coordinator, the human and authorized occasions.
 
-Task runs may report `hub-selected`: changed hub tests, tests covering the changed
-functions, and `HUB_SMOKE`/`NVIM_SMOKE`. A changed hub source imported by Neovim
-selects only the Neovim test files reaching it directly or through `nvim/test`
-helpers, plus `NVIM_SMOKE`. Declaration-level `import type` and `export type` do
-not create runtime dependencies. Inline type specifiers retain module execution
-under Node type stripping, so those imports and re-exports still count.
-Changes to `hub/test/harness.ts` or `hub/test/process-cleanup.ts` retain the full
-Neovim phase. The report names the deciding functions, selected Neovim tests and
-coverage artifact.
+Task runs may report `hub-selected`: changed hub tests and tests covering the
+changed functions, filtered to T2 after selection. All T1 files still run.
+A changed hub source imported by Neovim selects the Neovim T2 files reaching it
+directly or through `nvim/test` helpers. Declaration-level `import type` and
+`export type` do not create runtime dependencies. Inline type specifiers retain
+module execution under Node type stripping, so those imports and re-exports
+still count. A coverage fallback selects all T2 in both packages, including for
+harness or process-cleanup changes. The report names the deciding functions,
+selected Neovim tests and coverage artifact. T3 smoke remains in integrated and
+legacy package plans.
+
 Clean integrated `dev` full runs record per-test-file V8 coverage, including the
 CLI, lifecycle daemons, spokes and fake harness descendants, and publish a
 function-range map with their head and canonical candidate tree. Close-run shard
@@ -492,15 +545,15 @@ Shares use the current duration manifest, rather than claiming historical wall
 times. The replay bar is zero misses on those merges' own changed/added tests;
 every wider miss must be listed with its cause.
 
-Close runs on integrated `dev` use `cland verify all --occasion stage|epic|release --report <topic>`. The Coordinator sets any occasion; QA may set `epic` for the epic demo. The hub requires the clean project-root `dev` head to match freshly fetched `origin/dev` and refuses other roles or task heads. The MCP `verify` request accepts the same `occasion` field. The Coordinator’s ordinary integrated `cland verify all` batch covers on the same clean root `dev` head shard too, with no occasion or stage provenance. Task heads and non-Coordinator requests without an authorized occasion use one slot. A local executor still uses one local slot.
+Close runs on integrated `dev` use `cland verify all --occasion stage|epic|release --report <topic>`. The Coordinator sets any occasion; QA may set `epic` for the epic demo. The hub requires the clean project-root `dev` head to match freshly fetched `origin/dev` and refuses other roles or task heads. The MCP `verify` request accepts the same `occasion` field. An ordinary Coordinator integrated `cland verify all` on the same clean root `dev` head may shard too, with no occasion or stage provenance. The hub-owned merge batch and nightly soak each use one slot. Task heads and non-Coordinator requests without an authorized occasion use one slot. A local executor still uses one local slot.
 
 Every `after-stage` stage, even with `qa.scope: none`, needs green integrated full-suite receipts at one verification tree from a Linux droplet `--occasion stage` run and a macOS local run. Non-none scopes additionally need a clear stage QA verdict on that tree. Per-item stage gates are unchanged. `task plan show` and stage-run results name missing platforms and the expected tree. Submit the missing run separately: the usual stage request for Linux and `cland verify all --occasion stage --executor local --report <topic>` on the Mac. Stage-request cache reuse preserves executor/platform; Linux stage evidence must come from a stage run (sharded, or the documented one-slot fallback). A completed stage retains its tested tree across later descendant builds while its plan and landing evidence remain valid.
 
-A remote close run or Coordinator integrated batch cover uses the free remote slots up to `[verification] shards` (default 2), balances hub files largest-first by `hub/test/durations.json` (unknown files use its median), and places Neovim on the lightest hub shard. Each droplet preserves the free/machine resource classes. Before creating any droplet, the hub atomically reserves every shard's lifetime cost in the shared spend ledger against the project's daily cap ($3 here). Fewer than two free slots or an insufficient cap gives one whole run on one slot and one warn notice, `sharding skipped: fewer than 2 remote slots free` or `sharding skipped: daily spend cap $3 would be exceeded`. Other executor unavailability follows the configured local fallback.
+A remote close run or ordinary Coordinator integrated full run uses the free remote slots up to `[verification] shards` (default 2), balances hub files largest-first by `hub/test/durations.json` (unknown files use its median), and places Neovim on the lightest hub shard. Each droplet preserves the free/machine resource classes. Before creating any droplet, the hub atomically reserves every shard's lifetime cost in the shared spend ledger against the project's daily cap ($3 here). Fewer than two free slots or an insufficient cap gives one whole run on one slot and one warn notice, `sharding skipped: fewer than 2 remote slots free` or `sharding skipped: daily spend cap $3 would be exceeded`. Other executor unavailability follows the configured local fallback.
 
-One result sums counts, labels failures by shard, and includes each machine, size, duration and cost, total cost, and wall time from admission through final collection. Each shard has a log artifact beside the merged log. A failed or lost shard fails the run without an automatic retry; cleanup must be confirmed before its slot is released. At $0.25/hour per c-8, two ten-minute droplet lifetimes estimate $0.0833 total (provisioning and cleanup count too); read the measured cost in the result. Cache reuse requires identical tree, mode and soak coverage, so an ordinary T1–T3 batch cannot satisfy a T1–T4 occasion; stage requests additionally match executor/platform and require stage provenance for Linux cache hits.
+One result sums counts, labels failures by shard, and includes each machine, size, duration and cost, total cost, and wall time from admission through final collection. Each shard has a log artifact beside the merged log. A failed or lost shard fails the run without an automatic retry; cleanup must be confirmed before its slot is released. At $0.25/hour per c-8, two ten-minute droplet lifetimes estimate $0.0833 total (provisioning and cleanup count too); read the measured cost in the result. Cache reuse requires identical tree, mode and soak coverage, so an ordinary T1–T3 integrated run cannot satisfy a T1–T4 occasion; stage requests additionally match executor/platform and require stage provenance for Linux cache hits.
 
-Before requesting review, fetch and merge `origin/dev` into the task branch, then commit and push the head to review. Request source review first. Only after a clear source verdict, run `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. The Reviewer settles the final verdict when the same-head result arrives; source-only criteria may be verified earlier, while run-dependent criteria stay unverified until then. The CLI prints the run id, worker PID (null while queued) and hub queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact.
+Before the first source review, fetch and merge `origin/dev` into the task branch, then commit and push the head to review. After that review, take dev changes only through shared fixes posted by the Coordinator; merge dev again only on its request or after a merge-conflict refusal. Request source review first. Only after a clear source verdict, run `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. The Reviewer settles the final verdict when the same-head result arrives; source-only criteria may be verified earlier, while run-dependent criteria stay unverified until then. The CLI prints the run id, worker PID (null while queued) and hub queue position, then exits. Go idle: the hub delivers one result with the exit code, test counts, failures, branch/head and durable log artifact.
 
 If the CLI writes a submission but receives no reply within 15 seconds, it exits
 75 with ``submission sent; no reply within 15 s; check `cland verify queue` before resubmitting``.
@@ -680,15 +733,8 @@ cache hits and report retries add no green observations. Renewed entries start
 a new streak. The hub persists streaks and publishes their update atomically
 with the result, including after restart; it never edits the manifest itself.
 
-`hub/test/durations.json` also declares tier budgets in `budget.T1` through
-`budget.T4`:
-
-| Tier | Per test | Per file (top-level test-seconds) | Projected wall |
-| --- | --- | --- | --- |
-| T1 | 0.5 s | 10 s | 120 s |
-| T2 | 2 s | 30 s | 480 s |
-| T3 | 10 s | 120 s | 900 s |
-| T4 | none | none | none |
+`hub/test/durations.json` declares the budgets listed under Test levels in
+`budget.T1` through `budget.T4`.
 
 Tier budgets check every observed identity, including known baselines and files
 missing from the duration manifest. Missing files are named with their observed
@@ -860,8 +906,9 @@ to 60 000 ms and the mod's expiry decision has an in-process no-retry proof.
 `CLAND_TEST_SMOKE_BUDGET_MS` shortens readiness only for planted startup hangs.
 The thread differential oracle uses 2 seeds × 12 renders on the merge path and
 4 × 25 with `CLAND_TEST_SOAK=1`. The shipped QA walk, orphan performance cases,
-and hub harness self-tests are T4; any `hub/test` helper diff retains the full
-hub selection, including those self-tests. Each phase's existing discovery sweep reports bridge counts before and
+and hub harness self-tests are T4. A `hub/test` helper diff keeps the package
+fallback, filtered to T1/T2 on a queue-enabled task; T4 self-tests run at
+occasions and in the nightly soak. Each phase's existing discovery sweep reports bridge counts before and
 after cleanup and fails if a phase candidate survives, preserving ambiguous processes.
 For old orphans use `cland doctor` to inspect and `cland doctor --fix` to sweep only
 the calling user's verified bridges whose explicit hub file is missing. An existing

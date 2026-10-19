@@ -258,8 +258,34 @@ _Avoid_: cron, poll, ping (that is the connection's keepalive), timer
 The relation that orders epics within a lane: it is met when the predecessor closes, or has task children all closed with its last ticket merged. Until the predecessor’s demo verdict or closure, a merge hold keeps the following epic’s tickets off files changed by the predecessor’s merges; dependencies remain blocked by.
 _Avoid_: blocked by, after, depends on
 
+## Verification
+
 **Executor**:
 Where a verification run executes, behind one interface. The queue, the cache and the report are the same on every executor; a remote machine is held through a [Lease](#lease).
+
+**Tier**:
+One of four classes of runtime tests, from isolated unit rules to long-running soak checks. T0 names the static checks that precede them.
+_Avoid_: level (that is the item hierarchy), shard (a scheduling unit), suite size
+
+**Merge queue**:
+The ordered set of reviewed task heads waiting for the hub to verify and land them together.
+_Avoid_: suite queue, backlog, pending merges list
+
+**Batch**:
+A group taken from the merge queue and checked together before its members land.
+_Avoid_: lane, stage, cover
+
+**Scenario**:
+A named integration flow that proves a seam across real processes once its rules have lower-tier coverage.
+_Avoid_: test case, journey, permutation
+
+**Contract file**:
+The one integration test file for a harness's native launch, delivery, signals and lifecycle boundary.
+_Avoid_: adapter suite, scenario, contract test (an individual assertion)
+
+**Soak**:
+The nightly integrated run that includes long-running checks and repeats tests absent from its last green receipt.
+_Avoid_: batch, cover, stage close
 
 <a id="lease"></a>
 **Lease**:

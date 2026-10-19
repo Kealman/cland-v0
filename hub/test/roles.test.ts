@@ -63,6 +63,18 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
       `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);
     assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
     assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
+    if (role === 'coordinator' || role === 'lead') {
+      assert.match(clause, /code merges enqueue/);
+      assert.match(clause, /T1\/T3 batch/);
+      assert.match(clause, /`cland merge queue`/);
+      assert.doesNotMatch(clause, /batches shard too|per batch of about three merges/);
+    }
+    if (role === 'implementer') {
+      assert.match(clause, /Queue-enabled task runs are T0–T2; T3 runs in the merge batch/);
+      assert.match(clause, /T3 smoke runs in batches and integrated runs/);
+      assert.match(clause, /all T2 in both packages on fallback/);
+      assert.doesNotMatch(clause, /per batch of about three merges|and hub\/Neovim smoke/);
+    }
     if (role === 'implementer' || role === 'lead') {
       assert.match(clause, /`all` is reserved to the Coordinator, the human and authorized occasions/);
       assert.match(clause, /flaky-gate second receipt.*diff selection/);

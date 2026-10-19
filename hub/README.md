@@ -2476,7 +2476,43 @@ Reports show a byte-bounded file summary with an omitted count when necessary;
 the durable log retains every deciding path. Compact reports preserve the mode,
 result and log-artifact pointer before other details when the configured cap is small.
 
-Queue-enabled tiered task branches plan the check step, all T1, coverage-selected hub T2 and diff-selected Neovim T2. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets without admitting T3/T4; successful coverage keeps diff-selected Neovim T2. The hosting hub must also enable its effective merge queue; candidate-local opt-in alone retains process coverage. Their result names deferred T3 evidence with the merge queue state. This repository enables `[merge] queue = true` alongside that switch, so code lands after a green T3 batch. Integrated runs and explicit `all` keep T3, and occasions keep their broader tiers. Projects with the queue disabled or absent, and legacy candidate packages without `tiers.json`, retain their previous plan.
+With `tiers.json` and `[merge] queue = true` in both the candidate and hosting
+hub, task verification plans T0 (check), all T1, coverage-selected hub T2 and
+diff-selected Neovim T2. Coverage fallbacks run all T2 across both packages,
+clearing inherited Neovim subsets. Task plans exclude T3/T4, including process
+smoke; results say `T3: in the merge batch` with the queue state. Explicit `all`
+retains T3. A flaky-gate second task receipt uses the same mode-free selection.
+Projects with the queue disabled or absent, and legacy candidates without
+`tiers.json`, retain their previous plan.
+
+Code changes enqueue through `cland merge T-<n>` after same-head task verification
+and final review/QA verdicts. `queued <n>` is a FIFO position, not a landing.
+`cland merge queue [--json]` lists pinned heads and the active batch;
+`cland merge T-<n> --cancel` withdraws an entry under the merge role/subtree gate.
+Changes wholly in the documentation/tracker allowlist still land immediately;
+skills and role configuration go through the queue.
+
+The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait`
+(default `"10m"`). It checks the immutable merged candidate and runs T1/T3 on
+one slot, with five repetitions for T3 identities absent from the last green
+batch or stage receipt. Green candidates land in FIFO order. Red batches rerun
+failing files on leave-one-out trees: `merge-bisected` rejects a unique culprit
+(or a red singleton). Without a unique green removal, one original-tree repeat
+can supply green proof; otherwise `merge-bisect-unresolved` rejects every member
+and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
+`merge-conflict` and `merge-budget` go to the item lead for a fix and renewed
+review/verification. See the [merge skill](../.agents/skills/merge/SKILL.md) for
+refusal ownership and recovery.
+
+`[verification] soak = "03:00"` schedules this repository's nightly UTC T1–T4
+run on one droplet; the new-project default `""` disables it. The hub attempts
+once per day, including late startup, on clean dev at fetched origin/dev and
+skips an unchanged tree. It repeats identities absent from the last green soak,
+reserves daily spend before creation and reports a cap skip. Results and
+quarantine proposals go to the Coordinator in General; a red soak leaves the
+merge queue running. Proposals require the normal evidence before the
+Coordinator edits quarantine. See [Tiers and the merge queue](../docs/agents/tests.md#tiers-and-the-merge-queue)
+for isolation, budgets, run plans and bisection evidence.
 
 Reduced integrated/package runs retain a cross-package smoke baseline. Task plans filter out these T3 files. Both lists are named constants
 in `src/suite-selection.ts`:
@@ -2498,8 +2534,8 @@ in `src/suite-selection.ts`:
   its PID is gone while the fixture still exists. The hang cases' duration allowances
   pay for their real ten-second deadlines.
 
-Per-item targeted hub tests are a possible follow-up; the fixed baseline applies
-to every Neovim-only run today.
+These smoke baselines apply to integrated and legacy package plans; queue-enabled
+task plans filter them out after selection.
 
 `hub/test/tiers.json` declares every hub and Neovim test file in a `version: 1`,
 path-sorted `tests` map. Add each new file at its sorted path in the same commit.
@@ -2520,7 +2556,7 @@ refuses with `verify-tiers` before queueing; merge admission checks the immutabl
 merged candidate and refuses with `merge-tiers` before changing refs. The old
 `verify-shards`/`merge-shards` wire codes remain accepted aliases.
 
-T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
+T0 runs static checks. T1 maps to `hub free`, T2–T4 to `hub machine`, and Neovim keeps its package phase. Hub-owned batches plan T1/T3 on one slot. Ordinary `all` and integrated `dev` runs plan T1–T3. Stage, epic and release occasions plan T1–T4 on both executors and set `CLAND_TEST_SOAK=1` for tests and load-gate repetitions. Close-run balancing places T4 files like the others, and the merged result retains each shard’s tier lines. A pre-migration tree carrying only `hub/test/shards.json`
 remains admissible: `free` maps to T1 and `machine` to T3, without requiring
 Neovim entries or sorted keys. If both manifests exist, `tiers.json` takes priority.
 
