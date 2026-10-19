@@ -4,10 +4,12 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { parse } from 'smol-toml';
 import { runSetup } from '../src/cli/setup.ts';
 import { favourite } from '../src/setup/steps/favourite.ts';
 import { projectSetUp } from '../src/roles/editor.ts';
 import { parseRoles } from '../src/roles/config.ts';
+import { rolesTemplate } from '../src/roles/template.ts';
 import { Cancelled } from '../src/setup/prompter.ts';
 import type { SetupOptions } from '../src/setup/types.ts';
 import type { HarnessId } from '../src/doctor/ranges.ts';
@@ -38,13 +40,37 @@ async function fixture(t: test.TestContext, installed: HarnessId[] = ['claude-co
   return { options, path };
 }
 
-test('choosing Codex changes only the three aide launch lines and marks setup complete', async t => {
+test('choosing Codex updates the aide launch defaults and marks setup complete', async t => {
   const { options, path } = await fixture(t);
   options.prompter = scriptedPrompter([{ kind: 'choose', question: /harness/, answer: 'codex' }]);
   const lines = await favourite(options);
   assert.equal(lines[0]?.verdict, 'done');
-  assert.equal(await readFile(path, 'utf8'), '# human settings\r\n[aide.launch] # keep table comment\r\nharness = "codex" # the human\'s favourite, chosen in cland setup\r\nmodel = "" # keep model comment\r\neffort = "high"\r\n\r\n[reviewer.launch]\r\nharness = "codex"\r\nmodel = "review-model"\r\n');
+  assert.equal(await readFile(path, 'utf8'), '# human settings\r\n[aide.launch] # keep table comment\r\nharness = "codex" # the human\'s favourite, chosen in cland setup\r\nmodel = "" # keep model comment\r\neffort = "high"\r\n\r\nsandbox = "workspace-write"\r\n[reviewer.launch]\r\nharness = "codex"\r\nmodel = "review-model"\r\n');
   assert.equal(await projectSetUp(options.root), true);
+});
+
+test('a Claude-only template gets the Codex aide sandbox when Codex becomes the favourite', async t => {
+  const { options, path } = await fixture(t);
+  await writeFile(path, rolesTemplate(['claude-code']));
+  assert.equal((await favourite({ ...options, harness: 'codex' }))[0]?.verdict, 'done');
+  const saved = await readFile(path, 'utf8');
+  assert.equal((parse(saved).aide as { launch: { sandbox?: string } }).launch.sandbox, 'workspace-write');
+  const launch = parseRoles(saved).get('aide')!.launch;
+  assert.equal(launch.harness, 'codex');
+  assert.equal(launch.sandbox?.mode, 'workspace-write');
+});
+
+test('choosing Codex preserves every explicit aide sandbox choice', async t => {
+  const { options, path } = await fixture(t);
+  for (const mode of ['read-only', 'workspace-write', 'danger-full-access', '']) {
+    const setting = `"sandbox" = '${mode}' # explicit choice\n`;
+    await writeFile(path, rolesTemplate(['claude-code']).replace('[aide.launch]\n', `[aide.launch]\n${setting}`));
+    assert.equal((await favourite({ ...options, harness: 'codex' }))[0]?.verdict, 'done', mode);
+    const saved = await readFile(path, 'utf8');
+    assert.ok(saved.includes(setting), 'explicit key and comment remain byte-identical');
+    assert.equal((parse(saved).aide as { launch: { sandbox?: string } }).launch.sandbox, mode);
+    assert.equal(parseRoles(saved).get('aide')!.launch.sandbox?.mode ?? null, mode || null);
+  }
 });
 
 test('a marked installed favourite reruns ok without asking or changing bytes', async t => {

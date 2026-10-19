@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../../roles/config.ts';
 import { CHOSEN, projectSetUp, setRoleKey, writeRolesFile } from '../../roles/editor.ts';
+import { setMissingCodexSandbox } from '../../roles/launch.ts';
 import { HARNESS_ORDER } from './harnesses.ts';
 import type { HarnessId } from '../../doctor/ranges.ts';
 import type { SetupStep } from '../types.ts';
@@ -27,7 +28,7 @@ export const favourite: SetupStep = async ({ root, machine, prompter, interactiv
       edited = setRoleKey(edited, 'aide', 'launch', 'model', '');
       edited = setRoleKey(edited, 'aide', 'launch', 'effort', chosen === 'claude-code' ? 'max' : chosen === 'codex' ? 'high' : '');
     }
-    await writeRolesFile(path, original, edited);
+    await writeRolesFile(path, original, setMissingCodexSandbox(edited, 'aide', chosen));
     return [{ name: 'favourite', verdict: await projectSetUp(root) ? 'done' : 'fail', detail: chosen }];
   } catch (err) {
     if (err instanceof Cancelled) throw err;

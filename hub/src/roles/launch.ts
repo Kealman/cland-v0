@@ -11,6 +11,13 @@ export const LAUNCH_FIELDS = ['harness', 'model', 'effort', 'account', 'permissi
 export type LaunchFields = Partial<Record<typeof LAUNCH_FIELDS[number], string>>;
 export type RoleLaunchResult = { role: string; launch: LaunchDefaults; changes: LaunchFields; applies: string };
 
+/** Only source keys show an explicit choice; the parsed launch contains compatibility defaults. */
+export function setMissingCodexSandbox(text: string, role: string, harness: string | undefined): string {
+  const written = parse(text)[role] as { launch?: { sandbox?: unknown } } | undefined;
+  return harness?.trim() === 'codex' && written?.launch?.sandbox === undefined && CODEX_SANDBOX[role] !== undefined
+    ? setRoleKey(text, role, 'launch', 'sandbox', CODEX_SANDBOX[role]) : text;
+}
+
 export async function setRoleLaunch(path: string, role: string, fields: LaunchFields, resumed: Resumed, authorize: () => void, env: NodeJS.ProcessEnv): Promise<{ result: RoleLaunchResult; roles: RolesConfig }> {
   resumed(authorize);
   const original = await readFile(path, 'utf8');
@@ -29,11 +36,7 @@ export async function setRoleLaunch(path: string, role: string, fields: LaunchFi
     }
     let text = original;
     for (const key of LAUNCH_FIELDS) if (changes[key] !== undefined) text = setRoleKey(text, role, 'launch', key, changes[key]!);
-    // The parsed launch already contains compatibility defaults; only source keys show an explicit choice.
-    const written = parse(original)[role] as { launch?: { sandbox?: unknown } } | undefined;
-    if (changes.harness?.trim() === 'codex' && written?.launch?.sandbox === undefined && CODEX_SANDBOX[role] !== undefined) {
-      text = setRoleKey(text, role, 'launch', 'sandbox', CODEX_SANDBOX[role]);
-    }
+    text = setMissingCodexSandbox(text, role, changes.harness);
     const roles = parseRoles(text);
     return { text, roles, launch: roles.get(role)!.launch, changes };
   });
