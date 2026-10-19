@@ -3,7 +3,7 @@ id: T-793
 kind: task
 title: The MCP verify tool publishes a generic object schema and refuses a missing field with only "invalid verify request"
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T09:29:02.859Z
-updated: 2026-10-18T09:29:02.859Z
+updated: 2026-10-19T08:18:47.201Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-835
 kind: task
 title: "The prompter: confirm, choose and pause over readline, one interface per question"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-563
 branch: t/T-835-the-prompter-confirm-choose-and-pause
 created: 2026-10-19T06:34:12.616Z
-updated: 2026-10-19T07:02:34.294Z
+updated: 2026-10-19T08:35:13.804Z
+closed: 2026-10-19T08:35:13.804Z
 ---
 
 ## Summary
@@ -175,3 +176,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5854.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T08:35:13.804Z
+
+Merged c1fae28a040412630d297a508a65eff539d46a5c onto dev.

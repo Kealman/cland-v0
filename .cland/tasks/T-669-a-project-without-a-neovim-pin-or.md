@@ -2,8 +2,8 @@
 id: T-669
 kind: task
 title: A project without a Neovim pin or package-lock.json gets a prepared droplet snapshot
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-560
 branch: t/T-669-a-project-without-a-neovim-pin-or
 created: 2026-10-16T16:35:25.691Z
-updated: 2026-10-19T06:42:37.722Z
+updated: 2026-10-19T09:00:17.754Z
+closed: 2026-10-19T09:00:17.754Z
 ---
 
 ## Summary
@@ -217,3 +218,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5837.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T09:00:17.754Z
+
+Merged f4005f1a3182b882d2174f02dfbb49cab8f5639b onto dev.

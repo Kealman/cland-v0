@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-18T23:24:29.694Z
+updated: 2026-10-19T09:32:15.525Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -360,3 +360,7 @@ Incident 2026-10-18 17:48Z: the Coordinator's harness (pid 99977) exited ('bye' 
 ### human · 2026-10-18T23:24:29.694Z
 
 Incident 2026-10-18 22:33Z: the Coordinator's harness pid 12929 exited ('pid 12929 is gone'), the hub revoked the role at 22:33:24Z; Claude Code reconnected the conversation at 22:33:22Z (per coord) but the row stayed exited and nothing re-registered. Found at the 23:23Z check: 50 min vacant, three 'lead' reports refused coordinator:empty (impl-651, impl-637 ×2), three red droplet verifies unread (T-711, T-651, T-637). Stand-in under D24: 'cland session resume coord' (re-find) attached pid 46036 at 23:23:50Z, 'cland role set coord coordinator' refilled the role at 23:23:52Z. 5th T-372-class exit (4th and 5th today); T-816 covers the General notice; the re-find should run on the hub's side after a harness-exited whose conversation reconnects.
+
+### coord · 2026-10-19T09:32:15.525Z
+
+Incident 2026-10-19 09:24Z: lon1 c-8 droplets showed degraded disks. Batch 549e3e79 (run e10410a9, A-5933) measured disk fsync at 425.7 ms against the usual ~7 ms, and its first diagnostic droplet (58ee0d19, A-5934) measured 3383.7 ms. The batch went red on nvim/test/items.test.ts, 'a hand edit shows within a second': the expected row was on screen with only trailing padding, a render-timing miss. All three leave-one-out reruns passed 5/5, so no member was blamed. The next two droplets were back to 21–25 ms. The batch occasion records each machine's fsync, so when this repeats it's visible per run.

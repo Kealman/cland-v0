@@ -2,8 +2,8 @@
 id: T-832
 kind: task
 title: Doctor shows each harness's version for information, and OpenCode's environment keys no longer count as credentials
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-562
 branch: t/T-832-doctor-shows-each-harness-s-version-for
 created: 2026-10-19T06:34:12.337Z
-updated: 2026-10-19T06:55:11.836Z
+updated: 2026-10-19T08:35:07.113Z
+closed: 2026-10-19T08:35:07.113Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-5848 combines source A-5833 and accepted same-head af90d071/A-5847. T0–T2 1468/1468, zero fail/cancel/skip. Shared-probe 4/4 with all 20 repetition bodies passing establishes informational rows, other OpenCode majors/v2 note, failed/unreadable versions, credential-only auth and direct export use for all harnesses; doctor integration file passes. All 391 global groups pass 5/5. Five inherited report-only T-803 Git rows disclosed, none in new probe. C1–C4 verified; no findings, QA none. No setup orchestration or T3 CLI execution falsely claimed; Linux T3 remains landing-batch evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T08:35:07.113Z
+
+Merged d811832edd7744cb41fccc4a1c46b5c1ddc21ebf onto dev.

@@ -2,8 +2,8 @@
 id: T-843
 kind: task
 title: The launcher opens a named session's terminal in the centre when asked
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-565
 branch: t/T-843-the-launcher-opens-a-named-session-s
 created: 2026-10-19T06:34:13.359Z
-updated: 2026-10-19T07:09:44.058Z
+updated: 2026-10-19T09:00:12.035Z
+closed: 2026-10-19T09:00:12.035Z
 ---
 
 ## Summary
@@ -186,3 +187,7 @@ Findings: Standards 0; Spec 0.
 Evidence: A-5858.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T09:00:12.035Z
+
+Merged 73a5d0cd7a36717a0345818a60cd34857754de2d onto dev.

@@ -12,11 +12,10 @@ parent: R-577
 blocked_by:
   - E-611
   - E-615
-  - E-614
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.844Z
-updated: 2026-10-16T15:35:15.723Z
+updated: 2026-10-19T08:10:16.973Z
 ---
 
 ## Summary
@@ -87,3 +86,43 @@ In an empty scratch project and in a clone of a small public repository with ope
 - Docs: `hub/README.md`, `GLOSSARY.md`.
 - Skills: `wayfinder` (the map when there is fog), `grilling` (the rounds), `research`.
 - GLOSSARY: Aide, Coordinator, Rulebook, Rule, Release, Crew, General; new here: Setup, Onboarding, Tour, Welcome note.
+
+## Plan
+
+```yaml
+stages:
+  - name: the skill on an empty project and the start
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-852
+        - T-853
+        - T-854
+        - T-855
+        - T-856
+  - name: the existing project, the tour, the first page and the glossary
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-857
+        - T-858
+      - - T-859
+```
+
+## Comments
+
+### coord · 2026-10-19T08:10:16.973Z
+
+Cut and plan (Coordinator, D51, 2026-10-19 08:10Z). Tickets T-852–T-859 from cut N1–N8; the plan is above. Decisions on the cut's open questions:
+1. E-614 is no longer a blocker: the tickets need nothing from its unlanded work (T-854 needs only T-664, which is merged). The epic demo needs E-613 and E-614 closed and runs only after both.
+2. D51 supersedes Q-601 resolution 2: the Coordinator decides this plan; no hand approval.
+3. T-852 drops the prototype's `allow_implicit_invocation: false`, so setup's plain-text brief starts the skill on any harness.
+4. With only a map, the Aide still offers the commit and push on one ok and does not launch the Coordinator.
+5. The stack step records `verification.test` only once a real command exists; otherwise the first task carries a criterion to record it.
+6. The tour keeps "the Coordinator merges the task into dev as one commit": the merge queue is opt-in for new projects.
+7. The first page goes into `hub/README.md` as the epic says, with the install line pinned to `--branch v0.1.4`; E-617's release checklist runs that line once against the tag; no credentials note if the repository is public.
+8. T-855's review confirms that the roles template's per-role `sandbox` keys survive `cland role launch` changing a role's harness; if not, a Follow-up goes under E-611.
+9. T-857's review compares the brief string with T-844's; whichever lands second matches the first.
+10. T-828 does not block E-616.

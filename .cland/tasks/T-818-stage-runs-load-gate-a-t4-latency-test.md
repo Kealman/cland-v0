@@ -2,8 +2,8 @@
 id: T-818
 kind: task
 title: Stage runs load-gate a T4 latency test five times in parallel, so tracker-load fails on a slow droplet disk
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-554
 branch: t/T-818-stage-runs-load-gate-a-t4-latency-test
 created: 2026-10-18T19:36:00.067Z
-updated: 2026-10-19T07:06:59.151Z
+updated: 2026-10-19T09:00:00.363Z
+closed: 2026-10-19T09:00:00.363Z
 ---
 
 ## Summary
@@ -105,3 +106,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Integrated final clear; A-5856 combines delta source A-5846, enforced components A-5845 and exact-head a8c8b509/A-5855. T0–T2 1469/1469, zero fail/cancel/skip; all 389 groups pass 5/5. Formerly exempt T4 policy component executes .160s plus five passing repetitions; whole log has ZERO tier-mismatch rows, so the prior shared exception is no longer needed at this head. Prior six-row evidence remains historical. C1/C2 refreshed verified; no findings, QA none. Real stage receipt remains Coordinator-owned post-merge evidence; no native T3/T4 task execution claimed. Ready for normal re-enqueue per 26d6e75b.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-19T09:00:00.363Z
+
+Merged 79e78b4ccb524324745641e0ffc66cd1bae75559 onto dev.
