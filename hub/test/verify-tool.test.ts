@@ -2,14 +2,19 @@
 // candidate Git facts are injected, so no executor or native process is needed.
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
+import { verificationFixture } from './verification-fixture.ts';
 
 async function fixture(t: TestContext) {
   const root = await tempProject(t, 'verify-tool-');
+  // Since T-666 verify admits nothing until the project names its test command;
+  // a cland-shaped candidate keeps the injected selection (T-667).
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await appendFile(join(root, '.cland/config.toml'), `\n[verification]\n${await verificationFixture(root)}`);
   const hub = await projectHub(t, root, {}, { clock: new FakeClock(), durationContext: null,
     candidate: { head: async () => 'a'.repeat(40), tree: async () => null,
       inspect: async (cwd: string) => ({ head: 'a'.repeat(40), tree: null, branch: 'candidate',
@@ -44,6 +49,7 @@ test('MCP verify defaults cwd to the claimed item worktree before admission', as
   assert.equal(claimed.ok, true, JSON.stringify(claimed));
   const worktree = join(root, '.cland/worktrees', item);
   await mkdir(worktree, { recursive: true });
+  await verificationFixture(worktree);
   const preview = await spoke.call<{ ok: boolean; selection: { reason: string }; dryRun: boolean }>('verify', { dryRun: true });
   assert.equal(preview.ok, true, JSON.stringify(preview));
   assert.equal(preview.selection.reason, worktree, 'the spoke launched in the project root, not this directory');
