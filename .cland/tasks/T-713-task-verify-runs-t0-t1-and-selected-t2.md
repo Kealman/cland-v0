@@ -3,7 +3,7 @@ id: T-713
 kind: task
 title: Task verify runs T0, T1 and selected T2, and T3 runs only in merge batches and occasions
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - v0.1.4
@@ -21,7 +21,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:43.795Z
-updated: 2026-10-16T20:00:24.897Z
+updated: 2026-10-19T01:54:04.415Z
 ---
 
 ## Summary

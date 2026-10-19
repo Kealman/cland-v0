@@ -3,7 +3,7 @@ id: T-718
 kind: task
 title: Docs, glossary and role clauses describe tiers, the merge queue and the end of manual covers
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - v0.1.4
@@ -16,7 +16,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T19:59:44.511Z
-updated: 2026-10-16T20:00:13.501Z
+updated: 2026-10-19T01:54:04.452Z
 ---
 
 ## Summary
