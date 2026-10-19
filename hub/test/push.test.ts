@@ -92,6 +92,28 @@ test('an Aide publishes imported GitHub issues from its shell using the github r
   for (const row of audits) assert.deepEqual([row.session, row.sessionId, row.role, row.client, row.outcome], ['aide-1', 'aide-id', 'aide', 'cli', 'ok']);
 });
 
+// T3: onboarding publication crosses real Git and CLI processes; the hub and Aide stay in-process.
+test('the onboarding Aide pushes its committed dev to the territory through its own shell', async t => {
+  const root = await tempProject(t);
+  await copyPreparedProject(root, 'native-territory');
+  const territory = join(root, '.cland/territory.git');
+  const previous = git(territory, 'rev-parse', 'dev');
+  await fs.writeFile(join(root, 'AGENTS.md'), 'Build with the agreed stack.\n');
+  git(root, 'add', '--', 'AGENTS.md');
+  git(root, 'commit', '-qm', 'Record onboarding rules');
+  const dev = git(root, 'rev-parse', 'dev');
+  assert.notEqual(dev, previous);
+  await embeddedProjectHub(t, root, {}, { clock: new FakeClock() });
+  const aide = await inProcessSpoke(t, { cwd: root, discover: true, name: 'onboarding-aide', role: 'aide', sessionId: 'aide-id' });
+  await aide.waitForPresence(['onboarding-aide']);
+
+  const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide', CLAND_SESSION_ID: 'aide-id' }, 'push', '--json');
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { dev, previous });
+  assert.equal(git(territory, 'rev-parse', 'dev'), dev);
+});
+
 test('Coordinator and human shells push; role spoofing and unknown shell ids refuse, and no spoke push tool exists', async t => {
   const { root, territory, ui } = await project(t);
   git(root, 'commit', '--allow-empty', '-qm', 'Tracker commit');

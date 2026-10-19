@@ -1,6 +1,5 @@
 // T1 source assertions; T2 Aide settings CLI cases run against an in-process hub with fake adapters.
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +13,6 @@ import type { HarnessProcessView } from '../src/protocol.ts';
 import type { ItemSummary, ItemView } from '../src/tracker/tracker.ts';
 import { clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
-import { copyPreparedProject } from './prepared-project.ts';
 
 const SKILL = new URL('../../.agents/skills/onboarding/', import.meta.url);
 const FILES = ['SKILL.md', 'EMPTY.md', 'EXISTING.md', 'WELCOME.md', 'TOUR.md'];
@@ -207,29 +205,6 @@ test('the onboarding Aide own launch change returns the next-launch note', async
     'role', 'launch', 'aide', '--permissions', 'skip');
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, /applies from the role's next launch; your own session keeps its settings until its next launch/);
-});
-
-// T2: push is the CLI subject, with real Git publication and an in-process hub/Aide.
-test('the onboarding Aide pushes its committed dev to the territory through its own shell', async t => {
-  const root = await tempProject(t);
-  await copyPreparedProject(root, 'native-territory');
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
-  const territory = join(root, '.cland/territory.git');
-  const previous = git(territory, 'rev-parse', 'dev');
-  await writeFile(join(root, 'AGENTS.md'), 'Build with the agreed stack.\n');
-  git(root, 'add', '--', 'AGENTS.md');
-  git(root, 'commit', '-qm', 'Record onboarding rules');
-  const dev = git(root, 'rev-parse', 'dev');
-  assert.notEqual(dev, previous);
-  await projectHub(t, root, {}, { clock: new FakeClock() });
-  const aide = await inProcessSpoke(t, { cwd: root, discover: true, name: 'onboarding-aide', role: 'aide', sessionId: 'aide-id' });
-  await aide.waitForPresence(['onboarding-aide']);
-
-  const result = await clandWithEnv(root, { CLAND_SESSION_NAME: 'onboarding-aide', CLAND_SESSION_ID: 'aide-id' }, 'push', '--json');
-
-  assert.equal(result.code, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout), { dev, previous });
-  assert.equal(git(territory, 'rev-parse', 'dev'), dev);
 });
 
 // T2: the launch CLI uses a fake adapter, with no hub or harness process.
