@@ -122,7 +122,15 @@ function gitProject(root: string): boolean {
 
 const ref = (cwd: string, name: string): string | null => maybeGit(cwd, ['rev-parse', '--verify', name]);
 const remote = (root: string, name: string): string | null => maybeGit(root, ['remote', 'get-url', name]);
-const pointsAtTerritory = (root: string, url: string | null): boolean => url !== null && resolve(root, url) === territoryPath(root);
+const pointsAtTerritory = (root: string, url: string | null): boolean => {
+  if (url === null) return false;
+  const destination = resolve(root, url);
+  const territory = territoryPath(root);
+  if (destination === territory) return true;
+  // Older init versions recorded unresolved roots (e.g. /tmp on macOS).
+  try { return realpathSync(destination) === realpathSync(territory); }
+  catch { return false; } // A missing or non-local destination is not this territory.
+};
 
 /** Discover before any territory write or remote rename; an unborn repository keeps its first-commit branch. */
 function repositoryDefaultBranch(root: string): string {

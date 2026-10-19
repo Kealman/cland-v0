@@ -2,8 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { chmod, mkdir, readFile, realpath, symlink, writeFile } from 'node:fs/promises';
+import { basename, dirname, join } from 'node:path';
 import { clandWithEnv, tempProject, type CliResult } from './harness.ts';
 
 import { runInit, runUpdate } from '../src/cli/init.ts';
@@ -11,7 +11,8 @@ import { runDoctor } from '../src/cli/doctor.ts';
 import { captureCli } from './cli-in-process.ts';
 import { INIT_GIT_IDENTITY, withInitGitIdentity } from './git-identity-fixture.ts';
 import { commandIn, gitIn, initIn, masterClone, scratchMachine, snapshot } from './init-machine.ts';
-import { listTaskWorktrees, territoryGit, territoryGitAsync } from '../src/territory.ts';
+import { Report } from '../src/init/files.ts';
+import { listTaskWorktrees, provisionTerritory, territoryGit, territoryGitAsync, territoryProblems } from '../src/territory.ts';
 import { gitIn as verdictGit } from '../src/tracker/verdict-git.ts';
 import { refusedOverridePaths } from '../src/merge-override.ts';
 
@@ -387,6 +388,34 @@ test('projects without a remote get only origin; non-Git folders get a first com
   assert.match(agents, /Only cland release pushes to GitHub/);
   ok(await captureCli(write => runUpdate([], folder, write)));
   assert.equal(await readFile(join(folder, 'AGENTS.md'), 'utf8'), agents);
+});
+
+// T3: real Git remote configuration proves update preserves the legacy destination, including effective push URLs.
+test('update preserves a legacy territory origin recorded under a symlinked parent', async (t) => {
+  const { root, github } = await fixture(t, false);
+  const aliases = await tempProject(t, 'cland-parent-alias-');
+  const parent = join(aliases, 'projects');
+  await symlink(dirname(root), parent);
+  const legacyRoot = join(parent, basename(root));
+  const legacyTerritory = join(legacyRoot, '.cland', 'territory.git');
+  // v0.1.3 provisioned the unresolved project path, before the CLI canonicalised roots.
+  provisionTerritory(new Report(legacyRoot), legacyRoot);
+  assert.equal(git(root, 'remote', 'get-url', 'origin'), legacyTerritory);
+  assert.notEqual(legacyTerritory, join(root, '.cland', 'territory.git'));
+  assert.equal(await realpath(legacyTerritory), join(root, '.cland', 'territory.git'));
+
+  for (const hasGithub of [false, true]) {
+    if (hasGithub) git(root, 'remote', 'add', 'github', github);
+    const before = git(root, 'config', '--get-regexp', '^remote\\.');
+    const result = ok(await captureCli(write => runUpdate([legacyRoot, '--json'], root, write)));
+    const changes: Change[] = JSON.parse(result.stdout).changes;
+    const remotes = changes.filter(change => change.path.startsWith('.cland/territory.git/remotes/'));
+    assert.ok(remotes.length > 0);
+    assert.ok(remotes.every(change => change.action === 'unchanged'), JSON.stringify(remotes));
+    assert.equal(git(root, 'config', '--get-regexp', '^remote\\.'), before, 'no remote is added, renamed or rewritten');
+    assert.equal(git(root, 'remote', 'get-url', '--push', 'origin'), legacyTerritory);
+    assert.deepEqual(territoryProblems(root), []);
+  }
 });
 
 test('update refreshes territory instructions but leaves a Git project without a territory opted out', async (t) => {
