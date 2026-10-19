@@ -2,8 +2,8 @@
 id: T-812
 kind: task
 title: "Record seven nights of the nightly soak after T-715 merges: at least five runs, each under $0.25"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-604
 branch: t/T-812-record-seven-nights-of-the-nightly-soak
 created: 2026-10-18T16:21:54.721Z
-updated: 2026-10-19T15:26:15.937Z
+updated: 2026-10-19T15:27:41.952Z
+closed: 2026-10-19T15:27:41.952Z
 ---
 
 ## Summary
@@ -52,3 +53,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Measurement-only final clear under D65; A-6147 audits A-6105 against revised C1 and actual Coordinator 045385a5/a204d4cb. Exactly one due night since T-715 merge: run 866cf201, tree 3bda3956, body 4498.55 s, lifetime 4583 s, exit124/75m timeout, ledger $0.3182436 versus $0.25, no published coverage. Current retained history census independently confirms one soak and no missing due slot. These are measured failures of targets, not a green/under-budget coverage claim. D65 supersedes the artifact's historical unchecked/gate status, accepts the table, and carries the miss to E-880. Coordinator owns any later release-time append. C1 verified; no source changes/new suite or restricted executor access.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T15:27:41.952Z
+
+Merged 8d761048c43b1417251b395d06590287ba44828a onto dev.
