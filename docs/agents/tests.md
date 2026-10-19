@@ -163,6 +163,9 @@ Coordinator decision. `merge-bisected` goes to the rejected item's lead for a fi
 fresh review and task verification. `merge-bisect-unresolved` goes to the
 Coordinator for diagnosis before re-enqueueing. A `merge-conflict` goes to the
 item lead to integrate dev in its worktree, then repeat review and verification.
+Measured `duration budget` failures naming a test identity or test file use the
+same file-rerun policy, even when all assertions passed. Refusals and diagnostic
+reports retain the budget line with its observed seconds and threshold.
 For `merge-budget`, the item lead reduces the named tier growth or records a
 valid allowance under the budget rules before retrying. The supervising Lead or
 Coordinator submits the repaired item through the gate again. The merge skill

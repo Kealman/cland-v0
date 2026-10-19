@@ -11,7 +11,7 @@ import { recordBatchFlakes } from './batch-flakes.ts';
 export type BatchCandidate = { base: string; head: string; tree: string; cwd: string; budgetLines: string[] };
 type DiagnosticResult = { result: 'green' | 'red' | 'inconclusive'; reason?: string };
 export type FileJob = { key: string; omitted?: string; candidate: BatchCandidate; run?: string; result?: DiagnosticResult['result']; reason?: string; seconds?: number | null; costUsd?: number | null; log?: { artifact: string; path: string } };
-export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; files: string[]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
+export type BatchDiagnosis = { failure: { run: string; tree: string; log: { artifact: string; path: string } }; failures: string[]; budgetLines?: string[]; files: string[]; jobs: FileJob[]; selected?: number; excluded?: string[]; reported?: boolean; unresolved?: boolean };
 export type MergeBatch = { id: string; members: MergeQueueEntry[]; candidate?: BatchCandidate; run?: string; failed?: string; completed?: string[]; reportedRun?: string; diagnosis?: BatchDiagnosis };
 export type BatchBoundary = {
   changed?(): void;
@@ -33,6 +33,19 @@ export class BatchRefusal extends Error {
   readonly reason: string;
   constructor(entry: MergeQueueEntry, reason: string) { super(reason); this.entry = entry; this.reason = reason; }
 }
+/** Only measured, file-addressable budget failures can drive the file-rerun policy. */
+function batchFailures(log: string): { failures: string[]; budgetLines: string[] } {
+  const failures = new Set(failingTests(log));
+  const budgetLines = new Set<string>();
+  for (const line of log.replace(/\x1b\[[0-9;]*m/g, '').split('\n')) {
+    const budget = /^duration budget: ((?:hub\/(?:test|src)|nvim\/test)\/.+?\.test\.ts(?:::.+)?) \d+(?:\.\d+)? s > \d+(?:\.\d+)? s(?: .*)?$/.exec(line);
+    if (budget) { failures.add(budget[1]!); budgetLines.add(line); }
+  }
+  return { failures: [...failures], budgetLines: [...budgetLines] };
+}
+function failureText(evidence: { failures: string[]; budgetLines?: string[] }): string {
+  return [evidence.failures.join(', '), ...evidence.budgetLines ?? []].join('\n');
+}
 /** Executor interruption and absence of an observed test failure cannot prove a red alternative. */
 export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'cancelled' | 'requesterDied' | 'timedOut' | 'cached'>, log: string): DiagnosticResult {
   if (job.cancelled || job.requesterDied || job.timedOut || job.cached || job.state !== 'finished' || !job.outcome
@@ -41,7 +54,7 @@ export function diagnosticResult(job: Pick<SuiteJob, 'state' | 'outcome' | 'canc
     return { result: 'inconclusive', reason: job.outcome?.cause || 'aborted or unavailable worker result' };
   }
   if (job.outcome.code === 0) return { result: 'green' };
-  try { if (failingTests(log).length) return { result: 'red' }; } catch { /* malformed evidence is inconclusive */ }
+  try { if (batchFailures(log).failures.length) return { result: 'red' }; } catch { /* malformed evidence is inconclusive */ }
   return { result: 'inconclusive', reason: 'no failing-test receipt' };
 }
 export class MergeBatches {
@@ -147,7 +160,7 @@ export class MergeBatches {
     let candidate: BatchCandidate | undefined = batch.candidate;
     if (job.outcome.code !== 0) {
       if (batch.members.length === 1) {
-        this.boundary.drop(batch.members[0]!, `merge-bisected: ${failingTests(evidence.log).join(', ')}`);
+        this.boundary.drop(batch.members[0]!, `merge-bisected: ${failureText(batchFailures(evidence.log))}`);
         await this.#cleanup(batch); this.#save(null); return;
       }
       candidate = await this.#diagnose(batch);
@@ -180,12 +193,12 @@ export class MergeBatches {
   async #diagnose(batch: MergeBatch): Promise<BatchCandidate | undefined> {
     if (!batch.diagnosis) {
       const { job, log } = await this.suites.receipt(batch.run!);
-      const failures = failingTests(log);
+      const { failures, budgetLines } = batchFailures(log);
       if (!failures.length) { batch.failed = `suite ${batch.run} failed without identifiable test files`; this.#save(batch); return; }
       const artifact = this.store.resolveArtifact(job.artifact!);
       if (!artifact) throw new Error('batch failure log artifact unavailable');
       batch.diagnosis = { failure: { run: job.id, tree: batch.candidate!.tree, log: { artifact: artifact.id, path: artifact.path } },
-        failures, files: [...new Set(failures.map(identity => identity.split('::')[0]!))], jobs: [] };
+        failures, budgetLines, files: [...new Set(failures.map(identity => identity.split('::')[0]!))], jobs: [] };
       this.#save(batch);
     }
     const diagnosis = batch.diagnosis;
@@ -225,7 +238,7 @@ export class MergeBatches {
     const green = greens[0]!;
     diagnosis.selected = diagnosis.jobs.indexOf(green); diagnosis.excluded = [green.omitted!]; this.#save(batch);
     const culprit = batch.members.find(entry => entry.item === green.omitted)!;
-    if (this.boundary.entries().some(entry => entry.item === culprit.item)) this.boundary.drop(culprit, `merge-bisected: ${diagnosis.failures.join(', ')}`);
+    if (this.boundary.entries().some(entry => entry.item === culprit.item)) this.boundary.drop(culprit, `merge-bisected: ${failureText(diagnosis)}`);
     if (!diagnosis.reported) {
       this.boundary.report(batch, `batch ${batch.id}: merge-bisected ${culprit.item}\n${this.#fileReport(diagnosis)}`);
       diagnosis.reported = true; this.#save(batch);
@@ -234,9 +247,9 @@ export class MergeBatches {
   }
   async #unresolved(batch: MergeBatch): Promise<void> {
     const diagnosis = batch.diagnosis!;
-    const text = `batch ${batch.id}: merge-bisect-unresolved: ${diagnosis.failures.join(', ')}\nBatch run ${batch.run}; tree ${batch.candidate!.tree}\n${this.#fileReport(diagnosis)}`;
+    const text = `batch ${batch.id}: merge-bisect-unresolved: ${failureText(diagnosis)}\nBatch run ${batch.run}; tree ${batch.candidate!.tree}\n${this.#fileReport(diagnosis)}`;
     this.store.transaction(() => {
-      for (const entry of batch.members) if (this.boundary.entries().some(current => current.item === entry.item)) this.boundary.drop(entry, `merge-bisect-unresolved: ${diagnosis.failures.join(', ')}`);
+      for (const entry of batch.members) if (this.boundary.entries().some(current => current.item === entry.item)) this.boundary.drop(entry, `merge-bisect-unresolved: ${failureText(diagnosis)}`);
       if (!diagnosis.reported) {
         this.boundary.report(batch, text);
         this.boundary.notice({ id: `merge-bisect-unresolved:${batch.id}`, kind: 'report', to: ['coordinator'], text,
@@ -248,7 +261,8 @@ export class MergeBatches {
     await this.#cleanup(batch); this.#save(null);
   }
   #fileReport(diagnosis: BatchDiagnosis): string {
-    return `Failure log ${diagnosis.failure.log.artifact}: ${diagnosis.failure.log.path}\n`
+    return (diagnosis.budgetLines?.length ? diagnosis.budgetLines.join('\n') + '\n' : '')
+      + `Failure log ${diagnosis.failure.log.artifact}: ${diagnosis.failure.log.path}\n`
       + diagnosis.jobs.map(job => `file job ${job.run}: ${diagnosis.files.join(', ')}; tree ${job.candidate.tree}; seconds ${job.seconds ?? 'unavailable'}; cost ${job.costUsd == null ? 'pending confirmation' : '$' + job.costUsd.toFixed(4)}; log ${job.log?.artifact ?? 'unavailable'}: ${job.log?.path ?? 'unavailable'}; ${job.result ?? 'pending'}${job.reason ? ': ' + job.reason : ''}`).join('\n');
   }
   #holdDiagnostic(batch: MergeBatch, job: FileJob): void {

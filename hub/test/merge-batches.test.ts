@@ -114,6 +114,45 @@ test('a red single-member batch refuses the member with its failing identity', a
   assert.equal(f.suites.status().length, 1, 'singleton needs no diagnostic rerun');
 });
 
+for (const scope of ['test', 'file'] as const) test(`a ${scope}-budget-only red pair refuses the member isolated by failing-file reruns`, async t => {
+  // T1 component regression: real controller/Suites composition, planted executor receipts.
+  const { f, runner, entries, boundary, dropped, landed, reports } = await fixture(t);
+  entries.splice(2);
+  const identity = `hub/test/example.test.ts${scope === 'test' ? '::new lifecycle' : ''}`;
+  const budget = `duration budget: ${identity} ${scope === 'test' ? '5.036 s > 5 s' : '60.036 s > 60 s'} (add to hub/test/durations.json with a reason)`;
+  const budgetLog = `suite test failures []\n# tests 1\n# pass 1\n${budget}\n`;
+  const build = boundary.build;
+  boundary.build = async (id, members, base) => {
+    const candidate = await build(id, members, base);
+    candidate.tree = members.some(entry => entry.item === 'T-2') ? 'over-budget' : 'within-budget';
+    f.candidate.tree = candidate.tree;
+    return candidate;
+  };
+  const land = boundary.land;
+  boundary.land = async (entry, candidate) => {
+    assert.equal(candidate.tree, 'within-budget');
+    await land(entry, candidate);
+  };
+  await f.clock.advance(600_000);
+  await runner.tick();
+  await f.finish(f.suites.status()[0]!.id, 1, budgetLog);
+  await runner.tick();
+  assert.equal(runner.snapshot()?.failed, undefined, 'budget failure is actionable red evidence');
+  for (let index = 0; index < 2; index++) {
+    const diagnostic = f.suites.status().at(-1)!;
+    assert.deepEqual(diagnostic.batch?.diagnostic?.files, ['hub/test/example.test.ts']);
+    assert.equal(diagnostic.selection?.loadGate, false);
+    await f.finish(diagnostic.id, diagnostic.tree === 'within-budget' ? 0 : 1,
+      diagnostic.tree === 'within-budget' ? 'suite test failures []\n# tests 0\n' : budgetLog);
+    await runner.tick();
+  }
+  assert.deepEqual(dropped, [`T-2: merge-bisected: ${identity}\n${budget}`]);
+  assert.deepEqual(landed, ['T-1']);
+  assert.equal(runner.snapshot(), null);
+  assert.equal(f.suites.status().length, 3);
+  assert.ok(reports.join('\n').includes(budget), 'report retains the measured seconds and threshold');
+});
+
 test('a red hub-only triple reaches a unique green leave-one-out verdict through runner selection decoding', async t => {
   // T1: compose real MergeBatches, Suites and the runner decoder with executor receipts.
   const { f, runner, boundary, dropped, landed, reports } = await fixture(t);
@@ -300,6 +339,7 @@ test('a cancelled alternative after a green omission holds diagnosis without bla
 
 test('diagnostic results preserve abandoned and unknown evidence as inconclusive', () => {
   const complete = { state: 'finished' as const, outcome: { code: 1, cause: '' } };
+  const budgetLog = 'suite test failures []\nduration budget: hub/test/example.test.ts::new lifecycle 5.036 s > 5 s (add to hub/test/durations.json with a reason)\n';
   for (const receipt of [
     { ...complete, cancelled: true },
     { ...complete, requesterDied: true },
@@ -309,9 +349,11 @@ test('diagnostic results preserve abandoned and unknown evidence as inconclusive
     { ...complete, outcome: { code: 1, cause: 'remote machine lost' } },
     { ...complete, outcome: { code: 1, cause: 'worker disappeared (killed or crashed without an exit receipt)' } },
     { ...complete, outcome: { code: 1, cause: 'unknown result' } },
-  ]) assert.equal(diagnosticResult(receipt, failureLog).result, 'inconclusive');
+  ]) for (const log of [failureLog, budgetLog]) assert.equal(diagnosticResult(receipt, log).result, 'inconclusive');
   assert.equal(diagnosticResult(complete, '').result, 'inconclusive', 'an exit code without test failures supplies no red proof');
   assert.equal(diagnosticResult(complete, failureLog).result, 'red');
+  assert.equal(diagnosticResult(complete, budgetLog).result, 'red');
+  assert.equal(diagnosticResult(complete, 'duration budget: missing tier for hub/test/example.test.ts\n').result, 'inconclusive');
   assert.equal(diagnosticResult({ ...complete, outcome: { code: 0, cause: '' } }, passLog).result, 'green');
 });
 
