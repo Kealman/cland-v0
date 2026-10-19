@@ -667,6 +667,7 @@ export type CoverStatus = { id: string; head: string; branch: string; completedA
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  devT3Probe?: { key: string; files: string[] };
   batch?: BatchSuite;
   cover?: CoverRecord;
   workers?: number; size?: string;

@@ -19,7 +19,7 @@ import { suiteUnit } from './suite-unit-fixture.ts';
 import { selectionFromEnv, selectionTransport } from '../src/suite-selection.ts';
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 
-test('batch failing-file selections round-trip to exactly the requested package files', async t => {
+test('batch and periodic failing-file selections round-trip to exactly the requested package files', async t => {
   // T1: real Suites admission, transport decoder and package planner; no worker needed.
   const f = await suiteUnit(t);
   const hub = 'hub/test/example.test.ts', nvim = 'nvim/test/example.test.ts';
@@ -29,9 +29,9 @@ test('batch failing-file selections round-trip to exactly the requested package 
     await writeFile(join(f.root, file), '');
   }
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests }));
-  for (const files of [[hub], [nvim], [hub, nvim]]) {
+  for (const kind of ['batch', 'periodic']) for (const files of [[hub], [nvim], [hub, nvim]]) {
     const result = await f.suites.start({ mode: 'all', cwd: f.root, topic: 'unit-topic', to: [], actor: null, dryRun: true,
-      batch: { id: 'batch', members: [], diagnostic: { key: 'omit-0', files } } }, () => {});
+      ...(kind === 'batch' ? { batch: { id: 'batch', members: [], diagnostic: { key: 'omit-0', files } } } : { devT3Probe: { key: 'periodic', files } }) }, () => {});
     assert.ok('dryRun' in result);
     const transport = selectionTransport(result.selection, join(f.root, 'selection.json'));
     assert.equal(transport.file, undefined);
@@ -707,4 +707,27 @@ for (const tiers of [undefined, ['T1']] as const) test(`batch runs configured ti
   assert.deepEqual(landed, []);
   await f.finish(job.id); await runner.tick();
   assert.deepEqual(landed, ['T-1', 'T-2', 'T-3']);
+});
+
+test('merge batches form and land while periodic culprit search awaits its runner', async t => {
+  const { DevT3Search } = await import('../src/hub/dev-t3-search.ts');
+  const { f, runner, entries, landed } = await fixture(t);
+  const started = Promise.withResolvers<void>(), release = Promise.withResolvers<null>();
+  let completed = false;
+  const search = new DevT3Search(f.store, { probe: async () => { started.resolve(); return release.promise; }, report: async () => { completed = true; } });
+  search.accept({ event: 'verification-dev-t3-result', run: 'periodic', head: 'landed', tree: 'tree', previousGreenHead: 'green', previousGreenRun: 'green-run', merges: [{ head: 'landed', subject: 'Merge' }], result: 'red', failingFiles: ['hub/test/example.test.ts'], artifact: 'A-1', path: '/log' });
+  const pending = search.tick();
+  t.after(async () => { release.resolve(null); await pending; await search.close(f.clock); });
+  await started.promise;
+  for (let batch = 0; batch < 2; batch++) {
+    if (batch) entries.push(...[4, 5, 6].map(n => ({ item: `T-${n}`, branch: `t/${n}`, head: `${n}`.repeat(40), verdictBase: 'dev', enqueued: f.clock.now().toISOString(), by: { id: 'coord', name: 'coord', role: 'coordinator' } })));
+    await runner.tick();
+    const run = f.suites.status().at(-1)!;
+    assert.equal(run.occasion, 'batch');
+    await f.finish(run.id); await runner.tick();
+    assert.equal(landed.length, (batch + 1) * 3);
+    assert.equal(runner.snapshot(), null);
+    assert.equal(completed, false, 'both batches land before the search runner is released');
+  }
+  release.resolve(null); await pending;
 });

@@ -75,6 +75,8 @@
     "hub/test/demo-release-component.test.ts": "T2",
     "hub/test/demo-release.test.ts": "T3",
     "hub/test/demo.test.ts": "T3",
+    "hub/test/dev-t3-search-component.test.ts": "T2",
+    "hub/test/dev-t3-search.test.ts": "T1",
     "hub/test/doctor-cli.test.ts": "T3",
     "hub/test/doctor-harness-probe.test.ts": "T1",
     "hub/test/doctor-isolation.test.ts": "T3",

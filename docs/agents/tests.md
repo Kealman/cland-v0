@@ -87,6 +87,18 @@ Git range is explicit (`null`), including timeout or I/O rejection; it cannot
 block publication or the next periodic run. The previous
 green is pinned at admission and retained with the durable job.
 
+A red periodic result starts a separate durable culprit search. Each failing file
+reruns at the red head first (an executed pass is a flake), then at the pinned
+last green head (a failure is pre-existing), then bisects the intervening landed
+commits. Probes run only that file, with no load repetitions or full-suite cache
+proof, through the shared droplet budget and queue. Interrupted or missing
+execution, unavailable baselines/ranges and preparation failures are inconclusive;
+they never assign blame. Search state and probe receipts survive restart. The
+hub files one Bugs item per culprit merge, retaining both heads, files, run ids
+and artifact paths, and reports in General to the Coordinator and the merge's
+last claimant if live. Merges continue while the search runs. Filing errors
+report a blocked search to the Coordinator and retry without holding batches.
+
 `cland release`, including `--dry-run`, refuses with `release-t3` unless a
 completed, reported green dev-t3, soak, stage or release occasion covers the
 pinned release head's verification tree (excluding `.cland/tasks` and

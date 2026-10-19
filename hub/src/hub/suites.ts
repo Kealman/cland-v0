@@ -50,6 +50,7 @@ export type SuiteJob = {
   followsConfig?: boolean;
   workerPolicy?: { local: number; droplet: number };
   workersOverride?: number;
+  devT3Probe?: { key: string; files: string[] };
   devT3?: { previousGreenHead: string | null; previousGreenRun: string | null };
   occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   workers?: number; fallbackWorkers?: number; size?: string;
@@ -87,8 +88,8 @@ const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
 const KEY = 'suite-jobs';
 // Hub-derived: callers cannot accidentally rotate the key when retrying a lost reply.
-const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion'>) => input.actor?.sessionId ?? (input.occasion === 'dev-t3' ? 'dev-t3' : input.occasion === 'soak' ? 'nightly-soak' : 'human');
-const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
+const suiteOwner = (input: Pick<SuiteJob, 'actor' | 'occasion' | 'devT3Probe'>) => input.devT3Probe?.key ?? input.actor?.sessionId ?? (input.occasion === 'dev-t3' ? 'dev-t3' : input.occasion === 'soak' ? 'nightly-soak' : 'human');
+const submissionKey = (input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'>, head: string): string => createHash('sha256').update(JSON.stringify([suiteOwner(input), input.cwd, head, input.mode])).digest('hex');
 const METRICS_WINDOW = 20;
 const runRef = (job: SuiteJob): RunRef => ({ ...(job.commands ? { commands: job.commands } : {}), ...(job.hostGate ? { hostGate: job.hostGate } : {}), ...(job.limits ? { limits: job.limits } : {}), ...(job.config ? { config: job.config } : {}), id: job.id, cwd: job.cwd, head: job.head, ...(job.integrated ? { integrated: true } : {}), mode: job.mode, log: job.log, result: job.result, gate: job.gate, ...(job.workers !== undefined ? { workers: job.workers } : {}), ...(job.size ? { size: job.size } : {}), ...(job.tree !== undefined ? { tree: job.tree } : {}), ...(job.selection ? { selection: job.selection } : {}), ...(job.queued ? { queued: job.queued } : {}), ...(job.locks ? { locks: job.locks } : {}) });
 export function machineAccounting(machine: NonNullable<SuiteJob['machine']>): string {
@@ -374,7 +375,7 @@ export class Suites {
     this.#options.log?.({ event: 'verification-cover-classified', id, head: job.head, cover: job.cover });
     return { id, cover: job.cover };
   }
-  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     if (input.batch) input = { ...input, actor: { name: 'hub', sessionId: `merge-batch:${input.batch.id}:${input.batch.diagnostic?.key ?? 'batch'}`, shell: true }, fresh: true };
     if (this.#closed) return Promise.reject(new Error('hub is closing'));
     const work = this.#start(input, authorize);
@@ -382,7 +383,7 @@ export class Suites {
     void work.finally(() => this.#starting.delete(work)).catch(() => {});
     return work;
   }
-  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
+  async #start(input: Pick<SuiteJob, 'mode' | 'cwd' | 'topic' | 'to' | 'actor'> & { priority?: number; item?: string | null; integrated?: boolean; fresh?: boolean; dryRun?: boolean; diagnostics?: boolean; executor?: ExecutorKind; workers?: number; size?: string; occasion?: VerifyOccasion; batch?: NonNullable<SuiteJob['batch']>; devT3Probe?: NonNullable<SuiteJob['devT3Probe']> }, authorize: () => void): Promise<{ id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | SuiteDryRun> {
     const config = this.#options.projectConfig?.();
     const settings = { ...this.#options };
     const executor = input.executor ?? settings.executor ?? 'local';
@@ -415,11 +416,11 @@ export class Suites {
       const { tiers: _tiers, ...broad } = admitted;
       admitted = { ...broad, reason: `${broad.reason}; hosting merge queue disabled: retaining process coverage` };
     }
-    const files = input.batch?.diagnostic?.files;
+    const files = input.devT3Probe?.files ?? input.batch?.diagnostic?.files;
     if (files && (!files.length || files.some(file => !/^(hub\/(test|src)|nvim\/test)\/(?!.*(?:^|\/)\.\.\/).*\.test\.ts$/.test(file)))) throw new Error('invalid batch diagnostic files');
     const nvimTests = files?.filter(file => file.startsWith('nvim/'));
     let selection: SuiteSelection = files
-      ? { mode: 'full', files, reason: 'batch failing-file rerun', loadGate: false, soak: false,
+      ? { mode: 'full', files, reason: input.devT3Probe ? 'periodic dev T3 failing-file rerun' : 'batch failing-file rerun', loadGate: false, soak: false,
         shard: { files: files.filter(file => file.startsWith('hub/')), nvim: Boolean(nvimTests?.length) },
         ...(nvimTests?.length ? { nvimTests } : {}) }
       : occasionSelection(admitted, input.occasion, config?.merge.batchTiers);
@@ -493,7 +494,7 @@ export class Suites {
     await this.#check();
     return { id, pid: job.pid, topic: job.topic, position: job.state === 'queued' ? this.#ordered().findIndex(j => j.id === id) + 1 : 1, ...(job.cached ? { cached: job.cached } : {}) };
   }
-  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
+  #existingSubmission(input: Pick<SuiteJob, 'actor' | 'cwd' | 'mode' | 'occasion' | 'devT3Probe'> & { executor?: ExecutorKind; size?: string; workers?: number }, head: string, authorize: () => void): { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: SuiteJob['cached'] } | null {
     authorize();
     const owned = this.#jobs.filter(job => this.#active(job) && suiteOwner(job) === suiteOwner(input));
     const key = submissionKey(input, head);
@@ -564,7 +565,7 @@ export class Suites {
   #cached(tree: string, selection: SuiteSelection, workers: number, commands: import('../verification-commands.ts').VerificationCommands, size?: string, requiredExecutor?: ExecutorKind, occasion?: VerifyOccasion): SuiteJob | undefined {
     // Cancellations say nothing about the tree; failed or pending attempts still supersede green evidence.
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
-    const job = this.#jobs.findLast(j => j.commands?.prepare === commands.prepare && j.commands.check === commands.check && j.commands.test === commands.test && !j.batch?.diagnostic && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
+    const job = this.#jobs.findLast(j => j.commands?.prepare === commands.prepare && j.commands.check === commands.check && j.commands.test === commands.test && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
@@ -1167,6 +1168,7 @@ export class Suites {
   }
   status(): SuiteStatus[] {
     return this.#jobs.map(job => ({
+      ...(job.devT3Probe ? { devT3Probe: job.devT3Probe } : {}),
       ...(job.batch ? { batch: job.batch } : {}),
       ...(job.cover ? { cover: job.cover } : {}),
       ...(job.occasion ? { occasion: job.occasion } : {}),

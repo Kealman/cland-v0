@@ -1,3 +1,6 @@
+import { DevT3Search } from './dev-t3-search.ts';
+import { DevT3Probes } from './dev-t3-probe.ts';
+import { reportDevT3Search } from './dev-t3-report.ts';
 import { devT3Result } from './dev-t3-result.ts';
 import { reportSoakQuarantine } from './soak-quarantine.ts';
 import { suiteStartIssues } from '../protocol.ts';
@@ -111,6 +114,7 @@ export type Conversation = {
 
 export type DispatcherOptions = {
   publishRelease?: typeof import('../territory-release.ts').releaseGit;
+  devT3Repository?: import('./dev-t3-probe.ts').ProbeRepository;
   batchRepository?: import('./merge-batch-territory.ts').BatchRepository;
   hasTerritory?: typeof import('../territory.ts').hasTerritory;
   territoryLock?: typeof import('../territory.ts').withTerritoryLockAsync;
@@ -178,6 +182,7 @@ export class Dispatcher {
   #closed = false;
   #artifactQueue: Promise<unknown> = Promise.resolve();
   readonly artifacts: ArtifactLifecycle;
+  readonly #devT3Search: DevT3Search | null;
   readonly #batches: MergeBatches | null;
   readonly #suites: Suites | null;
   readonly #droplets: DropletExecutor | null;
@@ -224,6 +229,13 @@ export class Dispatcher {
     }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
     this.#dropletTimer?.unref();
     this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(GENERAL.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
+    const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository) : null;
+    this.#devT3Search = devT3Probes && options.tracker ? new DevT3Search(options.core.store, {
+      probe: (input, head, file) => devT3Probes.probe(input, head, file),
+      report: report => reportDevT3Search(options.core, options.tracker!, report),
+      blocked: (input, reason) => { options.core.noticeTo(GENERAL.id, { id: `dev-t3-search-blocked:${input.run}`, kind: 'report', to: ['coordinator'], text: options.core.boundedText(`Periodic dev T3 search ${input.run} blocked: ${reason}`), detail: { event: 'verification-dev-t3-search-blocked', run: input.run, reason } }); },
+    }) : null;
+    this.#devT3Search?.start(options.core.clock);
     this.#batches = root && this.#suites && this.#merges && this.#mergeQueue ? new MergeBatches(options.core.store, this.#suites, options.core.clock, {
       changed: () => options.core.publishVerification({ ...this.#suites!.snapshot(), batch: this.#batches?.snapshot() ?? null }),
       entries: () => this.#mergeQueue!.entries(),
@@ -316,6 +328,7 @@ export class Dispatcher {
     do {
       await this.#dropletWork;
       await this.#suites?.settled();
+      await this.#devT3Search?.tick();
     } while (this.#dropletWork);
   }
 
@@ -329,6 +342,7 @@ export class Dispatcher {
     await closingDroplets;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;
+    await this.#devT3Search?.close(this.#options.core.clock);
     await this.#batches?.close();
     this.#merges?.stop();
     this.#mergeQueue?.stop();
@@ -731,7 +745,7 @@ export class Dispatcher {
       return;
     }
     if (core.store.message(messageId)) return; // committed result wins over a crash before receipt update
-    const callerNow = () => job.batch ? null : this.#suitePermissions(job.actor, job.topic, job.to, true);
+    const callerNow = () => job.batch || job.devT3Probe ? null : this.#suitePermissions(job.actor, job.topic, job.to, true);
     callerNow();
     const title = `Suite ${job.id} · ${job.mode} at ${job.head.slice(0, 7)}`;
     // Artifact registration may have committed just before the hub died.
@@ -739,7 +753,7 @@ export class Dispatcher {
     let artifactId = job.artifact ?? prior?.id ?? null;
     if (!job.artifact && prior) checkpointArtifact(prior.id);
     if (!artifactId) {
-      const create = () => job.batch ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work());
+      const create = () => job.batch || job.devT3Probe ? this.#batchArtifact(job, title) : this.#artifact({ type: 'artifact.create', id: job.id, kind: 'file', title, topic: job.topic, path: job.log }, callerNow, work => work());
       const operation = this.#artifactQueue.then(create);
       this.#artifactQueue = operation.catch(() => {});
       const result = await operation as { id: string };
@@ -837,9 +851,10 @@ export class Dispatcher {
         core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
         return null;
       }
-      if (job.occasion === 'soak' || periodic) {
+      if (job.occasion === 'soak' || periodic || job.devT3Probe) {
         if (!core.noticeTo(GENERAL.id, { id: messageId, kind: 'report', to: ['coordinator'], text,
-          detail: periodic ?? { event: 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
+          detail: periodic ?? { event: job.devT3Probe ? 'verification-dev-t3-probe-result' : 'verification-soak-result', run: job.id, artifact: artifact.id, path: artifact.path } })) throw new Error('nightly result topic unavailable');
+        if (periodic) this.#devT3Search?.accept(periodic);
         core.store.setMeta('quarantine-results', JSON.stringify(quarantine.history));
         return { message: core.store.message(messageId)! };
       }
@@ -849,8 +864,8 @@ export class Dispatcher {
       return result;
     });
     if (result && !core.store.message(result.message.id)) throw new Error('suite result had no deliverable recipient');
-    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name ?? ((job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : undefined), topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
-    this.#log({ event: 'audit', session: (job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: (job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
+    this.#log({ event: 'suite-result', id: job.id, item: job.item, session: job.actor?.name ?? ((job.devT3Probe || job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : undefined), topic: job.topic, branch: job.branch, head: job.head, outcome, cover: job.cover ?? null, counts: summary, mode: job.selection?.mode ?? job.mode, executor: job.executor, platform: job.platform ?? null, machine: job.machine ?? null, health: job.health ?? null, shardHealth: job.shardHealth ?? null });
+    this.#log({ event: 'audit', session: (job.devT3Probe || job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : caller?.name ?? HUMAN_SESSION, sessionId: caller?.sessionId ?? null, role: (job.devT3Probe || job.occasion === 'soak' || job.occasion === 'dev-t3') ? 'hub' : caller?.role ?? HUMAN_SESSION, tool: 'send', args: { topic: job.topic, to: job.to, suite: job.id, artifacts: [artifact.id] }, outcome: 'ok', client: 'suite' });
   }
   async #batchArtifact(job: Readonly<SuiteJob>, title: string): Promise<{ id: string; path: string }> {
     const core = this.#options.core, root = this.#options.control?.status().root;

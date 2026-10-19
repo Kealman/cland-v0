@@ -3122,6 +3122,9 @@ export class Tracker {
     }, resumed, { operation: 'hold', item: this.#referenceId(rawId) ?? rawId });
   }
 
+  /** The most recent claimant remains available after closure releases its live claim. */
+  lastClaim(rawId: string): Claim | null { return this.#index.lastClaim(this.#require(rawId).id); }
+
   /** The live claim is an index fact, read without opening the item file. */
   claimOf(rawId: string): Claim | null { return this.#index.claimOf(this.#require(rawId).id); }
 

@@ -584,7 +584,7 @@ export class TrackerIndex {
     return this.#tx(() => {
       const rows = this.#db.prepare('select item_id from tracker_holds where session_id = ? union select item_id from tracker_claims where session_id = ?').all(sessionId, sessionId) as Row[];
       this.#db.prepare('delete from tracker_holds where session_id = ?').run(sessionId);
-      this.#db.prepare('delete from tracker_claims where session_id = ?').run(sessionId);
+      for (const [item, claim] of this.claims()) if (claim.sessionId === sessionId) this.setClaim(item, null);
       return rows.map(row => this.#canonical(row.item_id as string));
     });
   }
@@ -651,9 +651,20 @@ export class TrackerIndex {
     return was.map(([item, c]) => ({ item, was: c }));
   }
 
+  lastClaim(id: string): Claim | null {
+    const current = this.claimOf(id);
+    if (current) return current;
+    const row = this.#db.prepare('select value from tracker_meta where key = ?').get('last-claim:' + this.#key(id)) as Row | undefined;
+    return JSON.parse(row?.value as string ?? 'null') as Claim | null;
+  }
+
   setClaim(id: string, claim: Claim | null): void {
     id = this.#key(id);
-    if (claim === null) this.#db.prepare('delete from tracker_claims where item_id = ?').run(id);
+    if (claim === null) {
+      const previous = this.claimOf(id);
+      if (previous) this.#db.prepare('insert into tracker_meta (key, value) values (?, ?) on conflict(key) do update set value = excluded.value').run('last-claim:' + id, JSON.stringify(previous));
+      this.#db.prepare('delete from tracker_claims where item_id = ?').run(id);
+    }
     else
       this.#db
         .prepare(

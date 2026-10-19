@@ -30,7 +30,7 @@ export function remoteEventually<T>(what: string, check: () => Promise<T | undef
   return eventually(what, check, remoteWaitMs(baseMs));
 }
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
-export async function fixture(t: TestContext, options: FixtureStack & { git?: import('../src/tracker/verdict-git.ts').Git; machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+export async function fixture(t: TestContext, options: FixtureStack & { devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository; git?: import('../src/tracker/verdict-git.ts').Git; machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const embedded = options.hub !== undefined && options.hub !== startDaemon;
   const scripted = options.machine === 'scripted';
   const root = await tempProject(t, 'remote-run-');
@@ -128,6 +128,8 @@ export async function fixture(t: TestContext, options: FixtureStack & { git?: im
     },
   };
   const probes = {
+    // Scripted hubs cannot inspect historical Git objects without explicit repository facts.
+    devT3Repository: options.devT3Repository ?? { identity: async () => null, checkout: async () => { assert.fail('no scripted historical checkout fact'); }, remove: async () => {} },
     clock, droplet: dependencies, harnesses: 'fake' as const, probes: 'fake' as const, candidate: facts, durationContext,
     // Freshness and demo ancestry consume the same branch facts as admission.
     git: options.git ?? (async (args: string[]) => {
