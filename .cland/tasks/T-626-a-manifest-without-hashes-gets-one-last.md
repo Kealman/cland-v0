@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-538
 branch: t/T-626-a-manifest-without-hashes-gets-one-last
 created: 2026-10-16T15:57:49.714Z
-updated: 2026-10-18T23:29:27.669Z
+updated: 2026-10-18T23:58:13.367Z
 ---
 
 ## Summary
@@ -44,7 +44,7 @@ No table of past releases' hashes ships. A manifest already in the hashed form n
 - [x] C6. Demo: a scratch project initialised by the v0.1.3 tag's `cland init`, then updated by this branch's `cland update`, shows the warning once and a hashed manifest afterwards.
   - done: impl-626 · 2026-10-18T23:28:13.193Z
 - [x] C7. `cland doctor` warns on a manifest in the old list form and names `cland update` as the fix, proved by a doctor test.
-  - done: impl-626 · 2026-10-18T23:28:13.531Z
+  - done: impl-626 · 2026-10-18T23:57:40.617Z
 
 ## Comments
 
@@ -64,3 +64,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at 27d37618. Legacy warning attaches once to manifest report entry with differing-copy names/Git recovery, retaining existing overwrite/removal/addition policy; hashed updates remain warning-free and doctor warns read-only with update fix. Handwritten T1 fixtures and isolated T2 text/JSON boundary cover C1–C5/C7; A-5639 retains actual v0.1.3 migration demo. A-5640 records both axes and host-evidence limits. All C1–C7 await accepted exact-head runtime, no findings or per-item QA. T-822 remains separate.
+
+### rev-30 · 2026-10-18T23:57:04.438Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261018-626-runtime
+commit: 27d37618d004c137fd0f65b7ac1c1fb41728a02b
+scope: evidence
+findings: [{"severity":"medium","text":"M1: existing legacy-manifest carrier still expects doctor ok; required new warning returns warn. It fails ordinary plus all five repetitions before migration/symlink controls. Refresh warn/fix and post-migration ok assertions; retain all existing ownership/hash/refusal controls and audit similar consumers.","file":"hub/test/init.test.ts","line":439}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear at unchanged27d37618: A-5650/1e9713b0 exits1, stale init.test.ts:439 doctor expectation actualwarn vs expectedok. A-5651 records M1, six completed failures of one identity, positive new-case15/15 repetitions and source-review carrier miss. New warning production behavior is correct; fix carrier without weakening migration/symlink controls. C7 failed; no criteria verified. Fresh source review before replacement verification.
+
+Criteria: C7 failed (Existing legacy doctor carrier init.test.ts:439 expects ok instead of required warn; ordinary and five repetitions fail in A-5650.).
+
+### rev-30 · 2026-10-18T23:58:13.367Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261018-626-correction-source
+commit: 6eadffd015f1eb61ef26cdd8249af49b74b84b6d
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Correction source clear at6eadffd0. M1 resolved: existing legacy doctor carrier asserts warn plus update fix, then ok after migration; all subsequent hash/refused-path/symlink controls unchanged. Pinned consumer audit finds no other stale legacy-ok expectation. A-5653 records both axes, reported host checks and retained failure/demo evidence. All C1–C7 await accepted exact-head replacement runtime; no findings.

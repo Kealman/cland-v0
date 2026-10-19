@@ -3,7 +3,7 @@ id: T-711
 kind: task
 title: The hub builds a batch of up to three queued heads, runs T1 and T3 once on the batch tree, and lands them in order on green
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-521
 branch: t/T-711-the-hub-builds-a-batch-of-up-to-three
 created: 2026-10-16T19:59:43.592Z
-updated: 2026-10-18T23:27:01.123Z
+updated: 2026-10-19T00:02:02.636Z
 ---
 
 ## Summary
@@ -40,17 +40,22 @@ With entries queued (T-710), the hub needs to turn them into landings: one integ
 - [x] C1. Three queued heads produce one batch run on one tree and land on `dev` in queue order with their merge receipts, proved by a test on the in-process provider (T-697) and the fake clock.
   - done: impl-711 · 2026-10-18T16:53:15.146Z
   - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
+  - verified: rev-30 [reviewer] · run rev-20261019-711-integration-final · 2026-10-19T00:01:49.677Z · commit 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
 - [x] C2. A tracker-only `dev` commit during the batch run lands the batch without a second run, and a code commit rebuilds and reruns it, proved by tests.
   - done: impl-711 · 2026-10-18T16:38:52.743Z
   - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
+  - verified: rev-30 [reviewer] · run rev-20261019-711-integration-final · 2026-10-19T00:01:49.677Z · commit 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
 - [x] C3. A conflicting entry is dropped with `merge-conflict` and the other two land after one run, proved by a test.
   - done: impl-711 · 2026-10-18T16:38:54.097Z
   - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
-- [ ] C4. A hub restart during the batch run resumes it and lands each entry once, proved by a restart test.
-  - failed: rev-30 [reviewer] · 2026-10-18T22:39:56.029Z · note Exact-head integration gate fails interrupted-create executor recovery before Neovim; positive batch restart proof remains, but final green recovery evidence is incomplete.
+  - verified: rev-30 [reviewer] · run rev-20261019-711-integration-final · 2026-10-19T00:01:49.677Z · commit 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
+- [x] C4. A hub restart during the batch run resumes it and lands each entry once, proved by a restart test.
+  - verified: rev-30 [reviewer] · run rev-20261019-711-integration-final · 2026-10-19T00:01:49.677Z · commit 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
+  - done: impl-711 · 2026-10-19T00:02:02.299Z
 - [x] C5. The batch run's result names its members, tree, tiers and wall, and `cland verify queue` lists the batch while it runs, proved by a report test.
   - done: impl-711 · 2026-10-18T16:38:56.256Z
   - verified: rev-30 [reviewer] · run rev-20261018-711-final · 2026-10-18T17:20:26.778Z · commit fd16c8fa21ffe7fd9de8e5e62999b951d4b8c80a
+  - verified: rev-30 [reviewer] · run rev-20261019-711-integration-final · 2026-10-19T00:01:49.677Z · commit 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
 
 ## Blocked by
 
@@ -173,3 +178,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Shared-fix delta source clear at 2c75c815. Exact f311335d patch authorized by primary112b27ed, no other change/dev merge. Bounded releasing observation retains fault barrier and all release recovery controls. A-5638 records both axes and raw14/14 host receipt. C1–C5 remain unverified pending accepted exact-head runtime; primary authorizes one mode-free replacement gate.
+
+### rev-30 · 2026-10-19T00:01:49.677Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-711-integration-final
+commit: 2c75c815d0fe523a75d5b62cb0ac5a5144f05c3f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final integrated clear at unchanged2c75c815. A-5655/a297c06d accepted full gate:2674 pass,zero fail/cancel,eight skips; hub and Neovim complete. All17 batch/queue cases and85/85 repetitions pass; incoming17 T-813 integration cases and formerly failing executor recovery positive. A-5657 maps C1–C5 and discloses inherited report-only trips. Verified all, no findings. Restore claimant C4 done against accepted replacement; prior failed evidence retained.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
