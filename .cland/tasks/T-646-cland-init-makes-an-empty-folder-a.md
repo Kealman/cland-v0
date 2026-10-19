@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-539
 branch: t/T-646-cland-init-makes-an-empty-folder-a
 created: 2026-10-16T16:23:59.380Z
-updated: 2026-10-19T00:07:48.357Z
+updated: 2026-10-19T00:37:13.436Z
 ---
 
 ## Summary
@@ -40,7 +40,7 @@ Today an empty folder stops with "main has no commit yet: create main, then run 
 ## Acceptance criteria
 
 - [x] C1. `cland init` in an empty folder leaves exactly one commit (`git log --oneline --all`), whose tree holds only `AGENTS.md`, `.cland/`, `.agents/`, `.claude/` and `docs/agents/` paths (init-first-commit.test.ts).
-  - done: impl-646 · 2026-10-19T00:06:15.619Z
+  - done: impl-646 · 2026-10-19T00:36:19.587Z
 - [x] C2. Afterwards `git status --porcelain` is empty, `git branch --show-current` prints `dev`, and `main` and `dev` point at that commit.
   - done: impl-646 · 2026-10-19T00:06:15.987Z
 - [x] C3. The territory exists with `main` and `dev` at that commit, its HEAD is `dev`, and `origin/HEAD` in the root is `origin/dev`.
@@ -214,3 +214,85 @@ Result: clear source. C1–C7 remain unverified until the same-head execution re
 Findings: Standards 0; Spec 0.
 
 Evidence: A-5664.
+
+### rev-31 · 2026-10-19T00:32:19.442Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-runtime-1
+commit: 5beb685186194aecd5d4e53edff3a8a7b415f772
+scope: evidence
+findings: [{"severity":"medium","text":"Five existing Aide/init/territory/worktree fixtures reach the new initial commit without an isolated Git identity and fail on Linux before their behavior assertions.","file":"hub/test/init-fixture.ts","line":39},{"severity":"medium","text":"Old non-Git expectation still uses an empty folder now deliberately bootstrapped by init; retain that assertion family using a nonempty project fixture.","file":"hub/test/territory-cli.test.ts","line":210}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+# T-646 runtime evidence: not clear
+
+Head: 5beb685186194aecd5d4e53edff3a8a7b415f772, matching source-4 / A-5664.
+Run a1218901-01fc-4766-a1ba-ac3fddad7f87 / A-5686, raw exit 1, hub-only.
+Scope: evidence.
+
+## Standards
+
+M1 (medium), hub/test/init-fixture.ts:39 and affected existing init callers: the new initial commit adds a configured Git identity prerequisite, but five task-adjacent fixtures rely on the host identity. On the Linux droplet every failure is Author identity unknown, before the behavior assertions execute:
+- aide.test.ts:70 (A-5686:54915);
+- init.test.ts:478 via init-fixture.ts:39 (54946);
+- init.test.ts:558 via init-fixture.ts:39 (54976);
+- territory-cli.test.ts:211 (55006);
+- worktree-cli.test.ts:63 (55038).
+
+Supply explicit isolated fixture author/committer identity through the relevant subprocess and in-process seams, retaining the Aide, symlink safety and independent-root assertions. This is not evidence that symlink or root behavior itself failed. The product identity fallback belongs to the later scope and is not requested here. Implementer confirms task-owned fixture correction and no unchanged-head retry in f43aac17.
+
+## Spec
+
+M2 (medium), hub/test/territory-cli.test.ts:210: the existing non-Git fixture is an empty folder yet still expects no territory and the old push rule. Empty-folder bootstrap deliberately changes that input's behavior. Preserve the original non-Git/no-remote assertion family with a genuinely nonempty project folder; the new first-commit cases already prove empty-folder behavior. This stale expectation is visible in source behind the identity failure and must remain covered rather than removed.
+
+Positive execution evidence: all eight ordinary init-first-commit cases pass (7.847354335 total test-seconds), plus the lifecycle control (0.703578257), T1 empty-selector control (0.015863657), both next-step cases, and init-machine's isolated self-test. All eight CLI identities, lifecycle, selector and both next-step identities have exact 5/5 load gates. These positives establish no task-owned timing failure but do not clear the five failed compatibility cases.
+
+Ordinary hub totals: 2341 tests, 2331 pass, 5 fail, 0 cancelled, 5 skipped. The larger completed-before-interruption count includes repetition receipts and is not the ordinary test total. Hub free 104.44 s, hub machine 1177.92 s; run stops before Neovim smoke. Linux x64 c-8 lon1, Node 24.21.0, Neovim 0.12.5, workers 2, peak load 7.01; lifetime 1365 s, cost $0.0948.
+
+Result: not clear; C1 fails task integration readiness at this pass. C2–C7 remain unverified pending corrected source and a replacement exact-head receipt. No unchanged-head retry. Preserve the current source freeze except task-owned corrections, request fresh source review, then submit verification. No per-item QA.
+
+Findings: Standards 1 medium; Spec 1 medium.
+
+Evidence: A-5687.
+
+Criteria: C1 failed (Same-head verification fails five task-adjacent init compatibility fixtures; isolated identities and the non-Git fixture expectation need correction.).
+
+### rev-31 · 2026-10-19T00:37:13.436Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-646-source-5
+commit: e87ff41dde7cb5ab058f8bf6f6400a27a65d7aeb
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+# T-646 fixture correction source review: clear
+
+Head: e87ff41dde7cb5ab058f8bf6f6400a27a65d7aeb
+Fixed base: 4b196c6208da89a4852be654cd05acd9978de83f
+Correction comparison: source-cleared 5beb6851 → reviewed head.
+Scope: full. No dev merge; branch tip independently matches.
+
+## Standards
+
+Clear; no findings. This correction changes only five test files. git-identity-fixture.ts supplies explicit author/committer name/email. Subprocess init receives that environment; in-process init uses a try/finally scope restoring each previous environment value (including deletion when originally absent). The affected file-level tests await their init calls sequentially; no new overlapping identity scope or fixture lifetime is introduced.
+
+The shared init-fixture module/CLI seams, Aide init, territory init and independent worktree-child init are covered. No production fallback identity, product-source change, new subprocess or wall-clock wait is added. The original empty-folder implementation, exact managed leaf selection, kept exclusions, empty guards, Finder metadata handling and owned scratch-command drain from source-4 remain unchanged.
+
+## Spec
+
+Clear; no findings. The territory non-Git control now contains a human README, retaining its original no-territory and push-rule assertions while empty-folder behavior remains proved by init-first-commit. Independently compared assertion lines in aide.test.ts, territory-cli.test.ts and worktree-cli.test.ts: all retained exactly. The shared init-fixture change likewise does not remove the symlink assertions.
+
+A-5688 was inspected as raw file output: all 16 listed files exit 0, with zero failures, cancellation or skips in each, under the declared scratch HOME/XDG/no-inherited-identity/useConfigOnly environment. It includes the five previously failing cases, complete first-commit controls, lifecycle/selector controls and related root/settings/worktree consumers. Timings range from 0.090 s for settings to 20.577 s for territory CLI. A-5689 records the Linux failure and local reproduction/correction. This supports correction readiness; it is not a replacement post-source task run.
+
+Previous source-4 / A-5664's C1–C7 mapping remains applicable; all seven are claimant-done and remain unverified until exact-head task execution plus the existing scratch-HOME demo evidence are audited.
+
+Result: clear source. Submit one replacement mode-free droplet verification at this unchanged head. No per-item QA. Any subsequent head change requires fresh source review.
+
+Findings: Standards 0; Spec 0.
+
+Evidence: A-5690.

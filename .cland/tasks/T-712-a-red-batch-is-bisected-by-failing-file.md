@@ -3,7 +3,7 @@ id: T-712
 kind: task
 title: "A red batch is bisected by failing file: the culprit is refused with merge-bisected, the rest land, a culprit-less repeat proposes quarantine"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-540
 branch: t/T-712-a-red-batch-is-bisected-by-failing-file
 created: 2026-10-16T19:59:43.692Z
-updated: 2026-10-19T00:18:27.180Z
+updated: 2026-10-19T00:49:08.429Z
 ---
 
 ## Summary
@@ -36,14 +36,19 @@ A red batch must never become an Implementer's resubmit. The hub finds the culpr
 
 - [x] C1. A red batch of one is refused with `merge-bisected` naming the failing test, proved by a test on the in-process provider.
   - done: impl-712 · 2026-10-19T00:18:26.746Z
+  - verified: rev-30 [reviewer] · run rev-20261019-712-final · 2026-10-19T00:49:06.703Z · commit 140c37075e5f93946138d2cf7e5a753e40ddbb59
 - [x] C2. In a red batch of three with one culprit, the culprit is refused with `merge-bisected` and the other two land on the leave-one-out tree after at most three file-level jobs, proved by a test.
   - done: impl-712 · 2026-10-19T00:15:59.468Z
+  - verified: rev-30 [reviewer] · run rev-20261019-712-final · 2026-10-19T00:49:06.703Z · commit 140c37075e5f93946138d2cf7e5a753e40ddbb59
 - [x] C3. A red batch whose failing files pass on rerun lands and records a flake observation, and a second observation of the same test in another batch posts a quarantine proposal to the Coordinator, proved by tests.
   - done: impl-712 · 2026-10-19T00:15:59.829Z
+  - verified: rev-30 [reviewer] · run rev-20261019-712-final · 2026-10-19T00:49:06.703Z · commit 140c37075e5f93946138d2cf7e5a753e40ddbb59
 - [x] C4. A red batch with no single culprit and a red rerun refuses every member with `merge-bisect-unresolved` and posts one Coordinator notice, proved by a test.
   - done: impl-712 · 2026-10-19T00:10:19.694Z
+  - verified: rev-30 [reviewer] · run rev-20261019-712-final · 2026-10-19T00:49:06.703Z · commit 140c37075e5f93946138d2cf7e5a753e40ddbb59
 - [x] C5. The batch result lists each file-level job with its tree, seconds and cost, proved by a report test.
   - done: impl-712 · 2026-10-19T00:10:20.258Z
+  - verified: rev-30 [reviewer] · run rev-20261019-712-final · 2026-10-19T00:49:06.703Z · commit 140c37075e5f93946138d2cf7e5a753e40ddbb59
 
 ## Comments
 
@@ -80,3 +85,35 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Correction not clear atf689a3c4. H1 executed repeat proof and M2 diagnostic inconclusive handling are resolved with raw22/22 host checks. M3 remains in original-result branch before diagnosis: aborted singleton can be falsely refused, and partial aborted multi result can enter attribution. A-5675 details exact path and controls. All criteria unverified; no verification before fresh source review. No other findings from correction pass.
 
 Criteria: C1 failed (Original singleton batch cancellation/timeout/lost result still causes merge-bisected without a failing test.).
+
+### rev-30 · 2026-10-19T00:19:03.883Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-712-corrected-source
+commit: 140c37075e5f93946138d2cf7e5a753e40ddbb59
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at140c3707. H1/M2/M3 resolved: executed proof gates original-tree flake landing, diagnostic inconclusive outcomes preserve hold/evidence, and original receipt eligibility now precedes singleton/multi attribution. New cancellation/partial-failure reopen controls retain queue and one notice; prior valid-red bisection/report/quarantine paths intact. A-5681 records both axes and raw24/24 batch plus7/7 queue checks. C1–C5 await accepted exact-head runtime; no findings or per-item QA.
+
+### impl-712 · 2026-10-19T00:48:38.213Z
+
+Reviewed-head verification PASS: mode-free run 5eaf93cf-4f88-4b5f-ae1a-2423e3ff8afd at 140c37075e5f93946138d2cf7e5a753e40ddbb59. Droplet Linux x64, c-8 lon1, 2 workers; 2737 tests / 2729 pass / 0 fail / 0 cancelled / 8 skipped. Lifetime 1726 s, cost $0.1199. Log A-5695: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-5695-suite-5eaf93cf-4f88-4b5f-ae1a-2423e3ff8afd-auto-at-140c370.log. Host gate reused at candidate tree abc434f3d2f7de7457b29d9a974fcd25cbaaebb0. Reviewer received same-head runtime automatically; final verdict pending.
+
+### rev-30 · 2026-10-19T00:49:06.703Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-712-final
+commit: 140c37075e5f93946138d2cf7e5a753e40ddbb59
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at unchanged140c3707. A-5695/5eaf93cf accepted full gate:2729 pass,zero fail/cancel,eight skips; hub and Neovim complete. All34 batch/queue/shard cases pass, all31 batch/queue groups155/155 repetitions green, including H1/M2/M3 negative guards. A-5696 maps C1–C5 to named refusal, unique-tree landing, flake proposal, unresolved notice and cost report; inherited report-only trips disclosed. Verified all; no findings or per-item QA.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
