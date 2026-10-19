@@ -70,7 +70,9 @@ test('recorded item frames render trees, map groups, details, board and edited f
   await c.waitScreen((s) => s.includes('General'), 'the workbench');
   await c.input('<Esc><Space>i');
   await c.lua("vim.api.nvim_win_set_width(require('cland.layout').win.left,70)");
-  let s = await c.waitScreen((x) => x.includes('Review passed') && /T-2 E-1 › Items panel +impl-1/.test(x), 'the items panel with the claim');
+  // WinResized schedules the panel render: the old-width badge can be visible
+  // inside the wider window before it reaches the resized panel's right edge.
+  let s = await c.waitScreen((x) => x.includes('Review passed') && /^ ◐ T-2 E-1 › Items panel +impl-1$/m.test(leftOf(x)), 'the resized items panel with the claim');
   const panel = leftOf(s);
   assert.match(panel, /^ E-1 Workbench shell +1\/4\s*$/m);
   assert.match(panel, /^ ◐ T-2 E-1 › Items panel +impl-1$/m);
