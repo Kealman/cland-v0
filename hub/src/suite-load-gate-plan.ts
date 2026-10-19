@@ -2,6 +2,18 @@ import type { DurationManifest } from './suite-durations.ts';
 import type { TierPlan } from './suite-tier-report.ts';
 import type { SuiteSelection } from './suite-selection.ts';
 
+/** T4 already generates soak load; parallel repeats would measure contention
+ * against the base phase instead of the test's own latency contract.
+ */
+export function skipT4LoadRepetitions(selection: SuiteSelection, plan: TierPlan): SuiteSelection {
+  const soakFiles = plan.filter(row => row.tier === 'T4').flatMap(row => row.files);
+  if (!selection.loadGate || !soakFiles.length) return selection;
+  const files = plan.filter(row => row.tier !== 'T4').flatMap(row => row.files);
+  return { ...selection,
+    loadGateFiles: files.filter(file => !selection.loadGateFiles || selection.loadGateFiles.includes(file)),
+    reason: `${selection.reason}; load gate: T4 repetitions skipped; ${soakFiles.length} files run in base phase only` };
+}
+
 /** Occasion receipts pin known identities; task runs retain the duration baseline. */
 export function loadGateRepetitions(identity: string, selection: SuiteSelection | undefined, durationTests: Record<string, number>): 0 | 5 {
   if (selection?.loadGateTests && !selection.loadGateTests.includes(identity)) return 0;

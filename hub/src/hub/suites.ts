@@ -1,4 +1,4 @@
-import { soakDeadlinePlan } from '../suite-load-gate-plan.ts';
+import { skipT4LoadRepetitions, soakDeadlinePlan } from '../suite-load-gate-plan.ts';
 import { suiteProgress, progressLines } from '../suite-progress.ts';
 import { suiteCandidate, type SuiteCandidate } from './suite-candidate.ts';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
@@ -408,6 +408,7 @@ export class Suites {
     if (input.occasion && input.occasion !== 'batch' && (!input.integrated || branch !== 'dev' || !tree || selection.fetchedDev !== head || input.mode !== 'all')) throw new Error('occasion requires an integrated dev full request (verify all) with fresh origin/dev fetch proof at its head');
     if (input.occasion && !files) selection.loadGateBaseline = await this.#stageIdentities(input.occasion === 'soak' || input.occasion === 'batch' ? input.occasion : 'stage');
     const tierPlan = input.occasion || files || admitted !== candidate.selection ? await planTierReport(input.cwd, selection, workers, undefined, durationHistory(this.#options.durationContext)) : candidate.tierPlan;
+    selection = skipT4LoadRepetitions(selection, tierPlan);
     if (input.occasion === 'soak') selection = soakDeadlinePlan(selection, tierPlan, await readDurationManifest(input.cwd), config?.verification.runTimeoutMs ?? settings.runTimeoutMs ?? 4500000);
     if (input.occasion === 'batch' && !files) selection.loadGateFiles = tierPlan.filter(row => row.tier === 'T3').flatMap(row => row.files);
 

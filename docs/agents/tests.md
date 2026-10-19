@@ -48,6 +48,12 @@ Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the c
 | Stage, epic or release occasion | T1–T4; five repetitions of identities absent from the last green stage receipt |
 | Nightly soak | T1–T4; five repetitions of identities absent from the last green soak |
 
+T4 files run only in their selected base soak phase. They never acquire extra
+parallel load-gate repetitions: latency assertions under self-generated load
+would otherwise measure contention with the base phase. The selection and run
+result name this choice as `load gate: T4 repetitions skipped`, with the file
+count. Nightly deadline planning excludes those repetitions before budgeting.
+
 Task load repetitions cover new T1/T2 identities against the duration baseline.
 The hub owns batch and soak occasions. The Coordinator requests stage, epic and
 release occasions; QA may request epic for its demo. An explicit `all` on a task
@@ -874,7 +880,7 @@ Task-branch verifies have a **load gate** for each admitted T1/T2 top-level `fil
 missing from the duration manifest's `tests` baseline. As the phase discovers
 new names, `[verification] load_gate_workers` parallel lanes (default 2) repeat
 each identity five times in fresh Node processes with an escaped, exact `--test-name-pattern` on the file, alongside the ordinary
-phase. Ordinary integrated `dev` runs receive no repetitions. At stage, epic and release occasions, the hub instead pins the identities observed in the latest completed, reported green integrated stage run. Every identity absent from that receipt receives five repetitions, even if it appears in the current duration manifest. A later ordinary batch, failed stage or cache hit does not advance that baseline. Without a retained stage receipt, all observed identities are treated as new. Each shard carries the same pinned baseline. Each lane finishes all five repetitions of one identity
+phase. Ordinary integrated `dev` runs receive no repetitions. At stage, epic and release occasions, the hub instead pins the identities observed in the latest completed, reported green integrated stage run. Every T1–T3 identity absent from that receipt receives five repetitions, even if it appears in the current duration manifest; T4 runs only in the base soak phase. A later ordinary batch, failed stage or cache hit does not advance that baseline. Without a retained stage receipt, all observed identities are treated as new. Each shard carries the same pinned baseline. Each lane finishes all five repetitions of one identity
 sequentially before taking another; the gate never drops repetitions to meet a
 wall deadline. Its worker count is included in the log and run report. Increasing
 it trades wall time for load, independently of ordinary phase workers.

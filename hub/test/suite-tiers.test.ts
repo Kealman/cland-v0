@@ -8,6 +8,7 @@ import { hubShards, lintHubShards, packageShards, serializeTierManifest, type Ti
 import { occasionSelection, suiteTestEnv } from '../src/verification-occasion.ts';
 import { planTierReport } from '../src/suite-tier-report.ts';
 import { selectionTransport, selectionFromEnv, chooseSuiteMode } from '../src/suite-selection.ts';
+import { skipT4LoadRepetitions, loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 
 test('large stage identity baselines reach the runner through a file instead of an environment value', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-selection-file-'));
@@ -43,6 +44,11 @@ test('occasions plan batch T1 and T3, close T1 through T4 and ordinary all throu
     assert.deepEqual(plan.map(row => row.tier), occasion === 'batch' ? ['T1', 'T3'] : occasion ? ['T1', 'T2', 'T3', 'T4'] : ['T1', 'T2', 'T3']);
     assert.equal(suiteTestEnv(selection, { CLAND_TEST_SOAK: '1' }).CLAND_TEST_SOAK, occasion && occasion !== 'batch' ? '1' : undefined);
     assert.equal(selection.loadGate, occasion ? true : undefined);
+    const gated = skipT4LoadRepetitions(selection, plan);
+    for (const file of Object.keys(tests)) {
+      assert.equal(loadGateRepetitions(`${file}::new`, gated, {}), occasion && occasion !== 'batch' && tests[file] === 'T4' ? 0 : 5, `${occasion}: ${file}`);
+    }
+    if (occasion && occasion !== 'batch') assert.match(gated.reason, /T4 repetitions skipped; 2 files run in base phase only/);
   }
 });
 

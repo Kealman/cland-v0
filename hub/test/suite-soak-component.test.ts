@@ -10,6 +10,39 @@ import { drive } from './remote-clock.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
 
+test('occasions keep T4 load tests in the base phase without parallel repetitions', async t => {
+  const f = await suiteUnit(t, { executor: 'droplet' }, 'shards=1\nworkers=1\nlifetime="15m"\nrun_timeout="5m"');
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const component = 'hub/test/component.test.ts';
+  const tracker = 'hub/test/tracker-load.test.ts';
+  const editor = 'nvim/test/soak.test.ts';
+  const tiers = { [component]: 'T2', [tracker]: 'T4', [editor]: 'T4' };
+  for (const file of Object.keys(tiers)) {
+    await mkdir(join(f.root, file, '..'), { recursive: true });
+    await writeFile(join(f.root, file), '');
+  }
+  await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: tiers }));
+  await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
+    source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: Object.fromEntries(Object.keys(tiers).map(file => [file, { seconds: 1, tests: 1 }])),
+    tests: Object.fromEntries(Object.keys(tiers).map(file => [`${file}::load`, 1])), allow: {} }));
+  for (const occasion of ['stage', 'epic', 'release', 'soak'] as const) {
+    const run = await f.launch({ mode: 'all', integrated: true, occasion, fresh: true });
+    const job = (await f.jobs()).find(job => job.id === run.id)!;
+    assert.deepEqual(job.tierPlan?.find(row => row.tier === 'T4')?.files, [tracker, editor]);
+    assert.equal(loadGateRepetitions(`${tracker}::load`, job.selection, {}), 0, `${occasion}: tracker runs only in its base phase`);
+    assert.equal(loadGateRepetitions(`${editor}::unmeasured`, job.selection, {}), 0, `${occasion}: new T4 identities cannot acquire repetitions`);
+    assert.equal(loadGateRepetitions(`${component}::load`, job.selection, {}), 5, `${occasion}: lower tiers retain load proof`);
+    await f.tick(); await f.suites.settled();
+    await f.machine.waits.run(f.machine.started(run.id));
+    // A red receipt keeps all identities new for the next occasion in the table.
+    await f.finish(run.id, 1);
+    assert.match(await f.log(run.id), /load gate: T4 repetitions skipped; 2 files run in base phase only/);
+    assert.match(f.reports.find(report => report.id === run.id)!.selection!.reason, /T4 repetitions skipped/);
+  }
+});
+
 test('nightly skips with one cap notice when another project holds shared spend', async t => {
   const notices: string[] = [];
   const f = await suiteUnit(t, { onSoakNotice: (_id, text) => { notices.push(text); } },
