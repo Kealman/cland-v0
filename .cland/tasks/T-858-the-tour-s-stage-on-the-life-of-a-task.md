@@ -2,8 +2,8 @@
 id: T-858
 kind: task
 title: The tour's stage on the life of a task names the project's own checks, and every key the tour names is a workbench key
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-606
 branch: t/T-858-the-tour-s-stage-on-the-life-of-a-task
 created: 2026-10-19T08:10:03.111Z
-updated: 2026-10-19T15:37:02.248Z
+updated: 2026-10-19T17:32:27.996Z
+closed: 2026-10-19T17:32:27.996Z
 ---
 
 ## Summary
@@ -82,3 +83,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6163 audits full A-6162 / 431d8cd9 at unchanged reviewed head. Ordinary1559/1559 zero fail/cancel/skip/TODO; all479 groups5/5. C1 npm-independent guard passes ordinary49185 and5/5 at52655; C3 eight-stage/Look-now guard49190 and5/5 at52664. C2 retains exact binding audit A-6134; human-language policy unchanged. Four inherited T-856 push tripwire rows54276–54279 retained under actual Coordinator c322ebda/T-877 disposition; no new guard trip or finding. C1–C3 verified; T3 remains landing evidence. No Reviewer execution or further run.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-19T17:32:27.996Z
+
+Merged 1219cb343b48e7a44aa916c9b6d024f61b1fdc4b onto dev.

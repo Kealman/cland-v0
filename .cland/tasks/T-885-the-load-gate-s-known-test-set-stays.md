@@ -3,7 +3,7 @@ id: T-885
 kind: task
 title: The load gate's known-test set stays current under the merge queue without a stage-close refresh
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-620
 branch: t/T-885-the-load-gate-s-known-test-set-stays
 created: 2026-10-19T16:16:37.559Z
-updated: 2026-10-19T17:09:39.450Z
+updated: 2026-10-19T17:10:19.053Z
 ---
 
 ## Summary
@@ -25,11 +25,14 @@ The load gate treats every T1/T2 identity missing from hub/test/durations.json's
 
 - [x] C1. (T1, known-identity admission test) A T1/T2 identity that passed its five load-gate repetitions in the task run of an item that has since landed on dev is not repeated by later task runs, with no manual baseline refresh. A test over the gate's known-identity set shows this, and an identity introduced by an unlanded branch is still repeated.
   - done: impl-885 · 2026-10-19T17:09:21.614Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
 - [x] C2. `node hub/test/durations.ts refresh` given logs that each cover only some tiers keeps the previous baseline entries of files that appear in none of the given logs, and still drops tests that vanished from files the newest log ran (T1 test over refreshDurations).
   - done: impl-885 · 2026-10-19T17:09:22.091Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
 - [x] C3. (T0, docs inspection) docs/agents/tests.md describes the known-identity rule and the partial-log refresh in place of the stage-close-only rule.
   - verified: rev-31 [reviewer] · run rev-20261019-885-source-2 · 2026-10-19T16:26:14.684Z · commit d2c9890f799b544e30c571141988ec716788f164
   - done: impl-885 · 2026-10-19T17:09:22.674Z
+  - verified: rev-31 [reviewer] · run rev-20261019-885-final · 2026-10-19T17:10:17.524Z · commit d2c9890f799b544e30c571141988ec716788f164
 
 ## Comments
 
@@ -85,3 +88,18 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Runtime not clear for b5279fc6 / A-6249 at the unchanged source-clear head. Independently parsed 1588 ordinary passes; all five owned cases and 25 repetitions pass with no owned budget/resource violation. The sole nonpassing repetition is launcher-component free-text reason at log :59262; diagnostic :59265; 4/5 gate at :59324. Source fixes remain accepted and C3 static verification remains current; C1/C2 are blocked only on accepted runtime evidence. The cause of the outside identity is unclassified. Replacement c080353f is admitted but not yet passing evidence. Full external budget/trip inventory is retained in the runtime assessment artifact in topic-620.
 
 Criteria: C1 failed (Final runtime acceptance blocked by A-6249's launcher repetition failure; owned known-proof controls pass.), C2 failed (Final runtime acceptance blocked by A-6249's launcher repetition failure; all owned refresh controls pass.).
+
+### rev-31 · 2026-10-19T17:10:17.524Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-885-final
+commit: d2c9890f799b544e30c571141988ec716788f164
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear on authorized same-head retry c080353f / A-6271. Independently parsed 1588 ordinary passes and all 508 gates 5/5. All five owned C1/C2 controls pass plus 25 repetitions; maxima 0.140093347 s ordinary and 0.137806980 s repeated, no owned budget/resource violations. C3 docs remain source-verified; all criteria verified. Independently read Coordinator 0abb374d authorizing the retry and filing prior launcher failure as T-889. That identity now passes ordinary plus 5/5; A-6249 remains retained as failed evidence. A-6210 host native CLI evidence remains disclosed; Linux T3 is the landing gate. The final artifact retains 27 external budget rows, four known onboarding trips (T-877 overlap), roles-editor overlap T-875 and report-only whole-plan T1 projection 122.628 > 120 s with missing baselines. No source change or further run required for this item evidence.
+
+Criteria: C1 verified, C2 verified, C3 verified.

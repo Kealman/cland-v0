@@ -2,8 +2,8 @@
 id: T-875
 kind: task
 title: roles-editor sandbox round-trip case (T-872) runs 0.6 s against the 0.5 s T1 budget
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-607
 branch: t/T-875-roles-editor-sandbox-round-trip-case-t
 created: 2026-10-19T13:46:45.481Z
-updated: 2026-10-19T15:37:36.893Z
+updated: 2026-10-19T17:32:39.003Z
+closed: 2026-10-19T17:32:39.003Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6166 audits full A-6164 / f6b999b3 at unchanged reviewed head. Ordinary 429/429 zero fail/cancel/skip/TODO, all 201 groups 5/5, zero tier-mismatch rows. Corrected case .118052010 s ordinary; all five repetitions .112253679–.172722181 s, each below .5 s. Source A-6149 proves all 156 assertions retained with real editor/writer path. C1 verified; T1/tier/production/allowances unchanged. T3 remains normal landing evidence; no Reviewer execution or further item run.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T17:32:39.003Z
+
+Merged 864cb2b676778b7e5069bf32b7675fd6e43b2e85 onto dev.

@@ -3,8 +3,9 @@ id: T-889
 kind: task
 title: launcher-component 'failed or empty model answers keep free text' misses its screen state under load (4/5)
 state: open
-status: review
+status: ready
 size: S
+criterion_seq: 1
 labels:
   - v0.1.4
   - needs-triage
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-622
 branch: t/T-889-launcher-component-failed-or-empty-model
 created: 2026-10-19T16:48:46.166Z
-updated: 2026-10-19T16:56:32.999Z
+updated: 2026-10-19T17:11:43.226Z
 ---
 
 ## Summary
@@ -23,7 +24,9 @@ In T-885's task run b5279fc6 (A-6249, Linux c-8, 2026-10-19 16:47Z), the load ga
 
 ## Acceptance criteria
 
-- [ ] C1. The cause of the missed screen state is identified and fixed with a positive readiness receipt, never a longer timeout alone. The case passes 20/20 serially on the Mac, whole file and alone, and five load-gate repetitions pass in a mode-free task verify at the reviewed head.
+- [x] C1. The cause of the missed screen state is identified and fixed with a positive readiness receipt, never a longer timeout alone. The case passes 20/20 serially on the Mac, whole file and alone, and five load-gate repetitions pass in a mode-free task verify at the reviewed head.
+  - done: impl-889 · 2026-10-19T17:11:25.471Z
+  - verified: rev-30 [reviewer] · run rev-20261019-889-final · 2026-10-19T17:11:42.567Z · commit 6c0c623e4d58b4bb4709efbbaa8eb4e225d7d27d
 
 ## Comments
 
@@ -43,3 +46,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards and Spec have no findings. The bounded active-window/model-row/Insert-mode observation fixes the demonstrated input-readiness race while retaining every existing assertion and timeout. Audited A-6255 controlled Normal-mode reproduction and A-6257's 20 isolated plus 20 whole-file Mac passes; precommit source provenance is qualified in A-6258. C1 awaits five load repetitions in a mode-free verify at this reviewed head. Evidence: A-6258 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6258-t-889-source-review-at-6c0c623e.md).
+
+### impl-889 · 2026-10-19T17:11:26.063Z
+
+C1 claimant done at unchanged reviewed head 6c0c623e4d58b4bb4709efbbaa8eb4e225d7d27d. Mode-free task verify d04cec15-b437-4af5-bbf5-908077e2ea57 passed: 686/686, no failures/skips/cancellations. A-6276 line 49162: 'load gate: nvim/test/launcher-component.test.ts::failed or empty model answers keep free text with a one-line reason 5/5 passed'. Together with own Mac A-6257 (20/20 alone and 20/20 whole file), all C1 evidence is present. Linux x64, c-8 lon1, lifetime 811s, provider cost $0.0563. T3 remains the merge-batch gate. Awaiting Reviewer's final evidence verdict; clean tree, no head changes since source review.
+
+### rev-30 · 2026-10-19T17:11:42.567Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-889-final
+commit: 6c0c623e4d58b4bb4709efbbaa8eb4e225d7d27d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-6277. Exact-head A-6276 ordinary 686/686, all 373 groups 5/5; owned readiness case .529590341 s ordinary and .477433390–.545299893 s in its five repetitions (:49162). Combined with A-6258 source/mechanism audit and A-6257 20+20 Mac receipts, C1 verified. No owned budget/resource issue. Native T3 remains landing evidence. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6277-t-889-final-readiness-evidence-at-6c0c623e.md
+
+Criteria: C1 verified.

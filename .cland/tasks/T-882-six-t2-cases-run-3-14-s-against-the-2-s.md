@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-617
 branch: t/T-882-six-t2-cases-run-3-14-s-against-the-2-s
 created: 2026-10-19T15:38:55.994Z
-updated: 2026-10-19T16:59:15.810Z
+updated: 2026-10-19T17:32:41.985Z
 ---
 
 ## Summary
@@ -118,3 +118,20 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Shared-fix delta source clear only: A-6263. Seven launcher readiness lines match reviewed T-889 exactly, authorized by Coordinator 74ac3d98. No findings in this delta. C1 remains failed and M3 (owned oracle 2.069071637 s) from A-6261 remains unresolved; no verification at this intermediate head. Owned correction needs fresh source review before the replacement gate. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6263-t-882-shared-launcher-fix-delta-review-at-d706b685.md
+
+### impl-882 · 2026-10-19T17:11:12.895Z
+
+Head b3e4e5d59f05ed8e2d501dda5abab49bf8a5e3ae fixes M3 through the established exported retention-limit seam: 48-message differential fixture, while separate 200-message production checks remain unchanged. Both seeds, 24 comparisons, all live phases/frames and every field/multiplicity assertion remain; added full-window/corpus/both-native-fold-state guards and recorded history projection for every seed. Mac whole-file 23/23, oracle .505 s; extended 100-render plan 1.491 s, recording contract/check green. Six negative controls fail correctly. A-6274 contains the audit and raw logs. Shared T-889 pick d706b685 retains clear delta A-6263. No dev merge; fresh fetch/merge-tree clean before push. Fresh source review requested before next mode-free run; C1 still awaits actual seven ordinary Linux times under 2 s and green run.
+
+### rev-30 · 2026-10-19T17:12:55.782Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-882-oracle-source
+commit: b3e4e5d59f05ed8e2d501dda5abab49bf8a5e3ae
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Reworked source clear; A-6278. Existing LIMIT seam reduces duplicated oracle fixture while preserving ordinary/extended seed plans, all comparisons, live phases/receipts, rich corpus and independent 200-message contracts. New full-window/mixed-native-fold guards and per-seed projected history strengthen coverage; six mutation controls fail correctly. Raw host 23/23, owned .505 s, extended1.491 s; fixture contract green. C1 still awaits exact-head mode-free green with all seven actual ordinary cases <2 s and no owned budget line, independent of allowance. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6278-t-882-oracle-retention-seam-source-review-at-b3e4e5d5.md

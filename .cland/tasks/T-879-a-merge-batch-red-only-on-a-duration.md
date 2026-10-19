@@ -2,8 +2,8 @@
 id: T-879
 kind: task
 title: A merge batch red only on a duration budget is held as inconclusive instead of refusing the member that added the over-budget test
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-605
 branch: t/T-879-a-merge-batch-red-only-on-a-duration
 created: 2026-10-19T15:02:34.299Z
-updated: 2026-10-19T15:38:26.560Z
+updated: 2026-10-19T17:32:45.622Z
+closed: 2026-10-19T17:32:45.622Z
 ---
 
 ## Summary
@@ -65,3 +66,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no findings. Spec: no findings. Independently audited A-6161 / 39dc7df9 at the exact source-cleared head: all 1560 ordinary finishes pass and all 480 gates pass 5/5. The 31 owned tests pass, with 155 passing repetitions. Both new test-budget-only and file-budget-only attribution controls pass ordinarily (0.115408562 s / 0.100500649 s) and 5/5, proving unique member refusal with budget-line provenance. Owned body sum 1.955522857 s; ordinary/repetition maxima 0.298281123 / 0.337050805 s; no owned budget or resource trip. C1 verified. Full external diagnostics retained in the final evidence artifact posted in topic-605: 21 report-only budgets plus four known T-856 onboarding resource trips (T-877 overlap), with roles-editor budget overlapping T-875. Native T3 remains the merge-batch gate.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T17:32:45.622Z
+
+Merged f6cacadf28dad265eb257a8093b4bf6fe7921878 onto dev.

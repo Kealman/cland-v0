@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-597
 branch: t/T-873-uninjected-deliveries-retry-every-minute
 created: 2026-10-19T12:24:05.900Z
-updated: 2026-10-19T17:09:39.417Z
+updated: 2026-10-19T17:32:50.366Z
 ---
 
 ## Summary
@@ -26,8 +26,7 @@ While a session's bridge is down, the hub retries every uninjected message to it
 ## Acceptance criteria
 
 - [x] C1. Retries to a session whose bridge is down are bounded (backoff, or a stop until the bridge reconnects), and the log records one line per message per episode, not one per attempt. A test with a fake clock drives an hour of retries and counts the log lines.
-  - done: impl-873 · 2026-10-19T14:56:36.080Z
-  - verified: rev-31 [reviewer] · run rev-20261019-873-final · 2026-10-19T15:18:28.912Z · commit 09ac40e5b467f406327caa484288164ec875d646
+  - done: impl-873 · 2026-10-19T17:14:00.498Z
 
 ## Comments
 
@@ -102,3 +101,31 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards: no findings. Spec: no findings. Reconnect-triggered injection clears the prior per-message failure episode only after any old flight ends, restoring the connected attempt's diagnostic and immediate remembered-idle retry. Same-connection capped backoff, uncertain explicit retry and transport ordering remain. New fake-clock regression asserts three attempts and one log in each connection episode; old concurrency assertions retained. Independently read Coordinator 42f56b54 authorizing this exact recovery. Retained A-6241/A-6242 outputs positively show all three batch failures green with native assertions unchanged (13/13 sessions; 6/6 adapter, correcting its title typo). A-6244 reports component 7/7 and static checks green. C1 final verification is pending a fresh mode-free configured task receipt at this head; earlier task evidence does not verify the changed head. See the batch-recovery source artifact in topic-597.
+
+### rev-31 · 2026-10-19T17:10:49.910Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261019-873-runtime-2
+commit: 85022b97d6d8c96f2a3a265b699081d3acfdf9fc
+scope: evidence
+findings: [{"severity":"medium","text":"Owned fake-hour control exceeds the 2 s T2 budget: ordinary 2.127341198 s at A-6270:47177 and repetitions 2.074196223 / 2.213605134 / 2.157651168 s at :48267/:48378/:48489; raw would-fail line :61300. All assertions pass, but Reviewers must apply the report-mode tier boundary. Retain hour/attempt/log assertions while reducing fixture work, or obtain explicit Coordinator budget disposition; no applicable allowance/disposition is recorded.","file":"hub/test/inject-stalled.test.ts","line":11}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear on A-6270 / 95755b84 despite functional exit 0. Independently audited 1563 ordinary passes, all 483 gates 5/5, seven owned cases plus 35 repetitions passing. Recovery regression is green at 0.164740765 s. However, owned hour case exceeds T2: 2.127341198 s ordinary and up to 2.213605134 s repeated; full raw diagnostic :61300 was omitted from the delivered top ten. No budget disposition for this owned overrun has been supplied. C1 failed pending a conforming fix/source review or explicit Coordinator disposition. Source-3 behavioral recovery remains accepted. Full positive evidence and 31 external budget rows/four onboarding trips are retained in the runtime artifact in topic-597.
+
+Criteria: C1 failed (Owned fake-hour control exceeds the T2 2 s boundary in ordinary and repeated receipts; functional green is insufficient for final acceptance.).
+
+### rev-31 · 2026-10-19T17:14:46.659Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261019-873-source-4
+commit: fbf5c85f4ccf6a617a7d4ba5c860e2eecdb8c225
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source-4 clear; no Standards/Spec findings. Test-only correction replaces the long full-project/socket simulation with public HubCore/Sessions delivery/ack/idle hooks over memory stores and FakeHarness/FakeClock. Retains two messages, 60 minute retry opportunities, >1/<=9 attempts and one log each; public topic-history delivered equality preserves pending-state proof. Other transport/native tests and production recovery are unchanged. A-6279 reports negative controls (61 attempts without backoff, 61 logs without dedup), restored 7/7 file and hour 0.143 s / isolated 0.170 s, typecheck/lint green. No allowance or dev merge. C1 exact-head execution/budget verification remains pending a replacement mode-free task gate. See source review artifact in topic-597.

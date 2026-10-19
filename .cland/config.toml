@@ -36,7 +36,8 @@ executor = "droplet"
 lifetime = "90m"
 run_timeout = "75m"
 # D41 cap $14; D58 raised it to $30 for 2026-10-18 only, restored to 14 at 00Z 2026-10-19.
-daily_spend_usd = 14
+# D68 (2026-10-19 17:23Z): $20 for 2026-10-19 only; back to 14 at 00Z 2026-10-20.
+daily_spend_usd = 20
 # Nightly T1-T4 soak on one droplet (UTC).
 soak = "03:00"
 

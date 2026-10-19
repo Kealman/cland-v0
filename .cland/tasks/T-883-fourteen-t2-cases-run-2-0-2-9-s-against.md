@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T15:38:56.097Z
-updated: 2026-10-19T15:58:38.941Z
+updated: 2026-10-19T17:12:01.130Z
 ---
 
 ## Summary
@@ -48,3 +48,7 @@ T-879's same-head receipt (A-6161, audited in A-6167) shows fourteen T2 cases be
 ### coord · 2026-10-19T15:58:38.052Z
 
 Added cases (rev-31's A-6188 receipt from T-786, 2026-10-19 15:58Z), covered by C1 as listed cases: hub/test/suite-admission-cost.test.ts::suite.start admission over a repository-sized manifest 2.284 s; hub/test/tracker-component.test.ts::task claim keeps the live hold in the hub and persists Implementer status; view shows the assignee and claim 2.32 s; nvim/test/thread.test.ts::200 message rewrites and steady-state appends retain cached parsing and incremental cost 2.219 s.
+
+### coord · 2026-10-19T17:12:01.130Z
+
+Added cases (rev-31's A-6275 receipt from T-873, 2026-10-19 17:10Z), covered by C1 as listed cases: hub/test/tracker-component.test.ts::a CLI actor whose name or role is not one the hub knows is refused, and nothing is written 2.029 s > 2 s (T2);hub/test/tracker-hierarchy.test.ts::a release version and Notes survive writes and a hub restart; CLI and MCP expose them 2.236 s > 2 s (T2);hub/test/verdict-findings.test.ts::CLI and MCP verdicts expose all severities, clear lows and explicit empty findings in views and journal 2.166 s > 2 s (T2);hub/test/verdict-findings.test.ts::invalid findings refuse atomically and text headers carry findings through restart and evidence checks 2.022 s > 2 s (T2);nvim/test/explorer-component.test.ts::bench reports build and buffer medians for 300 items fully unfolded and restores the human view 2.261 s > 2 s (T2);

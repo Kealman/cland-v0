@@ -2,8 +2,8 @@
 id: T-861
 kind: task
 title: Synchronous territoryGit trims -z output, so path censuses can rewrite a whitespace-prefixed filename before path policy
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-601
 branch: t/T-861-synchronous-territorygit-trims-z-output
 created: 2026-10-19T08:23:21.387Z
-updated: 2026-10-19T15:20:57.737Z
+updated: 2026-10-19T17:32:15.482Z
+closed: 2026-10-19T17:32:15.482Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-6142 records A-6141/run9da96f5c audit at exact source-cleared head. 1559 ordinary pass outcomes, zero fail/cancel/skip; all479 admitted load gates5/5. All5 duration-context cases pass ordinary plus5/5 each; new exact-delimited-path case0.004152638s, file top-level sum0.362444586s, all within T1 limits and no owned tripwire findings. C1 verified across A-6123's three-adapter/pinned consumer audit, native whitespace/newline regression source and supplied host evidence, plus same-head task gate. Native territory-cli/release T3 files did not execute in this task gate; standard landing batch supplies native Linux execution. Primary Coordinator28fe56da accepted report-mode native growth without allowance, recorded in source review. Full-run21 unrelated report-only budget identities and4 onboarding-fixture tripwire rows are retained/reported for deduplication; no external fix or task-owned overrun. Droplet lifetime999s, cost$0.0693. No further item run required.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-19T17:32:15.482Z
+
+Merged 8a807c319d343b0e320791b06a501b011d30730c onto dev.

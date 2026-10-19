@@ -3,7 +3,7 @@ id: T-717
 kind: task
 title: "[verification] gains per-tier test commands, so any project's task runs, merge batches and soaks follow the tier model"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 5
 labels:
@@ -21,7 +21,7 @@ blocked_by:
 topic: topic-602
 branch: t/T-717-verification-gains-per-tier-test
 created: 2026-10-16T19:59:44.369Z
-updated: 2026-10-19T16:58:47.485Z
+updated: 2026-10-19T17:22:02.722Z
 ---
 
 ## Summary
@@ -39,17 +39,22 @@ The tier model is cland's product rule, not this repository's file lists (memo �
 ## Acceptance criteria
 
 - [x] C1. A fixture project with a Python `test_unit` and `test_integration` runs only `check` and `test_unit` in a task verify and `test_unit` plus `test_integration` in its merge batch, proved by a suite test with the command stubs from T-665.
-  - done: impl-717 · 2026-10-19T16:49:36.973Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.517Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
+  - done: impl-717 · 2026-10-19T17:21:51.047Z
 - [x] C2. A project with only `test` set runs it whole per task with `[merge] queue` off, proved by a suite test.
-  - done: impl-717 · 2026-10-19T16:49:37.571Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.517Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
+  - done: impl-717 · 2026-10-19T17:21:51.627Z
 - [x] C3. `cland init` writes the four keys empty with their comment lines, and `cland config set verification.test_unit '<cmd>'` stores the command verbatim, proved by init and config tests.
-  - done: impl-717 · 2026-10-19T16:57:17.464Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.518Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
+  - done: impl-717 · 2026-10-19T17:21:52.127Z
 - [x] C4. This repository's config names its four tier commands, and a task verify at the merge head plans the same files as before the change, proved by a planning test.
-  - done: impl-717 · 2026-10-19T16:57:18.138Z
+  - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.518Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
+  - done: impl-717 · 2026-10-19T17:21:52.716Z
 - [x] C5. `docs/agents/tests.md` and `hub/README.md` describe the per-tier commands and the batch settings.
   - verified: rev-30 [reviewer] · run rev-20261019-717-source-corrected · 2026-10-19T16:29:09.242Z · commit bebb22657d665133cf850547a7ae369642f7673b
-  - done: impl-717 · 2026-10-19T16:49:39.166Z
   - verified: rev-30 [reviewer] · run rev-20261019-717-budget-source · 2026-10-19T16:58:47.485Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
+  - verified: rev-30 [reviewer] · run rev-20261019-717-final · 2026-10-19T17:21:34.518Z · commit cb8c28db5f98ad4570438dd073fbfae04ae21995
+  - done: impl-717 · 2026-10-19T17:21:53.209Z
 
 ## Blocked by
 
@@ -128,3 +133,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear at corrected head; A-6262. M2 repository inventory equivalence moves to existing T0, while small T1 actual flag/plan/lock comparisons remain. M3 retains CLI literal framing and all ten permutations through the public T1 settings writer. Raw 8+10+8 full-file tests and five host repetitions audited; no assertion/allowance/tier changes. C5 reverified; C1–C4 await replacement exact-head mode-free evidence and owned runtime costs. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6262-t-717-source-review-of-owned-budget-corrections-at-cb8c28db.md
 
 Criteria: C5 verified.
+
+### rev-30 · 2026-10-19T17:21:34.518Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-717-final
+commit: cb8c28db5f98ad4570438dd073fbfae04ae21995
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-6282. A-6281 ordinary 1591/1591 and 511 groups 5/5. Revised planner .080s ordinary/.313–.378s repetitions, CLI .668s/.548–.712s, writer .028s/.025–.031s meet tiers. Current resolver/admission/template tests plus retained qualified A-6207/A-6216 Python/legacy native host evidence establish C1–C4; C5 source retained. M1–M3 resolved. Inherited T-856/T-877 exception retained; Linux T3 deferred to landing. /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-6282-t-717-final-per-tier-command-evidence-at-cb8c28db.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-717 · 2026-10-19T17:22:02.722Z
+
+Ready at cb8c28db. Reviewer final clear rev-20261019-717-final/A-6282 verifies C1–C5; hub status ready confirmed. Replacement mode-free aba24ff0/A-6281 passed 1591 tests and 511 groups 5/5. Corrected planner/CLI/writer ordinary and all five repetitions satisfy .5s/2s/.5s budgets; no owned T1/T2 budget warnings. Linux c-8 lon1, 1200s, $0.0833. Claimant done marks refreshed, head clean/pushed, ready reported to Coordinator as requested. Claim retained until merge; T3 remains merge-batch evidence.
