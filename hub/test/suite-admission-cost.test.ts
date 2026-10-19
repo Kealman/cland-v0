@@ -1,5 +1,6 @@
 // T2: real suite.start frames, in-process hub and Git object adapter; no native children.
 // Git startup costs use FakeClock so repository-scale admission needs no wall-clock wait.
+import { verificationFixture } from './verification-fixture.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -92,7 +93,9 @@ async function fixture(t: TestContext, coldViolation = false) {
   const root = await tempProject(t);
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await Promise.all([...files].map(([path, text]) => writeFile(join(root, path), text)));
-  await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
+  const commandConfig = await verificationFixture(root, { typecheck: 'true', testScript: 'true' });
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/config.toml'), `[verification]\n${commandConfig}`);
   const { TestLintWarmer } = await import('../src/test-lint-policy.ts');
   const hub = await projectHub(t, root, {}, { clock, durationContext: null,
     lintWarmer: new TestLintWarmer(root, {}, row => logs.push(row)),

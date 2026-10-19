@@ -1,3 +1,4 @@
+import type { FixtureStack } from './verification-fixture.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -5,7 +6,7 @@ import { fixture } from './remote-fixture.ts';
 import { cland, projectHub, startDaemon } from './harness.ts';
 import assert from 'node:assert/strict';
 
-export async function integrated(t: Parameters<typeof fixture>[0], config = '', remoteBudget = 2, script?: string, options: Pick<NonNullable<Parameters<typeof fixture>[1]>, 'machine' | 'clock' | 'script' | 'hub' | 'territory' | 'env'> = {}) {
+export async function integrated(t: Parameters<typeof fixture>[0], config = '', remoteBudget = 2, script?: string, options: FixtureStack & Pick<NonNullable<Parameters<typeof fixture>[1]>, 'machine' | 'clock' | 'script' | 'hub' | 'territory' | 'env'> = {}) {
   const f = await fixture(t, { ...options, ...(script ? { test: script } : {}), config: `remote_budget=${remoteBudget}\nshards=2\nlifetime="15m"\nrun_timeout="5m"\n${config}` });
   if (options.machine === 'scripted') {
     f.candidate.branch = 'dev';

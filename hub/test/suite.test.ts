@@ -28,6 +28,12 @@ test('suite CLI exits before its worker, posts one artifact-backed result as cal
   const git = await cacheRepository(f);
   await writeFile(join(f.root, '.git/info/exclude'), 'finish\n');
   const submittedHead = await git('rev-parse', 'HEAD');
+  const runner = await git('show', 'HEAD:hub/test/run-suite.ts');
+  assert.match(runner, /inheritedLease/, 'worker keeps borrowing the lease');
+  assert.doesNotMatch(runner, /reduceCoverage/, 'submission keeps coverage disabled');
+  const config = parseConfig(await readFile(join(f.root, '.cland/config.toml'), 'utf8'), 'fixture');
+  assert.equal(config.verification.check, 'npm run typecheck');
+  assert.equal(config.verification.test, 'npm test');
   // Release on every exit path, before owned-process cleanup and directory removal.
   onCleanup(t, () => writeFile(join(f.root, 'finish'), 'ready'));
   const job = await f.launch();

@@ -1,4 +1,5 @@
 // T1: task cadence is proved through the public selection and package planners in isolated files.
+import { verificationFixture } from './verification-fixture.ts';
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -28,7 +29,10 @@ async function fixture() {
   for (const path of new Set(files.map(file => join(root, file, '..')))) mkdirSync(path, { recursive: true });
   for (const file of files) writeFileSync(join(root, file), '');
   await writeFile(join(root, 'hub/test/tiers.json'), source);
+  await verificationFixture(root);
   await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { check: 'npm run typecheck && npm run test:lint', 'test:lint': 'node lint.ts' } }));
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
   const tier = (file: string) => { const value = manifest.tests[file]!; return typeof value === 'string' ? value : value.tier; };
   const plan = async (selection: SuiteSelection) => (await packageShards(root, selection.mode, undefined, selection, { workers: 2 })).flatMap(phase => phase.targets).sort();
   return { root, manifest, tier, plan };

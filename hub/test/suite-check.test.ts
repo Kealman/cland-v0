@@ -1,4 +1,5 @@
 // T3: npm check completion and cancellation reap retained writers before fixture removal.
+import { verificationFixture } from './verification-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync } from 'node:child_process';
@@ -116,7 +117,10 @@ const writer = spawn(process.execPath, ['writer.mjs', ${JSON.stringify(heldStart
 writer.once('exit', () => console.log('WRITER-REAPED'));
 writer.unref(); const hold = watch('writer.mjs', () => {});`;
   await writeFile(join(cwd, 'launcher.mjs'), launcher);
+  await verificationFixture(cwd);
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { check: 'node launcher.mjs' } }));
+  await mkdir(join(cwd, '.cland'), { recursive: true });
+  await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
 }
 
 test('check runs the report lint once after typecheck and preserves a green exit with findings', async t => {
@@ -127,11 +131,14 @@ test('check runs the report lint once after typecheck and preserves a green exit
   await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { 'hub/test/a.test.ts': 'T2' } }));
   const original = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
   const script = fileURLToPath(new URL('./lint-tests.ts', import.meta.url));
+  await verificationFixture(cwd);
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: {
     check: original.scripts.check,
     typecheck: 'node -e "console.log(\'TYPECHECK-COMPLETE\')"',
     'test:lint': `node ${JSON.stringify(script)} ${JSON.stringify(cwd)}`,
   } }));
+  await mkdir(join(cwd, '.cland'), { recursive: true });
+  await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
   await writeFile(join(cwd, 'hub/test/lint-baseline.json'), JSON.stringify({ version: 1, files: { 'hub/test/a.test.ts': { 'wall-clock-wait': 1 } } }));
   const git = (...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' });
   git('init', '-qb', 'dev'); git('add', '.');
@@ -156,6 +163,7 @@ test('check runs the report lint once after typecheck and preserves a green exit
   await shrink.stop();
   assert.deepEqual(JSON.parse(await readFile(join(cwd, 'hub/test/lint-baseline.json'), 'utf8')).files['hub/test/a.test.ts'], {});
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
+  await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run typecheck"\ntest = "npm test"\n');
   assert.equal(await suiteCheckCommand(cwd), 'npm run typecheck', 'older candidates retain their command and host-gate identity');
 });
 

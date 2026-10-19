@@ -1,3 +1,4 @@
+import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import type { SuiteCandidate } from '../src/hub/suite-candidate.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
@@ -29,7 +30,7 @@ export function remoteEventually<T>(what: string, check: () => Promise<T | undef
   return eventually(what, check, remoteWaitMs(baseMs));
 }
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
-export async function fixture(t: TestContext, options: { machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+export async function fixture(t: TestContext, options: FixtureStack & { machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const embedded = options.hub !== undefined && options.hub !== startDaemon;
   const scripted = options.machine === 'scripted';
   const root = await tempProject(t, 'remote-run-');
@@ -66,8 +67,8 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
   const typecheck = options.typecheck ?? 'node -e "process.exit(0)"';
   const script = options.test ?? `node -e "console.log('SELECTION='+process.env.CLAND_SUITE_SELECTION);console.log('COLORS='+process.env.FORCE_COLOR+','+process.env.NO_COLOR);console.log('# tests 1');console.log('# pass 1')"`;
-  await writeFile(join(root, 'package.json'), JSON.stringify({ private: true, workspaces: ['hub'], scripts: { typecheck, test: script } }));
-  await writeFile(join(root, 'hub/package.json'), JSON.stringify({ name: 'fixture-hub', scripts: { test: script } }));
+  const commands = await verificationFixture(root, { ...options, typecheck, testScript: script, packageFields: { private: true, workspaces: ['hub'] } });
+  if (options.stack !== 'other') await writeFile(join(root, 'hub/package.json'), JSON.stringify({ name: 'fixture-hub', scripts: { test: script } }));
   await writeFile(join(root, 'package-lock.json'), JSON.stringify({ name: 'remote-fixture', lockfileVersion: 3, packages: { '': { name: 'remote-fixture', workspaces: ['hub'] }, hub: { name: 'fixture-hub' }, 'node_modules/fixture-hub': { resolved: 'hub', link: true } } }));
   if (!scripted) {
     await git('add', '.'); await git('commit', '-qm', 'Base');
@@ -84,7 +85,7 @@ export async function fixture(t: TestContext, options: { machine?: 'scripted' | 
   }
   await mkdir(join(root, '.cland/run/executor'), { recursive: true });
   await writeFile(join(root, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: 1, minDiskSize: 10, created: image.created_at }));
-  await writeFile(join(root, '.cland/config.toml'), `[project]\nname=${JSON.stringify(options.name ?? root.split('/').at(-1))}\n[verification]\nexecutor = "${options.executor ?? 'droplet'}"\nlock_path = ${JSON.stringify(join(root, '.cland/host.lock'))}\n${options.config ?? 'lifetime = "15m"\nrun_timeout = "5m"\n'}`);
+  await writeFile(join(root, '.cland/config.toml'), `[project]\nname=${JSON.stringify(options.name ?? root.split('/').at(-1))}\n[verification]\n${commands}executor = "${options.executor ?? 'droplet'}"\nlock_path = ${JSON.stringify(join(root, '.cland/host.lock'))}\n${options.config ?? 'lifetime = "15m"\nrun_timeout = "5m"\n'}`);
   // The fake machine executes the real delivered shell on either macOS or Linux.
   if (!scripted) {
     const bin = join(api.stateRoot, 'bin'); await mkdir(bin, { recursive: true });

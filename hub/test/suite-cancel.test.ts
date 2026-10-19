@@ -1,4 +1,5 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { verificationFixture } from './verification-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -92,7 +93,8 @@ process.exitCode = result.status ?? 1;
   const other = join(f.root, 'other');
   await mkdir(other);
   await writeFile(join(other, 'hold-git'), 'hold');
-  await writeFile(join(other, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: 'node -e "process.exit(0)"' } }));
+  // This package inherits the root's verification commands and hub discovery.
+  await verificationFixture(other);
   const submission = f.ui.request({ type: 'suite.start', mode: 'all', cwd: other, report: f.topic, to: ['impl', 'rev'] }, 15000);
   await eventually('unrelated submission held in git', async () => stat(join(other, 'git-held')).then(() => true, () => undefined));
   const cancellation = clandWithEnv(f.root, f.env, 'verify', 'cancel', job.id);

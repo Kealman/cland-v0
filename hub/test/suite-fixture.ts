@@ -1,4 +1,5 @@
 // Real CLI/socket fixture shared with its subprocess teardown regression.
+import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -7,13 +8,9 @@ import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { HubStatus } from '../src/protocol.ts';
 
 export type ResultMessage = { id: string; from: string; fromRole?: string; text: string; to: string[]; artifacts: Array<{ id: string; path: string; creator: string }> };
-export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config: string | { text?: string; verification: string } = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440, serve: typeof projectHub | typeof startDaemon = projectHub) {
+export async function fixture(t: import('node:test').TestContext, testScript: string, typecheck = 'node -e "process.exit(0)"', config: string | ({ text?: string; verification: string } & FixtureStack) = '', daemonEnv: Record<string, string> = {}, budget = 1, cacheAgeMinutes = 1440, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t, 'cland-suite-cli-');
-  await mkdir(join(root, '.cland'));
-  const configText = typeof config === 'string' ? config : config.text ?? '';
-  const verification = typeof config === 'string' ? '' : config.verification;
-  await writeFile(join(root, '.cland', 'config.toml'), `${configText}\n[verification]\n${verification}\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
-  await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck, test: testScript } }));
+  await writeSuiteFixture(root, testScript, typecheck, config, budget, cacheAgeMinutes);
   const { discovery } = await serve(t, root, daemonEnv);
   const ui = await connectUi(t, discovery, 'cli');
   onCleanup(t, () => ui.close());
@@ -54,3 +51,11 @@ export async function fixture(t: import('node:test').TestContext, testScript: st
   return { root, discovery, ui, env, topic, results, launch, workerPid, spoke };
 }
 
+/** Candidate files only, for fixture contracts without a hub or subprocess. */
+export async function writeSuiteFixture(root: string, testScript: string, typecheck = 'node -e "process.exit(0)"', config: string | ({ text?: string; verification: string } & FixtureStack) = '', budget = 1, cacheAgeMinutes = 1440) {
+  await mkdir(join(root, '.cland'));
+  const configText = typeof config === 'string' ? config : config.text ?? '';
+  const verification = typeof config === 'string' ? '' : config.verification;
+  const commands = await verificationFixture(root, { ...(typeof config === 'string' ? {} : config), typecheck, testScript });
+  await writeFile(join(root, '.cland', 'config.toml'), `${configText}\n[verification]\n${commands}${verification}\nbudget = ${budget}\ncache_max_age_minutes = ${cacheAgeMinutes}\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
+}

@@ -1,4 +1,5 @@
 // Executor evidence through the real hub/spoke and CLI, plus the declared source contract.
+import { verificationFixture } from './verification-fixture.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -28,8 +29,8 @@ test('the executor contract has nine operations and no backend-specific identifi
 async function fixture(t: import('node:test').TestContext, script: string, alternateNode = false) {
   const root = await tempProject(t, 'cland-executor-');
   await mkdir(join(root, '.cland'));
-  await writeFile(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
-  await writeFile(join(root, 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: script } }));
+  const commands = await verificationFixture(root, { testScript: script });
+  await writeFile(join(root, '.cland', 'config.toml'), `[verification]\n${commands}lock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
   const daemonEnv: Record<string, string> = {};
   if (alternateNode) {
     const bin = join(root, 'bin');

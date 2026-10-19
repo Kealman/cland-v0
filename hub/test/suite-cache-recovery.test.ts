@@ -1,4 +1,5 @@
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { verificationFixture } from './verification-fixture.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -24,7 +25,6 @@ test('cache survives hub restart, separates effective modes, and never reuses a 
   const pkg = JSON.parse(await readFile(join(f.root, 'package.json'), 'utf8'));
   pkg.workspaces = ['hub'];
   await writeFile(join(f.root, 'package.json'), JSON.stringify(pkg));
-  await mkdir(join(f.root, 'hub'));
   await writeFile(join(f.root, 'hub', 'package.json'), JSON.stringify({ name: 'hub', scripts: { test: `node -e "require('fs').appendFileSync('../executions','run\\n')"` } }));
   const git = await cacheRepository(f);
   await mkdir(join(f.root, 'hub', 'src', 'tracker'), { recursive: true });
@@ -90,7 +90,8 @@ test('a bounded cached report retains both heads, original run and candidate tre
 test('a package subdirectory cannot borrow root-tree cache evidence for different npm scripts', async t => {
   const f = await fixture(t, 'node -e "process.exit(0)"');
   await mkdir(join(f.root, 'other-package'));
-  await writeFile(join(f.root, 'other-package', 'package.json'), JSON.stringify({ scripts: { typecheck: 'node -e "process.exit(0)"', test: 'node -e "process.exit(1)"' } }));
+  // This package inherits the root's verification commands and hub discovery.
+  await verificationFixture(join(f.root, 'other-package'), { testScript: 'node -e "process.exit(1)"' });
   await cacheRepository(f);
   await f.launch();
   assert.match((await eventually('root green', async () => (await f.results())[0])).text, /exit 0/);
