@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { emptyFolder, gitIn, initIn, scratchMachine, snapshot, type InitMachine } from './init-machine.ts';
 import { provision } from '../src/init/provision.ts';
+import { Report } from '../src/init/files.ts';
+import { commitClandFiles, createRepository } from '../src/init/repository.ts';
 
 async function git(machine: InitMachine, root: string, ...args: string[]): Promise<string> {
   const result = await gitIn(machine, root, ...args);
@@ -13,12 +15,83 @@ async function git(machine: InitMachine, root: string, ...args: string[]): Promi
   return result.stdout.trim();
 }
 
+// T3: native Git is the subject; call init's repository boundary directly, without a CLI or hub process.
+test('the first commit uses a fallback only on a machine without a Git identity', async t => {
+  for (const identity of ['none', 'user', 'roles'] as const) {
+    const machine = await scratchMachine(t, { identity: identity === 'user' });
+    const root = await emptyFolder(machine);
+    await git(machine, root, 'config', '--global', 'user.useConfigOnly', 'true');
+    if (identity === 'roles') {
+      for (const [key, value] of Object.entries({
+        'author.name': 'Explicit Author', 'author.email': 'author@example.test',
+        'committer.name': 'Explicit Committer', 'committer.email': 'committer@example.test',
+      })) await git(machine, root, 'config', '--global', key, value);
+    }
+    const globalConfig = await readFile(machine.env.GIT_CONFIG_GLOBAL!, 'utf8');
+    const report = new Report(root);
+    const originalEnv = process.env;
+    try {
+      process.env = machine.env;
+      assert.equal(createRepository(report, root), true);
+    } finally { process.env = originalEnv; }
+    const localConfig = await readFile(join(root, '.git/config'), 'utf8');
+    await writeFile(join(root, 'AGENTS.md'), '# Managed instructions\n');
+    report.add(join(root, 'AGENTS.md'), 'created');
+    try {
+      process.env = machine.env;
+      commitClandFiles(report, root);
+    } finally { process.env = originalEnv; }
+    const expected = {
+      none: 'cland <cland@local>|cland <cland@local>',
+      user: 'Init Test <init@example.test>|Init Test <init@example.test>',
+      roles: 'Explicit Author <author@example.test>|Explicit Committer <committer@example.test>',
+    };
+    assert.equal(await git(machine, root, 'log', '-1', '--format=%an <%ae>|%cn <%ce>'), expected[identity]);
+    assert.equal(await readFile(join(root, '.git/config'), 'utf8'), localConfig);
+    assert.equal(await readFile(machine.env.GIT_CONFIG_GLOBAL!, 'utf8'), globalConfig);
+    const note = report.changes.find(change => change.path === '.git/refs/heads/main')?.note ?? '';
+    if (identity !== 'none') assert.doesNotMatch(note, /no Git identity|cland@local/);
+    else assert.match(note, /as cland <cland@local>: no Git identity is set$/);
+  }
+});
+
+// T3: Git validates partial identities itself; no CLI or hub process is needed.
+test('the first commit leaves explicit partial identities for Git to validate', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  await git(machine, machine.home, 'config', '--global', 'user.useConfigOnly', 'true');
+  const envKeys = ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'EMAIL'];
+  for (const key of ['user.name', 'user.email', 'author.name', 'author.email', 'committer.name', 'committer.email', ...envKeys]) {
+    const root = await emptyFolder(machine);
+    const report = new Report(root);
+    await git(machine, root, 'init', '-q', '-b', 'main');
+    if (!envKeys.includes(key)) await git(machine, root, 'config', '--local', key, 'explicit');
+    else machine.env[key] = 'explicit';
+    const localConfig = await readFile(join(root, '.git/config'), 'utf8');
+    const globalConfig = await readFile(machine.env.GIT_CONFIG_GLOBAL!, 'utf8');
+    await writeFile(join(root, 'AGENTS.md'), '# Managed instructions\n');
+    report.add(join(root, 'AGENTS.md'), 'created');
+    const originalEnv = process.env;
+    try {
+      process.env = machine.env;
+      assert.throws(() => commitClandFiles(report, root), /identity unknown|empty ident name|no name|no email/i, key);
+    } finally { process.env = originalEnv; }
+    delete machine.env[key];
+    assert.equal((await gitIn(machine, root, 'rev-parse', '--verify', 'HEAD')).code, 128, key);
+    assert.equal(await readFile(join(root, '.git/config'), 'utf8'), localConfig);
+    assert.equal(await readFile(machine.env.GIT_CONFIG_GLOBAL!, 'utf8'), globalConfig);
+    assert.ok(!report.changes.some(change => change.note?.includes('no Git identity')), key);
+  }
+});
+
 test('empty-folder init creates one cland-only commit on clean dev', async t => {
-  const machine = await scratchMachine(t, { identity: true });
+  const machine = await scratchMachine(t, { identity: false });
   const root = await emptyFolder(machine);
+  await git(machine, root, 'config', '--global', 'user.useConfigOnly', 'true');
   const outside = await snapshot(machine.root, { except: root });
   const result = await initIn(machine, root, 'init', '--json');
   assert.equal(result.code, 0, result.stderr);
+  assert.equal(await git(machine, root, 'log', '-1', '--format=%an <%ae>|%cn <%ce>'), 'cland <cland@local>|cland <cland@local>');
+  assert.match(result.stdout, /as cland <cland@local>: no Git identity is set/);
   assert.equal(await git(machine, root, 'rev-list', '--all', '--count'), '1');
   const files = (await git(machine, root, 'ls-tree', '-r', '--name-only', 'HEAD')).split('\n');
   assert.ok(files.length > 30, 'the shipped skills and managed files are committed');

@@ -54,9 +54,17 @@ export function commitClandFiles(report: Report, root: string): void {
   territoryGit(root, ['--literal-pathspecs', 'add', '--', ...candidates]);
   const files = territoryGit(root, ['diff', '--cached', '--name-only']).split('\n').filter(Boolean);
   const paths = CLAND_PATHS.map(path => path === 'AGENTS.md' ? path : `${path}/`).join(', ');
-  territoryGit(root, ['-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'Initial commit: cland init', '-m', paths]);
+  // Git's guessed login/hostname identity is not an explicit identity. Inspect keys,
+  // including empty/partial settings, so those remain Git's to validate unchanged.
+  const configured = territoryGit(root, ['config', '--list', '--name-only', '-z']).split('\0')
+    .some(key => /^(user|author|committer)\.(name|email)$/.test(key));
+  const identityEnv = ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'EMAIL'];
+  const fallback = !configured && !identityEnv.some(key => process.env[key] !== undefined);
+  const identity = fallback ? ['-c', 'user.name=cland', '-c', 'user.email=cland@local'] : [];
+  territoryGit(root, [...identity, '-c', 'core.hooksPath=', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'Initial commit: cland init', '-m', paths]);
   const head = territoryGit(root, ['rev-parse', '--short', 'HEAD']);
-  report.add(join(root, '.git', 'refs', 'heads', 'main'), 'created', `first commit ${head}: ${paths} (${files.length} files)`);
+  const attribution = fallback ? ' as cland <cland@local>: no Git identity is set' : '';
+  report.add(join(root, '.git', 'refs', 'heads', 'main'), 'created', `first commit ${head}: ${paths} (${files.length} files)${attribution}`);
 }
 
 /** Keep the original write action and the final observation when the territory runs twice. */
