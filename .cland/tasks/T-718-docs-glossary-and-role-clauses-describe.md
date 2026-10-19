@@ -2,8 +2,8 @@
 id: T-718
 kind: task
 title: Docs, glossary and role clauses describe tiers, the merge queue and the end of manual covers
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-547
 branch: t/T-718-docs-glossary-and-role-clauses-describe
 created: 2026-10-16T19:59:44.511Z
-updated: 2026-10-19T04:25:10.907Z
+updated: 2026-10-19T04:46:35.307Z
+closed: 2026-10-19T04:46:35.307Z
 ---
 
 ## Summary
@@ -127,3 +128,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear from source A-5747/A-5749/A-5762 and accepted replacement gate a42107e7/A-5768; audit A-5770. M1/M2 resolved, failed A-5759 retained. Actual hub-only plus Neovim smoke: 2398 pass, 5 skip, zero fail/cancel. roles.test 4/4 with delivered default/project clause headroom and roles-snapshot 10/10 including formerly failing ownership/grant assertion. Source establishes protocol plans/refusal ownership and all six glossary terms. No role repetition group is claimed. Three known T-803 report-only trips and other diagnostics disclosed. No findings; C1–C4 verified; QA scope none.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-19T04:46:35.307Z
+
+Merged 7582d5e61f0ed28f775e549b2bffdfe1ad0935bd onto dev.

@@ -3,7 +3,7 @@ id: T-826
 kind: task
 title: QA skill still describes Coordinator batch covers instead of the merge queue protocol
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
@@ -11,9 +11,9 @@ assignee: null
 parent: C-216
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-826-qa-skill-still-describes-coordinator
 created: 2026-10-19T03:58:09.423Z
-updated: 2026-10-19T03:58:09.423Z
+updated: 2026-10-19T04:46:56.613Z
 ---
 
 ## Summary

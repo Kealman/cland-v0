@@ -3,7 +3,7 @@ id: T-653
 kind: task
 title: cland release and cland sync move the territory's recorded default branch, not a hard-coded main
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - v0.1.4
@@ -14,9 +14,9 @@ parent: E-612
 blocked_by:
   - T-652
 topic: null
-branch: null
+branch: t/T-653-cland-release-and-cland-sync-move-the
 created: 2026-10-16T16:24:02.732Z
-updated: 2026-10-18T20:04:46.020Z
+updated: 2026-10-19T04:46:53.864Z
 ---
 
 ## Summary

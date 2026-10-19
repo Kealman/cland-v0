@@ -3,7 +3,7 @@ id: T-827
 kind: task
 title: The nightly soak overruns its 75-minute run timeout and ends red with zero failures
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ regression_of: T-715
 topic: topic-549
 branch: t/T-827-the-nightly-soak-overruns-its-75-minute
 created: 2026-10-19T04:17:22.529Z
-updated: 2026-10-19T04:45:23.579Z
+updated: 2026-10-19T04:46:45.849Z
 ---
 
 ## Summary
@@ -26,8 +26,10 @@ The first nightly soak, run 866cf201 at 414da0d3 on 2026-10-19 03:00Z (A-5766), 
 
 - [x] C1. The soak plans its repetitions within the run timeout, from the duration manifest with a safety margin, or the soak occasion gets its own documented timeout. A component test with a FakeClock shows a soak whose projected wall exceeds the deadline is trimmed (or refused at admission with the reason), never cut off mid-run.
   - done: impl-827 · 2026-10-19T04:22:08.317Z
+  - verified: rev-30 [reviewer] · run rev-20261019-827-final · 2026-10-19T04:46:45.054Z · commit 19c1e818c2a18e5ec5b67f078901fa933138e01a
 - [x] C2. A soak stopped by the deadline reports "timeout: N tests completed, 0 failed" in its first lines, distinct from a hung test; the "hung" label applies only to a test running longer than its own budget.
   - done: impl-827 · 2026-10-19T04:26:37.060Z
+  - verified: rev-30 [reviewer] · run rev-20261019-827-final · 2026-10-19T04:46:45.054Z · commit 19c1e818c2a18e5ec5b67f078901fa933138e01a
 
 ## Comments
 
@@ -70,3 +72,18 @@ Corrected source clear; M1 resolved. A-5772 records native testTimeoutFailure pr
 ### impl-827 · 2026-10-19T04:45:19.525Z
 
 Same-head mode-free droplet gate 2054257a-e0eb-4820-b734-ea331c8f565e passed at reviewed 19c1e818: 1466 tests/pass, 0 failures/cancelled/skips. A-5773 retains log. Linux x64 c-8 lon1, Node v24.21.0/Neovim v0.12.5, lifetime 1032s, cost $0.0717. T0–T2 task gate; T3 deferred to merge batch. Source unchanged and tree clean. Reviewer final evidence settlement pending.
+
+### rev-30 · 2026-10-19T04:46:45.054Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261019-827-final
+commit: 19c1e818c2a18e5ec5b67f078901fa933138e01a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear from corrected source A-5772 and accepted exact-head gate 2054257a/A-5773; audit A-5775. T0–T2 task receipt 1466/1466, zero fail/cancel/skip; T3 deferred, not claimed. Owned progress 5/5, hung 3/3, soak 5/5, with all 65 corresponding repetition bodies passing. Trim/pre-spend refusal, timeout-first zero-failure counts, own-timeout proof, override/unknown, bounded delivery and recovery established. FIVE report-only Git tier trips disclosed: three existing plus two new soak identities. Coordinator fd271808 explicitly covers all under shared T-803 and directs settlement without task fixture changes. M1 resolved; no outstanding task findings. C1/C2 verified; QA scope none.
+
+Criteria: C1 verified, C2 verified.

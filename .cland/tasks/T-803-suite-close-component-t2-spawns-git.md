@@ -12,10 +12,10 @@ parent: E-678
 blocked_by: []
 regression_of: T-714
 found_by: review
-topic: null
+topic: topic-550
 branch: t/T-803-suite-close-component-t2-spawns-git
 created: 2026-10-18T13:33:08.257Z
-updated: 2026-10-19T04:46:27.301Z
+updated: 2026-10-19T04:46:44.025Z
 ---
 
 ## Summary
