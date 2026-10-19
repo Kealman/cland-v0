@@ -70,8 +70,6 @@ export const harnesses: SetupStep = async ({ machine, root, env, interactive, ye
     lines.push({ ...check, verdict: installed ? 'done' as const : check.verdict === 'ok' ? 'ok' as const : 'fail' as const, detail: `${check.detail}${outsidePath ? '; not on your PATH yet: open a new shell' : ''}` });
     if (installed) lastInstall = lines.length - 1;
   }
-  // An earlier missing alternative also becomes optional when the first install succeeds.
-  if (anyInstalled) for (const line of lines) if (line.verdict === 'open') line.verdict = 'skip';
   if (lastInstall >= 0) {
     const roles = await machine.read('roles.toml');
     if (roles !== null && isRolesTemplate(roles)) {
@@ -80,6 +78,11 @@ export const harnesses: SetupStep = async ({ machine, root, env, interactive, ye
       await machine.write('roles.toml', rolesTemplate(ids), roles);
       lines[lastInstall]!.detail += `; roles.toml rebuilt for ${ids.join(', ')}`;
     }
+  }
+  // Re-read after a template rebuild: the installed set may change role requirements.
+  const required = await machine.requiredHarnesses();
+  for (const line of lines) {
+    if (line.detail === 'not installed') line.verdict = anyInstalled && !required.includes(line.name) ? 'skip' : 'open';
   }
   return lines;
 };

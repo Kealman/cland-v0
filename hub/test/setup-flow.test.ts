@@ -10,6 +10,7 @@ import { scriptedPrompter } from './setup-prompter.ts';
 import { defaultConfig, parseConfig, renderConfig } from '../src/init/config.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 import { CHOSEN, setRoleKey } from '../src/roles/editor.ts';
+import { harnessesInUse } from '../src/roles/harnesses.ts';
 
 function scratch(t: test.TestContext, trusted = true): string {
   const root = realpathSync(mkdtempSync(join(tmpdir(), 'cland-setup-')));
@@ -29,6 +30,7 @@ const machine: SetupMachine = {
   write: async () => { throw new Error('unexpected write'); },
   run: async () => { throw new Error('unexpected installer'); },
   projectExists: async () => true,
+  requiredHarnesses: async () => ['claude-code', 'opencode'],
   onPath: async () => true,
   harness: async id => ({ id, bin: id === 'codex' ? null : `/tools/${id}`, version: id === 'codex' ? null : [2, 0, 24], checks: [
     { name: id, verdict: 'ok', detail: '2.0.24' },
@@ -95,6 +97,26 @@ test('setup reports project, harnesses and installed logins in order without ask
   assert.deepEqual(prompter.asked, []);
 });
 
+test('setup login requirements follow the project roles', async t => {
+  const root = scratch(t);
+  const { report } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+    ...machine, requiredHarnesses: async () => ['opencode'],
+  } });
+  assert.deepEqual(report.steps.find(s => s.name === 'claude-code auth'), {
+    name: 'claude-code auth', verdict: 'skip', detail: 'not logged in; no role uses it', fix: 'run: claude auth login',
+  });
+  assert.equal(report.steps.find(s => s.name === 'opencode auth')?.verdict, 'skip');
+});
+
+test('setup keeps an installer open when a role requires the missing harness', async t => {
+  const root = scratch(t);
+  const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
+    ...machine, requiredHarnesses: async () => ['codex'],
+  } });
+  assert.equal(code, 1);
+  assert.equal(report.steps.find(s => s.name === 'codex')?.verdict, 'open');
+});
+
 test('a declined installer persists across setup runs until an explicit install', async t => {
   const root = scratch(t);
   let config = renderConfig(defaultConfig('project'));
@@ -149,6 +171,7 @@ test('install rebuilds only the exact roles template for the installed set', asy
     let roles = original, installed = false;
     const { report } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, install: 'codex', prompter: scriptedPrompter([]), machine: {
       ...machine,
+      requiredHarnesses: () => harnessesInUse('/project', {}, { roles: async () => roles }),
       read: async path => path === 'roles.toml' ? roles : null,
       write: async (path, text, expected) => { assert.equal(path, 'roles.toml'); assert.equal(expected, roles); roles = text; },
       run: async () => { installed = true; return 0; },
@@ -159,6 +182,7 @@ test('install rebuilds only the exact roles template for the installed set', asy
       } : { id, bin: null, version: null, checks: [] },
     } });
     assert.equal(roles, kind === 'template' ? rolesTemplate(['claude-code', 'codex']) : original);
+    assert.equal(report.steps.find(s => s.name === 'opencode')?.verdict, 'skip', 'requirements follow the current role file after a rebuild');
     const detail = report.steps.find(s => s.name === 'codex')!.detail;
     if (kind === 'template') assert.match(detail, /roles.toml rebuilt for claude-code, codex/);
     else assert.doesNotMatch(detail, /rebuilt/);
@@ -170,6 +194,7 @@ test('the first installed harness makes missing alternatives optional in the fin
   let installed = false;
   const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, install: 'codex', prompter: scriptedPrompter([]), machine: {
     ...machine,
+    requiredHarnesses: async () => [],
     run: async () => { installed = true; return 0; },
     harness: async id => id === 'codex' && installed ? {
       id, bin: '/tools/codex', version: [1, 2, 3], checks: [
@@ -188,9 +213,10 @@ test('no installed harness makes every installer open; one installed makes missi
   for (const installed of [false, true]) {
     const { report, code } = await setup({ root, env: { HOME: root }, interactive: false, yes: false, prompter: scriptedPrompter([]), machine: {
       ...machine,
+      requiredHarnesses: async () => [],
       harness: async id => installed && id === 'claude-code' ? machine.harness(id) : { id, bin: null, version: null, checks: [] },
     } });
-    assert.equal(code, 1);
+    assert.equal(code, 1); // favourite/trust remain open without a terminal even when login is optional
     const missing = report.steps.filter(s => s.detail === 'not installed');
     assert.deepEqual(missing.map(s => [s.name, s.verdict, s.fix]), installed ? [
       ['codex', 'skip', 'run: curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh'],

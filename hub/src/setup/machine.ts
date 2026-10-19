@@ -5,6 +5,7 @@ import { whichAsync } from '../doctor/report.ts';
 import { probeHarness, type HarnessProbe } from '../doctor/toolchain.ts';
 import type { HarnessId } from '../doctor/ranges.ts';
 import type { SetupMachine } from './types.ts';
+import { harnessesInUse } from '../roles/harnesses.ts';
 import { readText, symlinkNote, symlinkOnPath, writeAtomic } from '../init/files.ts';
 import { terminalCommand } from './terminal.ts';
 
@@ -16,6 +17,7 @@ export function setupMachine(root: string, env: NodeJS.ProcessEnv): SetupMachine
   // PATH grows during setup; the shell advice still describes the user's original PATH.
   const shellEnv = { ...env };
   return {
+    requiredHarnesses: () => harnessesInUse(root, env),
     async projectExists() {
       try { return (await stat(join(root, '.cland'))).isDirectory(); }
       catch { return false; }

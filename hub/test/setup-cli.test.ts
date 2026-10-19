@@ -17,6 +17,7 @@ test('setup JSON is one report on stdout with nonterminal narration on stderr', 
   await writeFile(join(root, '.cland/roles.toml'), '[aide.launch]\nharness = "claude-code"\n');
   const prompter = scriptedPrompter([]);
   const machine: SetupMachine = {
+    requiredHarnesses: async () => ['claude-code', 'codex', 'opencode'],
     read: async () => null,
     write: async () => { throw new Error('unexpected write'); },
     run: async () => { throw new Error('unexpected installer'); },
@@ -52,6 +53,7 @@ test('setup --install codex runs without a terminal or question', async t => {
   const code = await runSetup(['--install', 'codex'], root, {}, {
     stdinTTY: false, stdoutTTY: false, write: () => {}, prompter: scriptedPrompter([]),
     machine: {
+      requiredHarnesses: async () => [],
       projectExists: async () => true, onPath: async () => true, read: async () => null,
       write: async () => { throw new Error('unexpected write'); },
       run: async command => { assert.match(command, /chatgpt.com\/codex\/install.sh/); runs++; return 0; },
@@ -72,6 +74,7 @@ test('setup JSON explicit installer reserves stdout for its report', async t => 
   await runSetup(['--json', '--install', 'codex'], root, {}, {
     write: text => { stdout += text; }, narrate: text => { stderr += text; }, prompter: scriptedPrompter([]),
     machine: {
+      requiredHarnesses: async () => [],
       projectExists: async () => true, onPath: async () => true, read: async () => null,
       write: async () => { throw new Error('unexpected write'); },
       run: async (_command, options) => {
@@ -143,6 +146,7 @@ test('setup retains the CLI root spelling for Codex trust', async t => {
   const canonical = `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`;
   await writeFile(file, canonical);
   const machine: SetupMachine = {
+    requiredHarnesses: async () => ['codex'],
     read: async () => null, write: async () => { throw new Error('unexpected write'); }, run: async () => { throw new Error('unexpected installer'); },
     projectExists: async () => true, onPath: async () => true,
     harness: async id => ({ id, bin: id === 'codex' ? '/tools/codex' : null, version: [1, 0, 0], checks: [

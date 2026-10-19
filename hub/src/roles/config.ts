@@ -129,8 +129,9 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null, al
     if (!isRecord(launch)) throw new Error(`[${role}.launch] must be a table`);
     if (!isRecord(permissions)) throw new Error(`[${role}.permissions] must be a table`);
     if (t.exclusive !== undefined && typeof t.exclusive !== 'boolean') throw new Error(`${role}.exclusive must be true or false`);
-    const harness = allowedHarnesses === undefined ? optString(launch.harness, `${role}.launch.harness`)
-      : oneOf(launch.harness, allowedHarnesses, `${role}.launch.harness`);
+    const selectedHarness = launch.harness === undefined ? builtin?.harness : launch.harness;
+    const harness = allowedHarnesses === undefined ? optString(selectedHarness, `${role}.launch.harness`)
+      : oneOf(selectedHarness, allowedHarnesses, `${role}.launch.harness`);
     if (harness === null) throw new Error(`${role}.launch.harness is required`);
     out.set(role, {
       role,

@@ -56,11 +56,12 @@ export async function toolchain(t: TestContext, real = false): Promise<{ env: Re
   return { env, path };
 }
 
-export const doctor = (root: string, env: Record<string, string>, ...args: string[]): Promise<CliResult> => captureCli(write => runDoctor(args, root, { CLAND_TEST_ORPHAN_ROOT: root, ...env }, write, probeTools, { project: { started: async () => null, territoryProblems: () => null }, findOrphans: async () => [] }));
+export const doctor = (root: string, env: Record<string, string>, ...args: string[]): Promise<CliResult> => doctorWithRemotes(root, env, ['github'], ...args);
+const doctorWithRemotes = (root: string, env: Record<string, string>, remotes: string[], ...args: string[]): Promise<CliResult> => captureCli(write => runDoctor(args, root, { CLAND_TEST_ORPHAN_ROOT: root, ...env }, write, probeTools, { remotes: async () => remotes, project: { started: async () => null, territoryProblems: () => null }, findOrphans: async () => [] }));
 export const update = (root: string) => captureCli(write => runUpdate([], root, write));
 
-export async function report(root: string, env: Record<string, string>): Promise<{ code: number | null; report: Report }> {
-  const r = await doctor(root, env, '--json');
+export async function report(root: string, env: Record<string, string>, remotes = ['github']): Promise<{ code: number | null; report: Report }> {
+  const r = await doctorWithRemotes(root, env, remotes, '--json');
   try {
     return { code: r.code, report: JSON.parse(r.stdout) as Report };
   } catch {

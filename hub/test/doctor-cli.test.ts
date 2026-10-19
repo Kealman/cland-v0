@@ -24,7 +24,7 @@ test('doctor CLI renders healthy text and JSON with exit 0', async (t) => {
     assert.deepEqual(notOk(r), []);
     assert.equal(code, 0);
     const names = r.checks.map((c) => c.name);
-    for (const name of ['claude-code', 'claude-code auth', 'codex', 'codex auth', 'opencode', 'opencode auth', 'gh', 'gh auth', 'neovim', 'hub', 'hub.json', 'secret', 'roles.toml', 'config.toml', 'skills', 'skills manifest', 'claude hooks', 'cland mod', 'docs/agents', 'AGENTS.md']) {
+    for (const name of ['claude-code', 'claude-code auth', 'codex', 'codex auth', 'opencode', 'opencode auth', 'gh', 'neovim', 'hub', 'hub.json', 'secret', 'roles.toml', 'config.toml', 'skills', 'skills manifest', 'claude hooks', 'cland mod', 'docs/agents', 'AGENTS.md']) {
       assert.ok(names.includes(name), `the report checks ${name}`);
     }
     assert.match(check(r, 'claude-code').detail, /^2\.1\.294 at .*fakes\/claude-code\/claude \(tested with 2\.1\.294\)$/);
@@ -38,7 +38,7 @@ test('doctor CLI renders healthy text and JSON with exit 0', async (t) => {
     assert.doesNotMatch(r.stdout, /\x1b\[/);
     const lines = r.stdout.trimEnd().split('\n');
     assert.match(lines[0] ?? '', /^cland doctor \S+ in /);
-    assert.match(lines.at(-1) ?? '', /^22 ok, 0 warn, 0 fail$/);
+    assert.match(lines.at(-1) ?? '', /^21 ok, 0 warn, 0 fail$/);
     for (const line of lines.slice(1, -1)) assert.match(line, /^ok {4}\S/);
   });
 

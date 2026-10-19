@@ -25,6 +25,7 @@ async function fixture(t: test.TestContext, installed: HarnessId[] = ['claude-co
   await mkdir(join(root, '.codex'));
   await writeFile(join(root, '.codex/config.toml'), `[projects.${JSON.stringify(root)}]\ntrust_level = "trusted"\n`);
   const options: SetupOptions = { root, env: { HOME: root }, interactive: true, yes: false, prompter: scriptedPrompter([]), machine: {
+    requiredHarnesses: async () => [],
     read: async () => null,
     write: async () => { throw new Error('unexpected machine write'); },
     run: async () => { throw new Error('unexpected installer'); },

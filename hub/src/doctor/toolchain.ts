@@ -163,8 +163,26 @@ async function checkNvim(env: NodeJS.ProcessEnv, probe: typeof run): Promise<Che
   return ok('neovim', `${NVIM_VERSION} at ${bin}${env.CLAND_NVIM ? ' (CLAND_NVIM)' : ''}`);
 }
 
+export type ToolchainRequirements = {
+  harnesses: readonly string[];
+  github: boolean;
+  installation?: typeof harnessInstallation;
+};
+
 /** Every toolchain check, run concurrently, reported in a fixed order. */
-export async function checkToolchain(env: NodeJS.ProcessEnv, probe: typeof run = run): Promise<Check[]> {
-  const parts = await Promise.all([...HARNESSES.map(async (h) => (await probeHarness(h.id, env, probe)).checks), checkGh(env, probe), checkNvim(env, probe).then((c) => [c]), checkOpenCodeDatabases(env)]);
-  return parts.flat();
+export async function checkToolchain(env: NodeJS.ProcessEnv, probe: typeof run = run, requirements: ToolchainRequirements = { harnesses: [], github: false }): Promise<Check[]> {
+  const [harnesses, gh, nvim, databases] = await Promise.all([
+    Promise.all(HARNESSES.map(h => probeHarness(h.id, env, probe, requirements.installation))),
+    requirements.github ? checkGh(env, probe) : [ok('gh', 'not needed: no github remote')],
+    checkNvim(env, probe), checkOpenCodeDatabases(env),
+  ]);
+  const checks = harnesses.flatMap(h => {
+    if (requirements.harnesses.includes(h.id)) return h.checks;
+    if (!h.bin) return [ok(h.id, 'not installed; no role uses it')];
+    return h.checks.map(c => c.verdict === 'ok' ? c : ok(c.name, `${c.detail}; no role uses it${c.fix ? `; ${c.fix}` : ''}`));
+  });
+  if (requirements.harnesses.length === 0 && !harnesses.some(h => h.bin !== null)) {
+    checks.push(fail('harnesses', 'cland needs at least one harness', HARNESSES.map(h => h.install).join('; ')));
+  }
+  return [...checks, ...gh, nvim, ...databases];
 }

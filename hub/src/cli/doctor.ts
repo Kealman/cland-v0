@@ -4,15 +4,17 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { journalPath, readJournal } from '../hub/journal.ts';
-import { run, render, summarise, warn, ok, type Check } from '../doctor/report.ts';
+import { run, render, summarise, warn, ok, fail, type Check } from '../doctor/report.ts';
 import { checkToolchain } from '../doctor/toolchain.ts';
 import { checkKeys } from '../doctor/keys.ts';
 import { projectRoot } from '../project.ts';
 import { VERSION } from '../version.ts';
+import { harnessesInUse } from '../roles/harnesses.ts';
 
 export { DOCTOR_USAGE } from './usage.ts';
 
 export type DoctorReaders = {
+  remotes?: (root: string) => Promise<string[]>;
   project?: import('../doctor/project.ts').ProjectReaders;
   findOrphans?: typeof import('../orphans.ts').findOrphans;
   sweepOrphans?: typeof import('../orphans.ts').sweepOrphans;
@@ -29,7 +31,17 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
   const findOrphans = readers.findOrphans ?? nativeFindOrphans;
   const sweepOrphans = readers.sweepOrphans ?? nativeSweepOrphans;
   const { checkProject } = await import('../doctor/project.ts');
-  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe), checkProject(root, readers.project), checkKeys(env, probe)]);
+  const requirementChecks: Check[] = [];
+  let harnesses: string[] = [];
+  try { harnesses = await harnessesInUse(root, env); }
+  catch (error) {
+    requirementChecks.push(fail('harness requirements', `cannot read role requirements: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`, 'repair .cland/roles.toml and its named accounts'));
+  }
+  const remotes = await (readers.remotes ?? (async root => {
+    const result = await run('git', ['-C', root, 'remote'], env);
+    return result.code === 0 ? result.stdout.trim().split(/\s+/) : [];
+  }))(root);
+  const [toolchain, project, keys] = await Promise.all([checkToolchain(env, probe, { harnesses, github: remotes.includes('github') }), checkProject(root, readers.project), checkKeys(env, probe)]);
   const orphanChecks: Check[] = [];
   // Test fixtures opt out of machine-wide deleted-project discovery; production keeps the default.
   const hubScopeRoot = env.CLAND_TEST_ORPHAN_ROOT;
@@ -45,7 +57,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     if (err instanceof SweepBusy) orphanChecks.push(warn('orphan sweep', err.message, 'wait for the active sweep, then rerun cland doctor --fix'));
     else orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
   }
-  const checks = [...toolchain, ...project, ...keys, ...orphanChecks];
+  const checks = [...toolchain, ...requirementChecks, ...project, ...keys, ...orphanChecks];
   const summary = summarise(checks);
   if (json) write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
   else {

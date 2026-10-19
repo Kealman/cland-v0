@@ -7,6 +7,7 @@ export type SetupVerdict = 'ok' | 'done' | 'skip' | 'open' | 'fail';
 export type SetupLine = { name: string; verdict: SetupVerdict; detail: string; fix?: string };
 export type SetupMachine = {
   projectExists(): Promise<boolean>;
+  requiredHarnesses(): Promise<readonly string[]>;
   harness(id: HarnessId, fresh?: boolean): Promise<HarnessProbe>;
   onPath(id: HarnessId): Promise<boolean>;
   run(command: string, output?: TerminalOutput): Promise<number>;

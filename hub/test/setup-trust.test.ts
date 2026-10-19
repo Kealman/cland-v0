@@ -119,6 +119,7 @@ function codexClient(onBatch: (params: Record<string, unknown>) => void): CodexT
 
 function options(root: string): SetupOptions {
   return { root, env: { HOME: root }, interactive: true, yes: false, prompter: scriptedPrompter([]), machine: {
+    requiredHarnesses: async () => [],
     read: async () => null, write: async () => { throw new Error('unexpected project write'); }, run: async () => { throw new Error('unexpected installer'); },
     projectExists: async () => true, onPath: async () => true,
     harness: async id => ({ id, bin: `/tools/${id}`, version: [1, 0, 0], checks: [] }),

@@ -219,6 +219,7 @@
     "hub/test/role-launch.test.ts": "T2",
     "hub/test/roles-component.test.ts": "T2",
     "hub/test/roles-editor.test.ts": "T1",
+    "hub/test/roles-harnesses.test.ts": "T1",
     "hub/test/roles-launch-permissions.test.ts": "T1",
     "hub/test/roles-session-refresh.test.ts": "T2",
     "hub/test/roles-snapshot-cli.test.ts": "T3",

@@ -7,6 +7,40 @@ import { join } from 'node:path';
 import { connectUi, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
 import { doctor, report, update, initialised, toolchain, check, notOk, HARNESS_DIRS, NVIM_VERSION, probeCalls } from './doctor-fixture.ts';
+import { rolesTemplate } from '../src/roles/template.ts';
+
+test('a Claude-only project succeeds without other harnesses or GitHub tooling', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  await writeFile(join(root, '.cland', 'roles.toml'), rolesTemplate(['claude-code']));
+  const env = { ...tools.env, CLAND_CODEX_BIN: '/missing/codex', CLAND_OPENCODE_BIN: '/missing/opencode', FAKE_GH_LOGGED_OUT: '1' };
+  probeCalls.length = 0;
+  const good = await report(root, env, ['origin']);
+  assert.equal(good.code, 0, notOk(good.report).join('\n'));
+  assert.deepEqual(Object.keys(good.report), ['root', 'version', 'checks', 'summary']);
+  for (const name of ['codex', 'opencode']) assert.deepEqual(check(good.report, name), { name, verdict: 'ok', detail: 'not installed; no role uses it' });
+  assert.deepEqual(check(good.report, 'gh'), { name: 'gh', verdict: 'ok', detail: 'not needed: no github remote' });
+  assert.ok(!probeCalls.some(c => /\/gh$/.test(c.bin)), 'no gh version or auth probe without the github remote');
+  const bad = await report(root, { ...env, FAKE_CLAUDE_LOGGED_OUT: '1' }, []);
+  assert.equal(bad.code, 1);
+  assert.equal(check(bad.report, 'claude-code auth').verdict, 'fail');
+  assert.equal(check(bad.report, 'claude-code auth').fix, 'claude auth login');
+});
+
+test('doctor without a role file needs any one installed harness', async t => {
+  const tools = await toolchain(t);
+  const bare = await tempProject(t);
+  const project = await initialised(t, tools.env);
+  await unlink(join(project, '.cland', 'roles.toml'));
+  for (const root of [bare, project]) {
+    for (const installed of [false, true]) {
+      const result = await report(root, { ...tools.env, CLAND_CLAUDE_BIN: installed ? join(HARNESS_DIRS.claude, 'claude') : '/missing/claude', CLAND_CODEX_BIN: '/missing/codex', CLAND_OPENCODE_BIN: '/missing/opencode' }, []);
+      const failures = result.report.checks.filter(c => /^(harnesses|claude-code|codex|opencode)/.test(c.name) && c.verdict === 'fail');
+      assert.equal(failures.length, installed ? 0 : 1);
+      if (!installed) assert.equal(failures[0]?.detail, 'cland needs at least one harness');
+    }
+  }
+});
 
 test('key warnings name the Ghostty LF binding and tty erase collision, with fixes', async t => {
   const tools = await toolchain(t);
@@ -78,7 +112,7 @@ test('a harness missing from the PATH fails with the fix', async t => {
 
 test('a missing OpenCode binary points to the v2 installer', async t => {
   const tools = await toolchain(t);
-  const root = await initialised(t, tools.env);
+  const root = await initialised(t, tools.env, true);
   await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const missing = await doctor(root, { ...tools.env, PATH: tools.path('opencode') });
   assert.equal(missing.code, 1);
@@ -87,7 +121,7 @@ test('a missing OpenCode binary points to the v2 installer', async t => {
 
 test('a harness that is not signed in fails with its login command; OpenCode without credentials warns', async t => {
   const tools = await toolchain(t);
-  const root = await initialised(t, tools.env);
+  const root = await initialised(t, tools.env, true);
   await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake', probes: 'fake' });
   const { code, report: r } = await report(root, { ...tools.env, FAKE_CLAUDE_LOGGED_OUT: '1', FAKE_CODEX_LOGGED_OUT: '1', FAKE_OPENCODE_NO_AUTH: '1', FAKE_GH_LOGGED_OUT: '1' });
   assert.deepEqual(
