@@ -905,11 +905,11 @@ export class Suites {
     if (now < this.#nextDevT3Check) return;
     this.#nextDevT3Check = now + Math.min(interval, 60_000);
     this.#periodic = (async () => {
-      if (lastStarted && await this.#candidate.head(this.#root) === lastStarted.head) return;
+      if (lastStarted?.tree && await this.#candidate.tree(this.#root) === lastStarted.tree) return;
       const candidate = await this.#candidate.inspect(this.#root, 'all', config.verification.droplet.workers ?? config.verification.workers);
       if (this.#closed || this.#options.projectConfig?.().verification.devT3EveryMs !== interval) return;
       if (candidate.branch !== 'dev' || !candidate.tree || candidate.selection.fetchedDev !== candidate.head) return;
-      if (lastStarted?.head === candidate.head) return;
+      if (lastStarted?.tree === candidate.tree) return;
       // Persist before async admission, including spend refusal, to avoid retry storms.
       this.#store.setMeta('dev-t3-attempt', String(now));
       await this.start({ mode: 'all', cwd: this.#root, topic: 'general', to: ['coordinator'], actor: null,

@@ -2843,8 +2843,10 @@ refusal ownership and recovery.
 `dev-t3` occasion; `""` (the default) disables it. It selects T2 and T3 on one
 droplet without load repetitions, under the shared remote budget and daily
 spend cap. The first attempt is due one interval after activation; later runs
-are due after the interval since the last attempt/start, only when dev's head
-has moved. The cursor survives restart, and a queued, running or unreported
+are due after the interval since the last attempt/start, only when dev's
+verification candidate tree differs from the last started run's tree. The shared
+exclusions in `hub/src/verification-tree.ts` make tracker-only commits ineligible.
+The cursor survives restart, and a queued, running or unreported
 periodic run prevents another. The hub requires clean root dev at freshly
 fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
 

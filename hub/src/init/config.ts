@@ -111,7 +111,7 @@ run_timeout = ${JSON.stringify(c.verification.runTimeout)}
 daily_spend_usd = ${c.verification.dailySpendUsd}
 # Nightly UTC time (HH:MM); empty disables the droplet soak.
 soak = ${JSON.stringify(c.verification.soak)}
-# Periodic dev T3 interval; empty disables it.
+# Periodic dev T3 interval; runs only when the verification candidate tree changed; empty disables it.
 dev_t3_every = ${JSON.stringify(c.verification.devT3Every)}
 
 [verification.droplet]

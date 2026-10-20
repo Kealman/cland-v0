@@ -9,6 +9,7 @@ import { fixture } from './remote-fixture.ts';
 import { drive } from './remote-clock.ts';
 import { loadGateRepetitions } from '../src/suite-load-gate-plan.ts';
 import { coverageMaps, coverageSelection } from '../src/suite-coverage.ts';
+import { caseDeadlines } from './case-deadlines.ts';
 
 test('occasions keep T4 load tests in the base phase without parallel repetitions', async t => {
   const f = await suiteUnit(t, { executor: 'droplet' }, 'shards=1\nworkers=1\nlifetime="15m"\nrun_timeout="5m"');
@@ -193,6 +194,47 @@ test('nightly refuses a base run beyond the deadline before reserving a droplet'
   assert.equal(notices.length, 1);
   assert.match(notices[0]!, /soak deadline plan refused: base projection 301.0 s exceeds 180.0 s/);
   assert.equal(f.api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
+});
+
+test('periodic dev T3 skips tracker-only commits and runs a changed verification tree', async t => {
+  const run = caseDeadlines(t);
+  const f = await run.wait('setup', () => fixture(run.fixtures, { machine: 'scripted',
+    config: 'dev_t3_every="1s"\nlifetime="6h"\nrun_timeout="5h"' }));
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
+  const tick = () => run.wait('periodic admission settled', async () => {
+    await f.clock.advance(1000);
+    await drive(f, f.verificationSettled());
+  });
+  const jobs = async () => ((await f.ui.request({ type: 'hub.status' })).value as {
+    suites: { id: string; occasion: string; head: string; tree: string }[];
+  }).suites.filter(job => job.occasion === 'dev-t3');
+  await tick(); // Establish the activation cursor.
+  await tick();
+  const first = (await jobs())[0]!;
+  assert.ok(first);
+  await run.wait('first execution started', () => drive(f, f.machine.started(first.id)));
+  f.machine.finish(first.id, 0, '# tests 1\n# pass 1\n');
+  await tick();
+
+  // Candidate facts model commits after the shared verification-tree exclusion:
+  // tracker/rulebook commits change HEAD while retaining the tested tree.
+  f.candidate.head = 'b'.repeat(40);
+  f.candidate.selection.fetchedDev = f.candidate.head;
+  await tick();
+  assert.equal((await jobs()).length, 1, 'tracker-only commit after the interval starts no run');
+
+  f.candidate.head = 'c'.repeat(40);
+  f.candidate.tree = 'e'.repeat(40);
+  f.candidate.selection.fetchedDev = f.candidate.head;
+  await tick();
+  const admitted = await jobs();
+  assert.equal(admitted.length, 2, 'code commit starts the next due run');
+  assert.equal(admitted[1]!.head, f.candidate.head);
+  assert.equal(admitted[1]!.tree, f.candidate.tree);
+  await run.wait('changed tree execution started', () => drive(f, f.machine.started(admitted[1]!.id)));
+  f.machine.finish(admitted[1]!.id, 0, '# tests 1\n# pass 1\n');
+  await tick();
 });
 
 test('periodic dev T3 posts a hub-owned structured red result to the Coordinator', async t => {

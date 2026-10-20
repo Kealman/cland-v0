@@ -17,6 +17,8 @@ Request source review first. Only after a clear source verdict does the Implemen
 
 With `[merge] queue = true`, a task verify runs T0–T2 when both the candidate and hosting hub enable it. The hub supplies T3 in the merge batch. At stage close, epic close or before release, the Coordinator runs `cland verify all --occasion stage|epic|release --report <topic>` on clean root `dev` at fetched `origin/dev`. QA may set `epic` for its integrated demo. These occasions include T4 and may shard across remote slots; merge batches use one slot. The nightly soak includes T4 on one droplet. Read `docs/agents/tests.md` for selection, spend, stage-platform evidence and cache rules.
 
+Periodic dev T3 runs only when the verification candidate tree differs from the last started run's tree; tracker-only commits retain that tree. Eligibility uses the shared exclusions in `hub/src/verification-tree.ts`. See `docs/agents/tests.md`, "Periodic dev T2/T3 and release gate".
+
 After a green stage cover, the Coordinator adds missing duration baselines with `node hub/test/durations.ts refresh --add-only <durable-log-path>` on `dev`, commits and publishes them. Use add-only until T-931 decides allowance refresh; see `docs/agents/tests.md`. Test renames and moves remove stale duration keys in their own item: both admission paths refuse unmatched identities.
 
 A green same-head result from either executor satisfies the gate's suite evidence. A Linux droplet result lists macOS-only cases as skips; those cases run in the release's final local run ("Release v0.1.2 from the item"). Read the executor and platform in the result, and the droplet's lifetime and cost; a Linux pass leaves the final macOS checks to that release run.
