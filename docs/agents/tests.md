@@ -11,6 +11,36 @@ the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installe
 not provide. T-427 records matching diagnostics on both clean projects and
 planted strict-option/import errors before the switch.
 
+## This repository's verification commands
+
+This repository records these `[verification]` values in `.cland/config.toml`:
+
+```toml
+prepare = "node hub/bin/verify-prepare.ts"
+check = "npm run check"
+test = "npm test"
+```
+
+`npm run check` includes `npm run typecheck` and static/test lint. Prepare installs
+dependencies and seeds the pinned Neovim on the builder and before every droplet
+delivery; it never runs during local verification. See
+[Verification commands](../../hub/README.md#verification-commands) for the shell,
+clean-tree and snapshot-key contract.
+
+`npm test` enters `hub/test/run-suite.ts auto`. Whole-suite `hub`, `nvim`, `all`,
+coverage-selected runs and close-run shards use that same runner, with the
+admitted selection in `CLAND_SUITE_SELECTION` (or `CLAND_SUITE_SELECTION_FILE`
+for large selections). Package modes choose hub or Neovim; `all` chooses the full
+admitted tier set. Coverage chooses files, and shards partition those files;
+neither changes the project command contract.
+
+This repository also sets `test_unit`, `test_component`, `test_integration` and
+`test_soak` to `node hub/test/run-suite.ts --tier T1` through `--tier T4`.
+These explicit tier commands replace the whole `npm test` step in tiered plans,
+using the same selection and runner. The table below describes when each runs;
+`test = "npm test"` remains the whole-suite entry when no tier plan applies.
+These values control the release path and go through review like code.
+
 ## Tiers and the merge queue
 
 ### Project commands

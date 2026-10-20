@@ -24,6 +24,9 @@ test('config set keeps verification command arguments verbatim and applies them 
   for (const [key, value] of [
     ['test_unit', '  python3 -m pytest "unit tests" && echo unit | cat  '],
     ['test_unit', 'true'],
+    // README Python example: literal CLI arguments read back through the parser (C4).
+    ['check', 'python3 -m compileall -q .'],
+    ['test', 'python3 -m unittest'],
   ] as const) {
     const result = await cland(root, 'config', 'set', `verification.${key}`, value);
     assert.equal(result.code, 0, result.stderr);

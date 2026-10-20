@@ -1912,6 +1912,59 @@ as `typescript` for the compiler API used by `hub/test/executor.test.ts` and
 API. Adoption was gated on matching diagnostic codes, files and lines on both
 clean projects and planted strict-option/import errors (T-427).
 
+### Verification commands
+
+Record the stack's commands with `cland config set verification.prepare|check|test`
+(one key per invocation). These are project commands, independent of the language:
+
+| Key under `[verification]` | Purpose | Where it runs |
+| --- | --- | --- |
+| `prepare` | Install what check and test need; optional | On the droplet builder when preparing an image, and after checkout cleanup before every droplet run; never locally |
+| `check` | Fast gate; optional | Before test locally, and on the host before a droplet is created; the droplet checks again unless it can reuse the matching host receipt |
+| `test` | Suite whose exit code decides the run | Locally or on the droplet, after check |
+
+Set `test` before verifying: without it (or the optional tier commands described
+below), `cland verify` refuses and names the configuration command. Empty strings
+are unset. Each command runs from the candidate project directory under
+`/bin/sh -c`; shell quoting, pipes and compound commands retain their meaning.
+A failed check stops the run. An unset check or prepare is logged and skipped.
+
+For example, in a Python project after `cland init` and `cland hub start`:
+
+```sh
+cland config set verification.check 'python3 -m compileall -q .'
+cland config set verification.test 'python3 -m unittest'
+```
+
+This project needs no prepare command if its tests use only Python's standard
+library. A project with dependencies can also set, for example,
+`cland config set verification.prepare 'python3 -m venv .venv && .venv/bin/pip install -r requirements.txt'`,
+then use `.venv/bin/python` in check and test. Ignore `.venv/` and `__pycache__/`
+in Git. Install local dependencies yourself: a local run never calls prepare.
+
+Commands are resolved once at admission from the candidate's working
+`.cland/config.toml`, or its committed file for a committed candidate; unset
+commands fall back to the project root's config. Queued runs keep the recorded
+commands across reloads. Commit configuration changes before a droplet run:
+only a clean candidate's committed Git objects are bundled (tracker and rulebook
+edits have the exclusions described below).
+
+Prepare must be idempotent and write only ignored files, leaving HEAD and tracked
+files unchanged. Delivery cleans the checkout before rerunning it, preserving
+`node_modules` and `.cache`; other ignored checkout outputs can disappear.
+Caches under `$HOME` survive. Both fresh builders and run deliveries receive
+`CLAND_PREPARE_KEY` as JSON describing the snapshot inputs; a matching key alone
+is no proof that a fresh builder has installed dependencies. A failed prepare or
+unignored output stops delivery before tests, with its output in the run log.
+
+A project using only `test` runs that command in full. Coverage selection, the
+`hub` and `nvim` package modes, the load gate and file sharding belong to cland's
+own runner; another stack does not acquire them by configuring these commands.
+Use mode-free `cland verify --report <topic>` for ordinary task verification.
+Optional tier commands let any stack split execution explicitly; they do not
+supply cland's file selection. This repository's values, modes, covers and shards
+are documented in [agent test guidance](../docs/agents/tests.md#this-repositorys-verification-commands).
+
 ### Remote executors: droplets
 
 Project test commands are configured under `[verification]`: `test_unit` (T1),
@@ -2047,9 +2100,10 @@ chosen topic (General by default) reports the key, image, regions, duration,
 builder lifetime and cost. A second prepare while one runs is refused.
 Preparation and the other executor controls belong to the human and Coordinator.
 
-The snapshot contains the packages, the host's exact Node version, pinned Neovim,
-`node_modules`, the ordinary `runner` user, a bare repository mirror and a checkout
-of the base. Its key combines Node, the Neovim tag and Linux digest, the committed
+The snapshot contains the base packages, the host's exact Node version, the
+ordinary `runner` user, a bare repository mirror and a checkout of the base, plus
+what the project's prepare command installs (for cland: `node_modules` and pinned
+Neovim). Its key combines Node, the Neovim tag and Linux digest, the committed
 base's lockfile SHA-256, and `origin/dev` after a fetch from the local territory.
 A matching prepare reports `current`; a new key builds a replacement and deletes
 the previous image only after the new image completes. Failures clean up the
@@ -2076,7 +2130,8 @@ files, have explicit time bounds and strip `DIGITALOCEAN_TOKEN` from children.
 so the resulting snapshot fits a run. Prepare refuses an oversized builder
 before creating anything. The builder uses the same lease, tags, watchdog and
 release as a run, installs the exact versions with digest checks, delivers from
-the territory and runs `npm ci` as `runner`. It powers off before snapshotting,
+the territory and runs the root's configured prepare command as `runner` (or
+reports `prepare: not set`). It powers off before snapshotting,
 polls actions under a twenty-minute bound, transfers to configured regions and
 tags the image `cland` and `cland-p-<hash>`, then releases the builder.
 
@@ -2115,13 +2170,23 @@ to the human and the Coordinator; reap requires the token.
 
 #### Run and result
 
-Before acquiring a droplet, the hub runs `npm run typecheck` at the submitted head
-on the host. A failure posts a failed result without creating a machine. Delivery
+Before acquiring a droplet, the hub runs the recorded check command at the
+submitted head on the host (`Host gate: <command>`). A failure posts
+`host check failed (exit <n>); no droplet created`; an unset check logs
+`Host gate: check not set` and continues. Delivery
 bundles the head against its merge base with the prepared snapshot's base; without
 a merge base, or when the bundle would be empty, it sends a full bundle. As `runner`,
 the machine fetches that bundle, checks out the exact detached head and cleans the
-checkout while preserving `node_modules` and `.cache`. A changed lockfile runs
-`npm ci`; a changed Neovim pin seeds it again. The log names both decisions.
+checkout while preserving `node_modules` and `.cache`, then runs the recorded
+prepare command on every delivery with `CLAND_PREPARE_KEY` as JSON. It rejects
+changed HEAD, tracked edits and unignored output before starting the worker.
+
+Cland's own prepare script (`node hub/bin/verify-prepare.ts`) runs `npm ci` and
+seeds the Neovim pin when needed. It skips only when the snapshot inputs and a
+successful-install marker (`node_modules/.cland-prepare-key`) match. Existing
+images can use `$HOME/.cland-image.json` as a legacy receipt while dependencies
+still exist; fresh builders install even with a matching key. The log retains
+`dependencies match snapshot` and `Neovim pin matches snapshot` for warm runs.
 
 Delivery ignores uncommitted changes under `.cland/tasks` and to `.cland/RULES.md`, including tracker writes
 between submission and bundling. Every bundle contains the committed head's tracker
@@ -2131,10 +2196,12 @@ head only when the canonical candidate tree is unchanged; delivery still bundles
 the submitted head. Task runs require their exact submitted head.
 
 The host computes the suite selection while `origin/dev` is available. The uploaded
-`env` contains only `CLAND_SUITE_SELECTION` as JSON, `FORCE_COLOR=0` and `NO_COLOR=1`.
-The package runner reads that selection without fetching. A detached `setsid nohup`
-run as `runner` executes the same commands as the local worker: Linux typecheck,
-then the selected package suite. It uses the machine's own compatibility locks
+`env` carries the selection (inline JSON or a delivered selection file), worker
+and limit settings, and `FORCE_COLOR=0` / `NO_COLOR=1`.
+Cland's package runner reads that selection without fetching. A detached `setsid nohup`
+run as `runner` executes the recorded check and test plan. A successful host check
+is reused only when its command and candidate tree match; otherwise check runs
+on the droplet before test. It uses the machine's own compatibility locks
 and `timeout` with the configured `run_timeout`. The hub also cancels a run beyond
 that timeout plus two minutes, collects its log and releases its machine. Both
 paths report `run timeout <value>` once. Config load refuses a `lifetime` shorter
@@ -2234,6 +2301,10 @@ An epic QA verdict names the tested dev commit. A later dev tip is acceptable wh
 
 ### Tests
 
+Verification runs the project's configured check and test commands; see
+[Verification commands](#verification-commands). The following runner details
+and package commands describe cland's own suite.
+
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
 default. Each test serves its own project through `serveProject` in the test
 process, with normal discovery, Unix socket and WebSocket edges. Real CLI
@@ -2258,7 +2329,7 @@ Package suites pass `--test-timeout` to every Node test phase. The default is
 sets a positive duration (`s`, `m`, `h` or `d`). A timed-out test fails by name.
 An explicit test-level timeout still overrides Node's default.
 
-The local verification worker also watches stdout and stderr during typecheck
+The local verification worker also watches stdout and stderr during check
 and tests. `[verification].stall_timeout` defaults to `"10m"`. After that much
 silence it fails with `stalled: no output for <n> min` and the last eight started
 tests, captured by the package reporter before they finish. It terminates the
@@ -2315,7 +2386,8 @@ see [the agent test workflow](../docs/agents/tests.md). The package commands bel
 are also available for humans and isolated CI.
 
 `cland verify [all|hub|nvim] [--fresh] --report <topic|session> [--to <session>]…`
-persists requests in the hub database before admission. Waiting requests have no
+runs the project's check and test detached and posts one artifact-backed result.
+It persists requests in the hub database before admission. Waiting requests have no
 worker PID. The Coordinator's integrated dev runs go first, then human `npm test`
 waiters in enqueue order, then item rank at submission, then other runs in enqueue
 order. The queue survives hub restart. A known dead
@@ -3002,11 +3074,13 @@ reporter still owns the test counts: these detail lines do not match the hub's
 
 Use Ubuntu 24.04 with `git`, `curl`, `ca-certificates`, `build-essential`,
 `python3`, `jq`, `lsof`, `xz-utils`, `procps` and `locales` installed. Use Node
-24.13 or later in the 24.x line (see `package.json`), run `npm ci`, then
-`node nvim/bin/nvim-path.ts` to fetch and verify the release pinned by
-`nvim/NVIM_VERSION` and `nvim/NVIM_SHA256SUMS`. Run as an ordinary login user with
+24.13 or later in the 24.x line (see `package.json`). For this repository, run
+`node hub/bin/verify-prepare.ts` to install dependencies and fetch and verify the
+release pinned by `nvim/NVIM_VERSION` and `nvim/NVIM_SHA256SUMS`. Local verification
+does not run prepare; a droplet runs the configured prepare automatically. Run as
+an ordinary login user with
 a home under `/home`, with no added environment settings (normal login `HOME`,
-`USER`, `LANG` and `PATH` suffice): `npm run typecheck && npm test -- --all`.
+`USER`, `LANG` and `PATH` suffice): `npm run check && npm test -- --all`.
 `PS_PERSONALITY` and `CLAND_TEST_*` overrides are unnecessary. Agent runs still
 follow the verification queue rules above.
 

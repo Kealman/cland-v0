@@ -10,8 +10,9 @@ export const OPEN_USAGE = `  open [dir]      start the project's hub if none run
 `;
 
 export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh] [--executor local|droplet] [--workers N] [--size <slug>] [--occasion stage|epic|release|soak] --report <topic|session> [--to <session>] [--json]
+                  run the project's check and test detached; post one artifact-backed result
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
-  suite           alias for verify\n                  run typecheck and the package suite detached; post one artifact-backed result
+  suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
   verify cancel [<suite id>] [--json]
                   cancel your active suite (human: any explicit id); post its cancelled result
   verify --dry-run      print admission, selection and tier projections without queueing (--report optional)

@@ -49,7 +49,7 @@ test('verification commands retain literal shell syntax through the config templ
   const rendered = renderConfig(config);
   assert.deepEqual(parseConfig(rendered, 'scratch'), config);
   assert.match(rendered, /# cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'\./);
-  assert.match(rendered, /# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally\.\nprepare =/);
+  assert.match(rendered, /# prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally\.\n# Commands run under \/bin\/sh -c; prepare must be idempotent and write only ignored files\.\nprepare =/);
   assert.match(rendered, /# check is the fast gate; runs first and on the host before a droplet is made\.\ncheck =/);
   assert.match(rendered, /# test is the suite; its exit code decides the run\.\ntest =[^\n]*\n# test_unit/);
 });

@@ -62,7 +62,8 @@ declined_accounts = ${JSON.stringify(c.setup.declinedAccounts)}
 
 [verification]
 # cland verify runs nothing until test or a tier command is set; use cland config set verification.test '<command>'.
-# prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally.
+# prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally.
+# Commands run under /bin/sh -c; prepare must be idempotent and write only ignored files.
 prepare = ${JSON.stringify(c.verification.prepare)}
 # check is the fast gate; runs first and on the host before a droplet is made.
 check = ${JSON.stringify(c.verification.check)}
