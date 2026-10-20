@@ -23,29 +23,61 @@ function M.buffer(path, cells, raw, rows)
   vim.b[b].cland_rendered = true
   local entry = {version = version, cells = cells, buf = b}
   versions[path] = entry
-  local function apply(lines, spans)
-    if versions[path] ~= entry or not api.nvim_buf_is_valid(b) then return end
+  local function valid()
+    return versions[path] == entry and api.nvim_buf_is_valid(b)
+  end
+  local function writable(fn)
     vim.bo[b].readonly = false
     vim.bo[b].modifiable = true
-    api.nvim_buf_set_lines(b, 0, -1, false, lines)
-    api.nvim_buf_clear_namespace(b, ns, 0, -1)
-    for _, s in ipairs(spans) do api.nvim_buf_set_extmark(b, ns, s.row, s.col, s.opts) end
+    fn()
     vim.bo[b].modified = false
     vim.bo[b].readonly = true
     vim.bo[b].modifiable = false
   end
   local md = require('cland.thread_md')
-  -- Present the first screen before parsing the rest of a long artifact. The
-  -- follow-up long-document renderer can subdivide that deferred whole parse.
   local first = math.min(#source, (rows or api.nvim_win_get_height(0)) + 4)
   local lines, spans = md.render(table.concat(source, '\n', 1, first), cells)
-  local initial = vim.list_extend(vim.list_extend({}, lines), vim.list_slice(source, first + 1))
-  apply(initial, spans)
+  writable(function()
+    api.nvim_buf_set_lines(b, 0, -1, false, source)
+    api.nvim_buf_set_lines(b, 0, first, false, lines)
+    api.nvim_buf_clear_namespace(b, ns, 0, -1)
+    for _, s in ipairs(spans) do api.nvim_buf_set_extmark(b, ns, s.row, s.col, s.opts) end
+  end)
+  vim.b[b].cland_render_pending = first < #source
   if first < #source then
-    vim.schedule(function()
-      if versions[path] ~= entry or not api.nvim_buf_is_valid(b) then return end
-      apply(md.render(table.concat(source, '\n'), cells))
-    end)
+    -- The first redraw and input get the loop before the complete parse starts.
+    vim.defer_fn(function()
+      if not valid() then return end
+      md.render_async(table.concat(source, '\n'), cells, function(projected, marks)
+        local row, mark = 0, 1
+        local function apply()
+          if not valid() then return end
+          local started = vim.uv.hrtime()
+          writable(function()
+            if (not marks[mark] or marks[mark].row >= row) and row < #projected then
+              local last = math.min(row + 128, #projected)
+              local count = api.nvim_buf_line_count(b)
+              if row == 0 then api.nvim_buf_clear_namespace(b, ns, 0, -1) end
+              api.nvim_buf_set_lines(b, row, math.min(last, count), false, vim.list_slice(projected, row + 1, last))
+              row = last
+              if row == #projected then
+                if api.nvim_buf_line_count(b) > row then api.nvim_buf_set_lines(b, row, -1, false, {}) end
+              end
+            end
+            local last = math.min(mark + 255, #marks)
+            while mark <= last and marks[mark].row < row do
+              local s = marks[mark]
+              api.nvim_buf_set_extmark(b, ns, s.row, s.col, s.opts)
+              mark = mark + 1
+              if vim.uv.hrtime() - started >= 2000000 then break end
+            end
+          end)
+          if row < #projected or mark <= #marks then vim.defer_fn(apply, 0)
+          else vim.b[b].cland_render_pending = false end
+        end
+        vim.defer_fn(apply, 0)
+      end, valid)
+    end, 0)
   end
   return b
 end

@@ -79,7 +79,7 @@ function M.lines(text)
   return vim.split(text, '\n', { plain = true }), text
 end
 
-local function spans_of(text, lines)
+local function spans_of(text, lines, work, parser)
   local out, links, tables, references = {}, {}, {}, {}
   local nrows = #lines
   -- one span, its end clamped to the body: nothing spills into the next message
@@ -98,10 +98,14 @@ local function spans_of(text, lines)
       out[#out + 1] = { row = row, col = 0, opts = opts }
     end
   end
-  local parser = vim.treesitter.get_string_parser(text .. '\n', 'markdown')
-  parser:parse(true)
+  if parser == false then error('Markdown parse rejected') end
+  if not parser then
+    parser = vim.treesitter.get_string_parser(text .. '\n', 'markdown')
+    parser:parse(true)
+  end
   local source = text .. '\n'
   parser:for_each_tree(function(tree, ltree)
+    work()
     local lang = ltree:lang()
     local root = tree:root()
     if lang == 'markdown' or lang == 'markdown_inline' then
@@ -111,11 +115,13 @@ local function spans_of(text, lines)
       local q = query('markdown', 'cland-block', BLOCK_QUERY)
       assert(q, 'Missing Markdown query')
       for id, node in q:iter_captures(root, source) do
+        work()
         local name = q.captures[id]
         local sr, sc, er, ec = node:range()
         if name == 'heading' then
           local last = ec == 0 and er - 1 or er
           for r = sr, last do
+            work()
             span(r, 0, r, #(lines[r + 1] or ''), { hl_group = 'ClandHeading', priority = 105 })
           end
         elseif name == 'hmarker' then
@@ -127,6 +133,7 @@ local function spans_of(text, lines)
         elseif name == 'code' then
           local last = ec == 0 and er - 1 or er
           for r = sr, last do
+            work()
             line(r, { line_hl_group = 'ClandCodeBlock', priority = 60 })
           end
         elseif name == 'fence' then
@@ -147,6 +154,7 @@ local function spans_of(text, lines)
         elseif name == 'quote' then
           local last = ec == 0 and er - 1 or er
           for r = sr, last do
+            work()
             span(r, 0, r, #(lines[r + 1] or ''), { hl_group = 'ClandQuote', priority = 101 })
           end
         elseif name == 'quotemark' then
@@ -160,9 +168,11 @@ local function spans_of(text, lines)
         elseif name == 'table' then
           local rows = {}
           for child in node:iter_children() do
+            work()
             if child:type() ~= 'pipe_table_delimiter_row' then
               local cells = {}
               for cell in child:iter_children() do
+                work()
                 if cell:type() == 'pipe_table_cell' then
                   local r, a, _, z = cell:range()
                   cells[#cells + 1] = { row = r, from = a, to = z }
@@ -175,6 +185,7 @@ local function spans_of(text, lines)
         elseif name == 'reference' then
           local label, destination
           for child in node:iter_children() do
+            work()
             if child:type() == 'link_label' then label = vim.treesitter.get_node_text(child, source) end
             if child:type() == 'link_destination' then destination = vim.treesitter.get_node_text(child, source) end
           end
@@ -190,9 +201,11 @@ local function spans_of(text, lines)
       local lq = query('markdown_inline', 'cland-links', '[(inline_link) (full_reference_link) (collapsed_reference_link) (shortcut_link) (uri_autolink) (email_autolink)] @link')
       assert(lq, 'Missing inline link query')
       for id, node in lq:iter_captures(root, source) do
+        work()
         if lq.captures[id] == 'link' then
           local label, destination, reference
           for child in node:iter_children() do
+            work()
             if child:type() == 'link_text' then label = child end
             if child:type() == 'link_destination' then destination = child end
             if child:type() == 'link_label' then reference = vim.treesitter.get_node_text(child, source):sub(2, -2) end
@@ -214,6 +227,7 @@ local function spans_of(text, lines)
       local q = query('markdown_inline', 'highlights')
       assert(q, 'Missing Markdown query')
       for id, node, meta in q:iter_captures(root, source) do
+        work()
         local name = q.captures[id]
         local conceal = (meta[id] or {}).conceal or meta.conceal
         local group = INLINE[name]
@@ -236,6 +250,7 @@ local function spans_of(text, lines)
         return
       end
       for id, node in q:iter_captures(root, source) do
+        work()
         local name = q.captures[id]
         if name:sub(1, 1) ~= '_' and name ~= 'spell' and name ~= 'nospell' then
           local sr, sc, er, ec = node:range()
@@ -246,6 +261,7 @@ local function spans_of(text, lines)
   end)
   local resolved = {}
   for _, link in ipairs(links) do
+    work()
     link.destination = link.destination or references[link.reference]
     if link.destination then resolved[#resolved + 1] = link end
   end
@@ -254,24 +270,28 @@ end
 
 -- Cache by original body text, including failures. FIFO eviction never discards the whole cache
 -- during an append, and no parser survives the extraction of its spans.
-local function parsed(text)
+local function parsed(text, work, parser)
   text = tostring(text or '')
   if cache[text] then return cache[text] end
   local lines, clean = M.lines(text)
-  local ok, result = pcall(spans_of, clean, lines)
+  local ok, result = pcall(spans_of, clean, lines, work, parser)
   local body = ok and result or { lines = lines, spans = {}, links = {}, tables = {} }
   body.layouts = {}
   -- Projection visits each source row. Index spans and links once rather than
   -- scanning the entire artifact for every line (quadratic on long documents).
   body.row_spans, body.row_links = {}, {}
   for _, s in ipairs(body.spans) do
+    work()
     for r = s.row, s.opts.end_row or s.row do
+      work()
       body.row_spans[r] = body.row_spans[r] or {}
       table.insert(body.row_spans[r], s)
     end
   end
   for _, link in ipairs(body.links) do
+    work()
     for r = link.row, link.end_row do
+      work()
       body.row_links[r] = body.row_links[r] or {}
       table.insert(body.row_links[r], link)
     end
@@ -288,7 +308,7 @@ end
 
 -- A projection carries displayed text, spans and link targets together. Table cells also materialize
 -- concealed syntax, so their measured widths and every styled label match what the screen shows.
-local function project(body, source_row, from, to, prefix, cell)
+local function project(body, source_row, from, to, prefix, cell, work)
   local source = body.lines[source_row + 1]
   if cell then
     local text = source:sub(from + 1, to)
@@ -301,6 +321,7 @@ local function project(body, source_row, from, to, prefix, cell)
     if a < z then edits[#edits + 1] = { a, z, replacement or '' } end
   end
   for _, link in ipairs(body.row_links[source_row] or {}) do
+    work()
     if link.label_end_row <= source_row and source_row <= link.end_row then
       edit(source_row == link.label_end_row and link.label_end_col + 1 or 0,
         source_row == link.end_row and link.end_col or #source)
@@ -308,6 +329,7 @@ local function project(body, source_row, from, to, prefix, cell)
   end
   if cell then
     for _, s in ipairs(body.row_spans[source_row] or {}) do
+      work()
       local er = s.opts.end_row or s.row
       if s.opts.conceal and s.row <= source_row and source_row <= er then
         edit(s.row == source_row and s.col or from, er == source_row and s.opts.end_col or to, s.opts.conceal)
@@ -317,6 +339,7 @@ local function project(body, source_row, from, to, prefix, cell)
   table.sort(edits, function(a,b) return a[1] == b[1] and a[2] > b[2] or a[1] < b[1] end)
   local merged = {}
   for _, e in ipairs(edits) do
+    work()
     local last = merged[#merged]
     if last and e[1] < last[2] then
       last[2] = math.max(last[2], e[2])
@@ -327,18 +350,21 @@ local function project(body, source_row, from, to, prefix, cell)
     c = math.max(from, math.min(to, c))
     local removed = 0
     for _, e in ipairs(edits) do
+      work()
       if c >= e[1] then removed = removed + math.min(c,e[2]) - e[1] - (c >= e[2] and #e[3] or 0) end
     end
     return #prefix + c - from - removed
   end
   local pieces, start = { prefix }, from
   for _, e in ipairs(edits) do
+    work()
     pieces[#pieces + 1] = source:sub(start + 1, e[1]) .. e[3]
     start = e[2]
   end
   pieces[#pieces + 1] = source:sub(start + 1, to)
   local result = { text = table.concat(pieces), spans = {}, links = {} }
   for _, s in ipairs(body.row_spans[source_row] or {}) do
+    work()
     local er = s.opts.end_row or s.row
     if s.row <= source_row and source_row <= er then
       local opts = vim.tbl_extend('force', {}, s.opts)
@@ -354,6 +380,7 @@ local function project(body, source_row, from, to, prefix, cell)
     end
   end
   for _, link in ipairs(body.row_links[source_row] or {}) do
+    work()
     if link.label_row <= source_row and source_row <= link.label_end_row then
       local a = source_row == link.label_row and link.label_col or from
       local z = source_row == link.label_end_row and link.label_end_col or to
@@ -370,16 +397,19 @@ local function literal(text)
 end
 
 -- Join projected labels, cells and padding without losing their style or link byte ranges.
-local function concat(parts)
+local function concat(parts, work)
   local result = literal('')
   for _, part in ipairs(parts) do
+    work()
     local offset = #result.text
     for _, span in ipairs(part.spans) do
+      work()
       local opts = vim.tbl_extend('force', {}, span.opts)
       if opts.end_col then opts.end_col = opts.end_col + offset end
       result.spans[#result.spans + 1] = { row = 0, col = span.col + offset, opts = opts }
     end
     for _, link in ipairs(part.links) do
+      work()
       result.links[#result.links + 1] = { col = link.col + offset, end_col = link.end_col + offset, destination = link.destination }
     end
     result.text = result.text .. part.text
@@ -387,37 +417,42 @@ local function concat(parts)
   return result
 end
 
-local function table_projection(body, t)
+local function table_projection(body, t, work)
   if t.projection then return t.projection end
   local rows, widths = {}, {}
   for _, row in ipairs(t.rows) do
+    work()
     local cells = {}
     for k, cell in ipairs(row) do
-      cells[k] = project(body, cell.row, cell.from, cell.to, '', true)
+      work()
+      cells[k] = project(body, cell.row, cell.from, cell.to, '', true, work)
       widths[k] = math.max(widths[k] or 0, vim.api.nvim_strwidth(cells[k].text))
     end
     rows[#rows + 1] = cells
   end
   local rule = '|'
-  for _, width in ipairs(widths) do rule = rule .. ('-'):rep(width + 2) .. '|' end
+  for _, width in ipairs(widths) do work(); rule = rule .. ('-'):rep(width + 2) .. '|' end
   t.projection = { rows = rows, widths = widths, rule = rule }
   return t.projection
 end
 
 --- Cached per-body projections: normal markers are drawn with conceal; only hidden link tails are
 --- compacted to avoid Neovim's raw-width wrapping bug. Tables use fully rendered cell widths and content.
-function M.render(text, cells)
-  local body = parsed(text)
+function M.render(text, cells, work, parser)
+  work = work or function() end
+  local body = parsed(text, work, parser)
   local code, tables, skipped, layout = {}, {}, {}, ''
   for _, s in ipairs(body.spans) do
+    work()
     if s.opts.line_hl_group == 'ClandCodeBlock' then code[s.row] = true end
   end
   for _, t in ipairs(body.tables) do
-    local p = table_projection(body, t)
+    work()
+    local p = table_projection(body, t, work)
     local fitted = fit({ { p.rule, 'ClandFaint' } }, cells)
     local full = #fitted == 1 and fitted[1][1] == p.rule
     tables[t.first] = { projection = p, full = full }
-    for r = t.first, t.last do skipped[r] = true end
+    for r = t.first, t.last do work(); skipped[r] = true end
     layout = layout .. (full and 'f' or 's')
   end
   local hit = body.layouts[layout]
@@ -427,45 +462,144 @@ function M.render(text, cells)
     local row = #lines
     lines[#lines + 1], metadata[#metadata + 1] = p.text, { links = p.links }
     for _, s in ipairs(p.spans) do
+      work()
       local opts = vim.tbl_extend('force', {}, s.opts)
       if opts.end_row then opts.end_row = row end
       spans[#spans + 1] = { row = row, col = s.col, opts = opts }
     end
   end
   for r, line in ipairs(body.lines) do
+    work()
     r = r - 1
     local table_row = tables[r]
     if table_row then
       local p = table_row.projection
       if table_row.full then
         for i, row in ipairs(p.rows) do
+          work()
           local parts = { literal('| ') }
           for k, width in ipairs(p.widths) do
+            work()
             local cell = row[k] or literal('')
             parts[#parts + 1] = cell
             parts[#parts + 1] = literal((' '):rep(width - vim.api.nvim_strwidth(cell.text)) .. ' |' .. (k < #p.widths and ' ' or ''))
           end
-          add(concat(parts))
+          add(concat(parts, work))
           if i == 1 then add(literal(p.rule)) end
         end
       elseif #p.rows == 1 then
         -- A table with no data still has meaningful header cells.
-        for _, header in ipairs(p.rows[1]) do add(concat({ literal('  '), header })) end
+        for _, header in ipairs(p.rows[1]) do add(concat({ literal('  '), header }, work)) end
       else
         for i = 2, #p.rows do
+          work()
           if i > 2 then add(literal('')) end
           -- Ragged rows keep every header and cell; surplus cells use positional labels.
           for k = 1, math.max(#p.rows[1], #p.rows[i]) do
-            add(concat({ literal('  '), p.rows[1][k] or literal(tostring(k)), literal(': '), p.rows[i][k] or literal('') }))
+            work()
+            add(concat({ literal('  '), p.rows[1][k] or literal(tostring(k)), literal(': '), p.rows[i][k] or literal('') }, work))
           end
         end
       end
     elseif not skipped[r] then
-      add(project(body, r, 0, #line, code[r] and '  ' or '', false))
+      add(project(body, r, 0, #line, code[r] and '  ' or '', false, work))
     end
   end
   body.layouts[layout] = { lines = lines, spans = spans, metadata = metadata }
   return lines, spans, metadata
+end
+
+-- Keep the whole Markdown tree, but bound injected-language setup too. Neovim's
+-- async full parse installs every injection range in one unyielding operation.
+-- At most 64 regions enter a child parser here; root parsing and child parsing
+-- use Neovim's asynchronous 3 ms budget. Extraction/projection cooperate after
+-- 256 work steps or 2 ms. No partial body enters the shared parse cache.
+function M.render_async(text, cells, done, valid)
+  local count, started, step
+  local function work()
+    count = count + 1
+    if count >= 256 or vim.uv.hrtime() - started >= 2000000 then coroutine.yield() end
+  end
+  local function parse(parser)
+    -- Parse this parser's regions without eagerly installing its descendants.
+    -- Discovery below uses the original bundled query and Neovim's own region
+    -- semantics, then visits descendants in bounded batches.
+    local injections = parser._injection_query
+    parser._injection_query = nil
+    local waiting, suspended, failure = true, false, nil
+    parser:parse(true, function(err)
+      waiting, failure = false, err
+      if suspended then vim.defer_fn(step, 0) end
+    end)
+    if waiting then suspended = true; coroutine.yield('parse') end
+    parser._injection_query = injections
+    return not failure
+  end
+  local function discover(parser)
+    -- Pinned LanguageTree seam: retain combined patterns, include-children,
+    -- parent/self languages, offsets and clipping exactly as the sync parser.
+    -- Its discovery loop already has a cooperation point after every match.
+    local subtract = parser._subtract_time
+    parser._subtract_time = function() work() end
+    local ok, regions = pcall(parser._get_injections, parser, true, {})
+    parser._subtract_time = subtract
+    if not ok then error(regions) end
+    return regions
+  end
+  local thread = coroutine.create(function()
+    if cache[text] then return M.render(text, cells, work) end
+    local lines, clean = M.lines(text)
+    local source = clean .. '\n'
+    local ok, root = pcall(vim.treesitter.get_string_parser, source, 'markdown')
+    if not ok then return M.render(text, cells, work, false) end
+    -- Grow one continuous region: Tree-sitter reuses the preceding tree while
+    -- retaining open-block context. A whole-document native parse can exceed
+    -- its nominal timeout; each extension supplies at most 128 new rows.
+    local bytes = 0
+    for row, line in ipairs(lines) do
+      work()
+      bytes = bytes + #line + 1
+      if row % 128 == 0 or row == #lines then
+        root:set_included_regions({ { { 0, 0, 0, row, 0, bytes } } })
+        if not parse(root) then return M.render(text, cells, work, false) end
+      end
+    end
+    local trees = {}
+    local function visit(parser)
+      -- Snapshot before children are installed: each tree is extracted once.
+      parser:for_each_tree(function(tree, language)
+        work()
+        trees[#trees + 1] = { tree, language }
+      end)
+      for lang, regions in pairs(discover(parser)) do
+        work()
+        for first = 1, #regions, 64 do
+          work()
+          local loaded, child = pcall(parser.add_child, parser, lang)
+          if loaded then
+            -- A combined injection is one region containing all its ranges;
+            -- it stays intact. Batches partition independent parser regions.
+            child:set_included_regions(vim.list_slice(regions, first, first + 63))
+            if parse(child) then visit(child) end
+          end
+        end
+      end
+    end
+    visit(root)
+    local parsed_trees = { for_each_tree = function(_, visit)
+      for _, pair in ipairs(trees) do work(); visit(pair[1], pair[2]) end
+    end }
+    return M.render(text, cells, work, parsed_trees)
+  end)
+  step = function()
+    if not valid() then return end
+    count, started = 0, vim.uv.hrtime()
+    local ok, lines, spans, metadata = coroutine.resume(thread)
+    if not ok then error(lines) end
+    if coroutine.status(thread) == 'dead' then done(lines, spans, metadata)
+    elseif lines ~= 'parse' then vim.defer_fn(step, 0) end
+  end
+  vim.defer_fn(step, 0)
 end
 
 return M

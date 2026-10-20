@@ -7451,6 +7451,13 @@
       "expires": "2026-10-25",
       "reason": "T4 retains the existing 200-verdict visibility volume claim through the same assertions as the representative T2 case. A-5000 observed 6.263449173 seconds for these assertions; Coordinator disposition 85d1b1c3-5f15-45b3-abad-5a1f091939f7 moves the volume out of T2. E-677 owns this temporary allowance."
     },
+    "nvim/test/artifact-render.test.ts::a 20,000-line artifact yields to keys, bounds render work and caches the settled projection": {
+      "seconds": 8,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-10-27",
+      "reason": "T-1003 C1-C4 require a 20,000-line recorded-client T2 proof of rendered first paint, key handling before completion, deterministic parse/projection/decoration slice caps, settled start/middle/end grids and zero-parse reopen. Linux x64 c-8 run 9f5479ed at 6b5612d4 (A-7986) measured 6.116386405 s ordinary and 5/5 passing load repetitions at 5.733759028-6.318479964 s. An 8 s cap gives 25% headroom over the observed peak while E-880 owns duration-budget follow-up. The per-slice work caps, gross guards and separate 16 ms quiet-Mac median are unchanged; no assertion or load repetition is skipped."
+    },
     "nvim/test/client.test.ts::the client follows its hub through a restart and keeps the thread": {
       "seconds": 9.160867,
       "owner": "E-880",
