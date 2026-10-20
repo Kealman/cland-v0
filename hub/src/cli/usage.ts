@@ -5,8 +5,9 @@ export const IMPORT_USAGE = `  task import-github [--repo owner/name] [--all]
 
 export const ACCOUNT_USAGE = `  account list [--refresh] [--json]   list the user-level account names, harnesses, paths and limit windows\n  account clear <name>              lift an account's limited mark by hand\n`;
 
-export const OPEN_USAGE = `  open [dir]      start the project's hub if none runs, then the workbench in Neovim
+export const OPEN_USAGE = `  open [dir] [nvim args…]  start the project's hub if none runs, then the workbench in Neovim
                   (what \`cland\` with no command does on a terminal)
+                  arguments after dir go unchanged to Neovim: e.g. --headless, -u NONE, "+lua …"
 `;
 
 export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh] [--executor local|droplet] [--workers N] [--size <slug>] [--occasion stage|epic|release|soak] --report <topic|session> [--to <session>] [--json]
@@ -216,3 +217,9 @@ export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease 
 export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n`;
 
 export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value\n`;
+
+export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this build's help and built-in roles, without executing commands
+                  checks table ids/surfaces, commands/flags in code, and variable rm operands
+                  exits 0 when clean, 1 with one file:line finding per line, 2 for usage/read errors
+  qa lint --help|-h  print brief lint help
+`;

@@ -241,6 +241,8 @@
     "hub/test/publish.test.ts": "T3",
     "hub/test/push-component.test.ts": "T2",
     "hub/test/push.test.ts": "T3",
+    "hub/test/qa-lint-cli.test.ts": "T2",
+    "hub/test/qa-lint.test.ts": "T1",
     "hub/test/quarantine-runner.test.ts": "T3",
     "hub/test/quarantine.test.ts": "T1",
     "hub/test/release-item.test.ts": "T3",

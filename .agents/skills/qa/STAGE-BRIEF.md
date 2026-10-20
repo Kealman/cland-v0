@@ -30,6 +30,8 @@ Write "none" if checks are entirely manual.
 
 Write "none" when absent. Record every case and check with `qa-record.sh` under the epic id and one unique run id; retain the captures in the project's .cland/qa tree.
 
+Before requesting QA, run `cland qa lint <brief>` with this filled brief at the build under test. The brief is complete only when qa lint passes at the build. Use a `role` column (or `Role: Implementer` above the checks) to assign commands to a role; cleanup operands are literal paths.
+
 ## Probes that mislead
 
 - Process probes exclude their own shell: use `pgrep`'s bracket trick or exclude the probe's process tree.

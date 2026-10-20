@@ -8,6 +8,7 @@ import {
   EXECUTOR_USAGE,
   DEMO_USAGE,
   QA_USAGE,
+  QA_LINT_USAGE,
   INIT_USAGE,
   SETUP_USAGE,
   DOCTOR_USAGE,
@@ -36,7 +37,7 @@ usage: cland [<command>]
 
 With no command on a terminal, cland opens the workbench (cland open).
 
-${MODELS_USAGE}${ACCOUNT_USAGE}${OPEN_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${INIT_USAGE}${SETUP_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
+${MODELS_USAGE}${ACCOUNT_USAGE}${OPEN_USAGE}${SUITE_USAGE}${EXECUTOR_USAGE}${DEMO_USAGE}${QA_USAGE}${QA_LINT_USAGE}${INIT_USAGE}${SETUP_USAGE}${DOCTOR_USAGE}${HUB_USAGE}${TASK_USAGE}${SESSION_USAGE}${WORKTREE_USAGE}${MERGE_USAGE}${PUSH_USAGE}${RELEASE_USAGE}${ROLE_USAGE}${CREW_USAGE}${CONFIG_USAGE}${RULE_USAGE}${INBOX_USAGE}${TOPIC_USAGE}${HOOK_USAGE}${ARTIFACT_USAGE}${SUBSCRIPTIONS_USAGE}  --version, -v   print the version
   --help, -h      print this help
 `;
 
@@ -98,6 +99,11 @@ switch (command) {
       process.exitCode = 1;
     }
     break;
+  case 'qa': {
+    const { runQaLint } = await import('../src/cli/qa-lint.ts');
+    process.exitCode = runQaLint(rest);
+    break;
+  }
   case '--headless':
   case '--qa':
     // a QA case's result is the exit code; what stops the run before any case has BLOCKED's code
