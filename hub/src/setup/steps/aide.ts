@@ -8,7 +8,7 @@ import { HARNESS_ORDER } from './harnesses.ts';
 import type { SetupStep } from '../types.ts';
 
 export const aide: SetupStep = async ({ root, env, machine, hub: injected, noAide, interactive, kind = projectKind }) => {
-  if (noAide) return [{ name: 'aide', verdict: 'skip', detail: 'cland starts the hub with the workbench' }];
+  if (noAide) return [{ name: 'aide', verdict: 'skip', detail: 'skipped by --no-aide; run cland setup in a terminal to start the Aide later' }];
   let fix = 'cland setup in a terminal';
   try {
     const client = injected ?? setupHub(root, env);

@@ -77,7 +77,7 @@ test('no-aide skips both steps; nonterminal policy permits only a yes hub start'
   for (const interactive of [false, true]) {
     const skip = { ...options, interactive, noAide: true };
     assert.deepEqual([...(await hub(skip)), ...(await aide(skip))].map(s => [s.verdict, s.detail]), [
-      ['skip', 'cland starts the hub with the workbench'], ['skip', 'cland starts the hub with the workbench'],
+      ['skip', 'cland starts the hub with the workbench'], ['skip', 'skipped by --no-aide; run cland setup in a terminal to start the Aide later'],
     ]);
   }
   assert.deepEqual(calls, []);
