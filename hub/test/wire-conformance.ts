@@ -155,6 +155,7 @@ export type WireConformance = [
   Assert<Equal<import('../src/suite-selection.ts').SuiteSelection, Wire.SuiteSelection>>,
   Assert<Equal<import('../src/suite-selection.ts').SuiteMode, Wire.SuiteMode>>,
   Assert<Equal<import('../src/suite-coverage.ts').CoverageRecording, Wire.CoverageRecording>>,
+  Assert<Equal<import('../src/protocol.ts').WebEdgeStatus, Wire.WebEdgeStatus>>,
   Assert<Equal<import('../src/protocol.ts').HubStatus, Wire.HubStatus>>,
   Assert<Equal<import('../src/hub/priority.ts').HubPriority, Wire.HubPriority>>,
   Assert<Equal<import('../src/tracker/tracker.ts').TrackerStorageStatus, Wire.TrackerStorageStatus>>,

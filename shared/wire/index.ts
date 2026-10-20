@@ -863,7 +863,11 @@ export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
 export type CoverageRecording = { head: string; tree: string; run: string };
 
 // hub/src/protocol.ts
+export type WebEdgeStatus = { port: number; available: boolean; reason?: string };
+
 export type HubStatus = {
+  /** The independent browser listener; absent on older or stdio-only hubs. */
+  web?: WebEdgeStatus;
   /** Scheduling priority observed at hub startup. Absent on older hubs. */
   priority?: HubPriority;
   mergeQueue?: MergeQueueEntry[];
