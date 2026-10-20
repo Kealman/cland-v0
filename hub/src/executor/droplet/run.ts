@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFile, writeFile, rename } from 'node:fs/promises';
+import { appendFile, readFile, writeFile, rename } from 'node:fs/promises';
 import { parseConfig, defaultConfig } from '../../init/config.ts';
 import { basename } from 'node:path';
 import { recordedCommands } from '../../verification-commands.ts';
@@ -102,11 +102,15 @@ git write-tree
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
     for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
-    const lock = snapshot.key.lock === undefined ? '' : `if test "$(sha256sum package-lock.json | cut -d ' ' -f 1)" != ${quote(snapshot.key.lock)}; then echo 'dependencies changed: npm ci'; npm ci; else echo 'dependencies match snapshot'; fi\n`;
-    const pin = snapshot.key.nvim === undefined ? '' : `if test "$(cat nvim/NVIM_VERSION 2>/dev/null || echo none)" != ${quote(snapshot.key.nvim.tag)}; then echo 'Neovim pin changed: seed'; node nvim/bin/nvim-path.ts; else echo 'Neovim pin matches snapshot'; fi\n`;
-    const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\n${lock}${pin}test "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"`;
-    const output = await this.#machine.exec(lease, command, { timeoutMs: Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)) });
+    const prepare = lines.prepare ? `CLAND_PREPARE_KEY=${quote(JSON.stringify(snapshot.key))} /bin/sh -c ${quote(lines.prepare)} 2>&1 || { prepare_exit=$?; echo "prepare failed (exit $prepare_exit)"; exit "$prepare_exit"; }` : "echo 'prepare: not set'";
+    const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\n${prepare}\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\nprepare_dirty=$(git status --porcelain --untracked-files=all)\nif test -n "$prepare_dirty"; then echo "prepare left the checkout dirty: $prepare_dirty"; exit 1; fi`;
+    const result = await this.#machine.result(lease, command, Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)));
+    const output = result.stdout + result.stderr;
     await writeFile(join(local, 'delivery.log'), output);
+    if (result.code !== 0) {
+      await appendFile(run.log, output);
+      throw new Error(output.trim() || `delivery failed (exit ${result.code})`);
+    }
     await this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`);
     // Root SSH is already owned by the lease. Failure is a recorded disk fallback,
     // never a dependency on passwordless sudo or a changed prepared image.

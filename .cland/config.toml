@@ -16,7 +16,7 @@ batch_wait = "2m"
 [verification]
 # cland verify runs nothing until test is set; use cland config set verification.test '<command>'.
 # prepare installs what check and test need; runs on a droplet in the prepared image and before every run, never locally.
-prepare = ""
+prepare = "node hub/bin/verify-prepare.ts"
 # check is the fast gate; runs first and on the host before a droplet is made.
 check = "npm run check"
 # test is the suite; its exit code decides the run.

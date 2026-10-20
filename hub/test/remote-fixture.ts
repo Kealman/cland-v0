@@ -61,13 +61,16 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     await git('init', '-q', '-b', 'dev');
     await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com'); await git('config', 'commit.gpgsign', 'false');
   }
-  await mkdir(join(root, 'nvim')); await mkdir(join(root, 'hub/src/tracker'), { recursive: true });
+  await mkdir(join(root, 'nvim/bin'), { recursive: true }); await mkdir(join(root, 'hub/src/tracker'), { recursive: true });
+  await writeFile(join(root, 'nvim/bin/nvim-path.ts'), '// Fixture seed needs no download.\n');
   await writeFile(join(root, '.gitignore'), '.cland/\nnode_modules/\n');
   await writeFile(join(root, 'nvim/NVIM_VERSION'), 'v0.12.5\n');
   await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), `${'a'.repeat(64)}  nvim-linux-x86_64.tar.gz\n`);
   const typecheck = options.typecheck ?? 'node -e "process.exit(0)"';
   const script = options.test ?? `node -e "console.log('SELECTION='+process.env.CLAND_SUITE_SELECTION);console.log('COLORS='+process.env.FORCE_COLOR+','+process.env.NO_COLOR);console.log('# tests 1');console.log('# pass 1')"`;
-  const commands = await verificationFixture(root, { ...options, typecheck, testScript: script, packageFields: { private: true, workspaces: ['hub'] } });
+  const commands = await verificationFixture(root, { ...options, prepare: options.prepare ?? (options.stack === 'other' ? '' : 'node hub/bin/verify-prepare.ts'), typecheck, testScript: script, packageFields: { private: true, workspaces: ['hub'] } });
+  await mkdir(join(root, 'hub/bin'), { recursive: true });
+  await writeFile(join(root, 'hub/bin/verify-prepare.ts'), await readFile(new URL('../bin/verify-prepare.ts', import.meta.url)));
   if (options.stack !== 'other') await writeFile(join(root, 'hub/package.json'), JSON.stringify({ name: 'fixture-hub', scripts: { test: script } }));
   await writeFile(join(root, 'package-lock.json'), JSON.stringify({ name: 'remote-fixture', lockfileVersion: 3, packages: { '': { name: 'remote-fixture', workspaces: ['hub'] }, hub: { name: 'fixture-hub' }, 'node_modules/fixture-hub': { resolved: 'hub', link: true } } }));
   if (!scripted) {
@@ -82,6 +85,8 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     const imageHome = join(api.imageDirs.get(image.id)!, 'home/runner');
     await exec('git', ['clone', '-q', '--no-hardlinks', root, join(imageHome, 'cland')]);
     await exec('git', ['remote', 'remove', 'origin'], { cwd: join(imageHome, 'cland') });
+    await mkdir(join(imageHome, 'cland/node_modules'), { recursive: true });
+    await writeFile(join(imageHome, 'cland/node_modules/.cland-prepare-key'), JSON.stringify(key));
   }
   await mkdir(join(root, '.cland/run/executor'), { recursive: true });
   await writeFile(join(root, '.cland/run/executor/snapshot.json'), JSON.stringify({ image: image.id, name: image.name, key, keyHash: keyHash(key), regions: image.regions, sizeGb: 1, minDiskSize: 10, created: image.created_at }));

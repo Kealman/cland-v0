@@ -6,7 +6,9 @@
       "A-6792",
       "A-6796",
       "A-6795",
-      "A-6848"
+      "A-6848",
+      "A-6845",
+      "A-6830"
     ],
     "commit": "1d81bd6e7457f83699249bd3d13f6d604fa50de7"
   },
@@ -442,8 +444,8 @@
       "tests": 3
     },
     "hub/test/executor-run.test.ts": {
-      "seconds": 71.69203,
-      "tests": 8
+      "seconds": 88.464157542,
+      "tests": 12
     },
     "hub/test/executor-safety-component.test.ts": {
       "seconds": 5.304453,
@@ -1999,6 +2001,10 @@
     },
     "nvim/test/verification-view.test.ts": {
       "seconds": 0.647315,
+      "tests": 1
+    },
+    "hub/test/verify-prepare.test.ts": {
+      "seconds": 0.776026333,
       "tests": 1
     }
   },
@@ -5081,9 +5087,21 @@
     "hub/test/session-resume-lifecycle.test.ts::a stopped Claude Implementer resumes its conversation, role and item claim and receives its clause again": 5.637125,
     "hub/test/task-worktrees-lifecycle.test.ts::cland session launch --item starts the Implementer in the worktree with the claim taken over from the Coordinator; its Claude Code refuses a worktree of its own": 7.049747,
     "hub/test/executor-run.test.ts::host check failure creates no machine; remote typecheck stops tests and failed tests retain failures": 11.071156,
-    "hub/test/merge-checkout-lifecycle.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": 5.006846
+    "hub/test/merge-checkout-lifecycle.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": 5.006846,
+    "hub/test/executor-run.test.ts::shell project prepares its snapshot before rebuilding ignored outputs": 5.94539675,
+    "hub/test/executor-run.test.ts::shell project reports a planted test failure": 4.934417833,
+    "hub/test/executor-run.test.ts::delivery prepare retains failed command output before remote checks": 2.942562334,
+    "hub/test/executor-run.test.ts::delivery prepare rejects unignored outputs before remote checks": 2.949750625,
+    "hub/test/verify-prepare.test.ts::prepare uses installed snapshot inputs and rebuilds changed or missing installs": 0.776026333
   },
   "allow": {
+    "hub/test/executor-run.test.ts::shell project prepares its snapshot before rebuilding ignored outputs": {
+      "seconds": 10,
+      "owner": "E-880",
+      "added": "2026-10-19",
+      "expires": "2026-10-26",
+      "reason": "Keeps the real builder, prepared snapshot, delivery and green worker receipt in one native scenario; reduce native lifecycle cost (T-670)."
+    },
     "hub/test/aide.test.ts::an Aide launches any role through its tool and runs launch, stop and resume in its own shell": {
       "seconds": 22.6,
       "owner": "E-880",
@@ -6300,11 +6318,11 @@
       "legacy": true
     },
     "T3": {
-      "seconds": 2037,
+      "seconds": 2115,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "Adds the setup CLI/PTY flow and one cleanup ownership regression after lower-tier setup rules. Base T3 is 2016.879276 s; setup measured 11.265835125 s and the synthetic process-table regression 0.102284125 s. Before timing refresh, merge admission estimates each new T3 identity at 10 s, projecting 2036.879276 s; this allowance covers that estimate."
+      "added": "2026-10-20",
+      "expires": "2026-11-20",
+      "reason": "T-670 adds the real shell builder/snapshot/delivery proof, planted-red and failed/dirty prepare controls, and the prepare CLI contract. Base T3 is 2092.229397 s; native A-6845 contributes 16.772127542 s and A-6830 contributes 0.776026333 s, projecting 2109.777550875 s. The 2115 s total cap allows 5.222449125 s of headroom above this measured projection; reduce native lifecycle cost (T-670)."
     }
   }
 }

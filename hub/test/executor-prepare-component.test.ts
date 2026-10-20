@@ -25,7 +25,7 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
     await api.close();
   });
   await mkdir(join(root, '.cland'), { recursive: true });
-  await writeFile(join(root, '.cland/config.toml'), '[verification]\n[verification.droplet]\nregions=["lon1", "nyc1", "sfo2"]\n');
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\nprepare = "npm ci"\n[verification.droplet]\nregions=["lon1", "nyc1", "sfo2"]\n');
   api.sizes[0]!.regions.push('sfo2'); api.regions.push({ slug: 'sfo2', available: true, sizes: ['c-8'] });
   let failure = '';
   const dependencies = { ...machine.dependencies, api: api.provider, prepareKey: async () => structuredClone(key),
@@ -33,6 +33,10 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
       exec: async (_lease: unknown, command: string) => {
         if (failure === 'ssh' || failure === 'unready' || failure === 'install' && command.includes('npm ci')) throw new Error('scripted machine failed');
         return JSON.stringify(failure === 'marker' ? { ...key, base: 'bad' } : key);
+      },
+      result: async () => {
+        if (failure === 'install') return { stdout: 'install-output', stderr: '', code: 8 };
+        return { stdout: 'installed', stderr: '', code: 0 };
       },
       put: async () => {},
     },
@@ -152,6 +156,7 @@ test('failed replacement releases its builder, deletes a partial image and keeps
     assert.equal(api.images.length, 1, `${failure}: ${failed.prepare!.error}`); assert.equal(api.images[0]!.id, first.image);
     assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
     assert.match(failed.prepare!.error, /failed|deadline|time bound/);
+    if (failure === 'install') assert.match(failed.prepare!.error, /install: prepare failed \(exit 8\)\ninstall-output/);
     for (const lease of await readLeases(root)) {
       assert.equal(await f.dependencies.host.watchdogAlive(lease), false, `${failure}: released builder watchdog has exited`);
     }

@@ -23,7 +23,7 @@ test('prepare retries transient builder deletion failures within its release win
       const value = Reflect.get(target, property);
       return typeof value === 'function' ? value.bind(target) : value;
     } }),
-    machine: { ...f.dependencies.machine!, exec: async () => '', put: async () => {} },
+    machine: { ...f.dependencies.machine!, exec: async () => '', result: async () => ({ stdout: '', stderr: '', code: 0 }), put: async () => {} },
   });
   let index = 0;
   for (const failure of [409, 422, 503, 'timeout', 'key-503'] as const) {

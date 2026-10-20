@@ -94,7 +94,7 @@ export type Prepared = { state: 'current' | 'prepared'; snapshot: Snapshot; dura
 type PrepareOptions = {
   dependencies?: DropletDependencies;
   env?: NodeJS.ProcessEnv;
-  root: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
+  root: string; prepare?: string; project: string; regions: string[]; tags: string[]; key: PrepareKey; maxDiskSize?: number; store?: Store | undefined; log: LogFn; signal?: AbortSignal | undefined;
   builder: (userData: string) => Promise<DropletLease>; release: (lease: DropletLease) => Promise<Released>; step: (step: string) => void;
 };
 
@@ -133,7 +133,13 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     await machine.exec(builder, `set -eu; git init --bare "$HOME/mirror.git"; git --git-dir="$HOME/mirror.git" fetch "$HOME/base.bundle" '+refs/heads/dev:refs/heads/dev'; git clone --no-hardlinks "$HOME/mirror.git" "$HOME/cland"; git -C "$HOME/cland" remote remove origin; git -C "$HOME/cland" checkout --detach ${shellQuote(key.base)}; rm "$HOME/base.bundle"`, { timeoutMs: timeout(), signal: options.signal });
     await rm(bundle, { force: true });
     step('install');
-    await machine.exec(builder, 'set -eu; cd "$HOME/cland"; npm ci; if [ -f nvim/bin/nvim-path.ts ]; then node nvim/bin/nvim-path.ts; fi', { timeoutMs: timeout(), signal: options.signal });
+    let installOutput = 'prepare: not set\n';
+    if (options.prepare) {
+      const result = await machine.result(builder, `cd "$HOME/cland" && CLAND_PREPARE_KEY=${shellQuote(JSON.stringify(key))} /bin/sh -c ${shellQuote(options.prepare)} 2>&1`, timeout(), options.signal);
+      installOutput = result.stdout + result.stderr;
+      if (result.code !== 0) throw new Error(`prepare failed (exit ${result.code})\n${installOutput}`);
+    }
+    log({ event: 'executor-prepare-install', output: installOutput });
     const marker = join(dir, 'image.json');
     await writeFile(marker, `${JSON.stringify(key)}\n`, { mode: 0o600 });
     await machine.put(builder, marker, '.cland-image.json', { timeoutMs: timeout(), signal: options.signal });
@@ -200,6 +206,7 @@ export async function prepareSnapshot(options: PrepareOptions): Promise<Prepared
     // Retain ownership if accepted retirement has not reached catalogue absence.
     await recoverSnapshot(root, recovery, options.store, env, dependencies.api);
     const result = prepared('prepared', snapshot, started, released, clock);
+    result.summary += `\n${installOutput.trimEnd()}`;
     log({ event: 'executor-prepared', key, image: image.id, regions: snapshot.regions, durationMs: result.durationMs, ...released });
     return result;
   } catch (error) {

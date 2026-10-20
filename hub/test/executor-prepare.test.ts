@@ -63,6 +63,7 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
     const commands: string[] = [];
     const dependencies = { ...machine.dependencies, api: api.provider, machine: { ...machine.dependencies.machine,
       exec: async (_lease: unknown, command: string) => { commands.push(command); return command.includes('.cland-image.json') ? JSON.stringify(key) : ''; },
+      result: async (_lease: unknown, command: string) => { commands.push(command); return { stdout: 'prepare: not set\n', stderr: '', code: 0 }; },
       put: async () => {},
     } };
     const env = { DIGITALOCEAN_TOKEN: 'sentinel-pinless', CLAND_EXECUTOR_STATE: join(root, '.cland/state') };
@@ -76,6 +77,8 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
       return value.prepare && value.prepare.state !== 'running' ? value : undefined;
     }));
     assert.equal(status.prepare!.state, 'done', status.prepare!.error);
+    const history = (await ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
+    assert.ok(history.messages.some(message => message.text.includes('prepare: not set')));
     assert.deepEqual(status.snapshot.key, key);
     assert.equal(status.snapshot.freshness, 'current');
     assert.match(status.summary, /"nvim":"none"/);
@@ -102,7 +105,7 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
       const delivery = commands.find(command => command.includes('git checkout --detach') && command.includes('git clean'))!;
       assert.ok(delivery);
       assert.doesNotMatch(delivery, /package-lock|dependencies (?:changed|match)|Neovim|NVIM_VERSION/);
-      assert.equal(await readFile(join(runDir, 'delivery.log'), 'utf8'), '');
+      assert.equal(await readFile(join(runDir, 'delivery.log'), 'utf8'), 'prepare: not set\n');
       await executor.deliver(lease, run);
       await executor.start(lease, run);
       machine.finish(lease.run);
@@ -157,7 +160,9 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, s
   await writeFile(join(root, 'nvim/NVIM_SHA256SUMS'), 'bce0f56eda1f1b1db6eee8f4133d7a38813ea07933837dd1777411ca384c6875  nvim-linux-x86_64.tar.gz\n');
   await writeFile(join(root, 'package.json'), '{"name":"prepared-fixture","version":"1.0.0"}\n');
   await writeFile(join(root, 'package-lock.json'), '{"name":"prepared-fixture","version":"1.0.0","lockfileVersion":3,"packages":{"":{"name":"prepared-fixture","version":"1.0.0"}}}\n');
-  await writeFile(join(root, '.gitignore'), '.cland/\n');
+  await writeFile(join(root, '.gitignore'), '.cland/\nnode_modules/\n');
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[verification]\nprepare = "npm ci"\n');
   await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Base');
   await git(territory, 'init', '--bare', '-q');
   await git(root, 'remote', 'add', 'origin', territory); await git(root, 'push', '-qu', 'origin', 'dev');
@@ -204,6 +209,10 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
     assert.equal(notices.length, 1);
     assert.match(notices[0]!.text, /key .*regions .*duration .*builder lifetime .*cost /s);
     assert.ok(!JSON.stringify(history).includes('sentinel-prepare'));
+    const installCalls = await readFile(join(api.stateRoot, 'machine-calls.jsonl'), 'utf8');
+    assert.ok(installCalls.includes('npm ci'));
+    assert.ok(installCalls.includes('CLAND_PREPARE_KEY='));
+    assert.doesNotMatch(installCalls, /node nvim\/bin\/nvim-path\.ts/);
     const current = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
     assert.equal(current.code, 0, current.stderr);
     await eventually('second prepare completes', async () => {

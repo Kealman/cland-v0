@@ -46,6 +46,8 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
       assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
       assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
       assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
+      const delivery = await readFile(join(f.root, '.cland/run/suites', job.id, 'delivery.log'), 'utf8');
+      assert.match(delivery, /dependencies match snapshot\nNeovim pin matches snapshot/);
     }
     assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted state\n');
   }
@@ -209,10 +211,10 @@ test('droplet delivery uses recorded shell lines after the project config change
   const path = join(f.root, '.cland/config.toml');
   const config = parseConfig(await readFile(path, 'utf8'), 'recorded commands');
   const testLine = 'printf recorded-component; printf "\\n$ echo preparing\\n"; exit 7';
-  Object.assign(config.verification, { prepare: 'exit 93', check: 'printf recorded-check', test: 'exit 96', test_unit: 'printf recorded-test', test_component: testLine, test_integration: 'printf must-not-run' });
+  Object.assign(config.verification, { prepare: 'printf recorded-prepare', check: 'printf recorded-check', test: 'exit 96', test_unit: 'printf recorded-test', test_component: testLine, test_integration: 'printf must-not-run' });
   await writeFile(path, renderConfig(config));
   f.api.beforeCreate(async () => {
-    Object.assign(config.verification, { check: 'exit 94', test: 'exit 95', test_unit: 'exit 98' });
+    Object.assign(config.verification, { prepare: 'exit 93', check: 'exit 94', test: 'exit 95', test_unit: 'exit 98' });
     await writeFile(path, renderConfig(config));
   });
   const job = await f.launch('--fresh');
@@ -221,6 +223,8 @@ test('droplet delivery uses recorded shell lines after the project config change
   const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
   assert.match(log, /Commands: check printf recorded-check · test exit 96/);
   assert.match(log, /Host gate: printf recorded-check/);
+  assert.match(log, /recorded-prepare/);
+  assert.doesNotMatch(log, /prepare failed/);
   assert.match(result.text, /tier T1: exit 0; duration \d+ s; output tail: recorded-test/);
   assert.match(result.text, /tier T2: exit 7; duration \d+ s; output tail: recorded-component/);
   assert.ok(result.text.includes(`T2 exited 7: ${testLine}`), result.text);
@@ -235,4 +239,51 @@ test('droplet delivery uses recorded shell lines after the project config change
     assert.doesNotMatch(script, /exit 9[1-5]/);
   }
   assert.deepEqual(f.api.droplets, []);
+});
+
+// T3: native shell preparation/delivery is the remote transport contract; policy fakes cannot execute it.
+for (const failing of [false, true]) test(`shell project ${failing ? 'reports a planted test failure' : 'prepares its snapshot before rebuilding ignored outputs'}`, async t => {
+  const f = await fixture(t, { hub: projectHub, stack: 'other', prepare: 'echo prepared; echo prepared > .prepared', check: 'sh -n test.sh', test: 'sh test.sh' });
+  await writeFile(join(f.root, '.gitignore'), '.cland/\nnode_modules/\n.prepared\n');
+  await writeFile(join(f.root, 'test.sh'), `test -f .prepared || exit 2\n${failing ? 'echo planted-shell-failure\nexit 7' : 'echo shell-green'}\n`);
+  await f.git('add', '.'); await f.git('commit', '-qm', failing ? 'Planted failure' : 'Shell project');
+  if (!failing) {
+    await f.git('push', '-q', 'origin', 'HEAD:dev');
+    assert.equal((await f.ui.request({ type: 'executor.prepare' })).ok, true);
+    await eventually('shell snapshot prepared', async () => {
+      const value = (await f.ui.request({ type: 'executor.status' })).value as { prepare?: { state: string; error?: string } };
+      if (!value.prepare || value.prepare.state === 'running') return undefined;
+      assert.equal(value.prepare.state, 'done', value.prepare.error);
+      return true;
+    });
+  }
+  // Invalidate the host receipt so the native log includes the remote check command.
+  await f.api.setMachineFaults({ checkoutDifference: true });
+  const submitted = await f.ui.request({ type: 'suite.start', cwd: f.root, mode: 'auto', fresh: true, report: f.topic, to: ['impl'], as: { name: 'impl', sessionId: 'remote-impl', shell: true } });
+  assert.equal(submitted.ok, true, submitted.error);
+  const job = submitted.value as { id: string };
+  const result = await f.result(job.id);
+  assert.match(result.text, failing ? /exit 7/ : /exit 0/);
+  if (failing) assert.match(result.text, /planted-shell-failure/);
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  assert.match(log, /\nprepared\n/);
+  assert.ok(log.indexOf('\nprepared\n') < log.indexOf('\n$ sh -n test.sh'), log);
+  assert.match(log, /\$ sh test.sh/);
+});
+
+for (const dirty of [false, true]) test(`delivery prepare ${dirty ? 'rejects unignored outputs' : 'retains failed command output'} before remote checks`, async t => {
+  const f = await fixture(t, { hub: projectHub, stack: 'other', prepare: dirty ? 'echo dirty > unexpected' : 'echo prepare-output; echo prepare-stderr >&2; exit 17', check: 'echo CHECK-RAN', test: 'echo TEST-RAN' });
+  const submitted = await f.ui.request({ type: 'suite.start', cwd: f.root, mode: 'auto', fresh: true, report: f.topic, to: ['impl'], as: { name: 'impl', sessionId: 'remote-impl', shell: true } });
+  assert.equal(submitted.ok, true, submitted.error);
+  const job = submitted.value as { id: string };
+  const result = await f.result(job.id);
+  assert.match(result.text, /exit 1/);
+  assert.match(result.text, dirty ? /prepare left the checkout dirty:.*unexpected/ : /prepare failed \(exit 17\)/);
+  const log = await readFile(join(f.root, '.cland/run/suites', job.id, 'suite.log'), 'utf8');
+  if (!dirty) {
+    assert.match(result.text, /prepare-output[\s\S]*prepare-stderr/);
+    assert.match(log, /prepare-output[\s\S]*prepare-stderr/);
+  }
+  assert.doesNotMatch(log, /\$ echo CHECK-RAN|\$ echo TEST-RAN/);
+  assert.equal((await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8')).includes('setsid nohup bash'), false);
 });

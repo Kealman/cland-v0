@@ -26,10 +26,10 @@ export class Machine {
     try { return (await run(this.#env.CLAND_SSH_BIN ?? 'ssh', args, { env: machineEnv(this.#env), timeout: Math.max(1, options.timeoutMs), signal: options.signal, maxBuffer: 8 * 1024 * 1024 })).stdout; }
     catch { throw new Error('machine command failed or exceeded its time bound'); }
   }
-  /** Command outcomes cross the demo boundary unchanged; transport failures still fail the request. */
-  async result(lease: DropletLease, command: string, timeoutMs: number): Promise<{ stdout: string; stderr: string; code: number }> {
-    const program = `const cp=require('child_process');const r=cp.spawnSync('sh',['-c',process.argv[1]],{encoding:'utf8',maxBuffer:8*1024*1024});console.log(JSON.stringify({stdout:r.stdout||'',stderr:r.stderr||(r.error?'demo command could not complete':''),code:r.status===null?1:r.status}));`;
-    const output = await this.exec(lease, `node -e ${shellQuote(program)} ${shellQuote(command)}`, { timeoutMs });
+  /** Shell outcomes cross the transport unchanged; SSH failures still fail the request. */
+  async result(lease: DropletLease, command: string, timeoutMs: number, signal?: AbortSignal): Promise<{ stdout: string; stderr: string; code: number }> {
+    const program = `const cp=require('child_process');const r=cp.spawnSync('sh',['-c',process.argv[1]],{encoding:'utf8',maxBuffer:8*1024*1024});console.log(JSON.stringify({stdout:r.stdout||'',stderr:r.stderr||(r.error?'shell command could not complete':''),code:r.status===null?1:r.status}));`;
+    const output = await this.exec(lease, `node -e ${shellQuote(program)} ${shellQuote(command)}`, { timeoutMs, signal });
     return JSON.parse(output) as { stdout: string; stderr: string; code: number };
   }
 

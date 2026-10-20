@@ -47,6 +47,7 @@ async function build(shape: Shape, stack: FixtureStack): Promise<string> {
   if (shape === 'verification') {
     const path = join(root, '.cland/config.toml');
     const config = parseConfig(await readFile(path, 'utf8'), 'fixture');
+    config.verification.prepare = stack.prepare ?? '';
     config.verification.check = stack.stack === 'other' ? stack.check : 'npm run typecheck';
     config.verification.test = stack.stack === 'other' ? stack.test : 'npm test';
     await writeFile(path, renderConfig(config));

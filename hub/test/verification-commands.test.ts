@@ -64,7 +64,7 @@ test('submission retains recorded commands through store reopen after config cha
 test('this repository names its tier commands for every mode', async t => {
   const root = fileURLToPath(new URL('../../', import.meta.url));
   const commands = await verificationCommands(root, root);
-  assert.deepEqual(commands, { prepare: '', check: 'npm run check', test: 'npm test', tiers: { T1: 'node hub/test/run-suite.ts --tier T1', T2: 'node hub/test/run-suite.ts --tier T2', T3: 'node hub/test/run-suite.ts --tier T3', T4: 'node hub/test/run-suite.ts --tier T4' } });
+  assert.deepEqual(commands, { prepare: 'node hub/bin/verify-prepare.ts', check: 'npm run check', test: 'npm test', tiers: { T1: 'node hub/test/run-suite.ts --tier T1', T2: 'node hub/test/run-suite.ts --tier T2', T3: 'node hub/test/run-suite.ts --tier T3', T4: 'node hub/test/run-suite.ts --tier T4' } });
   const f = await suiteUnit(t);
   await writeFile(join(f.root, '.cland/config.toml'), await readFile(join(root, '.cland/config.toml'), 'utf8'));
   for (const mode of ['auto', 'all', 'hub', 'nvim']) {
