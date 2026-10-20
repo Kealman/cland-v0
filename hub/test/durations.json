@@ -7395,6 +7395,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
     },
+    "hub/test/tracker-summary.test.ts::summary projection bounds the first open payload in a thousand-item tracker and preserves default lists": {
+      "seconds": 4,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-10-27",
+      "reason": "T-1007 C1 requires 1,000 real item files, 100 open, with long bodies and verdict history indexed in SQLite; preserves the 60 KB first-payload assertion, default compatibility and blocker events. At bb35e1b0, Linux x64 c-8 droplet A-7831 measured 3.021263533 s ordinary and 5/5 passing repetitions at 2.741-2.948 s (macOS A-7790: 0.7530175 s); 4 s bounds observed platform/filesystem setup variance while E-880 owns duration-budget follow-up. No child process or wall-clock wait."
+    },
     "hub/test/typecheck.test.ts::typecheck resolves pinned compilers in roots and linked worktrees": {
       "seconds": 5.710086,
       "owner": "E-880",

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import type { Scenario } from './stub-hub.ts';
 import type { Client } from './stub-client.ts';
-import { tempProject } from './fixture.ts';
+import { tempProject, eventually } from './fixture.ts';
 
 const nvim = await nvimOrSkip();
 
@@ -54,7 +54,7 @@ async function stub(t: test.TestContext, scenario = fixture, projectRoot?: strin
   await c.rpc.request('nvim_ui_try_resize',200,50);
   if (scenario.holdSnapshots?.includes('task.list')) await c.waitScreen(s=>s.includes('hub: connected'),'connected with held item snapshot');
   else await waitInitialSnapshots(c);
-  const control = (command:Record<string,unknown>) => new Promise<{requests:Array<{type:string;item?:string}>}>((resolve,reject) => {
+  const control = (command:Record<string,unknown>) => new Promise<{requests:Array<{type:string;item?:string;state?:string;projection?:string}>}>((resolve,reject) => {
     const socket = createConnection(controlPath); let data='';
     socket.setEncoding('utf8'); socket.on('error',reject);
     socket.on('data',chunk => { data+=chunk; if(data.includes('\n')) { socket.end(); resolve(JSON.parse(data)); } });
@@ -66,6 +66,74 @@ async function stub(t: test.TestContext, scenario = fixture, projectRoot?: strin
 async function text(c: Client) {
   return c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.explorer').b,0,-1,false),'\\n')");
 }
+
+test('explorer fetches open summaries first, closed summaries on expansion, and card text through task.view', {skip}, async t => {
+  const scenario: Scenario = { ...fixture, summaryLists: true, items: [
+    {id:'R-1',kind:'release',title:'Current release',state:'open',version:'0.2.0'},
+    {id:'T-2',kind:'task',title:'Open summary row',state:'open',parent:'R-1',blocked_by:['T-3'],open_blockers:[],branch:'t/detail',file:'T-2-summary.md',
+      verify:{id:'detail-job',state:'finished',result:'passed',head:'abcdef012345',finished:'2026-01-01T00:00:00Z'},
+      body:'## Summary\nText fetched by task.view.'},
+    {id:'T-3',kind:'task',title:'Closed lazy row',state:'closed',status:'done',body:'## Summary\nArchived card body.'},
+  ] };
+  const root = await tempProject(t);
+  await mkdir(root+'/.cland/tasks',{recursive:true});
+  await writeFile(root+'/.cland/tasks/T-2-summary.md','## Summary\nEditable item body.\n');
+  const {c,control} = await stub(t,scenario,root);
+  await c.waitScreen(s => s.includes('Current release') && s.includes('Closed items'), 'open-only explorer');
+  let frames = (await control({requests:true})).requests.filter(r => r.type === 'task.list');
+  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open']]);
+  assert.equal(await c.lua("return require('cland.state').item('T-3') ~= nil"), false);
+  await select(c,':direct:R-1'); await c.input('l');
+  await c.waitScreen(s => s.includes('Open summary row'), 'open item row');
+  assert.deepEqual(await c.lua("return require('cland.items').open_blockers(require('cland.state').item('T-2'))"), [], 'unloaded closed blocker does not mark the open row blocked');
+  await select(c,'T-2'); await c.input('<CR>');
+  await c.waitScreen(s => s.includes('Text fetched by task.view.'), 'card task.view body');
+  const card = await c.lua<string>("return table.concat(require('cland.explorer').card.lines,'\\n')");
+  assert.ok(card.includes('t/detail') && card.includes('detail-job'), 'card uses task.view metadata omitted from summaries');
+  assert.ok((await control({requests:true})).requests.some(r => r.type === 'task.view' && r.item === 'T-2'));
+  await c.input('h'); await select(c,':closed'); await c.input('l');
+  await c.waitScreen(s => s.includes('Closed lazy row'), 'closed row after group expansion');
+  await c.input('h');
+  await eventually('closed group collapsed', async () => await c.lua<boolean>("return require('cland.explorer').ui().folds[':closed'] == false") || undefined);
+  await select(c,':closed'); await c.input('l');
+  await c.waitScreen(s => s.includes('Closed lazy row'), 'cached closed group reopened');
+  frames = (await control({requests:true})).requests.filter(r => r.type === 'task.list');
+  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open'],['summary','closed']]);
+  await c.lua("require('cland.item_view').edit('T-2')");
+  await c.waitScreen(s => s.includes('Editable item body.'), 'edit resolves file from task.view');
+});
+
+test('item search loads closed summaries without a startup closed request', {skip}, async t => {
+  const {c,control} = await stub(t,{...fixture,summaryLists:true,items:[
+    {id:'R-1',kind:'release',title:'Current release',state:'open',version:'0.2.0'},
+    {id:'T-3',kind:'task',title:'Find archived item',state:'closed'},
+  ]});
+  assert.deepEqual((await control({requests:true})).requests.filter(r => r.type === 'task.list').map(r => r.state), ['open']);
+  await c.lua("require('cland.picker').open({kind='items'})");
+  await c.waitScreen(s => s.includes('Find archived item'), 'closed item search hit');
+  const frames = await eventually('closed summary search frame', async () => {
+    const frames = (await control({requests:true})).requests.filter(r => r.type === 'task.list');
+    return frames.some(r => r.state === 'closed') ? frames : undefined;
+  });
+  assert.deepEqual(frames.map(r => [r.projection,r.state]), [['summary','open'],['summary','closed']]);
+});
+
+test('a held closed snapshot replays a reopen as exactly one open item', {skip}, async t => {
+  const archived = {id:'T-3',kind:'task',title:'Reopened while loading',state:'closed',status:'done'};
+  const {c,control} = await stub(t,{...fixture,summaryLists:true,items:[
+    {id:'R-1',kind:'release',title:'Current release',state:'open',version:'0.2.0'}, archived,
+  ]});
+  await control({set:{holdSnapshots:['task.list']}});
+  await select(c,':closed'); await c.input('l');
+  await control({waitSnapshot:'task.list'});
+  const reopened = {...archived,state:'open',status:'backlog'};
+  await control({set:{items:[{id:'R-1',kind:'release',title:'Current release',state:'open',version:'0.2.0'},reopened]},emit:{type:'task',id:'T-3',item:reopened}});
+  await eventually('reopen event applied before closed snapshot', async () => await c.lua<boolean>("return (require('cland.state').item('T-3') or {}).state == 'open'") || undefined);
+  await control({releaseSnapshots:['task.list']});
+  await eventually('closed snapshot installed', async () => await c.lua<boolean>("return require('cland.state').S.closed_items_loaded == true") || undefined);
+  assert.deepEqual(await c.lua("local rows={}; for _,it in ipairs(require('cland.state').S.items) do if it.id=='T-3' then rows[#rows+1]=it.state end end; return rows"), ['open']);
+  assert.equal(await c.lua("return require('cland.explorer').index().by['T-3'].state"), 'open');
+});
 
 async function select(c:Client, key:string) {
   await c.lua("local key=...; local e=require('cland.explorer'); for r,row in ipairs(e.rows) do if row.key==key then vim.api.nvim_win_set_cursor(e.tree_win(),{r,0}); return end end; error('missing row '..key)",key);

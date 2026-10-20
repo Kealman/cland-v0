@@ -1571,11 +1571,17 @@ test('a reconnect reads each startup list once then settles for ten fake minutes
   await clock.advance(600000);
   assert.deepEqual(await counts(), expected, 'no full reads during ten idle minutes');
   await c.input('<Esc><Space>e');
+  await c.input('zR');
+  await c.lua("assert(vim.wait(5000,function() return require('cland.state').S.closed_items_loaded == true end), 'human-demand closed snapshot installed')");
+  const afterDemand = { ...expected, 'task.list': 2 };
+  assert.deepEqual(await counts(), afterDemand, 'expanding all deliberately fetches closed summaries once');
+  assert.deepEqual((await requestsOf(c, 'task.list')).map(f => [f.projection, f.state]), [['summary','open'],['summary','closed']]);
   const latest = item('T-14', 'task', 'New item 3');
   await c.control({ set: { items: [latest] }, emit: { type: 'task', id: latest.id, item: latest } });
-  await c.input('zR');
   await c.waitScreen(s => s.includes('New item 3'), 'task event renders its explorer row');
-  assert.deepEqual(await counts(), expected, 'task event never reloads any whole-state list');
+  assert.deepEqual(await counts(), afterDemand, 'task event never reloads any whole-state list');
+  await clock.advance(600000);
+  assert.deepEqual(await counts(), afterDemand, 'no full reads during ten idle minutes after human demand and task events');
 });
 
 test('the header shows sessions and Coordinator while the startup items list is delayed', { skip }, async t => {

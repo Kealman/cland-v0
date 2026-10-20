@@ -693,6 +693,19 @@ Categories names each open category with its open count, in id order. Each categ
 
 Unscheduled holds items with no parent: maps first, then the other items, each group by rank. Its folded row previews the first two ids and titles. Other releases names the open releases beyond the current root in version order, and names closed releases behind `A`. `A` adds closed releases newest first and closed Unscheduled items in closing order. Categories, Unscheduled, Other releases, Direct tasks and `N more` each have a card describing their holdings, with up to twelve referenced item lines and a remaining count. Enter on a holding reveals it in the tree.
 
+Startup requests only open item summaries, without bodies, history, plans or suite
+details. Blocked badges use the hub's resolved `open_blockers`, so an unloaded closed
+task does not leave its dependents blocked. Expanding **Closed items**, expanding all with `zR`, showing done items with
+`D`, enabling archive with `A`, or searching items in the palette fetches closed
+summaries once. Closed descendants then appear beneath their parents; Closed items
+holds archived roots not already shown by `A`. Counts and container progress reflect
+the loaded summaries until this fetch completes. `zR` keeps the archived-root group
+folded; expand Closed items itself to show those roots. Item events keep loaded rows current;
+a reconnect or explicit refresh renews the requested closed list. A failed closed
+fetch reports the error and waits for refresh/reconnect, without polling. Selecting a
+card reads its body, criteria, comments, branch, dates and suite detail through the
+shared `task.view` cache.
+
 | Key | Action |
 | --- | --- |
 | `j` / `k` | Next / previous item row, skipping headers, release breakdowns and stage labels. Counts work, for example `3j`. |
@@ -727,7 +740,7 @@ The card's blocks follow this order: Summary, Facts, Progress, Plan (epic), Late
 
 Progress uses the summary's verified, failed and stale counts for a task and its cached `task.view` criteria for the glyphs, text and latest marks. Containers show one cell per child in status order and counts in words, with stage cells for planned epics. The Plan block comes from cached `plan.get`: current stage, merged count, QA policy, other stages and closing times, and approval. A closed stage's time is the latest child `closed` time or stage verdict time; missing legacy child closing times show `—`. A closed epic shows every stage closed; an epic without a plan says `no plan`.
 
-Latest verdict uses the summary's verdicts, file order for a task and the latest timestamp across a container's subtree. It shows the result, author and role, round within that verdict kind, scope, time and run id. Its one-line reason is the first sentence of the cached verdict comment matched by run. A container fetches at most one additional cached `task.view`, for that verdict's item. Relations show blockers, blocked items and `regression_of`, with each target's glyph and state. Branch and suite use the summary's branch and latest `verify` result, job id, short head, finish time and cache-hit marker. Dates use local time; last activity is the later of an item's update and its topic's latest message, or the latest of those across a container's subtree, naming the item. Decision is the latest comment opening with `Resolution` or `Decided`, trimmed like a fallback summary, with its author and time.
+Latest verdict uses the summary's latest verdict per kind, file order for a task and the latest timestamp across a container's loaded subtree. It shows the result, author and role, original round within that verdict kind, scope, time and run id. Its one-line reason is the first sentence of the cached verdict comment matched by run. A container fetches at most one additional cached `task.view`, for that verdict's item. Relations show blockers, blocked items and `regression_of`, with each target's glyph and state. Branch and suite use the cached `task.view` branch and latest `verify` result, job id, short head, finish time and cache-hit marker. Dates use local time; last activity is the later of an item's update and its topic's latest message, or the latest of those across a container's loaded subtree, naming the item. Decision is the latest comment opening with `Resolution` or `Decided`, trimmed like a fallback summary, with its author and time.
 
 The agents' text fold line lists its `##` headings and word count from the cached body. `zb` in either the tree or card unfolds the body as wrapped text below the human's blocks, with highlighted headings; `zb` again folds it. The open state is held in memory for each item. First opens and hub-event redraws show it folded; only `zb` opens it.
 

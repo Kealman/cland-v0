@@ -1957,6 +1957,20 @@ approval arrive in their own slices. No role clause changes in T-183.
 | `cland task claim <id> [--release] [--force]` | `task.claim` | Takes or releases the claim. Claiming an open task in a project with a territory makes or reuses its branch and worktree (Task branches and worktrees). |
 | `cland task import-github [--repo owner/name] [--all]` | — (`task.import` frames) | Imports GitHub Issues as items (below). |
 
+UI clients can send `{type: "task.list", id: "open-items", projection: "summary", state: "open"}`.
+The optional `summary` projection returns id, kind, title, state, task status and size,
+labels, parent, blockers, claim, verifier holds and criteria counts.
+`open_blockers` resolves the still-open blocker ids in the hub's complete index.
+Task events carry this field too; closing, reopening or deleting a blocker refreshes
+its dependents. Unknown blockers remain open. The default list shape stays unchanged.
+It retains version, explicit rank, updated/closed times for ordering and cache invalidation, and only the
+latest verdict per kind in file order, including its original `round`. Verdict reasons,
+findings, bodies, comments, full criteria, plans, verification and index bookkeeping
+are excluded; selected cards read those through `task.view`. State and other existing
+filters combine normally. Unknown projections refuse. Omitting `projection` preserves
+the existing response, including the CLI's `cland task list --json`; the CLI adds no
+projection flag. Neovim requests open summaries first and closed summaries on demand.
+
 Lane order is a separate `follows` list beside `blocked_by` in epic frontmatter. Set it with `cland task create "Next epic" --kind epic --follows E-1`, or `cland task link E-2 --follows E-1`; remove an edge with `--unfollow E-1`. Repeated flags and the matching `task.create` / `task.link` tool fields take multiple ids. Any recognized prefix or bare number resolves to the canonical epic id; non-epic endpoints and cycles refuse. `task.view`, the card and explorer show follows beside blockers. Only `blocked_by` marks an item blocked.
 
 A follow is met when its predecessor is closed, or has task children all closed with its last ticket merged on dev. Plain `task view` shows `follows E-1: met` or the open tickets (and explains an empty or unmerged predecessor); JSON supplies `followStatus`. Prepare the next epic’s tickets and plan while every ticket of the predecessor’s last stage is in review, then launch its first stage on the last merge, subject to real blockers and plan approval.

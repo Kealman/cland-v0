@@ -247,7 +247,17 @@ function M.children(ix, node)
     end
   end
   if node.virtual then
-    if node.key == ':categories' then
+    if node.key == ':closed' then
+      local roots = {}
+      for _, it in ipairs(state.S.items) do
+        -- Closed descendants appear beneath their existing parents. This group adds only
+        -- archived roots that A/reveal has not already placed in another root section.
+        if M.done(it) and not present(it.parent) and not M.reveal_open[it.id]
+          and (not M.ui().archive or items.is_category(it)) then roots[#roots+1] = it end
+      end
+      add(roots)
+      if not state.S.closed_items_loaded then out[#out+1] = {note=state.S.items_note or 'loading closed items…'} end
+    elseif node.key == ':categories' then
       add(M.categories(ix))
     elseif node.key == ':unscheduled' then
       add(M.unscheduled(ix))
@@ -334,6 +344,7 @@ function M.node_for(ix, key)
   if key == ':categories' then return virtual(key, 'Categories') end
   if key == ':unscheduled' then return virtual(key, 'Unscheduled') end
   if key == ':releases' then return virtual(key, 'Other releases') end
+  if key == ':closed' then return virtual(key, 'Closed items') end
   local category = key:match('^:more:(.+)$')
   if category and ix.by[category] and items.is_category(ix.by[category]) then
     local live = M.live_done(M.kids(ix, category))
@@ -380,6 +391,7 @@ function M.walk(ix, scope, all, visit)
     rec(virtual(':categories', 'Categories'), 0, nil)
     rec(virtual(':unscheduled', 'Unscheduled'), 0, nil)
     rec(virtual(':releases', 'Other releases'), 0, nil)
+    rec(virtual(':closed', 'Closed items'), 0, nil)
   else
     local node = M.node_for(ix, scope)
     if node then
@@ -479,7 +491,7 @@ function M.verdicts(it)
   local out = {}
   for _, kind in ipairs({ 'review', 'qa' }) do
     local last, round = nil, 0
-    for _, v in ipairs(list) do if v.verdict == kind then last, round = v, round + 1 end end
+    for _, v in ipairs(list) do if v.verdict == kind then last, round = v, v.round or round + 1 end end
     if last then
       local ok = last.result == 'clear'
       if #out > 0 then out[#out + 1] = { ' ' } end
@@ -792,6 +804,7 @@ end
 function M.set_open(key, open)
   M.reveal_open[key] = nil
   M.ui().folds[key] = open
+  if key == ':closed' and open then require('cland').load_closed_items() end
   state.changed()
 end
 function M.move(step)
@@ -837,9 +850,10 @@ function M.fold(how)
   M.set_open(row.key, how == 'open' or (how == 'toggle' and not row.open))
 end
 function M.fold_all(open)
+  if open then require('cland').load_closed_items() end
   M.reveal_open = {}
   M.walk(M.index(), M.scope_key(), true, function(node)
-    if node.expandable and not node.scope_root and not node.release_root then M.ui().folds[node.key] = open end
+    if node.expandable and node.key ~= ':closed' and not node.scope_root and not node.release_root then M.ui().folds[node.key] = open end
   end)
   state.changed()
 end
@@ -858,10 +872,12 @@ function M.scope_here()
 end
 function M.toggle_done()
   M.ui().hide_done = not M.ui().hide_done
+  if not M.ui().hide_done then require('cland').load_closed_items() end
   state.changed()
 end
 function M.toggle_archive()
   M.ui().archive = not M.ui().archive
+  if M.ui().archive then require('cland').load_closed_items() end
   state.changed()
 end
 local card_ns = api.nvim_create_namespace('cland.explorer.card')

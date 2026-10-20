@@ -8,7 +8,7 @@ local state = require('cland.state')
 local items = require('cland.items')
 local criteria = require('cland.criteria')
 
-local M = { bufs = {}, detail = {}, pending = {}, stale = {}, criterion_rows = {} }
+local M = { bufs = {}, detail = {}, pending = {}, waiters = {}, stale = {}, criterion_rows = {} }
 local ns = api.nvim_create_namespace('cland.item_view')
 
 function M.setup(client)
@@ -87,10 +87,13 @@ function M.cost(it)
 end
 
 --- Ask the hub for the whole item (body, comments, verdicts).
-function M.fetch(id)
-  if M.pending[id] or not (M.client and M.client:connected()) then
-    return
+function M.fetch(id, ready)
+  if not (M.client and M.client:connected()) then return end
+  if ready then
+    M.waiters[id] = M.waiters[id] or {}
+    table.insert(M.waiters[id],ready)
   end
+  if M.pending[id] then return end
   M.pending[id] = true
   M.stale[id] = nil
   local it = state.item(id)
@@ -111,6 +114,9 @@ function M.fetch(id)
     -- the summary this fetch answers: a later change to it fetches again
     M.detail[id].seen = asked_at
     state.changed()
+    local waiters = M.waiters[id] or {}
+    M.waiters[id] = nil
+    for _, fn in ipairs(waiters) do fn(M.detail[id]) end
   end)
 end
 
@@ -156,6 +162,7 @@ end
 
 --- The fields column, as {label, value, group} rows.
 function M.fields(it, d)
+  it = vim.tbl_extend('force', d or {}, it)
   local out = {}
   local st = items.status(it)
   local g = items.GLYPH[st]
@@ -483,18 +490,25 @@ function M.criterion(id, op)
 end
 
 --- `e`: the item's file in a normal buffer in the centre (`:edit`); the hub re-indexes it on save.
-function M.edit(id)
+function M.edit(id, opened)
   local it = state.item(id)
-  if not (it and it.file) then
-    return state.say('e: ' .. id .. ' has no file in the index', 'ClandRedBar')
+  if not it then return state.say('e: unknown item ' .. id, 'ClandRedBar') end
+  local function edit(detail)
+    local file = it.file or (detail and detail.file)
+    if not file then return state.say('e: ' .. id .. ': ' .. (detail and detail.error or 'task.view answered no file'), 'ClandRedBar') end
+    local root = state.S.root ~= '' and state.S.root or vim.fn.getcwd()
+    local path = root .. '/.cland/tasks/' .. file
+    local win = require('cland.layout').centre()
+    api.nvim_set_current_win(win)
+    vim.cmd('edit ' .. vim.fn.fnameescape(path))
+    vim.wo[win].wrap = true
+    state.say(it.id .. ': editing ' .. '.cland/tasks/' .. file .. ' (the hub re-indexes it on :w)')
+    if opened then opened() end
   end
-  local root = state.S.root ~= '' and state.S.root or vim.fn.getcwd()
-  local path = root .. '/.cland/tasks/' .. it.file
-  local win = require('cland.layout').centre()
-  api.nvim_set_current_win(win)
-  vim.cmd('edit ' .. vim.fn.fnameescape(path))
-  vim.wo[win].wrap = true
-  state.say(it.id .. ': editing ' .. '.cland/tasks/' .. it.file .. ' (the hub re-indexes it on :w)')
+  local d = M.detail[id]
+  if it.file or (d and d.file and not M.stale[id]) then return edit(d) end
+  if not (M.client and M.client:connected()) then return state.say('e: detail needs a connected hub','ClandRedBar') end
+  M.fetch(id,edit)
 end
 
 --- The buffer of item `id`'s view, made on first use.

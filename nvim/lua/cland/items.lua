@@ -98,6 +98,7 @@ end
 
 --- The blockers still open: an id the tracker does not know counts as open (it is not known to be done).
 function M.open_blockers(it)
+  if type(it.open_blockers) == 'table' then return it.open_blockers end
   local out = {}
   for _, b in ipairs(type(it.blocked_by) == 'table' and it.blocked_by or {}) do
     local other = state.item(b)

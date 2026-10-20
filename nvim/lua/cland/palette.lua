@@ -155,6 +155,7 @@ local function render(p)
   local query = api.nvim_buf_get_lines(p.ibuf, 0, 1, false)[1] or ''
   p.query = query
   local g, text = M.parse(query)
+  if not g or g.key == 'items' then require('cland').load_closed_items() end
   p.prefix = g and g.prefix or nil
   local groups = {}
   for _, def in ipairs(M.GROUPS) do

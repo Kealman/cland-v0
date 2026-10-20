@@ -31,7 +31,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
@@ -117,13 +117,14 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
     case 'task.view':
       return { item: await tracker.viewAsync(needItem(f), resumed) };
     case 'task.list': {
+      if (f.projection !== undefined && f.projection !== 'summary') throw new TrackerError('projection must be summary');
       let verdict;
       if (frame.verdict !== undefined) {
         verdict = isStr(frame.verdict) ? parseVerdictFilter(frame.verdict) : null;
         if (!verdict) throw new TrackerError(`verdict filter "${String(frame.verdict)}" must be review|qa=clear|not clear`);
       }
       return {
-        items: tracker.list({
+        items: (frame.projection === 'summary' ? tracker.listSummaries.bind(tracker) : tracker.list.bind(tracker))({
           ...(frame.under !== undefined ? { under: frame.under } : {}),
           ...(frame.state ? { state: frame.state } : {}),
           ...(frame.labels?.length ? { labels: frame.labels } : {}),

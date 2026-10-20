@@ -79,6 +79,8 @@ export type Scenario = {
   resumeBrief?: string | null;
   /** `task.view` never answers (a disconnect while the client waits for it). */
   holdView?: boolean;
+  /** Opt into the summary/filter contract; older recorded screen scenarios replay their full rows. */
+  summaryLists?: boolean;
   /** Rank results can be delivered without events to test that UI movement waits for the hub. */
   rankEvents?: 'manual';
   rankError?: string;
@@ -445,8 +447,27 @@ function answer(f: Frame) {
     // T-902: accounts use the ordinary snapshot/event projection seam.
     case 'account.list':
       return scenario.accounts ? ok(f.id, { accounts: scenario.accounts }) : fail(f.id, 'the stub hub does not answer account.list');
-    case 'task.list':
-      return ok(f.id, { items: scenario.items ?? [] });
+    case 'task.list': {
+      let items = scenario.items ?? [];
+      if (scenario.summaryLists) {
+        items = items.filter(i => !f.state || i.state === f.state);
+        if (f.projection === 'summary') {
+          const fields = new Set(['id','kind','title','state','status','size','labels','parent','blocked_by','open_blockers','claim','holds','criteria','updated','closed','version','rank','rank_set','verdicts']);
+          items = items.map(i => {
+            const row = Object.fromEntries(Object.entries(i).filter(([key]) => fields.has(key)));
+            const latest = new Map<string, Record<string, unknown>>(), rounds = new Map<string, number>();
+            for (const v of Array.isArray(i.verdicts) ? i.verdicts as Array<Record<string, unknown>> : []) {
+              const kind = String(v.verdict), round = (rounds.get(kind) ?? 0) + 1;
+              rounds.set(kind,round); latest.delete(kind); latest.set(kind,{...v,round});
+            }
+            row.verdicts = [...latest.values()];
+            row.criteria = criteria(i).criteriaCounts;
+            return row;
+          });
+        }
+      }
+      return ok(f.id, { items });
+    }
     case 'task.rank': {
       if (scenario.rankError) return fail(f.id, scenario.rankError);
       const item = scenario.items?.find(i => i.id === f.item);

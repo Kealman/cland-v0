@@ -142,9 +142,7 @@ function M.discuss(id)
 end
 
 function M.edit(id)
-  require('cland.item_view').edit(id)
-  local it = state.item(id)
-  if it and it.file then vim.fn.search('^## Plan', 'cw') end
+  require('cland.item_view').edit(id,function() vim.fn.search('^## Plan', 'cw') end)
 end
 
 local function policy(qa)

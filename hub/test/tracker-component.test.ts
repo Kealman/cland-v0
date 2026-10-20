@@ -101,6 +101,16 @@ test('task list queries the index with state, label, kind, assignee filters', as
   assert.deepEqual(await ids('--kind', 'question'), ['Q-3']);
   assert.deepEqual(await ids('--assignee', 'bob'), ['T-2']);
 
+  const ui = await connectUi(t, await readDiscovery(root));
+  const defaultList = await ui.request({ type: 'task.list' });
+  assert.equal(defaultList.ok, true, defaultList.error);
+  const cliList = await componentTaskJson<{ items: Array<Record<string, unknown>> }>(root, 'list');
+  assert.deepEqual(cliList, defaultList.value, 'task list --json preserves the default wire response');
+  assert.ok(cliList.items.every(i => typeof i.file === 'string' && Array.isArray(i.verdicts)), 'default index metadata and verdict lists remain');
+  const summaries = await ui.request({ type: 'task.list', projection: 'summary', state: 'open' });
+  assert.equal(summaries.ok, true, summaries.error);
+  assert.deepEqual((summaries.value as { items: Array<{ id: string }> }).items.map(i => i.id), ['T-1','Q-3']);
+
   const human = ok(await componentTask(root, 'task', 'list', '--state', 'open', '--label', 'y'));
   assert.match(human.stdout, /^Q-3 +open +question +Three +\[y\]\n$/);
   const bad = await componentTask(root, 'task', 'list', '--state', 'nope');

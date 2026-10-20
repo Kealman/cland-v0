@@ -92,6 +92,21 @@ test('a task card shows progress, verdict reason, relations, suite and the folde
   assert.ok(!text.includes('Agents only.'));
 });
 
+test('compact latest verdicts retain historical criterion review rounds through task.view', {skip}, async t=> {
+  const at='2026-01-01T00:00:00Z';
+  const verdicts=[1,2,3].map(n=>({verdict:'review',result:'clear',by:'rev',run:'round-'+n,at}));
+  const {c}=await stub(t,{...fixture,summaryLists:true,items:fixture.items!.map(i=>i.id==='T-10'?{
+    ...i,verdicts,criteria:[{id:'C1',text:'Keep the original review evidence.',marks:[{kind:'verified',by:'rev',run:'round-1',at}]}],
+  }:i)});
+  await c.input('<Esc><Space>e'); await c.input('zR');
+  await c.waitScreen(s=>s.includes('Written summary task'),'task row with compact verdict');
+  await select(c,'T-10'); await shown(c,'T-10','Keep the original review evidence.');
+  assert.deepEqual(await c.lua("local v=require('cland.state').item('T-10').verdicts; return {#v,v[1].round}"),[1,3]);
+  const text=await card(c);
+  assert.ok(text.includes('verified · rev · r1'),text);
+  assert.ok(text.includes('r3'),text);
+});
+
 test('epic cards show stage progress, approval, subtree verdict and latest activity including a closed plan', {skip}, async t=> {
   const older='2026-01-01T00:00:00Z', newer='2026-01-02T00:00:00Z';
   const v={verdict:'qa',result:'clear',by:'qa-1',run:'qa-26',scope:'evidence',at:newer};

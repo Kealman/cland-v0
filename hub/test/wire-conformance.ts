@@ -89,6 +89,7 @@ export type WireConformance = [
   Assert<Equal<import('../src/accounts/limits.ts').LimitWindow, Wire.LimitWindow>>,
   Assert<Equal<import('../src/accounts/limits.ts').LimitSource, Wire.LimitSource>>,
   Assert<Equal<import('../src/tracker/tracker.ts').ItemSummary, Wire.ItemSummary>>,
+  Assert<Equal<import('../src/tracker/tracker.ts').ExplorerSummary, Wire.ExplorerSummary>>,
   Assert<Equal<import('../src/tracker/index-db.ts').IndexedItem, Wire.IndexedItem>>,
   Assert<Equal<import('../src/tracker/item.ts').Kind, Wire.Kind>>,
   Assert<Equal<import('../src/tracker/item.ts').State, Wire.State>>,

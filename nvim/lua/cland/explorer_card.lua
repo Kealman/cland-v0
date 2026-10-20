@@ -11,7 +11,7 @@ local function latest(it)
   local counts, last, round = {}, nil, nil
   for _, v in ipairs(type(it.verdicts) == 'table' and it.verdicts or {}) do
     counts[v.verdict] = (counts[v.verdict] or 0) + 1
-    last, round = v, counts[v.verdict]
+    last, round = v, v.round or counts[v.verdict]
   end
   return last, round
 end
@@ -19,7 +19,7 @@ local function round_of(it, run)
   local counts = {}
   for _, v in ipairs(type(it.verdicts) == 'table' and it.verdicts or {}) do
     counts[v.verdict] = (counts[v.verdict] or 0) + 1
-    if v.run == run then return counts[v.verdict] end
+    if v.run == run then return v.round or counts[v.verdict] end
   end
 end
 local function ordinal(n)
@@ -78,6 +78,7 @@ function C.compose(key, width)
       [':categories'] = 'Categories hold items outside every release and epic.',
       [':unscheduled'] = 'Items with no container, with A showing the closed ones too.',
       [':releases'] = 'Other open releases, with A also showing archived releases.',
+      [':closed'] = 'Closed items load when this group is expanded or when you search for an item.',
     }
     text(about[key] or (node and node.more
       and ('Remaining live items in ' .. node.owner .. ', after its top three by rank.')
@@ -98,6 +99,8 @@ function C.compose(key, width)
   local it = ix.by[key]
   if not it then text(key .. ' is no longer in the tracker','ClandDim'); return C.paint(rows) end
   local d = require('cland.item_view').get(it.id, {summary_only=true})
+  -- Branch, dates and other detail come from the shared task.view cache.
+  it = vim.tbl_extend('force', d or {}, it)
   local container = E.is_container(ix,it)
   local chain, p, seen = {}, items.present(it.parent) and ix.by[it.parent] or nil, {}
   while p and not seen[p.id] do
@@ -179,7 +182,7 @@ function C.compose(key, width)
       local marks = criterion.marks or {}
       local mark = marks[#marks]
       if mark then
-        text(mark.kind .. ' · ' .. mark.by .. (present(mark.run) and (' · r' .. tostring(round_of(it,mark.run) or '—')) or '') .. ' · ' .. E.when(mark.at),'ClandDim')
+        text(mark.kind .. ' · ' .. mark.by .. (present(mark.run) and (' · r' .. tostring(round_of(d or it,mark.run) or '—')) or '') .. ' · ' .. E.when(mark.at),'ClandDim')
         if present(mark.note) then text(mark.note,'ClandRed') end
       end
     end
@@ -276,7 +279,7 @@ function C.compose(key, width)
       local counts = {}
       for _, v in ipairs(type(child.verdicts)=='table' and child.verdicts or {}) do
         counts[v.verdict] = (counts[v.verdict] or 0)+1
-        if not verdict or (v.at or '') >= (verdict.at or '') then verdict, round, owner = v, counts[v.verdict], child end
+        if not verdict or (v.at or '') >= (verdict.at or '') then verdict, round, owner = v, v.round or counts[v.verdict], child end
       end
     end
   end

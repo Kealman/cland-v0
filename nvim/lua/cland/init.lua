@@ -201,14 +201,46 @@ end)
 
 M.refresh_sessions = refresh_sessions
 
---- The whole list, on connecting: after that the `task` events keep it (an item as `task.list` shows it), so
---- nothing polls `task.list` (T-67).
+-- Initial snapshots carry only open summaries. Closed rows load on human demand;
+-- task events keep both sets current afterwards. Reconnects renew a requested archive.
+local closed_requested, closed_busy, closed_attempted = false, false, false
+function M.load_closed_items()
+  closed_requested = true
+  if state.S.closed_items_loaded or closed_busy or closed_attempted or not state.S.items_loaded
+    or not (M.client and M.client:connected()) then return end
+  closed_busy, closed_attempted = true, true
+  M.client:snapshot({type='task.list',projection='summary',state='closed'},function(err,value,events)
+    closed_busy = false
+    if err then
+      state.S.items_note = 'closed items: ' .. tostring(err)
+    else
+      local merged, positions = {}, {}
+      local function put(it)
+        local identity = state.item_number(it.id) or it.id
+        local at = positions[identity] or (#merged+1)
+        positions[identity], merged[at] = at, it
+      end
+      for _, it in ipairs(state.S.items) do if it.state ~= 'closed' then put(it) end end
+      for _, it in ipairs(value and value.items or {}) do
+        if it.state == 'closed' then put(it) end
+      end
+      state.S.items, state.S.closed_items_loaded, state.S.items_note = merged, true, nil
+      for _, event in ipairs(events) do
+        if event.type == 'task' then require('cland.items').apply_event(event) end
+      end
+    end
+    state.changed()
+  end)
+end
+
 local refresh_items = single_flight(function(done)
-  M.client:snapshot({ type = 'task.list' }, function(err, value, events)
+  M.client:snapshot({ type = 'task.list', projection = 'summary', state = 'open' }, function(err, value, events)
     if err then
       state.S.items_note = 'items: ' .. tostring(err)
     else
       state.S.items_loaded = true
+      state.S.closed_items_loaded = false
+      closed_attempted = false
       state.S.items, state.S.items_note = value and value.items or {}, nil
       state.S.sibling_orders = {}
       for _, event in ipairs(events) do
@@ -217,6 +249,7 @@ local refresh_items = single_flight(function(done)
     end
     state.changed()
     done()
+    if closed_requested then M.load_closed_items() end
   end)
 end)
 

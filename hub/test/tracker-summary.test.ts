@@ -6,8 +6,9 @@ import files, { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serializeItem } from '../src/tracker/item.ts';
-import { Tracker, DEBOUNCE_MS } from '../src/tracker/tracker.ts';
+import { Tracker, DEBOUNCE_MS, type ItemChange } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
+import { handleTaskRequest, type TaskRequest } from '../src/tracker/requests.ts';
 import { tempProject } from './harness.ts';
 
 for (const source of ['clean', 'changed', 'unvalidated', 'legacy'] as const) test(`startup recovery preserves the live item and handles a ${source} source`, async t => {
@@ -135,4 +136,49 @@ test('list summaries omit import metadata and bookkeeping frontmatter available 
   for (const field of ['github', 'criterion_seq', 'plan_approval', 'body', 'comments']) {
     assert.equal(Object.hasOwn(summary, field), false, `list omits ${field}`);
   }
+});
+
+test('summary projection bounds the first open payload in a thousand-item tracker and preserves default lists', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'cland-tracker-summary-'));
+  const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), git: async () => null, readBase: async () => null });
+  t.after(async () => { await tracker.stop(); await rm(root, { recursive: true, force: true }); });
+  const at = '2026-01-01T00:00:00.000Z';
+  for (let n = 1; n <= 1000; n++) await writeFile(join(root, `.cland/tasks/T-${n}-fixture.md`), serializeItem({
+    fm: { id: `T-${n}`, kind: 'task', title: `Fixture item ${n}`, state: n <= 100 ? 'open' : 'closed',
+      status: n <= 100 ? 'planned' : 'done', size: 'M', labels: [], assignee: null, parent: null,
+      blocked_by: n === 1 ? ['T-1000'] : [], topic: null, branch: null, created: at, updated: at },
+    body: '## Summary\n' + 'Long agents text. '.repeat(100) + '\n\n## Acceptance criteria\n- [ ] C1. Works.',
+    comments: [1, 2, 3].map(round => ({ author: 'reviewer', at, text: 'A long verdict reason. '.repeat(10),
+      verdict: { verdict: 'review' as const, result: round === 3 ? 'clear' as const : 'not clear' as const, by: 'reviewer', run: `r${round}` } })),
+  }));
+  tracker.rescan();
+  const list = async (fields: Record<string, unknown>) => (await handleTaskRequest(tracker,
+    { type: 'task.list', id: 'list', ...fields } as TaskRequest, { id: 'human', name: 'human', role: null })) as { items: Array<Record<string, unknown>> };
+  const full = await list({});
+  assert.deepEqual(full.items, tracker.list(), 'no projection keeps the existing list contract');
+  const open = await list({ projection: 'summary', state: 'open' });
+  assert.equal(open.items.length, 100);
+  assert.deepEqual(open.items[0]?.blocked_by, ['T-1000']);
+  assert.deepEqual(open.items[0]?.open_blockers, [], 'closed blocker stays resolved without loading its row');
+  assert.ok(Buffer.byteLength(JSON.stringify(open)) < 60_000, 'first open-only payload stays under 60 KB');
+  const all = await list({ projection: 'summary' });
+  assert.equal(all.items.length, 1000);
+  t.diagnostic(`summary bytes: open=${Buffer.byteLength(JSON.stringify(open))}, all=${Buffer.byteLength(JSON.stringify(all))}`);
+  for (const row of all.items) {
+    for (const field of ['body', 'comments', 'plan', 'verify', 'file', 'verdictBase']) assert.equal(Object.hasOwn(row, field), false, field);
+    assert.equal((row.verdicts as Array<{ run: string }>).length, 1);
+    assert.equal((row.verdicts as Array<{ run: string }>)[0]?.run, 'r3');
+    assert.equal((row.verdicts as Array<{ round: number }>)[0]?.round, 3);
+    assert.deepEqual(row.criteria, { total: 1, done: 0, verified: 0, stale: 0, failed: 0 });
+  }
+  assert.equal((await list({ projection: 'summary', state: 'closed' })).items.length, 900);
+  await assert.rejects(list({ projection: 'unknown' }), /projection/);
+  const changes: ItemChange[] = [];
+  tracker.onChange(change => changes.push(change));
+  const human = { id: 'human', name: 'human', role: null, human: true };
+  await tracker.edit(human, 'T-1000', { state: 'open' });
+  assert.ok(changes.some(c => c.id === 'T-1' && c.item?.open_blockers?.includes('T-1000')), 'reopening refreshes the dependent event');
+  changes.length = 0;
+  await tracker.edit(human, 'T-1000', { state: 'closed' });
+  assert.ok(changes.some(c => c.id === 'T-1' && c.item?.open_blockers?.length === 0), 'closing refreshes the dependent event');
 });

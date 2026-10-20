@@ -424,6 +424,18 @@ export class TrackerIndex {
     return rows.map((r) => this.#hydrate(r)).sort(compareRank);
   }
 
+  /** Resolve blockers in the index so an open-only client does not need the closed archive. */
+  openBlockers(id: string): string[] {
+    return this.#db.prepare(`select b.blocker from tracker_blocked_by b left join tracker_items i on i.id = b.blocker
+      where b.item_id = ? and (i.state is null or i.state != 'closed') order by b.rowid`)
+      .all(this.#key(id)).map(row => this.#canonical(String(row.blocker)));
+  }
+
+  blockedDependents(id: string): string[] {
+    return this.#db.prepare('select item_id from tracker_blocked_by where blocker = ?').all(this.#key(id))
+      .map(row => this.#canonical(String(row.item_id)));
+  }
+
   /** Direct children only; hand-edit warnings need no unrelated labels or blockers. */
   children(id: string): IndexedItem[] {
     id = this.#key(id);

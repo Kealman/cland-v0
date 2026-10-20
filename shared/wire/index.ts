@@ -457,7 +457,13 @@ export type LimitWindow = { id: string; label: string; usedPercent: number; rese
 export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' };
 
 // hub/src/tracker/tracker.ts
-export type ItemSummary = IndexedItem & { plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ItemSummary = IndexedItem & { plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+
+export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set'> & {
+  open_blockers: string[];
+  rank?: number;
+  verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round: number }>;
+};
 
 // hub/src/tracker/index-db.ts
 export type IndexedItem = {
@@ -955,7 +961,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
