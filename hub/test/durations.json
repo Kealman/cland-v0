@@ -2006,6 +2006,34 @@
     "hub/test/verify-prepare.test.ts": {
       "seconds": 0.776026333,
       "tests": 1
+    },
+    "hub/test/cli-usage.test.ts": {
+      "seconds": 0.001121,
+      "tests": 1
+    },
+    "hub/test/heartbeat-digest.test.ts": {
+      "seconds": 0.01308,
+      "tests": 1
+    },
+    "hub/test/publish-component.test.ts": {
+      "seconds": 0.081397,
+      "tests": 6
+    },
+    "hub/test/publish.test.ts": {
+      "seconds": 7.438488,
+      "tests": 3
+    },
+    "hub/test/push-component.test.ts": {
+      "seconds": 0.039341,
+      "tests": 3
+    },
+    "hub/test/setup-trust-lock.test.ts": {
+      "seconds": 0.015293,
+      "tests": 3
+    },
+    "nvim/test/thread-oracle-soak.test.ts": {
+      "seconds": 3.206815,
+      "tests": 1
     }
   },
   "tests": {
@@ -5092,7 +5120,51 @@
     "hub/test/executor-run.test.ts::shell project reports a planted test failure": 4.934417833,
     "hub/test/executor-run.test.ts::delivery prepare retains failed command output before remote checks": 2.942562334,
     "hub/test/executor-run.test.ts::delivery prepare rejects unignored outputs before remote checks": 2.949750625,
-    "hub/test/verify-prepare.test.ts::prepare uses installed snapshot inputs and rebuilds changed or missing installs": 0.776026333
+    "hub/test/verify-prepare.test.ts::prepare uses installed snapshot inputs and rebuilds changed or missing installs": 0.776026333,
+    "hub/src/hub/store.test.ts::a Coordinator harness exit posts one immediate General notice even after its spoke disconnected": 0.028152,
+    "hub/test/adapter-composition.test.ts::launch and relaunch policy follows the actual harness across role defaults (T-944)": 0.67133,
+    "hub/test/claude-code-environment.test.ts::Claude relaunch repairs a pre-T-603 default-directory row without changing explicit account selections": 0.004563,
+    "hub/test/claude-code-schedule.test.ts::Claude discovery misses retain liveness without accepting a conflicting native or process identity": 0.01224,
+    "hub/test/cli-usage.test.ts::push help names the Coordinator, Aide and human as allowed callers": 0.001121,
+    "hub/test/demo-release-component.test.ts::demo stop confirms a slow earlier deletion with empty tags and frees its slot and reservation": 0.208371,
+    "hub/test/dev-t3-search-component.test.ts::budget-only periodic red names over-budget identities without starting culprit probes": 0.352877,
+    "hub/test/executor-contract.test.ts::executor credentials are stripped by name without reading values or changing the API environment": 0.021101,
+    "hub/test/executor-prepare-component.test.ts::delivery retries initial SSH setup within its bound and names failed transport steps": 0.076347,
+    "hub/test/executor-prepare-component.test.ts::delivery survives a snapshot replacement during machine creation": 0.107597,
+    "hub/test/executor-prepare-component.test.ts::machine failures preserve exit and bounded stderr without leaking credentials or command arguments": 0.001396,
+    "hub/test/heartbeat-digest.test.ts::ended runs leave the stale digest on item closure or a later posted result while history stays intact": 0.01308,
+    "hub/test/init-config.test.ts::marketing allow-list preserves configured exact paths and directory prefixes across updates": 0.001115,
+    "hub/test/opencode-launch-policy.test.ts::OpenCode launches leave native permissions unset even with explicit launch policy": 0.105858,
+    "hub/test/opencode-launch-policy.test.ts::OpenCode role launch frames preserve native policy for inherited and explicit keys": 0.225632,
+    "hub/test/opencode-launch-policy.test.ts::the item rule confines paths independently of ignored launch policy": 0.038037,
+    "hub/test/opencode-native.test.ts::a missing OpenCode password keeps PID supervision and retries native watch after restoration": 0.399417,
+    "hub/test/opencode-policy.test.ts::OpenCode ignores approval, sandbox and permissions in favor of its own policy": 0.003851,
+    "hub/test/publish-component.test.ts::a lost accepted push reply recovers the pinned tips without repeating publication": 0.008821,
+    "hub/test/publish-component.test.ts::a rejected publication receipt revalidates a tightened allow-list before retry can push": 0.009199,
+    "hub/test/publish-component.test.ts::allow-list refusal names the path and keeps the whole publication unchanged": 0.033354,
+    "hub/test/publish-component.test.ts::an already-published receipt finishes local recovery after policy tightening without another push": 0.006411,
+    "hub/test/publish-component.test.ts::dry run computes public and dev tips without publishing refs or leaving a receipt": 0.009265,
+    "hub/test/publish-component.test.ts::receipt recovery rejects a different item and keeps the original publication identity": 0.014347,
+    "hub/test/publish.test.ts::an atomic GitHub refusal leaves both public refs and dev untouched, then recovers the prepared publication": 1.598479,
+    "hub/test/publish.test.ts::publish previews exact tips, publishes only marketing commits and preserves dev for the next release": 3.048131,
+    "hub/test/publish.test.ts::publish recovers a published tip after local ref failure without republishing or duplicating its comment": 2.791878,
+    "hub/test/push-component.test.ts::a rejected push leaves origin/dev unchanged": 0.006449,
+    "hub/test/push-component.test.ts::a tracking-ref failure after publication reports a follow-up": 0.007609,
+    "hub/test/push-component.test.ts::push refreshes origin/dev only after successful or confirmed publication": 0.025283,
+    "hub/test/roles-launch-permissions.test.ts::Claude Code and Codex retain per-role inherited policy": 0.000779,
+    "hub/test/roles-launch-permissions.test.ts::OpenCode defaults retain policy inputs for launches on another harness (T-944)": 0.000955,
+    "hub/test/roles-launch-permissions.test.ts::OpenCode role snapshots use native policy and warn only for explicit ignored keys": 0.009719,
+    "hub/test/roles-snapshot.test.ts::OpenCode role snapshots warn once for ignored keys in validation and role list": 0.362792,
+    "hub/test/session-resume-component.test.ts::restart keeps an undiscoverable live harness tracked and stoppable for every flavour": 0.230202,
+    "hub/test/session-resume-lifecycle.test.ts::restart retains undiscoverable harness PIDs and session stop reaps their spokes and descendants": 12.324729,
+    "hub/test/setup-trust-lock.test.ts::setup bounds a refreshed Claude lock wait and reports the path and unknown holder": 0.00393,
+    "hub/test/setup-trust-lock.test.ts::setup reclaims the orphan left by the Claude auth probe within its retry window": 0.002417,
+    "hub/test/setup-trust-lock.test.ts::setup trusts Claude after its config writer releases the lock beyond five seconds": 0.008946,
+    "hub/test/suite-duration-budget.test.ts::D72 dated allowances permit 31 days only for the legacy owner": 0.000888,
+    "hub/test/suite-duration-budget.test.ts::D72 legacy allowances follow the configured owner without admitting new legacy keys": 0.000778,
+    "nvim/test/client-component.test.ts::the workbench launcher isolates Neovim state and migrates only its legacy files once": 0.430778,
+    "nvim/test/thread-oracle-soak.test.ts::extended generated thread oracle retains four seeds and 25 differential renders": 3.206815,
+    "nvim/test/vboard.test.ts::release versions appear once in settled scope, all-tree, top-bar and item-header frames": 0.560914
   },
   "allow": {
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
