@@ -1,6 +1,7 @@
 // T2: the migration executable is the CLI subject; projectHub serves in-process.
 // Its nested task commands use the real parser/socket client through a preload.
 // This keeps the migration contract without paying one Node startup per link.
+import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -14,7 +15,7 @@ const entry = fileURLToPath(new URL('../bin/migrate-v01-release.ts', import.meta
 const preload = fileURLToPath(new URL('./v01-migration-cli-preload.ts', import.meta.url));
 const migrate = (cwd: string): Promise<{ code: number; stdout: string; stderr: string }> => {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
-  return new Promise((resolve, reject) => clandCliLaunch(() => execFile(process.execPath, ['--import', preload, entry], { cwd, env, timeout: 30_000 }, (error, stdout, stderr) => {
+  return new Promise((resolve, reject) => clandCliLaunch(() => execFile(process.execPath, ['--import', preload, entry], { cwd, env: runnerFixtureEnvironment(cwd, env), timeout: 30_000 }, (error, stdout, stderr) => {
     if (error && typeof error.code !== 'number') reject(error);
     else resolve({ code: error ? error.code as number : 0, stdout, stderr });
   })));

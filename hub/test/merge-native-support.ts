@@ -1,3 +1,4 @@
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +10,7 @@ import { nativeProjectHub, cland, connectUi, killDaemon, inProcessSpoke, startDa
 import { preparedProject } from './prepared-project.ts';
 // Native Git is retained only by the named T3 landing/checkout/recovery seams.
 const projectHub: typeof nativeProjectHub = (t, root, env) => nativeProjectHub(t, root, env, { harnesses: 'fake' });
-export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 
 export const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 
@@ -54,6 +55,7 @@ export async function refused(ui: Awaited<ReturnType<typeof connectUi>>, root: s
 
 export async function indexLockProject(t: TestContext, failure: 'transient-lock' | 'persistent-lock' | 'crash-before-ref' = 'transient-lock', serve: typeof projectHub | typeof startDaemon = projectHub) {
   const bin = await tempProject(t, 'cland-index-lock-bin-');
+  // cland-allow-child-env: read-only which lookup for the native Git wrapper; no account or Git operation
   const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
   await writeFile(join(bin, 'index-lock.mjs'), `#!${process.execPath}\nimport { spawnSync } from 'node:child_process';\nimport { existsSync, writeFileSync, rmSync } from 'node:fs';\nconst args = process.argv.slice(2);\nconst marker = '.cland/checkout-mutated';\nconst failed = '.cland/write-tree-failed';\nif (process.env.CLAND_TEST_KILL_BEFORE_REF === '1' && args[0] === 'update-ref' && args[1] === 'refs/heads/dev') { writeFileSync('.cland/before-ref-crash', 'crashed'); process.kill(process.ppid, 'SIGKILL'); process.exit(1); }\nconst fail = process.env.CLAND_TEST_KILL_BEFORE_REF !== '1' && args[0] === 'write-tree' && existsSync(marker) && !existsSync(failed);\nif (fail) { writeFileSync('.git/index.lock', 'held'); writeFileSync(failed, 'failed'); }\nconst result = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit' });\nif (args[0] === 'read-tree' && args[1] === '-m' && result.status === 0) writeFileSync(marker, 'changed');\nif (fail && process.env.CLAND_TEST_KEEP_INDEX_LOCK !== '1') rmSync('.git/index.lock');\nprocess.exit(result.status ?? 1);\n`, { mode: 0o755 });
   // Only intercepted operations pay for a Node process. Other commands still

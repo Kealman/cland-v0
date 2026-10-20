@@ -1,5 +1,6 @@
 // Observe the real command's import graph, including dynamic imports and erased TypeScript types.
 // This guard does not depend on whether the running Node version warns about node:sqlite.
+import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -29,7 +30,7 @@ test('database-free CLI commands never resolve node:sqlite in their import graph
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_OPTIONS' && key !== 'NODE_NO_WARNINGS'));
   const run = (args: string[]) => {
     writeFileSync(imports, '');
-    const result = spawnSync(process.execPath, ['--import', preload, ...args], { cwd: root, env, encoding: 'utf8', timeout: 10_000 });
+    const result = spawnSync(process.execPath, ['--import', preload, ...args], { cwd: root, env: runnerFixtureEnvironment(root, env), encoding: 'utf8', timeout: 10_000 });
     assert.ifError(result.error);
     return result;
   };
@@ -85,7 +86,7 @@ function countedCommand(root: string, args: string[], failure?: string) {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_OPTIONS'));
   const result = spawnSync(process.execPath, ['--import', COUNTER, CLI, ...args], {
     cwd: root,
-    env: { ...env, CLAND_TEST_IMPORT_COUNTS: counts, ...(failure ? { CLAND_TEST_IMPORT_FAILURE: failure } : {}) },
+    env: runnerFixtureEnvironment(root, { ...env, CLAND_TEST_IMPORT_COUNTS: counts, ...(failure ? { CLAND_TEST_IMPORT_FAILURE: failure } : {}) }),
     encoding: 'utf8', timeout: 10_000,
   });
   assert.ifError(result.error);

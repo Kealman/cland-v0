@@ -1,4 +1,5 @@
 // T3: SIGKILL during tracker rename, six-second live serving, fatal exit and bounded hub stop.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -100,7 +101,7 @@ test('a process crash after temporary write leaves the previous item intact; res
     } });
     await tracker.comment(${JSON.stringify(human)}, ${JSON.stringify(item.id)}, 'interrupted');
   `;
-  await assert.rejects(promisify(execFile)(process.execPath, ['--input-type=module', '-e', script]), err => (err as NodeJS.ErrnoException & { signal?: string }).signal === 'SIGKILL');
+  await assert.rejects(promisify(execFile)(process.execPath, ['--input-type=module', '-e', script], { env: fixtureEnvironment(root, process.env) }), err => (err as NodeJS.ErrnoException & { signal?: string }).signal === 'SIGKILL');
   assert.equal(await files.readFile(join(root, item.path), 'utf8'), old);
   assert.ok((await files.readdir(join(root, '.cland', 'tasks'))).some(n => n.endsWith('.tmp')));
   const restarted = new Tracker({ root, db });

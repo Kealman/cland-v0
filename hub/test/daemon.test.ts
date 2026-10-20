@@ -1,5 +1,6 @@
 // T3: daemon lifecycle regressions: competing startup locks, signals, crash recovery and endpoint identity.
 // The curated start/discovery/stop/restart/sweep flow lives in scenarios/hub-lifecycle.test.ts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +28,7 @@ test('a second cland hub start reports the running daemon instead of starting an
 
 test('a stale hub.json, whose pid is gone, is replaced by a fresh hub', async (t) => {
   const root = await tempProject(t);
-  const dead = spawnSync(process.execPath, ['-e', '']).pid;
+  const dead = spawnSync(process.execPath, ['-e', ''], { env: fixtureEnvironment(root, process.env) }).pid;
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'hub.json'), JSON.stringify({ socket: join(root, '.cland', 'hub.sock'), port: 1, secret: 'x', pid: dead, version: '0.0.0' }));
   const { result, discovery } = await startDaemon(t, root, {}, { sweep: true });
@@ -146,7 +147,7 @@ test('autostart recovers after grace expires and after a crash, recording only s
   await mkdir(sub);
   // clandWithEnv provisions a fixture at its cwd for start; invoke the CLI directly to keep this a subdirectory.
   const automatic = await promisify(execFile)(process.execPath, [CLI_ENTRY, 'hub', 'start', '--autostart', '--client', 'nvim'], {
-    cwd: sub, env: { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_'))), ...env }, timeout: 30_000,
+    cwd: sub, env: fixtureEnvironment(sub, process.env, { ...env }), timeout: 30_000,
   });
   assert.match(automatic.stdout, /hub started for/);
   await readDiscovery(root); // register the detached replacement for fixture teardown
@@ -172,7 +173,7 @@ test('a project path too long for a Unix socket puts the socket under the temp d
 
 test('git sees only what is meant to be committed under .cland/ while a hub runs', async (t) => {
   const root = await tempProject(t);
-  const git = (...args: string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+  const git = (...args: string[]) => spawnSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' });
   assert.equal(git('init', '-q').status, 0);
   await projectHub(t, root);
   await mkdir(join(root, '.cland', 'tasks'), { recursive: true });
@@ -258,7 +259,7 @@ test('two cland hub start at the same instant leave exactly one hub, and both re
 test('cland hub stop never signals a process that is not the project\'s hub: it only removes the hub.json naming it', { skip: NO_PS }, async (t) => {
   const root = await tempProject(t);
   // a live process that is no hub at all — a reused pid, as far as hub.json can tell
-  const stranger = spawn('sleep', ['30'], { stdio: 'ignore' });
+  const stranger = spawn('sleep', ['30'], { env: fixtureEnvironment(root, process.env), stdio: 'ignore' });
   ownProcess(t, stranger.pid);
   t.after(() => stranger.kill('SIGKILL'));
   const pid = stranger.pid as number;

@@ -1,4 +1,5 @@
 // T3: real Git territory publication and shell identity; native push/refusal flows share one fixture seed.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ import { Store } from '../src/hub/store.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { FakeClock } from './fake-clock.ts';
 
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 const refs = (...repos: string[]) => repos.map(repo => git(repo, 'show-ref')).join('\n');
 async function repository(t: TestContext) {
@@ -185,7 +186,7 @@ test('a non-fast-forward names territory commits even when their objects are abs
   git(clone, 'config', 'user.email', 'other@example.com');
   git(clone, 'commit', '--allow-empty', '-qm', 'Territory-only commit');
   // Fixture prepares a divergent territory; the command under test never uses the marker from the shell.
-  execFileSync('git', ['push', '-q', 'origin', 'dev'], { cwd: clone, env: { ...process.env, CLAND_TERRITORY_WRITE: '1' } });
+  execFileSync('git', ['push', '-q', 'origin', 'dev'], { cwd: clone, env: fixtureEnvironment(clone, process.env, { CLAND_TERRITORY_WRITE: '1' }) });
   const remote = git(clone, 'rev-parse', 'HEAD');
   git(root, 'commit', '--allow-empty', '-qm', 'Root-only commit');
   const before = refs(root, territory);
@@ -364,7 +365,7 @@ for (const failCleanup of [false, true]) test(`lost publication and failed confi
   const bin = join(root, '.cland', 'fake-bin');
   await fs.mkdir(bin);
   const marker = join(bin, 'accepted'), repaired = join(bin, 'repaired');
-  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+  const realGit = execFileSync('which', ['git'], { env: fixtureEnvironment(root, process.env), encoding: 'utf8' }).trim();
   const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
   await fs.writeFile(join(bin, 'git'), `#!/bin/sh
 if [ "$1" = push ] && [ ! -f ${quote(repaired)} ]; then

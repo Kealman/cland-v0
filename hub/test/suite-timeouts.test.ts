@@ -1,5 +1,6 @@
 // T3: command stall, cancellation and inherited-pipe cleanup prove real process-tree termination.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
+import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, stat, rm, readdir } from 'node:fs/promises';
@@ -43,7 +44,7 @@ test('forced ownership failure', async t => {
 });`);
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
-  const child = spawn(process.execPath, ['--test', childTest], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--test', childTest], { env: runnerFixtureEnvironment(root, env), stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   let output = '';
   child.stdout.on('data', data => { output += String(data); });
@@ -128,7 +129,7 @@ const child = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setIn
 await writeFile(${JSON.stringify(marker)}, JSON.stringify({parent:process.pid,child:child.pid}));
 setInterval(()=>console.log('parent running'),250);
 setTimeout(()=>process.exit(0),3000);`);
-  const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { cwd: f.root, detached: true, stdio: 'ignore' });
+  const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { env: fixtureEnvironment(f.root, process.env), cwd: f.root, detached: true, stdio: 'ignore' });
   ownProcess(t, foreign.pid);
   const job = await f.launch();
   const pids = await eventually('inherited pipe holder started', () => readFile(marker, 'utf8').then(text => JSON.parse(text) as { parent: number; child: number }, () => undefined));
@@ -147,6 +148,7 @@ setTimeout(()=>process.exit(0),3000);`);
 test('verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor', async t => {
   // T3: real parent exit/reparenting determines whether the worker can prove pipe ownership.
   const bin = await tempProject(t, 'cland-fast-exit-ps-');
+  // cland-allow-child-env: read-only which lookup for the process-table wrapper; no account or Git operation
   const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
   const armed = join(bin, 'armed'); const snapshot = join(bin, 'snapshot');
   await writeFile(join(bin, 'ps'), `#!${process.execPath}
@@ -178,7 +180,7 @@ await until(()=>existsSync(${JSON.stringify(snapshot)}),{what:'ownership snapsho
 const child=spawn(process.execPath,['-e',"process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],{detached:true,stdio:'inherit'});
 await writeFile(${JSON.stringify(marker)},JSON.stringify({parent:process.pid,child:child.pid}));
 clearInterval(heartbeat);process.exit(0);`);
-  const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], {cwd:f.root, detached:true, stdio:'ignore'});
+  const foreign = spawn(process.execPath, ['-e', "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"], { env: fixtureEnvironment(f.root, process.env),cwd:f.root, detached:true, stdio:'ignore'});
   ownProcess(t, foreign.pid);
   for (let n=0;n<3;n++) await f.spoke.call('send',{to:['rev'],topic:f.topic,text:`seed ${n}`});
   const job = await f.launch();
@@ -236,7 +238,7 @@ const outcome = await suiteCommand('echo $$ > shell.pid; sleep 999 | cat', ${JSO
   CLAND_SUITE_LIMITS: JSON.stringify({stallTimeoutMs: 3000})
 });
 await writeFile(${JSON.stringify(resultPath)}, JSON.stringify(outcome));`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', script], { env: fixtureEnvironment(root, process.env), stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   const done = new Promise<number | null>(resolve => child.once('close', resolve));
   const shell = await eventually('shell pipeline started', () => readFile(join(root, 'shell.pid'), 'utf8').then(Number, () => undefined));

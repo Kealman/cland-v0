@@ -453,6 +453,7 @@ async function serve(args: string[]): Promise<number> {
   await new Promise<void>((resolve) => server.listen(port, hostname, resolve));
   const address = server.address();
   const url = `http://${hostname}:${typeof address === 'object' && address ? address.port : port}`;
+  // cland-allow-child-env: native fake harness signal-resistant descendant has no account or Git operation and inherits its sealed launcher
   const descendant = process.env.FAKE_OPENCODE_CHILD === '1' ? spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"], { stdio: 'ignore' }) : null;
   writeFileSync(join(SERVERS, `${process.pid}.json`), JSON.stringify({ childPid: descendant?.pid ?? null, pid: process.pid, port, url, cwd: process.cwd(), env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k === 'XDG_DATA_HOME' || k === 'OPENCODE_DB')), config: process.env.OPENCODE_CONFIG ?? null }));
   if (process.env.FAKE_OPENCODE_UNREADY === '1') process.stderr.write('planted readiness failure: database unavailable\n');

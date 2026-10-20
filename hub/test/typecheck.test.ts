@@ -1,5 +1,6 @@
 // T3 compiler contract: real npm/compiler processes resolve the pinned aliases
 // from a root install, an inherited worktree install and a worktree-local install.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -31,7 +32,7 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
     if (assets.includes(path)) await cp(join(source, path), join(root, path));
     else await writeFile(join(root, path), (await readSource(path))!);
   }
-  const git = (...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8', timeout: 30_000 });
+  const git = (...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8', timeout: 30_000 });
   git('init', '-q');
   git('add', 'package.json', 'hub', 'nvim', 'shared', 'test-support');
   git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Typecheck fixture');
@@ -40,7 +41,7 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
   git('worktree', 'add', '--detach', worktree, 'HEAD');
   assert.equal(existsSync(join(worktree, 'node_modules')), false);
   const check = (cwd: string, ...args: string[]) => {
-    const result = spawnSync('npm', ['run', 'typecheck', ...args], { cwd, encoding: 'utf8', timeout: 60_000 });
+    const result = spawnSync('npm', ['run', 'typecheck', ...args], { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8', timeout: 60_000 });
     assert.equal(result.status, 0, `${cwd}\n${result.error ?? ''}\n${result.stdout}\n${result.stderr}`);
     return result.stdout;
   };

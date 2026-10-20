@@ -1,5 +1,6 @@
 // T3: package worker exit, crash and load-repetition lifecycle receipts keep
 // quarantine distinct from infrastructure failures across real Node processes.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -27,7 +28,7 @@ async function fixture(t: TestContext, source: string, loadGate = false) {
   } }));
   if (loadGate) await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, budget: { testSeconds: 5, fileSeconds: 60 }, tests: {}, files: {}, allow: {} }));
   const code = `import { runSuite } from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', 'hub/test/fixture.test.ts']], ${JSON.stringify({ cwd, force: true, selection: { mode: 'hub-only', files: [], reason: 'fixture', loadGate } })});`;
-  const child = exec(process.execPath, ['--input-type=module', '-e', code], { cwd });
+  const child = exec(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(cwd, process.env), cwd });
   ownProcess(t, child.child.pid);
   return child.then(r => ({ code: 0, output: r.stdout + r.stderr }), (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }));
 }
@@ -133,7 +134,7 @@ test('working-tree and immutable-tree admission reject invalid quarantine even w
   const manifest = { version: 1, tests: { 'hub/test/fixture.test.ts::known flake': entry } };
   await writeFile(path, JSON.stringify(manifest));
   await assert.rejects(lintHubShards(cwd), /expired quarantine: hub\/test\/fixture.test.ts::known flake/);
-  const git = async (...args: string[]) => exec('git', args, { cwd });
+  const git = async (...args: string[]) => exec('git', args, { env: fixtureEnvironment(cwd, process.env), cwd });
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Quarantine test');
   await git('config', 'user.email', 'quarantine@example.invalid');

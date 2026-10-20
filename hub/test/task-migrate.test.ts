@@ -1,4 +1,5 @@
 // T3: offline lock/PID admission, real restart ID recovery and Git landing of pre-migration branches.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { Tracker } from '../src/tracker/tracker.ts';
 import { runTask } from '../src/cli/task.ts';
 import { inProcessSpoke, projectHub } from './harness.ts';
@@ -70,8 +71,8 @@ test('offline closed backfill previews receipt, journal and commit sources and c
     { event: 'task-written', op: 'close', id: items[1]!.id, ts: '2026-10-02T10:00:00.000Z' },
     { event: 'task-written', op: 'edit', id: items[3]!.id, ts: '2026-10-03T10:00:00.000Z' },
   ].map(r => JSON.stringify(r)).join('\n') + '\n');
-  const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-  const commitTime = execFileSync('git', ['show', '-s', '--format=%cI', commit], { cwd: root, encoding: 'utf8' }).trim();
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+  const commitTime = execFileSync('git', ['show', '-s', '--format=%cI', commit], { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
   const db = new DatabaseSync(join(root, '.cland/hub.db'));
   try {
     for (const [index, mergedAt] of [[0, '2026-10-03T10:00:00.000Z'], [1, null], [2, null]] as const) {
@@ -256,7 +257,7 @@ test('a renamed file with its old id completes after interruption without duplic
   assert.equal((view.value as { item: { id: string } }).item.id, 'R-1');
 });
 
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
 for (const editContainer of [false, true]) test(`an older task branch lands after migration (container edit: ${editContainer})`, async t => {
   const root = await preparedProject(t);
   const dir = join(root, '.cland/tasks');

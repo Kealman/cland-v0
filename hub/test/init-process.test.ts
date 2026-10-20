@@ -1,6 +1,7 @@
 // T3: concurrency lifecycle: init overlaps a separate SQLite writer thread. Shell hook execution and a real Claude fake
 // retain the provisioned launch contract; their process receipts are the assertions' subject.
 // Held-worker cancellation proves database/worker disposal precedes fixture removal.
+import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -177,7 +178,7 @@ test('init writer ownership joins a held worker before fixture removal on cancel
     });
   `);
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_') && key !== 'NODE_TEST_CONTEXT'));
-  const child = spawn(process.execPath, ['--test', '--test-reporter=tap', fixture], { cwd: root, env, timeout: 10_000, signal: t.signal, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--test', '--test-reporter=tap', fixture], { cwd: root, env: runnerFixtureEnvironment(root, env), timeout: 10_000, signal: t.signal, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', chunk => { output += String(chunk); });
   child.stderr.on('data', chunk => { output += String(chunk); });

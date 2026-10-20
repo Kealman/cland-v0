@@ -1,4 +1,5 @@
 // Shared filesystem fixture for init's module tests and process contracts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -24,7 +25,7 @@ export type Change = { path: string; action: string; note?: string };
 
 export const sh = (cwd: string, command: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> =>
   new Promise((resolve) =>
-    execFile('sh', ['-c', command], { cwd, env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? Number(err.code ?? 1) : 0, stdout, stderr })),
+    execFile('sh', ['-c', command], { cwd, env: fixtureEnvironment(cwd, process.env, { ...env }), encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? Number(err.code ?? 1) : 0, stdout, stderr })),
   );
 
 export async function gitRepo(root: string): Promise<void> {

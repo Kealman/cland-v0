@@ -37,6 +37,43 @@ same or immediately preceding line. The reason is mandatory; strings containing
 the marker do not exempt code. Diagnostics name the source file and line.
 The guard's in-memory compiler cases run as T0 self-checks, without a test worker.
 
+The T0 child-environment guard (`hub/test/lint-child-environment.ts`) checks
+native Node child-process launches throughout `hub/test` (TypeScript and JavaScript,
+including helpers, fakes and manual tools). Named, renamed, namespace, default,
+dynamic-import, CommonJS and promisified child-process functions are resolved
+through the compiler, including call/apply forwarding. Dynamic method lookups
+need an explicit exemption. Supply `env: fixtureEnvironment(disposableRoot, base, extras)` or
+`env: await accountFixtureEnvironment(extras)` after the final overlay.
+Extras contain explicit owned inputs; passing `process.env` or its full spread as
+extras is refused because it can restore account paths. The guard checks the
+third argument of `fixtureEnvironment` and the first argument of
+`accountFixtureEnvironment`, including renamed imports and captured const extras. Fresh runner children use
+`runnerFixtureEnvironment(root, inherited)` instead: it filters the inherited base
+and retains only `CLAND_SUITE_*`, `CLAND_TEST_*`, `CLAND_LOAD_GATE_*`,
+`CLAND_COVERAGE_*`, hub admission FILE/URL/SECRET and session NAME/ID/ROLE
+controls. HOME, XDG,
+Claude/Codex/fake profiles and executor state still come from the disposable root. A local
+const alias is accepted only when used directly as a native launch's `env`;
+mutating or escaping it requires an explicit exemption. Environment spreads after
+the builder and options spreads after `env` are refused.
+The phase and repetition launch boundaries provision its owned directories with
+`prepareRunnerFixture(root)` before spawning; environment construction stays pure.
+The init machine deliberately removes `CLAND_EXECUTOR_STATE` to exercise the
+product default ledger under its scratch XDG state directory.
+
+A real line comment `// cland-allow-child-env: <reason>` on the launch's line or
+immediately preceding line exempts an intentional seam. Every exemption names
+its reason: typed synthetic-provider/native-credential contracts, sealed lifecycle
+or setup helpers, or another justified boundary such as an OS-only probe or
+read-only repository metadata. No whole-file exemptions apply. Keep owned scratch
+paths and synthetic inputs explicit; an exemption does not waive rule 15. Reviewers
+check the sealing owner and preserved assertions. `--inventory` lists every
+recognized launch with file, line and builder/exemption reason. `--help` describes
+this tool. Diagnostics never include source expressions or environment values.
+Embedded generated programs are covered at their parent launch boundary; this
+is a source guard, not whole-program runtime taint analysis. Its negative and
+positive compiler cases run in memory at T0, without workers or subprocesses.
+
 `npm test` enters `hub/test/run-suite.ts auto`. Whole-suite `hub`, `nvim`, `all`,
 coverage-selected runs and close-run shards use that same runner, with the
 admitted selection in `CLAND_SUITE_SELECTION` (or `CLAND_SUITE_SELECTION_FILE`
@@ -680,8 +717,16 @@ use its complete result for child launches, with no later environment overlays.
 Explicit profile/fake paths and Git identities must be scratch-owned. Provider
 and account credentials are filtered after extras, including the shared
 `withoutExecutorCredentials` filter. HOME and Git configuration cannot be
-overridden. Raw launches that bypass the builder still need their own sealed
-environment; there is no repository-wide raw-spawn guard yet.
+overridden. The T0 child-environment guard above enforces the builder boundary
+for native launches, with reasoned inline exemptions for reviewed seams.
+The sealed init/setup machine seam preserves its owned HOME and deliberately
+unset profile inputs through `machineEnvironment`; re-rooting it at the project
+would change the product's default-account and trust-file contract. Its native
+self-tests may deliberately supply synthetic poison inputs, with an adjacent
+exemption. The scratch-machine constructor filters inherited credentials first. The init
+machine clears worker-default Git identities so its absent/configured Git identity
+contracts use only its disposable HOME configuration.
+
 Account product contracts may supply `projectHub`'s typed `scratchAccountPaths`
 dependency for HOME fallback and a conflicting OpenCode database. Both paths
 must be absolute and contained in that fixture's disposable project. Ordinary
@@ -701,6 +746,10 @@ The pure T1 poisoned-parent/overlay test is `fixture-environment.test.ts`.
 at the native adapter seam to prove default-account inheritance and named-account
 exclusion. Such credential-handling tests never inject into shared fixture defaults
 or use real credentials. Diagnostics print variable names or counts, never values.
+Fake DigitalOcean transport records in `machine-calls.jsonl` keep sorted environment
+variable names only. The shared writer has a T1 durable-file regression proving
+that a synthetic credential value and other environment values never reach the log.
+
 Provider contracts use the separate typed `syntheticProvider` fixture dependency
 (`projectHub`/`startDaemon`) or `clandWithProvider` for the provider CLI. It accepts
 only `cland-test-…` sentinel tokens, paired with an explicit HTTP loopback endpoint

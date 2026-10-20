@@ -1,3 +1,4 @@
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -23,7 +24,7 @@ import { sweepOrphans } from ${JSON.stringify(entry)};
 import { runDoctor } from ${JSON.stringify(doctor)};
 await assert.rejects(sweepOrphans(${JSON.stringify(root)}, () => {}), /sweep busy/);
 await runDoctor(['--json', '--fix'], ${JSON.stringify(root)}, { ...process.env, PATH: '' });`;
-    const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', source], { timeout: 5000 });
+    const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', source], { env: fixtureEnvironment(root, process.env), timeout: 5000 });
     const report = JSON.parse(stdout) as { checks: Array<{ detail: string; fix?: string }> };
     assert.ok(report.checks.some(check => /sweep busy/.test(check.detail) && /wait for the active sweep/.test(check.fix ?? '')));
   } finally { await lock.release(); }

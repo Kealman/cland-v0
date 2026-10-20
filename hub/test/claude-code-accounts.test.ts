@@ -127,6 +127,7 @@ test('Claude account commands and attach use their own directory and named accou
   }
   assert.ok(b.attach?.startsWith('CLAUDE_CONFIG_DIR='));
   assert.ok(!defaultSession.attach?.startsWith('CLAUDE_CONFIG_DIR='));
+  // cland-allow-child-env: native account inheritance contract retains three synthetic auth inputs over the sealed worker environment
   const attached = await new Promise<string>((resolve, reject) => execFile('/bin/sh', ['-c', b.attach!], { env: { ...process.env, ...f.env }, encoding: 'utf8' }, (err, out) => err ? reject(err) : resolve(out)));
   assert.match(attached, /fake claude attached/);
   for (const p of [a, b, defaultSession]) assert.equal((await f.ui.request({ type: 'session.stop', session: p.name }, 30000)).ok, true);

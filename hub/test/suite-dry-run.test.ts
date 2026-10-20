@@ -1,4 +1,5 @@
 // T3: the real verify CLI reads a native Git candidate and previews admission without starting an executor.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test, { type TestContext } from 'node:test';
 import { verificationFixture } from './verification-fixture.ts';
 import assert from 'node:assert/strict';
@@ -44,7 +45,7 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   // Settle startup bookkeeping before taking the byte-for-byte spend baseline.
   await rememberProject(root, { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state') });
   await writeFile(join(root, '.gitignore'), '.cland/\n');
-  const git = async (...args: string[]) => promisify(execFile)('git', args, { cwd: root });
+  const git = async (...args: string[]) => promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root });
   await git('init', '-qb', 'dev');
   await git('config', 'user.name', 'Tier fixture'); await git('config', 'user.email', 'fixture@example.invalid');
   await git('add', '.'); await git('commit', '-qm', 'planted baseline');

@@ -81,6 +81,7 @@ test('OpenCode service sweeps its default database without resuming a cland sess
   }
 
   async function start(service: boolean) {
+    // cland-allow-child-env: native OpenCode database/service contract supplies a literal scratch HOME/XDG environment and synthetic password
     const child = spawn(binary!, ['serve', ...(service ? ['--service'] : []), '--hostname', '127.0.0.1', '--port', '0'], {
       cwd: dirs.project,
       env: { PATH: '/usr/bin:/bin', HOME: dirs.home, XDG_DATA_HOME: dirs.data, XDG_CONFIG_HOME: dirs.config, XDG_STATE_HOME: dirs.state, XDG_CACHE_HOME: dirs.cache, TMPDIR: dirs.tmp, OPENCODE_PASSWORD: 'scratch-password' },

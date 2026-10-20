@@ -1,5 +1,6 @@
 // T3: native Git worktree creation/pruning and merge callback barriers preserve Lead authority.
 // Component authority cases live in lead-permissions-component.test.ts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import childProcess, { execFileSync } from 'node:child_process';
@@ -68,7 +69,7 @@ test('a verifier spawned while its item leaves the Lead subtree is refused and c
 test('lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse', async t => {
   const work = heldOperations(t);
   const root = await tempProject(t);
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root, 'native-territory');
   await writeFile(join(root, 'feature.txt'), 'initial\n');
   git(root, 'add', 'feature.txt');
@@ -79,6 +80,7 @@ test('lead-1 requests verifiers and merges its scheduled item through the ordina
   let gate = work.gate();
   const nativeExec = childProcess.execFile;
   const mock = t.mock.method(childProcess, 'execFile', ((file: string, args: string[], options: unknown, callback: (...args: unknown[]) => void) => {
+    // cland-allow-child-env: native Git spy forwards product options unchanged to preserve the permission race boundary
     return nativeExec(file, args, options as childProcess.ExecFileOptions, (...result: unknown[]) => {
       const waiting = file === 'git' && ((gateKind === 'preparation' && args[0] === 'merge-tree' && args.includes('--name-only'))
         || (gateKind === 'landing' && args[0] === 'write-tree' && writeTrees++ === 1)

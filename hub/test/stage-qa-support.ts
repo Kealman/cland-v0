@@ -1,4 +1,5 @@
 // Stage QA through the daemon, real verifier spokes, CLI and local-territory merges.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -12,7 +13,7 @@ import { copyPreparedProject } from './prepared-project.ts';
 import { taskWriteGate } from './tracker-write-gate.ts';
 import { seedStageCover } from './stage-cover-fixture.ts';
 
-export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
 export async function fixture(t: test.TestContext, gated = false, count = 3, launchLead = false, ancestryFailure = false, serve: typeof projectHub | typeof startDaemon = projectHub) {
   const root = await tempProject(t);
   await copyPreparedProject(root);

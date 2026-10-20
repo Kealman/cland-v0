@@ -1,5 +1,6 @@
 // T3: delivered demo commands cross the real worker boundary; restart reconciles its lease,
 // detached watchdogs delete machines with the hub gone, and recorder shell processes retain captures.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import test, { type TestContext } from 'node:test';
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -25,7 +26,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   });
   const made = await ui.request({ type: 'task.create', title: 'Demo', kind: 'epic' });
   const epic = (made.value as { item: { id: string } }).item.id;
-  const head = execFileSync('git', ['rev-parse', 'dev'], { cwd: root, encoding: 'utf8' }).trim();
+  const head = execFileSync('git', ['rev-parse', 'dev'], { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
   const started = await ui.request({ type: 'demo.start', epic }, 15000);
   assert.equal(started.ok, true, started.error);
   assert.equal((started.value as { commit: string }).commit, head);
@@ -140,7 +141,7 @@ console.log(JSON.stringify({result:'PASS',evidence,message:out}));
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Recorded demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const start = await f.ui.request({ type: 'demo.start', epic }); assert.equal(start.ok, true, start.error);
   const record = (run: string, id: string) => promisify(execFile)('sh', [resolve('.agents/skills/qa/qa-record.sh'), 'run', epic, run, id], {
-    cwd: f.root, env: { ...process.env, CLAND_SESSION_NAME: '', CLAND_SESSION_ID: '', CLAND_HUB_FILE: join(f.root, '.cland/hub.json'), CLAND: resolve('hub/bin/cland.ts'), QA_DEMO_EPIC: epic }, maxBuffer: 1024 * 1024 });
+    cwd: f.root, env: fixtureEnvironment(f.root, process.env, { CLAND_SESSION_NAME: '', CLAND_SESSION_ID: '', CLAND_HUB_FILE: join(f.root, '.cland/hub.json'), CLAND: resolve('hub/bin/cland.ts'), QA_DEMO_EPIC: epic }), maxBuffer: 1024 * 1024 });
   return { ...f, epic, record };
 }
 

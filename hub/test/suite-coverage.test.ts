@@ -1,4 +1,5 @@
 // T3: package capture attributes real hub/spoke/CLI descendant coverage across the hub's lifecycle.
+import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,7 +104,7 @@ test('daemon lifecycle and descendant attribution', async t => {
   const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], { cwd: ${JSON.stringify(root)}, lockDirs: ${JSON.stringify({ hub: join(root, 'hub.lock'), nvim: join(root, 'nvim.lock') })} });`;
   const env = { ...process.env, NODE_TEST_CONTEXT: '', CLAND_SUITE_SELECTION: JSON.stringify(selection), CLAND_COVERAGE_OUTPUT: output };
-  const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env, maxBuffer: 8 * 1024 * 1024 }).catch(error => { throw new Error(`fixture package failed\n${error.stdout}\n${error.stderr}`); });
+  const result = await exec(process.execPath, ['--input-type=module', '-e', code], { cwd: root, env: runnerFixtureEnvironment(root, env), maxBuffer: 8 * 1024 * 1024 }).catch(error => { throw new Error(`fixture package failed\n${error.stdout}\n${error.stderr}`); });
   assert.match(result.stdout, /suite coverage map/);
   assert.equal(await readFile(join(root, '.cland/run/planted.txt'), 'utf8'), 'import closure', 'the planted harness dependency executes inside the coverage carrier');
   assert.match(result.stderr, /suite coverage: skipping .*coverage-0-truncated\.json \(163840 bytes\): invalid JSON/);

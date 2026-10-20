@@ -30,6 +30,7 @@ async function startObservation() {
     originals.set(method, original);
     const wrapped = function (this: unknown, ...args: unknown[]) {
       census[method] = (census[method] ?? 0) + 1;
+      // cland-allow-child-env: transparent native-launch recorder forwards caller options unchanged and records no environment values
       return Reflect.apply(original, this, args);
     };
     // Node's custom promisifiers otherwise bypass the exported function wrapper.

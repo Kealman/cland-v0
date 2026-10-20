@@ -1,5 +1,6 @@
 // T3: UI writer death/lock recovery, serving-path responsiveness and native death event.
 
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -29,6 +30,7 @@ test('layout saves and human choices serialize through the shared UI lock', asyn
 test('concurrent human choices safely recover a dead UI writer and preserve both updates', async t => {
   const { readFile } = await import('node:fs/promises');
   const { spawn } = await import('node:child_process');
+  // cland-allow-child-env: empty Node bystander supplies a reaped PID; no account or Git operation
   const dead = spawn(process.execPath, ['-e', '']);
   const deadPid = dead.pid!;
   await new Promise<void>(resolve => dead.once('exit', () => resolve()));
@@ -56,7 +58,7 @@ test('a preference disk wait leaves the serving path responsive', { skip: proces
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery), observer = await connectUi(t, discovery);
   const path = join(root, '.cland/ui.json');
-  await promisify(execFile)('mkfifo', [path]);
+  await promisify(execFile)('mkfifo', [path], { env: fixtureEnvironment(root, process.env) });
   const choice = ui.request({ type: 'visibility.set', surface: 'topics', target: 'general', mode: 'pin' });
   try {
     await eventually('preference file read acquired its lock', async () => {

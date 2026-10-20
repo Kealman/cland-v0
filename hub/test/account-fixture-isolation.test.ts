@@ -57,6 +57,7 @@ test('all startup paths are isolated', async t => {
   const workerEnv = { ...process.env };
   delete workerEnv.NODE_TEST_CONTEXT;
   const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+    // cland-allow-child-env: native credential isolation self-test deliberately poisons only scratch-owned profiles with synthetic sentinels
     execFile(process.execPath, ['--test', scenario], { env: { ...workerEnv, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: account, CODEX_HOME: account,
       DIGITALOCEAN_TOKEN: 'sentinel-host-token', CLAND_EXECUTOR_STATE: executorState, XDG_STATE_HOME: join(root, 'host-state'),
       CLAND_CLAUDE_BIN: join(bin, 'claude'), CLAND_CODEX_BIN: join(bin, 'codex'), PATH: `${bin}:${process.env.PATH ?? ''}`, HOST_ACCOUNT_MARKER: marker }, timeout: 30000 }, (error, stdout, stderr) => {

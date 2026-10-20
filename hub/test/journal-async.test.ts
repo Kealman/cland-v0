@@ -1,3 +1,4 @@
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -118,7 +119,7 @@ test('SIGKILL loses accepted records still queued behind an unfinished append; a
     journal.write({ event: 'queued' });
     setInterval(() => {}, 1000);
   `;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', source], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', source], { env: fixtureEnvironment(root, process.env), stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(() => child.kill('SIGKILL'));
   let output = '';
   let errors = '';

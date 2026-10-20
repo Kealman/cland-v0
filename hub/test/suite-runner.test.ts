@@ -1,4 +1,5 @@
 // T3 runner lifecycle: lock ownership, interruption cleanup and stale-process recovery through real CLI children.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -29,7 +30,7 @@ process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args
   // Pin the fixture project as well as its lock: the caller's duration/tier
   // manifests must never apply to generated tests in this temporary project.
   const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir) })})`};`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }), stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
@@ -49,8 +50,15 @@ test('the runner lists static and runtime skips by file, name and reason without
   await writeFile(file, `import test from 'node:test';
 test('platform case', { skip: ${JSON.stringify(reason)} }, () => {});
 test('runtime prerequisite', t => t.skip('binary absent'));
-test('ordinary pass', () => {});`);
-  const suite = run(t, dir, file, 'all');
+test('ordinary pass', async () => {
+  const assert = await import('node:assert/strict'); const {join} = await import('node:path'); const {appendFile, stat, writeFile} = await import('node:fs/promises');
+  for (const [key, suffix] of Object.entries({HOME:'home',XDG_CONFIG_HOME:'config',XDG_DATA_HOME:'opencode',XDG_STATE_HOME:'state',XDG_CACHE_HOME:'cache',CLAUDE_CONFIG_DIR:'claude',CODEX_HOME:'codex',FAKE_CLAUDE_HOME:'fake-claude'})) assert.ok(process.env[key] === join(process.env.TMPDIR, suffix), key);
+  for (const key of ['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'CLAUDE_CONFIG_DIR', 'CODEX_HOME']) assert.ok((await stat(process.env[key])).isDirectory(), key);
+  await writeFile(join(process.env.HOME, 'owned-home-receipt'), 'ready');
+  await appendFile(${JSON.stringify(join(dir, 'sealed-phases'))}, 'sealed\\n');
+});`);
+  const poison = join(dir, 'poisoned-profiles');
+  const suite = run(t, dir, file, 'all', false, {XDG_CONFIG_HOME:poison, XDG_DATA_HOME:poison, XDG_STATE_HOME:poison, XDG_CACHE_HOME:poison, CLAUDE_CONFIG_DIR:poison, CODEX_HOME:poison, FAKE_CLAUDE_HOME:poison});
   assert.equal(await suite.done, 0, suite.output());
   const output = suite.output();
   const details = output.split('\n').filter(line => line.startsWith('suite skip {')).map(line => JSON.parse(line.slice('suite skip '.length)));
@@ -60,6 +68,7 @@ test('ordinary pass', () => {});`);
     { file: 'skips.mjs', name: 'platform case', reason },
     { file: 'skips.mjs', name: 'runtime prerequisite', reason: 'binary absent' },
   ]);
+  assert.equal(await readFile(join(dir, 'sealed-phases'), 'utf8'), 'sealed\nsealed\n', 'both phase children checked their actual environment');
   assert.match(suiteSummary(output), /tests 6;.*pass 2;.*skipped 4/);
   assert.equal(suiteSummary(output), suiteSummary(output.split('\n').filter(line => !line.startsWith('suite skip ')).join('\n')));
 });
@@ -105,7 +114,7 @@ for (const mode of ['hub'] as const) {
     const lockModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
     const reaperMarker = join(dir, 'reaper-started');
     const reaperPath = `${lockPath(dir, mode)}.reaper`;
-    const reaper = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFileSync } from 'node:fs'; acquireLock(${JSON.stringify(reaperPath)}); writeFileSync(${JSON.stringify(reaperMarker)}, 'ready'); setInterval(() => {}, 1000);`], { stdio: 'ignore' });
+    const reaper = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFileSync } from 'node:fs'; acquireLock(${JSON.stringify(reaperPath)}); writeFileSync(${JSON.stringify(reaperMarker)}, 'ready'); setInterval(() => {}, 1000);`], { env: fixtureEnvironment(dir, process.env), stdio: 'ignore' });
     const { ownProcess } = await import('./process-cleanup.ts');
     ownProcess(t, reaper.pid);
     await until(async () => (await readFile(reaperMarker, 'utf8').catch(() => '')).length > 0);
@@ -132,7 +141,7 @@ fs.mkdir = async (...args) => { const result = await mkdir(...args); if (String(
 fs.mkdtemp = async (...args) => { const result = await mkdtemp(...args); if (String(args[0]).split('/').at(-1).startsWith('cland-suite-')) await crash(result); return result; };
 syncBuiltinESMExports();
 const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir) })});`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { CLAND_TEST_SKIP_LOCK: '0' }), stdio: 'ignore' });
   const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
   const { ownProcess } = await import('./process-cleanup.ts');
   ownProcess(t, child.pid);
@@ -164,7 +173,7 @@ fs.rename = async (from, to) => {
 };
 syncBuiltinESMExports();
 const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lock })});`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { CLAND_TEST_SKIP_LOCK: '0' }), stdio: 'ignore' });
   const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
   const { ownProcess, cleanupOwnedProcesses } = await import('./process-cleanup.ts');
   ownProcess(t, child.pid);
@@ -199,7 +208,7 @@ fs.writeFile = async (...args) => {
 };
 syncBuiltinESMExports();
 const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lock })});`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { CLAND_TEST_SKIP_LOCK: '0' }), stdio: 'ignore' });
   const done = new Promise<number | null>(resolve => child.once('close', resolve));
   const { ownProcess } = await import('./process-cleanup.ts');
   ownProcess(t, child.pid);
@@ -407,6 +416,7 @@ test('intentional fixture', async t => {
       assert.equal(await suite.done, 1, suite.output());
     }
     const { execFileSync } = await import('node:child_process');
+    // cland-allow-child-env: read-only process-table receipt confirms fixture descendants were reaped
     const table = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
     for (const pid of [started.pid, ...started.sessions.map(s => s.pid)]) assert.doesNotMatch(table, new RegExp(`^\\s*${pid}\\s`, 'm'), suite.output());
     assert.equal(await readFile(join(started.root, '.cland', 'hub.json'), 'utf8').catch(() => null), null);
@@ -483,7 +493,7 @@ fs.rm = async (...args) => {
 syncBuiltinESMExports();
 const { runPackageSuite } = await import(${JSON.stringify(runner)});
 process.exitCode = await runPackageSuite('all', [${JSON.stringify(file)}], ${JSON.stringify({ cwd: dir, lockDirs })});`;
-    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }), stdio: 'ignore' });
     const done = new Promise<number | null>(resolve => child.once('close', resolve));
     const { ownProcess } = await import('./process-cleanup.ts');
     ownProcess(t, child.pid);
@@ -502,7 +512,7 @@ test('a fixture path quoted by the invoking shell never kills that shell', async
   const script = `import { cleanupProcesses } from ${JSON.stringify(cleanupModule)}; await cleanupProcesses(${JSON.stringify(dir)});`;
   // The shell's command line names the temporary directory, just like a user's cleanup command.
   const quoted = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
-  const child = spawn('sh', ['-c', `${quoted(process.execPath)} --input-type=module -e ${quoted(script)}; echo parent-survived`], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn('sh', ['-c', `${quoted(process.execPath)} --input-type=module -e ${quoted(script)}; echo parent-survived`], { env: fixtureEnvironment(dir, process.env), stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
   const result = await new Promise<number | null>(resolve => child.on('close', resolve));
@@ -568,7 +578,7 @@ test('tickets register before guard polling so an earlier contended waiter canno
   const release = join(dir, 'release-guard');
   const journal = join(dir, 'journal');
   const lockModule = fileURLToPath(new URL('../src/hub/lock.ts', import.meta.url));
-  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFile, access } from 'node:fs/promises'; const guard = acquireLock(${JSON.stringify(machine + '.reaper')}); await writeFile(${JSON.stringify(guardReady)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); guard.release();`], { stdio: ['ignore', 'ignore', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', `import { acquireLock } from ${JSON.stringify(lockModule)}; import { writeFile, access } from 'node:fs/promises'; const guard = acquireLock(${JSON.stringify(machine + '.reaper')}); await writeFile(${JSON.stringify(guardReady)}, 'ready'); while (!await access(${JSON.stringify(release)}).then(() => true, () => false)) await new Promise(r => setTimeout(r, 25)); guard.release();`], { env: fixtureEnvironment(dir, process.env), stdio: ['ignore', 'ignore', 'pipe'] });
   let guardError = '';
   child.stderr.on('data', data => { guardError += String(data); });
   const done = new Promise<number | null>(resolve => child.once('close', resolve));
@@ -639,7 +649,7 @@ for (const mode of ['nvim', 'all'] as const) {
   await appendFile(${JSON.stringify(journal)}, 'old\\n');
   for (const dir of ${JSON.stringify([machine, nvim])}) { await rm(dir, { recursive: true }); await rm(dir + '.owner'); }
   `;
-    const old = spawn(process.execPath, ['--input-type=module', '-e', legacyCode], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const old = spawn(process.execPath, ['--input-type=module', '-e', legacyCode], { env: fixtureEnvironment(dir, process.env), stdio: ['ignore', 'pipe', 'pipe'] });
     const { ownProcess } = await import('./process-cleanup.ts');
     ownProcess(t, old.pid);
     let oldOutput = '';
@@ -720,7 +730,7 @@ for (const boundary of ['before root removal', 'after next root creation'] as co
   syncBuiltinESMExports();
   const { runPackageSuite } = await import(${JSON.stringify(runner)});
   await runPackageSuite('all', [${JSON.stringify(file)}], ${JSON.stringify({ cwd: dir, lockDirs: { hub: machine, nvim } })});`;
-    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
+    const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }), stdio: 'ignore' });
     const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
     const { ownProcess } = await import('./process-cleanup.ts');
     ownProcess(t, child.pid);
@@ -744,7 +754,7 @@ test('package admission rejects a new unclassified hub test before executing it'
   await mkdir(join(dir, 'hub', 'test'), { recursive: true });
   await writeFile(join(dir, 'hub', 'test', 'unclassified.test.ts'), "import test from 'node:test'; test('must not run', () => { throw new Error('test executed'); });");
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } })});`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' } });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0' }) });
   let output = '';
   child.stderr.on('data', chunk => { output += String(chunk); });
   const codeResult = await new Promise(resolve => child.on('close', resolve));
@@ -763,7 +773,7 @@ for (const [resource, source] of [
   await writeFile(join(dir, 'hub', 'test', 'tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/wait.test.ts': 'T1' } }));
   await writeFile(join(dir, 'hub', 'test', 'wait.test.ts'), source!);
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir })});`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '' } });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '' }) });
   let output = '';
   child.stderr.on('data', chunk => { output += String(chunk); });
   assert.equal(await new Promise(resolve => child.on('close', resolve)), 1);
@@ -795,7 +805,7 @@ test('an explicit package shard selects its files without leaking into nested pa
   await writeFile(join(dir, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/selected.test.ts': 'T3', 'hub/test/excluded.test.ts': 'T3', 'nvim/test/excluded.test.ts': 'T3' } }));
   const selection = { mode: 'full', files: [], reason: 'outer shard regression', shard: { files: ['hub/test/selected.test.ts'], nvim: false } };
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('all', [], ${JSON.stringify({ cwd: dir, lockDirs: { hub: lockPath(dir, 'hub'), nvim: lockPath(dir, 'nvim') } })});`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_SELECTION: JSON.stringify(selection) }) });
   let output = '';
   child.stdout.on('data', chunk => { output += String(chunk); });
   child.stderr.on('data', chunk => { output += String(chunk); });
@@ -836,7 +846,7 @@ for (const admission of ['standalone', 'old V1 worker'] as const) test(`sharded 
     // Imports cannot be nested in try: use a dynamic import for the package runner.
     code = code.replace(`import { runPackageSuite } from ${JSON.stringify(runner)};`, `const { runPackageSuite } = await import(${JSON.stringify(runner)});`);
   }
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_EXECUTOR: 'local', CLAND_SUITE_WORKERS: admission === 'standalone' ? undefined : '6' } });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_SUITE_EXECUTOR: 'local', CLAND_SUITE_WORKERS: admission === 'standalone' ? undefined : '6' }) });
   let output = '';
   child.stdout.on('data', chunk => { output += String(chunk); }); child.stderr.on('data', chunk => { output += String(chunk); });
   assert.equal(await new Promise(resolve => child.on('close', resolve)), 0, output);

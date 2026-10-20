@@ -1,5 +1,6 @@
 // T3: process lifecycle: concurrent session stop and doctor terminate one harness tree;
 // competing doctors reap one deleted hub process and its descendants exactly once.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openDatabase } from '../src/database.ts';
@@ -69,7 +70,7 @@ process.on('SIGCONT', () => appendFileSync(${JSON.stringify(signals)}, 'CONT\\n'
 `);
   const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
   const child = spawn(process.execPath, ['--import', preload, cli, 'hub', 'serve'], {
-    cwd: removed, env: { ...process.env, ...fake.env }, stdio: 'ignore',
+    cwd: removed, env: fixtureEnvironment(removed, process.env, fake.env), stdio: 'ignore',
   });
   ownProcess(t, child.pid);
   const discovery = await eventually('foreground hub listening', async () =>

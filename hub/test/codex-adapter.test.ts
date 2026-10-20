@@ -10,6 +10,7 @@
 // - uncertain native input: native missing-result classification (hub retry policy is T2).
 // Parsing/reconciliation tables live in codex-native.test.ts; hub composition lives in
 // adapter-composition.test.ts. Sparse account-read ordering remains in account-limits.test.ts.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -142,7 +143,7 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
     approve: () => writeFile(join(home, 'approve'), ''),
     run: (command) =>
       new Promise((resolve) =>
-        execFile('sh', ['-c', command], { env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, stdout, stderr })),
+        execFile('sh', ['-c', command], { env: fixtureEnvironment(home, process.env, env), encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, stdout, stderr })),
       ),
   };
 }

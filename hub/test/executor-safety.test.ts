@@ -1,5 +1,6 @@
 // T3: proves cross-process spend-lock recovery, remote shell timeout, watchdog rearming
 // and cleanup after the hub process stops; component admission cases use scripted machines.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -29,13 +30,13 @@ test('concurrent host processes share one reservation lock and recover a dead ho
   const lockModule = resolve('hub/src/hub/lock.ts');
   const spendModule = resolve('hub/src/executor/droplet/spend.ts');
   const env: NodeJS.ProcessEnv = { ...process.env, CLAND_EXECUTOR_STATE: state }; delete env.DIGITALOCEAN_TOKEN;
-  await exec(process.execPath, ['--input-type=module', '-e', `import { acquireLockAsync } from ${JSON.stringify(lockModule)}; await acquireLockAsync(${JSON.stringify(join(state, 'spend.json.lock'))}); process.exit(0);`], { env });
+  await exec(process.execPath, ['--input-type=module', '-e', `import { acquireLockAsync } from ${JSON.stringify(lockModule)}; await acquireLockAsync(${JSON.stringify(join(state, 'spend.json.lock'))}); process.exit(0);`], { env: fixtureEnvironment(state, env, { CLAND_EXECUTOR_STATE: state }) });
   const results = await Promise.all(Array.from({ length: 6 }, (_, id) => exec(process.execPath, ['--input-type=module', '-e', `
     import { reserveSpend } from ${JSON.stringify(spendModule)};
     const created = new Date().toISOString();
     try { await reserveSpend('project-${id}', { lease: 'lease-${id}', run: 'run-${id}', size: 'test', priceHourly: 1, created, deadline: new Date(Date.now()+3600000).toISOString() }, 1.001); console.log('reserved'); }
     catch (error) { console.log(error.message); }
-  `], { env })));
+  `], { env: fixtureEnvironment(state, env, { CLAND_EXECUTOR_STATE: state }) })));
   assert.equal(results.filter(r => r.stdout.trim() === 'reserved').length, 1);
   assert.equal(results.filter(r => r.stdout.includes('daily spend cap $1.001 reached')).length, 5);
   assert.equal((await ledger(state)).entries.length, 1);
@@ -97,6 +98,7 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   await cland(f.root, 'verify', 'cancel', fallback.id); await f.result(fallback.id);
   f.api.faults.create = 0;
   const crash = await f.launch('--fresh'); await f.remote(crash.id);
+  // cland-allow-child-env: read-only OS process-table probe; no account, provider or Git operation
   const lines = (await exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='])).stdout;
   assert.ok(!lines.includes('cland-test-remote-suite-token'));
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);

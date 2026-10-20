@@ -1,5 +1,6 @@
 // T3: native Git stdio resolves the original lint freeze through moving dev ancestry.
 // This contract retains the real commit/merge history; policy admission cases are T2.
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -12,7 +13,7 @@ import { serializeTierManifest } from '../src/suite-shards.ts';
 test('the first lint baseline keeps its freeze when dev moves debt before publication', async t => {
   const { testLintPolicy, shrinkTestLint, LINT_BASELINE } = await import('../src/test-lint-policy.ts');
   const root = await tempProject(t, 'cland-lint-freeze-history-');
-  const git = (...args: string[]) => promisify(execFile)('git', args, { cwd: root }).then(result => result.stdout.trim());
+  const git = (...args: string[]) => promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root }).then(result => result.stdout.trim());
   await git('init', '-qb', 'dev');
   await git('config', 'user.name', 'Lint history fixture');
   await git('config', 'user.email', 'fixture@example.invalid');
