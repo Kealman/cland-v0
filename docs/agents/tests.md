@@ -345,6 +345,13 @@ gate reuses the whole check on the droplet, including lint, so it is not repeate
 Local runs never execute `prepare`. All request modes run the same configured
 `test` line; cland's runner receives its phases through `CLAND_SUITE_SELECTION`.
 
+By default, test lint prints a short census with counts by finding kind,
+reachable-resource counts by kind (diagnostic only), and the refusal count.
+Every refusal still prints its full file, line, rule and message and fails the
+check. Use `npm run test:lint -- --details` for per-file tiers, the first twelve
+census findings and every reachable-resource path. `--details` also combines
+with `--shrink`. The summary names this opt-in command.
+
 The direct-source census remains a report of existing debt. The policy gate
 refuses growth, before verify reserves a queue slot or merge changes refs:
 `verify-test-lint` and `merge-test-lint` name the file, line and rule.
@@ -369,9 +376,11 @@ original sources and retains that reference across dev merges. Once dev carries
 a baseline, that baseline supplies the branch's reference.
 
 The log, result and admitted `cland verify --dry-run` retain
-`test lint (report only): <n> findings in <m> files`. The log and dry-run also
-retain the first twelve census findings and each file's lowest qualifying
-resource tier. Delivered results put counts, tier and tier-share summaries,
+`test lint (report only): <n> findings in <m> files`. Suite check logs now record
+the compact CLI census above; their former per-file tiers, first twelve census
+findings and full reachable paths require the opt-in command. Dry-run reporting
+is unchanged: it retains the first twelve census findings and each file's lowest
+qualifying resource tier. Delivered results put counts, tier and tier-share summaries,
 lint summary and budget lines first; one detail count line points to the log
 artifact instead of repeating per-file tiers or individual lint findings.
 Dry-run puts the same summaries before its detail. Those census lines describe
@@ -403,7 +412,7 @@ members. Allowed seams and wait reasons do not suppress reachable resources.
 It caches module analysis, export slices and resolution for one lint run; cycles
 retain all resources. Declaration-only type imports/exports, external packages
 and data imports are not followed. Resource diagnostics name the import chain and
-location. `test:lint` lists every resource path; diagnostic dry runs summarize
+location. `test:lint -- --details` lists every resource path; diagnostic dry runs summarize
 resource kinds and show one highest-tier path per file to fit the protocol frame.
 They never change the direct-source `qualifies` value or policy findings used by
 admission and the tier lint gate. The qualifying tier never automatically retags

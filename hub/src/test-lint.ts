@@ -561,9 +561,20 @@ export async function lintTests(cwd: string, options: { reachable?: boolean } = 
   }));
 }
 
-export function testLintReport(files: TestLintFile[], options: { detailedReachable?: boolean } = {}): string[] {
+export function testLintReport(files: TestLintFile[], options: { detailedReachable?: boolean; summaryOnly?: boolean } = {}): string[] {
   const findings = files.flatMap(file => file.findings);
-  return [`test lint (report only): ${findings.length} findings in ${files.filter(f => f.findings.length).length} files`,
+  const summary = `test lint (report only): ${findings.length} findings in ${files.filter(f => f.findings.length).length} files`;
+  if (options.summaryOnly) {
+    const kinds = (items: TestLintFinding[]) => {
+      const counts = new Map<string, number>();
+      for (const item of items) counts.set(item.rule, (counts.get(item.rule) ?? 0) + 1);
+      return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([kind, count]) => `${kind} ${count}`).join('; ') || 'none';
+    };
+    const resources = files.flatMap(file => file.reachable?.resources ?? []);
+    return [summary, `test lint finding kinds: ${kinds(findings)}`,
+      `test lint reachable (diagnostic only): ${resources.length} resources; ${kinds(resources)}`];
+  }
+  return [summary,
     ...findings.slice(0, 12).map(f => `test lint finding: ${f.file}:${f.line} [${f.rule}] ${f.message}`),
     ...files.map(f => `test lint tier: ${f.file}: ${f.tier}; qualifies ${f.qualifies}`),
     ...files.flatMap(f => {

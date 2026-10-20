@@ -539,6 +539,27 @@ test('report names findings and every file qualifying tier without refusing', ()
   assert.ok(result.includes('test lint tier: hub/test/clean.test.ts: T1; qualifies T1'));
 });
 
+// T1: report formatting over source facts; resources are inert planted data.
+test('summary counts finding kinds without repeating resource paths', () => {
+  const planted = lintTestSource(file, input('reportWait'), 'T2');
+  planted.reachable = { tier: 'T3', resources: [
+    { file, line: 1, rule: 'tier-process', message: 'first path requires T3' },
+    { file, line: 2, rule: 'tier-process', message: 'second path requires T3' },
+    { file, line: 3, rule: 'tier-import', message: 'socket path requires T2' },
+  ] };
+  assert.deepEqual(testLintReport([planted], { summaryOnly: true }), [
+    'test lint (report only): 1 findings in 1 files',
+    'test lint finding kinds: wall-clock-wait 1',
+    'test lint reachable (diagnostic only): 3 resources; tier-import 1; tier-process 2',
+  ]);
+  assert.equal(testLintReport([planted], { detailedReachable: true }).filter(line => line.startsWith('test lint reachable resource:')).length, 3);
+  assert.deepEqual(testLintReport([], { summaryOnly: true }), [
+    'test lint (report only): 0 findings in 0 files',
+    'test lint finding kinds: none',
+    'test lint reachable (diagnostic only): 0 resources; none',
+  ]);
+});
+
 test('numeric waits cannot grow and shrinking retires their allowance', async () => {
   const { checkTestLint, shrinkLintBaseline } = await import('../src/test-lint-policy.ts');
   const manifest = { version: 1 as const, tests: { [file]: 'T2' as const } };

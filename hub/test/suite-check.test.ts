@@ -11,6 +11,27 @@ import { fileURLToPath } from 'node:url';
 import { ownDirectory, ownProcess, beforeDirectories, onCleanup, cleanupProcesses } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import { suiteSummary } from '../src/hub/suites.ts';
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+
+function fixtureEnv(cwd: string): NodeJS.ProcessEnv {
+  // Allow only tool discovery from the worker; account/provider and Git overrides
+  // never enter the fixture. Apply the shared filter after every local overlay.
+  return withoutExecutorCredentials({
+    PATH: process.env.PATH,
+    HOME: join(cwd, 'home'),
+    XDG_CONFIG_HOME: join(cwd, 'config'),
+    XDG_DATA_HOME: join(cwd, 'data'),
+    XDG_STATE_HOME: join(cwd, 'state'),
+    XDG_CACHE_HOME: join(cwd, 'cache'),
+    TMPDIR: join(cwd, 'tmp'),
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: join(cwd, 'gitconfig'),
+    GIT_CONFIG_SYSTEM: join(cwd, 'gitconfig'),
+    GIT_TERMINAL_PROMPT: '0',
+    npm_config_userconfig: join(cwd, 'npmrc'),
+    npm_config_globalconfig: join(cwd, 'npmrc-global'),
+  });
+}
 
 async function bounded<T>(operation: Promise<T>, boundary: string, milliseconds: number): Promise<T> {
   const signal = AbortSignal.timeout(milliseconds);
@@ -24,7 +45,7 @@ async function bounded<T>(operation: Promise<T>, boundary: string, milliseconds:
 }
 
 function ownedCheck(t: import('node:test').TestContext, cwd: string, args: string[] | string, signal = t.signal) {
-  const child = spawn(typeof args === 'string' ? '/bin/sh' : 'npm', typeof args === 'string' ? ['-c', args] : args, { cwd, timeout: 10_000, signal, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(typeof args === 'string' ? '/bin/sh' : 'npm', typeof args === 'string' ? ['-c', args] : args, { cwd, env: fixtureEnv(cwd), timeout: 10_000, signal, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '', stderr = '', failure = '';
   child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
   child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
@@ -79,6 +100,8 @@ async function checkRoot(t: import('node:test').TestContext, prefix: string) {
     removed = true;
   };
   beforeDirectories(t, remove);
+  await Promise.all(['home', 'config', 'data', 'state', 'cache', 'tmp'].map(path => mkdir(join(cwd, path))));
+  await Promise.all(['gitconfig', 'npmrc', 'npmrc-global'].map(path => writeFile(join(cwd, path), '')));
   return { cwd, remove, attach: (next: ReturnType<typeof ownedCheck>) => command = next };
 }
 
@@ -139,7 +162,7 @@ test('check runs the report lint once after typecheck and preserves a green exit
   await mkdir(join(cwd, '.cland'), { recursive: true });
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run check"\ntest = "npm test"\n');
   await writeFile(join(cwd, 'hub/test/lint-baseline.json'), JSON.stringify({ version: 1, files: { 'hub/test/a.test.ts': { 'wall-clock-wait': 1 } } }));
-  const git = (...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' });
+  const git = (...args: string[]) => execFileSync('git', args, { cwd, env: fixtureEnv(cwd), stdio: 'pipe' });
   git('init', '-qb', 'dev'); git('add', '.');
   git('-c', 'user.name=Lint fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Frozen lint baseline');
   const { check } = await verificationCommands(cwd, cwd);
@@ -150,15 +173,28 @@ test('check runs the report lint once after typecheck and preserves a green exit
   assert.equal(stdout.split('test lint (report only):').length - 1, 1);
   assert.ok(stdout.indexOf('TYPECHECK-COMPLETE') < stdout.indexOf('test lint (report only):'));
   assert.match(stdout, /test lint \(report only\): 1 findings in 1 files/);
-  assert.match(stdout, /test lint tier: hub\/test\/a.test.ts: T2; qualifies T2/);
-  assert.match(suiteSummary(stdout), /test lint detail: 1 tier lines; 1 finding lines; log/);
-  // The documented npm entry point forwards --shrink to the lint tool.
+  assert.match(stdout, /test lint finding kinds: wall-clock-wait 1/);
+  assert.match(stdout, /test lint refusals: 0/);
+  assert.match(stdout, /test lint detail: npm run test:lint -- --details/);
+  assert.doesNotMatch(stdout, /test lint (?:tier|finding|reachable resource):/);
+  assert.match(suiteSummary(stdout), /test lint \(report only\): 1 findings in 1 files/);
+  // The documented npm entry point forwards both options to the lint tool.
   await writeFile(join(cwd, 'hub/test/a.test.ts'), '');
-  const shrink = root.attach(ownedCheck(t, cwd, ['run', 'test:lint', '--', '--shrink']));
+  const shrink = root.attach(ownedCheck(t, cwd, ['run', 'test:lint', '--', '--shrink', '--details']));
   const shrunk = await shrink.result;
   assert.equal(shrunk.code, 0, shrunk.stderr);
   await shrink.stop();
+  assert.match(shrunk.stdout, /test lint tier: hub\/test\/a.test.ts: T2; qualifies T1/);
   assert.deepEqual(JSON.parse(await readFile(join(cwd, 'hub/test/lint-baseline.json'), 'utf8')).files['hub/test/a.test.ts'], {});
+  // Refusals are complete even when the report-only census would cap at twelve.
+  await writeFile(join(cwd, 'hub/test/a.test.ts'), Array.from({ length: 15 }, () => 'sleep(25);').join('\n'));
+  const refusal = root.attach(ownedCheck(t, cwd, ['run', 'test:lint']));
+  const refused = await refusal.result;
+  assert.equal(refused.code, 1, refused.stderr);
+  await refusal.stop();
+  assert.match(refused.stdout, /test lint refusals: 15/);
+  assert.equal(refused.stdout.split('test lint refusal:').length - 1, 15);
+  assert.match(refused.stdout, /a.test.ts:15 \[wall-clock-wait\] wall-clock-wait count 15 exceeds frozen allowance 0/);
   await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: { typecheck: 'true', test: 'true' } }));
   await writeFile(join(cwd, '.cland/config.toml'), '[verification]\ncheck = "npm run typecheck"\ntest = "npm test"\n');
   assert.equal(await verificationCommands(cwd, cwd).then(commands => commands.check), 'npm run typecheck', 'the configured typecheck retains its host-gate identity');
