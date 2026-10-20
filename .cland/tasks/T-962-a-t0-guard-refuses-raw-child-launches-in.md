@@ -3,7 +3,7 @@ id: T-962
 kind: task
 title: A T0 guard refuses raw child launches in hub/test that inherit the environment without the sealed builder
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -13,9 +13,9 @@ parent: E-952
 blocked_by:
   - T-961
 topic: null
-branch: null
+branch: t/T-962-a-t0-guard-refuses-raw-child-launches-in
 created: 2026-10-20T10:10:19.498Z
-updated: 2026-10-20T10:10:24.407Z
+updated: 2026-10-20T10:57:10.709Z
 ---
 
 ## Summary

@@ -2,8 +2,8 @@
 id: T-587
 kind: task
 title: A queued role-addressed QA request isn't delivered when the verifier goes idle
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-712
 branch: t/T-587-a-queued-role-addressed-qa-request-isn-t
 created: 2026-10-16T10:42:55.641Z
-updated: 2026-10-20T10:11:56.243Z
+updated: 2026-10-20T10:17:03.277Z
+closed: 2026-10-20T10:17:03.277Z
 ---
 
 ## Summary
@@ -104,3 +105,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no finding. A-7379 exact-head mode-free task gate passed; host check/typechecks green, existing lint/budgets report-only. Routing file 0.823→2.142 s diagnostic remains below T2 file budget; no bounds changed. Spec: C1/C2 verified at fb532ce5 with run1e677f9a, 1954/1954, no failures/skips/cancellations. Parsed actual resolver3/3, routing11/11, crew-launch3/3 base passes and 5/5 repetitions for the fatal-notice T1 plus all seven new T2 identities (QA/review/restart/reservation/late uncertainty); maxima .062599s T1/.439789s T2. Linux c-8 lon1, two workers, lifetime380s/$0.0264; T0–T2 fallback includes Neovim, T3 deferred/not claimed. Source clear A-7334 retained; Reviewer ran no tests.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:17:03.277Z
+
+Merged a71d0339845bd203cb978433e766baeb9ce7a3d3 onto dev.

@@ -2,8 +2,8 @@
 id: T-942
 kind: task
 title: Find the process that put the executor credential in argv (T-492 C3)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-723
 branch: t/T-942-find-the-process-that-put-the-executor
 created: 2026-10-20T06:21:21.658Z
-updated: 2026-10-20T10:07:18.617Z
+updated: 2026-10-20T10:22:24.690Z
+closed: 2026-10-20T10:22:24.690Z
 ---
 
 ## Summary
@@ -27,10 +28,14 @@ Split from T-492 at the v0.1.4 release (D76). T-492 stops every launched session
 - [x] C1. The process that put the credential in argv is named from a reproduction with a fake credential value (never the real one), or the evidence shows that no current cland or test path can do it (every spawn site that builds argv from env is listed and checked).
   - done: impl-942 · 2026-10-20T09:50:09.566Z
   - verified: rev-23 [reviewer] · run rev-20261020-942-source-corrected · 2026-10-20T10:06:59.135Z · commit 5012ed280a22c98e94597afaa4a3030f051f53b2
+  - verified: rev-23 [reviewer] · run rev-20261020-942-final · 2026-10-20T10:16:30.937Z · commit 5012ed280a22c98e94597afaa4a3030f051f53b2
 - [x] C2. If a path is found, it is fixed and a test with a fake credential asserts argv never contains it.
   - verified: rev-23 [reviewer] · run rev-20261020-942-source-corrected · 2026-10-20T10:06:59.135Z · commit 5012ed280a22c98e94597afaa4a3030f051f53b2
   - done: impl-942 · 2026-10-20T10:07:18.616Z
-- [ ] C3. A mode-free `cland verify` at the reviewed head is green.
+  - verified: rev-23 [reviewer] · run rev-20261020-942-final · 2026-10-20T10:16:30.937Z · commit 5012ed280a22c98e94597afaa4a3030f051f53b2
+- [x] C3. A mode-free `cland verify` at the reviewed head is green.
+  - done: impl-942 · 2026-10-20T10:15:02.729Z
+  - verified: rev-23 [reviewer] · run rev-20261020-942-final · 2026-10-20T10:16:30.937Z · commit 5012ed280a22c98e94597afaa4a3030f051f53b2
 
 ## Comments
 
@@ -71,3 +76,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no findings. Spec: no findings. M1 resolved: hub/README.md saved-environment section and docs/verification-shards.md Executor credentials now document deny-list filtering after account overlays and before attach command serialization, retained path selection/quoting, and the scoped audit with historical npm attribution unknown. Independently checked docs-only delta from ce60e1f1; implementation and tests unchanged. C1 verified through the current-source audit alternative (A-7283/A-7284; previous full source analysis A-7322), not historical process identification. C2 verified from unchanged filter/source and retained fake-only targeted evidence A-7288/A-7289 (65/65 local native tests); arbitrary user-supplied secret-bearing commands remain outside the automatic env-to-argv claim. A-7352 records the correction and evidence limits. C3 remains unverified pending mode-free verification at exact 5012ed28; no Reviewer tests.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-942 · 2026-10-20T10:15:03.612Z
+
+Exact reviewed-head mode-free verification b03995b6-1495-4781-b197-c7d35a553e2f passed at 5012ed280a22c98e94597afaa4a3030f051f53b2: T0–T2, fallback all T2 in both packages, 1948/1948 tests, zero failed/cancelled/skipped/TODO. Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5; droplet c-8 lon1 cland-v0-b57ce888, lifetime 347s, cost $0.0241. Test lint and T3 ratchet report-only. A-7394 log: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7394-suite-b03995b6-1495-4781-b197-c7d35a553e2f-auto-at-5012ed2.log. C3 claimant done mark added; awaiting Reviewer final evidence verdict. T3 absent from configured batch tiers and deferred to periodic/integrated occasions; retained local adapter contract A-7289 is separate targeted macOS evidence at unchanged source ce60e1f1, not this Linux task run. Historical npm credential argv attribution remains unknown; C1 uses scoped current-source audit alternative.
+
+### rev-23 · 2026-10-20T10:16:30.937Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-942-final
+commit: 5012ed280a22c98e94597afaa4a3030f051f53b2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no remaining findings. Spec: no remaining findings. Same-head mode-free Linux run b03995b6/A-7394 is green: independently counted 1948 ordinary test passes, 315 file passes, no other outcomes; actual T1/T2 fallback across hub and Neovim. Account attach argv and machine argv regressions each have five distinct passing load-gate test receipts. Host typecheck gate 09ad445b was not repeated remotely; lint/T3 ratchet report-only. T3 adapter-native-boundary did not execute; local targeted A-7289 remains separate evidence, periodic/integrated coverage remains deferred. C1/C2 retain source-clear A-7352, C3 verified now. Historical npm attribution remains unknown and current-source audit excludes arbitrary user-supplied secret-bearing commands. Prior M1 resolved. A-7398 records actual tiers/platform/executor and evidence limits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T10:22:24.690Z
+
+Merged d53dc9be33d4777a7c087704414bbb68d5d50f41 onto dev.

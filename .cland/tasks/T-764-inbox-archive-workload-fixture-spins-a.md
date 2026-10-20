@@ -2,8 +2,8 @@
 id: T-764
 kind: task
 title: inbox-archive-workload fixture spins a setImmediate turn counter through startup and archive I/O
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-721
 branch: t/T-764-inbox-archive-workload-fixture-spins-a
 created: 2026-10-17T23:34:30.008Z
-updated: 2026-10-20T10:14:03.750Z
+updated: 2026-10-20T10:22:09.983Z
+closed: 2026-10-20T10:22:09.983Z
 ---
 
 ## Summary
@@ -29,7 +30,9 @@ Observe turns only during the stop-coalescing phase that the assertion checks, s
 
 ## Acceptance criteria
 
-- [ ] C1. The turn counter runs only within the stop-coalescing phase (asserted in the test), the sweep-uniqueness assertion is unchanged, and the files' durations from the task's droplet verify are recorded beside the earlier droplet baselines; Mac timings taken under crew load are kept only as context.
+- [x] C1. The turn counter runs only within the stop-coalescing phase (asserted in the test), the sweep-uniqueness assertion is unchanged, and the files' durations from the task's droplet verify are recorded beside the earlier droplet baselines; Mac timings taken under crew load are kept only as context.
+  - done: impl-764 · 2026-10-20T10:14:30.084Z
+  - verified: rev-32 [reviewer] · run rev-20261020-764-final · 2026-10-20T10:14:53.293Z · commit 130c72fc7b5e75a9d6e0ad79e1ff0596e068b360
 
 ## Comments
 
@@ -63,3 +66,41 @@ No findings. Stop-sweep uniqueness assertions are unchanged, including the per-t
 Source clear at 130c72fc7b5e75a9d6e0ad79e1ff0596e068b360. No Reviewer execution. A-7279 retains restored negative-regression probes and Darwin arm64/local serial targeted receipts: T2 2.878s wall, T4 8.883s/0.883s wall. Confounded Mac repetitions are context only and establish no performance improvement. Earlier droplet baseline values are sums of test seconds (T2 current manifest 2.701311234s; earlier 3.419201081s and 3.653100564s), not file wall times.
 
 Totals: Standards 0; Spec 0. C1 awaits same-head mode-free droplet verification and comparable selected-T2 duration evidence.
+
+### impl-764 · 2026-10-20T10:14:30.850Z
+
+C1 implementation complete at unchanged reviewed head 130c72fc. Mode-free task droplet run 7b2b9ef7-55b0-454c-848a-da29af0d2f12 passed T1/T2, 1946/1946 tests; T3/T4 not executed. A-7386 is the receipt/log. A-7393 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7393-t-764-c1-same-head-droplet-duration-comparison.md) compares actual inbox-workload.test.ts test-seconds: earlier droplet A-6297 3.419201081; A-6792 3.653100564; A-6796 2.701311234; current 2.740436935. Archive coalescing test: current 0.291272226 vs A-6796 0.317334120. Actual current file completion is 3.541708263 s, distinct from test-second sums. Recorded comparison is not a controlled performance claim. Both lifetime guards and unchanged uniqueness assertion pass. Both T4 duration entries remain deferred to Coordinator-owned E-952 closing stage cover per ed5121dd. Linux x64 c-8 droplet, workers 2, lifetime 438s, cost $0.0304; lint and duration/ratchet reporting are report-only.
+
+### rev-32 · 2026-10-20T10:14:53.293Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-764-final
+commit: 130c72fc7b5e75a9d6e0ad79e1ff0596e068b360
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear at unchanged 130c72fc7b5e75a9d6e0ad79e1ff0596e068b360, following full source verdict rev-20261020-764-source (A-7329). No findings; C1 verified.
+
+A-7386 / run 7b2b9ef7-55b0-454c-848a-da29af0d2f12 is a fresh mode-free task run at this head, exit 0: 1946/1946 reported passes; T1 exit 0 (43s), T2 exit 0 (286s), fallback all T2 in both packages. Linux x64 6.8.0-142-generic, droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5. Host check/typecheck at e68006e71de272e53d687b4289c94fd3190f24a0 was reused, not repeated remotely. Census/duration/T3 ratchet diagnostics remained report-only; refusal policy enforced.
+
+Recomputed the eight ordinary inbox-workload.test.ts timing rows from retained logs (all values below are summed test-seconds):
+
+| Receipt | Head | Test-seconds |
+| --- | --- | ---: |
+| A-6297 earlier baseline | 1d81bd6e | 3.419201081 |
+| A-6792 earlier baseline | 15f9c308 | 3.653100564 |
+| A-6796 manifest baseline | 15f9c308 | 2.701311234 |
+| A-7386 current task | 130c72fc | 2.740436935 |
+
+Current actual file-completion wall time was 3.541708263s; it is separate from summed test-seconds. The archive case, counter-phase guards and unchanged sweep-uniqueness assertion passed. A-7393 records the same comparison. These observations satisfy the reconciled evidence criterion and do not establish a CPU/speed improvement; confounded Mac timings remain context only.
+
+T3/T4 did not execute. Both T4 workload duration entries remain deferred to Coordinator-owned E-952 closing stage cover per ed5121dd. No broader run requested and no Reviewer runtime execution.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-20T10:22:09.983Z
+
+Merged da09e7db4e152ce03d82f9bbc8761bb0bdf84751 onto dev.

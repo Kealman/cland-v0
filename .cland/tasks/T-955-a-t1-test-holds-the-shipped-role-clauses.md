@@ -2,8 +2,8 @@
 id: T-955
 kind: task
 title: A T1 test holds the shipped role clauses' byte reserve and wording pins
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-726
 branch: t/T-955-a-t1-test-holds-the-shipped-role-clauses
 created: 2026-10-20T09:53:17.153Z
-updated: 2026-10-20T10:03:04.477Z
+updated: 2026-10-20T10:25:20.226Z
+closed: 2026-10-20T10:25:20.226Z
 ---
 
 ## Summary
@@ -30,11 +31,14 @@ A T1 test reads the shipped default role clauses. For each one it asserts the by
 - [x] C1. A T1 test fails when any shipped role clause exceeds its byte reserve, naming the role, the size and the reserve.
   - done: impl-955 · 2026-10-20T09:58:54.864Z
   - verified: rev-26 [reviewer] · run rev-20261020-955-source-1 · 2026-10-20T10:03:04.477Z · commit 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e
+  - verified: rev-26 [reviewer] · run rev-20261020-955-final-1 · 2026-10-20T10:22:13.385Z · commit 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e
 - [x] C2. Every wording pin of a shipped clause now asserted in a T3 file is asserted in T1, and the T3 copy is removed or reduced to its live-hub claim, with an assertion map in the evidence.
   - done: impl-955 · 2026-10-20T09:58:56.164Z
   - verified: rev-26 [reviewer] · run rev-20261020-955-source-1 · 2026-10-20T10:03:04.477Z · commit 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e
+  - verified: rev-26 [reviewer] · run rev-20261020-955-final-1 · 2026-10-20T10:22:13.385Z · commit 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e
 - [x] C3. Red evidence: a scratch edit that pushes the Coordinator clause over its reserve, or rewords a pinned line, fails the T1 test.
   - done: impl-955 · 2026-10-20T09:58:57.197Z
+  - verified: rev-26 [reviewer] · run rev-20261020-955-final-1 · 2026-10-20T10:22:13.385Z · commit 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e
 
 ## Comments
 
@@ -60,3 +64,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no finding. T1 manifest entry and pure parsing/public rendering preserve the former queue-role/default staffing/pong fixture and 512-byte reserve; no new process/socket/timer. Spec: A-7308 map covers removed wording/permission assertions; T3 retains actual base/guidance delivery and native protocol claims. C1/C2 source verified. Raw oversized/reworded scratch reds and restored 27/27 T1 resource-enforced green checked, with local macOS/report-only duration limits explicitly retained; affected T3 4+2 passes are targeted evidence only. C3/final execution settlement remains pending the post-source same-head mode-free task receipt. No Reviewer test execution.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-955 · 2026-10-20T10:20:50.381Z
+
+Same-head verify 98f02a7d-4017-4e31-a51b-9903f99a82c4 returned auto exit 0 at 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e; A-7420 durable log. Executed T1 exit 0 (50 s) and T2 exit 0 (265 s), full fallback across both packages due tiers.json; 1973 passed, no failures/cancellations/skips. T3/T4 absent. Executor droplet c-8 lon1, Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5; lifetime 397 s; cost $0.0276. Duration budgets/test lint are report-only; new T1 duration baseline missing, observed 0.008 s. Host npm run check gate names f8471e8307271b94e4cf77655f6976ef408615c8 and was not repeated remotely, per receipt. These are executed T1–T2 results, not integrated coverage. Awaiting final Reviewer evidence settlement; head remains unchanged and clean.
+
+### rev-26 · 2026-10-20T10:22:13.385Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-955-final-1
+commit: 07c18f6079dbca9abdc87c1808cd6ddfe2e0b65e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no finding. A-7420 exact-head gate passed host check and T0–T2; lint/budgets/ratchet report-only and missing new-file baseline disclosed. Parsed27/27 clause base passes plus actual5/5 passes for every identity (max repetition .006774s, belowT1 budget). Spec: C1/C2 source map/rendering retained; C3 A-7308 original byte/wording reds and restored green checked. Run98f02a7d at07c18f60:1973/1973,no failures/skips/cancellations. Linux c-8 lon1,two workers,lifetime397s/$0.0276. T3 roles/surface Linux execution deferred; prior local4+2 passes are separate, ratchet projection not runtime. Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T10:25:20.226Z
+
+Merged 13e652a73f354a0adc77368888e3c5ff7c6669e8 onto dev.

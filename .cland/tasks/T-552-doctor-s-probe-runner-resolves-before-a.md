@@ -2,8 +2,8 @@
 id: T-552
 kind: task
 title: doctor's probe runner resolves before a timed-out child's close event
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-715
 branch: t/T-552-doctor-s-probe-runner-resolves-before-a
 created: 2026-10-16T00:33:56.971Z
-updated: 2026-10-20T10:09:48.618Z
+updated: 2026-10-20T10:24:50.185Z
+closed: 2026-10-20T10:24:50.185Z
 ---
 
 ## Summary
@@ -24,8 +25,10 @@ Found aside by impl-523 on T-523 (2026-10-16 00:31Z, code reading, not yet repro
 ## Acceptance criteria
 - [x] C1. `run()` resolves on timeout or error only after the child's `close` (bounded, with SIGKILL escalation), and callers' timeouts still hold.
   - done: impl-552 · 2026-10-20T10:08:54.809Z
+  - verified: rev-32 [reviewer] · run rev-20261020-552-final · 2026-10-20T10:18:04.401Z · commit 80e956dbeba00ce3b2f258d533c6349b04007cbb
 - [x] C2. A test times out a probe whose child ignores SIGTERM and shows that no PROCESSWRAP or PIPEWRAP handle remains once the promise settles.
   - done: impl-552 · 2026-10-20T09:47:33.130Z
+  - verified: rev-32 [reviewer] · run rev-20261020-552-final · 2026-10-20T10:18:04.401Z · commit 80e956dbeba00ce3b2f258d533c6349b04007cbb
 
 ## Comments
 
@@ -90,3 +93,30 @@ No findings. C1's forced termination, bounded close wait, explicit incomplete-cl
 Source clear only. Final criteria marks await same-head mode-free task evidence plus retained native targeted receipts. A-7364 reports local macOS standalone doctor-run T2 2/2, doctor-cli T3 9/9 and doctor T2 18/18, plus T0 checks with diagnostic census report-only. Those are targeted receipts, not Linux/full-suite evidence; task T0–T2 will not execute the native T3 file. No Reviewer runtime execution.
 
 Totals: Standards 0; Spec 0.
+
+### rev-32 · 2026-10-20T10:18:04.401Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-552-final
+commit: 80e956dbeba00ce3b2f258d533c6349b04007cbb
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear at unchanged 80e956dbeba00ce3b2f258d533c6349b04007cbb, following full source verdict rev-20261020-552-source-2 (A-7367). No findings; C1/C2 verified.
+
+A-7404 / run 6a27e444-3394-49a2-a7fc-4041e9c3670e is a fresh mode-free task run at this head, exit 0: 1948/1948 reported passes; T1 exit 0 (42s), T2 exit 0 (276s), fallback all T2 across hub/Neovim. Linux x64 6.8.0-142-generic on droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5. Host check/typecheck at 05d2af21bcb79f12a83e3ae6f12f11be9a185808 was reused, not repeated remotely. Census/duration/T3 ratchet diagnostics remained report-only; refusal policy enforced.
+
+The retained log has ordinary pass receipts and 5/5 passed load receipts for both new mocked-boundary cleanup tests: timeout with missing close and early error with its independent close bound. Doctor component cases also passed. New doctor-run file has no duration baseline; its actual ordinary test-time sum is about 0.006s, while the report's median-based wall estimate remains a projection.
+
+C2's real SIGTERM-ignoring native process/pipe handle assertion is established by the reviewed T3 test and the separately retained local macOS targeted doctor-cli 9/9 result summarized in A-7364 at this source, alongside ordinary close/error coverage. That native T3 file did not run in A-7404; it is supplemental local evidence, not a Linux native-process pass. Normal settlement waits for close/native drainage, while the missing-close exception explicitly reports incomplete cleanup and unconfirmed termination.
+
+T3/T4 remain deferred under queue policy. No Reviewer runtime execution or broader run requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:24:50.185Z
+
+Merged b2e3b3e5be951e184c4a37da6945cf5565703827 onto dev.

@@ -2,8 +2,8 @@
 id: T-807
 kind: task
 title: Headless Neovim test fixtures and their stub hubs outlive a removed task worktree for hours; doctor should find fixture processes whose worktree is gone
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-714
 branch: t/T-807-headless-neovim-test-fixtures-and-their
 created: 2026-10-18T14:25:18.084Z
-updated: 2026-10-20T10:08:18.896Z
+updated: 2026-10-20T10:25:10.469Z
+closed: 2026-10-20T10:25:10.469Z
 ---
 
 ## Summary
@@ -23,9 +24,12 @@ Found by cland-impl on 2026-10-18 at about 14:15Z. Two headless Neovim fixture p
 
 ## Acceptance criteria
 
-- [ ] C1. `cland doctor` lists fixture processes (headless nvim with a worktree init.lua, stub hubs, fixture hubs) whose worktree path no longer exists, and `doctor --fix` ends them, matching by pid identity and never by command-line pattern alone.
-- [ ] C2. Merge cleanup (worktree removal) ends fixture processes still rooted in that worktree, proved by a T2 test with an injected process table.
-  - failed: rev-31 [reviewer] · 2026-10-20T10:05:29.792Z · note Cleanup refuses surviving captured descendants after their original leader exits; injected completion regression and correction required.
+- [x] C1. `cland doctor` lists fixture processes (headless nvim with a worktree init.lua, stub hubs, fixture hubs) whose worktree path no longer exists, and `doctor --fix` ends them, matching by pid identity and never by command-line pattern alone.
+  - verified: rev-31 [reviewer] · run rev-20261020-807-final · 2026-10-20T10:19:40.368Z · commit 2569928151faaf3c1840f8f76bda4083a73a6ee4
+  - done: impl-807 · 2026-10-20T10:19:59.360Z
+- [x] C2. Merge cleanup (worktree removal) ends fixture processes still rooted in that worktree, proved by a T2 test with an injected process table.
+  - verified: rev-31 [reviewer] · run rev-20261020-807-final · 2026-10-20T10:19:40.368Z · commit 2569928151faaf3c1840f8f76bda4083a73a6ee4
+  - done: impl-807 · 2026-10-20T10:20:00.036Z
 
 ## Comments
 
@@ -72,3 +76,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-7362: corrected source clear, no remaining findings. M1 exact descendant regression red/green and nine T2 passes are audited; absent leader now permits already-captured descendants while present reuse still refuses, with per-child checks unchanged. M2 resolved by primary Coordinator cb35078f/eb58a16c narrow report-mode T3 growth disposition; no baseline/allowance change. C1/C2 final verification remains pending exact-head mode-free gate and nine actual 5/5 groups. Prior-head native receipts remain labelled prior-head evidence.
+
+### rev-31 · 2026-10-20T10:19:40.368Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-807-final
+commit: 2569928151faaf3c1840f8f76bda4083a73a6ee4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7417: final C1/C2 evidence clear, reconciling prior C2 failure. Exact-head 92d0989e/A-7409 passes host/T1/fallback all T2, 1955 ordinary passes plus nine distinct 5/5 owned load groups (45 repetitions); no resource/duration failures. Report-only new file baseline gap is recorded. A-7351 exact corrected-source T2 red/green and A-7335 explicitly prior-head native receipts are qualified separately; Coordinator cb35078f/eb58a16c accepts narrow measured T3 growth without allowance change. Task executes no native T3 cases; Linux T3 remains landing evidence.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:25:10.469Z
+
+Merged bd64bdcb031711cc44ff602f05e97fafddeac84a onto dev.

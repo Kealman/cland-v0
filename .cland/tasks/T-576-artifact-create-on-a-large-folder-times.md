@@ -2,8 +2,8 @@
 id: T-576
 kind: task
 title: artifact.create on a large folder times out at 10 s while the hub completes it, losing the result and inviting a duplicate publish
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-710
 branch: t/T-576-artifact-create-on-a-large-folder-times
 created: 2026-10-16T06:13:36.210Z
-updated: 2026-10-20T10:12:50.571Z
+updated: 2026-10-20T10:17:16.323Z
+closed: 2026-10-20T10:17:16.323Z
 ---
 
 ## Summary
@@ -119,3 +120,7 @@ The log records ordinary passes for both spoke artifact-budget regressions and s
 This is task T0–T2 evidence, not T3/T4 or an all-tier run. Outer MCP timeouts, continued hub copying after timeout, and lack of idempotent retries remain documented scope limits. No Reviewer runtime execution.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:17:16.323Z
+
+Merged f5e8a9b1ee5bfa580c3173cc1ca1540750e7322f onto dev.

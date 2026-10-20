@@ -3,17 +3,18 @@ id: T-958
 kind: task
 title: The claimant learns that ready waits on its own done marks
 state: open
-status: planned
+status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
 parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-734
+branch: t/T-958-the-claimant-learns-that-ready-waits-on
 created: 2026-10-20T09:53:32.957Z
-updated: 2026-10-20T09:53:58.056Z
+updated: 2026-10-20T10:52:13.143Z
 ---
 
 ## Summary
@@ -26,5 +27,77 @@ When the gate's only missing evidence for ready is claimant done marks, the hub 
 
 ## Acceptance criteria
 
-- [ ] C1. An item whose criteria are all verified but some not done, with clear verdicts, gets one notice to the claimant naming the criteria; no notice repeats while the set is unchanged.
-- [ ] C2. The Implementer clause carries the done-marks line within its byte reserve.
+- [x] C1. An item whose criteria are all verified but some not done, with clear verdicts, gets one notice to the claimant naming the criteria; no notice repeats while the set is unchanged.
+  - done: impl-958 · 2026-10-20T10:40:18.512Z
+  - verified: rev-26 [reviewer] · run rev-20261020-958-final-1 · 2026-10-20T10:49:30.991Z · commit 18e2e44d99c42b474fe5ef0f504fd9352bdc0dd8
+- [x] C2. The Implementer clause carries the done-marks line within its byte reserve.
+  - done: impl-958 · 2026-10-20T10:33:26.293Z
+  - verified: rev-26 [reviewer] · run rev-20261020-958-source-2 · 2026-10-20T10:41:19.542Z · commit 18e2e44d99c42b474fe5ef0f504fd9352bdc0dd8
+  - verified: rev-26 [reviewer] · run rev-20261020-958-final-1 · 2026-10-20T10:49:30.991Z · commit 18e2e44d99c42b474fe5ef0f504fd9352bdc0dd8
+  - verified: rev-26 [reviewer] · run rev-20261020-958-source-3 · 2026-10-20T10:52:13.143Z · commit fd8b08b17a654054ec0f0bcb479877ceb5729d21
+
+## Comments
+
+### impl-958 · 2026-10-20T10:32:24.759Z
+
+Implemented missing-done readiness notices through the existing gate evaluation and topic delivery path. Last missing-id set and notice commit atomically in hub storage, so unchanged checks/restarts do not repeat. Updated both Implementer clauses, implement skill provenance/workflow, CLI help, README and agent/review docs. Targeted T1 clause reserve/wording checks passed on the working tree (local macOS); T2 readiness delivery/restart coverage is being finalized before source review.
+
+### rev-26 · 2026-10-20T10:38:33.662Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261020-958-source-1
+commit: fcccbe7b944d439e929d276dfd04b96e0e03030f
+scope: full
+findings: [{"severity":"medium","text":"Missing-done suppression is keyed only by item and criterion IDs: after claim handoff with the same missing set, the new claimant gets no notice. Include stable claimant identity and cover handoff while retaining same-claim restart suppression.","file":"hub/src/hub/core.ts","line":656}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Medium M1 — hub/src/hub/core.ts:656–659: A notice sent to claimant A suppresses delivery to replacement claimant B with the same missing criterion IDs; Tracker.claim schedules a recheck but the checkpoint ignores recipient identity. Scope deduplication to the stable claimant identity and add an unchanged-set handoff regression plus same-claim restart suppression. C1 fails. No separate Standards finding. C2 wording is present in both Implementer clauses; unchanged reserve tests are retained. A-7487 has the two-axis source audit; A-7481 preserves original local targeted receipts (T1 roles-clauses 27/27, T2 tracker-ready 11/11), which do not establish integrated execution. No Reviewer tests were run. Corrected source needs fresh review before verification.
+
+Criteria: C1 failed (After claim handoff, unchanged missing IDs suppress the notice to the new claimant.).
+
+### rev-26 · 2026-10-20T10:41:19.542Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-958-source-2
+commit: 18e2e44d99c42b474fe5ef0f504fd9352bdc0dd8
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. Persisted signature uses existing normalized stable claimant identity plus sorted missing IDs; atomic notice/checkpoint and both role-clause copies/reserve guard remain intact. Docs and skill agree. Spec: M1 resolved; both QA variants now release/reassign/reclaim to a replacement identity and observe that claimant's notice for unchanged missing IDs, then reopen under the replacement and retain final no-extra-notice/ready assertions. Full task source rechecked against retained 13e652a7; authoritative evidence/QA gate unchanged. A-7501 records audit, A-7497 exact-tree local original T2 11/11, T1 clauses 27/27 plus requested native T3 roles 4/4 and static check exit 0 (test lint report-only). C2 verified; C1/final execution pending accepted mode-free receipt at 18e2e44d. Reviewer ran no tests or edits.
+
+Criteria: C2 verified.
+
+### rev-26 · 2026-10-20T10:49:30.991Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-958-final-1
+commit: 18e2e44d99c42b474fe5ef0f504fd9352bdc0dd8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. A-7513 pins reviewed head; host check output inspected, later 6a6af881 reference explicitly not repeated remotely. Existing lint/budgets/ratchet report-only; five missing baselines and incomplete T3 timing basis disclosed. Own tracker-ready 11/11 base pass, all <2 s; 27 T1 clause cases pass, including both Implementer reserve/wording checks. Spec: accepted 2805809a at 18e2e44d exits 0, 2010/2010 passed, no failure/skip/cancel. QA=false/true claimant notice cases cover missing-set changes, handoff and restart and each has five passing repetitions (max 1.027749 s). Linux c-8 lon1, two workers, lifetime 406 s/$0.0282; T1/all T2 fallback includes Neovim, T3 deferred/not claimed. C1/C2 verified. A-7515 contains evidence audit. Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-20T10:52:13.143Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-958-source-3
+commit: fd8b08b17a654054ec0f0bcb479877ceb5729d21
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. Authorized merge bdaeb075 checked; sole manual skill metadata conflict retains full parent union, incoming dictionary guidance and done-marks paragraph. Imported Coordinator baseline instruction does not overlap the Implementer done line. Spec: notice transaction/claimant signature, gate/tracker/listener code and both readiness regressions are byte-identical to 18e2e44d. C2 source renewed. A-7523 retains exact merged-tree local 27 T1 + 11 T2 + four requested native T3 passes, isolated workers and root check exit 0 (existing test lint report-only). A-7525 records audit. C1/final pending new accepted mode-free evidence at fd8b08b1; old A-7513 is not new-head execution. Reviewer ran no tests or edits.
+
+Criteria: C2 verified.
