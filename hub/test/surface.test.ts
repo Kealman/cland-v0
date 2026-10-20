@@ -1,10 +1,7 @@
 // T3: contract with the real stdio spoke binary, including parity with its in-process transport.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { DOCUMENTED_TOOLS, startHub, spawnSpoke, inProcessSpoke } from './harness.ts';
-import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
-import { parseRoles } from '../src/roles/config.ts';
 
 test('the spoke declares the channel capability, the documented tools and its instructions', async t => {
   const hub = await startHub();
@@ -60,34 +57,5 @@ test('who() lists every connected session with its session id, role, status and 
     await alpha.close();
     await beta.close();
     await hub.close();
-  }
-});
-
-test('role clauses keep decision questions with the Coordinator and allow explicit human action requests', () => {
-  const roles = parseRoles(DEFAULT_ROLES_TOML);
-  for (const role of ['implementer', 'reviewer', 'qa']) {
-    const clause = roles.get(role)?.clause ?? '';
-    assert.doesNotMatch(clause, /Never write to the human/, role);
-    assert.match(clause, /When the human mentions you in a topic \(`@[a-z]+` or your name\), answer the human in that topic with `send` and no `to`/, role);
-    if (role === 'implementer') {
-      assert.match(clause, /When blocked, report .* with `send` to `lead T-<n>` for your own item/, role);
-      assert.match(clause, /your report climbs to the next Lead, then the Coordinator/, role);
-      assert.match(clause, /only the Coordinator puts decision questions to the human/, role);
-    } else {
-      assert.match(clause, /Report: `send` kind `report` to `@lead T-<n>` \(`to: \["lead T-<n>"\]`\)/, role);
-      assert.match(clause, /For a closed or unknown item, address `coordinator` instead/, role);
-    }
-  }
-  assert.match(roles.get('coordinator')?.clause ?? '', /You alone ask the human for decisions: use `ask`, never plain text/);
-  // Init preserves project clauses, so both shipped sources must describe the request exception.
-  const project = parseRoles(readFileSync(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
-  for (const [source, definitions] of [['defaults', roles], ['project', project]] as const) {
-    for (const role of ['implementer', 'lead', 'reviewer', 'qa']) {
-      const clause = definitions.get(role)?.clause ?? '';
-      assert.match(clause, /When asking the human for a review, a QA run or a handover/, `${source} ${role}: action requests`);
-      assert.match(clause, /`send` kind `request` with no `to`/, `${source} ${role}: explicit human recipient`);
-      assert.match(clause, /`request: "review" \| "qa" \| "handover"` and `subject` naming the item, artifact or session/, `${source} ${role}: request metadata`);
-      assert.match(clause, /Other messages to the human require that mention|For messages other than the explicit requests above/, `${source} ${role}: ordinary messages stay mention-scoped`);
-    }
   }
 });

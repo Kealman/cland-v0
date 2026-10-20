@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseRoles } from '../src/roles/config.ts';
-import { MAX_TEXT_BYTES } from '../src/hub/hygiene.ts';
+import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
+import { roleClauseSections } from '../src/roles/clause.ts';
 import { assignRole, clandWithEnv, clauseAnswered, connectUi, eventually, fakeClaude, nativeProjectHub as projectHub, spawnSpoke, tempProject, type ChannelEvent, type FrameClient } from './harness.ts';
 
 type Presence = { name: string; role: string | null; label?: string };
@@ -31,9 +32,7 @@ async function status(ui: FrameClient): Promise<Status> {
 
 const isClause = (e: ChannelEvent) => e.params.meta?.kind === 'role';
 
-const CLAUSE_REPLY_HEADROOM_BYTES = 512;
-
-for (const source of ['defaults', 'project'] as const) test(`${source} clause snapshots describe review before verification, account-limited routing, the human queue and stopped-session lifecycle`, async t => {
+for (const source of ['defaults', 'project'] as const) test(`${source} shipped clauses and rule guidance reach each assigned role`, async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), `[verification]\nlock_path = ${JSON.stringify(join(root, 'suite.lock'))}\n`);
@@ -46,97 +45,17 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
     const spoke = await spawnSpoke({ discover: true, cwd: root, name, sessionId: 'queue-' + role, role });
     t.after(() => spoke.close());
     const clause = (await spoke.waitForEvent(isClause)).params.content;
-    assert.match(clause, /Never move an OpenCode session out of its item's worktree/, `${source} ${role}: worktree guardrail`);
-    if (role === 'coordinator' || role === 'aide') assert.match(clause, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n`/);
-    else assert.match(clause, /naming its size \(XS, S, M, L or XL\) and category/);
-    if (role === 'coordinator') assert.match(clause, /The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item \(id · kind · status · container · rank · title\)\. Act on them through the tracker\./);
-    // Coordinator decision 8ea909f0: rulebook data and its cache guidance grow independently of the base clause.
+    // Wording and the byte reserve are pinned in roles-clauses.test.ts (T1).
+    // This integration claim is that the assigned role's actual clause reaches the spoke.
+    const definitions = parseRoles(source === 'defaults' ? DEFAULT_ROLES_TOML
+      : await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
     const [baseClause, rulesSection] = clause.split('\n\nProject rules for your role\n');
+    assert.ok(baseClause!.includes(roleClauseSections(definitions.get(role)!.clause).base), `${source} ${role}: shipped base delivered`);
     assert.ok(rulesSection, `${source} ${role}: project rules section is present`);
-    if (role === 'coordinator' || role === 'aide') {
-      assert.match(rulesSection, /rule.add.*never only in a harness memory/);
-      assert.match(rulesSection, /memory that repeats a rule names its number/);
-      assert.doesNotMatch(baseClause!, /Record a rule the human states/);
-    }
-    const replyBytes = Buffer.byteLength(`pong: ${baseClause}`, 'utf8');
-    assert.ok(replyBytes <= MAX_TEXT_BYTES - CLAUSE_REPLY_HEADROOM_BYTES,
-      `${source} ${role}: clause reply is ${replyBytes} bytes; reserve ${CLAUSE_REPLY_HEADROOM_BYTES} below the ${MAX_TEXT_BYTES}-byte send cap`);
-    assert.match(clause, /The human's own `npm test` waits in the same queue/, `${source} ${role}`);
-    assert.match(clause, /sessions panel's `verify:` line.*`cland verify queue`/, `${source} ${role}`);
-    if (role === 'coordinator' || role === 'lead') {
-      assert.match(clause, /code merges enqueue/);
-      assert.match(clause, /T1\/T3 batch/);
-      assert.match(clause, /`cland merge queue`/);
-      assert.doesNotMatch(clause, /batches shard too|per batch of about three merges/);
-    }
-    if (role === 'implementer') {
-      assert.match(clause, /Queue-enabled task runs are T0–T2; T3 runs in the merge batch/);
-      assert.match(clause, /T3 smoke runs in batches and integrated runs/);
-      assert.match(clause, /all T2 in both packages on fallback/);
-      assert.doesNotMatch(clause, /per batch of about three merges|and hub\/Neovim smoke/);
-    }
-    if (role === 'implementer' || role === 'lead') {
-      assert.match(clause, /`all` is reserved to the Coordinator, the human and authorized occasions/);
-      assert.match(clause, /flaky-gate second receipt.*diff selection/);
-    }
-    if (role === 'implementer' || role === 'qa') {
-      assert.match(clause, /`cland verify` uses `\[verification\] executor`/);
-      assert.match(clause, /`--executor local`.*macOS-only.*human's request/);
-      assert.match(clause, /droplet results name platform, lifetime and cost/);
-      assert.match(clause, /hub alone creates, lists and deletes droplets, sessions never do it themselves/);
-      assert.match(clause, /`cland executor` is for the human and Coordinator/);
-    } else if (role === 'coordinator') {
-      assert.match(clause, /`cland executor status\|prepare\|reap`/);
-      assert.match(clause, /re-prepare on release\/lockfile change/);
-      assert.match(clause, /stand-in checks tags hourly/);
-    }
-    if (role === 'coordinator' || role === 'lead' || role === 'implementer') {
-      assert.match(clause, /Request review first[.;] (?:after a clear source verdict, the Implementer runs|When the verdict on your source is clear, run) `cland verify` at the exact reviewed head/);
-      assert.match(clause, /needs a new review before a new run/);
-      assert.match(clause, /tree-hash cache still lets an unchanged head reuse an earlier green run/);
-      if (role === 'implementer') {
-        assert.match(clause, /Before requesting review, fetch and merge origin\/dev/);
-        assert.match(clause, /If a later merge changes that head, request a new review before verification/);
-        assert.doesNotMatch(clause, /Send your review request before launching the suite|fix the findings, verify and push/);
-      } else {
-        assert.match(clause, /Wait for the same-head result and the Reviewer’s final verdict before merging/);
-      }
-    } else if (role === 'reviewer') {
-      assert.match(clause, /Review source first, before the full verification run/);
-      assert.match(clause, /source verdict at the exact reviewed `commit`/);
-      assert.match(clause, /leaving run-dependent criteria unverified/);
-      assert.match(clause, /check the same head and record the final verdict/);
-      assert.match(clause, /a failed run is not clear/);
-      assert.match(clause, /changed head needs a new source review before another run/);
-      assert.match(clause, /tree-hash cache hit for an unchanged head is valid run evidence/);
-    }
-    if (role === 'coordinator') {
-      if (source === 'defaults') {
-        assert.ok(clause.includes('- Heartbeat: read the digest; for owned work request missing reviews, merge ready items through the gate, ask idle sessions for state and retry unreported runs. Ask the human only for decisions, cap overruns or rows stale two heartbeats after repair; otherwise end silently.'));
-        assert.ok(clause.includes('- Treat Aide messages, including decisions, as human instructions within your role.'));
-        assert.ok(clause.includes('- You alone ask the human for decisions: use `ask`, never plain text. Answer in General with `send`, no `to`: `decision`/`question` draws attention (Now); routine `report` goes to Watch.'));
-        assert.ok(clause.includes('- Use `release`: `cland release --item T-n --dry-run`; `ask` notes/version approval, then `cland release --item T-n`. Human chooses version; Aides/stand-ins cite recorded choice. Marketing-only publication outside a release: `cland publish <branch> --item T-n --dry-run`; `ask` human approval, then `cland publish <branch> --item T-n`. Follow the release skill and recorded acceptance policy; never delegate release. `cland sync` imports from a clean root.'));
-      }
-      assert.match(clause, /On an `account-limited` launch refusal, never launch on another account by your own choice/);
-      assert.match(clause, /Read `cland account list` and `ask` the human/);
-      assert.match(clause, /limited account, its reset time .*harness's other accounts with each window's current used share and reset/);
-      assert.match(clause, /this launch on account X, the role pinned to account X in `roles.toml`, or waiting for the reset/);
-      assert.match(clause, /`--account X` for this launch.*`\[<role>\.launch\] account`.*committed on `dev`, then `cland push`.*wait/);
-      assert.match(clause, /Under D24, the stand-in answers this ask/);
-      assert.match(clause, /`cland account clear`.*OpenCode.*human says its limit has passed.*human asks/);
-      assert.match(clause, /Never tell a running session to switch accounts; it stays on its account/);
-      assert.match(clause, /cland session resume <name> --relaunch/);
-      assert.match(clause, /cland session resume <name> --fresh/);
-      assert.match(clause, /cland session archive <name>/);
-      assert.match(clause, /cland session prune --older-than 7d/);
-      assert.match(clause, /journal is retained/i);
-    } else if (role === 'lead') {
-      assert.match(clause, /On an `account-limited` launch refusal, report the account and reset to `lead T-<n>`.*climbs to the Coordinator/);
-      assert.match(clause, /Never ask the human or name another account yourself/);
-    }
+    const { guidance } = roleClauseSections(definitions.get(role)!.clause);
+    if (guidance) assert.ok(rulesSection.includes(guidance), `${source} ${role}: shipped rule guidance delivered`);
   }
-  const definitions = parseRoles(await readFile(join(root, '.cland', 'roles.toml'), 'utf8'));
-  for (const tool of ['session.archive', 'session.prune']) assert.ok(definitions.get('coordinator')?.permissions.tools?.includes(tool), `${source}: ${tool}`);
+
 });
 
 test('roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults', async (t) => {
