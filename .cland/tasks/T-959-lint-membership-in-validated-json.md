@@ -3,17 +3,17 @@ id: T-959
 kind: task
 title: "Lint: membership in validated JSON dictionaries uses Object.hasOwn or a Map, never `in`"
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-728
+branch: t/T-959-lint-membership-in-validated-json
 created: 2026-10-20T09:53:37.650Z
-updated: 2026-10-20T09:53:58.229Z
+updated: 2026-10-20T09:55:34.726Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ The repository's static lint (npm run check) flags `in` used for membership on p
 - [ ] C1. npm run check fails on a scratch `'x' in someRecord` in hub/src, naming file and line.
 - [ ] C2. Every existing occurrence is converted or carries an exemption with a reason; the evidence lists them.
 - [ ] C3. A regression test shows a prototype key (`constructor`) is refused where the key grammar admits it.
+
+## Comments
+
+### impl-959 · 2026-10-20T09:55:34.726Z
+
+Audited 79 production `in` expressions using the TypeScript AST. Unsafe dictionary uses include OpenAPI comparison keys, task subcommand dispatch and OpenCode active-session dictionaries. Requested supervising lead's scope decision on explicit structural union narrowing exemptions; preserving TypeScript narrowing is the main compatibility consideration. Regression seam is the public existing OpenAPI comparison API and/or task CLI command parser, per C3.

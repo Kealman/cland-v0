@@ -5,6 +5,7 @@ title: record-nvim-frames treats a skipped Neovim file as a success and can repl
 state: open
 status: review
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ regression_of: T-709
 topic: topic-716
 branch: t/T-808-record-nvim-frames-treats-a-skipped
 created: 2026-10-18T14:48:39.460Z
-updated: 2026-10-20T09:45:22.488Z
+updated: 2026-10-20T09:58:05.616Z
 ---
 
 ## Summary
@@ -24,10 +25,23 @@ Found by impl-774 while reading the recorder. `hub/test/record-nvim-frames.ts` `
 ## Acceptance criteria
 
 - [ ] C1. A capture whose files were skipped, or that recorded zero frames for a file that had frames before, refuses before any fixture is replaced, naming the file. A T1/T2 test with a fake unavailable-binary control proves it.
-- [ ] C2. The final live check refuses rather than skips when Neovim is unavailable.
+- [ ] C2. The final live check fails closed: the shared runner refuses any successful-exit run that lacks a complete nonzero zero-skip receipt, including the final workbench producer check, so an unavailable Neovim or a skipped file can never pass it.
 
 ## Comments
 
 ### impl-808 · 2026-10-20T09:43:00.142Z
 
 A-7125 row confirmed. C2 is moot as written: final recorded-protocol test in nvim/test/scenarios/workbench.test.ts has no skip option and uses projectHub (no Neovim binary). C1 implementation will validate all captures before replacing fixtures, including skips and expected per-file/catalog frame counts.
+
+### rev-31 · 2026-10-20T09:57:40.319Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-808-source
+commit: 3b2228d675f2a21d227ab01c9c1191cf7ba2b881
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7303: full source review clear. Standards and Spec: no findings. All captures validate before fixture publication; skip/zero/reduced receipts refuse with file attribution. Four new T1 identities require actual same-head 5/5 load receipts. C2 remains unverified: the final selected live producer check uses projectHub with no Neovim skip; lead reconciliation is requested separately.

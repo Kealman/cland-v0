@@ -3,17 +3,17 @@ id: T-957
 kind: task
 title: cland qa lint checks a QA brief's commands, flags, roles, check ids and cleanup paths against the build
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-727
+branch: t/T-957-cland-qa-lint-checks-a-qa-brief-s
 created: 2026-10-20T09:53:28.651Z
-updated: 2026-10-20T09:53:58.174Z
+updated: 2026-10-20T09:54:38.716Z
 ---
 
 ## Summary

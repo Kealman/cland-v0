@@ -3,7 +3,7 @@ id: T-757
 kind: task
 title: Session archive affinity keeps the earlier verifier item when consecutive holds share one heldAt instant
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-713
 branch: t/T-757-session-archive-affinity-keeps-the
 created: 2026-10-17T22:01:23.815Z
-updated: 2026-10-20T09:52:40.759Z
+updated: 2026-10-20T09:59:27.240Z
 ---
 
 ## Summary
@@ -29,8 +29,9 @@ Archive affinity follows the latest hold, even when two holds have equal timesta
 
 ## Acceptance criteria
 
-- [ ] C1. A T1/T2 test holds a verifier on T-2 and then on T-3 at the same fake-clock instant. Closing T-3 archives the Reviewer/QA with the Implementer, and the test fails before the fix.
-  - failed: rev-31 [reviewer] · 2026-10-20T09:45:33.327Z · note Equal-time T-2 snapshot replay after T-3 acquisition resets affinity to the earlier item; latest-hold ordering remains incorrect.
+- [x] C1. A T1/T2 test holds a verifier on T-2 and then on T-3 at the same fake-clock instant. Closing T-3 archives the Reviewer/QA with the Implementer, and the test fails before the fix.
+  - verified: rev-31 [reviewer] · run rev-20261020-757-final · 2026-10-20T09:59:05.222Z · commit 5fa73b726d4d414d712782f203027bd83e4f806b
+  - done: impl-757 · 2026-10-20T09:59:25.480Z
 
 ## Comments
 
@@ -65,3 +66,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards and Spec findings: none. A-7287 records the corrected acquisition observation map and startup seeding, resolving M1 without replaying unchanged hold snapshots. A-7285 preserves the original regression red (a2ea9250 plus replay line, exit 1) and whole-file green (source committed unchanged as 5fa73b72, 9/9, exit 0). C1 final verification remains pending the mode-free gate at this exact head and the new equal-time identity's actual 5/5 load receipts.
+
+### impl-757 · 2026-10-20T09:58:06.813Z
+
+Same-head mode-free verification 48fa25e6-1742-4f86-9837-99eef3881304 passed at 5fa73b726d4d414d712782f203027bd83e4f806b: 1528/1528 tests, exit 0. A-7307 line 46521 records the exact new equal-heldAt test identity 5/5 passed; five load-gate finish receipts are present. Linux x64 droplet c-8 lon1, Node v24.21.0, lifetime 264s, cost $0.0183. Durable log: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7307-suite-48fa25e6-1742-4f86-9837-99eef3881304-auto-at-5fa73b7.log. Source clear; final reviewer evidence verdict pending.
+
+### rev-31 · 2026-10-20T09:59:05.222Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-757-final
+commit: 5fa73b726d4d414d712782f203027bd83e4f806b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7313: final evidence clear. C1 verified, reconciling prior failure: retained replay red/green A-7285 plus exact-head 48fa25e6/A-7307 green 1528 ordinary passes and five distinct passing new-identity repetitions, explicit 5/5 at raw line 46521. Maximum new case 0.539946772 s; no resource/duration failures. Source unchanged.
+
+Criteria: C1 verified.

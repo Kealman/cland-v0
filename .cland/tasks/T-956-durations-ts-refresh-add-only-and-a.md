@@ -3,17 +3,17 @@ id: T-956
 kind: task
 title: durations.ts refresh --add-only, and a manifest check for duration keys with no matching test
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-729
+branch: t/T-956-durations-ts-refresh-add-only-and-a
 created: 2026-10-20T09:53:22.452Z
-updated: 2026-10-20T09:53:58.117Z
+updated: 2026-10-20T09:58:18.815Z
 ---
 
 ## Summary
@@ -29,3 +29,9 @@ At a stage close, `node hub/test/durations.ts refresh <log>` rewrites every allo
 - [ ] C1. `refresh --add-only` on a log with new tests adds exactly their entries; a diff of the other entries is empty.
 - [ ] C2. Manifest validation refuses a key with no matching test identity and names it.
 - [ ] C3. docs/agents/tests.md's stage-close step names `--add-only`.
+
+## Comments
+
+### impl-956 · 2026-10-20T09:58:18.815Z
+
+Scope clarified by Coordinator in topic-729: no census-expectation artifact exists, so check duration tests/allow keys and file baselines at both admission paths. Coordinator authorized deleting the 20 stale keys in this item, with surviving entry bytes preserved and mapping evidence; no new-name baselines or allowance value edits.

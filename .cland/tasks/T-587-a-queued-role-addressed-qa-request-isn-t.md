@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-712
 branch: t/T-587-a-queued-role-addressed-qa-request-isn-t
 created: 2026-10-16T10:42:55.641Z
-updated: 2026-10-20T09:51:49.152Z
+updated: 2026-10-20T09:56:09.118Z
 ---
 
 ## Summary

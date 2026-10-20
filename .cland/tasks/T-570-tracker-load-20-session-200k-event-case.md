@@ -2,8 +2,8 @@
 id: T-570
 kind: task
 title: tracker-load 20-session, 200k-event case passes only 4/5 under the load gate on a droplet
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -17,7 +17,8 @@ regression_of: T-548
 topic: topic-722
 branch: t/T-570-tracker-load-20-session-200k-event-case
 created: 2026-10-16T04:34:57.365Z
-updated: 2026-10-20T09:54:06.397Z
+updated: 2026-10-20T10:00:35.940Z
+closed: 2026-10-20T10:00:35.940Z
 ---
 
 ## Summary
@@ -87,3 +88,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7293: final evidence clear. A-7263 establishes ten serial Mac whole-file passes (20/20 tests, ten explicit exit 0 receipts); A-7278 retains the empty pre-run queue excerpt and explicit pre-commit working-tree attribution limit. Exact-head f6756241/A-7290 passes host/T1/selected T2, 570/570 with no resource/duration failures. C1's teardown fix and unchanged 5 s request bound remain established by A-7275. C2 follows Coordinator decision b2988477: task gate excludes T4 and next stage cover supplies Linux T4 landing evidence; no Linux T4 execution is claimed here.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:00:35.940Z
+
+Merged 359b99097d87d69d8fe938f91e884dd663bedc0d onto dev.

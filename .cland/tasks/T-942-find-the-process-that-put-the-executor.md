@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-723
 branch: t/T-942-find-the-process-that-put-the-executor
 created: 2026-10-20T06:21:21.658Z
-updated: 2026-10-20T09:50:11.121Z
+updated: 2026-10-20T09:55:50.505Z
 ---
 
 ## Summary

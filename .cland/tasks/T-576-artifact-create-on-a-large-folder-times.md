@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-710
 branch: t/T-576-artifact-create-on-a-large-folder-times
 created: 2026-10-16T06:13:36.210Z
-updated: 2026-10-20T09:46:07.937Z
+updated: 2026-10-20T09:59:53.529Z
 ---
 
 ## Summary
