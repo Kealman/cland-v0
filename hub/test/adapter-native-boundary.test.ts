@@ -60,15 +60,12 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   let claudeId = '';
   const child = (options: cp.SpawnOptions = {}) => {
     const source = fault === 'server-exit' ? "console.error('planted server exit'); process.exit(1)" : "if (Object.hasOwn(process.env, 'DIGITALOCEAN_TOKEN')) process.exit(61); setInterval(() => {}, 1000)";
-    // cland-allow-child-env: native adapter spy forwards the product launch options under test; harness profiles and credentials are synthetic
     const p = nativeSpawn(process.execPath, ['-e', source], options);
     children.push(p);
     return p;
   };
   t.mock.method(cp, 'spawn', (_bin: string, _args: readonly string[], options: cp.SpawnOptions) => {
-    // cland-allow-child-env: native adapter spy forwards the product launch options under test; harness profiles and credentials are synthetic
     if (_bin === 'ps' && _args[0] === '-o' && identityRefused) return nativeSpawn(process.execPath, ['-e', 'process.exit(1)'], options);
-    // cland-allow-child-env: native adapter spy forwards the product launch options under test; harness profiles and credentials are synthetic
     if (_bin !== 'fake-harness') return nativeSpawn(_bin, _args, options);
     launchArgv.push([_bin, ..._args]);
     if (fault === 'spawn') throw new Error('planted spawn failure');
@@ -94,7 +91,6 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
       else setImmediate(() => callback(null, '', ''));
       return;
     }
-    // cland-allow-child-env: native adapter spy forwards the sealed product options and synthetic harness contract
     return Reflect.apply(nativeExec, cp, [bin, args, options, callback]);
   });
   syncBuiltinESMExports();
@@ -215,9 +211,7 @@ for (const Adapter of adapters) test(`${Adapter.name}: a planted synchronous cal
   const nativeExec = cp.execFile;
   // Plant at the adapter's actual native process boundary, including a swallowed error.
   const planted = () => { try { fs.statSync(f.root); } catch {} };
-  // cland-allow-child-env: native adapter spy forwards the sealed product options and synthetic harness contract
   if (Adapter === ClaudeCodeAdapter) t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: cp.ExecFileException | null, stdout: string, stderr: string) => void) => { if (args[0] === '--bg') planted(); return Reflect.apply(nativeExec, cp, [bin, args, options, callback]); });
-  // cland-allow-child-env: native adapter spy forwards the product launch options under test; harness profiles and credentials are synthetic
   else t.mock.method(cp, 'spawn', (bin: string, args: string[], options: cp.SpawnOptions) => { planted(); return native(bin, args, options); });
   syncBuiltinESMExports();
   await assert.rejects(guarded(async () => { await f.adapter.spawn(f.request); }), /no synchronous native call/);
@@ -231,7 +225,6 @@ test('OpenCode rollback waits for its owned child exit receipt before undoing fi
   let undoBeforeReceipt = false;
   const spawn = cp.spawn;
   t.mock.method(cp, 'spawn', (...args: Parameters<typeof cp.spawn>) => {
-    // cland-allow-child-env: native rollback spy forwards the sealed product options so child exit remains observable
     const child = Reflect.apply(spawn, cp, args);
     if (args[0] !== 'fake-harness') return child;
     const emit = child.emit.bind(child);

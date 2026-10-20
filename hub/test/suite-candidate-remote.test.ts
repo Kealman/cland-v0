@@ -1,4 +1,3 @@
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -29,7 +28,7 @@ test('integrated remote delivery keeps the submitted bundle across tracker and r
   assert.notEqual(advanced, head);
   for (const directory of f.api.machineDirs.values()) {
     const cwd = join(directory, 'home/runner/cland');
-    assert.equal((await promisify(execFile)('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim(), head);
+    assert.equal((await promisify(execFile)('git', ['rev-parse', 'HEAD'], { cwd })).stdout.trim(), head);
     await assert.rejects(readFile(join(cwd, '.cland/RULES.md')), { code: 'ENOENT' });
   }
   assert.equal(f.api.machineDirs.size, 1);

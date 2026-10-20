@@ -1,6 +1,5 @@
 // T3: real Git subprocess contract proves fetch/ref-update completion across linked
 // worktrees. An injected Git fake cannot prove shared ref-lock behavior; no hub or provider.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -18,7 +17,7 @@ async function fixture(t: import('node:test').TestContext) {
   // No inherited provider credentials or user Git configuration enter this fixture.
   const env = { PATH: process.env.PATH, HOME: dir, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' };
   const root = join(dir, 'work');
-  const git = async (cwd: string, ...args: string[]) => (await exec('git', args, { cwd, env: runnerFixtureEnvironment(cwd, env) })).stdout.trim();
+  const git = async (cwd: string, ...args: string[]) => (await exec('git', args, { cwd, env })).stdout.trim();
   await git(dir, 'init', '-q', '-b', 'dev', root);
   await git(root, 'config', 'user.name', 'Selection fixture');
   await git(root, 'config', 'user.email', 'selection@example.invalid');

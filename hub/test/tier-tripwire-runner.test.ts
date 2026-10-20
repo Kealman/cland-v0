@@ -1,6 +1,5 @@
 // T3 runner contract: real worker startup proves pre-import resource interception
 // and that the worker exit status preserves report-only versus enforcement policy.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -31,7 +30,7 @@ async function fixture(t: TestContext, tests: Record<string, { tier: string; sou
       await writeFile(join(cwd, 'hub/test/quarantine.json'), JSON.stringify({ version: 1, tests: Object.fromEntries(Object.keys(tests).map(name => [`${pkg}/test/${name}.test.ts::known flake`, { owner: 'T-748', reason: 'Planted tier violation quarantine.', added, expires }])) }));
     }
     const code = `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', '--test-concurrency=1', ${Object.keys(tests).map(name => JSON.stringify(`${pkg}/test/${name}.test.ts`)).join(',')}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection: {mode: 'hub-only', files: [], reason: 'fixture', loadGate} })});`;
-    const child = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: fixtureEnvironment(cwd, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_TIER_MODE: mode }), maxBuffer: 4 * 1024 * 1024 });
+    const child = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_TIER_MODE: mode }, maxBuffer: 4 * 1024 * 1024 });
     ownProcess(t, child.child.pid);
     return child.then(r => ({ code: 0, output: r.stdout + r.stderr }), (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, output: e.stdout + e.stderr }));
   };

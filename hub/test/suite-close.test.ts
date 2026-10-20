@@ -1,7 +1,6 @@
 // T3: uploaded shard shells transfer real V8 maps and committed Git checkouts,
 // then the hub collects their process receipts and confirms provider cleanup.
 // Occasion permutations are T1 in suite-stage-rules; one refusal frame remains here.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -90,9 +89,9 @@ test('occasion refuses implementers and task heads; an integrated Coordinator cl
   assert.equal(f.api.machineDirs.size, 2);
   for (const directory of f.api.machineDirs.values()) {
     const cwd = join(directory, 'home/runner/cland');
-    assert.equal((await exec('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim(), head);
+    assert.equal((await exec('git', ['rev-parse', 'HEAD'], { cwd })).stdout.trim(), head);
     assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
-    assert.equal((await exec('git', ['status', '--porcelain'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout, '');
+    assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
   }
   assert.equal(await readFile(join(f.root, tracker), 'utf8'), 'uncommitted tracker state\n');
   assert.deepEqual(f.api.droplets, []);

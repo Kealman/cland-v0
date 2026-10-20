@@ -120,7 +120,6 @@
     "hub/test/executor.test.ts": "T3",
     "hub/test/fake-harness-capabilities.test.ts": "T1",
     "hub/test/fake-harness.test.ts": "T2",
-    "hub/test/fake-machine-calls.test.ts": "T1",
     "hub/test/fixture-environment.test.ts": "T1",
     "hub/test/fixture-orphans-lifecycle.test.ts": "T3",
     "hub/test/fixture-orphans.test.ts": "T2",

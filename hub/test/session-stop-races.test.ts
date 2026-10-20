@@ -1,7 +1,6 @@
 // T3: forced post-merge termination reaps each native harness without a death notification.
 // Fake-clock merge-stop classification shares its assertions with the T2 manual-stop file.
 // Codex descendant probes exercise real OS identity disappearing between snapshot and final SIGKILL probe.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -17,7 +16,7 @@ import { NO_PS } from './native-process.ts';
 import { copyPreparedProject, preparedProject } from './prepared-project.ts';
 import type { HarnessProcessView, EventsPage } from '../src/protocol.ts';
 
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 async function initGitProject(root: string) {
   await copyPreparedProject(root);

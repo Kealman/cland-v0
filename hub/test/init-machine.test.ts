@@ -26,7 +26,6 @@ if (process.env.CLAND_INIT_MACHINE_SELFTEST !== '1') {
       CLAND_INIT_MACHINE_SELFTEST: '1' };
     delete env.NODE_TEST_CONTEXT;
     const result = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
-      // cland-allow-child-env: fixture self-test deliberately poisons a disposable HOME and synthetic credentials to prove setup seals them
       execFile(process.execPath, ['--test', fileURLToPath(import.meta.url)], { env, encoding: 'utf8', timeout: 30_000 }, (error, stdout, stderr) => {
         if (error && typeof error.code !== 'number') reject(error);
         else resolve({ code: error ? error.code as number : 0, stdout, stderr });

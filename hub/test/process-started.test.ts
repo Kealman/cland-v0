@@ -10,14 +10,12 @@ test('concurrent identity reads share one targeted ps and later reads detect cha
   const probes: Array<{ args: readonly string[]; env: NodeJS.ProcessEnv | undefined }> = [];
   let started = 'Mon Oct 5 12:00:00 2026';
   Object.assign(cp, { spawn: (command: string, args: readonly string[] = [], options: SpawnOptions = {}) => {
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     if (command !== 'ps') return spawn(command, args, options);
     probes.push({ args: [...args ?? []], env: options?.env });
     const pids = String(args?.[(args?.indexOf('-p') ?? -1) + 1]).split(',');
     const output = args?.includes('pid=,lstart=')
       ? pids.filter(pid => pid !== '999999').map(pid => `${pid} ${started}`).join('\n')
       : started;
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     return spawn(process.execPath, ['-e', `setTimeout(() => { console.log(${JSON.stringify(output)}); process.exit(${pids.includes('999999') ? 1 : 0}); }, 30)`], options);
   } });
   syncBuiltinESMExports();
@@ -44,10 +42,8 @@ test('identity batches keep timezone and deadline contracts separate', async t =
   const spawn = cp.spawn;
   const probes: Array<{ locale: string | undefined; timezone: string | undefined }> = [];
   Object.assign(cp, { spawn: (command: string, args: readonly string[] = [], options: SpawnOptions = {}) => {
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     if (command !== 'ps') return spawn(command, args, options);
     probes.push({ locale: options?.env?.LC_ALL, timezone: options?.env?.TZ });
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     return spawn(process.execPath, ['-e', `console.log('101 Mon Oct 5 12:00:00 2026')`], options);
   } });
   syncBuiltinESMExports();
@@ -61,10 +57,8 @@ test('a failed identity batch provides no proof and the next read retries', asyn
   const spawn = cp.spawn;
   let probes = 0;
   Object.assign(cp, { spawn: (command: string, args: readonly string[] = [], options: SpawnOptions = {}) => {
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     if (command !== 'ps') return spawn(command, args, options);
     probes++;
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     return spawn(process.execPath, ['-e', probes === 1
       ? "console.log('101 Mon Oct 5 12:00:00 2026'); process.exit(2)"
       : "console.log('101 Tue Oct 6 12:00:00 2026')"], options);
@@ -82,10 +76,8 @@ test('a failed identity batch provides no proof and the next read retries', asyn
 test('simultaneous identity reads keep each project environment', async t => {
   const spawn = cp.spawn;
   Object.assign(cp, { spawn: (command: string, args: readonly string[] = [], options: SpawnOptions = {}) => {
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     if (command !== 'ps') return spawn(command, args, options);
     const started = options.env?.TZ === 'UTC' ? 'Mon Oct 5 12:00:00 2026' : 'Mon Oct 5 15:00:00 2026';
-    // cland-allow-child-env: native process-identity spy forwards options unchanged; the replacement only prints synthetic ps rows
     return spawn(process.execPath, ['-e', `console.log('101 ${started}')`], options);
   } });
   syncBuiltinESMExports();

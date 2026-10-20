@@ -18,7 +18,6 @@ export async function leftoverOpenCode(t: import('node:test').TestContext, root:
   await mkdir(dir, { recursive: true });
   const log = join(dir, 'serve.log');
   const fd = await open(log, 'a');
-  // cland-allow-child-env: native orphan server preserves the caller-owned scratch HOME/XDG database identity over the sealed fixture worker
   const child = spawn(bin, ['serve', '--hostname', '127.0.0.1', '--port', '0'], { cwd, detached: true, stdio: ['ignore', fd.fd, fd.fd], env: { ...process.env, ...env } });
   ownProcess(t, child.pid);
   await fd.close();

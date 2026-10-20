@@ -2,7 +2,6 @@
 // integrated worker and the CLI, from startup before fixtures through worker
 // completion and slot release. The existing 25 ms barrier poll is unchanged;
 // T-684's lint baseline owns it.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -42,7 +41,7 @@ async function target(t: TestContext, cwd: string, module: string, env: NodeJS.P
   const fixtureSetup = module === harness
     ? `const {tempProject} = await import(${JSON.stringify(harness)}); await tempProject(t);` : '';
   const result = await new Promise<{ code: number; stdout: string; stderr: string }>(resolve => {
-    const child = execFile(process.execPath, [...(testName ? [`--test-name-pattern=${testName}`] : []), '--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: runnerFixtureEnvironment(cwd, childEnv), timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
+    const child = execFile(process.execPath, [...(testName ? [`--test-name-pattern=${testName}`] : []), '--input-type=module', '-e', `import {test} from 'node:test'; await import(${JSON.stringify(module)}); test('admitted target', async t => { ${fixtureSetup} ${code} });`], { cwd, env: childEnv, timeout: 15000 }, (error, stdout, stderr) => resolve({ code: error ? Number(error.code) || 1 : 0, stdout, stderr }));
     ownProcess(t, child.pid);
   });
   return { ...result, tmp };

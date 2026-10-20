@@ -1,6 +1,5 @@
 // Test-only reaper. IPC closure observes even SIGKILL/process.exit in the owner;
 // this process remains alive until its fixture writers and directories are gone.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { statSync } from 'node:fs';
@@ -8,7 +7,7 @@ import type { TestContext } from 'node:test';
 import { afterCleanup, cleanupProcesses, ownDirectory } from './process-cleanup.ts';
 
 export async function fixtureGuard(t: TestContext, root: string) {
-  const child = fork(fileURLToPath(import.meta.url), [], { env: fixtureEnvironment(root, process.env), detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
+  const child = fork(fileURLToPath(import.meta.url), [], { detached: true, stdio: ['ignore', 'ignore', 'ignore', 'ipc'] });
   const exited = new Promise<void>((resolve, reject) => {
     child.once('error', reject);
     child.once('exit', code => code === 0 ? resolve() : reject(new Error(`fixture guard exited ${code}`)));

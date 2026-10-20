@@ -341,7 +341,6 @@ async function runCland(cwd: string, extra: Record<string, string>, provider: (S
   return new Promise((resolve, reject) => {
     // Merge waits up to 60 s for the hub; the outer process budget must also allow CLI startup.
     const timeout = args[0] === 'merge' ? 65_000 : 30_000;
-    // cland-allow-child-env: runCland seals accountFixtureEnvironment before the separate validated syntheticProvider dependency
     clandCliLaunch(() => execFile(process.execPath, [CLI_ENTRY, ...args], { cwd, env, encoding: 'utf8', timeout }, (err, stdout, stderr) => {
       if (err && typeof err.code !== 'number') reject(err);
       else {

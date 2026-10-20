@@ -51,10 +51,8 @@ if (root) {
         for (let offset = 0; offset < line.length;) offset += writeRecord(fd, line, offset, line.length - offset);
       }
       depth++;
-      try {
-        // cland-allow-child-env: transparent native-launch recorder forwards caller options unchanged and records no environment values
-        return Reflect.apply(original, this, args);
-      } finally { depth--; }
+      try { return Reflect.apply(original, this, args); }
+      finally { depth--; }
     };
     Object.defineProperty(cp[method], 'name', { value: original.name });
     Object.defineProperty(cp[method], 'length', { value: original.length });
@@ -62,7 +60,6 @@ if (root) {
       const wrapped = cp[method];
       Object.defineProperty(wrapped, promisify.custom, { value: (...args) => {
         const { promise, resolve, reject } = Promise.withResolvers();
-        // cland-allow-child-env: custom promisifier delegates unchanged caller options through the same native recorder
         promise.child = wrapped(...args, (error, stdout, stderr) => {
           if (error !== null) { error.stdout = stdout; error.stderr = stderr; reject(error); }
           else resolve({ stdout, stderr });

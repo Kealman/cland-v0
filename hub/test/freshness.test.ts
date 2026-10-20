@@ -1,6 +1,5 @@
 // Verdict freshness off the request path (T-67): the tracker against a real Git repository, with every git process
 // counted through the injected runner. `list` and `view` must start none; the answers arrive from the cache.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +15,7 @@ import { Tracker, TrackerError, type Actor, type ItemChange, type ItemSummary } 
 import { answerTask } from '../src/tracker/requests.ts';
 import { gitIn, type Git } from '../src/tracker/verdict-git.ts';
 
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const REVIEWER: Actor = { id: 'rev-id', name: 'rev-1', role: 'reviewer' };
 
 /** A repository on dev with a feature commit, and `n` task branches whose tips add an empty commit on top of it. */

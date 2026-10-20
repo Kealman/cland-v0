@@ -1,5 +1,4 @@
 // T3: real CLI/spoke stdio crosses native hub socket edges; child test runners prove timer-leak cleanup failures.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -42,7 +41,7 @@ test('leaked hub timer', async t => {
  t.after(() => { globalThis.clearInterval = original; original(retained); });
 });\n`);
   const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  const result = await promisify(execFile)(process.execPath, ['--test', script], { encoding: 'utf8', env: runnerFixtureEnvironment(root, env) }).then(result => ({ code: 0, ...result }), error => ({ code: error.code, stdout: error.stdout, stderr: error.stderr }));
+  const result = await promisify(execFile)(process.execPath, ['--test', script], { encoding: 'utf8', env }).then(result => ({ code: 0, ...result }), error => ({ code: error.code, stdout: error.stdout, stderr: error.stderr }));
   assert.equal(result.code, 1, result.stdout + result.stderr);
   assert.match(result.stdout, /projectHub leaked resources/);
   assert.match(result.stdout, /Timeout/);
@@ -70,7 +69,7 @@ test('leaked request timer', async t => {
  t.after(() => clearInterval(retained));
 });\n`);
   const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;
-  const result = await promisify(execFile)(process.execPath, ['--test', script], { encoding: 'utf8', env: runnerFixtureEnvironment(root, env) }).then(result => ({ code: 0, ...result }), error => ({ code: error.code, stdout: error.stdout, stderr: error.stderr }));
+  const result = await promisify(execFile)(process.execPath, ['--test', script], { encoding: 'utf8', env }).then(result => ({ code: 0, ...result }), error => ({ code: error.code, stdout: error.stdout, stderr: error.stderr }));
   assert.equal(result.code, 1, result.stdout + result.stderr);
   assert.match(result.stdout, /projectHub leaked resources/);
   assert.match(result.stdout, /Timeout/);

@@ -1,5 +1,4 @@
 // T3: native disconnected spoke startup, stdin EOF death and reconnection of child spokes across a hub outage.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,7 +54,7 @@ test('a spoke survives a hub outage: tools report it, and it reconnects when the
 
 test('a spoke whose session vanished (stdin ended without an MCP close) exits instead of haunting the hub', async (t) => {
   const root = await tempProject(t);
-  const child = spawn(process.execPath, [SPOKE_ENTRY], { cwd: root, stdio: ['pipe', 'pipe', 'pipe'], env: fixtureEnvironment(root, process.env, { PATH: process.env.PATH ?? '', TEST_SUITE_RUN_ID: process.env.TEST_SUITE_RUN_ID ?? '' }) });
+  const child = spawn(process.execPath, [SPOKE_ENTRY], { cwd: root, stdio: ['pipe', 'pipe', 'pipe'], env: { PATH: process.env.PATH ?? '', TEST_SUITE_RUN_ID: process.env.TEST_SUITE_RUN_ID ?? '' } });
   ownProcess(t, child.pid);
   const stderr: string[] = [];
   child.stderr.on('data', (c: Buffer) => stderr.push(c.toString()));

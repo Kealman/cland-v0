@@ -1,7 +1,6 @@
 // T3: real harness stop/relaunch and native cwd/thread/history migration during pool handoff;
 // child hooks/native events including a Codex child before launch admission; usage re-publication
 // after a hub-process restart, including held-progress recovery. Retained in T3 pending T-707/T-708 (T-695 Coordinator decision).
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -49,7 +48,7 @@ async function pooledHarness(t: TestContext, harness: string) {
 for (const harness of ['claude-code', 'codex', 'opencode']) for (const keepContext of [true, false])
 test(`an Implementer pool moves to the next task worktree after merge (${harness}, keep_context=${keepContext})`, async t => {
   const root = await tempProject(t);
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   const fake = await pooledHarness(t, harness);
   const { discovery } = await projectHub(t, root, fake.env);
@@ -321,7 +320,7 @@ const idle = (ui: FrameClient) => eventually('coord idle', async () => {
 
 test('merge stops per-item implementers before cleanup, while stop_after never and pools remain running', async t => {
   const root = await tempProject(t);
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   const fake = await fakeClaude(t);
   const { discovery } = await projectHub(t, root, fake.env);

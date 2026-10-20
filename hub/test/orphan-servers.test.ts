@@ -1,6 +1,4 @@
 // T3: hub startup orphan sweeping, verified PID ownership, server stop/relaunch and deleted-root lifecycle.
-import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
@@ -151,8 +149,7 @@ test('a foreground hub writes ended and preserved sweep diagnostics to stderr', 
   const fake = await fakeOpenCode(t);
   const ambiguous = await leftoverOpenCode(t, root, OPENCODE_FAKE, fake.env, other);
   const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
-  // cland-allow-child-env: native orphan helper preserves explicit owned profile/database/config inputs over the sealed worker, then filters provider credentials
-  const child = spawn(process.execPath, [cli, 'hub', 'serve'], { cwd: root, env: withoutExecutorCredentials({ ...process.env, ...env }), stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [cli, 'hub', 'serve'], { cwd: root, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   let stderr = '';
   child.stderr.setEncoding('utf8'); child.stderr.on('data', chunk => { stderr += chunk; });
@@ -237,8 +234,7 @@ test('real OpenCode serve left behind is swept by hub start', async t => {
   assert.ok(env.OPENCODE_CONFIG.startsWith(`${root}/`), 'real OpenCode config must stay inside the temp project');
   assert.equal(env.OPENCODE_CONFIG_CONTENT, '{}', 'real OpenCode inline config must be fixture-owned');
   const version = await new Promise<boolean>(done => {
-    // cland-allow-child-env: native version probe preserves the owned OpenCode profile/database inputs over the sealed worker, then filters provider credentials
-    const child = spawn('opencode', ['--version'], { stdio: 'ignore', env: withoutExecutorCredentials({ ...process.env, ...env }) });
+    const child = spawn('opencode', ['--version'], { stdio: 'ignore', env: { ...process.env, ...env } });
     child.on('error', () => done(false)); child.on('exit', code => done(code === 0));
   });
   if (!version) { t.skip('OpenCode is absent or cannot run on this machine'); return; }
@@ -469,7 +465,7 @@ process.on = function(signal, handler) {
 };
 `);
   const cli = fileURLToPath(new URL('../bin/cland.ts', import.meta.url));
-  const child = spawn(process.execPath, ['--import', preload, cli, 'hub', 'serve'], { env: fixtureEnvironment(removed, process.env), cwd: removed, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--import', preload, cli, 'hub', 'serve'], { cwd: removed, stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   const exited = Promise.withResolvers<{ code: number | null; signal: NodeJS.Signals | null }>();
   child.once('error', exited.reject);

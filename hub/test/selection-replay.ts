@@ -1,6 +1,5 @@
 // Replay task landings (cland uses squash commits) on a first-parent range.
 // node hub/test/selection-replay.ts f174d9c^..83b74c6 [selector-ref]
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, rm, symlink, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -28,7 +27,6 @@ const failedPath = failedAt < 0 ? undefined : options[failedAt + 1];
 if (failedAt >= 0) options.splice(failedAt, 2);
 const [range, selectorRef] = options.filter(arg => !['--coverage', '--nearest'].includes(arg));
 if (!range) throw new Error('usage: selection-replay.ts <first-parent-range> [selector-ref] [--count 40] [--coverage [--nearest] [--failures json]]');
-// cland-allow-child-env: manual read-only Git replay and archive extraction inspect refs into disposable scratch; no account or modifying Git command
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
 let scratch: string | undefined;
 let choose = chooseSuiteMode;
@@ -42,9 +40,7 @@ try {
     const files = new Set(git('ls-tree', '-r', '--name-only', '-z', selectorRef).split('\0'));
     const paths = await sourceFixtureFiles(async file => files.has(file) ? git('show', `${selectorRef}:${file}`) : undefined,
       ['hub/src/suite-selection.ts', 'hub/src/suite-coverage.ts'], ['hub/package.json', 'package.json']);
-    // cland-allow-child-env: manual read-only Git replay and archive extraction inspect refs into disposable scratch; no account or modifying Git command
     const archive = execFileSync('git', ['archive', selectorRef, ...paths], { maxBuffer: 32 * 1024 * 1024 });
-    // cland-allow-child-env: manual read-only Git replay and archive extraction inspect refs into disposable scratch; no account or modifying Git command
     execFileSync('tar', ['-x', '-C', scratch], { input: archive });
     await symlink(dirname(dirname(findPackageJSON('smol-toml', import.meta.url)!)), join(scratch, 'node_modules'), 'dir');
     const module = join(scratch, 'hub/src/suite-selection.ts');
@@ -92,7 +88,7 @@ async function replayCoverage(commits: string[], range: string): Promise<void> {
         // Task hunks are this landing alone, not the working checkout's diff
         // against current dev. Intervening map-to-parent diffs remain unchanged.
         if (args[0] === 'diff' && args[5] === `${sha}^1` && args[6] === '--') args.splice(6, 0, sha);
-        return execFileSync('git', args, { env: fixtureEnvironment(dir, process.env), cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+        return execFileSync('git', args, { cwd: dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
       };
       const imports = await readImports(dir);
       const mode = choose(changed, imports);

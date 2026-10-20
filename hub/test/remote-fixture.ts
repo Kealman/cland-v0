@@ -1,4 +1,3 @@
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import type { SuiteCandidate } from '../src/hub/suite-candidate.ts';
 import type { DurationBudgetContext } from '../src/suite-duration-budget.ts';
@@ -59,7 +58,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   if (!options.api) await guard.register(api.stateRoot);
   const git = async (...args: string[]) => {
     assert.ok(!scripted, 'scripted fixtures inject candidate facts instead of running Git');
-    return (await exec('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+    return (await exec('git', args, { cwd: root })).stdout.trim();
   };
   if (!scripted) {
     await git('init', '-q', '-b', 'dev');
@@ -79,7 +78,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   await writeFile(join(root, 'package-lock.json'), JSON.stringify({ name: 'remote-fixture', lockfileVersion: 3, packages: { '': { name: 'remote-fixture', workspaces: ['hub'] }, hub: { name: 'fixture-hub' }, 'node_modules/fixture-hub': { resolved: 'hub', link: true } } }));
   if (!scripted) {
     await git('add', '.'); await git('commit', '-qm', 'Base');
-    await exec('git', ['init', '--bare', '-q', territory], { env: fixtureEnvironment(root, process.env) });
+    await exec('git', ['init', '--bare', '-q', territory]);
     await git('remote', 'add', 'origin', territory); await git('push', '-qu', 'origin', 'dev');
   }
   const key = scripted ? { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: createHash('sha256').update(await readFile(join(root, 'package-lock.json'))).digest('hex'), base: 'c'.repeat(40) } : await prepareKey(root);
@@ -87,8 +86,8 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   await api.seedSnapshot(image, key);
   if (!scripted) {
     const imageHome = join(api.imageDirs.get(image.id)!, 'home/runner');
-    await exec('git', ['clone', '-q', '--no-hardlinks', root, join(imageHome, 'cland')], { env: fixtureEnvironment(root, process.env) });
-    await exec('git', ['remote', 'remove', 'origin'], { env: fixtureEnvironment(join(imageHome, 'cland'), process.env), cwd: join(imageHome, 'cland') });
+    await exec('git', ['clone', '-q', '--no-hardlinks', root, join(imageHome, 'cland')]);
+    await exec('git', ['remote', 'remove', 'origin'], { cwd: join(imageHome, 'cland') });
     await mkdir(join(imageHome, 'cland/node_modules'), { recursive: true });
     await writeFile(join(imageHome, 'cland/node_modules/.cland-prepare-key'), JSON.stringify(key));
   }

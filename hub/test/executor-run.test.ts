@@ -1,6 +1,5 @@
 // T3: real worker delivery and host-receipt reuse, SSH interruption, provider loss, cancellation,
 // watchdog reaping and hub-crash reconciliation require real process boundaries.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
@@ -39,14 +38,14 @@ for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirt
     assert.match(result.text, /exit 0/);
     for (const directory of f.api.machineDirs.values()) {
       const cwd = join(directory, 'home/runner/cland');
-      assert.equal((await exec('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout.trim(), head);
+      assert.equal((await exec('git', ['rev-parse', 'HEAD'], { cwd })).stdout.trim(), head);
       assert.equal(await readFile(join(cwd, tracker), 'utf8'), committed);
       const script = await readFile(join(directory, 'home/runner/runs', job.id, 'run.sh'), 'utf8');
       assert.ok(script.indexOf("echo '$ npm run typecheck'") < script.indexOf("echo '$ npm test'"));
       assert.ok(script.includes("/bin/sh -c 'npm run typecheck' || suite_command_exit=$?"));
       assert.ok(script.includes(`rmdir ${join(directory, 'home/runner/tmp/cland-suite.lock')}; trap - EXIT\necho '$ npm test'`));
       assert.ok(script.includes("/bin/sh -c 'npm test' || suite_command_exit=$?"));
-      assert.equal((await exec('git', ['status', '--porcelain'], { env: fixtureEnvironment(cwd, process.env), cwd })).stdout, '');
+      assert.equal((await exec('git', ['status', '--porcelain'], { cwd })).stdout, '');
       const delivery = await readFile(join(f.root, '.cland/run/suites', job.id, 'delivery.log'), 'utf8');
       assert.match(delivery, /dependencies match snapshot\nNeovim pin matches snapshot/);
     }

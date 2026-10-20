@@ -1,4 +1,3 @@
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -42,7 +41,7 @@ test('150 ms of malformed parsing plus 150 ms of failure logging counts as one 3
     mock.timers.reset();
     mock.restoreAll();
   `;
-  const { stdout } = await promisify(execFile)(process.execPath, ['--experimental-test-module-mocks', '--input-type=module', '-e', source], { env: fixtureEnvironment(root, process.env) });
+  const { stdout } = await promisify(execFile)(process.execPath, ['--experimental-test-module-mocks', '--input-type=module', '-e', source]);
   const result = JSON.parse(stdout) as { clock: number; counters: { slow: number }; events: Array<Record<string, unknown>>; kept: boolean };
   assert.equal(result.clock, 300);
   assert.equal(result.kept, true);

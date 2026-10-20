@@ -1,5 +1,4 @@
 // Safety at the cleanup boundary, with synthetic OS process tables and no real signals.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { once } from 'node:events';
@@ -30,7 +29,6 @@ const { cleanupProcesses, captureProcess } = await import(${JSON.stringify(modul
 const root = '/tmp/cland-suite-a';
 ${body}
 console.log(JSON.stringify(signals));`;
-  // cland-allow-child-env: isolated OS-boundary mock probe uses synthetic process rows and intercepts all signals; no fixture filesystem writes
   const child = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000 });
   assert.equal(child.status, 0, child.stderr);
   return JSON.parse(child.stdout) as Array<{ pid: number; signal: string }>;
@@ -300,7 +298,6 @@ setInterval(() => {}, 1000);`;
   // The exact same command is used by both groups and by every descendant.
   const code = script.replace(JSON.stringify('SCRIPT'), 'process.env.FIXTURE_SCRIPT');
   const start = (depth: number) => {
-    // cland-allow-child-env: OS-only process-group bystanders propagate their synthetic depth and script; no account or Git operation
     const child = spawn(process.execPath, ['-e', code], { detached: true, env: { ...process.env, FIXTURE_SCRIPT: code, FIXTURE_DEPTH: String(depth) }, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
     const cleanup = ownProcess(undefined, child.pid);
     t.after(cleanup);
@@ -353,7 +350,7 @@ if (depth) {
 process.on('message', () => process.exit(0));
 setInterval(() => {}, 1000);`;
   const start = (depth: number, cwd: string) => spawn(process.execPath, ['-e', script], {
-    cwd, detached: true, env: fixtureEnvironment(cwd, process.env, { FIXTURE_SCRIPT: script, FIXTURE_DEPTH: String(depth) }),
+    cwd, detached: true, env: { ...process.env, FIXTURE_SCRIPT: script, FIXTURE_DEPTH: String(depth) },
     stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
   });
   const leader = start(2, dir);

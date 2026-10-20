@@ -1,4 +1,3 @@
-import { runnerFixtureEnvironment } from '../fixture-environment.ts';
 // T3 scenario: CLI detached startup serves status and tracker then stops.
 // Rule coverage (T1/T2): hub/test/init-config.test.ts, hub/test/project-probes.test.ts.
 // Hub process starts: 1 observed detached hub. Only one hub is live at a time.
@@ -38,7 +37,7 @@ test(smokeName, async t => {
   let daemonPid: number | undefined;
   const cli = (args: string[], timeout: number): Promise<string> => new Promise((resolve, reject) => {
     const expires = performance.now() + timeout;
-    const child = spawn(process.execPath, [CLI_ENTRY, ...args], { cwd: root, env: runnerFixtureEnvironment(root, env), stdio: ['ignore', 'pipe', 'ignore', 'ipc'] });
+    const child = spawn(process.execPath, [CLI_ENTRY, ...args], { cwd: root, env, stdio: ['ignore', 'pipe', 'ignore', 'ipc'] });
     ownProcess(t, child.pid);
     let stdout = '';
     child.stdout!.setEncoding('utf8').on('data', chunk => { stdout += chunk; });

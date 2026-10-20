@@ -1,5 +1,4 @@
 // T3: native Git publication, rejection hooks and pinned retry receipts preserve release refs and item closure.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { releaseCover } from './release-support.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +10,7 @@ import { preparedReleaseProject } from './prepared-project.ts';
 import { value } from './validation-support.ts';
 import type { ReleaseResult } from '../src/release.ts';
 
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 

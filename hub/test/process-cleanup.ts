@@ -20,7 +20,6 @@ function alive(pid: number): boolean {
 function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
   if (groups.length) {
     let members: string;
-    // cland-allow-child-env: read-only OS discovery tool for fixture cleanup; no account, provider or Git operation
     try { members = execFileSync('pgrep', ['-g', groups.join(',')], { encoding: 'utf8' }); }
     catch (error) {
       if ((error as { status?: number }).status !== 1) throw error;
@@ -30,7 +29,6 @@ function processes(pids?: number[], groups: number[] = []): ProcessRow[] {
   }
   if (pids?.length === 0) return [];
   let output: string;
-  // cland-allow-child-env: read-only OS discovery tool for fixture cleanup; no account, provider or Git operation
   try { output = execFileSync('ps', processTableArgs(pids), { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, env: { ...process.env, TZ: 'UTC', LC_ALL: 'C' } }); }
   catch (error) {
     if (!pids || (error as { status?: number }).status !== 1) throw error;
@@ -126,7 +124,6 @@ function cwdPaths(pids?: number[]): Map<number, string> {
     }
   } else {
     let output: string;
-    // cland-allow-child-env: read-only OS discovery tool for fixture cleanup; no account, provider or Git operation
     try { output = execFileSync('lsof', ['-n', '-P', ...(pids ? ['-a', '-p', pids.join(',')] : []), '-d', 'cwd', '-Fpn'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
     catch (error) {
       if ((error as { status?: number }).status !== 1) throw error;
@@ -151,7 +148,6 @@ function runMarkers(rows: ProcessRow[]): Map<number, string> {
     }
   } else {
     // Never log this output: OS environments may contain secrets.
-    // cland-allow-child-env: read-only OS discovery tool for fixture cleanup; no account, provider or Git operation
     const output = execFileSync('ps', ['eww', '-axo', 'pid=,command='], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
     const byPid = new Map(rows.map(row => [row.pid, row]));
     for (const line of output.split('\n')) {

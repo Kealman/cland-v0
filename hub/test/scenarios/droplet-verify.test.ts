@@ -1,4 +1,3 @@
-import { fixtureEnvironment } from '../fixture-environment.ts';
 // T3 scenario: HTTP provider acquires process machines, runs, collects and releases, including stopped watchdog reaping.
 // Rule coverage (T1/T2): hub/test/executor-run-rules.test.ts, hub/test/executor-admission.test.ts, hub/test/executor-safety-component.test.ts, hub/test/remote-scripted.test.ts.
 // Hub process starts: 0; projectHub for both worker lifecycle steps. Only one hub is live at a time.
@@ -69,8 +68,8 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.ok(result.text.includes(`typecheck: host gate at ${tree} (not repeated)`));
   assert.doesNotMatch(log, /\$ npm run typecheck/);
   assert.ok(log.indexOf('Host gate: npm run typecheck') < log.indexOf('$ npm test'));
-  assert.equal(await f.git('rev-parse', 'HEAD'), (await exec('git', ['rev-parse', 'HEAD'], { env: fixtureEnvironment(join(remote.home, 'cland'), process.env), cwd: join(remote.home, 'cland') })).stdout.trim());
-  assert.equal((await exec('git', ['remote'], { env: fixtureEnvironment(join(remote.home, 'cland'), process.env), cwd: join(remote.home, 'cland') })).stdout, '');
+  assert.equal(await f.git('rev-parse', 'HEAD'), (await exec('git', ['rev-parse', 'HEAD'], { cwd: join(remote.home, 'cland') })).stdout.trim());
+  assert.equal((await exec('git', ['remote'], { cwd: join(remote.home, 'cland') })).stdout, '');
   const calls = await readFile(join(f.api.stateRoot, 'machine-calls.jsonl'), 'utf8');
   assert.match(calls, /runner@203\.0\.113/); assert.match(calls, /tree\.bundle/);
   const view = JSON.parse((await cland(f.root, 'task', 'view', f.item, '--json')).stdout);
@@ -112,7 +111,6 @@ test('remote start reconciles executed-but-lost replies and marker-only interrup
     // escalate, and reap the child before publishing the suite result.
     if (fault === 'startReplyLost') {
       process.kill(watchdog, 'SIGSTOP');
-      // cland-allow-child-env: read-only watchdog process-state probe; no account, provider or Git operation
       await eventually('watchdog is stopped', async () => (await exec('ps', ['-o', 'stat=', '-p', String(watchdog)])).stdout.trim().startsWith('T') ? true : undefined);
     }
     await writeFile(join(remote.home, 'finish'), 'done');

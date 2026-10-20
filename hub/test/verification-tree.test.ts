@@ -1,4 +1,3 @@
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -12,7 +11,7 @@ import { eventually, tempProject } from './harness.ts';
 test('strict historical identity retains Git failure output while cache lookup returns null', async t => {
   // T3: real Git failure-output contract, without a fake executable.
   const root = await tempProject(t);
-  await promisify(execFile)('git', ['init', '-q'], { env: fixtureEnvironment(root, process.env), cwd: root });
+  await promisify(execFile)('git', ['init', '-q'], { cwd: root });
   await assert.rejects(() => committedTreeOrThrow(root, 'missing-candidate'), error => {
     assert.ok(error instanceof Error);
     assert.match(error.message, /git read-tree missing-candidate failed/);
@@ -26,7 +25,7 @@ test('strict historical identity retains Git failure output while cache lookup r
 test('diagnostic candidate hashing excludes tracker versions differing from HEAD and live files', async t => {
   // T3: real Git index safety contract; in-memory Git cannot reproduce rm's refusal.
   const root = await tempProject(t);
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
   await git('init', '-qb', 'dev');
   await git('config', 'user.name', 'Test');
   await git('config', 'user.email', 'test@example.com');
@@ -58,8 +57,8 @@ for (const change of ['tracker', 'rulebook', 'source', 'dirty source', 'strict h
   test(`candidate hashing observes an overlapping ${change} change`, async t => {
     const root = await tempProject(t);
     const bin = await tempProject(t);
-    const realGit = (await promisify(execFile)('which', ['git'], { env: fixtureEnvironment(root, process.env) })).stdout.trim();
-    const git = async (...args: string[]) => (await promisify(execFile)(realGit, args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+    const realGit = (await promisify(execFile)('which', ['git'])).stdout.trim();
+    const git = async (...args: string[]) => (await promisify(execFile)(realGit, args, { cwd: root })).stdout.trim();
     await git('init', '-q');
     await git('config', 'user.name', 'Test');
     await git('config', 'user.email', 'test@example.com');
@@ -100,7 +99,7 @@ process.exitCode = spawnSync(${JSON.stringify(realGit)}, args, { stdio: 'inherit
 
 test('candidate inputs exclude only tracker items and the rulebook for committed and dirty trees', async t => {
   const root = await tempProject(t);
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
   const commit = async () => {
     await git('add', '.');
     await git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Candidate');
@@ -133,7 +132,7 @@ test('candidate inputs exclude only tracker items and the rulebook for committed
 test('candidate provenance keeps Git environments separate and never rewrites their index', async t => {
   const root = await tempProject(t);
   const settings = await tempProject(t);
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
   await git('init', '-q');
   await writeFile(join(root, '.gitignore'), '.cland/\n');
   await writeFile(join(root, 'source'), 'committed\n');

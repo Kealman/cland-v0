@@ -1,5 +1,4 @@
 // T3: provider transport deadlines, ambiguous create/import recovery, detached watchdogs and hub restart/OS process identity.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { clandWithEnv, connectUi, nativeProjectHub as projectHub, startDaemon, tempProject, eventually, pidAlive } from './harness.ts';
@@ -175,7 +174,7 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'watchdog' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
-  const rows = (await exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='], { env: fixtureEnvironment(root, process.env) })).stdout;
+  const rows = (await exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='])).stdout;
   assert.ok(!rows.includes('cland-test-lifecycle'));
   assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
   await eventually('hub has stopped before the watchdog deadline', () => !pidAlive(started.discovery.pid) ? true : undefined);
@@ -387,7 +386,7 @@ test('macOS inhibits idle sleep while the lease lives and drops the inhibitor af
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'sleep' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
-  const rows = () => exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='], { env: fixtureEnvironment(root, process.env) }).then(r => r.stdout);
+  const rows = () => exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command=']).then(r => r.stdout);
   const inhibitor = new RegExp(`\\bcaffeinate -i -w ${lease.watchdog!.pid}\\b`);
   await eventually('live watchdog has a caffeinate child', async () => inhibitor.test(await rows()) ? true : undefined);
   assert.ok(!(await rows()).includes('cland-test-lifecycle'));

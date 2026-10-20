@@ -1,6 +1,5 @@
 // T3: hub-process stop must cancel and drain an in-flight preparation before store closure.
 // Native snapshot bytes, shell setup and key boot hooks stay here; policy is T2.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { nativeProjectHub as projectHub, projectHub as componentHub, clandWithEnv, connectUi, startDaemon, tempProject, eventually, flushProjectLogs, pidAlive } from './harness.ts';
@@ -22,13 +21,13 @@ import { caseDeadlines } from './case-deadlines.ts';
 import { beforeDirectories, onCleanup, ownProcess } from './process-cleanup.ts';
 
 const exec = promisify(execFile);
-const git = async (root: string, ...args: string[]) => (await exec('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+const git = async (root: string, ...args: string[]) => (await exec('git', args, { cwd: root })).stdout.trim();
 function ownedGit(t: TestContext, wait: ReturnType<typeof caseDeadlines>['wait']) {
   const abort = new AbortController();
   const pending = new Set<Promise<void>>();
   beforeDirectories(t, async () => { abort.abort(); await wait('drain Git child closes', () => Promise.allSettled([...pending])); });
   return async (root: string, ...args: string[]) => {
-    const work = exec('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, timeout: 30000, killSignal: 'SIGKILL', signal: AbortSignal.any([t.signal, abort.signal]) });
+    const work = exec('git', args, { cwd: root, timeout: 30000, killSignal: 'SIGKILL', signal: AbortSignal.any([t.signal, abort.signal]) });
     const closed = new Promise<void>(resolve => work.child.once('close', () => resolve()));
     pending.add(closed);
     ownProcess(t, work.child.pid);

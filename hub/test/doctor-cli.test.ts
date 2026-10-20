@@ -101,7 +101,6 @@ async function probeResources(t: TestContext, start: (env: NodeJS.ProcessEnv) =>
   await writeFile(env.GIT_CONFIG_GLOBAL, '');
   const nativeSpawn = cp.spawn;
   const launch = t.mock.method(cp, 'spawn', (bin: string, args: readonly string[], options: cp.SpawnOptions) => {
-    // cland-allow-child-env: native CLI spy forwards product options under its owned root after the provider credential filter
     const child = nativeSpawn(bin, [...args], { ...options, cwd: root, env: withoutExecutorCredentials(options.env ?? {}), signal: t.signal, killSignal: 'SIGKILL' });
     let closed = false;
     child.once('close', () => { closed = true; });

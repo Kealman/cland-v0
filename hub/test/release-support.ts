@@ -1,4 +1,3 @@
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { committedTree } from '../src/verification-tree.ts';
 import { recordReleaseCover } from './release-cover-fixture.ts';
 import type { Store } from '../src/hub/store.ts';
@@ -11,7 +10,7 @@ import { join } from 'node:path';
 import { dispatcherUi, nativeProjectHub as projectHub, cland, connectUi, startDaemon, tempProject, type CliResult } from './harness.ts';
 import { preparedReleaseProject } from './prepared-project.ts';
 
-export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+export const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 export const ok = (r: CliResult) => { assert.equal(r.code, 0, r.stderr || r.stdout); return r; };
 export const json = <T>(r: CliResult): T => JSON.parse(ok(r).stdout) as T;
 

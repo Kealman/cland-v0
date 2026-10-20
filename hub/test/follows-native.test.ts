@@ -1,5 +1,4 @@
 // T3: native Git trailers, rename/deletion bytes and owning Git environment determine epic merge surfaces.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -7,7 +6,7 @@ import { writeFile, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { epicMergeFiles } from '../src/tracker/epic-surfaces.ts';
 import { preparedProject } from './prepared-project.ts';
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 
 test('epic merge surfaces use trailers and retain rename and deletion paths exactly', async t => {
   const root = await preparedProject(t, 'repository');

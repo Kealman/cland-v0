@@ -1,5 +1,4 @@
 // T3: native Git squash publication, CLI landing inspection and worktree/session cleanup boundaries.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -101,7 +100,7 @@ test('CLI reopen of a landed task refuses with a follow-up path, then push succe
 test('CLI reopen preserves a landed task when Git cannot inspect its receipt', async t => {
   const bin = await tempProject(t, 'cland-reopen-git-');
   const unavailable = join(bin, 'unavailable');
-  const realGit = execFileSync('which', ['git'], { env: fixtureEnvironment(bin, process.env), encoding: 'utf8' }).trim();
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
   const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
   await writeFile(join(bin, 'git'), `#!/bin/sh
 if [ "$1" = show ] && [ -f ${quote(unavailable)} ]; then

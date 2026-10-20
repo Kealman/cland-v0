@@ -1,5 +1,4 @@
 // T3: native Git init/undo and protection hooks guard territory refs during real pushes.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -17,7 +16,7 @@ import { listTaskWorktrees, provisionTerritory, territoryGit, territoryGitAsync,
 import { gitIn as verdictGit } from '../src/tracker/verdict-git.ts';
 import { refusedOverridePaths } from '../src/merge-override.ts';
 
-const git = (root: string, ...args: string[]): string => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+const git = (root: string, ...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const ok = (r: CliResult): CliResult => {
   assert.equal(r.code, 0, r.stderr);
   return r;
@@ -239,7 +238,7 @@ test('the territory refuses updates and deletion of main/dev while task pushes a
   const initial = git(root, 'rev-parse', 'HEAD');
   git(root, 'commit', '--allow-empty', '-qm', 'Task work');
   for (const target of ['HEAD:dev', 'HEAD:main', ':main', ':dev']) {
-    const push = spawnSync('git', ['push', 'origin', target], { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' });
+    const push = spawnSync('git', ['push', 'origin', target], { cwd: root, encoding: 'utf8' });
     assert.notEqual(push.status, 0, target);
     assert.match(push.stderr, /cland merge.*cland release/);
   }

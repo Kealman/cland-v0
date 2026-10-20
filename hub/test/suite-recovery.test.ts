@@ -60,7 +60,6 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
 
 for (const holder of ['live', 'stale'] as const) test(`admission stays responsive and bounds a held ps probe for a ${holder} compatibility holder`, async t => {
   const bin = await tempProject(t, 'cland-held-admission-ps-');
-  // cland-allow-child-env: read-only OS identity/tool-discovery probe; no account, provider or Git operation
   const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
   const held = join(bin, 'held');
   const release = join(bin, 'release');
@@ -81,7 +80,6 @@ process.exitCode = result.status ?? 1;
   await mkdir(lock);
   const job = await f.launch();
   assert.equal(job.pid, null);
-  // cland-allow-child-env: read-only OS identity/tool-discovery probe; no account, provider or Git operation
   const started = (await promisify(execFile)(ps, ['-o', 'lstart=', '-p', String(process.pid)])).stdout.trim().replace(/\s+/g, ' ');
   await writeFile(`${lock}.owner`, JSON.stringify({ pid: holder === 'live' ? process.pid : 2147483647, started, token: 'held-compatibility-probe', since: new Date().toISOString() }));
   await writeFile(held, 'hold');
@@ -140,7 +138,6 @@ process.exitCode = await runSuite([], ${JSON.stringify({ cwd: f.root, lockDirs: 
 
 test('cancel removes an admitted worker’s compatibility FIFO ticket without releasing a racing hand holder', async t => {
   const bin = await tempProject(t, 'cland-worker-lease-race-');
-  // cland-allow-child-env: read-only OS identity/tool-discovery probe; no account, provider or Git operation
   const ps = (await promisify(execFile)('which', ['ps'])).stdout.trim();
   const hold = join(bin, 'hold-worker');
   const entered = join(bin, 'worker-held');

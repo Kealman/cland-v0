@@ -1,5 +1,4 @@
 // T3: real delayed hook-process ordering, early bridge confirmation, PID resume identity, TERM escalation and held-hook reaping.
-import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
@@ -63,7 +62,7 @@ function hook(t: TestContext, root: string, event: string, o: { session: string;
   let release = () => {};
   let pid!: number;
   const done = new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, args, { cwd: root, env: runnerFixtureEnvironment(root, env), stdio: ['pipe', 'ignore', 'pipe', 'pipe'], timeout: 15_000, killSignal: 'SIGKILL' });
+    const child = spawn(process.execPath, args, { cwd: root, env, stdio: ['pipe', 'ignore', 'pipe', 'pipe'], timeout: 15_000, killSignal: 'SIGKILL' });
     pid = child.pid!;
     ownProcess(t, child.pid); // Resource cleanup and signal cleanup both own this exact child identity.
     let released = false;
@@ -155,7 +154,7 @@ test('Claude process resume never adopts another session that reuses the pid: no
   // the session dies while no hub runs, and its pid is taken by another session (the table is made to say so)
   await killDaemon(discovered.pid);
   await new Promise<void>((resolve) =>
-    execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['--bg', '--name', 'other'], { cwd: root, env: fixtureEnvironment(root, process.env, { ...fake.env }) }, () => resolve()),
+    execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['--bg', '--name', 'other'], { cwd: root, env: { ...process.env, ...fake.env } }, () => resolve()),
   );
   const other = (await fake.sessions()).find((s) => s.name === 'other');
   assert.ok(other && pidAlive(other.pid));

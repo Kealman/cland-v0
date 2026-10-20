@@ -1,7 +1,6 @@
 // T3 native contracts: execute the jq frontier program and launch the task CLI with real stdin.
 // CLI process startup/exit proves unchanged UTF-8 bytes at the executable boundary.
 // Parser, template and tracker rule coverage stays in skills-tracker.test.ts (T2).
-import { fixtureEnvironment, runnerFixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
@@ -11,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 import { onCleanup } from './process-cleanup.ts';
 import { cland, create, itemFile, list, ok, project, view, type View } from './skills-tracker-support.ts';
 const TEMPLATE = fileURLToPath(new URL('../../skills/templates/docs/agents/issue-tracker.md', import.meta.url));
-// cland-allow-child-env: tool-only jq capability probe reads no account or Git state
 const hasJq = spawnSync('jq', ['--version']).status === 0;
 
 /** The jq program of the template's frontier query, exactly as the template prints it. */
@@ -27,7 +25,7 @@ async function frontierProgram(): Promise<string> {
 /** The template's frontier query for `map`: `cland task list --json | jq …`; the ids in the order it prints them. */
 async function frontier(root: string, map: string): Promise<string[]> {
   const listed = ok(await cland(root, '', 'task', 'list', '--json')).stdout;
-  const jq = spawnSync('jq', ['-r', '--arg', 'map', map, await frontierProgram()], { env: fixtureEnvironment(root, process.env), input: listed, encoding: 'utf8' });
+  const jq = spawnSync('jq', ['-r', '--arg', 'map', map, await frontierProgram()], { input: listed, encoding: 'utf8' });
   assert.equal(jq.status, 0, jq.stderr);
   return jq.stdout
     .split('\n')
@@ -107,7 +105,7 @@ test('task CLI reads --body-file - from real stdin without changing its UTF-8 bo
   const root = await project(t);
   const input = '## Summary\n\nπ, quotes "here", and literal $HOME.\nA second line.';
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('CLAND_')));
-  const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), 'task', 'create', 'Stdin spec', '--kind', 'spec', '--body-file', '-', '--json'], { cwd: root, env: runnerFixtureEnvironment(root, env), timeout: 10_000, signal: t.signal, stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), 'task', 'create', 'Stdin spec', '--kind', 'spec', '--body-file', '-', '--json'], { cwd: root, env, timeout: 10_000, signal: t.signal, stdio: ['pipe', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
   child.stdout.on('data', chunk => { stdout += String(chunk); });

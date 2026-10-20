@@ -1,6 +1,5 @@
 // T3: real Node runner lifecycle: deadlines and signals reap repetitions before phase-root removal.
 // Real reporter contract uses fixture-local admission leases.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { suiteProgress } from '../src/suite-progress.ts';
 import { timingReceipts } from '../src/suite-tier-report.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
@@ -36,7 +35,7 @@ test('skipped', {skip: 'fixture platform'}, () => {});`);
     const code = packageRun
       ? `import {runPackageSuite} from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd, lockDirs: { hub: join(cwd, 'lock'), nvim: join(cwd, 'nvim-lock') } })});`
       : `import {runSuite} from ${JSON.stringify(runner)}; process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd, lockDir: join(cwd, 'lock'), selection })});`;
-    const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: fixtureEnvironment(cwd, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_DIAGNOSTIC_FIXTURE: 'private-fixture-value-720\nprivate-fixture-second-line-720', CLAND_DIAGNOSTIC_COLLISION: 'test', CLAND_SUITE_SELECTION: JSON.stringify(selection), XDG_CONFIG_HOME: join(cwd, 'poison'), CLAUDE_CONFIG_DIR: join(cwd, 'poison'), CODEX_HOME: join(cwd, 'poison') }) });
+    const execution = exec(process.execPath, ['--input-type=module', '-e', code], { cwd, env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', CLAND_DIAGNOSTIC_FIXTURE: 'private-fixture-value-720\nprivate-fixture-second-line-720', CLAND_DIAGNOSTIC_COLLISION: 'test', CLAND_SUITE_SELECTION: JSON.stringify(selection) } });
     ownProcess(t, execution.child.pid);
     let output = '';
     execution.child.stdout?.on('data', chunk => { output += String(chunk); });
@@ -55,14 +54,9 @@ test('skipped', {skip: 'fixture platform'}, () => {});`);
 test('task load gate catches a one-in-three flake and repeats a stable new name five times alongside the phase', async t => {
   const { run, manifest, path, cwd, file } = await fixture(t, true);
   const journal = join(cwd, 'journal');
-  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { appendFileSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+  await writeFile(file, `import test from 'node:test'; import assert from 'node:assert/strict'; import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 const journal = ${JSON.stringify(journal)};
-test('stable [new].*', () => {
-  for (const [key, suffix] of Object.entries({HOME:'home',XDG_CONFIG_HOME:'config',CLAUDE_CONFIG_DIR:'claude',CODEX_HOME:'codex'})) assert.ok(process.env[key] === process.env.TMPDIR + '/' + suffix, key);
-  for (const key of ['HOME', 'XDG_CONFIG_HOME', 'CLAUDE_CONFIG_DIR', 'CODEX_HOME']) assert.ok(statSync(process.env[key]).isDirectory(), key);
-  writeFileSync(process.env.HOME + '/owned-home-receipt', 'ready');
-  appendFileSync(journal, 'stable\\n');
-});
+test('stable [new].*', () => appendFileSync(journal, 'stable\\n'));
 test('flaky', () => { const count = Number(readFileSync(journal, 'utf8').split('flaky').length); appendFileSync(journal, 'flaky\\n'); assert.notEqual(count % 3, 0); });
 test('known load', async () => { writeFileSync(journal + '.running', 'yes'); const deadline = Date.now() + 3000; while (readFileSync(journal, 'utf8').split('stable').length < 3 && Date.now() < deadline) await new Promise(r => setTimeout(r, 20)); appendFileSync(journal, 'load done\\n'); });`);
   // An allowance grants duration, not admission past the new-test load gate.

@@ -1,5 +1,4 @@
 // Run from the repository root. A census uses the ordinary package runner locks.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, createWriteStream, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -15,16 +14,14 @@ if (mode === 'compare' && args.length === 2) {
   const output = resolve(args[0]);
   mkdirSync(output, { recursive: true });
   const root = mkdtempSync(join(tmpdir(), 'cland-spawn-census-'));
-  // cland-allow-child-env: read-only metadata identifies the repository being measured; no account or modifying Git command
   const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim();
-  // cland-allow-child-env: read-only status identifies the repository being measured; no account or modifying Git command
   const dirty = Boolean(execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' }).trim());
   const startedAt = new Date().toISOString();
   const started = Date.now();
   const logPath = join(output, 'suite.log');
   const log = createWriteStream(logPath, { mode: 0o600 });
   const preload = new URL('./spawn-census/recorder.mjs', import.meta.url).href;
-  const child = spawn('npm', ['test', '--', '--all'], { cwd: repo, env: fixtureEnvironment(root, process.env, { NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_SPAWN_CENSUS_ROOT: root, TEST_SPAWN_CENSUS_REPO: repo }), stdio: ['inherit', 'pipe', 'pipe'] });
+  const child = spawn('npm', ['test', '--', '--all'], { cwd: repo, env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_SPAWN_CENSUS_ROOT: root, TEST_SPAWN_CENSUS_REPO: repo }, stdio: ['inherit', 'pipe', 'pipe'] });
   child.stdout.on('data', chunk => { process.stdout.write(chunk); log.write(chunk); });
   child.stderr.on('data', chunk => { process.stderr.write(chunk); log.write(chunk); });
   const handlers = ['SIGINT', 'SIGTERM'].map(signal => {

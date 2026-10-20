@@ -1,5 +1,4 @@
 // T4: native Git clone/ref/index/hook isolation; hub-state checks use an injected projectHub.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -8,7 +7,7 @@ import { join } from 'node:path';
 import { connectUi, projectHub } from './harness.ts';
 import { preparedProject } from './prepared-project.ts';
 
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 
 test('prepared projects own their refs, index, config, hooks, worktrees, objects and hub state', async t => {
   const first = await preparedProject(t);

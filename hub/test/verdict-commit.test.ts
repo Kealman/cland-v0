@@ -1,5 +1,4 @@
 // T3: native Git commit resolution, freshness across rebase and forged-provenance recovery.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -9,7 +8,7 @@ import { cland, spawnSpoke, nativeProjectHub as projectHub, startDaemon, tempPro
 import { startFreshnessDaemon } from './freshness-harness.ts';
 import type { ItemView, ItemSummary } from '../src/tracker/tracker.ts';
 
-const git = (root: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+const git = (root: string, ...args: string[]) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 async function task(root: string, ...args: string[]): Promise<{ item: ItemView; items: ItemSummary[]; commit?: { sha: string | null; source: string; note: string } }> {
   const r = await cland(root, 'task', ...args, '--json');
   assert.equal(r.code, 0, r.stderr);

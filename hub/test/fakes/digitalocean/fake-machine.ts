@@ -1,8 +1,7 @@
-import { recordMachineCall } from './machine-calls.ts';
 import { watch } from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { shellQuote } from '../../../src/executor/droplet/machine.ts';
 import { join, resolve } from 'node:path';
 
@@ -11,7 +10,7 @@ const [mode, ...args] = process.argv.slice(2);
 const state = process.env.CLAND_TEST_FAKE_MACHINE_ROOT!;
 const mapping = JSON.parse(await readFile(join(state, 'addresses.json'), 'utf8')) as Record<string, string>;
 const faults = JSON.parse(await readFile(join(state, 'machine-faults.json'), 'utf8')) as { ssh?: boolean; sshFailures?: number; startReplyLost?: number; startMarkerOnly?: number; checkoutDifference?: boolean; install?: boolean; marker?: boolean; delayMs?: number; delayCommand?: string; blockFile?: string; blockCommand?: string };
-await recordMachineCall(state, mode, args, faults, process.env);
+await appendFile(join(state, 'machine-calls.jsonl'), `${JSON.stringify({ mode, args, faults, env: process.env })}\n`);
 // Options in the driver's fixed vector always occur in pairs.
 let index = 0;
 while (args[index]?.startsWith('-')) index += 2;
@@ -42,9 +41,7 @@ if (mode === 'scp') {
   const starting = command.includes('setsid nohup bash');
   if (starting && faults.checkoutDifference) {
     await writeFile(join(home, 'cland/checkout-difference'), 'planted source difference\n');
-    // cland-allow-child-env: fake machine command receives only PATH, LANG and its disposable runner HOME
     await run('git', ['add', 'checkout-difference'], { cwd: join(home, 'cland'), env });
-    // cland-allow-child-env: fake machine command receives only PATH, LANG and its disposable runner HOME
     await run('git', ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'Planted checkout difference'], { cwd: join(home, 'cland'), env });
   }
   if (starting && faults.startMarkerOnly) {
@@ -66,7 +63,6 @@ if (mode === 'scp') {
   // Root maintenance remains inside the fake machine's filesystem.
   command = command.replaceAll('/home/runner', home).replaceAll('/var/lib/', `${directory}/var/lib/`).replaceAll('/root/.ssh/', `${directory}/root/.ssh/`).replaceAll('/etc/ssh/', `${directory}/etc/ssh/`).replace('cloud-init clean --logs', `rm -rf ${shellQuote(join(directory, 'var/lib/cloud'))}`);
   try {
-    // cland-allow-child-env: fake machine command receives only PATH, LANG and its disposable runner HOME
     const result = await run('bash', ['-c', command], { cwd: home, env, maxBuffer: 8 * 1024 * 1024 });
     if (starting && faults.startReplyLost) { faults.startReplyLost--; await writeFile(join(state, 'machine-faults.json'), JSON.stringify(faults)); process.exit(255); }
     process.stdout.write(result.stdout); process.stderr.write(result.stderr);

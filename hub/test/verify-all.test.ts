@@ -1,5 +1,4 @@
 // T3: native Git diff admission through the real verify CLI reserves all before queue or worker startup.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -13,7 +12,7 @@ import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 test('explicit all is reserved before verification queue admission', async t => {
   const root = await tempProject(t);
   const remote = await tempProject(t);
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
   await git('init', '-q', '-b', 'dev');
   await git('config', 'user.name', 'Verify test');
   await git('config', 'user.email', 'verify@example.invalid');

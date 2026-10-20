@@ -26,7 +26,6 @@ const nextSecond = () => sleep(1000 - (Date.now() % 1000) + 50);
  *  so its start time differs from every harness process's, before it or after it, as a reused pid's does. */
 async function bystander(t: TestContext): Promise<number> {
   await nextSecond();
-  // cland-allow-child-env: unrelated sleep bystander proves PID reuse; no account, provider or Git operation
   const child = spawn('sleep', ['120'], { stdio: 'ignore', detached: true });
   ownProcess(t, child.pid);
   child.unref();

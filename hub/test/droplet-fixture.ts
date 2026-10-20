@@ -1,6 +1,5 @@
 // Lifecycle tests start with an already prepared provider image. The prepare tests
 // exercise its creation through the real hub, spoke and CLI separately.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { verificationFixture, type FixtureStack } from './verification-fixture.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -11,7 +10,7 @@ import { keyHash, prepareKey } from '../src/executor/droplet/prepare.ts';
 
 const exec = promisify(execFile);
 export async function preparedDropletFixture(root: string, api: Awaited<ReturnType<typeof fakeDigitalOcean>>, stack: FixtureStack = {}): Promise<void> {
-  const git = async (...args: string[]) => exec('git', args, { env: fixtureEnvironment(root, process.env), cwd: root });
+  const git = async (...args: string[]) => exec('git', args, { cwd: root });
   await git('init', '-q', '-b', 'dev');
   await git('config', 'user.name', 'Test'); await git('config', 'user.email', 'test@example.com');
   await git('config', 'commit.gpgsign', 'false');

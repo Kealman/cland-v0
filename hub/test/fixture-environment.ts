@@ -48,15 +48,6 @@ export function scratchAccountEnvironment(root: string, env: NodeJS.ProcessEnv, 
   return withoutExecutorCredentials({ ...env, ...extra });
 }
 
-/** Fresh runner children retain execution/admission controls, never inherited profiles. */
-export function runnerFixtureEnvironment(root: string, base: NodeJS.ProcessEnv): Record<string, string> {
-  const controls: NodeJS.ProcessEnv = {};
-  for (const key of Object.keys(base)) {
-    if (/^CLAND_(?:SUITE_|TEST_|LOAD_GATE_|COVERAGE_)/.test(key) || /^CLAND_(?:HUB_(?:FILE|URL|SECRET)|SESSION_(?:NAME|ID)|ROLE)$/.test(key)) controls[key] = base[key];
-  }
-  return fixtureEnvironment(root, base, controls);
-}
-
 /** Only this scratch-owned Git setting may bypass the ordinary config filter. */
 export type ScratchGitConfig = { excludesFile: string };
 

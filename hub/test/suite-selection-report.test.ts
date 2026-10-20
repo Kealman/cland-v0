@@ -1,6 +1,5 @@
 // T3: native package-runner processes transport coverage capture and failing selected-test exit receipts.
 // Public CLI/socket tests use tiny package fixtures, never the live project's full-suite queue.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,7 +41,7 @@ test('integrated dev verify publishes a portable function map once; task verify 
       return JSON.parse(response.stdout) as { id: string };
     },
   };
-  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { env: fixtureEnvironment(root, process.env), cwd: root })).stdout.trim();
+  const git = async (...args: string[]) => (await promisify(execFile)('git', args, { cwd: root })).stdout.trim();
   await git('init', '--initial-branch=dev');
   await git('config', 'user.name', 'Coverage contract'); await git('config', 'user.email', 'coverage@example.invalid');
   await writeFile(join(root, '.gitignore'), '.cland/\norigin.git/\nsuite.lock*\n');

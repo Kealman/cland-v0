@@ -1,5 +1,4 @@
 // T3: real child/grandchild preload propagation and sandbox write denial require native processes.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -59,7 +58,7 @@ test('fixture', async () => {
   const env: NodeJS.ProcessEnv = { ...process.env, NODE_OPTIONS: `--import=${preload}`, TEST_SPAWN_CENSUS_ROOT: records, TEST_SPAWN_CENSUS_REPO: root };
   delete env.TEST_SPAWN_CENSUS_TEST;
   delete env.NODE_TEST_CONTEXT;
-  const result = spawnSync(process.execPath, ['--test', join(fixture, 'fixture.test.mjs')], { env: runnerFixtureEnvironment(root, env), encoding: 'utf8', timeout: 20_000 });
+  const result = spawnSync(process.execPath, ['--test', join(fixture, 'fixture.test.mjs')], { env, encoding: 'utf8', timeout: 20_000 });
   assert.equal(result.status, 0, result.stderr + result.stdout);
   const raw = readdirSync(records).map(file => readFileSync(join(records, file), 'utf8')).join('');
   assert.doesNotMatch(raw, /SECRET_LATER_ARGUMENT|SECRET_ENV_VALUE|SECRET_SHELL_TEXT/);
@@ -99,8 +98,7 @@ test('fixture', async () => {
 
 test('a sandbox denying census log writes preserves child stdout, exit and spawns', t => {
   const sandbox = '/usr/bin/sandbox-exec';
-  // cland-allow-child-env: tool-only sandbox capability probe has an explicitly empty environment
-  if (spawnSync(sandbox, ['-p', '(version 1)(allow default)', '/usr/bin/true'], { env: {} }).status !== 0) {
+  if (spawnSync(sandbox, ['-p', '(version 1)(allow default)', '/usr/bin/true']).status !== 0) {
     t.skip('needs macOS sandbox-exec');
     return;
   }
@@ -110,7 +108,7 @@ test('a sandbox denying census log writes preserves child stdout, exit and spawn
   const env = { ...process.env, NODE_V8_COVERAGE: '', NODE_OPTIONS: `--import=${preload}`, TEST_SPAWN_CENSUS_ROOT: root, TEST_SPAWN_CENSUS_REPO: repo };
   const launcher = join(root, 'launcher.mjs');
   writeFileSync(launcher, `import { spawnSync } from 'node:child_process'; const child = spawnSync('/usr/bin/sandbox-exec', ['-p', '(version 1)(allow default)(deny file-write*)', process.execPath, '-e', 'const cp = require("node:child_process"); if (cp.spawnSync("/usr/bin/true").status !== 0) process.exit(2); process.stdout.write("unchanged");'], { encoding: 'utf8' }); process.stdout.write(child.stdout); process.stderr.write(child.stderr); process.exit(child.status);`);
-  const result = spawnSync(process.execPath, [launcher], { env: runnerFixtureEnvironment(root, env), encoding: 'utf8', timeout: 10_000 });
+  const result = spawnSync(process.execPath, [launcher], { env, encoding: 'utf8', timeout: 10_000 });
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, 'unchanged');
   assert.equal(result.stderr, '');

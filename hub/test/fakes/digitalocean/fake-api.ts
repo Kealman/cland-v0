@@ -96,7 +96,6 @@ export async function fakeDigitalOcean(token: string, options: { machine?: 'scri
         await writeFile(join(directory, 'root/.ssh/authorized_keys'), keysForCreate);
         if (snapshotDir) {
           const hook = await readFile(join(directory, 'var/lib/cloud/scripts/per-boot/cland-runner-keys.sh'), 'utf8').catch(() => null);
-          // cland-allow-child-env: fake provider boot hook receives only PATH and the disposable machine HOME
           if (hook) await run('bash', ['-c', hook.replaceAll('/home/runner', join(directory, 'home/runner')).replaceAll('/root/.ssh', join(directory, 'root/.ssh')).replaceAll('-o runner -g runner', '')], { env: { PATH: process.env.PATH, HOME: join(directory, 'home/runner') } });
         } else {
           // Provisioning creates runner and copies the builder's initial key.

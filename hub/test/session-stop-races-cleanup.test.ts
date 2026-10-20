@@ -1,6 +1,5 @@
 // T3 lifecycle: real Node test-runner assertion failure and cancellation execute registered
 // stop owners before hub/directory teardown, even when the cancelled body never reaches finally.
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -59,7 +58,7 @@ test('held stop cleanup survives assertion failure and test-runner cancellation'
     const env = { ...process.env };
     delete env.NODE_TEST_CONTEXT;
     const resultReady = Promise.withResolvers<{ code: number | string; output: string }>();
-    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', fixture], { timeout: 15_000, env: runnerFixtureEnvironment(root, env), signal: t.signal }, (error, stdout, stderr) => {
+    const child = execFile(process.execPath, ['--test', '--test-reporter=tap', fixture], { timeout: 15_000, env, signal: t.signal }, (error, stdout, stderr) => {
       resultReady.resolve({ code: error ? (error as NodeJS.ErrnoException).code ?? 'signal' : 0, output: stdout + stderr });
     });
     const closed = new Promise<void>(resolve => child.once('close', () => resolve()));

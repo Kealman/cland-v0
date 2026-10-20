@@ -1,5 +1,4 @@
 // The shared territory-operation seam: synchronous and overlapping async callers against the real lock.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
@@ -295,7 +294,7 @@ test('synchronous stale removal and an async acquirer in another process share t
       process.stdin.once('data', () => { lock.release(); process.exit(0); });
     } catch (err) { process.stdout.write('refused:' + String(err) + '\\n'); process.exit(1); }
   `;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', script], { env: fixtureEnvironment(root, process.env), stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', script], { stdio: ['pipe', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   const ready = Promise.withResolvers<void>(), childResult = Promise.withResolvers<string>();
   let output = '';
@@ -482,7 +481,6 @@ try {
  assert.equal(ownCalls, 3, 'the explicit OS probe API itself remains uncached');
 } finally { rmSync(root, { recursive: true, force: true }); }
 `;
-  // cland-allow-child-env: isolated lock-cache probe uses a fully mocked OS identity table and owns its temporary root
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000 });
   assert.equal(result.status, 0, result.stderr);
 });

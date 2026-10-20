@@ -475,7 +475,6 @@ test('cached rollback listings preserve later commits and dirty work', async t =
       }
     });
     t.mock.method(cp, 'execFile', (file: string, args: string[], options: ExecFileOptionsWithStringEncoding, callback: (err: ExecFileException | null, stdout: string, stderr: string) => void) =>
-      // cland-allow-child-env: native Git spy forwards product options unchanged so the held listing boundary remains observable
       execFile(file, args, options, (err, stdout, stderr) => {
         void (async () => {
           if (escaped && args[0] === 'worktree' && args[1] === 'list' && !held) { held = true; listed.resolve(); await advanced.promise; }
@@ -535,7 +534,6 @@ test('detached cleanup recovery always preserves escaped worktrees', async t => 
       return actual;
     });
     t.mock.method(cp, 'execFile', (file: string, args: string[], options: ExecFileOptionsWithStringEncoding, callback: (err: ExecFileException | null, stdout: string, stderr: string) => void) =>
-      // cland-allow-child-env: native Git spy forwards product options unchanged so the held listing boundary remains observable
       execFile(file, args, options, (err, stdout, stderr) => {
         void (async () => {
           if (at === 'cached listing' && escaped && args[0] === 'worktree' && args[1] === 'list' && !held) { held = true; verifying.resolve(); await advanced.promise; }

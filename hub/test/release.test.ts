@@ -1,6 +1,5 @@
 // T3: native Git lifecycle regressions: rejected atomic pushes, restart recovery and conflicting sync.
 // The atomic release/sync core lives in scenarios/release.test.ts.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { releaseCover } from './release-support.ts';
 import { ensureAccountFixture } from './account-fixture-env.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -380,7 +379,7 @@ test('release refuses multiple GitHub push destinations because their refs canno
 
 test('a lost successful GitHub push reply recovers from its receipt even after the unreferenced tag object is pruned', async (t) => {
   const bin = await tempProject(t, 'cland-git-wrapper-');
-  const realGit = execFileSync('which', ['git'], { env: fixtureEnvironment(bin, process.env), encoding: 'utf8' }).trim();
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
   const wrapper = join(bin, 'git');
   const marker = join(bin, 'lose-next-reply');
   await writeFile(wrapper, `#!/bin/sh\nif [ "$1" = push ]; then\n  '${realGit.replaceAll("'", "'\\''")}' "$@"\n  code=$?\n  if [ "$code" = 0 ] && [ -f "$CLAND_LOST_PUSH_MARKER" ]; then\n    rm "$CLAND_LOST_PUSH_MARKER"\n    echo "Fixture lost the push reply" >&2\n    exit 1\n  fi\n  exit "$code"\nfi\nexec '${realGit.replaceAll("'", "'\\''")}' "$@"\n`);
@@ -539,7 +538,7 @@ test('sync success-record failure prevents a later merge until its same-replay r
 test('a sync replay conflict keeps its typed code and files when scratch cleanup fails too', async t => {
   const bin = await tempProject(t, 'cland-sync-cleanup-bin-');
   const marker = join(bin, 'fail-cleanup');
-  const realGit = execFileSync('which', ['git'], { env: fixtureEnvironment(bin, process.env), encoding: 'utf8' }).trim();
+  const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
   const quote = (s: string) => "'" + s.replaceAll("'", "'\\''") + "'";
   await writeFile(join(bin, 'git'), `#!/bin/sh
 if [ "$1" = worktree ] && [ -f ${quote(marker)} ]; then

@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url';
 import { parse } from 'smol-toml';
 import { shellQuote } from '../../src/accounts/registry.ts';
 import { CLI_ENTRY, eventually, isolateVerification, pidAlive, readDiscovery } from '../harness.ts';
-import { gitIn, initIn, machineEnvironment } from '../init-machine.ts';
+import { gitIn, initIn } from '../init-machine.ts';
 import { beforeDirectories, cleanupProcesses, ownDirectory, ownProcess } from '../process-cleanup.ts';
 import { calls, profileEnvironment, setupMachine, signIn, type SetupMachine } from '../setup-machine.ts';
 
@@ -35,8 +35,7 @@ async function terminalSetup(t: TestContext, machine: SetupMachine, answers: Arr
   const argv = process.platform === 'darwin' ? ['-q', '/dev/null', 'sh', '-c', command] : ['-qefc', command, '/dev/null'];
   // BSD script accepts a POSIX pipe but rejects Node's socketpair stdin with tcgetattr.
   const pipe = 'while IFS= read -r line; do printf "%s\\n" "$line"; done | ';
-  // cland-allow-child-env: setupMachine owns HOME/XDG; machineEnvironment preserves its intentionally unset Claude profile and scratch account inputs
-  const child = spawn('sh', ['-c', pipe + ['script', ...argv].map(shellQuote).join(' ')], { cwd: machine.project, env: machineEnvironment(machine), stdio: ['pipe', 'pipe', 'pipe'], signal: t.signal });
+  const child = spawn('sh', ['-c', pipe + ['script', ...argv].map(shellQuote).join(' ')], { cwd: machine.project, env: machine.env, stdio: ['pipe', 'pipe', 'pipe'], signal: t.signal });
   const stop = ownProcess(t, child.pid);
   let output = '', answered = 0, timedOut = false;
   child.stdin.on('error', () => {}); // A rejected or completed CLI may close before script drains.

@@ -1,5 +1,4 @@
 // T3: verdict-gated native Git merge publication; retained write/grant race regressions.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +15,7 @@ type Item = { id: string; kind: string; state: string; status?: string; path: st
 
 test('merge preserves its gate and publishes done with closed state', async t => {
   const root = await tempProject(t);
-  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
   await copyPreparedProject(root);
   const { discovery } = await projectHub(t, root);
   const ui = await connectUi(t, discovery);

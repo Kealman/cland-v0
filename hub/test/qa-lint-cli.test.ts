@@ -15,7 +15,6 @@ function lintCli(root: string, ...args: string[]): Promise<CliResult> {
     XDG_STATE_HOME: join(home, 'state'), XDG_CACHE_HOME: join(home, 'cache'),
     GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_SYSTEM: '/dev/null' });
   return new Promise((resolve, reject) => {
-    // cland-allow-child-env: offline CLI subject uses a literal PATH/scratch HOME/XDG environment and null Git configs without inherited credentials
     clandCliLaunch(() => execFile(process.execPath, [CLI_ENTRY, 'qa', ...args], { cwd: root, env, encoding: 'utf8', timeout: 10_000 }, (error, stdout, stderr) => {
       if (error && typeof error.code !== 'number') reject(error);
       else resolve({ code: error ? error.code as number : 0, stdout, stderr });

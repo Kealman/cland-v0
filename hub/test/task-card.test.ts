@@ -1,5 +1,4 @@
 // T3: exact native branch/epic tips and closing-time publication through CLI/MCP.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -12,7 +11,7 @@ import { type ItemView, type ItemSummary } from '../src/tracker/tracker.ts';
 
 test('list criteria counts use exclusive mark precedence and exact branch and epic tips', async t => {
   const root = await preparedProject(t);
-  const tip = execFileSync('git', ['rev-parse', 'dev'], { env: fixtureEnvironment(root, process.env), cwd: root, encoding: 'utf8' }).trim();
+  const tip = execFileSync('git', ['rev-parse', 'dev'], { cwd: root, encoding: 'utf8' }).trim();
   const { discovery } = await startDaemon(t, root);
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });

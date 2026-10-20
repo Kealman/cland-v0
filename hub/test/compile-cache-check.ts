@@ -1,6 +1,5 @@
 // Manual runtime qualification check: intentionally fails on affected Node versions.
 // node hub/test/compile-cache-check.ts [shared|isolated|disabled] [rounds]
-import { runnerFixtureEnvironment } from './fixture-environment.ts';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -34,7 +33,7 @@ try {
       if (mode === 'disabled') env.NODE_DISABLE_COMPILE_CACHE = '1';
       const started = performance.now();
       const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
-        cwd: fileURLToPath(new URL('../../', import.meta.url)), env: runnerFixtureEnvironment(root, env), encoding: 'utf8', timeout: 30_000,
+        cwd: fileURLToPath(new URL('../../', import.meta.url)), env, encoding: 'utf8', timeout: 30_000,
       });
       const passed = result.status === 0 && result.signal === null
         && result.stdout.trim() === JSON.stringify({ version: process.version, cached: mode !== 'disabled', constructed: true });

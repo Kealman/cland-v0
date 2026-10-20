@@ -1,5 +1,4 @@
 // T3: hub crash after stop, durable adoption across restart, and real Git worktree/merge gate boundaries.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { sqliteProbe } from './sqlite-probe.ts';
 import { FakeClock } from './fake-clock.ts';
 import { parseItem } from '../src/tracker/item.ts';
@@ -23,7 +22,7 @@ import { agentsRecord } from '../src/hub/agents-topic.ts';
 import { fixedRoles } from '../src/roles/config.ts';
 import { connectWsUi, startHub, tempProject } from './harness.ts';
 
-const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 async function repository(root: string) {
   await copyPreparedProject(root);

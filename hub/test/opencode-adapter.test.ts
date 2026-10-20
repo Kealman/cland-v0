@@ -9,7 +9,6 @@
 // Port binding/readiness and opt-in instruction endpoints retain their native process/frame proofs.
 // Hub composition is proven once in adapter-composition.test.ts. Approval snapshots, rejection,
 // input attribution and instruction-cleanup permutations live in opencode-native.test.ts (T2).
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { ownDirectory } from './process-cleanup.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -223,7 +222,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const attach = (await ui.request({ type: 'session.attach', session: 'impl' })).value as { command: string };
   assert.equal(attach.command, launched.attach);
   assert.equal(attach.command, `OPENCODE_DB='${join(fake.home, 'data', 'cland', 'opencode', 'opencode.db')}' env -u XDG_DATA_HOME OPENCODE_PASSWORD="$(cat '${join(root, '.cland', 'opencode', 'impl', 'password')}')" opencode --server ${launched.harnessId} --session ${launched.harnessSessionId} '${root}'`);
-  const tuiOut = await new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { cwd: tmpdir(), env: fixtureEnvironment(fake.home, process.env, { ...fake.env }) }, (_e, stdout, stderr) => resolve(stdout + stderr)));
+  const tuiOut = await new Promise<string>((resolve) => execFile('sh', ['-c', attach.command], { cwd: tmpdir(), env: { ...process.env, ...fake.env } }, (_e, stdout, stderr) => resolve(stdout + stderr)));
   assert.equal(tuiOut, `fake opencode TUI on ${launched.harnessId} session ${launched.harnessSessionId} (impl) in ${root}\n`);
 
   // the human writes in General: the prompt API admits it (injected), the answer comes through the spoke

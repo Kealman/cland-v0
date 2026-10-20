@@ -2,7 +2,6 @@
 import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { nvimHubImporters, nvimHubImports, chooseSuiteMode } from '../src/suite-selection.ts';
-// cland-allow-child-env: manual read-only Git replay inspects the selected repository; no cland, account or modifying Git command
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
 const ref = process.argv[2] ?? 'origin/dev';
 const { tests } = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));

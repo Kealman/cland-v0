@@ -27,7 +27,6 @@ test('real whole-table and selected listings match lock and cleanup start identi
   process.env.COLUMNS = '40';
   t.after(() => { if (columns === undefined) delete process.env.COLUMNS; else process.env.COLUMNS = columns; });
   const tail = `with spaces and "quotes" ${'x'.repeat(4096)} final-argument`;
-  // cland-allow-child-env: OS process identity/termination boundary uses a pure bystander or fully mocked process rows; no account or Git operation
   const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)', tail], { detached: true, stdio: 'ignore' });
   ownProcess(t, child.pid);
   assert.ok(child.pid);
@@ -111,7 +110,6 @@ process.kill = (pid, signal) => {
 const { endProcess, systemProcesses } = await import(${JSON.stringify(entry)});
 ${body}
 `;
-  // cland-allow-child-env: OS process identity/termination boundary uses a pure bystander or fully mocked process rows; no account or Git operation
   await promisify(execFile)(process.execPath, ['--input-type=module', '-e', source], { timeout: 10_000 });
 }
 

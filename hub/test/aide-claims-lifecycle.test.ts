@@ -1,6 +1,5 @@
 // T3: native Git processes create/reuse worktrees, publish reviewed refs/files and preserve refs on refusal.
 // Claim, routing and verifier-independence rules are covered without Git in aide-claims.test.ts.
-import { fixtureEnvironment } from './fixture-environment.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -12,7 +11,7 @@ import { copyPreparedProject } from './prepared-project.ts';
 import type { ItemView } from '../src/tracker/tracker.ts';
 import type { TaskWorktree } from '../src/territory.ts';
 
-const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { env: fixtureEnvironment(cwd, process.env), cwd, encoding: 'utf8' }).trim();
+const git = (cwd: string, ...args: string[]): string => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 async function project(t: TestContext) {
   const root = await tempProject(t, 'cland-aide-claims-');
