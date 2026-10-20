@@ -3,7 +3,7 @@
 import { accountClaude, accountCodex } from './account-fixture-env.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cland, connectUi, eventually, nativeProjectHub as projectHub, tempProject, type FrameClient } from './harness.ts';
 import type { AccountList, AccountView } from '../src/accounts/limits.ts';
@@ -38,10 +38,16 @@ test('fake Codex pushes account windows and sparse per-model updates while reads
   await writeFile(join(config, 'cland', 'accounts.toml'), `[accounts.codex-b]\nharness = "codex"\nhome = ${JSON.stringify(home)}\n`);
   const fake = await accountCodex(t);
   const path = join(fake.home, 'rate-limits.json');
+  // The running fake reads this file during turns; never expose a truncated JSON fixture.
+  const writeRateLimits = async (contents: string) => {
+    const pending = `${path}.tmp`;
+    await writeFile(pending, contents);
+    await rename(pending, path);
+  };
   const reading = { rateLimits: { limitId: 'codex', primary: { usedPercent: 4, windowDurationMins: 300, resetsAt: 1792036980 }, secondary: null },
     rateLimitsByLimitId: { codex: { limitId: 'codex', primary: { usedPercent: 4, windowDurationMins: 300, resetsAt: 1792036980 }, secondary: null },
       review: { limitId: 'review', limitName: 'Code review', primary: { usedPercent: 19, windowDurationMins: 10080, resetsAt: 1792123380 }, secondary: null } } };
-  await writeFile(path, JSON.stringify({ [home]: reading }));
+  await writeRateLimits(JSON.stringify({ [home]: reading }));
   const { discovery } = await projectHub(t, root, { ...fake.env, XDG_CONFIG_HOME: config, });
   const ui = await connectUi(t, discovery);
   await ui.request({ type: 'subscribe' });
@@ -53,7 +59,7 @@ test('fake Codex pushes account windows and sparse per-model updates while reads
     { id: 'review:primary', label: 'Code review', scope: 'Code review', usedPercent: 19, resetsAt: new Date(1792123380 * 1000).toISOString(), windowMins: 10080 },
   ]);
   await writeFile(join(fake.home, 'hold-rate-limits-read'), '1');
-  await writeFile(path, JSON.stringify({ [home]: { ...reading, update: { rateLimits: { limitId: 'review', primary: { usedPercent: 27 } } } } }));
+  await writeRateLimits(JSON.stringify({ [home]: { ...reading, update: { rateLimits: { limitId: 'review', primary: { usedPercent: 27 } } } } }));
   const mark = ui.frames.length;
   assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: '@rev-x rate limits only' })).ok, true);
   await ui.waitFor(f => ui.frames.indexOf(f) >= mark && f.type === 'account' && (f.account as AccountView).windows.some(w => w.usedPercent === 27));
@@ -67,14 +73,14 @@ test('fake Codex pushes account windows and sparse per-model updates while reads
   reading.rateLimitsByLimitId.review.primary.usedPercent = 27;
   // A raw native field identifies this full read without changing its normalized windows.
   const readReceipt = 'released-full-read';
-  await writeFile(path, JSON.stringify({ [home]: { ...reading, rateLimits: { ...reading.rateLimits, readReceipt } } }));
+  await writeRateLimits(JSON.stringify({ [home]: { ...reading, rateLimits: { ...reading.rateLimits, readReceipt } } }));
   const receipt = ui.frames.length;
   const completed = ui.waitFor(f => ui.frames.indexOf(f) >= receipt && f.type === 'session.usage' && f.sessionId === p.sessionId && (f.usage as SessionUsage).rateLimits?.readReceipt === readReceipt);
   await writeFile(join(fake.home, 'release-rate-limits-read'), '1');
   await completed; // Arm observation before release; only the held native read carries this receipt.
   assert.equal((await journal(root, ui)).length, 2, 'read after sparse push is equal and silent');
   // A new full read removes omitted buckets, and durations are not fixed to two labels.
-  await writeFile(path, JSON.stringify({ [home]: { rateLimits: { limitId: 'codex', primary: { usedPercent: 22, windowDurationMins: 10080, resetsAt: 1792123380 }, secondary: { usedPercent: 31, windowDurationMins: 2880, resetsAt: 1792036980, severity: 'warning' } } } }));
+  await writeRateLimits(JSON.stringify({ [home]: { rateLimits: { limitId: 'codex', primary: { usedPercent: 22, windowDurationMins: 10080, resetsAt: 1792123380 }, secondary: { usedPercent: 31, windowDurationMins: 2880, resetsAt: 1792036980, severity: 'warning' } } } }));
   const last = ui.frames.length;
   assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: '@rev-x another reading' })).ok, true);
   await ui.waitFor(f => ui.frames.indexOf(f) >= last && f.type === 'account' && (f.account as AccountView).windows.some(w => w.label === '2d'));
@@ -84,19 +90,19 @@ test('fake Codex pushes account windows and sparse per-model updates while reads
   // The compatibility snapshot prefers codex; it can instead name a different bucket.
   const reviewOnly = reading.rateLimitsByLimitId.review;
   for (const includeMap of [true, false]) {
-    await writeFile(path, JSON.stringify({ [home]: { rateLimits: reviewOnly, ...(includeMap ? { rateLimitsByLimitId: { review: reviewOnly } } : {}) } }));
+    await writeRateLimits(JSON.stringify({ [home]: { rateLimits: reviewOnly, ...(includeMap ? { rateLimitsByLimitId: { review: reviewOnly } } : {}) } }));
     const mark = ui.frames.length;
     assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: '@rev-x compatibility bucket' })).ok, true);
     await ui.waitFor(f => ui.frames.indexOf(f) >= mark && f.type === 'session.usage' && f.sessionId === p.sessionId);
     assert.deepEqual((await accounts(ui))[0]!.windows, [{ id: 'review:primary', label: 'Code review', scope: 'Code review', usedPercent: 27, resetsAt: new Date(1792123380 * 1000).toISOString(), windowMins: 10080 }]);
   }
   await unlink(join(fake.home, 'release-rate-limits-read'));
-  await writeFile(path, JSON.stringify({ [home]: { rateLimits: reviewOnly, update: { rateLimits: { primary: { usedPercent: 33 } } } } }));
+  await writeRateLimits(JSON.stringify({ [home]: { rateLimits: reviewOnly, update: { rateLimits: { primary: { usedPercent: 33 } } } } }));
   const sparse = ui.frames.length;
   assert.equal((await ui.request({ type: 'topic.send', topic: 'general', to: [p.name], text: '@rev-x sparse compatibility update' })).ok, true);
   await ui.waitFor(f => ui.frames.indexOf(f) >= sparse && f.type === 'account' && (f.account as AccountView).windows.some(w => w.usedPercent === 33));
   assert.deepEqual((await accounts(ui))[0]!.windows, [{ id: 'review:primary', label: 'Code review', scope: 'Code review', usedPercent: 33, resetsAt: new Date(1792123380 * 1000).toISOString(), windowMins: 10080 }]);
-  await writeFile(path, JSON.stringify({ [home]: { rateLimits: { ...reviewOnly, primary: { ...reviewOnly.primary, usedPercent: 33 } } } }));
+  await writeRateLimits(JSON.stringify({ [home]: { rateLimits: { ...reviewOnly, primary: { ...reviewOnly.primary, usedPercent: 33 } } } }));
   await writeFile(join(fake.home, 'release-rate-limits-read'), '1');
 });
 
