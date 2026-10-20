@@ -370,11 +370,11 @@ export const worktreesPath = (root: string): string => join(root, '.cland', 'wor
 export const taskWorktreePath = (root: string, item: string): string => join(worktreesPath(root), item);
 
 /** Whether the project has a cland-managed territory: the condition for task branches and worktrees. */
-export async function hasTerritory(root: string, env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+export async function hasTerritory(root: string, env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<boolean> {
   const path = territoryPath(root);
   // No Git configuration can exist beneath an absent territory.
   if (!(await access(path).then(() => true, () => false))) return false;
-  return (await maybeGitAsync(path, ['config', '--get', 'cland.managed'], env)) === 'true';
+  return (await maybeGitAsync(path, ['config', '--get', 'cland.managed'], env, git)) === 'true';
 }
 
 /**

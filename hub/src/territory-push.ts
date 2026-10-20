@@ -1,4 +1,4 @@
-// Publish the root's committed dev, without changing local refs or the checkout. Caller holds the territory lock.
+// Publish the root's committed dev and refresh origin/dev, without changing the checkout. Caller holds the territory lock.
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 import { hasTerritory, territoryGitAsync as git, territoryPath, TerritoryGitError } from './territory.ts';
@@ -15,7 +15,7 @@ export async function pushDev(root: string, resumed: Resumed, authorize: () => v
   const execute = run;
   run = (cwd, args, marked, input) => execute(cwd, args, marked, input, env);
   resumed(authorize);
-  const managed = await hasTerritory(root, env);
+  const managed = await hasTerritory(root, env, run);
   resumed(() => { if (!managed) throw new PushError('push-territory', 'the project has no managed territory'); });
   for (const operation of ['release', 'sync']) {
     const pending = await access(join(root, '.cland', `${operation}.tmp`)).then(() => true, err => {
@@ -52,6 +52,11 @@ export async function pushDev(root: string, resumed: Resumed, authorize: () => v
       throw confirmation;
     }
     resumed(() => { if (actual !== dev) throw new PushError('push-git', err instanceof Error ? err.message : String(err)); });
+  }
+  try {
+    await run(root, ['update-ref', 'refs/remotes/origin/dev', dev]);
+  } catch (err) {
+    return resumed(() => ({ dev, previous, followUp: { step: 'tracking-ref', error: `pushed; follow-up failed: origin/dev: ${String(err)}; retry cland push` } }));
   }
   return resumed(() => ({ dev, previous }));
 }

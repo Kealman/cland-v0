@@ -44,6 +44,7 @@ test('human cland push publishes tracker commits, preserves dirty staged work, i
   const result = JSON.parse(ok(await cland(root, 'push', '--json')).stdout) as PushResult;
   assert.deepEqual(result, { dev, previous });
   assert.equal(git(territory, 'rev-parse', 'dev'), dev);
+  assert.equal(git(root, 'rev-parse', 'origin/dev'), dev);
   assert.equal(git(root, 'rev-parse', 'dev'), dev);
   assert.equal(git(root, 'write-tree'), index);
   assert.equal(await fs.readFile(join(root, 'README.md'), 'utf8'), 'staged work\n');
