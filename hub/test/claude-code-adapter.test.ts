@@ -309,12 +309,12 @@ test('after a hub restart, resume re-finds the running session through the proce
 
 // One real environment frame proof; the four-way table lives in claude-code-environment.test.ts.
 test('Claude unpinned binary launch, native relaunch and remedies preserve an unset CLAUDE_CONFIG_DIR (T-603)', async t => {
-  const root = await tempProject(t);
   const fake = await fakeClaude(t);
+  const root = fake.home; // The fake's owned scratch HOME is this contract's project too.
   // Model an unset variable even if the hub inherited a human's selection.
-  const env: Record<string, string> = { ...fake.env, HOME: fake.home };
+  const env: Record<string, string> = { ...fake.env };
   Object.assign(env, { CLAUDE_CONFIG_DIR: undefined });
-  const { discovery } = await projectHub(t, root, env);
+  const { discovery } = await projectHub(t, root, env, { scratchAccountPaths: { home: fake.home } });
   const ui = await connectUi(t, discovery);
   const p = await launch(ui, 'plain');
   assert.equal(p.status, 'running');

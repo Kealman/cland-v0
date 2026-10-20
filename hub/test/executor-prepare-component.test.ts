@@ -5,6 +5,8 @@ import { test, type TestContext } from 'node:test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { projectHub, clandWithEnv, connectUi, tempProject, inProcessSpoke, eventually, flushProjectLogs } from './harness.ts';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { scriptedMachine } from './fakes/digitalocean/scripted-machine.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -18,7 +20,7 @@ import { Machine } from '../src/executor/droplet/machine.ts';
 async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   const root = await tempProject(t);
   const clock = new FakeClock();
-  const api = await fakeDigitalOcean('sentinel-prepare', { machine: 'scripted', clock });
+  const api = await fakeDigitalOcean('cland-test-prepare-component', { machine: 'scripted', clock });
   const key = { node: process.version, nvim: { tag: 'v0.12.5', digest: 'a'.repeat(64) }, lock: 'b'.repeat(64), base: 'c'.repeat(40) };
   const machine = scriptedMachine(root, clock, key);
   const hubs: Awaited<ReturnType<typeof projectHub>>[] = [];
@@ -43,8 +45,10 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
       put: async () => {},
     },
   };
-  const env = { DIGITALOCEAN_TOKEN: 'sentinel-prepare', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '200', CLAND_TEST_DROPLET_ACTION_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '100', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', ...overrides };
-  const options = { clock, droplet: dependencies };
+  const extras = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '200', CLAND_TEST_DROPLET_ACTION_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '100', CLAND_TEST_EXECUTOR_SWEEP_MS: '200', ...overrides };
+  const syntheticProvider = { token: 'cland-test-prepare-component', api: api.provider } as const;
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment(extras), syntheticProvider, api.provider) as Record<string, string>;
+  const options = { clock, droplet: dependencies, syntheticProvider };
   const hub = await projectHub(t, root, env, options);
   hubs.push(hub);
   return { root, api, env, clock, waits: machine.waits, dependencies, options, key,

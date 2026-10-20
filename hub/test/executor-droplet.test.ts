@@ -13,6 +13,8 @@ import { writeLease } from '../src/executor/droplet/lease.ts';
 import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
 import { onCleanup, ownProcess } from './process-cleanup.ts';
 import type { TestContext } from 'node:test';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
@@ -20,7 +22,7 @@ const exec = promisify(execFile);
 
 async function providerEnv(t: TestContext, api: Awaited<ReturnType<typeof fakeDigitalOcean>>, root: string, lifetimePoll = '25') {
   await preparedDropletFixture(root, api);
-  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_EXECUTOR_MARGIN_MS: '1', DIGITALOCEAN_TOKEN: 'sentinel-lifecycle', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50' };
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_EXECUTOR_MARGIN_MS: '1', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: lifetimePoll, CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50' }), { token: 'cland-test-lifecycle', endpoint: api.url }) as Record<string, string>;
   for (const [key, value] of Object.entries(env)) {
     const old = process.env[key]; process.env[key] = value;
     t.after(() => { if (old === undefined) delete process.env[key]; else process.env[key] = old; });
@@ -43,7 +45,7 @@ test('executor status names a missing token; reap refuses without it', async t =
 
 test('provider requests distinguish deadline aborts from transport time bounds', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);
   api.faults.delayMs = 200;
   const provider = new DigitalOceanApi();
@@ -61,7 +63,7 @@ test('provider requests distinguish deadline aborts from transport time bounds',
 
 test('an acquisition deadline destroys resources and keeps no active lease', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);
   api.faults.activeAfter = 100000;
   process.env.CLAND_TEST_DROPLET_ACQUIRE_MS = '250';
@@ -78,7 +80,7 @@ test('an acquisition deadline destroys resources and keeps no active lease', asy
 
 test('a late create after a lost response is discovered and deleted before forgetting its lease', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);
   process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = '50';
   t.after(() => { delete process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS; });
@@ -95,7 +97,7 @@ test('a late create after a lost response is discovered and deleted before forge
 
 test('an ambiguous SSH key import stays armed until the late key is discovered and deleted', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   const env = await providerEnv(t, api, root);
   process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = '100';
   process.env.CLAND_TEST_DROPLET_RELEASE_MS = '100';
@@ -114,7 +116,7 @@ test('an ambiguous SSH key import stays armed until the late key is discovered a
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/account/keys').length, 1);
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 0);
   resumeImport();
-  await startDaemon(t, root, { ...env, CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS: '100', CLAND_TEST_DROPLET_RELEASE_MS: '100' });
+  await startDaemon(t, root, { ...env, CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS: '100', CLAND_TEST_DROPLET_RELEASE_MS: '100' }, { syntheticProvider: { token: 'cland-test-lifecycle', endpoint: api.url } });
   await eventually('the hub confirms the late imported key absent', async () => {
     const result = await clandWithEnv(root, {}, 'executor', 'status', '--json');
     const status = JSON.parse(result.stdout);
@@ -128,7 +130,7 @@ test('an ambiguous SSH key import stays armed until the late key is discovered a
 
 test('acquire reloads the droplet table, selects the first offered region and names invalid settings', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);
   await mkdir(join(root, '.cland'), { recursive: true });
   const path = join(root, '.cland/config.toml');
@@ -156,7 +158,7 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[verification]\nlifetime = "5m"\nrun_timeout = "1s"\n');
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   const env = await providerEnv(t, api, root);
   const previousPoll = process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS;
   process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS = '25';
@@ -164,7 +166,7 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
     if (previousPoll === undefined) delete process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS;
     else process.env.CLAND_TEST_DROPLET_WATCHDOG_POLL_MS = previousPoll;
   });
-  const started = await startDaemon(t, root, env);
+  const started = await startDaemon(t, root, env, { syntheticProvider: { token: 'cland-test-lifecycle', endpoint: api.url } });
   const ui = await connectUi(t, started.discovery);
   // Direct acquisition must wait for the hub's interrupted-create recovery.
   const ready = await ui.request({ type: 'executor.status' });
@@ -173,7 +175,7 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
   const lease = await executor.acquire({ id: 'watchdog' }, new Date(Date.now() + 300000).toISOString());
   ownProcess(t, lease.watchdog!.pid);
   const rows = (await exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='])).stdout;
-  assert.ok(!rows.includes('sentinel-lifecycle'));
+  assert.ok(!rows.includes('cland-test-lifecycle'));
   assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
   await eventually('hub has stopped before the watchdog deadline', () => !pidAlive(started.discovery.pid) ? true : undefined);
   assert.ok(pidAlive(lease.watchdog!.pid), 'the watchdog survives hub shutdown');
@@ -186,7 +188,7 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
     try { return JSON.parse(await readFile(join(dir, 'watchdog.json'), 'utf8')); } catch { return undefined; }
   }, 8000);
   assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
-  const restarted = await startDaemon(t, root, env);
+  const restarted = await startDaemon(t, root, env, { syntheticProvider: { token: 'cland-test-lifecycle', endpoint: api.url } });
   const status = await clandWithEnv(root, {}, 'executor', 'status', '--json');
   assert.equal(status.code, 0, status.stderr);
   const value = JSON.parse(status.stdout);
@@ -197,18 +199,18 @@ test('the detached watchdog survives a stopped hub; restart consumes its receipt
   const made = await restartedUi.request({ type: 'artifact.create', kind: 'note', title: 'Executor status', topic: 'general', content: status.stdout });
   assert.equal(made.ok, true, made.error);
   const artifactPath = (made.value as { artifact: { path: string } }).artifact.path;
-  assert.ok(!(await readFile(artifactPath, 'utf8')).includes('sentinel-lifecycle'));
+  assert.ok(!(await readFile(artifactPath, 'utf8')).includes('cland-test-lifecycle'));
   await flushProjectLogs(t, root);
   const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
   assert.match(journal, /executor-watchdog-fired/);
   assert.equal(JSON.parse(await readFile(join(dir, 'lease.json'), 'utf8')).state, 'released');
   const logged = [journal, await readFile(join(root, '.cland/log/hub.log'), 'utf8'), ...await Promise.all((await readdir(dir)).map(name => readFile(join(dir, name), 'utf8')))];
-  assert.ok(logged.every(text => !text.includes('sentinel-lifecycle')));
+  assert.ok(logged.every(text => !text.includes('cland-test-lifecycle')));
 });
 
 test('acquire persists an armed lease before create, waits for a public IP, and release confirms both resources', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle');
+  const api = await fakeDigitalOcean('cland-test-lifecycle');
   t.after(() => api.close());
   await providerEnv(t, api, root);
   api.beforeCreate(async () => {
@@ -221,7 +223,7 @@ test('acquire persists an armed lease before create, waits for a public IP, and 
     assert.equal((await stat(join(base, id!, 'lease.json'))).mode & 0o777, 0o600);
     assert.equal((await stat(join(base, id!, 'key'))).mode & 0o777, 0o600);
     // Changing the token between create and polling proves it is read at each call.
-    api.auth.token = 'sentinel-rotated'; process.env.DIGITALOCEAN_TOKEN = 'sentinel-rotated';
+    api.auth.token = 'cland-test-rotated'; process.env.DIGITALOCEAN_TOKEN = 'cland-test-rotated';
   });
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'run-one' }, new Date(Date.now() + 300000).toISOString());
@@ -237,13 +239,13 @@ test('acquire persists an armed lease before create, waits for a public IP, and 
   assert.equal(lease.state, 'released');
   assert.equal(released.costUsd, 0.25 / 60);
   assert.ok(released.lifetimeMs !== null && released.lifetimeMs >= 0);
-  assert.ok(!JSON.stringify(api.requests).includes('sentinel-lifecycle'));
-  assert.ok(!JSON.stringify(api.requests).includes('sentinel-rotated'));
+  assert.ok(!JSON.stringify(api.requests).includes('cland-test-lifecycle'));
+  assert.ok(!JSON.stringify(api.requests).includes('cland-test-rotated'));
 });
 
 test('failed creates are bounded, never retried, and errors and durable state redact the token', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   for (const status of [422, 429]) {
@@ -251,7 +253,7 @@ test('failed creates are bounded, never retried, and errors and durable state re
     await assert.rejects(executor.acquire({ id: `refused-${status}` }, new Date(Date.now() + 300000).toISOString()), error => {
       assert.ok(error instanceof Error);
       assert.match(error.message, new RegExp(`${status} refused`));
-      assert.ok(!error.message.includes('sentinel-lifecycle'));
+      assert.ok(!error.message.includes('cland-test-lifecycle'));
       return true;
     });
     assert.deepEqual(api.keys, []);
@@ -259,7 +261,7 @@ test('failed creates are bounded, never retried, and errors and durable state re
   assert.equal(api.requests.filter(r => r.method === 'POST' && r.path === '/v2/droplets').length, 2);
   for (const id of await readdir(join(root, '.cland/run/executor/leases'))) {
     const text = await readFile(join(root, '.cland/run/executor/leases', id, 'lease.json'), 'utf8');
-    assert.ok(!text.includes('sentinel-lifecycle'));
+    assert.ok(!text.includes('cland-test-lifecycle'));
     assert.equal(JSON.parse(text).state, 'released');
   }
   process.env.CLAND_TEST_DIGITALOCEAN_TIMEOUT_MS = '30';
@@ -271,7 +273,7 @@ test('failed creates are bounded, never retried, and errors and durable state re
 
 test('restart discovers an interrupted create by name and retries an unconfirmed release', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   const env = await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'interrupted' }, new Date(Date.now() + 300000).toISOString());
@@ -280,7 +282,7 @@ test('restart discovers an interrupted create by name and retries an unconfirmed
   const path = join(root, '.cland/run/executor/leases', lease.lease, 'lease.json');
   await writeFile(path, JSON.stringify({ ...lease, state: 'creating', resource: null }));
   api.faults.deleteError = 429;
-  const { discovery } = await startDaemon(t, root, env);
+  const { discovery } = await startDaemon(t, root, env, { syntheticProvider: { token: 'cland-test-lifecycle', endpoint: api.url } });
   const ui = await connectUi(t, discovery);
   // Since T-813 executor.status answers while startup reconcile is still running, so wait for
   // reconcile to move the interrupted create to releasing instead of reading the first answer.
@@ -300,7 +302,7 @@ test('restart discovers an interrupted create by name and retries an unconfirmed
 
 test('restart re-arms a live creating lease with a dead watchdog', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   const env = await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'still-creating' }, new Date(Date.now() + 300000).toISOString());
@@ -308,7 +310,7 @@ test('restart re-arms a live creating lease with a dead watchdog', async t => {
   process.kill(lease.watchdog!.pid, 'SIGTERM');
   const path = join(root, '.cland/run/executor/leases', lease.lease, 'lease.json');
   await writeFile(path, JSON.stringify({ ...lease, state: 'creating' }));
-  await startDaemon(t, root, env);
+  await startDaemon(t, root, env, { syntheticProvider: { token: 'cland-test-lifecycle', endpoint: api.url } });
   const result = await clandWithEnv(root, {}, 'executor', 'status', '--json');
   assert.equal(result.code, 0, result.stderr);
   const value = JSON.parse(result.stdout);
@@ -323,7 +325,7 @@ test('restart re-arms a live creating lease with a dead watchdog', async t => {
 
 test('a watchdog rearm held across release cannot resurrect the released lease', async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-rearm');
+  const api = await fakeDigitalOcean('cland-test-rearm');
   let finish = async () => {};
   onCleanup(t, async () => { try { await finish(); } finally { await api.close(); } });
   await preparedDropletFixture(root, api);
@@ -348,7 +350,7 @@ if (fs.existsSync(${JSON.stringify(join(bin, 'old'))}) && pid !== fs.readFileSyn
 process.stdout.write(result.stdout || ''); process.exit(result.status ?? 1);
 `);
   await chmod(join(bin, 'ps'), 0o700);
-  const env = { ...process.env, DIGITALOCEAN_TOKEN: 'sentinel-rearm', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '60000', PATH: `${bin}:${process.env.PATH}` };
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '60000', PATH: `${bin}:${process.env.PATH}` }), { token: 'cland-test-rearm', endpoint: api.url });
   const executor = new DropletExecutor(root, undefined, undefined, env);
   const lease = await executor.acquire({ id: 'rearm-release' }, new Date(Date.now() + 300000).toISOString());
   finish = async () => { await executor.release(lease); };
@@ -379,7 +381,7 @@ process.stdout.write(result.stdout || ''); process.exit(result.status ?? 1);
 
 test('macOS inhibits idle sleep while the lease lives and drops the inhibitor after release', { skip: process.platform !== 'darwin' }, async t => {
   const root = await tempProject(t);
-  const api = await fakeDigitalOcean('sentinel-lifecycle'); t.after(() => api.close());
+  const api = await fakeDigitalOcean('cland-test-lifecycle'); t.after(() => api.close());
   await providerEnv(t, api, root);
   const executor = new DropletExecutor(root);
   const lease = await executor.acquire({ id: 'sleep' }, new Date(Date.now() + 300000).toISOString());
@@ -387,7 +389,7 @@ test('macOS inhibits idle sleep while the lease lives and drops the inhibitor af
   const rows = () => exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command=']).then(r => r.stdout);
   const inhibitor = new RegExp(`\\bcaffeinate -i -w ${lease.watchdog!.pid}\\b`);
   await eventually('live watchdog has a caffeinate child', async () => inhibitor.test(await rows()) ? true : undefined);
-  assert.ok(!(await rows()).includes('sentinel-lifecycle'));
+  assert.ok(!(await rows()).includes('cland-test-lifecycle'));
   await executor.release(lease);
   await eventually('released lease no longer inhibits sleep', async () => !inhibitor.test(await rows()) ? true : undefined);
 });
@@ -396,7 +398,7 @@ test('reap deletes project orphans and old cland droplets while preserving other
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland/config.toml'), '[project]\nname = "test"\n[verification]\nlifetime = "3s"\nrun_timeout = "1s"\n');
-  const api = await fakeDigitalOcean('sentinel-reap');
+  const api = await fakeDigitalOcean('cland-test-reap');
   t.after(() => api.close());
   const tag = `cland-p-${createHash('sha256').update(`${root}\0test`).digest('hex').slice(0, 12)}`;
   const base = { status: 'active', networks: { v4: [] }, created_at: new Date().toISOString() };
@@ -407,7 +409,7 @@ test('reap deletes project orphans and old cland droplets while preserving other
     { ...base, id: 4, name: 'n8n', tags: ['n8n'] },
   );
   api.keys.push({ id: 10, name: `${tag}-stray`, public_key: 'public' }, { id: 11, name: 'other', public_key: 'public' });
-  await startDaemon(t, root, { CLAND_TEST_EXECUTOR_MARGIN_MS: '1', DIGITALOCEAN_TOKEN: 'sentinel-reap', CLAND_DIGITALOCEAN_API: api.url });
+  await startDaemon(t, root, { CLAND_TEST_EXECUTOR_MARGIN_MS: '1' }, { syntheticProvider: { token: 'cland-test-reap', endpoint: api.url } });
   const reap = await clandWithEnv(root, {}, 'executor', 'reap', '--json');
   assert.equal(reap.code, 0, reap.stderr);
   assert.deepEqual(api.droplets.map(d => d.id), [3, 4]);
@@ -415,5 +417,5 @@ test('reap deletes project orphans and old cland droplets while preserving other
   await flushProjectLogs(t, root);
   const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
   assert.match(journal, /executor-reaped/);
-  assert.ok(!journal.includes('sentinel-reap'));
+  assert.ok(!journal.includes('cland-test-reap'));
 });

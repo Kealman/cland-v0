@@ -8,7 +8,9 @@ export { until, testWaitMs } from './until.ts';
 //   2. the hub's WebSocket edge — an in-process hub on an ephemeral port
 //   3. the daemon — `cland hub …` run as its own process in a temporary project, and its Unix socket
 // Nothing here reaches into either side's state; everything goes through the seams.
-import { ensureAccountFixture } from './account-fixture-env.ts';
+import { ensureAccountFixture, accountFixtureEnvironment } from './account-fixture-env.ts';
+import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
+import { scratchAccountEnvironment, type ScratchAccountPaths } from './fixture-environment.ts';
 import { execFile } from 'node:child_process';
 import { clandCliLaunch } from './tier-cli.ts';
 import assert from 'node:assert/strict';
@@ -130,7 +132,7 @@ async function spokeEnvironment(options: SpokeOptions): Promise<Record<string, s
   if (options.name) env.CLAND_SESSION_NAME = options.name;
   if (options.role) env.CLAND_ROLE = options.role;
   if (options.launchToken) env.CLAND_LAUNCH_TOKEN = options.launchToken;
-  return env;
+  return accountFixtureEnvironment(env);
 }
 
 export async function spawnSpoke(options: SpokeOptions): Promise<Session> {
@@ -315,16 +317,26 @@ export function cland(cwd: string, ...args: string[]): Promise<CliResult> {
 
 /** `cland` with `extra` added to its environment: a test hook such as CLAND_TEST_TASK_WRITE_GATE, or a daemon that launches a fake harness. */
 export async function clandWithEnv(cwd: string, extra: Record<string, string>, ...args: string[]): Promise<CliResult> {
+  return runCland(cwd, extra, undefined, args);
+}
+
+/** Native provider CLI contracts explicitly opt into a validated fake HTTP provider. */
+export async function clandWithProvider(cwd: string, extra: Record<string, string>, provider: SyntheticProvider & { endpoint: string }, ...args: string[]): Promise<CliResult> {
+  return runCland(cwd, extra, provider, args);
+}
+
+async function runCland(cwd: string, extra: Record<string, string>, provider: (SyntheticProvider & { endpoint: string }) | undefined, args: string[]): Promise<CliResult> {
   await ensureAccountFixture();
   if (args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) await isolateVerification(cwd);
-  const env: Record<string, string> = {};
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_')) env[k] = v;
+  const overrides: Record<string, string> = {};
   // CLAND_* stripping must not restore the host's default/legacy executor ledger.
-  env.CLAND_EXECUTOR_STATE = join(cwd, '.cland/executor-state');
+  overrides.CLAND_EXECUTOR_STATE = join(cwd, '.cland/executor-state');
   // Doctor normally discovers deleted-project hubs machine-wide. Tests only inspect their own fixture.
-  if (args[0] === 'doctor') env.CLAND_TEST_ORPHAN_ROOT = cwd;
-  Object.assign(env, extra);
-  if (args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) env.CLAND_TEST_FIXTURE_ROOT = cwd;
+  if (args[0] === 'doctor') overrides.CLAND_TEST_ORPHAN_ROOT = cwd;
+  // Fixture ownership is authoritative for daemon launches, even over caller extras.
+  const ownership = args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '') ? { CLAND_TEST_FIXTURE_ROOT: cwd } : {};
+  const sealed = await accountFixtureEnvironment({ ...overrides, ...extra, ...ownership });
+  const env = provider ? syntheticProviderEnvironment(sealed, provider) : sealed;
   return new Promise((resolve, reject) => {
     // Merge waits up to 60 s for the hub; the outer process budget must also allow CLI startup.
     const timeout = args[0] === 'merge' ? 65_000 : 30_000;
@@ -383,6 +395,8 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  syntheticProvider?: SyntheticProvider;
+  scratchAccountPaths?: ScratchAccountPaths;
   priorityProbe?: () => number;
   publishRelease?: import('../src/hub/dispatch.ts').DispatcherOptions['publishRelease'];
   devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository;
@@ -419,9 +433,9 @@ export type ProjectHubOptions = {
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
-  const env: NodeJS.ProcessEnv = {};
-  for (const [key, value] of Object.entries(process.env)) if (!key.startsWith('CLAND_')) env[key] = value;
-  Object.assign(env, { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1' }, extra);
+  const sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', ...extra });
+  const accountEnv = options.scratchAccountPaths ? scratchAccountEnvironment(root, sealed, options.scratchAccountPaths) : sealed;
+  const env = options.syntheticProvider ? syntheticProviderEnvironment(accountEnv, options.syntheticProvider, options.droplet?.api) : accountEnv;
   const resources = hubResources();
   // The CLI redirects startup stderr into this file. Embedded hubs use the same
   // asynchronous sink explicitly, including its flush barrier for hub.status.
@@ -479,9 +493,9 @@ export const nativeProjectHub: typeof projectHub = (t, root, extra, options) =>
 
 /** Start a fixture without startup orphan inspection; pass { sweep: true } as the fourth argument to opt in.
  * An explicit CLAND_TEST_SKIP_ORPHAN_SWEEP in env takes precedence. Teardown owns the returned PID. */
-export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}, options: { sweep?: boolean } = {}): Promise<{ result: CliResult; discovery: Discovery }> {
+export async function startDaemon(t: TestContext, root: string, env: Record<string, string> = {}, options: { sweep?: boolean; syntheticProvider?: SyntheticProvider & { endpoint: string } } = {}): Promise<{ result: CliResult; discovery: Discovery }> {
   env = { DIGITALOCEAN_TOKEN: '', CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: options.sweep ? '0' : '1', ...env };
-  const result = await clandWithEnv(root, env, 'hub', 'start');
+  const result = options.syntheticProvider ? await clandWithProvider(root, env, options.syntheticProvider, 'hub', 'start') : await clandWithEnv(root, env, 'hub', 'start');
   let discovery: Discovery | null = null;
   try {
     discovery = await readDiscovery(root);
@@ -747,9 +761,10 @@ export async function fakeClaude(
     ...(timings.ignoreTerm ? { FAKE_CLAUDE_IGNORE_TERM: '1' } : {}),
     ...(timings.stopGraceMs ? { CLAND_STOP_GRACE_MS: String(timings.stopGraceMs) } : {}),
   };
+  const launchEnv = await accountFixtureEnvironment(env);
   const sessions = async () => {
     const out = await new Promise<string>((resolve) =>
-      execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['agents', '--json'], { env: { ...process.env, ...env }, encoding: 'utf8' }, (_err, stdout) => resolve(stdout)),
+      execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['agents', '--json'], { env: launchEnv, encoding: 'utf8' }, (_err, stdout) => resolve(stdout)),
     );
     try {
       const result = JSON.parse(out) as Awaited<ReturnType<FakeClaude['sessions']>>;

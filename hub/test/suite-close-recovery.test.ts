@@ -30,7 +30,7 @@ for (const action of ['lost', 'restart', 'cancel'] as const) test(`a sharded clo
     f.api.droplets.splice(lost, 1);
   } else if (action === 'restart') {
     await killDaemon(f.discovery.pid);
-    const restarted = await startDaemon(t, f.root, f.env);
+    const restarted = await startDaemon(t, f.root, f.env, { syntheticProvider: f.syntheticProvider });
     ui = await connectUi(t, restarted.discovery);
   } else {
     assert.equal((await ui.request({ type: 'suite.cancel', suite: q.remote![0]!.id! })).ok, true);

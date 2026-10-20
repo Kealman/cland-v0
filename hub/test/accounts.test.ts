@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { nativeProjectHub as projectHub, cland, clandWithEnv, connectUi, eventually, killDaemon, spawnSpoke, tempProject } from './harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 import { copyPreparedProject } from './prepared-project.ts';
+import type { ScratchAccountPaths } from './fixture-environment.ts';
 
 test('account list reads a scratch registry through the hub and CLI, refreshed without restart', async t => {
   const root = await tempProject(t);
@@ -37,7 +38,7 @@ test('account list reads a scratch registry through the hub and CLI, refreshed w
 
 // Harness fixtures live entirely under the scratch project and exercise real launch frames.
 
-async function fixture(t: import('node:test').TestContext, roles = '', prepared = false, extraEnv: (root: string) => Record<string, string> = () => ({}), serve: typeof projectHub = projectHub) {
+async function fixture(t: import('node:test').TestContext, roles = '', prepared = false, extraEnv: (root: string) => Record<string, string> = () => ({}), serve: typeof projectHub = projectHub, paths: (root: string) => ScratchAccountPaths = () => ({})) {
   const root = await tempProject(t);
   if (prepared) await copyPreparedProject(root);
   const config = join(root, 'config');
@@ -50,7 +51,8 @@ async function fixture(t: import('node:test').TestContext, roles = '', prepared 
   await writeFile(registry, `[accounts.codex-a]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-a'))}\n[accounts.codex-b]\nharness = "codex"\nhome = ${JSON.stringify(join(root, 'codex-b'))}\n[accounts.oc-data]\nharness = "opencode"\ndata_home = ${JSON.stringify(join(root, 'oc-data'))}\n[accounts.oc-db]\nharness = "opencode"\ndb = ${JSON.stringify(join(root, 'oc-db', 'store.db'))}\n[accounts.claude-b]\nharness = "claude-code"\n`);
   const env = { ...accountBinaries(), CLAUDE_CONFIG_DIR: join(root, 'missing-claude'), CODEX_HOME: join(root, 'codex-a'), XDG_DATA_HOME: join(root, 'oc-data'), XDG_CONFIG_HOME: config, FAKE_CODEX_HOME: codex, FAKE_CODEX_TURN_MS: '30', FAKE_CODEX_REFUSE_MS: '150', FAKE_OPENCODE_HOME: opencode, FAKE_OPENCODE_TURN_MS: '30',
     CLAND_ADAPTER_POLL_MS: '50', CLAND_INJECT_TIMEOUT_MS: '5000', ...extraEnv(root) };
-  const daemon = await serve(t, root, env);
+  const scratchAccountPaths = paths(root);
+  const daemon = await serve(t, root, env, { scratchAccountPaths });
   const { discovery } = daemon;
   const ui = await connectUi(t, discovery);
   const servers = async (harness = 'codex') => {
@@ -63,7 +65,7 @@ async function fixture(t: import('node:test').TestContext, roles = '', prepared 
     assert.equal(r.ok, true, r.error);
     return (r.value as { process: HarnessProcessView }).process;
   };
-  return { root, env, registry, ui, discovery, servers, launch, stop: daemon.stop };
+  return { root, env, scratchAccountPaths, registry, ui, discovery, servers, launch, stop: daemon.stop };
 }
 
 test('CLI account override and role defaults select Codex, record its account and carry the home on attach', async t => {
@@ -238,7 +240,7 @@ for (const harness of ['codex', 'opencode']) test(`${harness} retained Implement
 });
 
 test('an OpenCode data account overrides an inherited database selection', async t => {
-  const f = await fixture(t, '', false, root => ({ OPENCODE_DB: join(root, 'oc-db', 'inherited.db') }));
+  const f = await fixture(t, '', false, undefined, projectHub, root => ({ openCodeDatabase: join(root, 'oc-db', 'inherited.db') }));
   const p = await f.launch('data-account', { account: 'oc-data' });
   const server = (await f.servers('opencode')).find(s => s.pid === p.pid)!;
   assert.equal(server.env.XDG_DATA_HOME, join(f.root, 'oc-data'));
@@ -247,7 +249,8 @@ test('an OpenCode data account overrides an inherited database selection', async
 });
 
 for (const xdg of [true, false]) test(`unassigned OpenCode launches retain the per-user database across restart (${xdg ? 'XDG data' : 'HOME fallback'})`, async t => {
-  const f = await fixture(t, '', false, root => ({ OPENCODE_DB: join(root, 'inherited.db'), ...(!xdg ? { HOME: root, XDG_DATA_HOME: '' } : {}) }), projectHub);
+  const f = await fixture(t, '', false, () => !xdg ? { XDG_DATA_HOME: '' } : {}, projectHub,
+    root => ({ openCodeDatabase: join(root, 'inherited.db'), ...(!xdg ? { home: root } : {}) }));
   const p = await f.launch('isolated', { harness: 'opencode' });
   const database = join(f.root, ...(xdg ? ['oc-data'] : ['.local', 'share']), 'cland', 'opencode', 'opencode.db');
   const server = (await f.servers('opencode')).find(s => s.pid === p.pid)!;
@@ -258,7 +261,7 @@ for (const xdg of [true, false]) test(`unassigned OpenCode launches retain the p
   const journal = (await readFile(join(f.root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   assert.equal(journal.find(r => r.event === 'session-launched' && r.sessionId === p.sessionId)?.database, database);
   await f.stop();
-  const { discovery } = await projectHub(t, f.root, { ...f.env, XDG_DATA_HOME: join(f.root, 'changed-data') });
+  const { discovery } = await projectHub(t, f.root, { ...f.env, XDG_DATA_HOME: join(f.root, 'changed-data') }, { scratchAccountPaths: f.scratchAccountPaths });
   const ui = await connectUi(t, discovery);
   const resumed = await ui.request({ type: 'session.resume', session: p.name, relaunch: true }, 30000);
   assert.equal(resumed.ok, true, resumed.error);

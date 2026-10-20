@@ -40,7 +40,7 @@ test('prepare retries transient builder deletion failures within its release win
     assert.deepEqual(f.api.droplets, [], String(failure));
     assert.deepEqual(f.api.keys, [], String(failure));
     assert.equal(f.api.images.length, 1, String(failure));
-    assert.ok(!JSON.stringify(records).includes('sentinel-remote-suite-token'));
+    assert.ok(!JSON.stringify(records).includes('cland-test-remote-suite-token'));
     const retry = records.find(record => record.event === 'executor-release-retry');
     assert.equal(retry?.cause?.status, failure === 'timeout' ? 0 : failure === 'key-503' ? 503 : failure);
     assert.equal(retry?.cause?.id, failure === 'timeout' ? 'transport' : failure === 'key-503' ? 'key_delete_failed' : 'delete_failed');

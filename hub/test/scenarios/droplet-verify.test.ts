@@ -16,7 +16,7 @@ import { readLeases } from '../../src/executor/droplet/lease.ts';
 import { candidateTree } from '../../src/verification-tree.ts';
 
 const exec = promisify(execFile);
-const token = 'sentinel-remote-suite-token';
+const token = 'cland-test-remote-suite-token';
 
 test('remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors', async t => {
   const hostMargin = process.env.CLAND_TEST_EXECUTOR_MARGIN_MS;

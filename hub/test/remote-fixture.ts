@@ -16,10 +16,12 @@ import { cland, clandWithEnv, connectUi, eventually, inProcessSpoke, spawnSpoke,
 import { beforeDirectories, cleanupProcesses, ownProcess, onCleanup } from './process-cleanup.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { fixtureGuard } from './fixture-guard.ts';
 
 const exec = promisify(execFile);
-const token = 'sentinel-remote-suite-token';
+const token = 'cland-test-remote-suite-token';
 
 /** Failure budgets for real SSH/worker receipts, scaled by runnable work per CPU.
  * These do not delay success or advance the scripted machine's product clock. */
@@ -106,7 +108,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   // loaded suite workers; a 200 ms readiness bound can kill even their first probe.
   const machineMs = scripted ? 200 : remoteWaitMs(10_000);
   const cleanupMs = scripted ? 500 : remoteWaitMs(10_000);
-  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: token, CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: String(machineMs), CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: String(cleanupMs), CLAND_TEST_DROPLET_RELEASE_MS: String(cleanupMs), CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
+  const overrides = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, PATH: `${bin}:${process.env.PATH}`, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: String(machineMs), CLAND_TEST_DROPLET_RUN_POLL_MS: '50', CLAND_TEST_DROPLET_CANCEL_MS: String(cleanupMs), CLAND_TEST_DROPLET_RELEASE_MS: String(cleanupMs), CLAND_TEST_EXECUTOR_SWEEP_MS: '200', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '50', ...options.env };
   if (options.territory) {
     assert.ok(!scripted, 'territory provisioning is a native Git contract');
     const initialized = await cland(root, 'init');
@@ -132,7 +134,11 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
       return captured;
     },
   };
+  const syntheticProvider = { token, endpoint: api.url } as const;
+  const scriptedProvider = { token, api: api.provider } as const;
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment(overrides), scripted ? scriptedProvider : syntheticProvider, dependencies.api) as Record<string, string> & { PATH: string };
   const probes = {
+    syntheticProvider: scriptedProvider,
     // Scripted hubs cannot inspect historical Git objects without explicit repository facts.
     devT3Repository: options.devT3Repository ?? { identity: async () => null, checkout: async () => { assert.fail('no scripted historical checkout fact'); }, remove: async () => {} },
     clock, droplet: dependencies, harnesses: 'fake' as const, probes: 'fake' as const, candidate: facts, durationContext,
@@ -147,7 +153,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     }),
     readBase: async () => 'dev',
   };
-  const daemon = scripted ? await projectHub(t, root, env, probes) : await (options.hub ?? startDaemon)(t, root, env);
+  const daemon = scripted ? await projectHub(t, root, env, probes) : await (options.hub ?? startDaemon)(t, root, env, { syntheticProvider });
   if ('stop' in daemon) stopHub = daemon.stop;
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);
@@ -184,5 +190,5 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     assert.ok('verificationSettled' in daemon, 'verification I/O receipts require an in-process hub');
     return daemon.verificationSettled();
   };
-  return { candidate, durationContext, clock, waits: machine.waits, machine, dependencies, verificationSettled, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
+  return { syntheticProvider, candidate, durationContext, clock, waits: machine.waits, machine, dependencies, verificationSettled, stop: 'stop' in daemon ? daemon.stop : () => cland(root, 'hub', 'stop'), root, territory, guard, api, git, key, ui, spoke, discovery: daemon.discovery, env, actor, item, topic, launch, messages, result, remote };
 }

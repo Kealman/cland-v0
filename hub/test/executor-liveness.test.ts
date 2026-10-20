@@ -19,7 +19,7 @@ for (const phase of ['sweep', 'lease recovery'] as const) test(`status observes 
   const clock = new FakeClock();
   const sweepEntered = Promise.withResolvers<void>(), statusEntered = Promise.withResolvers<void>();
   let calls = 0;
-  const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'fixture' }, clock, async () => {
+  const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'cland-test-liveness' }, clock, async () => {
     if (++calls === 1) sweepEntered.resolve(); else statusEntered.resolve();
     return new Promise(() => {});
   });
@@ -29,7 +29,7 @@ for (const phase of ['sweep', 'lease recovery'] as const) test(`status observes 
     created: clock.now().toISOString(), deadline: new Date(clock.now().getTime() + 60000).toISOString(),
   });
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
-  const hub = await projectHub(t, root, { DIGITALOCEAN_TOKEN: 'fixture', CLAND_EXECUTOR_STATE: join(root, 'state') }, { clock, droplet: { api, processes } });
+  const hub = await projectHub(t, root, { CLAND_EXECUTOR_STATE: join(root, 'state') }, { clock, syntheticProvider: { token: 'cland-test-liveness', api }, droplet: { api, processes } });
   await sweepEntered.promise;
   const ui = await connectUi(t, hub.discovery, 'cli');
   const response = ui.request({ type: 'executor.status' });
@@ -57,9 +57,9 @@ test('status bypasses the ledger lock held during deferred reconcile', async t =
   await writeFile(lock, JSON.stringify({ pid: process.pid, started: 'fixture identity', token: 'other-work' }));
   const attempted = Promise.withResolvers<void>();
   const waiting = { ...processes, alive: () => { attempted.resolve(); return true; } };
-  const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'fixture' }, clock, async () => ({ droplets: [], ssh_keys: [] }));
+  const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'cland-test-liveness' }, clock, async () => ({ droplets: [], ssh_keys: [] }));
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
-  const hub = await projectHub(t, root, { DIGITALOCEAN_TOKEN: 'fixture', CLAND_EXECUTOR_STATE: state }, { clock, droplet: { api, processes: waiting } });
+  const hub = await projectHub(t, root, { CLAND_EXECUTOR_STATE: state }, { clock, syntheticProvider: { token: 'cland-test-liveness', api }, droplet: { api, processes: waiting } });
   await attempted.promise;
   const ui = await connectUi(t, hub.discovery, 'cli');
   const response = await ui.request({ type: 'executor.status' }, 1000);
@@ -90,14 +90,14 @@ test('930-job legacy history serves status within the component bound during a s
   seeded.setMeta('suite-jobs', legacy); seeded.close();
   const entered = [Promise.withResolvers<void>(), Promise.withResolvers<void>()];
   let calls = 0;
-  const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'fixture' }, clock, async () => {
+  const api = new DigitalOceanApi({ DIGITALOCEAN_TOKEN: 'cland-test-liveness' }, clock, async () => {
     entered[calls++]?.resolve(); return new Promise(() => {});
   });
   t.mock.method(LocalExecutor.prototype, 'reap', async () => {});
   // Timing is diagnostic evidence; the test's component timeout and real RPC
   // deadline enforce the bound. Product timers advance only through FakeClock.
   const starting = performance.now();
-  const hub = await projectHub(t, root, { DIGITALOCEAN_TOKEN: 'fixture', CLAND_EXECUTOR_STATE: join(root, 'state') }, { clock, droplet: { api, processes } });
+  const hub = await projectHub(t, root, { CLAND_EXECUTOR_STATE: join(root, 'state') }, { clock, syntheticProvider: { token: 'cland-test-liveness', api }, droplet: { api, processes } });
   const servingMs = performance.now() - starting;
   await entered[0]!.promise;
   const ui = await connectUi(t, hub.discovery, 'cli');

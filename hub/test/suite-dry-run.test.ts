@@ -38,7 +38,7 @@ async function planted(t: TestContext) {
 
 test('CLI dry-run prints admission and planned tiers without queueing or reserving spend', async t => {
   const root = await planted(t);
-  const api = await fakeDigitalOcean('dry-run-fixture');
+  const api = await fakeDigitalOcean('cland-test-dry-run-fixture');
   onCleanup(t, () => api.close());
   const spend = join(root, '.cland/executor-state/spend.json');
   // Settle startup bookkeeping before taking the byte-for-byte spend baseline.
@@ -49,7 +49,7 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   await git('config', 'user.name', 'Tier fixture'); await git('config', 'user.email', 'fixture@example.invalid');
   await git('add', '.'); await git('commit', '-qm', 'planted baseline');
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nworkers=2\n[verification.droplet]\nsize="c-8"\nregions=["lon1"]\n');
-  const { discovery } = await projectHub(t, root, { DIGITALOCEAN_TOKEN: 'dry-run-fixture', CLAND_DIGITALOCEAN_API: api.url });
+  const { discovery } = await projectHub(t, root, {}, { syntheticProvider: { token: 'cland-test-dry-run-fixture', endpoint: api.url } });
   const ui = await connectUi(t, discovery);
   const before = (await ui.request({ type: 'hub.status' })).value as HubStatus;
   const beforeSpend = await readFile(spend, 'utf8').catch(() => null);

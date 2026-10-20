@@ -14,7 +14,7 @@ import type { HubStatus } from '../src/protocol.ts';
 import { fixture, remoteEventually as eventually } from './remote-fixture.ts';
 
 const exec = promisify(execFile);
-const token = 'sentinel-remote-suite-token';
+const token = 'cland-test-remote-suite-token';
 
 for (const dirty of ['tracker', 'source'] as const) test(`remote delivery ${dirty === 'tracker' ? 'bundles committed tracker state despite later tracker writes' : 'refuses and names source changes after submission'}`, async t => {
   const f = await fixture(t, { hub: projectHub });
@@ -105,7 +105,7 @@ test('incremental byte logs survive SSH failure and hub restart and report once'
   assert.equal((await f.messages(job.id)).length, 0);
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   await f.api.setMachineFaults({ sshFailures: 0 });
-  const restarted = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restarted.discovery);
+  const restarted = await startDaemon(t, f.root, f.env, { syntheticProvider: f.syntheticProvider }); const ui = await connectUi(t, restarted.discovery);
   await eventually('reattached live run', async () => { const status = (await ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(s => s.id === job.id)?.state === 'running' ? true : undefined; });
   assert.equal(f.api.droplets.length, 1); assert.equal((await f.messages(job.id, ui)).length, 0);
   await writeFile(join(remote.home, 'finish'), 'done');
@@ -149,7 +149,7 @@ test('restart reloads the lease after admission and never redelivers or cleans t
     stale.state = 'launching'; delete stale.lease.execution;
     db.prepare("update meta set value = ? where key = 'suite-jobs'").run(JSON.stringify(jobs));
   } finally { db.close(); }
-  const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
+  const restart = await startDaemon(t, f.root, f.env, { syntheticProvider: f.syntheticProvider }); const ui = await connectUi(t, restart.discovery);
   await eventually('restored job running', async () => ((await ui.request({ type: 'hub.status' })).value as HubStatus).suites!.find(run => run.id === job.id)?.state === 'running' ? true : undefined);
   assert.equal(await readFile(join(remote.home, 'cland/live-checkout-evidence'), 'utf8'), 'must survive restart');
   assert.equal(await readFile(join(remote.run, 'pgid'), 'utf8'), pgid);
@@ -186,7 +186,7 @@ test('a restored launching suite reuses only an existing ref at the same head', 
     await f.git('update-ref', ref, existing);
     await writeFile(gate, 'released');
     await f.api.setMachineFaults({ blockCommand: '' });
-    const restart = await startDaemon(t, f.root, f.env); discovery = restart.discovery; const ui = await connectUi(t, discovery);
+    const restart = await startDaemon(t, f.root, f.env, { syntheticProvider: f.syntheticProvider }); discovery = restart.discovery; const ui = await connectUi(t, discovery);
     if (kind === 'same head') {
       const remote = await f.remote(job.id, ui);
       await writeFile(join(remote.home, 'finish'), 'done');

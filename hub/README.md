@@ -3073,6 +3073,23 @@ either `/tmp/cland-suite.lock` or `/tmp/cland-suite-nvim.lock`.
 
 ### Trying setup on a scratch machine
 
+Shared hub test launches use `test/fixture-environment.ts`, through
+`accountFixtureEnvironment(extra)` in the worker harness. They own scratch HOME,
+XDG/account paths and Git configuration, discard inherited Git overrides and
+identities, and filter provider/account credentials after the final overlay.
+They also remove ambient SSH-agent/askpass and package-manager credential config
+handles. Account product tests use a separate `scratchAccountPaths` dependency
+for deliberate HOME/database inputs, validated inside the disposable project.
+Pass explicit scratch profiles and fixture identities as extras; do not add an
+overlay after the builder returns. The manual `test/inbox-load.ts` probe uses
+the same builder. Its root, including HOME, is removed after the served hub stops.
+Fake-provider contracts opt in separately through the typed `syntheticProvider`
+fixture dependency or `clandWithProvider`: only `cland-test-…` sentinel tokens
+with an explicit HTTP loopback endpoint and port or the injected fake API qualify.
+Credential overlays in the normal builder remain filtered.
+See [Fixtures](../docs/agents/tests.md#fixtures) for the T1 poisoned-parent proof
+and the deliberate synthetic-auth native adapter contract.
+
 `node --test hub/test/scenarios/setup.test.ts` runs the complete setup scenario
 through a pseudo-terminal: missing Codex, signed-out Claude Code, a declined
 account profile, a stand-in workbench launcher, and one real scratch hub/Aide.

@@ -10,9 +10,12 @@ import { Store } from '../src/hub/store.ts';
 import { serveProject } from '../src/hub/daemon.ts';
 import { createStdioEdge } from '../src/hub/stdio.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 const pause = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 const root = await mkdtemp(join(tmpdir(), 'cland-inbox-load-'));
+const env = fixtureEnvironment(root, process.env, { CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_ADAPTER_POLL_MS: '60000' });
+for (const key of ['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'CLAND_EXECUTOR_STATE']) await mkdir(env[key]!, { recursive: true });
 await mkdir(join(root, '.cland'));
 const db = join(root, '.cland/hub.db'), ts = new Date().toISOString();
 const seed = new Store(db);
@@ -43,7 +46,7 @@ const openDatabase = (path: string) => {
   };
   return db;
 };
-const daemon = await serveProject(root, { openDatabase, log: () => {}, env: { ...process.env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_ADAPTER_POLL_MS: '60000' } });
+const daemon = await serveProject(root, { openDatabase, log: () => {}, env });
 const clients: Array<() => void> = [];
 function client(hello: Record<string, unknown>) {
   const input = new PassThrough(), output = new PassThrough();

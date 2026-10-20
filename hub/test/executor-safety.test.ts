@@ -56,7 +56,7 @@ test('the remote shell and the host deadline both end a timed-out run once and r
         jobs.find((job: { id: string }) => job.id === run.id).lease = record.value;
         db.prepare("update meta set value=? where key='suite-jobs'").run(JSON.stringify(jobs));
       } finally { db.close(); }
-      const restarted = await projectHub(t, f.root, f.env); const ui = await connectUi(t, restarted.discovery);
+      const restarted = await projectHub(t, f.root, f.env, { syntheticProvider: f.syntheticProvider }); const ui = await connectUi(t, restarted.discovery);
       assert.match((await f.result(run.id, ui)).text, /run timeout 5m/); assert.equal((await f.messages(run.id, ui)).length, 1);
     } else { assert.match((await f.result(run.id)).text, /run timeout 2s/); assert.equal((await f.messages(run.id)).length, 1); }
     assert.deepEqual(f.api.droplets, []); assert.deepEqual(f.api.keys, []);
@@ -98,10 +98,10 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   f.api.faults.create = 0;
   const crash = await f.launch('--fresh'); await f.remote(crash.id);
   const lines = (await exec('ps', ['-ww', '-e', '-o', 'pid=,ppid=,command='])).stdout;
-  assert.ok(!lines.includes('sentinel-remote-suite-token'));
+  assert.ok(!lines.includes('cland-test-remote-suite-token'));
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
   await eventually('watchdog deleted after stopped hub', () => f.api.droplets.length === 0 && f.api.keys.length === 0 ? true : undefined, 25000);
-  const restart = await startDaemon(t, f.root, f.env); const ui = await connectUi(t, restart.discovery);
+  const restart = await startDaemon(t, f.root, f.env, { syntheticProvider: f.syntheticProvider }); const ui = await connectUi(t, restart.discovery);
   assert.match((await f.result(crash.id, ui)).text, /remote machine lifetime expired/);
   assert.equal((await f.messages(crash.id, ui)).length, 1);
   // The shortened lifetime can publish the crash result while restart recovery
@@ -126,9 +126,9 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
     for (const entry of await readdir(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       if (entry.isDirectory()) await scan(path);
-      else if (entry.isFile()) assert.ok(!(await readFile(path)).includes(Buffer.from('sentinel-remote-suite-token')), `sentinel absent: ${entry.name}`);
+      else if (entry.isFile()) assert.ok(!(await readFile(path)).includes(Buffer.from('cland-test-remote-suite-token')), `sentinel absent: ${entry.name}`);
     }
   };
   await scan(join(f.root, '.cland')); await scan(f.api.stateRoot);
-  assert.ok(!JSON.stringify(f.api.requests).includes('sentinel-remote-suite-token'));
+  assert.ok(!JSON.stringify(f.api.requests).includes('cland-test-remote-suite-token'));
 });

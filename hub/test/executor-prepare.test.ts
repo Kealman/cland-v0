@@ -7,6 +7,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { syntheticProviderEnvironment } from './synthetic-provider.ts';
 import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import type { TestContext } from 'node:test';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
@@ -56,7 +58,7 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
     assert.deepEqual(key, { node: process.version, base: await git(root, 'rev-parse', 'HEAD') });
     await rm(join(root, 'nvim'), { recursive: true });
     const clock = new FakeClock();
-    const api = await fakeDigitalOcean('sentinel-pinless', { machine: 'scripted', clock });
+    const api = await fakeDigitalOcean('cland-test-pinless', { machine: 'scripted', clock });
     let stopHub = async () => {};
     beforeDirectories(t, async () => { try { await stopHub(); } finally { await api.close(); } });
     const machine = scriptedMachine(root, clock, key);
@@ -66,8 +68,8 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
       result: async (_lease: unknown, command: string) => { commands.push(command); return { stdout: command.includes("echo 'prepare: not set'") ? 'prepare: not set\n' : '', stderr: '', code: 0 }; },
       put: async () => {},
     } };
-    const env = { DIGITALOCEAN_TOKEN: 'sentinel-pinless', CLAND_EXECUTOR_STATE: join(root, '.cland/state') };
-    const hub = await componentHub(t, root, env, { clock, droplet: dependencies });
+    const env = { DIGITALOCEAN_TOKEN: 'cland-test-pinless', CLAND_EXECUTOR_STATE: join(root, '.cland/state') };
+    const hub = await componentHub(t, root, env, { clock, droplet: dependencies, syntheticProvider: { token: 'cland-test-pinless', api: api.provider } });
     stopHub = () => drive(machine, hub.stop());
     const ui = await connectUi(t, hub.discovery);
     const submitted = await clandWithEnv(root, {}, 'executor', 'prepare', '--json');
@@ -166,9 +168,11 @@ async function fixture(t: TestContext, overrides: Record<string, string> = {}, s
   await git(root, 'add', '.'); await git(root, 'commit', '-qm', 'Base');
   await git(territory, 'init', '--bare', '-q');
   await git(root, 'remote', 'add', 'origin', territory); await git(root, 'push', '-qu', 'origin', 'dev');
-  const api = await fakeDigitalOcean('sentinel-prepare'); onCleanup(t, () => api.close());
-  const env = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), DIGITALOCEAN_TOKEN: 'sentinel-prepare', CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50', ...overrides };
-  const served = await serve(t, root, env);
+  const api = await fakeDigitalOcean('cland-test-prepare'); onCleanup(t, () => api.close());
+  const overridesEnv = { CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_DIGITALOCEAN_API: api.url, CLAND_SSH_BIN: resolve('hub/test/fakes/digitalocean/ssh'), CLAND_SCP_BIN: resolve('hub/test/fakes/digitalocean/scp'), CLAND_TEST_FAKE_MACHINE_ROOT: api.stateRoot, CLAND_TEST_DROPLET_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000', CLAND_TEST_DROPLET_RELEASE_MS: '500', CLAND_TEST_EXECUTOR_SWEEP_MS: '50', ...overrides };
+  const syntheticProvider = { token: 'cland-test-prepare', endpoint: api.url } as const;
+  const env = syntheticProviderEnvironment(await accountFixtureEnvironment(overridesEnv), syntheticProvider) as Record<string, string>;
+  const served = await serve(t, root, env, { syntheticProvider });
   const { discovery } = served;
   const ui = await connectUi(t, discovery);
   const stop = () => 'stop' in served ? served.stop() : clandWithEnv(root, env, 'hub', 'stop');
@@ -196,7 +200,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
     assert.equal(api.images.length, 1); assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
     const builder = api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!;
     assert.equal(builder.image, 'ubuntu-24-04-x64');
-    assert.match(String(builder.user_data), /NODE_VERSION=v/); assert.doesNotMatch(String(builder.user_data), /\bacct\b|sentinel-prepare/);
+    assert.match(String(builder.user_data), /NODE_VERSION=v/); assert.doesNotMatch(String(builder.user_data), /\bacct\b|cland-test-prepare/);
     assert.match(String(builder.user_data), /NVIM_VERSION=v0\.12\.5/);
     assert.match(String(builder.user_data), /curl[^\n]*neovim\/neovim\/releases/);
     assert.deepEqual(api.images[0]!.regions, ['lon1', 'nyc1', 'sfo2']);
@@ -208,7 +212,7 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
     const notices = history.messages.filter(message => message.from === 'hub' && message.text.startsWith('snapshot prepared:'));
     assert.equal(notices.length, 1);
     assert.match(notices[0]!.text, /key .*regions .*duration .*builder lifetime .*cost /s);
-    assert.ok(!JSON.stringify(history).includes('sentinel-prepare'));
+    assert.ok(!JSON.stringify(history).includes('cland-test-prepare'));
     const installCalls = await readFile(join(api.stateRoot, 'machine-calls.jsonl'), 'utf8');
     assert.ok(installCalls.includes('npm ci'));
     assert.ok(installCalls.includes('CLAND_PREPARE_KEY='));
@@ -242,15 +246,15 @@ test('prepare builds a reusable snapshot, reports its key and replaces it after 
   const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
   assert.match(journal, /executor-prepared/);
   const calls = await readFile(join(api.stateRoot, 'machine-calls.jsonl'), 'utf8');
-  assert.ok(!calls.includes('sentinel-prepare'));
-  assert.ok(!journal.includes('sentinel-prepare'));
-  assert.ok(!(await readFile(join(root, '.cland/log/hub.log'), 'utf8')).includes('sentinel-prepare'));
-  assert.ok(!JSON.stringify(api.requests).includes('sentinel-prepare'));
+  assert.ok(!calls.includes('cland-test-prepare'));
+  assert.ok(!journal.includes('cland-test-prepare'));
+  assert.ok(!(await readFile(join(root, '.cland/log/hub.log'), 'utf8')).includes('cland-test-prepare'));
+  assert.ok(!JSON.stringify(api.requests).includes('cland-test-prepare'));
   const scan = async (directory: string): Promise<void> => {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await scan(path);
-      else if (entry.isFile()) assert.ok(!(await readFile(path)).includes(Buffer.from('sentinel-prepare')), `token absent from ${entry.name}`);
+      else if (entry.isFile()) assert.ok(!(await readFile(path)).includes(Buffer.from('cland-test-prepare')), `token absent from ${entry.name}`);
     }
   };
   for (const directory of api.machineDirs.values()) await scan(directory);
@@ -293,7 +297,7 @@ test('hub stop cancels and drains preparation before closing its store and prese
   }, 10000);
   assert.equal((await ui.request({ type: 'hub.stop' })).ok, true);
   await eventually('hub drains its preparation and exits', () => !pidAlive(discovery.pid) ? true : undefined, 10000);
-  const restarted = await startDaemon(t, root, env);
+  const restarted = await startDaemon(t, root, env, { syntheticProvider: { token: 'cland-test-prepare', endpoint: api.url } });
   const next = await connectUi(t, restarted.discovery);
   const history = (await next.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string }[] };
   assert.equal(history.messages.filter(message => message.text.startsWith('snapshot prepare failed:')).length, 1);

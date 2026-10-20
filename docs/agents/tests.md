@@ -665,6 +665,42 @@ map, before/after file seconds and process-start call sites in the review eviden
 
 ## Fixtures
 
+Rule 15: shared hub fixtures use `hub/test/fixture-environment.ts` to replace
+inherited HOME, XDG, account roots and Git configuration with worker-owned scratch
+paths. Git system/config injection and inherited identities are removed.
+Ambient SSH-agent, askpass, npm/yarn configuration and other credential-file
+handles are removed from both parent input and extras too.
+`accountFixtureEnvironment(extra)` admits the worker and applies that builder;
+use its complete result for child launches, with no later environment overlays.
+Explicit profile/fake paths and Git identities must be scratch-owned. Provider
+and account credentials are filtered after extras, including the shared
+`withoutExecutorCredentials` filter. HOME and Git configuration cannot be
+overridden. Raw launches that bypass the builder still need their own sealed
+environment; there is no repository-wide raw-spawn guard yet.
+Account product contracts may supply `projectHub`'s typed `scratchAccountPaths`
+dependency for HOME fallback and a conflicting OpenCode database. Both paths
+must be absolute and contained in that fixture's disposable project. Ordinary
+HOME/OPENCODE_DB extras stay sealed; these explicit inputs preserve default,
+exclusion and restart assertions without exposing a machine account.
+
+The pure T1 poisoned-parent/overlay test is `fixture-environment.test.ts`.
+`claude-code-accounts.test.ts` deliberately injects three synthetic auth variables
+at the native adapter seam to prove default-account inheritance and named-account
+exclusion. Such credential-handling tests never inject into shared fixture defaults
+or use real credentials. Diagnostics print variable names or counts, never values.
+Provider contracts use the separate typed `syntheticProvider` fixture dependency
+(`projectHub`/`startDaemon`) or `clandWithProvider` for the provider CLI. It accepts
+only `cland-test-…` sentinel tokens, paired with an explicit HTTP loopback endpoint
+with a port, or the exact fake API injected through `droplet.api` for an embedded
+hub. Arbitrary env extras cannot enable this exception. `synthetic-provider.ts`
+validates the dependency before adding its sentinel to a sealed environment;
+its pure rejection proof lives in `fixture-environment.test.ts`.
+Migrated seams are the remote fixture and its restart callers, executor lifecycle,
+executor liveness, native/component preparation (including reopen paths), and
+suite dry-run contracts.
+The manual `inbox-load.ts` probe uses the same pure builder under its disposable
+project; run it only on a quiet machine through the project's load policy.
+
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
 default. Each test serves its own project through `serveProject` in the test
 process, with normal discovery, Unix socket and WebSocket edges. Real CLI

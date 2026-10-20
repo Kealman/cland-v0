@@ -1,0 +1,65 @@
+// T1: pure child-environment construction, no processes or machine state.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { fixtureEnvironment, scratchAccountEnvironment } from './fixture-environment.ts';
+import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
+import type { Provider } from '../src/executor/droplet/dependencies.ts';
+
+test('shared fixture environments seal poisoned parent and overlay credentials and Git config', () => {
+  // As in setup-machine's poisoned-HOME self-test, every poison is synthetic.
+  const poison = Object.fromEntries([
+    'HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME',
+    'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM', 'GIT_CONFIG_COUNT', 'GIT_CONFIG_KEY_0', 'GIT_CONFIG_VALUE_0', 'GIT_CONFIG_PARAMETERS', 'GIT_DIR', 'GIT_WORK_TREE',
+    'DIGITALOCEAN_TOKEN', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN', 'OPENCODE_AUTH_JSON',
+    'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'GOOGLE_APPLICATION_CREDENTIALS', 'GEMINI_API_KEY', 'GITHUB_TOKEN', 'GH_TOKEN',
+    'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'SSH_ASKPASS', 'NPM_CONFIG_USERCONFIG', 'npm_config_userconfig', 'NPM_CONFIG_GLOBALCONFIG', 'NPM_TOKEN', 'NODE_AUTH_TOKEN',
+    'YARN_RC_FILENAME', 'PNPM_HOME', 'BASH_ENV', 'ENV', 'ZDOTDIR', 'KRB5CCNAME', 'GNUPGHOME',
+    'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'OPENCODE_DB', 'CLAND_EXECUTOR_STATE', 'GIT_AUTHOR_NAME',
+  ].map(key => [key, 'poison']));
+  const overlay = { ...poison };
+  // Explicit scratch profile overrides are supported, as native account tests need them.
+  for (const key of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAND_EXECUTOR_STATE', 'GIT_AUTHOR_NAME']) delete overlay[key];
+  const before = { ...poison };
+  for (const extra of [{}, overlay]) {
+    const env = fixtureEnvironment('/scratch', { ...poison, PATH: '/test-bin', NODE_V8_COVERAGE: '/coverage' }, extra);
+    for (const [key, expected] of Object.entries({
+      HOME: '/scratch/home', GIT_CONFIG_GLOBAL: '/scratch/home/.gitconfig', GIT_CONFIG_NOSYSTEM: '1',
+      XDG_CONFIG_HOME: '/scratch/config', XDG_DATA_HOME: '/scratch/opencode', XDG_STATE_HOME: '/scratch/state', XDG_CACHE_HOME: '/scratch/cache',
+      CODEX_HOME: '/scratch/codex', CLAUDE_CONFIG_DIR: '/scratch/claude', CLAND_EXECUTOR_STATE: '/scratch/executor-state',
+      PATH: '/test-bin', NODE_V8_COVERAGE: '/coverage',
+    })) assert.ok(env[key] === expected, key);
+    for (const key of Object.keys(poison)) {
+      if (!['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'GIT_CONFIG_GLOBAL', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAND_EXECUTOR_STATE'].includes(key)) assert.ok(!(key in env), key);
+    }
+  }
+  assert.ok(Object.keys(poison).every(key => poison[key] === before[key]), 'parent is unchanged');
+});
+
+test('deliberate account paths stay under the disposable project without opening credential overlays', () => {
+  const base = fixtureEnvironment('/scratch', { HOME: '/poison' });
+  const env = scratchAccountEnvironment('/scratch/project', base, { home: '/scratch/project', openCodeDatabase: '/scratch/project/inherited.db' });
+  assert.ok(env.HOME === '/scratch/project', 'HOME');
+  assert.ok(env.OPENCODE_DB === '/scratch/project/inherited.db', 'OPENCODE_DB');
+  assert.ok(env.GIT_CONFIG_GLOBAL === base.GIT_CONFIG_GLOBAL, 'Git config remains isolated');
+  assert.ok(base.HOME === '/scratch/home' && !('OPENCODE_DB' in base), 'sealed parent unchanged');
+  for (const path of ['/host', '../host', '/scratch/project/../../host', '/scratch/project-sibling']) {
+    assert.throws(() => scratchAccountEnvironment('/scratch/project', base, { home: path }), /disposable project: HOME/);
+    assert.throws(() => scratchAccountEnvironment('/scratch/project', base, { openCodeDatabase: path }), /disposable project: OPENCODE_DB/);
+  }
+});
+
+test('synthetic provider credentials require a sentinel and an isolated transport', () => {
+  const base = fixtureEnvironment('/scratch', { DIGITALOCEAN_TOKEN: 'poison' });
+  const token = 'cland-test-provider';
+  const endpoint = 'http://127.0.0.1:12345';
+  const api = {} as Provider; // Transport identity only; this pure test never invokes it.
+  assert.ok(syntheticProviderEnvironment(base, { token, endpoint }).DIGITALOCEAN_TOKEN === token, 'loopback sentinel');
+  assert.ok(syntheticProviderEnvironment(base, { token, api }, api).DIGITALOCEAN_TOKEN === token, 'injected API sentinel');
+  assert.ok(!('DIGITALOCEAN_TOKEN' in base), 'sealed parent remains unchanged');
+  for (const endpoint of ['https://api.digitalocean.com', 'http://localhost:12345', 'http://127.0.0.1', 'http://user:pass@127.0.0.1:12345', 'invalid']) {
+    assert.throws(() => syntheticProviderEnvironment(base, { token, endpoint }), /loopback HTTP endpoint/);
+  }
+  assert.throws(() => syntheticProviderEnvironment(base, { token: 'poison' as SyntheticProvider['token'], endpoint }), /sentinel token/);
+  assert.throws(() => syntheticProviderEnvironment(base, { token, api }), /injected fake API/);
+  assert.throws(() => syntheticProviderEnvironment(base, { token, api }, {} as Provider), /injected fake API/);
+});

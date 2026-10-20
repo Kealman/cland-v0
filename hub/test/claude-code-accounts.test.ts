@@ -1,6 +1,7 @@
 // T3: native Claude supervisor contract: per-directory commands, authentication hooks, PID discovery and re-find after hub teardown.
 // FakeClock owns directory schedules; child transport deadlines remain real.
-import { accountClaude } from './account-fixture-env.ts';
+import { accountClaude, accountFixtureEnvironment } from './account-fixture-env.ts';
+import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
 import { FakeClock } from './fake-clock.ts';
 import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,9 +21,16 @@ async function fixture(t: TestContext, extraEnv: Record<string, string> = {}) {
   for (const dir of [...Object.values(dirs), join(config, 'cland')]) await mkdir(dir, { recursive: true });
   const registry = join(config, 'cland', 'accounts.toml');
   await writeFile(registry, Object.entries(dirs).filter(([name]) => name !== 'default').map(([name, dir]) => `[accounts.claude-${name}]\nharness = "claude-code"\nconfig_dir = ${JSON.stringify(dir)}\n`).join(''));
-  const env: Record<string, string> = { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth', ...extraEnv };
+  const env: Record<string, string> = { ...fake.env, XDG_CONFIG_HOME: config, CLAUDE_CONFIG_DIR: dirs.default, ...extraEnv };
   const clock = new FakeClock(Date.now());
-  const daemon = await projectHub(t, root, env, { clock });
+  const sealed = await accountFixtureEnvironment(env);
+  // Deliberate synthetic credentials at the native adapter seam test account
+  // inheritance. Shared fixture/child environments never accept credentials.
+  const daemon = await projectHub(t, root, env, { clock, adapters: [(host, clock) => new ClaudeCodeAdapter(host, {
+    clock, env: { ...sealed, ANTHROPIC_API_KEY: 'fake-key', ANTHROPIC_AUTH_TOKEN: 'fake-auth', CLAUDE_CODE_OAUTH_TOKEN: 'fake-oauth' },
+    pollMs: Number(env.CLAND_ADAPTER_POLL_MS), agentsMs: Number(env.CLAND_CLAUDE_AGENTS_MS ?? 30000),
+    injectTimeoutMs: Number(env.CLAND_INJECT_TIMEOUT_MS), stopGraceMs: Number(env.CLAND_STOP_GRACE_MS ?? 5000),
+  })] });
   const { discovery } = daemon;
   const ui = await connectUi(t, discovery);
   const jobs = async () => Promise.all((await readdir(join(fake.home, 'jobs'))).filter(file => /^[^.]+\.json$/.test(file)).map(async file => JSON.parse(await readFile(join(fake.home, 'jobs', file), 'utf8')) as { id: string; sessionId: string; name: string; configDir: string; authVariables: string[]; resume: boolean }));

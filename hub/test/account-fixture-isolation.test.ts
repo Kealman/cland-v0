@@ -33,7 +33,7 @@ import { serveProject } from ${JSON.stringify(daemon)};
 import { onCleanup, ownProcess } from ${JSON.stringify(cleanup)};
 test('all startup paths are isolated', async t => {
   const roots = await Promise.all(Array.from({length: 3}, () => tempProject(t)));
-  assert.equal(process.env.DIGITALOCEAN_TOKEN, '', 'fixture startup must clear the inherited provider token');
+  assert.equal(process.env.DIGITALOCEAN_TOKEN, undefined, 'fixture startup must remove the inherited provider token');
   assert.notEqual(process.env.CLAND_EXECUTOR_STATE, ${JSON.stringify(executorState)}, 'fixture startup must replace inherited executor state');
   assert.equal(dirname(process.env.CLAND_EXECUTOR_STATE), dirname(process.env.XDG_CONFIG_HOME), 'executor state must belong to the worker fixture');
   assert.equal(process.env.XDG_STATE_HOME, join(dirname(process.env.XDG_CONFIG_HOME), 'state'), 'fallback state must belong to the worker fixture');

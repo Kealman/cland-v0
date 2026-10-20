@@ -8,9 +8,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ownDirectory } from './process-cleanup.ts';
 import { drainFixtureWork } from './case-deadlines.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 let initialization: Promise<void> | undefined;
 let cleanup: (() => Promise<void>) | undefined;
+let fixtureRoot: string;
 // Register at worker scope, not inside the first caller's test. A pure importer
 // owns no directory, so its callback has no resource work to perform.
 after(async () => { await drainFixtureWork(); await cleanup?.(); });
@@ -26,30 +28,24 @@ async function initialize(): Promise<void> {
   // Keep AdmissionTimeout intact so runners classify infrastructure failures.
   await assertTestAdmission();
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-account-fixture-')));
+  fixtureRoot = root;
   cleanup = ownDirectory(undefined, root);
-  const config = join(root, 'config');
-  const claude = join(root, 'claude');
-  const codex = join(root, 'codex');
-  const data = join(root, 'opencode');
-  const state = join(root, 'state');
-  const executor = join(root, 'executor-state');
-  for (const path of [join(config, 'cland'), claude, codex, data, state, executor]) await mkdir(path, { recursive: true });
+  const env = fixtureEnvironment(root, process.env);
+  for (const key of ['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'CLAUDE_CONFIG_DIR', 'CODEX_HOME', 'CLAND_EXECUTOR_STATE']) await mkdir(env[key]!, { recursive: true });
+  await mkdir(join(env.XDG_CONFIG_HOME!, 'cland'), { recursive: true });
   // Direct serveProject and raw CLI fixtures inherit this worker environment.
   // Never let their startup sweep acquire the host ledger or use its provider token.
-  process.env.DIGITALOCEAN_TOKEN = '';
-  process.env.CLAND_EXECUTOR_STATE = executor;
-  process.env.XDG_STATE_HOME = state;
-  process.env.XDG_CONFIG_HOME = config;
-  process.env.CLAUDE_CONFIG_DIR = claude;
-  process.env.CODEX_HOME = codex;
-  process.env.XDG_DATA_HOME = data;
-  delete process.env.OPENCODE_DB;
-  process.env.FAKE_CLAUDE_HOME = join(root, 'fake-claude');
-  process.env.FAKE_CODEX_HOME = join(root, 'fake-codex');
-  process.env.FAKE_OPENCODE_HOME = join(root, 'fake-opencode');
-  // A launched Implementer can carry real binary overrides; none is a fixture default.
+  // Keep runner/admission controls in the worker itself; child builders strip them.
+  for (const key of Object.keys(process.env)) if (!key.startsWith('CLAND_') && !(key in env)) delete process.env[key];
+  Object.assign(process.env, env);
   for (const key of ['CLAND_CLAUDE_BIN', 'CLAND_CODEX_BIN', 'CLAND_OPENCODE_BIN']) delete process.env[key];
   process.env.PATH = accountBinaries().PATH!;
+}
+
+/** Complete sealed launch environment. Apply extras here, never after this call. */
+export async function accountFixtureEnvironment(extra: NodeJS.ProcessEnv = {}): Promise<Record<string, string>> {
+  await ensureAccountFixture();
+  return fixtureEnvironment(fixtureRoot, process.env, extra);
 }
 
 /** One native-binary selection shared by the account contract fixtures. */
