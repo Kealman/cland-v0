@@ -61,7 +61,13 @@ commands. It exits 1 while a step is open or failed, 0 when all applicable steps
 are ready, and 130 on cancelled input. A running hub and Aide can be detected
 without a terminal. Explicit flags can permit the actions described above.
 
-The workbench opens on the Aide, who leads the Onboarding: who decides what, a first plan you can see, the crew and a Welcome note; on your ok, the Aide commits and pushes the results and starts the Coordinator, then offers the Tour.
+Setup opens the workbench with `CLAND_OPEN_SESSION=aide-1`. Once the hub lists
+that session, the workbench opens its terminal in the centre in Terminal mode,
+once. `CLAND_OPEN_SESSION` can name another opening session; it is removed at
+startup before any child inherits it. An unknown name waits quietly, and a
+saved restart view takes precedence.
+
+The Aide leads the Onboarding: who decides what, a first plan you can see, the crew and a Welcome note; on your ok, the Aide commits and pushes the results and starts the Coordinator, then offers the Tour.
 
 To reopen the workbench later, run `cland` in your project folder.
 
@@ -1042,6 +1048,10 @@ the release's dry run; `cland release` does not write the version.
 Run `cland setup [dir]` after `cland init`. It uses the current directory or the
 explicit directory, refuses a discovered parent and HOME, and stops with
 "run cland init first" when `.cland/` is absent.
+
+When setup hands over to the workbench, it sets `CLAND_OPEN_SESSION=aide-1`
+so the Aide's terminal opens in the centre once the hub lists it. `--attach`
+attaches in the current terminal instead; `--no-aide` skips the handover.
 
 Setup currently detects the project, then Claude Code, Codex and OpenCode, then
 the installed harnesses' logins, then records the favourite harness and grants
@@ -2706,7 +2716,8 @@ With `tiers.json` and `[merge] queue = true` in both the candidate and hosting
 hub, task verification plans T0 (check), all T1, coverage-selected hub T2 and
 diff-selected Neovim T2. Coverage fallbacks run all T2 across both packages,
 clearing inherited Neovim subsets. Task plans exclude T3/T4, including process
-smoke; results say `T3: in the merge batch` with the queue state. Explicit `all`
+smoke; results name whether T3 is in the merge batch or deferred to periodic dev
+and integrated occasions, with the queue state. Explicit `all`
 retains T3. A flaky-gate second task receipt uses the same mode-free selection.
 Projects with the queue disabled or absent, and legacy candidates without
 `tiers.json`, retain their previous plan.
@@ -2719,9 +2730,12 @@ Changes wholly in the documentation/tracker allowlist still land immediately;
 skills and role configuration go through the queue.
 
 The hub takes `[merge] batch` entries (default 3) when full or after `batch_wait`
-(default `"10m"`). It checks the immutable merged candidate and runs T1/T3 on
-one slot, with five repetitions for T3 identities absent from the last green
-batch or stage receipt. Green candidates land in FIFO order. Red batches rerun
+(default `"10m"`). It checks the immutable merged candidate on one slot using
+`[merge] batch_tiers`, a nonempty set of T1–T4 tiers. Its default is
+`["T1", "T3"]`; this repository sets `["T1"]` (D67). When T3 is selected,
+identities absent from the last green batch or stage receipt get five
+repetitions. A green T1-only batch supplies no T3 receipt.
+Green candidates land in FIFO order. Red batches rerun
 failing files on leave-one-out trees: `merge-bisected` rejects a unique culprit
 (or a red singleton). Without a unique green removal, one original-tree repeat
 can supply green proof; otherwise `merge-bisect-unresolved` rejects every member
@@ -2729,6 +2743,23 @@ and notifies the Coordinator. Inconclusive runs hold the batch for its decision.
 `merge-conflict` and `merge-budget` go to the item lead for a fix and renewed
 review/verification. See the [merge skill](../.agents/skills/merge/SKILL.md) for
 refusal ownership and recovery.
+
+`[verification] dev_t3_every = "2h"` enables this repository's hub-owned
+`dev-t3` occasion; `""` (the default) disables it. It selects T2 and T3 on one
+droplet without load repetitions, under the shared remote budget and daily
+spend cap. The first attempt is due one interval after activation; later runs
+are due after the interval since the last attempt/start, only when dev's head
+has moved. The cursor survives restart, and a queued, running or unreported
+periodic run prevents another. The hub requires clean root dev at freshly
+fetched origin/dev. Periodic runs never hold or rebuild a merge batch.
+
+Release occasions run T1–T4, including T3. `cland release`, including
+`--dry-run`, refuses with `release-t3` unless a completed, reported green
+dev-t3, soak, stage or release occasion covers the pinned release head's
+verification tree (excluding `.cland/tasks` and `.cland/RULES.md`). A different
+commit with the same build tree qualifies; T1-only batches, partial selections,
+cancelled or incomplete runs do not. The refusal names the needed
+`cland verify all --occasion release --report general` run.
 
 `[verification] soak = "03:00"` schedules this repository's nightly UTC T1–T4
 run on one droplet; the new-project default `""` disables it. The hub attempts
@@ -2839,8 +2870,22 @@ with publication. Renewing an entry resets its streak. The Coordinator removes
 cleared entries from the committed manifest; the hub never rewrites it.
 
 `hub/test/durations.json` records each hub and Neovim test's median time and each
-file's summed top-level test-time. A run fails only when a new test exceeds
-5 seconds or a new file exceeds 60 seconds. Tests are known by their exact
+file's summed top-level test-time, and declares tier budgets in `budget.T1`
+through `budget.T4`. `budget.mode` selects `report` or `enforce`; omission keeps
+report mode for older manifests. This repository uses report mode until after
+v0.1.4 (D73); enforcement returns under E-880.
+
+In report mode, tier and T3 ratchet diagnostics cannot change an exit status.
+Logs retain the complete `budget (report only): would fail …` list, and results
+show the ten largest overages ranked by seconds over budget. The existing
+new-identity gate remains active: a new test exceeding 5 seconds or a new file
+exceeding 60 seconds fails the run. In enforce mode, every observed test and
+file must fit its tier's budget or an exact allowance covering the measured
+seconds. A known baseline does not exempt it; the runner fails with
+`duration budget` independently of assertion quarantine. T4 stays unbounded.
+See [duration budgets](../docs/agents/tests.md) for allowances and the T3 ratchet.
+
+Tests are known by their exact
 `file::test` key in `tests` or `allow`; files are known by their path in `files`
 or `allow`. A known file never exempts a new test inside it; a renamed test is new.
 Nested test times are already included in their parent. Add a justified exception in your task branch's `allow`
@@ -2869,7 +2914,8 @@ those records in the durable log after phase cleanup. Older spec logs use their
 top-level result lines and start identities, falling back to source titles when
 start identities are absent; ambiguous source matches refuse refresh.
 
-Known tests and files never fail the duration budget. Over-budget entries always
+In report mode's new-identity gate, known tests and files never fail the duration
+budget. Over-budget entries always
 report a `duration regression` annotated `over budget`, even when flat or faster.
 Under-budget entries report at least 1 second and 50% slower than the recorded
 baseline (threshold equality counts). Both kinds share the report's five-line
