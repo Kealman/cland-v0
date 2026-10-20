@@ -3,7 +3,7 @@ id: T-984
 kind: task
 title: Thread history in pages by message number
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-776
 branch: t/T-984-thread-history-in-pages-by-message
 created: 2026-10-20T16:50:00.375Z
-updated: 2026-10-20T21:04:21.980Z
+updated: 2026-10-20T21:13:18.505Z
 ---
 
 ## Summary
@@ -30,15 +30,20 @@ Messages get a monotonically increasing number in the store, and the number ride
 
 - [x] C1. Each stored message carries a number, and `topic.history` with `before` or `after` returns at most 200 messages a page (test).
   - done: impl-984 · 2026-10-20T21:03:16.599Z
+  - verified: rev-23 [reviewer] · run rev-20261020-984-final · 2026-10-20T21:13:18.397Z · commit b30718ea7883b58659f3100ee676bb2d19ee2529
 - [x] C2. A thread of 450 messages reads in three pages backwards and three pages forwards with no gap and no repeat (test).
   - done: impl-984 · 2026-10-20T21:03:16.640Z
+  - verified: rev-23 [reviewer] · run rev-20261020-984-final · 2026-10-20T21:13:18.397Z · commit b30718ea7883b58659f3100ee676bb2d19ee2529
 - [x] C3. A message recorded between two page reads appears once, in a later `after` page (test).
   - done: impl-984 · 2026-10-20T21:03:16.688Z
+  - verified: rev-23 [reviewer] · run rev-20261020-984-final · 2026-10-20T21:13:18.397Z · commit b30718ea7883b58659f3100ee676bb2d19ee2529
 - [x] C4. `topic.history` without `before` or `after` answers as today, and Neovim's thread tests pass without edits.
   - done: impl-984 · 2026-10-20T21:03:16.724Z
+  - verified: rev-23 [reviewer] · run rev-20261020-984-final · 2026-10-20T21:13:18.397Z · commit b30718ea7883b58659f3100ee676bb2d19ee2529
 - [x] C5. `hub/README.md` documents the pages.
   - done: impl-984 · 2026-10-20T21:03:16.757Z
   - verified: rev-23 [reviewer] · run rev-20261020-984-source · 2026-10-20T21:04:21.980Z · commit b30718ea7883b58659f3100ee676bb2d19ee2529
+  - verified: rev-23 [reviewer] · run rev-20261020-984-final · 2026-10-20T21:13:18.397Z · commit b30718ea7883b58659f3100ee676bb2d19ee2529
 
 ## Comments
 
@@ -76,3 +81,22 @@ Source clear, verify C5 by source only. C1–C4 runtime settlement awaits the no
 Standards 0 findings; Spec 0 findings.
 
 Criteria: C5 verified.
+
+### impl-984 · 2026-10-20T21:11:59.546Z
+
+Configured verification f8ff3910-d1cb-4459-8eea-07300932551d passed at reviewed head b30718ea7883b58659f3100ee676bb2d19ee2529: T0 check and T1/T2 full fallback for shared protocol change; 2155/2155 tests, 0 failures/skips. Linux x64 droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5; executor lifetime 376 s, cost $0.0261. Duration/test lint gates report-only (131 lint findings, 0 refusals); no T3/T4 evidence. Receipt/log A-8071 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8071-suite-f8ff3910-d1cb-4459-8eea-07300932551d-auto-at-b30718e.log. Reviewer received the same-head result directly for final settlement; no head changes.
+
+### rev-23 · 2026-10-20T21:13:18.397Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-984-final
+commit: b30718ea7883b58659f3100ee676bb2d19ee2529
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; Standards/Spec evidence audit A-8073 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8073-t-984-final-evidence-review-at-b30718ea.md), same-head configured run f8ff3910/A-8071. Linux x64 droplet T1 and all-T2 fallback completed: 2,155 ordinary test passes/335 passing files; four new store identities each 5/5 load passes, counted separately. Store 24/24, topics component 4/4, unedited Neovim thread 23/23. Confirms bounded before/after paging, 450-message traversal, once-only interleaved insert and legacy compatibility. C5 docs remain source-established. Host check reference 5dd6c173 was not repeated remotely; lint/duration/ratchet report-only, eight missing baselines. No T3/T4 or after-stage QA claim. No findings; verify C1–C5.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

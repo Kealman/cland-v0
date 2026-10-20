@@ -3,7 +3,7 @@ id: T-991
 kind: task
 title: The web phase of the suite
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 8
 labels:
@@ -18,7 +18,7 @@ blocked_by:
 topic: topic-768
 branch: t/T-991-the-web-phase-of-the-suite
 created: 2026-10-20T16:51:40.483Z
-updated: 2026-10-20T21:05:33.412Z
+updated: 2026-10-20T21:09:44.402Z
 ---
 
 ## Summary
@@ -64,6 +64,7 @@ The suite gains a `Web` shard after the hub phase on `node:test` with `playwrigh
   - verified: rev-23 [reviewer] · run rev-20261020-991-source-3 · 2026-10-20T20:46:39.027Z · commit 3329bf70c59362fd6c7eab98e4a0ef257aaf87aa
   - verified: rev-23 [reviewer] · run rev-20261020-991-source-4 · 2026-10-20T21:01:57.666Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-source-delta-1 · 2026-10-20T21:09:44.402Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 
 ## Comments
 
@@ -300,3 +301,22 @@ Final clear; verify C1–C8 at 5fd7df53. After-stage affected QA remains separat
 Standards 0 findings; Spec 0 findings.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### rev-26 · 2026-10-20T21:09:44.402Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-991-source-delta-1
+commit: fe5185451d87ee96f338df5c02f1abefb58c2141
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings in merge integration from prior cleared 5fd7df53 plus dev 2b8b3f31. Independently compared parsed manifests: every dev entry/value/budget/allowance survives; source.commit retains dev's receipt; both artifact sets retained. Only added file/test keys are prior-reviewed Web smoke 0.965907 s / one top-level test. Browser/fixture/install/package/selector/role source is unchanged; auto-merged test docs preserve Web and incoming artifact-view contracts. Read-only diff check clean. C8 verified; audit A-8070.
+
+Directly read Coordinator 6e973eca authorizing this dev merge and new local verification, but holding that run until E-789 f65b0531 finishes and Coordinator releases the Mac. Source clear does not release that hold or enqueue. C1–C7 await fresh exact-head authorized local mode-free receipt with actual Web; A-8064 is prior-head evidence only.
+
+A-8067 retained targeted smoke output has four passes (one parent/three subtests), parent 0.878165292 s, browser group 4→0 and scratch hub stopped; lead attributes merged head/local Darwin arm64, no embedded head/platform/exit header. Targeted evidence has no suite/load/duration gate. Lead reports npm run check green/zero refusals; no raw check output included, not independently parsed. No Linux/integrated or QA completion claim. Reviewer launched no tests/browsers or edits. After-stage affected QA remains separate.
+
+Criteria: C8 verified.
