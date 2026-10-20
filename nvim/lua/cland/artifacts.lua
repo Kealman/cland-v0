@@ -155,7 +155,7 @@ function M.open(value, file)
   require('cland.layout').show({ kind = 'artifact', id = a.id, file = file }, { insert = false })
 end
 
-function M.buffer(id, file)
+local function raw_buffer(id, file)
   local a = M.get(id)
   M.file_bufs = M.file_bufs or {}
   local cache = file and M.file_bufs or M.bufs
@@ -192,6 +192,61 @@ function M.buffer(id, file)
     end, { buffer = b, desc = 'render Mermaid in browser' })
   end
   return b
+end
+
+-- Both modes retain the artifact identity and the same navigation/actions.
+local function markdown(a, path)
+  if a.kind == 'prompt' and a.status == 'draft' then return false end
+  local ext = (path:match('%.([^%.]+)$') or ''):lower()
+  return ext == 'md' or ext == 'markdown'
+    or ((a.kind == 'note' or a.kind == 'page') and ext ~= 'mmd' and ext ~= 'mermaid' and not browser_ext[ext])
+end
+
+local function toggle_key(b)
+  require('cland.actions').map('n', '<leader>v', function() M.toggle() end, { buffer = b })
+end
+
+function M.buffer(id, file)
+  local a = M.get(id)
+  local path = file and (a.path .. '/' .. file) or entry_path(a)
+  if not markdown(a, path) then return raw_buffer(id, file) end
+  -- Loading a file buffer runs Markdown's editor setup. Defer that work until
+  -- the human switches to raw; the read-only view needs only the saved text.
+  local cache = file and (M.file_bufs or {}) or M.bufs
+  local raw = cache[file and (id .. '/' .. file) or id]
+  if raw and not api.nvim_buf_is_loaded(raw) then raw = nil end
+  if raw and not file then rebind(id) end
+  if not raw then
+    local existing = vim.fn.bufnr(path)
+    if existing ~= -1 and api.nvim_buf_is_loaded(existing) then raw = existing end
+  end
+  local win = require('cland.layout').centre()
+  local b = require('cland.artifact_md').buffer(path, api.nvim_win_get_width(win), raw, api.nvim_win_get_height(win))
+  vim.b[b].cland_role = 'artifact'
+  vim.b[b].cland_artifact = id
+  vim.b[b].cland_file = file
+  toggle_key(b)
+  require('cland.visibility').keys(b, function() return 'artifacts', id end)
+  require('cland.actions').map('n', 'q', function()
+    require('cland.artifact_browser').refresh(id)
+    require('cland.layout').back()
+  end, { buffer = b })
+  return b
+end
+
+function M.toggle()
+  local b, win = api.nvim_get_current_buf(), api.nvim_get_current_win()
+  local id, file = vim.b[b].cland_artifact, vim.b[b].cland_file
+  if not id then return end
+  local target
+  if vim.b[b].cland_rendered then
+    target = raw_buffer(id, file)
+    vim.b[target].cland_markdown = true
+    toggle_key(target)
+  else target = M.buffer(id, file) end
+  api.nvim_win_set_buf(win, target)
+  require('cland.artifact_md').window(win)
+  state.changed()
 end
 
 function M.prompt(title)

@@ -1413,6 +1413,21 @@ state directory (`hub/test/executor-spend.test.ts`); socket authentication and
 command routing belong at T2. Never exercise this command against the human's
 actual state. See [the operational contract](../../hub/README.md#retiring-legacy-spend-write-through).
 
+### Rendered artifact checks
+
+`nvim/test/artifact-render.test.ts` exercises the T2 recorded-client boundary:
+read-only thread projections, exact editable raw source, rendered-on-open defaults,
+and a 2,000-line artifact’s bounded first paint: only visible rows plus four source
+rows are parsed before the first rendered grid; the remaining parse is deferred.
+The T2 load gate keeps a 200 ms gross guard. The 50 ms target is measured separately
+as a median of several local macOS runs on a quiet machine, reported in the item
+topic with head/tree and individual samples. Its parser counter
+is read after the final rendered screen is observed; unchanged file versions
+(path, mtime and size) reuse the cached projection. Unsaved raw edits are separate
+buffer versions. `qa/cases/ARTIFACT-001.lua` checks the visible Markdown features,
+block quote, raw toggle, help and palette through the headless grid. Prompt and
+browser compatibility remain in `nvim/test/artifacts.test.ts`.
+
 ## Implementer test selection
 
 Clause procedure (defaults implementer, project implementer):

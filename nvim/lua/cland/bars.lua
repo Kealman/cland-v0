@@ -344,6 +344,11 @@ function M.winbar(win)
     if a and a.kind == 'prompt' and a.status == 'draft' then
       return head(win, a.id .. ' · draft', { { ':w saves · ␣ps send · ␣pa attach · q back', 'ClandDimBar' } })
     end
+    if vim.b[buf].cland_rendered then
+      return head(win, tostring(vim.b[buf].cland_artifact) .. ' · rendered', { { 'read-only · ␣v raw source · q back', 'ClandDimBar' } })
+    elseif vim.b[buf].cland_markdown then
+      return head(win, tostring(vim.b[buf].cland_artifact) .. ' · raw', { { ':w saves · ␣v rendered · q back', 'ClandDimBar' } })
+    end
     return head(win, tostring(vim.b[buf].cland_artifact), { { ':w saves · R render Mermaid · q back', 'ClandDimBar' } })
   elseif role == 'thread' then
     local t = state.topic(vim.b[buf].cland_topic)

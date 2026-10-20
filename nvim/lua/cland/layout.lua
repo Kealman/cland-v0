@@ -324,6 +324,7 @@ local function same(a, b)
 end
 
 local function centre_opts(w, kind)
+  if kind == 'artifact' then require('cland.artifact_md').window(w) end
   local wo = vim.wo[w]
   wo.number = false
   wo.relativenumber = false

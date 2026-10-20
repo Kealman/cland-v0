@@ -261,6 +261,21 @@ local function parsed(text)
   local ok, result = pcall(spans_of, clean, lines)
   local body = ok and result or { lines = lines, spans = {}, links = {}, tables = {} }
   body.layouts = {}
+  -- Projection visits each source row. Index spans and links once rather than
+  -- scanning the entire artifact for every line (quadratic on long documents).
+  body.row_spans, body.row_links = {}, {}
+  for _, s in ipairs(body.spans) do
+    for r = s.row, s.opts.end_row or s.row do
+      body.row_spans[r] = body.row_spans[r] or {}
+      table.insert(body.row_spans[r], s)
+    end
+  end
+  for _, link in ipairs(body.links) do
+    for r = link.row, link.end_row do
+      body.row_links[r] = body.row_links[r] or {}
+      table.insert(body.row_links[r], link)
+    end
+  end
   if cached == CACHE_MAX then
     cache[order[oldest]], order[oldest] = nil, nil
     oldest = oldest + 1
@@ -285,14 +300,14 @@ local function project(body, source_row, from, to, prefix, cell)
     a, z = math.max(a, from), math.min(z, to)
     if a < z then edits[#edits + 1] = { a, z, replacement or '' } end
   end
-  for _, link in ipairs(body.links) do
+  for _, link in ipairs(body.row_links[source_row] or {}) do
     if link.label_end_row <= source_row and source_row <= link.end_row then
       edit(source_row == link.label_end_row and link.label_end_col + 1 or 0,
         source_row == link.end_row and link.end_col or #source)
     end
   end
   if cell then
-    for _, s in ipairs(body.spans) do
+    for _, s in ipairs(body.row_spans[source_row] or {}) do
       local er = s.opts.end_row or s.row
       if s.opts.conceal and s.row <= source_row and source_row <= er then
         edit(s.row == source_row and s.col or from, er == source_row and s.opts.end_col or to, s.opts.conceal)
@@ -323,7 +338,7 @@ local function project(body, source_row, from, to, prefix, cell)
   end
   pieces[#pieces + 1] = source:sub(start + 1, to)
   local result = { text = table.concat(pieces), spans = {}, links = {} }
-  for _, s in ipairs(body.spans) do
+  for _, s in ipairs(body.row_spans[source_row] or {}) do
     local er = s.opts.end_row or s.row
     if s.row <= source_row and source_row <= er then
       local opts = vim.tbl_extend('force', {}, s.opts)
@@ -338,7 +353,7 @@ local function project(body, source_row, from, to, prefix, cell)
       else result.spans[#result.spans + 1] = { row = 0, col = 0, opts = opts } end
     end
   end
-  for _, link in ipairs(body.links) do
+  for _, link in ipairs(body.row_links[source_row] or {}) do
     if link.label_row <= source_row and source_row <= link.label_end_row then
       local a = source_row == link.label_row and link.label_col or from
       local z = source_row == link.label_end_row and link.label_end_col or to

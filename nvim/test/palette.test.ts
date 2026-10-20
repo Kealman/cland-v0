@@ -121,9 +121,9 @@ test('session, topic and text-artifact selections open in splits and receive liv
   await c.control({ emit: { type: 'message', topic: { id: 'topic-split' }, message: { id: 'm2', from: 'coord', fromKind: 'agent', fromRole: 'coordinator', to: ['human'], text: 'Live split update', ts: '2026-10-09T12:01:00Z', topic: 'topic-split' } } });
   await c.waitScreen(s => s.includes('Live split update'), 'live topic split');
   await c.input('<Space>aA-1<C-v>');
-  await c.waitScreen(s => s.includes('# Split artifact'), 'text artifact split');
+  await c.waitScreen(s => s.includes('Split artifact') && !s.includes('# Split artifact'), 'text artifact split');
   assert.equal(await c.lua("return require('cland.state').S.ui.view.id"), 'general');
-  assert.equal(await c.lua('return vim.bo.readonly'), false);
+  assert.equal(await c.lua('return vim.bo.readonly'), true);
 });
 
 test('the terminal Shift+Enter action resumes its attached terminal and reaches the harness', { skip }, async t => {

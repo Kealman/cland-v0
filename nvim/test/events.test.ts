@@ -105,7 +105,7 @@ test('Enter opens each event subject, gI/gt/gs use the row references and the pa
   await c.waitScreen(s => s.includes('No messages in General yet'), 'Enter topic');
   await select('artifact event');
   await c.input('<CR>');
-  await c.waitScreen(s => s.includes('# Event artifact content'), 'Enter artifact');
+  await c.waitScreen(s => s.includes('Event artifact content') && !s.includes('# Event artifact content'), 'Enter rendered artifact');
   for (const [key, text] of [['gI', 'Event item body'], ['gt', 'No messages in General yet'], ['gs', 'stopped']]) {
     await select('item event');
     await c.input(key!);

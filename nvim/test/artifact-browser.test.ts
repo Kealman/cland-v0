@@ -48,6 +48,8 @@ test('Artifacts browser creates v0.2 notes, saves two folder files in place and 
     await row(c, 'v0.2 notes');
     await c.input('n');
     await input(c, 'File name in folder:', name!);
+    await c.waitScreen(s => s.includes('read-only') && s.includes('␣v raw source'), 'new Markdown file rendered');
+    await c.input('<Space>v');
     await eventually('normal editable file buffer', async () => await c.lua('return vim.bo.buftype == "" and vim.bo.modifiable') || undefined);
     await c.input('i' + bytes + '<Esc>:w<CR>');
     await eventually('saved folder file', async () => (await readFile(join(folder.path, name!), 'utf8').catch(() => '')).trim() === bytes ? true : undefined);
@@ -110,8 +112,8 @@ test('browser folds background and archive, keeps live selection, moves a file i
   await c.waitScreen(s => s.includes(movedName), 'moved file in folder');
   await row(c, movedName);
   await c.input('<CR>');
-  await c.waitScreen(s => s.includes('# Alpha file'), 'moved file opens');
-  await c.input('A edited<Esc>:w<CR>');
+  await c.waitScreen(s => s.includes('Alpha file') && !s.includes('# Alpha file'), 'moved file opens rendered');
+  await c.input('<Space>vA edited<Esc>:w<CR>');
   await eventually('editing saves inside folder', async () => (await readFile(join(folder.path, movedName), 'utf8')).includes('edited') || undefined);
   await c.input('q');
   await c.waitScreen(s => s.includes('ARTIFACTS'), 'back in browser');

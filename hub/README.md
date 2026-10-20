@@ -3466,6 +3466,8 @@ cland artifact archive A-3
 cland artifact promote A-3 docs/v0.2-notes
 ```
 
+The Neovim workbench opens Markdown artifacts in a read-only rendered view using the thread’s projection, including laid-out tables and compact link tails. `␣v` (also in Keys and the palette) toggles the raw editable file; `:w` saves in raw. Each open defaults to rendered, while prompt drafts open raw. The client caches decorations by path, mtime and size. Mermaid source and browser artifacts retain their existing open behaviour. See [Shared artifacts](../nvim/README.md#shared-artifacts).
+
 `open` launches `$VISUAL`, then `$EDITOR`, or `nvim`, on the saved file or a folder's entry. Editor settings may include quoted arguments. Saving edits those durable bytes directly; adding files to the folder needs no hub operation. `open --json` launches no editor and returns the resolved `path`, artifact metadata, `editable`, and the folder's on-demand `files` list. Old ids of absorbed files resolve to their current location. Agents can read protected human and Aide paths with `--json`, but cannot open them for editing; this includes a formerly agent-owned file absorbed into a protected folder. An Aide may edit for the human. The hub includes `editable` in single-artifact `artifact.list` results based on the caller and the containing folder's author.
 
 `keep --release` clears the kept flag. `move` takes the source file id and destination folder id, with an optional single file name. `archive` changes the artifact's layer. These commands use the same hub frames, author protection and calling-session identity as the spoke tools. All accept `--json`; irrelevant options and extra arguments are refused. A refused lifecycle command returns an error without stopping the hub.

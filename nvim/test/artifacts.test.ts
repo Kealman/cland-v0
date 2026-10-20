@@ -63,14 +63,14 @@ test('recorded frames: Coordinator artifacts in Agents open from the log and its
   assert.equal(await c.lua("return require('cland.views').current_topic()"), 'agents');
   await c.lua(`local b = require('cland.agents_log').buf; for i,l in ipairs(vim.api.nvim_buf_get_lines(b, 0, -1, false)) do if l:find('▣') then vim.api.nvim_set_current_win(require('cland.layout').centre()); vim.api.nvim_win_set_cursor(0, {i,0}); break end end`);
   await c.input('<CR>');
-  await c.waitScreen((s) => s.includes('# Shared plan'), 'Agents artifact source');
-  assert.deepEqual(await c.lua('return { vim.bo.filetype, vim.bo.readonly, vim.bo.modifiable }'), ['markdown', false, true]);
+  await c.waitScreen((s) => s.includes('Shared plan') && !s.includes('# Shared plan'), 'Agents artifact rendered');
+  assert.deepEqual(await c.lua('return { vim.bo.filetype, vim.bo.readonly, vim.bo.modifiable }'), ['', true, false]);
   await c.input('qga');
   await c.input('zR');
   await c.waitScreen((s) => s.includes('ARTIFACTS') && s.includes('A-1 note · Plan') && s.includes('coord') && s.includes('shared'), 'Agents artifact list');
   await c.lua("for i,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('A%-1 ') then vim.api.nvim_win_set_cursor(0,{i,0}); break end end");
   await c.input('<CR>');
-  await c.waitScreen((s) => s.includes('# Shared plan'), 'source from Agents list');
+  await c.waitScreen((s) => s.includes('Shared plan') && !s.includes('# Shared plan'), 'rendered from Agents list');
 });
 
 test('recorded frames: artifact chip opens editable Mermaid source and the browser renderer, topic list and picker open artifacts', { skip }, async (t) => {
@@ -204,12 +204,13 @@ test('recorded frames: folder chips open their entry and old moved-file chips op
   await waitInitialSnapshots(c);
   await c.waitScreen(s => s.includes('Folder') && s.includes('Source'), 'folder and source chips');
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(folder.id)})`);
-  await c.waitScreen(s => s.includes('# Folder entry'), 'folder entry');
+  await c.waitScreen(s => s.includes('Folder entry') && !s.includes('# Folder entry'), 'folder entry');
   await c.input('q');
   await scene.change({ type: 'artifact.move', artifact: source.id, folder: folder.id, name: 'moved.md' });
   await eventually('live source redirect', async () => await c.lua(`return require('cland.artifacts').get(${JSON.stringify(source.id)}).movedTo ~= nil`) || undefined);
   await c.lua(`require('cland.artifacts').open(${JSON.stringify(source.id)})`);
-  await c.waitScreen(s => s.includes('# Moved note'), 'old chip resolves to the moved file');
+  await c.waitScreen(s => s.includes('Moved note') && !s.includes('# Moved note'), 'old chip resolves to the moved file');
+  await c.input('<Space>v');
   assert.equal(await c.lua('return vim.api.nvim_buf_get_name(0)'), join(folder.path, 'moved.md'));
   assert.deepEqual(await c.lua(`local a = require('cland.artifacts').all(); local ids = {}; for _,x in ipairs(a) do ids[#ids+1] = x.id end; return ids`), [folder.id]);
 });

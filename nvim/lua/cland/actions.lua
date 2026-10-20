@@ -129,7 +129,7 @@ group('graph', {{'p','Next graph parent'}, {'P','Previous graph parent'}, {'d','
   {'^','First node in band or first layer'}, {'$','Last node in band or last layer'},
   {'gg','First graph layer or buffer start'}, {'G','Last graph layer or buffer end'}, {'<CR>','Open graph node item'}})
 group('artifact', {{'<leader>ps','Send prompt draft'}, {'<leader>pa','Attach prompt draft'},
-  {'q','Previous centre view'}, {'R','Render Mermaid in browser'}})
+  {'q','Previous centre view'}, {'R','Render Mermaid in browser'}, {'<leader>v','Toggle rendered Markdown and raw source'}})
 group('artifacts', {{'<CR>','Open file or fold folder/section'}, {'q','Previous centre view'},
   {'n','Create file or folder'}, {'m','Move file into folder'}, {'s','Attach artifact to composer'},
   {'p','Promote selected artifact to repository'}, {'k','Keep or unkeep artifact'}, {'d','Archive artifact'}, {'x','Delete artifact (confirm)'},

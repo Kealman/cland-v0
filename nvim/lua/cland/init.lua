@@ -423,6 +423,8 @@ function M.help()
       table.insert(lines, 6, ' Panels    ' .. action.key .. ' · ' .. action.title)
     elseif action.id == 'items:<CR>' then
       table.insert(lines, 6, ' Items     ' .. action.key .. ' · ' .. action.title)
+    elseif action.id == 'artifact:<leader>v' then
+      table.insert(lines, ' Artifacts ' .. action.key .. ' · ' .. action.title .. ' · :w saves in raw · q back')
     elseif action.id == 'global:<leader>e' then
       for r, line in ipairs(lines) do
         if line:match('^ Explorer ') then
