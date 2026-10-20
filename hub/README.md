@@ -200,15 +200,51 @@ dist = "web/dist"
 ```
 
 Use `http://127.0.0.1:<webPort>/`. Host must be `127.0.0.1`, `localhost` or `[::1]`
-with that exact port. The edge currently serves static files over loopback. The spokes' authentication
-and refusal of client hellos are unchanged. Paths stay inside the bundle,
+with that exact port. The spokes' authentication and refusal of client hellos
+are unchanged. Paths stay inside the bundle,
 including symlinks; extensionless routes fall back to `index.html`. Missing
 bundle/index responses name `npm run build --workspace web` (503, plain text).
-Every response has CSP (including `frame-ancestors 'none'`),
+Every ordinary HTTP response has CSP (including `frame-ancestors 'none'`),
 `X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
 Entry files, manifest, service worker and icons use `no-cache` and an ETag
 (matching `If-None-Match` returns 304); existing `/assets/*` files use
 `public, max-age=31536000, immutable`. SPA fallbacks keep `no-cache`.
+
+`cland web` asks the running hub for a one-time sign-in link over its Unix
+socket, prints `http://127.0.0.1:<webPort>/auth?token=…`, and opens it with
+`open` on macOS or `xdg-open` on Linux. `cland web --no-open` only prints the
+link; `cland web --help` describes the command. It does not start the hub.
+This is a human-shell command: a session's shell is refused, including an
+unknown session identity; do not unset its actor variables to bypass that check.
+
+The client frame `{type: "web.link", id: "…"}` returns a normal `result` with
+`value: {url: "http://127.0.0.1:<port>/auth?token=…"}`. It requires the local Unix
+socket and human authority, so isolated test clients can mint links without
+opening a browser. The token is 32 random bytes, encoded as 64 hex digits; the
+hub retains only its SHA-256 digest and accepts it for five minutes, once.
+`GET /auth?token=…` atomically spends it, sets a fresh browser session cookie,
+and sends a 302 redirect to `/`. Unknown, expired and spent tokens return 401;
+HEAD returns 405 without spending the link. Auth responses use `no-store` and
+`Referrer-Policy: no-referrer`.
+
+The cookie is `cland_<key>`, where `<key>` is the first 12 hex digits of SHA-256
+of the project's canonical root, with `Path=/`, `HttpOnly`, `SameSite=Strict`
+and `Max-Age=2592000` (30 days). Its value is a separate random credential,
+held only as a digest in memory. Cookie names differ across projects because
+cookies are not isolated by port. Restarting the hub clears links and browser
+sessions in this version; persistence follows under T-982.
+
+Every `/ws` upgrade checks the exact loopback Host and port, an Origin exactly
+matching `http://<Host>`, and the project's unexpired cookie before accepting
+any frames. Missing, foreign and `null` Origins are refused with 403; a missing
+or invalid cookie gets 401. An authenticated socket accepts only a client hello
+`{type: "hello", protocol: 2, client: "web"}` without a secret, welcomes it as
+`human` regardless of the client label, and dispatches human requests such as
+`hub.status`. A spoke hello is refused and its socket closed. Server pings keep
+idle browser connections alive and reap a peer that misses a pong at the next
+30-second sweep. The hub secret remains in local machine processes: it is never
+sent in bundle files, auth responses or browser frames. The browser uses its
+cookie for every socket; no bearer secret belongs in its JavaScript or storage.
 
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_KEEPALIVE_MS`, `CLAND_HUB_REQUEST_TIMEOUT_MS` and `CLAND_HUB_WELCOME_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_GATE`, read by `cland hub serve`, names a test-only directory: the next tracker temporary write consumes its `armed` file, writes `entered`, and waits until the test creates `release` before proceeding to rename. Tests arm it after fixture setup, then release it after the competing operation; nothing else sets it. Also for tests only: `CLAND_QUEUE_TTL_MS` shortens the queue TTL (how long a queued message and a remembered name last), and `CLAND_TEST_CRASH_AT=handover-committed` kills the hub right after a handover's transaction committed (`launch-reserved`: right after a launch reserved its role, before the spawn).
 

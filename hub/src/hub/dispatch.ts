@@ -100,6 +100,7 @@ export type Peer = {
 
 /** What only the process running the hub can answer: its facts, and stopping it. */
 export type Control = {
+  webLink?: () => import('../protocol.ts').WebLinkResult;
   status: () => Omit<HubStatus, 'sessions'>;
   stop: () => void;
   reload?: (resumed?: import('./budget.ts').Resumed) => Promise<import('./configuration.ts').ConfigReloadResult>;
@@ -1210,6 +1211,9 @@ export class Dispatcher {
         log({ event: 'refused', edge: transport.edge, code: 'unauthorized' });
         return refuse('unauthorized', "the secret does not match this project's hub");
       }
+      if (transport.edge === 'web' && (!isClientHello(frame) || Object.hasOwn(frame, 'sessionId'))) {
+        return refuse('bad-hello', 'the web edge accepts only a client hello');
+      }
       if (isHello(frame)) {
         const deliver = (message: Message): boolean => {
           if (!peer.isOpen()) return false;
@@ -1247,9 +1251,9 @@ export class Dispatcher {
           return refuse('unauthorized', "a client connects over the hub's Unix socket or stdio, not the spokes' WebSocket");
         }
         kind = 'client';
-        client = frame.client;
+        client = transport.edge === 'web' ? HUMAN_SESSION : frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
-        peer.send({ type: 'welcome', name: frame.client, presence: core.presence() });
+        peer.send({ type: 'welcome', name: client, presence: core.presence() });
         return;
       }
       refuse('bad-hello', 'first frame must be a hello');
@@ -1589,6 +1593,11 @@ export class Dispatcher {
             break;
           case 'merge.queue':
             later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
+            break;
+          case 'web.link':
+            if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');
+            if (!control.webLink) throw new Error('the web edge is unavailable');
+            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink() });
             break;
           case 'hub.status': {
             const status = (): HubFrame => {

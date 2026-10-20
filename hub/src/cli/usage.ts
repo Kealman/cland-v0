@@ -236,3 +236,8 @@ export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this 
                   exits 0 when clean, 1 with one file:line finding per line, 2 for usage/read errors
   qa lint --help|-h  print brief lint help
 `;
+
+export const WEB_USAGE = `  web [--no-open]  print a one-time browser sign-in link from the running hub
+                  opens with open (macOS) or xdg-open (Linux); --no-open only prints
+                  human shell only; link expires in five minutes and is spent on first use
+`;

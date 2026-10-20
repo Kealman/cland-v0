@@ -7,6 +7,8 @@ type Assert<T extends true> = T;
 
 // Both required and optional fields, literal unions and nested payloads must agree.
 export type WireConformance = [
+  Assert<Equal<import('../src/protocol.ts').WebLink, Wire.WebLink>>,
+  Assert<Equal<import('../src/protocol.ts').WebLinkResult, Wire.WebLinkResult>>,
   Assert<Equal<Extract<import('../src/protocol.ts').HubFrame, { type: 'welcome' }>, Wire.Welcome>>,
   Assert<Equal<Extract<import('../src/protocol.ts').HubFrame, { type: 'result' }>, Wire.Result>>,
   Assert<Equal<Extract<import('../src/protocol.ts').HubFrame, { type: 'error' }>, Wire.ErrorFrame>>,

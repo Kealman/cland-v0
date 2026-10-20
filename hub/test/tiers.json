@@ -498,6 +498,8 @@
     "hub/test/visibility-component.test.ts": "T2",
     "hub/test/visibility-volume.test.ts": "T4",
     "hub/test/visibility.test.ts": "T3",
+    "hub/test/web-auth-unit.test.ts": "T1",
+    "hub/test/web-auth.test.ts": "T2",
     "hub/test/web-bundle.test.ts": "T1",
     "hub/test/web-edge.test.ts": "T2",
     "hub/test/worktree-cli.test.ts": "T3",

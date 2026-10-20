@@ -715,7 +715,11 @@ export type DemoRequest =
   | { type: 'demo.stop' | 'demo.status'; id: string; epic: string; commit?: string };
 
 // hub/src/protocol.ts
+export type WebLink = { type: 'web.link'; id: string };
+export type WebLinkResult = { url: string };
+
 export type ClientRequest =
+  | WebLink
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }

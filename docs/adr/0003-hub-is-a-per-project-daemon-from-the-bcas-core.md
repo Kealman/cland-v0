@@ -32,4 +32,13 @@ with the reason in the log, `hub.status.web` and `cland doctor`; it never change
 the browser's origin to another port: the origin carries browser storage and
 notification permission. The spoke and Unix-socket edges keep their
 existing admission rules. This amendment permits the separate loopback edge;
-network binding and browser authentication remain subsequent work under E-412.
+network binding remains subsequent work under E-412.
+
+T-980 adds browser authentication on this listener: a human-only `web.link`
+request over the Unix socket mints a one-time link, `/auth` trades it for the
+per-project `cland_<key>` HttpOnly, SameSite=Strict cookie, and `/ws` checks
+Host, exact Origin and cookie before accepting a secret-free client hello as
+the human. `<key>` is the first 12 hex digits of SHA-256 of the canonical
+project root; cookies are not isolated by port. Links and cookie sessions are
+held as digests in memory here; T-982 adds session persistence. The hub secret
+never crosses the browser edge.

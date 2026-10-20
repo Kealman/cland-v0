@@ -554,7 +554,11 @@ export type DemoRequest =
   | { type: 'demo.exec'; id: string; epic: string; command: string[] }
   | { type: 'demo.stop' | 'demo.status'; id: string; epic: string; commit?: string };
 
+export type WebLink = { type: 'web.link'; id: string };
+export type WebLinkResult = { url: string };
+
 export type ClientRequest =
+  | WebLink
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
@@ -893,6 +897,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'executor.status':
     case 'executor.reap':
     case 'hub.subscriptions':
+    case 'web.link':
     case 'hub.status':
     case 'hub.stop':
     case 'hub.reload':

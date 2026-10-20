@@ -260,6 +260,10 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
       // tests only: how long a queued message and a remembered name last (the default is a day)
       ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
+        webLink: () => {
+          if (!web?.status.available) throw new Error('the web edge is unavailable');
+          return web.link();
+        },
         reload: resumed => roles.reload(resumed),
         setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),
         setRoleLaunch: (role, fields, resumed, authorize) => roles.setRoleLaunch(role, fields, resumed, authorize),
@@ -376,7 +380,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
-  web = await createWebEdge({ stateDir: l.dir, ...(config ? { port: config.web.port, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
+  web = await createWebEdge({ root, dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
   if (!web.status.available) log({ event: 'web-unavailable', ...web.status });
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again

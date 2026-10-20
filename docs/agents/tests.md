@@ -9,6 +9,7 @@ wire conformance assertions in `hub/test/wire-conformance.ts`. These compare the
 independently restated shapes (including nested and optional fields) to their hub
 owners; keep the assertions outside the browser leaf. New snapshot and delta
 types belong in `shared/wire/` when their protocol extensions are implemented.
+`web.link` and its `{url}` result have explicit conformance assertions there too.
 The scripts use `hub/bin/typecheck.ts` to resolve the pinned `typescript7` npm
 alias, including from task worktrees that inherit the root install. This avoids
 the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installed as
@@ -1491,6 +1492,26 @@ is read after the final rendered screen is observed; unchanged file versions
 buffer versions. `qa/cases/ARTIFACT-001.lua` checks the visible Markdown features,
 block quote, raw toggle, help and palette through the headless grid. Prompt and
 browser compatibility remain in `nvim/test/artifacts.test.ts`.
+
+## Browser sign-in fixtures
+
+`cland web` is human-only. A session shell carries its own actor and is refused;
+never remove the live session's identity to mint a link. In a disposable project,
+`projectHub` plus `askHubFrame(discovery, {type: 'web.link'}, 3000, {})` mints a
+link for a test client. Trade it at `/auth` and supply the returned per-project
+cookie and exact page Origin on `/ws`; the hello is a client hello without a
+secret. Cookie sessions stay in memory until T-982.
+
+`web-auth-unit.test.ts` covers digest storage, one-time spending and expiry with
+an injected clock at T1. `web-auth.test.ts` covers the executable CLI, HTTP,
+upgrade checks, client/spoke admission and secret leakage at T2 with an
+in-process project hub. Run `npm run build` before that targeted file: the leak
+scan requests every file of the actual installed bundle. The root check already
+builds it before suite tests. The tests use scratch HOME/XDG/Git configuration
+and filtered environments through the shared fixtures. Both `open` and
+`xdg-open` are stubbed on scratch PATH even for `--no-open`, so a regression
+cannot launch the human's browser or touch its keychain. Real browser checks
+belong to the dedicated headless web phase (T-991/T-992).
 
 ## Implementer test selection
 
