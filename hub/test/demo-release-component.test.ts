@@ -73,21 +73,27 @@ test('demo stop reports accepted deletion timeouts with either tag state', async
   }
 });
 
-test('demo stop confirms an earlier delete whose active droplet has lost its tags', async t => {
-  const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
+test('demo stop confirms a slow earlier deletion with empty tags and frees its slot and reservation', async t => {
+  const f = await fixture(t, { machine: 'scripted', config: 'remote_budget = 1\n', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '5000', CLAND_TEST_DROPLET_POLL_MS: '1000' } });
   const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Already deleting demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
   const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
   const lease = (started.value as { lease: string }).lease;
+  const other = ((await f.ui.request({ type: 'task.create', title: 'Next demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
+  const blocked = await f.ui.request({ type: 'demo.start', epic: other });
+  assert.equal(blocked.ok, false); assert.match(blocked.error!, /remote budget full/);
   const droplet = f.api.droplets[0]!;
   const create = f.api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets');
   assert.deepEqual(create?.body?.tags, ['cland', droplet.tags.find(tag => tag.startsWith('cland-p-'))]);
   assert.match(droplet.tags[1]!, /^cland-p-[a-f0-9]{12}$/);
-  f.api.faults.deletePolls = 4;
+  // No local DELETE acknowledgement: another actor began destruction. The
+  // provider keeps returning the same untagged id for longer than two seconds.
+  f.api.faults.deletePolls = 16;
   f.api.faults.stripTagsOnDelete = true;
   const provider = f.api.provider;
   await provider.deleteDroplet(droplet.id);
   const tearingDown = await provider.droplet(droplet.id);
   assert.equal(tearingDown.status, 'active'); assert.deepEqual(tearingDown.tags, []);
+  const before = f.clock.now().getTime();
   const stopped = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(stopped.ok, true, stopped.error);
   t.diagnostic(JSON.stringify({ create: { method: create!.method, path: create!.path, name: create!.body!.name, tags: create!.body!.tags }, teardown: { id: tearingDown.id, name: tearingDown.name, tags: tearingDown.tags, status: tearingDown.status }, release: stopped.value }));
   assert.equal((stopped.value as { state: string }).state, 'released');
@@ -96,13 +102,22 @@ test('demo stop confirms an earlier delete whose active droplet has lost its tag
   assert.equal(f.api.requests.filter(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')).length, 1);
   const persisted = JSON.parse(await readFile(join(f.root, '.cland/run/executor/leases', lease, 'lease.json'), 'utf8'));
   assert.equal(persisted.state, 'released'); assert.equal(persisted.attention, undefined);
+  assert.ok(f.clock.now().getTime() - before > 2000);
+  const status = await drive(f, f.ui.request({ type: 'executor.status' })); assert.equal(status.ok, true, status.error);
+  const value = status.value as { leases: unknown[]; spend: { reserved: number; spent: number } };
+  assert.deepEqual(value.leases, []);
+  assert.equal(value.spend.reserved, 0); assert.ok(value.spend.spent > 0);
+  f.api.faults.deletePolls = 0;
+  const next = await drive(f, f.ui.request({ type: 'demo.start', epic: other })); assert.equal(next.ok, true, next.error);
+  const finished = await drive(f, f.ui.request({ type: 'demo.stop', epic: other })); assert.equal(finished.ok, true, finished.error);
+  assert.equal((finished.value as { state: string }).state, 'released');
   await flushProjectLogs(t, f.root);
   assert.match(await readFile(join(f.root, '.cland/log/hub.log'), 'utf8'), /executor-release-identity-recheck/);
 });
 
 test('demo stop refuses changed resource identities after accepted deletion', async t => {
   const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100' } });
-  for (const field of ['id', 'name'] as const) {
+  for (const field of ['id', 'name', 'tags'] as const) {
     f.api.requests.length = 0; // Each table row retains the original per-lease request census.
     const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Changed deleting demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
     assert.equal((await drive(f, f.ui.request({ type: 'demo.start', epic }))).ok, true);
@@ -112,10 +127,11 @@ test('demo stop refuses changed resource identities after accepted deletion', as
       const pending = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(pending.ok, true, pending.error);
       assert.equal((pending.value as { attention?: unknown }).attention, undefined);
       if (field === 'id') f.api.faults.dropletResponseId = droplet.id + 1;
-      else droplet.name = 'foreign-resource';
+      else if (field === 'name') droplet.name = 'foreign-resource';
+      else droplet.tags = ['cland', 'cland-p-foreign'];
       const refused = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(refused.ok, true, refused.error);
       assert.equal((refused.value as { state: string }).state, 'releasing');
-      assert.deepEqual((refused.value as { attention: { fields: string[] } }).attention.fields, [field, 'tags']);
+      assert.deepEqual((refused.value as { attention: { fields: string[] } }).attention.fields, field === 'tags' ? ['tags'] : [field, 'tags']);
       assert.equal(f.api.requests.filter(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')).length, 1);
     } finally {
       f.api.droplets.splice(0); f.api.faults.dropletResponseId = 0;
@@ -131,7 +147,7 @@ test('demo stop clears persistent mismatch attention after provider absence', as
     const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Mismatched demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
     const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
     const droplet = f.api.droplets[0]!;
-    if (field === 'tags') droplet.tags = [];
+    if (field === 'tags') droplet.tags = ['cland', 'cland-p-foreign'];
     else f.api.faults.dropletResponseId = droplet.id + 1;
     const stopped = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(stopped.ok, true, stopped.error);
     assert.equal((stopped.value as { state: string }).state, 'releasing');

@@ -35,21 +35,26 @@ async function resource(api: Provider, lease: DropletLease, deadline: number | u
     for (;;) {
       const mismatch = new DropletIdentityMismatch(current, lease);
       if (mismatch.attention.fields.includes('id') || mismatch.attention.fields.includes('name')) throw mismatch;
+      // Only an empty tag set is a destroy transition. Populated foreign tags
+      // remain an identity refusal even after an accepted DELETE.
+      if (mismatch.attention.fields.includes('tags') && current.tags.length > 0) throw mismatch;
       const failure = lease.deleteStarted ? new DropletDeletionTimeout(current, lease) : mismatch;
       // An accepted deletion has the same bound whether tags vanish or remain.
       if (lease.deleteStarted && clock.now().getTime() >= Date.parse(lease.deleteStarted) + deletionTimeoutMs) throw failure;
       if (matchesLease(current, lease)) return current;
-      // An earlier delete (including the watchdog's) can strip tags while the
-      // provider still reports active. Observe only: missing tags never grant
-      // permission to DELETE, and id/name mismatches are always refused.
+      // An earlier delete (including the watchdog's) can strip tags before its
+      // acknowledgement is recorded, while the provider still reports active.
+      // Observe only: empty tags never grant permission to DELETE.
       if (until === undefined) {
         // The attempt deadline is not the provider's deletion deadline. The
         // hub's sweep can continue short attempts without resetting this bound.
-        until = lease.deleteStarted ? Date.parse(lease.deleteStarted) + deletionTimeoutMs : Math.min(deadline ?? Infinity, clock.now().getTime() + 2000);
+        until = lease.deleteStarted ? Date.parse(lease.deleteStarted) + deletionTimeoutMs
+          : lease.state === 'releasing' ? clock.now().getTime() + deletionTimeoutMs
+          : Math.min(deadline ?? Infinity, clock.now().getTime() + 2000);
         await onMismatch?.(mismatch.attention);
       }
       if (clock.now().getTime() >= until) throw failure;
-      if (lease.deleteStarted && deadline !== undefined) return current;
+      if ((lease.deleteStarted || lease.state === 'releasing') && deadline !== undefined) return current;
       await wait(Math.min(100, Math.max(0, until - clock.now().getTime())));
       if (clock.now().getTime() >= until) throw failure;
       try { current = await api.droplet(lease.resource, until); }

@@ -107,6 +107,7 @@ export async function watchdog(dir: string, clock: Clock = realClock): Promise<v
       lease.keyId ??= discoveredKey;
       if (deleteStarted) lease.deleteStarted ??= deleteStarted;
       if (lease.state === 'released') return;
+      lease.state = 'releasing';
       try {
         const result = await deleteLeaseResources(api, lease, undefined, attention => appendFile(join(dir, 'watchdog.log'), `${JSON.stringify({ ts: clock.now().toISOString(), event: 'executor-release-identity-recheck', attention })}\n`, { mode: 0o600 }), 300000, clock);
         deleteStarted ??= lease.deleteStarted;
