@@ -834,7 +834,14 @@ Both registry and role edits apply to the next launch without a restart.
 ### Processes and the saved environment
 
 Every process an adapter starts or queries for a session, its attach command
-and its idle limit polls use the selected account's environment:
+and its idle limit polls use the selected account's environment.
+
+The shared executor credential deny-list applies after account overlays to child
+environments and before saved account entries become attach shell command text.
+`DIGITALOCEAN_TOKEN` is excluded from both; account path selection and quoting
+remain intact. The [scoped argv audit](../docs/executor-argv-audit.md) records the
+fake-token reproduction and current-source checks. It does not identify the
+historical npm process that exposed the credential.
 
 | Harness | Registry path and process environment |
 | --- | --- |

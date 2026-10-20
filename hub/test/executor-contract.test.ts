@@ -34,3 +34,20 @@ test('executor credentials are stripped by name without reading values or changi
     assert.equal(Object.hasOwn(base, 'DIGITALOCEAN_TOKEN'), true, 'hub API environment is intact');
   }
 });
+
+test('machine command and copy argv never serialize the executor environment', async () => {
+  const { Machine } = await import('../src/executor/droplet/machine.ts');
+  const calls: string[][] = [];
+  const machine = new Machine('/fixture', { DIGITALOCEAN_TOKEN: 'test-token-not-real', CLAND_SSH_BIN: 'fixture-ssh', CLAND_SCP_BIN: 'fixture-scp' }, async (bin, args, options) => {
+    calls.push([bin, ...args]);
+    assert.equal(Object.hasOwn(options.env, 'DIGITALOCEAN_TOKEN'), false);
+    return { stdout: JSON.stringify({ stdout: '', stderr: '', code: 0 }) };
+  });
+  const lease = { lease: 'fixture', run: 'fixture', address: '127.0.0.1' } as Parameters<InstanceType<typeof Machine>['exec']>[0];
+  await machine.exec(lease, 'true', { timeoutMs: 10 });
+  await machine.result(lease, 'true', 10);
+  await machine.put(lease, '/fixture/input', 'input');
+  await machine.get(lease, 'output', '/fixture/output');
+  assert.deepEqual(calls.map(args => args[0]), ['fixture-ssh', 'fixture-ssh', 'fixture-scp', 'fixture-scp']);
+  assert.equal(calls.some(args => args.some(arg => arg.includes('test-token-not-real'))), false);
+});

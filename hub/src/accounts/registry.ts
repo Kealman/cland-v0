@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, isAbsolute, join } from 'node:path';
 import { parse, TomlError } from 'smol-toml';
+import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 
 export type Account = { name: string; harness: string; path: string | null; variable: string };
 export type Accounts = { registry: string; error?: string; accounts: Account[] };
@@ -107,5 +108,7 @@ export function accountEnvironment(base: NodeJS.ProcessEnv, overlay: Record<stri
   return env;
 }
 export function accountPrefix(env: Record<string, string> | null | undefined): string {
-  return env ? Object.entries(env).map(([key, value]) => `${key}=${shellQuote(value)} `).join('') + (env.XDG_DATA_HOME !== undefined ? 'env -u OPENCODE_DB ' : env.OPENCODE_DB !== undefined ? 'env -u XDG_DATA_HOME ' : '') : '';
+  // Attach commands cross a shell argv boundary, even when launch environments were filtered.
+  const safe = env ? withoutExecutorCredentials(env) : null;
+  return safe ? Object.entries(safe).map(([key, value]) => `${key}=${shellQuote(value)} `).join('') + (safe.XDG_DATA_HOME !== undefined ? 'env -u OPENCODE_DB ' : safe.OPENCODE_DB !== undefined ? 'env -u XDG_DATA_HOME ' : '') : '';
 }

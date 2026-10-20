@@ -5,13 +5,24 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readAccounts, namedAccount } from '../src/accounts/registry.ts';
+import { readAccounts, namedAccount, accountPrefix } from '../src/accounts/registry.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 async function scratch(t: import('node:test').TestContext) {
   const root = await mkdtemp(join(tmpdir(), 'account-registry-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   return root;
 }
+test('account attach shell argv excludes executor credentials while retaining account selection', () => {
+  const overlay = { CODEX_HOME: '/accounts/work', DIGITALOCEAN_TOKEN: 'test-token-not-real' };
+  // Neovim's terminal receives this command as a shell argument. No shell is needed to inspect it.
+  const argv = ['-c', accountPrefix(overlay) + 'codex resume'];
+  assert.equal(argv.some(arg => arg.includes('test-token-not-real')), false);
+  assert.equal(argv[1], "CODEX_HOME='/accounts/work' codex resume");
+  assert.equal(overlay.DIGITALOCEAN_TOKEN, 'test-token-not-real', 'the API overlay is not mutated');
+  Object.defineProperty(overlay, 'DIGITALOCEAN_TOKEN', { enumerable: true, get() { throw new Error('must filter before reading the credential'); } });
+  assert.equal(accountPrefix(overlay), "CODEX_HOME='/accounts/work' ");
+  assert.equal(accountPrefix({ OPENCODE_DB: '/accounts/work.db', DIGITALOCEAN_TOKEN: 'test-token-not-real' }), "OPENCODE_DB='/accounts/work.db' env -u XDG_DATA_HOME ");
+});
 test('malformed registries refuse named accounts without exposing values', async t => {
   const root = await scratch(t);
   await mkdir(join(root, 'cland'));

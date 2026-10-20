@@ -52,6 +52,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   let clientClosed = 0;
   const watchCalls: string[] = [];
   const launchEnvs: NodeJS.ProcessEnv[] = [];
+  const launchArgv: string[][] = [];
   const events: Array<Record<string, unknown>> = [];
   let delay = () => {};
   let delayed = false;
@@ -66,11 +67,13 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   t.mock.method(cp, 'spawn', (_bin: string, _args: readonly string[], options: cp.SpawnOptions) => {
     if (_bin === 'ps' && _args[0] === '-o' && identityRefused) return nativeSpawn(process.execPath, ['-e', 'process.exit(1)'], options);
     if (_bin !== 'fake-harness') return nativeSpawn(_bin, _args, options);
+    launchArgv.push([_bin, ..._args]);
     if (fault === 'spawn') throw new Error('planted spawn failure');
     launchEnvs.push(options.env ?? {});
     return child(options);
   });
   t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
+    if (bin === 'fake-harness') launchArgv.push([bin, ...args]);
     if (bin === 'ps' && identityRefused) return setImmediate(() => callback({ code: 1 }, '', 'identity unavailable'));
     if (args[0] === '--version') return setImmediate(() => callback(null, 'codex 0.160.0', ''));
     if (args[0] === '--bg') {
@@ -129,7 +132,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
     t.mock.restoreAll(); syncBuiltinESMExports();
   });
   const request = { name: 'impl', cwd: root, role: null, model: 'test/model', sandbox: { mode: 'workspace-write' as const, writableRoots: [root], network: 'local' as const } };
-  return { root, adapter, request, children, launchEnvs, events, watchCalls, disconnect: () => client.emit('close'), closedClients: () => clientClosed, refuseIdentity: (value: boolean) => { identityRefused = value; }, setDelay: (value: () => void) => { delay = value; }, setFault: (value: string) => { fault = value; } };
+  return { root, adapter, request, children, launchEnvs, launchArgv, events, watchCalls, disconnect: () => client.emit('close'), closedClients: () => clientClosed, refuseIdentity: (value: boolean) => { identityRefused = value; }, setDelay: (value: () => void) => { delay = value; }, setFault: (value: string) => { fault = value; } };
 }
 
 for (const Adapter of adapters) test(`${Adapter.name}: identity unwatch ends poll and reconnect loops without signalling`, async t => {
@@ -184,18 +187,21 @@ test('Codex identity disposal closes an in-flight reconnect without restoring it
 for (const Adapter of adapters) test(`${Adapter.name}: successful spawn, watch, live resume, stop and relaunch use no synchronous native call`, async t => {
   const f = await fixture(t, Adapter);
   await guarded(async () => {
-    const request = { ...f.request, accountEnv: { DIGITALOCEAN_TOKEN: 'test-token-not-real' } };
+    const request = { ...f.request, account: 'work', accountEnv: { DIGITALOCEAN_TOKEN: 'test-token-not-real' } };
     let p = await f.adapter.spawn(request);
     assert.ok(f.launchEnvs.length > 0);
     p.pidStarted ??= await processStarted(p.pid!);
     f.adapter.watch(p);
     assert.ok(f.adapter.attachCommand(p));
+    assert.ok(!f.adapter.attachCommand(p).includes('test-token-not-real'), 'attach shell argv excludes provider credentials');
     assert.equal((await f.adapter.resume(p)).found, true);
     await f.adapter.stop(p);
     const relaunched = await f.adapter.resume({ ...p, status: 'stopped' }, { relaunch: true });
     assert.equal(relaunched.found, true);
     if (relaunched.found) { p = relaunched.process; p.pidStarted = await processStarted(p.pid!); await f.adapter.stop(p); }
     for (const env of f.launchEnvs) assert.equal(Object.hasOwn(env, 'DIGITALOCEAN_TOKEN'), false, 'launched and relaunched fake sessions have no provider credential');
+    assert.ok(f.launchArgv.length > 0);
+    assert.equal(f.launchArgv.some(args => args.some(arg => arg.includes('test-token-not-real'))), false, 'native launch and control argv exclude provider credentials');
   });
 });
 

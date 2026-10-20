@@ -89,6 +89,13 @@ SSH/SCP tools. Remote machines receive no provider token. The executor currently
 uses this fixed variable name; configuration does not select another token
 variable. New provider credential names must join the same deny-list.
 
+The same deny-list filters saved account overlays before they become attach
+shell command text, so executor credentials cannot enter the shell's argv through
+account environment serialization. Account paths and their quoting are preserved.
+The [scoped argv audit](executor-argv-audit.md) documents the fake-token
+reproduction, launch-site inventory and current-source checks; the historical
+`test:nvim` npm process remains unattributed.
+
 The shell that exported the token still holds it. This filtering does not remove
 it from independently launched processes or scrub arbitrary commands or output
 that a user supplied with a secret embedded in them. Do not put secrets in argv.
