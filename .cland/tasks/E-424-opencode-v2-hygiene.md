@@ -15,7 +15,7 @@ follows:
 topic: topic-404
 branch: null
 created: 2026-10-14T16:43:08.893Z
-updated: 2026-10-20T02:36:20.351Z
+updated: 2026-10-20T03:03:05.106Z
 ---
 
 ## Summary
@@ -135,3 +135,7 @@ Amendment from the v0.1.4 design (Q-599, the human, 2026-10-16): harness version
 ### hub · 2026-10-20T02:36:20.351Z
 
 demo 3781f5d9-3790-45f6-89f3-719541e09f5b created: droplet cland-v0-3781f5d9, commit 32ae5bdce84f2a74cbcdd8ce0dc14dd14e301d79, deadline 2026-10-20T03:50:17.276Z.
+
+### hub · 2026-10-20T03:03:05.106Z
+
+demo 3781f5d9-3790-45f6-89f3-719541e09f5b destroyed: lifetime 1286727 ms; cost $0.0894.
