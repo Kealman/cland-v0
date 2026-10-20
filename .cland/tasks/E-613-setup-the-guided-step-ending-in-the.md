@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-561
 branch: null
 created: 2026-10-16T15:34:18.570Z
-updated: 2026-10-19T06:44:28.874Z
+updated: 2026-10-20T02:42:50.438Z
 ---
 
 ## Summary
@@ -158,3 +158,11 @@ Coordinator decisions on the ticket cut (2026-10-19, D51, which gives every v0.1
 (16) Plan approval per D51.
 (17) Exit 130 when input ends at a question.
 (18) `cland setup <dir>` takes the positional directory with init's root rules.
+
+### hub · 2026-10-20T02:38:24.421Z
+
+demo 865fb560-c476-46c0-ac5f-e671ac6f4a5e created: droplet cland-v0-865fb560, commit 32ae5bdce84f2a74cbcdd8ce0dc14dd14e301d79, deadline 2026-10-20T03:52:20.234Z.
+
+### hub · 2026-10-20T02:42:50.438Z
+
+demo 865fb560-c476-46c0-ac5f-e671ac6f4a5e destroyed: lifetime 315358 ms; cost $0.0219.

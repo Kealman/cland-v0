@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-660
 branch: null
 created: 2026-10-16T15:34:18.844Z
-updated: 2026-10-19T22:46:21.106Z
+updated: 2026-10-20T02:39:16.556Z
 ---
 
 ## Summary
@@ -130,3 +130,11 @@ Cut and plan (Coordinator, D51, 2026-10-19 08:10Z). Tickets T-852–T-859 from c
 ### coord · 2026-10-19T22:37:32.965Z
 
 Disposition D71 (stand-in under D24, ask 1298ecf4, 2026-10-19 22:37Z): C2–C6 are accepted on the fake-harness replay of the Aide's acts plus a check of the skill text against each criterion; no live Aide runs on a real model. A live run is the human's call after the release. QA's verdict states which halves rest on the replay.
+
+### hub · 2026-10-20T02:37:20.006Z
+
+demo 0fcb22cd-daf2-4f8a-94a3-ced5cd78d2fe created: droplet cland-v0-0fcb22cd, commit 32ae5bdce84f2a74cbcdd8ce0dc14dd14e301d79, deadline 2026-10-20T03:51:20.571Z.
+
+### hub · 2026-10-20T02:39:16.556Z
+
+demo 0fcb22cd-daf2-4f8a-94a3-ced5cd78d2fe destroyed: lifetime 161567 ms; cost $0.0112.

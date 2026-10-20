@@ -15,7 +15,7 @@ follows:
 topic: topic-404
 branch: null
 created: 2026-10-14T16:43:08.893Z
-updated: 2026-10-16T18:35:48.631Z
+updated: 2026-10-20T02:36:20.351Z
 ---
 
 ## Summary
@@ -131,3 +131,7 @@ stages:
 ### human · 2026-10-16T15:39:02.799Z
 
 Amendment from the v0.1.4 design (Q-599, the human, 2026-10-16): harness versions are neither pinned nor judged. Criterion C3's release-time OpenCode range check and the newer-than-tested and 3.x notes become informational (no refusal, no warning row); the plan of E-613 carries the doctor side. See docs/spec/v0.1.4.md §3.3 and §3.8.
+
+### hub · 2026-10-20T02:36:20.351Z
+
+demo 3781f5d9-3790-45f6-89f3-719541e09f5b created: droplet cland-v0-3781f5d9, commit 32ae5bdce84f2a74cbcdd8ce0dc14dd14e301d79, deadline 2026-10-20T03:50:17.276Z.
