@@ -464,6 +464,7 @@
     "hub/test/tracker-async-component.test.ts": "T2",
     "hub/test/tracker-async.test.ts": "T3",
     "hub/test/tracker-component.test.ts": "T2",
+    "hub/test/tracker-conflict-captures.test.ts": "T1",
     "hub/test/tracker-criteria.test.ts": "T2",
     "hub/test/tracker-criterion-crash.test.ts": "T3",
     "hub/test/tracker-criterion-write.test.ts": "T2",

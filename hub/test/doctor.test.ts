@@ -387,3 +387,28 @@ test('doctor warns about free OpenCode training and its missing OS sandbox witho
   await writeFile(path, roles.replace('harness = "opencode"', 'harness = "codex"'));
   assert.ok(!(await report(root, tools.env)).report.checks.some(c => /^opencode (model|sandbox) /.test(c.name)));
 });
+
+
+test('doctor counts live captures and names differing bytes and missing items without pruning', async t => {
+  const tools = await toolchain(t);
+  const root = await initialised(t, tools.env);
+  const dir = join(root, '.cland/tasks');
+  await mkdir(dir, { recursive: true });
+  const uuid = '00000000-0000-4000-8000-000000000000';
+  const same = `T-1-same.md.${uuid}.conflict`, changed = `T-2-changed.md.${uuid}.conflict`, missing = `T-3-missing.md.${uuid}.conflict`;
+  assert.deepEqual(check((await report(root, tools.env, [])).report, 'tracker conflicts'), { name: 'tracker conflicts', verdict: 'ok', detail: '0 live captures; 0 differ from current item files' });
+  await writeFile(join(dir, 'T-1-same.md'), 'same');
+  await writeFile(join(dir, same), 'same');
+  await writeFile(join(dir, 'T-2-changed.md'), 'current');
+  await writeFile(join(dir, changed), 'saved');
+  await writeFile(join(dir, missing), 'orphaned');
+  await writeFile(join(dir, 'unrelated.conflict'), 'ignored');
+  await writeFile(join(dir, `T-4-pending.md.${uuid}.tmp`), 'pending');
+  const row = check((await report(root, tools.env, [])).report, 'tracker conflicts');
+  assert.equal(row.verdict, 'warn');
+  assert.equal(row.detail, `3 live captures; 2 differ from current item files: ${changed}, ${missing} (item missing)`);
+  const plain = await doctor(root, tools.env);
+  assert.ok(plain.stdout.includes(row.detail), plain.stdout);
+  assert.equal(await readFile(join(dir, changed), 'utf8'), 'saved');
+  assert.equal(await readFile(join(dir, 'T-2-changed.md'), 'utf8'), 'current');
+});

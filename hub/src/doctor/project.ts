@@ -2,6 +2,7 @@
 // committed config (`roles.toml`, `config.toml`), and what `cland init` provisioned (the skills and their link
 // for Claude Code, the hooks, the mod cland ships, `docs/agents/*`, AGENTS.md's block). Read-only: the hub is
 // asked `hub.status` over its socket and nothing else.
+import { inspectConflictCaptures } from '../tracker/conflict-captures.ts';
 import { existsSync, lstatSync, readdirSync, readlinkSync, realpathSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { HOOK_EVENTS, MOD_DIR } from '../adapters/claude-code.ts';
@@ -30,6 +31,17 @@ const tomlError = (err: unknown): string => {
   const first = err.message.split('\n')[0]?.trim() ?? '';
   return `${first} (line ${line}${typeof column === 'number' ? `, column ${column}` : ''})`;
 };
+
+/** Recovery sources are reported even when no hub is running; doctor never prunes. */
+async function checkCaptures(root: string): Promise<Check> {
+  try {
+    const { count, differing } = await inspectConflictCaptures(join(root, '.cland/tasks'));
+    const detail = `${count} live captures; ${differing.length} differ from current item files${differing.length ? `: ${differing.join(', ')}` : ''}`;
+    return differing.length ? warn('tracker conflicts', detail, 'inspect and recover differing captures before the seven-day retention expires') : ok('tracker conflicts', detail);
+  } catch (error) {
+    return warn('tracker conflicts', `cannot inspect captures: ${errorText(error)}`, 'check .cland/tasks permissions and rerun cland doctor');
+  }
+}
 
 /** Native facts are separate from project-file parsing and the hub socket proof. */
 export type ProjectReaders = {
@@ -299,5 +311,5 @@ export async function checkProject(root: string, readers: ProjectReaders = {}): 
   if (!existsSync(l.dir)) return [fail('project', `${root} has no ${CLAND_DIR}/: not a cland project`, `cland init ${root}`)];
   const problems = (readers.territoryProblems ?? territoryProblems)(root);
   const territory = problems === null ? ok('territory', 'not a git repository: no territory needed') : problems.length ? fail('territory', problems.join('; '), 'cland init (restore origin to .cland/territory.git if it was changed)') : ok('territory', 'origin is the local bare repository; main and dev protected; HEAD on dev');
-  return [...(await checkHub(l, readers)), territory, ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
+  return [...(await checkHub(l, readers)), territory, await checkCaptures(root), ...checkConfig(l), ...checkSkills(root), ...checkClaude(root), ...checkInstructions(root)];
 }

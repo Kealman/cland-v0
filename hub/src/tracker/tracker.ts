@@ -1,4 +1,5 @@
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
+import { pruneConflictCaptures, CONFLICT_PRUNE_INTERVAL_MS } from './conflict-captures.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { epicDemoFreshness, type DemoFreshness } from './epic-surfaces.ts';
 // The tracker: item files in `.cland/tasks/` are the source of truth, the hub writes them and keeps the
@@ -303,6 +304,8 @@ export class Tracker {
   readonly #readyAgain = new Set<string>();
   readonly #readyRetries = new Map<string, ClockTimer>();
   readonly #clock: Clock;
+  #capturePruneTimer: ClockTimer | undefined;
+  readonly #capturePruneAbort = new AbortController();
   readonly #retryCounts = new Map<string, number>();
   readonly #readyErrors = new Map<string, string>();
   readonly #retryDelays = new Map<string, number>();
@@ -757,7 +760,22 @@ export class Tracker {
     );
     this.#polled = this.#folderStamp();
     this.#fresh.start();
+    this.#scheduleCapturePrune(1);
     for (const [id, candidate] of this.#planCandidates) if (candidate.item.fm.state === 'open' && this.#index.plan(id)) this.#schedulePlanned(id);
+  }
+
+  /** Maintenance runs outside the tracker request queue, with one async pass at a time. */
+  #scheduleCapturePrune(delay: number): void {
+    if (this.#capturePruneAbort.signal.aborted) return;
+    this.#capturePruneTimer = this.#clock.setTimeout(() => {
+      this.#runBackground(async () => {
+        try {
+          const pruned = await pruneConflictCaptures(this.#dir, this.#clock.now().getTime(), this.#capturePruneAbort.signal);
+          if (!this.#capturePruneAbort.signal.aborted) this.#log({ event: 'task-conflict-pruned', pruned });
+        } finally { this.#scheduleCapturePrune(CONFLICT_PRUNE_INTERVAL_MS); }
+      });
+    }, delay);
+    this.#capturePruneTimer.unref();
   }
 
   /** Start background readiness only after the daemon can answer status probes. */
@@ -790,6 +808,8 @@ export class Tracker {
   stop(options: { stalled?: StorageOperation } = {}): Promise<void> {
     if (options.stalled) this.#abandonStorage(options.stalled);
     if (this.#stopping) return this.#stopping;
+    this.#capturePruneAbort.abort();
+    this.#clock.clearTimeout(this.#capturePruneTimer);
     const freshnessStopped = this.#fresh.stop();
     if (this.#verifyImmediate) clearImmediate(this.#verifyImmediate);
     this.#verifyImmediate = null;
