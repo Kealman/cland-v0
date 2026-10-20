@@ -50,6 +50,7 @@ for _, scope in ipairs({'items', 'sessions', 'topics', 'inbox'}) do
   local enter = scope == 'sessions' and 'Attach selected session, open verification queue or toggle background fold'
     or (scope == 'items' and 'Open row or show categories in all' or 'Open row in centre')
   group(scope, {{'<CR>', enter}, {'<2-LeftMouse>', 'Open row in centre with mouse'}})
+  add(scope, 'gm', 'Move ' .. scope .. ' to the other side')
 end
 M.register({ id = 'verification.open', title = 'Open verification queue', run = function()
   require('cland.layout').show({ kind = 'verification' }, { insert = false })

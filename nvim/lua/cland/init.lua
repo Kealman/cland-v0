@@ -343,6 +343,7 @@ M.HELP = {
   'cland workbench · Space is the leader (␣)',
   '',
   'Panels    ␣i items · ␣n inbox · ␣s sessions · ␣t topics (toggle on their home side)',
+  '          gm inside a panel moves it to the other side',
   '          :Cland panel items|inbox|sessions|topics left|right · palette: <Panel> on the left/right',
   'Items     1 board · 2 in work · 3 needs you · 4 done · 5 map · 6 all (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
@@ -385,7 +386,9 @@ function M.help()
     return ' ' .. l
   end, M.HELP)
   for _, action in ipairs(require('cland.actions').all()) do
-    if action.id == 'items:<CR>' then
+    if action.id == (vim.b.cland_role or '') .. ':gm' then
+      table.insert(lines, 6, ' Panels    ' .. action.key .. ' · ' .. action.title)
+    elseif action.id == 'items:<CR>' then
       table.insert(lines, 6, ' Items     ' .. action.key .. ' · ' .. action.title)
     elseif action.id == 'global:<leader>e' then
       for r, line in ipairs(lines) do

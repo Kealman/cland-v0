@@ -1405,7 +1405,7 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 
 ### The UI's frames
 
-The Neovim workbench places its four panels with `:Cland panel items|inbox|sessions|topics left|right` or the palette's **<Panel> on the left/right** actions. Each panel has a home side for the current workbench, with one visible panel per side; moving a panel closes its old side. Buffer keys and hub events follow the panel. The default layout and wire frames are unchanged. See [Panels](../nvim/README.md#the-shell) for the client commands and current persistence scope.
+The Neovim workbench places its four panels with `:Cland panel items|inbox|sessions|topics left|right` or the palette's **<Panel> on the left/right** actions. Each panel has a home side for the current workbench, with one visible panel per side; moving a panel closes its old side. Buffer keys and hub events follow the panel. `gm` inside any of the four panels moves it to the other side; the action registry exposes **Move <kind> to the other side** in the palette and Keys. Panel toggles, top-bar chips, `gp` and scoped palette actions use its home side; centre `C-h`/`C-l` focus the panels currently on the left/right. Neovim's `CTRL-W H/L/r/x` remain native and are not panel placement controls. The default layout and wire frames are unchanged. See [Panels](../nvim/README.md#the-shell) for the client commands and current persistence scope.
 
 The Neovim workbench starts its independent list snapshots on connection and installs each answer as it
 arrives; item loading cannot hold back the session count or Coordinator header. Live events keep the

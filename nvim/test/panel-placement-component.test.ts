@@ -24,6 +24,94 @@ async function place(c: Shell, kind: string, side: 'left' | 'right') {
   await expectPanel(c, side, kind.toUpperCase());
 }
 
+for (const [kind, key] of [['items', 'i'], ['inbox', 'n'], ['sessions', 's'], ['topics', 't']]) {
+  test(`${kind}: gm and its palette action move the panel; its key toggles on the new home`, { skip }, async t => {
+    const c = await startShell(t);
+    await place(c, kind!, 'left');
+    await c.input('gm');
+    await expectPanel(c, 'right', kind!.toUpperCase());
+    assert.equal(await panel(c, 'left'), '', 'moving closes the old side');
+    await c.input(`<Space>${key}`);
+    await eventually('panel hidden on the right', async () => (await panel(c, 'right')) === '' || undefined);
+    assert.equal(await panel(c, 'right'), '');
+    await c.input(`<Space>${key}`);
+    await expectPanel(c, 'right', kind!.toUpperCase());
+    const title = `Move ${kind} to the other side`;
+    await c.input(`<Space>p>${title}`);
+    await c.waitScreen(s => s.includes(title), 'registered move in palette');
+    await c.input('<CR>');
+    await expectPanel(c, 'left', kind!.toUpperCase());
+    assert.equal(await panel(c, 'right'), '', 'palette uses the same move rule');
+    await c.input(`<Space>${key}`);
+    await eventually('panel hidden on the left', async () => (await panel(c, 'left')) === '' || undefined);
+    assert.equal(await panel(c, 'left'), '');
+    await c.input(`<Space>${key}<Space>?`);
+    await c.waitScreen(s => s.includes(title) && s.includes('gm'), 'move title and key in help');
+    assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+  });
+}
+
+test('top-bar chips reopen Inbox and Sessions on their chosen side, including a vacant Coordinator', { skip }, async t => {
+  const c = await startShell(t, s => { s.coordinator = null; });
+  await place(c, 'items', 'right');
+  for (const [kind, key, chip] of [['inbox', 'n', 2], ['sessions', 's', 3], ['sessions', 's', 1]] as const) {
+    await place(c, kind, 'left');
+    await c.input(`<Space>${key}`);
+    await eventually('left panel hidden before chip click', async () => (await panel(c, 'left')) === '' || undefined);
+    await c.lua('ClandTopClick(...)', chip);
+    await expectPanel(c, 'left', kind.toUpperCase());
+    await expectPanel(c, 'right', 'ITEMS');
+    // Clicking again keeps the visible panel open.
+    await c.lua('ClandTopClick(...)', chip);
+    await expectPanel(c, 'left', kind.toUpperCase());
+  }
+});
+
+test('gp reopens Items on the right and a scoped palette action reopens Sessions on the left', { skip }, async t => {
+  const c = await startShell(t, s => {
+    s.items![0] = { ...s.items![0], parent: 'T-2' };
+    s.items!.push({ id: 'T-2', kind: 'epic', title: 'Panel homes', state: 'open', plan: null });
+  });
+  await place(c, 'sessions', 'left');
+  await c.input('gg/impl-1<CR><Space>s');
+  await c.input('<Space>p>Session adapter capabilities<CR>');
+  await c.waitScreen(s => s.includes('capabilities') && s.includes('state signals'), 'scoped palette action ran');
+  await expectPanel(c, 'left', 'SESSIONS');
+  await c.input('q');
+  await place(c, 'items', 'right');
+  await c.input('<Space>i:Cland view item T-12<CR>');
+  await c.waitScreen(s => statusLine(s).includes('T-12'), 'item view before gp');
+  await c.input('gp');
+  await c.waitScreen(s => statusLine(s).includes('T-2 · epic plan'), 'gp opens its epic plan');
+  await expectPanel(c, 'right', 'ITEMS');
+  await expectPanel(c, 'left', 'SESSIONS');
+});
+
+test('Normal and Terminal focus chords reach swapped panels from the centre without a harness process', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'sessions', 'left');
+  await place(c, 'items', 'right');
+  await c.input(':Cland view board<CR>');
+  // An in-memory terminal exercises Terminal-mode mappings at T2; no shell or attach process.
+  await c.lua(`local b=vim.api.nvim_create_buf(false,true)
+    vim.api.nvim_win_set_buf(require('cland.layout').win.centre,b)
+    vim.api.nvim_open_term(b,{})`);
+  for (const mode of ['n', 't']) {
+    for (const [key, side] of [['h', 'left'], ['l', 'right']]) {
+      await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.centre)");
+      await c.input(mode === 't' ? 'i' : '<C-\\><C-n>');
+      await eventually(`${mode} ${key} source mode ready`, async () => {
+        const actual = await c.mode();
+        if (actual[0] !== mode) throw new Error(`mode ${actual}, buffer ${await c.lua('return vim.bo.buftype')}`);
+        return true;
+      });
+      await c.input(`<C-${key}>`);
+      await eventually(`${mode} focus ${side}`, async () => await c.lua("return vim.api.nvim_get_current_win() == require('cland.layout').win[...]", side) || undefined);
+      assert.equal(await c.lua("return vim.b.cland_role"), side === 'left' ? 'sessions' : 'items');
+    }
+  }
+});
+
 test('palette and command place each of the four panels on either side', { skip }, async t => {
   const c = await startShell(t);
   await c.input('<Esc><Space>p>sessions panel');

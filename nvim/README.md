@@ -96,6 +96,7 @@ Space is the leader (`␣`); `␣?` shows the keys in Neovim.
 | --- | --- | --- |
 | `␣i` | Normal mode, anywhere | Toggle the items panel on its home side (left by default). |
 | `␣n` `␣s` `␣t` | anywhere | Toggle Inbox, Sessions or Topics on its home side (right by default). |
+| `gm` | Items, Inbox, Sessions or Topics panel | Move this panel to the other side and set its home there. The palette offers **Move <kind> to the other side**. |
 | `:Cland panel <kind> left\|right` | command line | Open Items, Inbox, Sessions or Topics on that side and set its home; the palette has the same choices. |
 | `␣T` | anywhere | Topics docked above the right panel, which shows the inbox (the Watch layout). Again: undock. |
 | `␣N` `␣b` `␣L` | anywhere | The inbox full width, the board, the Agents log in the centre. Again: back. |
@@ -292,6 +293,8 @@ Ids and scope/key pairs are unique. A scope is `vim.b.cland_role` or `global`;
 command and a callable `run`, including the live ask options. A newly keyed scope
 needs a visible view, or a panel/view opener in the registry's context resolver.
 
+Panel sides move through cland's `gm`, palette actions or `:Cland panel <kind> left|right`. Neovim's `CTRL-W H`, `CTRL-W L`, `CTRL-W r` and `CTRL-W x` are left alone and are not part of moving panels.
+
 ### Commands
 
 | Command | What it does |
@@ -299,7 +302,8 @@ needs a visible view, or a panel/view opener in the registry's context resolver.
 | `:Cland preset charting`, `watch`, `steady` | Examples of the three stages, never modes. charting: items beside General, the right panel hidden. watch: items, General, topics docked above the inbox. steady: the board and the inbox. Everything still toggles afterwards. |
 | `:Cland view thread <topic>`, `session <name>`, `item <id>`, `board`, `log`, `inbox` | A centre view. |
 | `:Cland graph [T-n]` | The experimental graph of the first open container in the current release, or a named container. |
-| `:Cland panel items`, `inbox`, `sessions`, `topics`, `dock` | The panel keys as a command. |
+| `:Cland panel items`, `inbox`, `sessions`, `topics`, `dock` | The panel keys as a command, toggling on each panel's home side. |
+| `:Cland panel <kind> left\|right` | Place Items, Inbox, Sessions or Topics on that side. Equivalent palette actions are **<Panel> on the left/right**; `gm` in a panel and **Move <kind> to the other side** move it across. |
 | `:Cland launch [name]` | The session launcher, the name filled in. |
 | `:Cland aide` | The Aide launcher, focused on the brief. |
 | `:Cland topic new <title>`, `close [id]`, `resolve [id]` | Create a topic and open it; close or resolve the topic in view (or the one named). |

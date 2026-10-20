@@ -627,6 +627,11 @@ function M.buf(kind, slot)
   pcall(api.nvim_buf_set_name, b, 'cland://' .. kind .. (slot and ('-' .. slot) or ''))
   vim.b[b].cland_role = kind
   M.bufs[k] = b
+  require('cland.actions').map('n', 'gm', function()
+    local layout = require('cland.layout')
+    local side = api.nvim_get_current_win() == layout.win.left and 'left' or 'right'
+    layout.place_panel(kind, side == 'left' and 'right' or 'left')
+  end, { buffer = b, nowait = true, silent = true })
   require('cland.actions').map('n', '<CR>', function()
     open_row(b)
   end, { buffer = b, nowait = true, silent = true, desc = 'cland: open in the centre' })
