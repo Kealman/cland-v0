@@ -7,7 +7,7 @@ import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
-import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, AgentsHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
+import type { Subscription, OwnedSubscription, SubscriptionSubject, Artifact, TopicHistoryFilter, AnswerAttribution, AskAnswer, AskCard, AskState, DeliveryStage, Message, Topic, TopicMessage, TopicStatus } from '../protocol.ts';
 import type { MergeQueueEntry } from '../protocol.ts';
 import type { HygieneMemory, HygieneRow } from './hygiene.ts';
 import type { InboxDeparture, InboxRowKind } from '../protocol.ts';
@@ -853,6 +853,13 @@ export class Store implements HygieneMemory {
       .run(JSON.stringify({ session: to }), JSON.stringify({ session: from }));
   }
 
+  /** The durable message number, shared by history, send results and live events. */
+  messageSeq(id: string): number {
+    const row = this.#prepare('select seq from messages where id = ?').get(id) as Row | undefined;
+    if (!row) throw new Error(`no stored message ${id}`);
+    return Number(row.seq);
+  }
+
   /** One stored message by its hub id, or null. */
   message(id: string): Message | null {
     const row = this.#prepare('select * from messages where id = ?').get(id) as Row | undefined;
@@ -1373,7 +1380,7 @@ export class Store implements HygieneMemory {
   }
 
   /** A topic's latest messages, oldest first, each with its stage. */
-  topicMessages(topic: string, limit: number, filter: AgentsHistoryFilter & { before?: string } = {}): TopicMessage[] {
+  topicMessages(topic: string, limit: number, filter: TopicHistoryFilter = {}): TopicMessage[] {
     const clauses = ['topic = ?'];
     const args: Array<string | number | null> = [topic];
     // Exact JSON values, including arrays/nested facts, avoid matching T-1 to T-12 or alpha to alpha-2.
@@ -1389,16 +1396,25 @@ export class Store implements HygieneMemory {
           and (fullkey in ('$.session', '$.from', '$.to', '$.by') or path in ('$.to', '$.pair')) and value = ?))`);
       args.push(filter.session, filter.session, filter.session);
     }
-    if (filter.before !== undefined) {
+    const numeric = typeof filter.before === 'number' || filter.after !== undefined;
+    if (typeof filter.before === 'number') {
+      clauses.push('seq < ?');
+      args.push(filter.before);
+    } else if (filter.after !== undefined) {
+      clauses.push('seq > ?');
+      args.push(filter.after);
+    } else if (filter.before !== undefined) {
       clauses.push('(created_at, rowid) < (select created_at, rowid from messages where id = ? and topic = ?)');
       args.push(filter.before, topic);
     }
-    args.push(limit);
-    const rows = this.#prepare(`select * from messages where ${clauses.join(' and ')} order by created_at desc, rowid desc limit ?`).all(...args) as Row[];
-    return rows.reverse().map((row) => {
+    args.push(numeric ? Math.min(200, Math.max(1, Math.floor(limit))) : limit);
+    const order = numeric ? `seq ${filter.after !== undefined ? 'asc' : 'desc'}` : 'created_at desc, rowid desc';
+    const rows = this.#prepare(`select * from messages where ${clauses.join(' and ')} order by ${order} limit ?`).all(...args) as Row[];
+    if (filter.after === undefined) rows.reverse();
+    return rows.map((row) => {
       const stage = this.stage(row.id as string);
       const ask = this.ask(row.id as string);
-      return { ...toMessage(row), topic, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
+      return { ...toMessage(row), seq: Number(row.seq), topic, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
     });
   }
 
@@ -1438,7 +1454,7 @@ export class Store implements HygieneMemory {
         and (json_array_length(m.to_json) = 0 or m.seq = latest.seq
           or exists (select 1 from inbox_waits w where w.id = m.id and w.kind in ('message', 'request')))
       order by m.seq desc`).all() as Row[];
-    return rows.map(r => ({ message: { ...toMessage(r), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 }));
+    return rows.map(r => ({ message: { ...toMessage(r), seq: Number(r.seq), topic: r.topic as string }, read: r.was_read === 1, replied: r.replied === 1, toHuman: r.to_human === 1, latest: r.latest === 1 }));
   }
 
   inboxWaits(): InboxWait[] {

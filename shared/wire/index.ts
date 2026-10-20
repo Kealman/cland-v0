@@ -213,7 +213,9 @@ export type TopicRef = { id: string; title: string; item?: string | null };
 export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
 
 // hub/src/protocol.ts
-export type TopicMessage = Message & { topic: string; stage?: DeliveryStage; ask?: AskCard };
+/** Exclusive numeric history cursors; string `before` preserves the Neovim message-id cursor. */
+export type TopicHistoryFilter = AgentsHistoryFilter & { before?: number | string; after?: number };
+export type TopicMessage = Message & { seq: number; topic: string; stage?: DeliveryStage; ask?: AskCard };
 
 // hub/src/protocol.ts
 export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
@@ -762,8 +764,8 @@ export type ClientRequest =
   | { type: 'hub.reload'; id: string }
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
   | { type: 'topic.list'; id: string }
-  /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. Agents filters precede the limit. */
-  | ({ type: 'topic.history'; id: string; topic: string; limit?: number; before?: string } & AgentsHistoryFilter)
+  /** Oldest-first history: latest by default, exclusive numeric before/after pages (max 200). */
+  | ({ type: 'topic.history'; id: string; topic: string; limit?: number } & TopicHistoryFilter)
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */

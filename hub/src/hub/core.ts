@@ -27,7 +27,6 @@ import {
   type SubscriptionEvent,
   type OwnedSubscription,
   type Artifact,
-  type AgentsHistoryFilter,
   type HandoverNote,
   type Hello,
   type HubEvent,
@@ -46,6 +45,7 @@ import {
   type PendingVerification,
   type Topic,
   type TopicMessage,
+  type TopicHistoryFilter,
   type TopicRef,
   type TopicStatus,
   type VerificationQueue,
@@ -564,7 +564,7 @@ export class HubCore {
     if (!topic) return;
     const stage = this.#store.stage(message.id);
     const ask = this.asks.card(message.id);
-    this.#emit({ type: 'message', topic, message: { ...message, topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
+    this.#emit({ type: 'message', topic, message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, ...(stage ? { stage } : {}), ...(ask ? { ask } : {}) } });
   }
 
   /** Observers and transport see committed rows; their failures cannot enter a caller's rollback path. */
@@ -2595,8 +2595,12 @@ export class HubCore {
     return t;
   }
 
-  topicHistory(id: string, limit?: number, filter: AgentsHistoryFilter & { before?: string } = {}): { topic: Topic; messages: TopicMessage[] } {
+  topicHistory(id: string, limit?: number, filter: TopicHistoryFilter = {}): { topic: Topic; messages: TopicMessage[] } {
     const topic = this.#topicOrThrow(id);
+    if (filter.before !== undefined && filter.after !== undefined) throw new Error('history takes before or after, not both');
+    for (const cursor of [filter.before, filter.after]) {
+      if (cursor !== undefined && typeof cursor !== 'string' && (!Number.isSafeInteger(cursor) || cursor < 0)) throw new Error('history cursor must be a non-negative safe integer');
+    }
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
     if (id !== AGENTS.id && (filter.item !== undefined || filter.session !== undefined)) throw new Error('item and session history filters require the Agents topic');
     return { topic, messages: this.#store.topicMessages(id, n, filter).map(message => this.#resolveAttachments(message)) };
@@ -2712,7 +2716,7 @@ export class HubCore {
     for (const role of placeholders) outcomes.push({ to: role, outcome: 'queued', reason: `no session holding the role "${role}" is connected — queued until one takes it` });
     this.#log({ event: 'human-send', id: message.id, topic: topic.id, to: message.to, bytes: Buffer.byteLength(text, 'utf8'), ...(replyTo !== undefined ? { replyTo } : {}), ...(answerTo !== undefined ? { answerTo, ...attribution } : {}), outcomes: outcomes.map((o) => `${o.to}:${o.outcome}`) });
     const stage = this.#store.stage(message.id);
-    return { message: { ...message, topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
+    return { message: { ...message, seq: this.#store.messageSeq(message.id), topic: topic.id, ...(stage ? { stage } : {}) }, outcomes };
   }
 
   /**

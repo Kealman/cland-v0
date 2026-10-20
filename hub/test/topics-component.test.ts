@@ -6,7 +6,7 @@ import { connectSocket, connectUi, inProcessSpoke, projectHub, tempProject, type
 
 type Topic = { id: string; title: string; status: string; standing: boolean; createdAt: string; updatedAt: string };
 
-type TopicMessage = { id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; stage?: string };
+type TopicMessage = { seq: number; id: string; topic: string; from: string; fromKind: string; fromRole?: string; to: string[]; text: string; ts: string; stage?: string };
 
 const ISO = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/;
 
@@ -69,9 +69,19 @@ test('a message from the UI is queued while no session holds the coordinator rol
   assert.equal(sent.ok, true, sent.error);
   const { message } = sent.value as { message: TopicMessage };
   assert.equal(message.stage, 'queued');
+  assert.ok(Number.isSafeInteger(message.seq) && message.seq > 0);
+  const page = await ui.request({ type: 'topic.history', topic: 'general', after: 0, limit: 200 });
+  assert.equal(page.ok, true, page.error);
+  assert.equal((page.value as { messages: TopicMessage[] }).messages[0]?.seq, message.seq);
+  const past = await ui.request({ type: 'topic.history', topic: 'general', after: message.seq });
+  assert.deepEqual((past.value as { messages: TopicMessage[] }).messages, []);
+  const before = await ui.request({ type: 'topic.history', topic: 'general', before: message.seq + 1 });
+  assert.equal((before.value as { messages: TopicMessage[] }).messages[0]?.seq, message.seq);
+
   const event = (await ui.waitFor((f) => f.type === 'message')) as { topic: { id: string; title: string }; message: TopicMessage };
   assert.deepEqual(event.topic, { id: 'general', title: 'General' });
   assert.equal(event.message.id, message.id);
+  assert.equal(event.message.seq, message.seq);
   assert.equal(event.message.from, 'human');
   assert.equal(event.message.fromKind, 'human');
   assert.equal(event.message.text, 'hello');

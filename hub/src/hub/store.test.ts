@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { Store } from './store.ts';
 import { HubCore } from './core.ts';
-import type { Message } from '../protocol.ts';
+import { isClientRequest, type Message, type TopicHistoryFilter, type TopicMessage } from '../protocol.ts';
 
 const message = (id: string, from: string, to: string[], text: string, ts = '2026-10-08T12:00:00.000Z'): Message => ({ id, from, fromKind: 'agent', via: 'session', to, text, ts });
 
@@ -67,6 +67,7 @@ test('a sessions table written by an older hub gains the status and role columns
     );
     assert.deepEqual(store.message('m0'), message('m0', 's1', ['s2'], 'old text', 'then'), 'an old message reads back without the new fields');
     assert.deepEqual(store.topicMessages('general', 10), [], 'an old message belongs to no topic');
+    assert.equal(store.messageSeq('m0'), 1, 'old rows keep their migrated durable number');
     store.rememberStatus('s1', '#27 backend: implement');
     store.rememberRole('s1', 'reviewer');
     store.rememberSessionId('s1', 'sess-1');
@@ -82,6 +83,9 @@ test('a sessions table written by an older hub gains the status and role columns
     // opening the file again is idempotent: the columns exist, nothing is altered twice
     const again = new Store(file);
     assert.equal(again.statusOf('s1', 0, 'sess-1'), '#27 backend: implement');
+    assert.equal(again.messageSeq('m0'), 1);
+    again.record({ ...message('m1', 's1', [], 'new'), topic: 'general' }, [], 4000);
+    assert.equal(again.topicMessages('general', 1)[0]?.seq, 2);
     again.close();
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -377,4 +381,100 @@ test('merge queue preserves FIFO, pinned evidence and positions when the store r
     store.close();
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+
+test('numeric history walks 450 messages in three pages in either direction without gaps or repeats', () => {
+  const core = new HubCore({ clock: new FakeClock() });
+  try {
+    const expected = Array.from({ length: 450 }, (_, i) => `page-${i}`);
+    core.store.transaction(() => {
+      for (const [i, id] of expected.entries()) {
+        core.store.record({ ...message(id, 'alpha', [], id), topic: 'general' }, [], 1000 - i);
+        // The sequence belongs to the whole store, so topic cursors need not be consecutive.
+        if (i % 100 === 0) core.store.record({ ...message(`other-${i}`, 'alpha', [], 'other'), topic: 'agents' }, [], i);
+      }
+    });
+    const page = (filter: TopicHistoryFilter) => core.topicHistory('general', 999, filter).messages;
+    let forward: TopicMessage[] = [], backward: TopicMessage[] = [];
+    let after = 0, before = Number.MAX_SAFE_INTEGER;
+    const forwardSizes: number[] = [], backwardSizes: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const next = page({ after }), prev = page({ before });
+      forwardSizes.push(next.length); backwardSizes.push(prev.length);
+      forward.push(...next); backward = [...prev, ...backward];
+      after = next.at(-1)!.seq; before = prev[0]!.seq;
+    }
+    assert.deepEqual(forwardSizes, [200, 200, 50]);
+    assert.deepEqual(backwardSizes, [200, 200, 50]);
+    assert.deepEqual(forward.map(m => m.id), expected);
+    assert.deepEqual(backward.map(m => m.id), expected);
+    assert.ok(forward.every((m, i) => Number.isSafeInteger(m.seq) && m.seq > (forward[i - 1]?.seq ?? 0)));
+    assert.deepEqual(page({ after }), []);
+    assert.deepEqual(page({ before }), []);
+    assert.deepEqual(core.topicHistory('agents', 2, { after: 0, session: 'alpha' }).messages.map(m => m.id), ['other-0', 'other-100']);
+    const last = forward.at(-1)!.seq;
+    core.store.prune(10000, 1);
+    core.store.record({ ...message('after-retention', 'alpha', [], 'new'), topic: 'general' }, [], 10000);
+    const retained = page({ after: last });
+    assert.deepEqual(retained.map(m => m.id), ['after-retention']);
+    assert.ok(retained[0]!.seq > last, 'emptying the table never reuses a cursor');
+  } finally { core.close(); core.store.close(); }
+});
+
+test('a message inserted between forward pages appears exactly once after the existing tail', () => {
+  const core = new HubCore({ clock: new FakeClock() });
+  try {
+    core.store.transaction(() => {
+      for (let i = 0; i < 450; i++) core.store.record({ ...message(`m-${i}`, 'alpha', [], 'old'), topic: 'general' }, [], 1000);
+    });
+    const first = core.topicHistory('general', 200, { after: 0 }).messages;
+    const live: TopicMessage[] = [];
+    core.subscribe(event => { if (event.type === 'message') live.push(event.message); });
+    const inserted = core.sendFromHuman('general', 'new tail').message;
+    const second = core.topicHistory('general', 200, { after: first.at(-1)!.seq }).messages;
+    const third = core.topicHistory('general', 200, { after: second.at(-1)!.seq }).messages;
+    const all = [...first, ...second, ...third];
+    assert.equal(third.length, 51);
+    assert.equal(all.filter(m => m.id === inserted.id).length, 1);
+    assert.equal(third.at(-1)?.seq, inserted.seq);
+    assert.deepEqual(live.find(m => m.id === inserted.id), inserted, 'send result and published event use the stored number');
+    assert.deepEqual(core.topicHistory('general', 200, { after: inserted.seq }).messages, []);
+  } finally { core.close(); core.store.close(); }
+});
+
+test('legacy history keeps its latest-first selection and oldest-first output, including message-id before', () => {
+  const core = new HubCore({ clock: new FakeClock() });
+  try {
+    core.store.transaction(() => {
+      for (let i = 0; i < 55; i++) core.store.record({ ...message(`legacy-${i}`, 'alpha', [], 'old'), topic: 'general' }, [], 1000);
+    });
+    const latest = core.topicHistory('general').messages;
+    assert.deepEqual(latest.map(m => m.id), Array.from({ length: 50 }, (_, i) => `legacy-${i + 5}`));
+    assert.deepEqual(core.topicHistory('general', 200, { before: latest[0]!.id }).messages.map(m => m.id), ['legacy-0', 'legacy-1', 'legacy-2', 'legacy-3', 'legacy-4']);
+    assert.deepEqual(core.topicHistory('general', 10, { before: 'missing' }).messages, []);
+    assert.equal(core.topicHistory('general', 3).messages.length, 3);
+    const agents = core.topicHistory('agents', 200, { after: 0, session: 'alpha' });
+    assert.deepEqual(agents.messages, []);
+    assert.throws(() => core.topicHistory('general', 200, { after: 0, session: 'alpha' }), /Agents/);
+  } finally { core.close(); core.store.close(); }
+});
+
+test('history accepts exclusive safe-integer cursors and refuses ambiguous or invalid cursors', () => {
+  const frame = { type: 'topic.history', id: 'history', topic: 'general' };
+  for (const filter of [{}, { before: 'message-id' }, { before: 1 }, { after: 0 }, { after: Number.MAX_SAFE_INTEGER }]) assert.equal(isClientRequest({ ...frame, ...filter }), true);
+  const core = new HubCore({ clock: new FakeClock() });
+  try {
+    for (const cursor of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      for (const key of ['before', 'after']) {
+        assert.equal(isClientRequest({ ...frame, [key]: cursor }), false);
+        assert.throws(() => core.topicHistory('general', 200, { [key]: cursor }), /safe integer/);
+      }
+    }
+    for (const filter of [{ before: 10, after: 0 }, { before: 'message-id', after: 0 }]) {
+      assert.equal(isClientRequest({ ...frame, ...filter }), false);
+      assert.throws(() => core.topicHistory('general', 200, filter), /not both/);
+    }
+    assert.equal(isClientRequest({ ...frame, after: '1' }), false);
+  } finally { core.close(); core.store.close(); }
 });

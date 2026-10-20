@@ -173,8 +173,10 @@ export type TopicRef = { id: string; title: string; item?: string | null };
  *  `injected` once every addressee's adapter confirmed the turn; `dropped` when it waited past the TTL. */
 export type DeliveryStage = 'queued' | 'delivered' | 'injected' | 'dropped';
 
-/** A message as a topic shows it: its stage is present when it had addressees; `ask` when it is an ask (#33). */
-export type TopicMessage = Message & { topic: string; stage?: DeliveryStage; ask?: AskCard };
+/** Exclusive numeric history cursors; string `before` preserves the Neovim message-id cursor. */
+export type TopicHistoryFilter = AgentsHistoryFilter & { before?: number | string; after?: number };
+/** A topic message: durable `seq`, delivery stage, and an ask card when applicable. */
+export type TopicMessage = Message & { seq: number; topic: string; stage?: DeliveryStage; ask?: AskCard };
 
 // ------------------------------------------------------------------ asks and the inbox (spec 4.5 and 5, #33)
 
@@ -601,8 +603,8 @@ export type ClientRequest =
   | { type: 'hub.reload'; id: string }
   /** The project's topics, standing ones first: `{ topics: Topic[] }`. */
   | { type: 'topic.list'; id: string }
-  /** A topic's latest messages, oldest first: `{ topic: Topic, messages: TopicMessage[] }`. Agents filters precede the limit. */
-  | ({ type: 'topic.history'; id: string; topic: string; limit?: number; before?: string } & AgentsHistoryFilter)
+  /** Oldest-first history: latest by default, exclusive numeric before/after pages (max 200). */
+  | ({ type: 'topic.history'; id: string; topic: string; limit?: number } & TopicHistoryFilter)
   /** The human writes into a topic: to `to` when given, else to the `@role` and `@session` mentions in the text, else
    *  to the Coordinator. `{ message: TopicMessage, outcomes }`. In Agents only a reply is accepted: `replyTo` names an
    *  agent's message there, and the reply addresses its sender. */
@@ -933,7 +935,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'role.clear':
       return typeof f.session === 'string';
     case 'topic.history':
-      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string') && isAgentsHistoryFilter(f);
+      return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string' || isMessageSeq(f.before)) && (f.after === undefined || isMessageSeq(f.after)) && (f.before === undefined || f.after === undefined) && isAgentsHistoryFilter(f);
     case 'topic.send':
       return (
         typeof f.topic === 'string' &&
@@ -960,4 +962,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
 
 function isAgentsHistoryFilter(f: Record<string, unknown>): boolean {
   return (f.item === undefined || typeof f.item === 'string') && (f.session === undefined || typeof f.session === 'string');
+}
+
+/** Message sequences are exact, non-negative JSON integers; zero starts a forward traversal. */
+function isMessageSeq(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
