@@ -461,6 +461,14 @@ identity-based cleanup and belongs at T3.
 
 ### Neovim recorded frames
 
+Workbench settling tests count outbound frames after completed startup and reconnect snapshots, advance
+a client-local fake deadline clock ten minutes, and retain the final no-list-read assertion. Delayed-read
+cases release the oldest original answer after its retry deadline and observe installed state, then verify
+only the missing read retried with backoff. Waiting for a replacement request alone cannot prove recovery:
+a late original reply must still complete startup. Rendered header and explorer-row assertions cover
+independent session answers and local task-event updates. These use the T2 recorded stub, without crew
+load or real-time latency claims.
+
 T2 client tests use `nvim/test/stub-client.ts` and `nvim/test/fixture.ts` for
 scratch projects, condition waits and client ownership. Native/T3 callers keep
 `nvim/test/harness.ts`. The hub's `tier-nvim.ts` compatibility export and the
@@ -680,7 +688,8 @@ map, before/after file seconds and process-start call sites in the review eviden
 
 ## Fixtures
 
-Rule 15: shared hub fixtures use `hub/test/fixture-environment.ts` to replace
+Rule 15: shared fixtures use the pure `test-support/fixture-environment.ts`
+(`hub/test/fixture-environment.ts` remains a compatibility export) to replace
 inherited HOME, XDG, account roots and Git configuration with worker-owned scratch
 paths. Git system/config injection and inherited identities are removed.
 The builder supplies `Fixture Test <fixture@example.test>` as both author and

@@ -1397,6 +1397,14 @@ The Unix socket speaks the hub's frames as JSON lines, through the same dispatch
 
 ### The UI's frames
 
+The Neovim workbench starts its independent list snapshots on connection and installs each answer as it
+arrives; item loading cannot hold back the session count or Coordinator header. Live events keep the
+installed state current. Reconnect reads new baselines once. A missing snapshot alone retries after
+30 seconds with exponential backoff capped at five minutes, retaining its original late reply and newest
+attempt; whichever answers first completes it and cancels the others. Answered lists are never retried
+by that timer. Each attempt has a bounded event journal; overflow invalidates that attempt before a new
+read. See `nvim/README.md`, “Hub data” and snapshot replay, for the client contract.
+
 | Request | Result `value` |
 | --- | --- |
 | `{"type":"hub.status","id":…}` | Hub state, including `keys: {layouts}` for keyboard layouts and `tracker: {levels, ladder}` for loaded container levels, ordered top-down. `ladder` is the nested array of all kinds at each level; `levels` keeps only each level's first kind for older clients. The UI reads the current values on connect/refresh; no config push event is added. Missing/unreadable config reports the levels in use by the running tracker. |

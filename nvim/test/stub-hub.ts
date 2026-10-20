@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 //                        {"release": {"error"?: "…"}}  answer the held topic.send requests
 //                        {"waitSnapshot": type, "snapshotCount"?: n}  wait until n answers are captured
 //                        {"releaseSnapshots": [types], "snapshotError"?: "…"}  release newest first
+//                        snapshotOrder: "oldest", snapshotLimit: n optionally release only the oldest n
 //   CLAND_STUB_SNAPSHOT_DELAY_MS  delay the first hub.status and task.list answers per connection
 //                               for the readiness sweep; explicit holdSnapshots still wins
 //   CLAND_STUB_ROLE_DELAY_MS      likewise delay the initial role.list reply for launcher defaults
@@ -529,12 +530,12 @@ if (controlPath) {
           if (Array.isArray(cmd.emits)) process.stdout.write(cmd.emits.map(frame => `${JSON.stringify(projected(frame))}\n`).join(''));
           if (cmd.set) Object.assign(scenario, cmd.set);
           if (Array.isArray(cmd.releaseSnapshots)) {
-            for (let i = snapshots.length - 1; i >= 0; i--) {
-              const snapshot = snapshots[i];
-              if (snapshot && cmd.releaseSnapshots.includes(snapshot.type)) {
-                snapshots.splice(i, 1);
-                snapshot.release(typeof cmd.snapshotError === 'string' ? cmd.snapshotError : undefined);
-              }
+            const selected = snapshots.filter(snapshot => cmd.releaseSnapshots instanceof Array && cmd.releaseSnapshots.includes(snapshot.type));
+            if (cmd.snapshotOrder !== 'oldest') selected.reverse();
+            const limit = typeof cmd.snapshotLimit === 'number' ? cmd.snapshotLimit : selected.length;
+            for (const snapshot of selected.slice(0, limit)) {
+              snapshots.splice(snapshots.indexOf(snapshot), 1);
+              snapshot.release(typeof cmd.snapshotError === 'string' ? cmd.snapshotError : undefined);
             }
           }
           if (cmd.release) {

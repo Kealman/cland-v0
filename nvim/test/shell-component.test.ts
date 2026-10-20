@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { centreOf, clock as clockOf } from './stub-client.ts';
 import type { Scenario } from './stub-hub.ts';
-import { eventually } from './fixture.ts';
+import { eventually, tempProject } from './fixture.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { skip, ts, proc, baseScenario, startShell, requestsOf, onSessionRow, statusLine, type Shell } from './shell-fixture.ts';
 
 const topBar = (s: string) => s.split('\n')[0] ?? '';
@@ -1461,4 +1462,132 @@ test('verifier rows show the latest hold plus others and dim pending work until 
   // The text stays the same; screen attributes prove the frame changed its colour.
   await eventually('held item uses normal colour', async () => await attr('T-c') === normal || undefined);
   assert.equal(await c.lua('return #require("cland.actions").audit()'), 0);
+});
+
+// The frame and rendered-header seams are the T-1008 acceptance criteria. Only time is faked.
+async function snapshotClock(c: Shell) {
+  await c.lua(`
+    local clock = { now = 0, timers = {} }
+    _G.snapshot_clock = clock
+    vim.defer_fn = function(fn, ms)
+      local timer = { at = clock.now + ms, fn = fn, closed = false }
+      function timer:is_closing() return self.closed end
+      function timer:stop() self.closed = true end
+      function timer:close() self.closed = true end
+      clock.timers[#clock.timers + 1] = timer
+      return timer
+    end
+  `);
+  return { advance: async (ms: number) => {
+    await c.lua(`
+      local clock = _G.snapshot_clock
+      local target = clock.now + ...
+      while true do
+        local next_timer
+        for _, timer in ipairs(clock.timers) do
+          if not timer.closed and timer.at <= target and (not next_timer or timer.at < next_timer.at) then next_timer = timer end
+        end
+        if not next_timer then break end
+        clock.now = next_timer.at
+        next_timer.closed = true
+        next_timer.fn()
+        local drained = false
+        vim.schedule(function() drained = true end)
+        assert(vim.wait(5000, function() return drained end), 'scheduled timer callback drains')
+      end
+      clock.now = target
+    `, ms);
+  } };
+}
+
+test('a late original items answer completes startup after its deadline instead of being discarded', { skip }, async t => {
+  const envRoot = await tempProject(t);
+  const c = await startShell(t, withItems, fixtureEnvironment(envRoot, process.env));
+  const clock = await snapshotClock(c);
+  await c.control({ set: { holdSnapshots: ['task.list'] } });
+  await c.lua("require('cland.state').S.items_loaded = false; require('cland').refresh()");
+  await c.control({ waitSnapshot: 'task.list' });
+  const before = await requestsOf(c, 'task.list');
+  await clock.advance(30000);
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 2 });
+  assert.equal((await requestsOf(c, 'task.list')).length, before.length + 1);
+  await c.control({ releaseSnapshots: ['task.list'], snapshotOrder: 'oldest', snapshotLimit: 1 });
+  // The round trip proves the original result was processed, even when its callback was discarded.
+  await c.lua("local seen=false; require('cland').client:request({type='role.list'},function() seen=true end); assert(vim.wait(5000,function() return seen end))");
+  assert.equal(await c.lua("return require('cland.state').S.items_loaded"), true, 'a reply after 30 s still installs its items');
+  await clock.advance(600000);
+  assert.equal((await requestsOf(c, 'task.list')).length, before.length + 1, 'the answered snapshot never retries again');
+});
+
+test('only a missing snapshot retries with backoff, and its oldest late answer retains live task events', { skip }, async t => {
+  const envRoot = await tempProject(t);
+  const c = await startShell(t, withItems, fixtureEnvironment(envRoot, process.env));
+  const clock = await snapshotClock(c);
+  await c.control({ set: { holdSnapshots: ['task.list'] } });
+  await c.lua("require('cland').refresh()");
+  await c.control({ waitSnapshot: 'task.list' });
+  const fullTypes = ['hub.status', 'task.list', 'topic.list', 'topic.history', 'events.list', 'session.list', 'artifact.list', 'rule.list', 'account.list'];
+  const counts = async () => Object.fromEntries(await Promise.all(fullTypes.map(async type => [type, (await requestsOf(c, type)).length])));
+  const before = await counts();
+  await clock.advance(30000);
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 2 });
+  await clock.advance(59999);
+  assert.equal((await requestsOf(c, 'task.list')).length, before['task.list']! + 1, 'no second retry at the old 30 s cadence');
+  await clock.advance(1);
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 3 });
+  await clock.advance(660000); // retries at 210, 450 and 750 seconds; the gap caps at 300 seconds
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 6 });
+  assert.equal((await requestsOf(c, 'task.list')).length, before['task.list']! + 5);
+  await clock.advance(299999);
+  assert.equal((await requestsOf(c, 'task.list')).length, before['task.list']! + 5);
+  await clock.advance(1);
+  await c.control({ waitSnapshot: 'task.list', snapshotCount: 7 });
+  const latest = item('T-14', 'task', 'New item 3');
+  await c.control({ set: { items: [latest] }, emit: { type: 'task', id: latest.id, item: latest } });
+  await c.control({ releaseSnapshots: ['task.list'], snapshotOrder: 'oldest', snapshotLimit: 1 });
+  await c.lua("assert(vim.wait(5000, function() return next(require('cland').client.snapshots) == nil end), 'late answer completes snapshot')");
+  assert.equal(await c.lua("return require('cland.state').item('T-14').title"), 'New item 3');
+  const after = await counts();
+  assert.deepEqual(after, { ...before, 'task.list': before['task.list']! + 6 }, 'answered lists are never re-requested by a missing read');
+  await clock.advance(600000);
+  assert.deepEqual(await counts(), after, 'ten idle minutes send no whole-state reads');
+});
+
+test('a reconnect reads each startup list once then settles for ten fake minutes while task events update the explorer', { skip }, async t => {
+  const envRoot = await tempProject(t);
+  const c = await startShell(t, withItems, fixtureEnvironment(envRoot, process.env));
+  const clock = await snapshotClock(c);
+  const reconnected = c.reconnect();
+  await c.waitScreen(s => s.includes('hub: reconnecting'), 'old transport disconnected before retry');
+  await clock.advance(250);
+  await reconnected;
+  await c.waitScreen(s => topBar(s).includes('coord-1') && s.includes('hub: connected'), 'replacement connection');
+  await c.lua("assert(vim.wait(5000,function() local c=require('cland').client; return c:connected() and next(c.pending)==nil end), 'all reconnect replies installed')");
+  const types = ['hub.status', 'task.list', 'topic.list', 'topic.history', 'events.list', 'session.list', 'artifact.list', 'rule.list', 'account.list'];
+  const counts = async () => Object.fromEntries(await Promise.all(types.map(async type => [type, (await requestsOf(c, type)).length])));
+  // Both cached topic views (General and Agents) have their own history snapshot.
+  const expected = Object.fromEntries(types.map(type => [type, type === 'topic.history' ? 2 : 1]));
+  assert.deepEqual(await counts(), expected);
+  await clock.advance(600000);
+  assert.deepEqual(await counts(), expected, 'no full reads during ten idle minutes');
+  await c.input('<Esc><Space>e');
+  const latest = item('T-14', 'task', 'New item 3');
+  await c.control({ set: { items: [latest] }, emit: { type: 'task', id: latest.id, item: latest } });
+  await c.input('zR');
+  await c.waitScreen(s => s.includes('New item 3'), 'task event renders its explorer row');
+  assert.deepEqual(await counts(), expected, 'task event never reloads any whole-state list');
+});
+
+test('the header shows sessions and Coordinator while the startup items list is delayed', { skip }, async t => {
+  const envRoot = await tempProject(t);
+  const c = await startShell(t, s => { withItems(s); s.holdSnapshots = ['task.list', 'hub.status']; }, fixtureEnvironment(envRoot, process.env), false);
+  await c.control({ waitSnapshot: 'task.list' });
+  await c.control({ waitSnapshot: 'hub.status' });
+  const screen = await c.waitScreen(s => topBar(s).includes('coord-1 Coordinator') && /sessions\s+3/.test(topBar(s)), 'session.list independently fills the header');
+  assert.doesNotMatch(topBar(screen), /no coordinator/);
+  assert.equal(await c.lua("return require('cland.state').S.items_loaded"), false, 'task.list is still pending');
+  await c.input('<Esc><Space>e');
+  await c.waitScreen(s => s.includes('loading the items'), 'explorer is still waiting for items');
+  await c.control({ set: { holdSnapshots: [] }, releaseSnapshots: ['task.list', 'hub.status'] });
+  await c.waitScreen(s => !s.includes('loading the items') && topBar(s).includes('coord-1 Coordinator'), 'items arrive without resetting the header');
 });

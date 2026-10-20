@@ -13,6 +13,7 @@ local MAX_RETRY_MS = 5000
 --- killed or a machine that rebooted names a socket nobody serves, and `hub start` replaces it.
 M.STALE_AFTER = 3
 M.SNAPSHOT_TIMEOUT_MS = 30000
+M.SNAPSHOT_MAX_RETRY_MS = 300000
 M.SNAPSHOT_MAX_EVENTS = 2048
 M.SNAPSHOT_MAX_BYTES = 2 * 1024 * 1024
 
@@ -156,34 +157,65 @@ local function relevant(request, event)
   return true
 end
 
---- A snapshot plus the events received while it was in flight. The caller installs the snapshot, then
---- replays relevant idempotent updates. Each attempt owns a bounded journal. An unanswered or overfull
---- attempt is discarded and retried; errors/disconnects release it and complete the caller normally.
+--- A snapshot plus the events received while it was in flight. A slow answer remains valid:
+--- retry only this missing read, with backoff, and let either answer finish it. Keep the original and
+--- newest attempts (at most two bounded journals); overflow retires an invalid journal before retrying.
+--- Errors/disconnects cancel every attempt and complete the caller once.
 function Client:snapshot(frame, cb, opts)
+  local attempts, finished, timer = {}, false, nil
+  local delay = M.SNAPSHOT_TIMEOUT_MS
   local attempt
-  attempt = function()
-    local journal = { request = frame, events = {}, bytes = 0 }
-    self.snapshots[journal] = true
-    local timer, id
-    local function release()
-      self.snapshots[journal] = nil
-      if timer and not timer:is_closing() then timer:stop(); timer:close() end
+  local function stop_timer()
+    if timer and not timer:is_closing() then timer:stop(); timer:close() end
+    timer = nil
+  end
+  local function release(journal)
+    self.snapshots[journal] = nil
+    if journal.id then
+      self.pending[journal.id] = nil
+      if self.nulls then self.nulls[journal.id] = nil end
     end
+    for i, candidate in ipairs(attempts) do
+      if candidate == journal then table.remove(attempts, i); break end
+    end
+  end
+  local function finish(err, value, events)
+    if finished then return end
+    finished = true
+    stop_timer()
+    while attempts[1] do release(attempts[1]) end
+    cb(err, value, events)
+  end
+  local scheduled = false
+  local function restart()
+    if finished or scheduled then return end
+    scheduled = true
+    stop_timer()
+    -- Start after the triggering event's handlers; an overflowed attempt is already invalid.
+    vim.schedule(function()
+      scheduled = false
+      if not finished then attempt() end
+    end)
+  end
+  attempt = function()
+    if finished then return end
+    -- Retain the oldest answer's opportunity to finish even after several retry deadlines.
+    if #attempts == 2 then release(attempts[2]) end
+    local journal = { request = frame, events = {}, bytes = 0 }
+    attempts[#attempts + 1] = journal
+    self.snapshots[journal] = true
     journal.restart = function()
       if not self.snapshots[journal] then return end
-      release()
-      if id then
-        self.pending[id] = nil
-        if self.nulls then self.nulls[id] = nil end
-      end
-      -- Start after the triggering event's handlers; no old reply can complete this new attempt.
-      vim.schedule(attempt)
+      release(journal)
+      restart()
     end
-    timer = vim.defer_fn(journal.restart, M.SNAPSHOT_TIMEOUT_MS)
-    id = self:request(frame, function(err, value)
-      release()
-      cb(err, value, journal.events)
+    journal.id = self:request(frame, function(err, value)
+      if self.snapshots[journal] then finish(err, value, journal.events) end
     end, opts)
+    timer = vim.defer_fn(function()
+      delay = math.min(delay * 2, M.SNAPSHOT_MAX_RETRY_MS)
+      restart()
+    end, delay)
   end
   attempt()
 end
