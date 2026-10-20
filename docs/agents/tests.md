@@ -74,7 +74,7 @@ test-seconds; wall budgets project whole-file scheduling at the run's workers.
 | T3 | 10 s | 120 s | 900 s |
 | T4 | none | none | none |
 
-This repository's budget manifest remains in report mode. The duration-budget
+This repository's budget manifest uses enforce mode (D71/D72). The duration-budget
 section below describes allowances, enforcement and the T3 growth ratchet.
 
 Task branches with `tiers.json` and `[merge] queue = true` verify T0–T2: the check step, all T1 files, coverage-selected hub T2 files and diff-selected Neovim T2 files. Coverage fallbacks run all T2 across both packages, clearing inherited Neovim subsets, and never admit T3. Successful coverage keeps diff-selected Neovim T2. T3 runs in batches whose configured tiers include it, in periodic `dev-t3` runs, and at integrated `dev`, stage, epic and release runs; T4 runs nightly and at occasions. The hosting hub must also have its effective merge queue enabled; a candidate-only opt-in keeps prior process coverage until the host provides batch protection. Task reports name whether T3 is in the merge batch or deferred to periodic dev and integrated occasions, with the queue state; that line is deferred evidence, not a passing process receipt. A task's same-head green receipt plus its green batch landing supplies merge evidence. T1 uses the serial hermetic phase, T2–T4 use the machine phase, and Neovim retains its package phase. Candidate packages with only the legacy resource manifest retain their existing file sets.
@@ -895,10 +895,10 @@ total. The log and result show `T3 ratchet (report only): … s vs base … s` a
 T1 and T2 may grow within their wall budgets.
 
 `budget.mode` selects `report` or `enforce`; omission keeps report mode for
-older manifests. D71 schedules enforcement before the v0.1.4 release build through
-T-915. D72 provides the policy for moving the remaining speed exceptions to the
-open E-880 epic before E-677 closes. T-922 lands that policy first, with the live
-manifest still in report mode and all measured baselines and allowances unchanged.
+older manifests. D71 enables enforcement before the v0.1.4 release build through
+T-915. D72 moves the remaining speed exceptions to the open E-880 epic before
+E-677 closes, retaining measured baselines and adding bounded allowances for
+the stage-cover and periodic-run overages.
 
 In enforce mode, every observed test and file must fit its tier's budget or an
 exact allowance covering the measured seconds. A known baseline does not exempt
@@ -967,8 +967,8 @@ is checked in the live authoritative tracker, including linked worktrees.
 
 By the Coordinator's D53 exception, pre-existing allowances carry `legacy: true`
 and have no calendar dates. D72 makes their owner `budget.legacyOwner` (E-677
-when omitted); T-915 will set E-880. They expire when that owner closes.
-T-915 will convert undersized legacy allowances to dated E-880 allowances, keeping
+when omitted); this repository sets E-880. They expire when that owner closes.
+T-915 converts undersized legacy allowances to dated E-880 allowances, keeping
 their original reason and appending the observed peak and headroom. Every other
 legacy entry retains its reason and seconds through the owner migration.
 New allowances must use dated fields under the span limits above; `legacy` is
