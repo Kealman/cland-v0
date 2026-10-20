@@ -2,8 +2,8 @@
 id: T-1008
 kind: task
 title: "The Neovim workbench settles: no periodic full re-reads"
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-756
 branch: t/T-1008-the-neovim-workbench-settles-no-periodic
 created: 2026-10-20T17:01:24.864Z
-updated: 2026-10-20T17:25:22.481Z
+updated: 2026-10-20T17:35:50.610Z
+closed: 2026-10-20T17:35:50.610Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final evidence clear at unchanged reviewed head 74c427fcb0dbad0827e051857cc499cfcbcfec70. A-7793 records the full audit: A-7783 run 113082c8-ca65-40e1-a915-6929eb87c2bd has host check/T1/full fallback T2 exit 0, 2066 ordinary passes plus 20 load repetitions, no failures/cancellations/skips, and distinct actual 5/5 receipts for all four new identities. All 60 owned shell cases and the new repetitions fit T2 budgets. A-7768 retains qualified original diagnosis/red-green/focused checks; controlled fake-time settling/reconnect evidence is not a real ten-minute live-load benchmark. Coordinator accepted the bounded C1 diagnosis; original live-hub latency source remains separate. No T3/T4 execution claimed. An unchanged T-963 thread case has a report-only 2.207 s >2 s row, separately routed as S Follow-ups under E-880; no owned findings. C1–C6 claimant done marks audited. No merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-20T17:35:50.610Z
+
+Merged 059fd4519855f3225acf0f89bc93d88878a4e2c4 onto dev.

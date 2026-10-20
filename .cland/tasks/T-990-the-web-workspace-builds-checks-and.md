@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-752
 branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T17:22:24.242Z
+updated: 2026-10-20T17:45:42.940Z
 ---
 
 ## Summary
@@ -36,40 +36,50 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
 
 - [x] C1. `npm install` at the root builds `web/dist`, and `git status` shows `web/dist` ignored (local evidence from a clean worktree).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.538Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:23.680Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.774Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:28.430Z
 - [x] C2. `npm run typecheck` runs the web's typecheck on the hub's strict flags plus the DOM libraries, and fails on a fixture with a hex, `rgb()` or `hsl()` colour under `web/src` outside `tokens.css` (lint test with fixtures).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:24.301Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:29.125Z
 - [x] C3. oxlint with the React hooks rules runs in the web's typecheck script and fails on a fixture that breaks a hooks rule.
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:24.819Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:29.794Z
 - [x] C4. The verification pre-step builds `web/dist` after the typecheck (test of the prepare plan, or a local `cland verify` log).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:25.444Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:30.324Z
 - [x] C5. The two fonts are served from `web/public/fonts/` as woff2 with Latin and Cyrillic and their OFL files, and a test finds no absolute external URL in the built `web/dist`.
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:25.959Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:30.963Z
 - [x] C6. `tokens.css` carries the canvas tokens with the role colours of `hl.lua`, and a unit test reads every text token at 4.5:1 or better on the ground and on the selection background.
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:26.591Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:31.580Z
 - [x] C7. The root `AGENTS.md` has a `web/` section: CSS Modules and `var(--token)` only, no UI library, no new dependency without the human, no explanatory prose, keys only through the one key map, and the reference component to copy.
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:27.117Z
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:32.100Z
 - [x] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:27.741Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:32.722Z
 - [x] C9. The added dependencies are exactly those the approved plan lists, with no UI library and no Tailwind (diff of `package.json`).
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:28.265Z
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:33.255Z
 - [x] C10. `web/README.md` describes the workspace, the build and the token rule.
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
-  - done: impl-990 · 2026-10-20T17:21:28.886Z
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
+  - done: impl-990 · 2026-10-20T17:45:33.876Z
 
 ## Comments
 
@@ -121,3 +131,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. Authorized conflict merge preserves both web/shared-wire typechecks, both static guards and check/build/prepare order. Skill/docs retain incoming T-975 procedures/provenance plus T-990 guidance. Independent comparison confirms web/font/guard/doctor code and lock unchanged; T-979 wire and T-975 roles equal incoming reviewed dev parent. Refreshed local clean-clone/check/doctor/colour-control receipts A-7780 inspected; prior Linux A-7775 and browser A-7741/A-7742 remain old-head evidence. C7/C9/C10 refreshed. Fresh mode-free exact-head gate required before remaining runtime final marks; QA after-stage unchanged. Audit A-7788. Reviewer ran no tests/browser.
 
 Criteria: C7 verified, C9 verified, C10 verified.
+
+### rev-23 · 2026-10-20T17:32:10.775Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-990-merge-final
+commit: 040b8da5a0e62647e39c1a4405e7506d50a9da61
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7814/run3dfcf3ed audited at exact merged source-clear head: 2063 ordinary tests / 328 files all pass, Linux T1/all-T2 including Neovim; doctor actual5/5 load passes. Merged wire+web typechecks/guards and typecheck→build order pass. Refreshed clean-clone install/colour controls A-7780 and source A-7788 establish remaining criteria; C1–C10 verified. Browser A-7741/A-7742 remains separate old-head manual evidence on unchanged web sources; withdrawn artifacts excluded. Prior A-7775 is historical only. Host checka0b87092 not repeated remotely, diagnostics report-only; no T3/T4/integrated/Web-phase claim. Lifetime431s/estimated$0.0300. Audit A-7818. Reviewer ran no tests/browser.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.

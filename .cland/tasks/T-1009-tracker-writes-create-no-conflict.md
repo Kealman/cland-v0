@@ -2,8 +2,8 @@
 id: T-1009
 kind: task
 title: Tracker writes create no .conflict capture without a real concurrent edit
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-757
 branch: t/T-1009-tracker-writes-create-no-conflict
 created: 2026-10-20T17:01:25.119Z
-updated: 2026-10-20T17:23:53.331Z
+updated: 2026-10-20T17:33:20.981Z
+closed: 2026-10-20T17:33:20.981Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at exact reviewed eaf0080d. A-7797 audits accepted mode-free 889b67a2/A-7794: Linux c8 lon1 two workers, exit0,2070/2070 ordinary passes, zero failures/skips/cancellations, plus40 distinct load repetitions all passing. C2 quiet CLI/hub create/edit/comment/criterion identity passes ordinary1.052454s and5/5(max1.094320s); all13 criterion and12 planned-stage identities pass, including real save races. C3 four startup variants and two post-publication I/O-error variants pass ordinary and5/5(maxT1repeat.066499s); prior data-loss finding remains resolved. C4 watcher no-read/no-task-event case passes ordinary and5/5(max.053562s). C1 diagnosis/local evidence remains A-7739/A-7755/A-7772. T1 and full fallbackT2 including Neovim actually execute green; T3 does not. Exact-head local macOS crash2/2/check receipts remain A-7764; no Linux nativeT3 proof claimed. Existing lint/budgets report-only; host header references separate check95ba40bd not repeated. Lifetime403s/$0.0280. Verify C1–C4; no remaining findings, QA none. No Reviewer rerun or edits.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-20T17:33:20.981Z
+
+Merged 44c4b8ed11f1f0c4d935e9ec1e8fed4db1eb0c65 onto dev.

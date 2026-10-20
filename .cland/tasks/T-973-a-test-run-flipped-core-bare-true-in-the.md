@@ -2,8 +2,8 @@
 id: T-973
 kind: task
 title: A test run flipped core.bare=true in the live repository (shared by all worktrees), breaking merge admission
-state: open
-status: in progress
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-749
 branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T17:27:13.595Z
+updated: 2026-10-20T17:46:07.102Z
+closed: 2026-10-20T17:46:07.102Z
 ---
 
 ## Summary
@@ -35,14 +36,19 @@ Find the writer and close the class. Every test and fixture child strips GIT_DIR
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
   - verified: rev-32 [reviewer] · run rev-20261020-973-source-3 · 2026-10-20T17:14:22.482Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
   - verified: rev-32 [reviewer] · run rev-20261020-973-final-3 · 2026-10-20T17:22:22.315Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
+  - verified: rev-32 [reviewer] · run rev-20261020-973-delta · 2026-10-20T17:33:11.728Z · commit 10998927fcef2d202e362d415ca6a6be1a6e0137
+  - verified: rev-32 [reviewer] · run rev-20261020-973-final-4 · 2026-10-20T17:41:40.992Z · commit 10998927fcef2d202e362d415ca6a6be1a6e0137
 - [x] C2. A T1 test with a poisoned GIT_DIR/GIT_COMMON_DIR proves the fixture environment strips them, and a native T3 case in territory-cli.test.ts shows a fixture git init --bare / clone --bare leaves the scratch parent repository's config bytes unchanged (targeted local run before review; its Linux receipt is landing evidence).
   - done: impl-973 · 2026-10-20T17:01:43.874Z
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
   - verified: rev-32 [reviewer] · run rev-20261020-973-source-3 · 2026-10-20T17:14:22.482Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
   - verified: rev-32 [reviewer] · run rev-20261020-973-final-3 · 2026-10-20T17:22:22.315Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
+  - verified: rev-32 [reviewer] · run rev-20261020-973-delta · 2026-10-20T17:33:11.728Z · commit 10998927fcef2d202e362d415ca6a6be1a6e0137
+  - verified: rev-32 [reviewer] · run rev-20261020-973-final-4 · 2026-10-20T17:41:40.992Z · commit 10998927fcef2d202e362d415ca6a6be1a6e0137
 - [x] C3. Merge admission reports `core.bare=true` in the root as its own clear error instead of a raw rev-parse failure.
   - done: impl-973 · 2026-10-20T17:13:05.295Z
   - verified: rev-32 [reviewer] · run rev-20261020-973-final-3 · 2026-10-20T17:22:22.315Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
+  - verified: rev-32 [reviewer] · run rev-20261020-973-final-4 · 2026-10-20T17:41:40.992Z · commit 10998927fcef2d202e362d415ca6a6be1a6e0137
 
 ## Comments
 
@@ -185,3 +191,69 @@ Standards: 0 findings. Spec: 0 findings.
 Artifact A-7786: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7786-t-973-final-same-head-evidence-at-519078b1.md
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-973 · 2026-10-20T17:32:22.929Z
+
+Coordinator-authorized dev conflict resolution is pushed at 10998927fcef2d202e362d415ca6a6be1a6e0137. Merged origin/dev 0c586375; .cland/roles.toml now exactly matches that dev file, preserving T-975 trimmed clauses/growth headroom and T-1014 publish permission. Existing merge-skill pointers cover refusal handling, so extra project pointers were dropped as authorized. Added merge-bare to newly merged shared/wire MergeCode. Cherry-picked exact Coordinator shared fix 6bd1d5bc (T-1017) as 10998927 for upstream HubStatus.web conformance. Own fixture/admission implementation is unchanged from previously accepted 519078b1. Hub and browser-leaf typechecks pass at current head. Exact-head local macOS direct T1/T2/T3 targeted clauses plus prior focused files: 130/130 pass, exit 0/signal null; native bare admission/batch case separately 1/1 pass. No suite/tripwire gate mode on direct runs. Fresh source review requested before new mode-free verification; prior A-7781 is old-head evidence, not reused as a current-head pass.
+
+### rev-32 · 2026-10-20T17:33:11.728Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-973-delta
+commit: 10998927fcef2d202e362d415ca6a6be1a6e0137
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+## Standards
+
+Delta source clear at 10998927fcef2d202e362d415ca6a6be1a6e0137. No findings. Coordinator authorization verified in topic-749: 4c8e7c0f requests the dev merge after conflict and allows dropping redundant project merge-bare pointers; 554a00cf/5b2354bf require exact shared fix 6bd1d5bc.
+
+Merge 6b7097f7 has prior reviewed parent 519078b1 and dev 0c586375. Compared all fixture/admission implementation and its regression files to 519078b1: unchanged. Operational Git remains separate from injected read-only root fact. Project roles.toml is byte-identical to dev, preserving T-975 growth reserve and T-1014 publish permission. Dropped project merge-bare lines are covered by existing merge-skill pointers under the explicit Coordinator disposition; built-in role guidance/help/README/skill remain.
+
+Checked the owned wire integration: shared/wire MergeCode adds merge-bare to match hub/src/merge.ts, with existing type equality guard. Shared fix 10998927's five added lines exactly match 6bd1d5bc: WebEdgeStatus and optional HubStatus.web plus explicit WebEdgeStatus conformance assertion. Hub protocol type matches the browser leaf without runtime imports or behavior changes. The merged web listener does not alter the reviewed Git probe seam.
+
+## Spec
+
+No findings against C1–C3. C1 remains the candidate-audit alternative with historical writer unidentified. C2's poison regression/native config-byte proof and shared fixture seal are unchanged; exact-head local macOS A-7819 supplies direct mixed T1/T2/T3 130/130, exit 0/signal null, including role clauses and prior focused cases. A-7820 supplies exact-head macOS native bare admission/batch 1/1, exit 0. No suite/tripwire gate mode applied to these targeted checks. Request reports both hub/browser-leaf typechecks passing.
+
+Renew C1/C2 from unchanged source/audit and exact-head targeted proof. C3 source remains implemented and locally exercised, but its final verification awaits a new mode-free receipt at 10998927. Prior Linux A-7781 is green only for 519078b1; all previous marks are stale until renewed and it cannot satisfy this head. Native Linux T3 remains landing evidence under C2. No new task/integrated/Linux T3 pass claimed, no Reviewer tests executed.
+
+Scope delta. Totals: Standards 0, Spec 0.
+
+Artifact A-7821: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7821-t-973-integrated-delta-source-review-at-10998927.md
+
+Criteria: C1 verified, C2 verified.
+
+### rev-32 · 2026-10-20T17:41:40.992Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-973-final-4
+commit: 10998927fcef2d202e362d415ca6a6be1a6e0137
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear at 10998927fcef2d202e362d415ca6a6be1a6e0137 after delta source verdict rev-20261020-973-delta / A-7821. Branch tip and hub result match; no findings. C1–C3 refreshed.
+
+Fresh mode-free run 89c4e3d0-022f-4578-b342-fc2749a833a9 / A-7835 exited 0 on Linux x64 6.8.0-142-generic droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5: T1 exit 0 (48s), all-T2 fallback exit 0 (294s), hub and Neovim completed. Aggregate 2070/2070 reported passes including load checks. Host typecheck gate 69eb5f9405be7f5a08e09f5f1cd75894277a4213 was reused, not repeated remotely. Diagnostic lint 131 findings/59 files and duration/budget/ratchet remain report-only; refusal policy enforced. One missing T2 baseline uses a median projection, not measured wall-time/budget success.
+
+Confirmed same-head poisoned parent/overlay environment test passes; bare-project batch refusal passes ordinary execution and 5/5 load repetitions. All 15 executor-spend and six executor-lock-liveness identities pass. Both project-probes identities pass, retaining full import/teardown zero-child assertions. This resolves earlier ledger and native-probe escape failures at the integrated head.
+
+C1 still uses the qualified candidate audit A-7710; historical writer remains unidentified. C2 combines current source/T1 proof with exact-head macOS targeted native config-preservation proof A-7819 (130/130 mixed T1/T2/T3, no suite/tripwire gate). C3 combines source-reviewed production merge-bare refusal, current component/batch execution and exact-head macOS native admission/batch A-7820 (1/1). Shared wire merge-bare plus exact authorized T-1017 status projection were reviewed in A-7821. Current C2 leaves native Linux territory-cli execution as landing evidence.
+
+A-7781 is an older-head green receipt only; A-7725/A-7746 remain failed on their respective old heads. T3/T4 did not execute in this task gate and remain deferred periodic/integrated landing coverage. No Reviewer tests/probes executed.
+
+Standards: 0 findings. Spec: 0 findings.
+
+Artifact A-7836: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7836-t-973-integrated-final-evidence-at-10998927.md
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T17:46:07.102Z
+
+Merged 76655c4cc1fe805a7900088b63548cc447d07fc2 onto dev.

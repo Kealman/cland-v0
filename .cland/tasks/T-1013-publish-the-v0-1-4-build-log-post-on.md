@@ -2,8 +2,8 @@
 id: T-1013
 kind: task
 title: Publish the v0.1.4 build-log post on cland.app
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels: []
 assignee: null
@@ -12,7 +12,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:18:17.804Z
-updated: 2026-10-20T17:27:26.766Z
+updated: 2026-10-20T17:27:48.252Z
+closed: 2026-10-20T17:27:48.252Z
 ---
 
 ## Summary
@@ -28,3 +29,7 @@ Publish the v0.1.4 build-log post (commit 6fb2aa8e on brand/identity, site/src/c
 ### coord · 2026-10-20T17:27:26.766Z
 
 Published marketing brand/identity at 19690fe0a37d5010e470780313e90ec8756f21ec (GitHub default branch and site); dev 215570599441a87adc0c14b12df5d9fc0e172531.
+
+### coord · 2026-10-20T17:27:48.252Z
+
+Published 2026-10-20 ~17:30Z: GitHub default branch and site at 19690fe0a37d5010e470780313e90ec8756f21ec; dev merge 21557059. Approved by the human (ask 05653d30); publish granted to the Coordinator by the human directly (T-1014).

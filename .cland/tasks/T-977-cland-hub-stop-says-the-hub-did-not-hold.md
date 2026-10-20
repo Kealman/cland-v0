@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T15:39:08.911Z
-updated: 2026-10-20T15:39:08.911Z
+updated: 2026-10-20T17:27:43.574Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ At restart #31 (2026-10-20 12:50Z), the stand-in ran `cland hub stop`. It report
 
 - [ ] C1. A T2 test with a fake hub that exits after the stop request reports "stopped", not "left it running".
 - [ ] C2. A hub that genuinely survives the window is still reported as running, naming its pid.
+
+## Comments
+
+### cland-impl · 2026-10-20T17:27:43.574Z
+
+Stall count from the stand-in's restart log: the serving hub ignored SIGTERM until SIGKILL at restarts #26 (2026-10-20 00:04Z, gap 39 s), #30 (08:00Z, 20 s wait, gap 69 s), and #32 (17:25Z, 10 s wait, gap 52 s); #27, #28, #29 and #31 exited within 12 s. Three stalls in the last four restarts. Each stall also came with the `cland hub stop` misreport this ticket describes (pid 'does not hold hub.lock', 'left running', then the process either exits on its own or needs SIGKILL). The stand-in's direct-restart.sh now waits 5 s before SIGKILL to keep the gap under the 60 s bridge grace.

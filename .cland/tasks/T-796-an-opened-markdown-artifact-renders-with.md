@@ -3,7 +3,7 @@ id: T-796
 kind: task
 title: An opened Markdown artifact renders with the thread's Markdown decorations, with a raw toggle
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-754
 branch: t/T-796-an-opened-markdown-artifact-renders-with
 created: 2026-10-18T10:14:36.589Z
-updated: 2026-10-20T17:27:01.894Z
+updated: 2026-10-20T17:45:45.380Z
 ---
 
 ## Summary
@@ -31,15 +31,22 @@ Notes, pages, `.md` and `.markdown` files, and folder entry files and children r
 
 - [x] C1. A headless-grid case ARTIFACT-001 opens a Markdown artifact with a heading, emphasis, inline code, a fenced block, a list, a block quote, a link and a table, and the grid shows the thread's rendering, not the raw markers, wrapped with linebreak and breakindent.
   - done: impl-796 · 2026-10-20T17:11:03.194Z
-- [ ] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
-  - failed: rev-23 [reviewer] · 2026-10-20T17:27:01.894Z · note Lazy default ignores an already loaded modified file buffer unless this artifact id owns its cache entry; rendered and first raw toggle can show different source.
+  - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+- [x] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
+  - done: impl-796 · 2026-10-20T17:28:12.247Z
+  - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
 - [x] C3. A 2,000-line artifact shows its first screen rendered within 50 ms with its spans cached per artifact version (path, mtime and size), proved by a T1/T2 test of the cache.
   - done: impl-796 · 2026-10-20T17:24:09.165Z
+  - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
 - [x] C4. The raw toggle is a registered action with its key `␣v` in `␣?` and the palette, and the "Shared artifacts" section of `nvim/README.md` describes the rendered and raw modes.
   - done: impl-796 · 2026-10-20T17:11:04.880Z
   - verified: rev-26 [reviewer] · run rev-20261020-796-source-1 · 2026-10-20T17:13:30.864Z · commit 42d222a4699cba4f7b79049b78de719a2b6f5c85
+  - verified: rev-23 [reviewer] · run rev-20261020-796-source-3 · 2026-10-20T17:29:04.059Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+  - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+  - verified: rev-23 [reviewer] · run rev-20261020-796-merge-source · 2026-10-20T17:45:45.380Z · commit dde71452eb89bbe2e66df9bb0dcbb0db4aad3243
 - [x] C5. Mermaid, HTML and the other browser artifacts, and prompt drafts, open exactly as before, proved by the existing `artifacts.test.ts` cases passing unchanged.
   - done: impl-796 · 2026-10-20T17:11:05.496Z
+  - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
 
 ## Comments
 
@@ -95,3 +102,52 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Spec medium at artifacts.lua:217: already loaded modified buffers outside M.bufs/M.file_bufs are missed by lazy rendering; disk projection can disagree with the first raw toggle. C2 failed. No other Standards/Spec findings. Lazy ownership/cache design, unchanged 50 ms/grid/cache assertions, wrapped-list proof and Events rendered expectation reviewed. A-7803 original local working-tree stdout/exits inspected; no current-head Linux/load pass, prior A-7777/A-7789 red retained. C1/C2 after-stage QA unchanged. Audit A-7804. Reviewer performed static trace only, no reproduction/tests/edits.
 
 Criteria: C2 failed (Lazy default ignores an already loaded modified file buffer unless this artifact id owns its cache entry; rendered and first raw toggle can show different source.).
+
+### impl-796 · 2026-10-20T17:28:30.866Z
+
+Corrected source at pushed 4f6418ba9b6e3755c8174d267f99b1739fdf248b requests fresh review. Prior Linux suite A-7777 failed C3 (68.77 ms base, 0/5 load repetitions) and an Events raw-marker expectation. Lazy raw setup reduced local first-screen latency to 12–14 ms without changing the 50 ms bound; Events now asserts rendered content and retains all routes. Review M1 on 98957dd5 then exposed normal :edit unsaved buffers outside artifact caches: the new regression went red, now passes by discovering an already-loaded file buffer without eager setup. Latest original evidence is attached to the review request. C1–C5 done; no verification until new source clear.
+
+### rev-23 · 2026-10-20T17:29:04.059Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-source-3
+commit: 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. M1 resolved by existing loaded-buffer lookup without creating/loading raw source; cache now ignores unloaded handles. T2 regression retains exact original buffer id, unsaved text/modified/editable flags and rendered toggles. A-7807 old-source red and corrected four-test pass/check inspected, explicitly local macOS working-tree receipts at subsequent committed source, first-screen14.11ms. Original50ms/grid/cache assertions retained; prior Linux red A-7777/A-7789 remains. C4 refreshed; C3/C5 await accepted exact-head mode-free verification. C1/C2 QA remains E-795 after stage. Audit A-7811; no Reviewer execution or edits.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-20T17:37:00.202Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-final-2
+commit: 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7826/run796839de exact-head audit:2066 ordinary tests/328 files all pass, Linux T1/all-T2 including Neovim. Artifact-render4, artifacts9, Events4 and thread23 pass; all four new render identities actual5/5 load passes. C3 ordinary first-grid47.33ms and five passing repetitions enforce unchanged <50ms assertion (individual load milliseconds unprinted). Existing modified-buffer fix passes; Events rendered expectation passes. C1–C5 review criteria verified with source A-7811 and separately labeled local headless/browser evidence A-7803/A-7807. Retain prior A-7777/A-7789 overall red and A-7804 source finding history. After-stage full E-795 QA remains separate; no QA verdict or T3/T4/integrated task claim. Hostcda15ecc not repeated remotely; budget/lint diagnostics report-only. Lifetime374s/estimated$0.0260. Audit A-7827; Reviewer ran no tests.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-23 · 2026-10-20T17:45:45.380Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-merge-source
+commit: dde71452eb89bbe2e66df9bb0dcbb0db4aad3243
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Authorized merge retains both tests.md sections, artifact README/tier/help/action/layout additions and inherited dev changes. Independent comparison confirms artifact implementation/shared renderer/render tests/ARTIFACT-001 unchanged from final-clear4f6418ba. Exact-head local A-7840 targeted exits/stdout inspected, including typecheck and requested files; no Linux/load/new suite claim. C4 refreshed; fresh mode-free exact-head result required for runtime final marks. Old A-7826 green and A-7777/A-7789 red remain historical. Audit A-7843; Reviewer read only, after-stage QA unchanged.
+
+Criteria: C4 verified.

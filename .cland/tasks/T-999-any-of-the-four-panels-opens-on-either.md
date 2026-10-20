@@ -3,7 +3,7 @@ id: T-999
 kind: task
 title: Any of the four panels opens on either side from the palette
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 10
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-753
 branch: t/T-999-any-of-the-four-panels-opens-on-either
 created: 2026-10-20T16:57:43.127Z
-updated: 2026-10-20T17:26:18.279Z
+updated: 2026-10-20T17:45:34.959Z
 ---
 
 ## Summary
