@@ -42,7 +42,7 @@ export const NAME_RETRIES = 5;
 /** How many delivered message ids a spoke remembers to recognise a re-send. */
 const SEEN_LIMIT = 1000;
 
-/** The default request deadline: the hub is on loopback, so a reply this late means it is stuck. */
+/** Ordinary loopback request deadline; tools with long-running work supply their own budget. */
 export const REQUEST_TIMEOUT_MS = 10_000;
 
 /** Maximum wait for a connecting spoke's welcome, below the harnesses' MCP tool deadlines. */

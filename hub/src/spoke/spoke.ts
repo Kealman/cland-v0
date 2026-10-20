@@ -392,9 +392,14 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
           const value = await hub.request({ ...args, type: 'artifact.promote' } as Omit<import('../protocol.ts').ArtifactPromote, 'id'>) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
-        case 'artifact.list':
         case 'artifact.create': {
-          const value = await hub.request({ ...args, type: req.params.name } as Omit<import('../protocol.ts').ArtifactCreate, 'id'>) as Record<string, unknown>;
+          // Folder publication queues behind other creations and copies files serially;
+          // allow two minutes for that work rather than the ordinary loopback reply budget.
+          const value = await hub.request({ ...args, type: 'artifact.create' } as Omit<import('../protocol.ts').ArtifactCreate, 'id'>, 120_000) as Record<string, unknown>;
+          return text({ ok: true, ...value });
+        }
+        case 'artifact.list': {
+          const value = await hub.request({ ...args, type: 'artifact.list' } as Omit<import('../protocol.ts').ArtifactList, 'id'>) as Record<string, unknown>;
           return text({ ok: true, ...value });
         }
         case 'send': {
