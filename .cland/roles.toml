@@ -89,7 +89,7 @@ effort = "max"
 permissions = "skip"
 
 [coordinator.permissions]
-tools = ["rule.add", "rule.edit", "rule.retire", "rule.list", "ask.forward", "ask.answer", "send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.plan", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
+tools = ["rule.add", "rule.edit", "rule.retire", "rule.list", "ask.forward", "ask.answer", "send", "ask", "resolve", "topic.create", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.plan", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "publish", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list"]
 
 [implementer]
 skills = ["implement", "tdd", "diagnosing-bugs"]
