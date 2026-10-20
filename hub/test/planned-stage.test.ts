@@ -68,6 +68,7 @@ test('CLI plan sets only current backlog tasks, preserves hand statuses, and rem
   assert.equal((await f.ui.request({ type: 'task.link', item: f.b.id, blocked_by: [f.a.id] })).ok, true);
   assert.equal((await f.ui.request({ type: 'task.edit', item: f.c.id, status: 'in progress' })).ok, true);
   await f.set(); await f.status(f.a.id, 'planned'); await f.status(f.b.id, 'planned');
+  assert.deepEqual((await files.readdir(join(f.root, '.cland/tasks'))).filter(name => name.endsWith('.conflict') || name.endsWith('.tmp') || name.startsWith('.criterion-capture-')), [], 'uncontested automatic planned writes clean their recovery sources');
   const listed = await cland(f.root, 'task', 'list', '--under', f.epic.id, '--json');
   assert.equal(listed.code, 0, listed.stderr);
   const rows = JSON.parse(listed.stdout).items as ItemView[];
@@ -323,7 +324,7 @@ test('a late in-place save after the publication hash read retains its status an
   };
   const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), git: new PlanGit().read, readBase: async () => 'dev', clock: new FakeClock(), stageTree: async () => 'f'.repeat(40), files: { ...files,
     rename: async (from, to) => {
-      if (String(from) === path && String(to).endsWith('.conflict')) captured ??= String(to);
+      if (String(to).endsWith('.conflict')) captured ??= String(to);
       if (String(to) === path && String(from).endsWith('.tmp')) await save();
       await files.rename(from, to);
     },

@@ -98,6 +98,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task criterion <id> <done|verify|fail|edit|remove> <C-n> [--run r] [--note t] [--text t]
   task criterion <id> add <text>
                   claimant: mark every criterion done before the final review; ready needs done and verified.
+                  uncontested writes leave no .conflict; a concurrent save refusal names its recovery source.
   task rank <id> <--top | --before <id> | --after <id>>
   task claim <id> [--release] [--force]
                   claiming an open task in a project with a territory makes (or reuses) its branch

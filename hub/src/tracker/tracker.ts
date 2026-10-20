@@ -22,7 +22,7 @@ import { parseItemReference, prefixOf } from './prefixes.ts';
 import { DEFAULT_LEVELS, kindsFor, kindWithArticle, isPlanningContainer, Ladder, type Levels } from './kinds.ts';
 import { landedTask, taskBase, territoryPath } from '../territory.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, linkSync, unlinkSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
+import { existsSync, linkSync, unlinkSync, renameSync, mkdirSync, readdirSync, readFileSync, statSync, type Stats } from 'node:fs';
 import files, { type FileHandle } from 'node:fs/promises';
 import type { Resumed } from '../hub/budget.ts';
 import type { SessionHold } from '../protocol.ts';
@@ -690,14 +690,28 @@ export class Tracker {
     for (const marker of readdirSync(this.#dir).filter(name => /^\.criterion-capture-[a-f0-9-]+\.json$/.test(name))) {
       const intent = join(this.#dir, marker);
       try {
-        const value = JSON.parse(readFileSync(intent, 'utf8')) as { file?: unknown; captured?: unknown };
-        if (typeof value.file !== 'string' || typeof value.captured !== 'string' || basename(value.file) !== value.file || basename(value.captured) !== value.captured || this.#fileNumber(value.file) === null || !value.captured.startsWith(`${value.file}.`) || !value.captured.endsWith('.conflict')) throw new Error('invalid criterion capture intent');
+        const value = JSON.parse(readFileSync(intent, 'utf8')) as { file?: unknown; captured?: unknown; expected?: unknown };
+        if (typeof value.file !== 'string' || typeof value.captured !== 'string' || basename(value.file) !== value.file || basename(value.captured) !== value.captured || this.#fileNumber(value.file) === null || !value.captured.startsWith(`${value.file}.`) || !/\.(conflict|tmp)$/.test(value.captured)) throw new Error('invalid criterion capture intent');
         const path = join(this.#dir, value.file);
         try {
           linkSync(join(this.#dir, value.captured), path);
           this.#log({ event: 'task-criterion-recovered', file: value.file, source: value.captured });
         } catch (err) {
           if ((err as NodeJS.ErrnoException).code !== 'EEXIST' && !((err as NodeJS.ErrnoException).code === 'ENOENT' && existsSync(path))) throw err;
+        }
+        if (value.captured.endsWith('.tmp')) {
+          try {
+            const source = join(this.#dir, value.captured);
+            const saved = readFileSync(source, 'utf8');
+            if (typeof value.expected !== 'string') {
+              this.#log({ event: 'task-criterion-source', file: value.file, path: source, note: 'unvalidated interrupted source retained for recovery' });
+            } else if (hashOf(saved) !== value.expected) {
+              const conflict = source.replace(/\.tmp$/, '.conflict');
+              renameSync(source, conflict);
+              this.#log({ event: 'task-criterion-source', file: value.file, path: conflict, note: 'concurrent saved bytes retained during startup recovery' });
+            } else unlinkSync(source);
+          }
+          catch (err) { if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err; }
         }
         unlinkSync(intent);
       } catch (err) {
@@ -2041,8 +2055,6 @@ export class Tracker {
       if (this.#writeGate) await this.#writeGate();
       const before = read ? await this.#files.readFile(oldPath, 'utf8').then(text => resumed(() => hashOf(text)), () => null) : null;
       if (beforeRename) await resumed(beforeRename);
-      if (read?.op === 'planned' && before !== read.hash) throw new PlannedChanged();
-      if (read?.op === 'criterion' && before !== read.hash) throw new TrackerError(`${read.id}: concurrent hand edit; criterion write refused, retry`);
       if (read?.op === 'criterion' || read?.op === 'planned') await this.#replaceCriterion(path, tmp, read.hash, resumed, beforeCommit, path => { read.captured = path; });
       else if (name !== oldName) {
         await resumed(() => { beforeCommit?.(); return this.#files.link(tmp, path); });
@@ -2052,9 +2064,12 @@ export class Tracker {
       const replacedText = read ? await readWhole(read.fd, resumed).catch(() => null) : null;
       const replaced = replacedText === null ? null : resumed(() => hashOf(replacedText));
       if (read?.op === 'planned' && replaced !== read.hash) throw new PlannedChanged();
-      if (read?.op === 'criterion' && replaced !== read.hash) throw new TrackerError(`${read.id}: concurrent in-place hand edit; criterion write refused, recover ${read.captured} and retry`);
+      if (read?.op === 'criterion' && replaced !== read.hash) throw new TrackerError(`${read.id}: concurrent in-place hand edit; criterion write refused`);
+      if (read?.captured) {
+        await this.#files.unlink(read.captured);
+        delete read.captured;
+      }
       return resumed(() => {
-        if (read?.captured) this.#log({ event: 'task-criterion-source', id: read.id, path: read.captured, note: 'retained source protects late saves through an already open editor handle' });
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
         this.#plansAfterIndex(written, 'hub', planWriter, planReason);
         committed?.();
@@ -2068,6 +2083,20 @@ export class Tracker {
     } catch (err) {
       // A failed temporary write or rename must not masquerade as a committed item.
       await resumed(() => this.#files.unlink(tmp)).catch(() => {});
+      if (read?.captured?.endsWith('.tmp')) {
+        const saved = await this.#files.readFile(read.captured, 'utf8').catch(() => null);
+        if (saved === null) {
+          if (err instanceof Error) err.message += `; unvalidated captured source: ${read.captured}; recover and retry`;
+        } else if (hashOf(saved) !== read.hash || err instanceof TrackerError && err.message.includes('concurrent')) {
+          const conflict = read.captured.replace(/\.tmp$/, '.conflict');
+          await this.#files.rename(read.captured, conflict);
+          read.captured = conflict;
+          if (err instanceof TrackerError) err.message += `; captured source: ${conflict}; recover and retry`;
+        } else {
+          await this.#files.unlink(read.captured);
+          delete read.captured;
+        }
+      }
       if (read?.op === 'planned' && read.captured) {
         const saved = await resumed(() => this.#files.readFile(read.captured!, 'utf8')).catch(() => null);
         const changed = resumed(() => saved !== null && hashOf(saved) !== read.hash);
@@ -2100,9 +2129,9 @@ export class Tracker {
    * Tracker readers stay queued during the brief gap. A conflict retains the captured source for recovery. */
   async #replaceCriterion(path: string, tmp: string, expected: string, resumed: Resumed, authorize?: () => void, capturedSource?: (path: string) => void): Promise<void> {
     const captureId = randomUUID();
-    const captured = `${path}.${captureId}.conflict`;
+    const captured = `${path}.${captureId}.tmp`;
     const intent = join(this.#dir, `.criterion-capture-${captureId}.json`);
-    await this.#files.writeFile(`${intent}.tmp`, JSON.stringify({ file: basename(path), captured: basename(captured) }));
+    await this.#files.writeFile(`${intent}.tmp`, JSON.stringify({ file: basename(path), captured: basename(captured), expected }));
     await this.#files.rename(`${intent}.tmp`, intent);
     await resumed(() => { authorize?.(); return this.#files.rename(path, captured); });
     resumed(() => capturedSource?.(captured));
@@ -2113,16 +2142,30 @@ export class Tracker {
       await resumed(() => { authorize?.(); return this.#files.link(tmp, path); });
       const after = await this.#files.readFile(captured, 'utf8');
       if (resumed(() => hashOf(after)) !== expected) throw new TrackerError('concurrent in-place hand edit; criterion write refused');
-      // Keep the inode: an editor may still hold it open and complete an in-place save later.
+      // The caller checks its original handle once more before releasing the temporary source.
       await this.#files.unlink(tmp);
       await this.#files.unlink(intent);
+      if (!capturedSource) await this.#files.unlink(captured);
     } catch (err) {
       // Restore only an absent path. A newer save at the path always wins; retain the captured source too.
       try { await this.#files.link(captured, path); }
       catch (restore) { if ((restore as NodeJS.ErrnoException).code !== 'EEXIST') throw new TrackerError(`criterion write failed; recover ${captured}: ${String(restore)}`); }
       await this.#files.unlink(intent).catch(() => {});
-      if (err instanceof TrackerError) throw new TrackerError(`${err.message}; captured source: ${captured}; recover and retry`);
-      if ((err as NodeJS.ErrnoException).code === 'EEXIST') throw new TrackerError(`concurrent hand save; criterion write refused, retry; captured source: ${captured}`);
+      const concurrent = err instanceof TrackerError && err.message.startsWith('concurrent ') || (err as NodeJS.ErrnoException).code === 'EEXIST';
+      const saved = await this.#files.readFile(captured, 'utf8').catch(() => null);
+      if (saved === null) {
+        if (err instanceof Error) err.message += `; unvalidated captured source: ${captured}; recover and retry`;
+        throw err;
+      }
+      if (concurrent || hashOf(saved) !== expected) {
+        const conflict = captured.replace(/\.tmp$/, '.conflict');
+        await this.#files.rename(captured, conflict);
+        capturedSource?.(conflict);
+        if (err instanceof TrackerError) throw new TrackerError(`${err.message}; captured source: ${conflict}; recover and retry`);
+        throw new TrackerError(`concurrent hand save; criterion write refused, retry; captured source: ${conflict}; ${String(err)}`);
+      }
+      await this.#files.unlink(captured);
+      capturedSource?.('');
       throw err;
     }
   }

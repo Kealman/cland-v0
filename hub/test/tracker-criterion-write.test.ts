@@ -9,6 +9,38 @@ import { taskWriteGate } from './tracker-write-gate.ts';
 import { call, value } from './validation-support.ts';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 
+test('uncontested CLI and hub task writes leave no conflict captures', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  const noCaptures = async (path: string) => assert.deepEqual(
+    (await files.readdir(join(root, '.cland', 'tasks'))).filter(name => name.endsWith('.conflict') || name.endsWith('.tmp') || name.startsWith('.criterion-capture-')),
+    [], path,
+  );
+  const body = '## Acceptance criteria\n- [ ] C1. First';
+  const cli = async (...args: string[]) => {
+    const result = await cland(root, 'task', ...args, '--json');
+    assert.equal(result.code, 0, result.stderr);
+    return (JSON.parse(result.stdout) as { item: ItemView }).item;
+  };
+  const made = await cli('create', 'CLI writes', '--size', 'S', '--body', body);
+  await noCaptures('CLI create');
+  await cli('edit', made.id, '--title', 'CLI edited');
+  await noCaptures('CLI edit');
+  await cli('comment', made.id, 'CLI comment');
+  await noCaptures('CLI comment');
+  await cli('criterion', made.id, 'done', 'C1');
+  await noCaptures('CLI criterion');
+  const hub = (await value<{ item: ItemView }>(ui, { type: 'task.create', size: 'S', title: 'Hub writes', body })).item;
+  await noCaptures('hub create');
+  await value(ui, { type: 'task.edit', item: hub.id, title: 'Hub edited' });
+  await noCaptures('hub edit');
+  await value(ui, { type: 'task.comment', item: hub.id, text: 'Hub comment' });
+  await noCaptures('hub comment');
+  await value(ui, { type: 'task.criterion', item: hub.id, op: 'done', criterion: 'C1' });
+  await noCaptures('hub criterion');
+});
+
 test('MCP done assigns legacy ids and CLI done writes the checkbox and a mark', async t => {
   const root = await tempProject(t);
   const { discovery } = await projectHub(t, root);
@@ -134,6 +166,9 @@ test('a concurrent hand save refuses the criterion write and retry keeps both ch
   const refused = await writing;
   assert.equal(refused.ok, false); assert.match(refused.error!, /concurrent hand edit.*retry/);
   assert.equal(await readFile(path, 'utf8'), edited);
+  const captures = (await files.readdir(join(root, '.cland', 'tasks'))).filter(name => name.endsWith('.conflict'));
+  assert.equal(captures.length, 1);
+  assert.equal(await readFile(join(root, '.cland', 'tasks', captures[0]!), 'utf8'), edited);
   const retry = await ui.request({ type: 'task.criterion', item: item.id, op: 'done', criterion: 'C1' });
   assert.equal(retry.ok, true, retry.error);
   const final = (retry.value as { item: ItemView }).item;
@@ -181,7 +216,7 @@ for (const save of ['capture', 'publish'] as const) {
     let edited = '';
     const tracker = new Tracker({ root, db: join(root, '.cland', 'hub.db'), files: { ...files,
       rename: async (from, to) => {
-        if (armed && save === 'capture' && String(to).endsWith('.conflict')) {
+        if (armed && save === 'capture' && String(from).endsWith('.md') && String(to).endsWith('.tmp')) {
           armed = false;
           edited = (await readFile(String(from), 'utf8')).replace('Original.', 'Saved during capture.');
           const editor = `${from}.editor`;
@@ -193,7 +228,7 @@ for (const save of ['capture', 'publish'] as const) {
       link: async (from, to) => {
         if (armed && save === 'publish' && String(from).endsWith('.tmp')) {
           armed = false;
-          const captured = (await files.readdir(join(root, '.cland', 'tasks'))).find(n => n.endsWith('.conflict'))!;
+          const captured = (await files.readdir(join(root, '.cland', 'tasks'))).find(n => !n.startsWith('.') && n.endsWith('.tmp'))!;
           edited = (await readFile(join(root, '.cland', 'tasks', captured), 'utf8')).replace('Original.', 'Saved during publication.');
           await writeFile(to, edited);
         }
