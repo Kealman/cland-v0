@@ -13,6 +13,7 @@ import { onCleanup, beforeDirectories } from './process-cleanup.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { keyHash, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
+import { Machine } from '../src/executor/droplet/machine.ts';
 
 async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
   const root = await tempProject(t);
@@ -313,6 +314,95 @@ test('delivery survives a snapshot replacement during machine creation', async t
     }
   } finally { await drive(f, executor.release(lease)); }
   assert.deepEqual(f.api.droplets, []);
+});
+
+test('delivery retries initial SSH setup within its bound and names failed transport steps', async t => {
+  const f = await fixture(t);
+  await f.stop();
+  const snapshot: Snapshot = { image: 900, name: 'ready', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(f.root), JSON.stringify(snapshot));
+  const { run: _scriptedRun, ...dependencies } = f.dependencies;
+  let failures = 1;
+  let consumeTimeout = false;
+  let step = '';
+  const setupTimeouts: number[] = [];
+  let uploads = 0;
+  let prepares = 0;
+  const transportFailure = new Error('machine command failed (exit 255): ssh: connection reset');
+  const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, {
+    ...dependencies,
+    wait: ms => f.clock.advance(ms),
+    runBundle: async (_run, path) => { await writeFile(path, 'scripted bundle'); },
+    machine: { ...f.dependencies.machine,
+      exec: async (_lease, command, options) => {
+        if (command.startsWith('mkdir')) {
+          setupTimeouts.push(options.timeoutMs);
+          if (failures-- > 0) { if (consumeTimeout) f.clock.block(options.timeoutMs); throw transportFailure; }
+        }
+        return JSON.stringify(f.key);
+      },
+      put: async (_lease, _path, remote) => { uploads++; if (step === 'upload' && remote.endsWith('/tree.bundle')) throw transportFailure; },
+      result: async (_lease, command) => {
+        if (command.includes('git fetch')) { if (step === 'fetch') throw transportFailure; }
+        else { prepares++; if (step === 'prepare') throw transportFailure; }
+        return { stdout: '', stderr: '', code: 0 };
+      },
+    },
+  });
+  const lease = await drive(f, executor.acquire({ id: 'delivery-readiness' }, new Date(f.clock.now().getTime() + 600000).toISOString()));
+  try {
+    const dir = join(f.root, '.cland/run/delivery-readiness');
+    await mkdir(dir, { recursive: true });
+    const run = { id: lease.run, cwd: f.root, head: 'e'.repeat(40), mode: 'auto', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate'), commands: { check: '', prepare: 'prepare-fixture', test: '' } };
+    await executor.deliver(lease, run);
+    assert.equal(lease.execution?.delivered, true);
+    assert.equal(setupTimeouts.length, 2, 'retry only the idempotent mkdir after a transient SSH failure');
+    assert.equal(prepares, 1);
+    for (const row of [
+      { step: 'setup', error: /delivery directory readiness.*exit 255.*connection reset/, remaining: 600000, elapsed: 30000 },
+      { step: 'setup', error: /delivery directory readiness.*exit 255/, remaining: 600000, elapsed: 30000, consumeTimeout: true },
+      { step: 'setup', error: /delivery directory readiness.*exit 255/, remaining: 1500, elapsed: 1500 },
+      { step: 'upload', error: /delivery upload tree.bundle.*exit 255/, remaining: 600000, elapsed: 0 },
+      { step: 'fetch', error: /delivery fetch.*exit 255/, remaining: 600000, elapsed: 0 },
+      { step: 'prepare', error: /delivery checkout\/prepare.*exit 255/, remaining: 600000, elapsed: 0 },
+    ]) {
+      step = row.step; failures = step === 'setup' ? Infinity : 0;
+      consumeTimeout = 'consumeTimeout' in row;
+      uploads = 0; prepares = 0; setupTimeouts.length = 0; delete lease.execution;
+      const started = f.clock.now().getTime();
+      lease.deadline = new Date(started + row.remaining).toISOString();
+      await assert.rejects(executor.deliver(lease, run), row.error);
+      assert.equal(lease.execution, undefined);
+      assert.equal(f.clock.now().getTime() - started, row.elapsed);
+      assert.ok(setupTimeouts.every(ms => ms > 0 && ms <= Math.min(10000, row.remaining)));
+      if (consumeTimeout) assert.deepEqual(setupTimeouts, [10000, 10000, 6000]);
+      if (step === 'setup') assert.equal(uploads, 0, 'failed setup never reaches upload');
+      assert.equal(prepares, step === 'prepare' ? 1 : 0, 'prepare is never replayed');
+    }
+  } finally { await drive(f, executor.release(lease)); }
+  assert.deepEqual(f.api.droplets, []);
+});
+
+test('machine failures preserve exit and bounded stderr without leaking credentials or command arguments', async () => {
+  const token = 'sentinel-machine-secret';
+  const machine = new Machine('/unused', { DIGITALOCEAN_TOKEN: token }, async () => {
+    throw { code: 255, signal: null, stderr: `ssh: connection reset ${token}\n${'x'.repeat(5000)}`, message: 'secret command arguments' };
+  });
+  const lease = { lease: 'failure', address: '127.0.0.1' } as Parameters<Machine['exec']>[0];
+  for (const action of [() => machine.exec(lease, 'secret command arguments', { timeoutMs: 10 }), () => machine.put(lease, 'private-file', 'remote-file')]) {
+    await assert.rejects(action(), (error: Error) => {
+      assert.match(error.message, /exit 255.*ssh: connection reset <REDACTED>/);
+      assert.ok(!error.message.includes(token));
+      assert.ok(!error.message.includes('secret command arguments'));
+      assert.ok(error.message.length < 4300);
+      return true;
+    });
+  }
+  const timedOut = new Machine('/unused', {}, async () => { throw { code: null, signal: 'SIGTERM', stderr: '' }; });
+  await assert.rejects(timedOut.exec(lease, 'true', { timeoutMs: 10 }), /exit unknown; signal SIGTERM/);
+  const missing = new Machine('/unused', {}, async () => { throw { code: 'ENOENT', message: 'secret command arguments' }; });
+  await assert.rejects(missing.exec(lease, 'true', { timeoutMs: 10 }), /exit ENOENT/);
 });
 
 test('completed transfers wait for snapshot regions to become visible before publishing the image', async t => {

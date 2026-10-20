@@ -57,6 +57,27 @@ export class DropletRun {
   readonly #dependencies: DropletDependencies;
   readonly #env: NodeJS.ProcessEnv;
   constructor(root: string, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}) { this.#dependencies = dependencies; this.#clock = dependencies.clock ?? realClock; this.#root = root; this.#env = env; this.#machine = dependencies.machine ?? new Machine(root, env); }
+  async #step<T>(name: string, work: () => Promise<T>): Promise<T> {
+    try { return await work(); }
+    catch (error) { throw new Error(`delivery ${name}: ${error instanceof Error ? error.message : 'machine request failed'}`); }
+  }
+  async #directory(lease: DropletLease, dir: string): Promise<void> {
+    const limit = Math.min(Date.parse(lease.deadline), this.#clock.now().getTime() + 30000);
+    if (this.#clock.now().getTime() >= limit) throw new Error('machine readiness deadline reached');
+    for (;;) {
+      try {
+        await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: Math.min(10000, limit - this.#clock.now().getTime()) });
+        return;
+      } catch (error) {
+        // Only this idempotent setup command may be retried after an ambiguous
+        // SSH failure. Upload, fetch and prepare retain their own failure policy.
+        if (this.#clock.now().getTime() >= limit) throw error;
+        const delay = Math.min(2000, limit - this.#clock.now().getTime());
+        await (this.#dependencies.wait?.(delay) ?? pause(delay, this.#clock));
+        if (this.#clock.now().getTime() >= limit) throw error;
+      }
+    }
+  }
   async deliver(lease: DropletLease, run: RunRef, committedOnly = false): Promise<void> {
     const snapshot = lease.snapshot ?? await readSnapshot(this.#root);
     if (!snapshot) throw new Error('prepared snapshot disappeared');
@@ -65,7 +86,7 @@ export class DropletRun {
     const buildBundle = this.#dependencies.runBundle ?? runBundle;
     await buildBundle(run, bundle, snapshot.key.base, committedOnly, this.#env);
     const dir = remoteDir(lease);
-    await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
+    await this.#step('directory readiness', () => this.#directory(lease, dir));
     const transport = selectionTransport(run.selection, join(local, 'selection.json'));
     if (transport.file) await writeFile(join(local, 'selection.json'), transport.file, { mode: 0o600 });
     const selectionEnv = transport.file ? `unset CLAND_SUITE_SELECTION\nexport CLAND_SUITE_SELECTION_FILE=${dir}/selection.json` : `unset CLAND_SUITE_SELECTION_FILE\nexport CLAND_SUITE_SELECTION=${quote(transport.env.CLAND_SUITE_SELECTION!)}`;
@@ -107,10 +128,10 @@ git write-tree
       .replace('@RUN_TIMEOUT@', String(testTiming('CLAND_TEST_EXECUTOR_RUN_TIMEOUT_MS', config.verification.runTimeoutMs, this.#env) / 1000));
     await writeFile(join(local, 'run.sh'), script, { mode: 0o600 });
     for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
-    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
+    for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#step(`upload ${file}`, () => this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`));
     const prepare = lines.prepare ? `CLAND_PREPARE_KEY=${quote(JSON.stringify(snapshot.key))} /bin/sh -c ${quote(lines.prepare)} 2>&1 || { prepare_exit=$?; echo "prepare failed (exit $prepare_exit)"; exit "$prepare_exit"; }` : "echo 'prepare: not set'";
     const timeout = () => Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env));
-    const fetch = () => this.#machine.result(lease, `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}`, timeout());
+    const fetch = () => this.#step('fetch', () => this.#machine.result(lease, `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}`, timeout()));
     let fetched = await fetch();
     let output = fetched.stdout + fetched.stderr;
     // Acquire and deliver can straddle snapshot publication. The new bundle base
@@ -118,24 +139,24 @@ git write-tree
     if (fetched.code !== 0 && /Repository lacks these prerequisite commits/.test(output)) {
       output += '\nSnapshot base unavailable on machine; retrying with a full bundle.\n';
       await buildBundle(run, bundle, undefined, committedOnly, this.#env);
-      await this.#machine.put(lease, bundle, `runs/${lease.run}/tree.bundle`);
+      await this.#step('upload full tree.bundle', () => this.#machine.put(lease, bundle, `runs/${lease.run}/tree.bundle`));
       fetched = await fetch();
       output += fetched.stdout + fetched.stderr;
     }
     if (fetched.code !== 0) {
       await writeFile(join(local, 'delivery.log'), output);
       await appendFile(run.log, output);
-      throw new Error(output.trim() || `delivery failed (exit ${fetched.code})`);
+      throw new Error(`delivery fetch failed (exit ${fetched.code}): ${output.trim()}`);
     }
     const command = `set -e\ncd "$HOME/cland"\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\n${prepare}\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\nprepare_dirty=$(git status --porcelain --untracked-files=all)\nif test -n "$prepare_dirty"; then echo "prepare left the checkout dirty: $prepare_dirty"; exit 1; fi`;
-    const result = await this.#machine.result(lease, command, timeout());
+    const result = await this.#step('checkout/prepare', () => this.#machine.result(lease, command, timeout()));
     output += result.stdout + result.stderr;
     await writeFile(join(local, 'delivery.log'), output);
     if (result.code !== 0) {
       await appendFile(run.log, output);
-      throw new Error(output.trim() || `delivery failed (exit ${result.code})`);
+      throw new Error(`delivery checkout/prepare failed (exit ${result.code}): ${output.trim()}`);
     }
-    await this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`);
+    await this.#step('upload delivery.log', () => this.#machine.put(lease, join(local, 'delivery.log'), `runs/${lease.run}/delivery.log`));
     // Root SSH is already owned by the lease. Failure is a recorded disk fallback,
     // never a dependency on passwordless sudo or a changed prepared image.
     await this.#machine.exec(lease, `bash /home/runner/runs/${lease.run}/temp.sh`, { user: 'root', timeoutMs: 8000 }).catch(() => {});
