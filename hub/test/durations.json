@@ -6445,6 +6445,13 @@
       "expires": "2026-11-19",
       "reason": "T-896–T-903 process-helper migration isolates the real Claude stop/resume lifecycle with conversation, role, claim and clause delivery assertions. A-6763/A-6767 observed up to 6.833 s; allow 20% headroom. raised for load headroom (T-929)"
     },
+    "hub/test/session-resume-lifecycle.test.ts::restart retains undiscoverable harness PIDs and session stop reaps their spokes and descendants": {
+      "seconds": 30,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Starts two real hubs to prove persisted harness PID recovery across restart and session-stop cleanup with fresh adapters. Observed 11–16 s on Linux droplets; 30 s retains load headroom."
+    },
     "hub/test/session-stop-races-cleanup.test.ts::held stop cleanup survives assertion failure and test-runner cancellation": {
       "seconds": 5.778425,
       "owner": "E-880",
