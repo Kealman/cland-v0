@@ -33,6 +33,17 @@ local function entry_path(a)
   return a.folder and (a.path .. '/' .. a.entry) or a.path
 end
 
+local function sync_source(b, path)
+  if not b or not api.nvim_buf_is_loaded(b) or vim.bo[b].modified then return end
+  local stat = vim.uv.fs_stat(path)
+  if not stat then return end
+  local version = table.concat({path, stat.mtime.sec, stat.mtime.nsec, stat.size}, '\0')
+  if vim.b[b].cland_disk_version ~= version then
+    api.nvim_buf_call(b, function() vim.cmd('silent keepalt edit!') end)
+  end
+  vim.b[b].cland_disk_version = version
+end
+
 local function rebind(id)
   local b, a = M.bufs[id], M.get(id)
   if b and a and not a.fileDeleted and api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) ~= entry_path(a) then
@@ -56,11 +67,12 @@ local function upsert(a)
     if old.id == a.id then
       if old.movedTo and not a.movedTo then return end
       if old.fileDeleted then a.fileDeleted = true end
-      M.entries[i] = a; rebind(a.id); return
+      M.entries[i] = a; rebind(a.id); M.refresh(); return
     end
   end
   M.entries[#M.entries + 1] = a
   rebind(a.id)
+  M.refresh()
 end
 
 local function replay(events)
@@ -96,6 +108,7 @@ function M.setup(client)
           end
         end
       end
+      M.refresh()
       state.changed()
     end)
   end
@@ -161,8 +174,12 @@ local function raw_buffer(id, file)
   local cache = file and M.file_bufs or M.bufs
   local key = file and (id .. '/' .. file) or id
   local b = cache[key]
-  if b and api.nvim_buf_is_valid(b) then if not file then rebind(id) end; return b end
   local path = file and (a.path .. '/' .. file) or entry_path(a)
+  if b and api.nvim_buf_is_valid(b) then
+    if not file then rebind(id) end
+    sync_source(b, path)
+    return b
+  end
   b = vim.fn.bufadd(path)
   vim.fn.bufload(b)
   cache[key] = b
@@ -174,6 +191,7 @@ local function raw_buffer(id, file)
   if vim.fn.getfsize(path) == 0 then vim.bo[b].endofline = false end
   vim.bo[b].fixendofline = false
   vim.bo[b].swapfile = false
+  sync_source(b, path)
   vim.b[b].cland_role = 'artifact'
   vim.b[b].cland_artifact = id
   vim.b[b].cland_file = file
@@ -220,6 +238,7 @@ function M.buffer(id, file)
     local existing = vim.fn.bufnr(path)
     if existing ~= -1 and api.nvim_buf_is_loaded(existing) then raw = existing end
   end
+  sync_source(raw, path)
   local win = require('cland.layout').centre()
   local b = require('cland.artifact_md').buffer(path, api.nvim_win_get_width(win), raw, api.nvim_win_get_height(win))
   vim.b[b].cland_role = 'artifact'
@@ -239,15 +258,56 @@ function M.toggle()
   local id, file = vim.b[b].cland_artifact, vim.b[b].cland_file
   if not id then return end
   local target
+  local md = require('cland.artifact_md')
+  local source = md.source_line(b, api.nvim_win_get_cursor(win)[1])
   if vim.b[b].cland_rendered then
     target = raw_buffer(id, file)
     vim.b[target].cland_markdown = true
     toggle_key(target)
   else target = M.buffer(id, file) end
   api.nvim_win_set_buf(win, target)
-  require('cland.artifact_md').window(win)
+  api.nvim_win_set_cursor(win, {md.rendered_line(target, source), 0})
+  md.window(win)
   state.changed()
 end
+
+-- Events and resize handlers can arrive together. Refresh at the final width,
+-- keeping the mode and source position of each visible artifact window.
+local refresh_pending = false
+function M.refresh()
+  if refresh_pending then return end
+  refresh_pending = true
+  vim.schedule(function()
+    refresh_pending = false
+    local md = require('cland.artifact_md')
+    for _, win in ipairs(api.nvim_list_wins()) do
+      local b = api.nvim_win_get_buf(win)
+      local id, file = vim.b[b].cland_artifact, vim.b[b].cland_file
+      local a = id and M.get(id)
+      if a and not a.fileDeleted then
+        if not file then rebind(id) end
+        if vim.b[b].cland_rendered then
+          local source = md.source_line(b, api.nvim_win_get_cursor(win)[1])
+          local tick = api.nvim_buf_get_changedtick(b)
+          -- M.buffer uses the centre width; visible artifact views live there.
+          local target = M.buffer(id, file)
+          if target ~= b or api.nvim_buf_get_changedtick(target) ~= tick then
+            api.nvim_win_set_buf(win, target)
+            api.nvim_win_set_cursor(win, {md.rendered_line(target, source), 0})
+            md.window(win)
+          end
+        else
+          sync_source(b, file and (a.path .. '/' .. file) or entry_path(a))
+        end
+      end
+    end
+  end)
+end
+
+api.nvim_create_autocmd({'WinResized', 'VimResized', 'BufWritePost'}, {
+  group = api.nvim_create_augroup('cland.artifacts', {clear = true}),
+  callback = M.refresh,
+})
 
 function M.prompt(title)
   local topic = require('cland.views').current_topic()

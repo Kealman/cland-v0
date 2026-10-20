@@ -419,7 +419,7 @@ end
 
 local function table_projection(body, t, work)
   if t.projection then return t.projection end
-  local rows, widths = {}, {}
+  local rows, widths, source_rows = {}, {}, {}
   for _, row in ipairs(t.rows) do
     work()
     local cells = {}
@@ -429,10 +429,11 @@ local function table_projection(body, t, work)
       widths[k] = math.max(widths[k] or 0, vim.api.nvim_strwidth(cells[k].text))
     end
     rows[#rows + 1] = cells
+    source_rows[#rows] = row[1] and row[1].row or t.first
   end
   local rule = '|'
   for _, width in ipairs(widths) do work(); rule = rule .. ('-'):rep(width + 2) .. '|' end
-  t.projection = { rows = rows, widths = widths, rule = rule }
+  t.projection = { rows = rows, widths = widths, rule = rule, source_rows = source_rows }
   return t.projection
 end
 
@@ -458,9 +459,9 @@ function M.render(text, cells, work, parser)
   local hit = body.layouts[layout]
   if hit then return hit.lines, hit.spans, hit.metadata end
   local lines, spans, metadata = {}, {}, {}
-  local function add(p)
+  local function add(p, source_row)
     local row = #lines
-    lines[#lines + 1], metadata[#metadata + 1] = p.text, { links = p.links }
+    lines[#lines + 1], metadata[#metadata + 1] = p.text, { links = p.links, source_line = source_row + 1 }
     for _, s in ipairs(p.spans) do
       work()
       local opts = vim.tbl_extend('force', {}, s.opts)
@@ -484,25 +485,25 @@ function M.render(text, cells, work, parser)
             parts[#parts + 1] = cell
             parts[#parts + 1] = literal((' '):rep(width - vim.api.nvim_strwidth(cell.text)) .. ' |' .. (k < #p.widths and ' ' or ''))
           end
-          add(concat(parts, work))
-          if i == 1 then add(literal(p.rule)) end
+          add(concat(parts, work), p.source_rows[i])
+          if i == 1 then add(literal(p.rule), r + 1) end
         end
       elseif #p.rows == 1 then
         -- A table with no data still has meaningful header cells.
-        for _, header in ipairs(p.rows[1]) do add(concat({ literal('  '), header }, work)) end
+        for _, header in ipairs(p.rows[1]) do add(concat({ literal('  '), header }, work), r) end
       else
         for i = 2, #p.rows do
           work()
-          if i > 2 then add(literal('')) end
+          if i > 2 then add(literal(''), p.source_rows[i - 1]) end
           -- Ragged rows keep every header and cell; surplus cells use positional labels.
           for k = 1, math.max(#p.rows[1], #p.rows[i]) do
             work()
-            add(concat({ literal('  '), p.rows[1][k] or literal(tostring(k)), literal(': '), p.rows[i][k] or literal('') }, work))
+            add(concat({ literal('  '), p.rows[1][k] or literal(tostring(k)), literal(': '), p.rows[i][k] or literal('') }, work), p.source_rows[i])
           end
         end
       end
     elseif not skipped[r] then
-      add(project(body, r, 0, #line, code[r] and '  ' or '', false, work))
+      add(project(body, r, 0, #line, code[r] and '  ' or '', false, work), r)
     end
   end
   body.layouts[layout] = { lines = lines, spans = spans, metadata = metadata }

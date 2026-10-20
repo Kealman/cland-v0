@@ -389,3 +389,129 @@ test('sliced artifacts retain whole-document Markdown context and discard supers
   assert.ok(screen.includes('Replacement') && !screen.includes('Superseded') && !screen.includes('Literal code'), screen);
   assert.deepEqual(await c.lua('return {vim.bo.readonly,vim.bo.modifiable}'), [true, false]);
 });
+
+test('artifact events refresh an open projection and raw saves replace its cached version', { skip }, async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'live.md');
+  await writeFile(path, '# Original live note');
+  const scene = await artifactScreen(t, root);
+  const c = await scene.start();
+  await waitInitialSnapshots(c);
+  const artifact = { id: 'A-live', kind: 'note', creator: 'human', status: 'shared', title: 'Live', topic: 'general', path };
+  await c.lua("require('cland.artifacts').open(...)", artifact);
+  await c.waitScreen(s => s.includes('Original live note') && !s.includes('# Original'), 'initial projection');
+  // Load the raw buffer too: an event must refresh both versions without a reopen.
+  await c.input('<Space>v<Space>v');
+  await c.waitScreen(s => s.includes('Original live note') && !s.includes('# Original'), 'cached projection');
+  await writeFile(path, '# Updated by agent\nUse **new** text.');
+  await scene.emit([{ type: 'artifact', artifact }]);
+  let screen = await c.waitScreen(s => s.includes('Updated by agent') && s.includes('Use new text.'), 'artifact event reaches the rendered grid');
+  assert.ok(!screen.includes('Original live note') && !screen.includes('# Updated'), screen);
+  await c.input('<Space>v');
+  assert.deepEqual(await c.lua('return vim.api.nvim_buf_get_lines(0,0,-1,false)'), ['# Updated by agent', 'Use **new** text.']);
+  await c.lua("vim.api.nvim_buf_set_lines(0,0,1,false,{'# Saved by human'}); vim.cmd('write')");
+  await c.input('<Space>v');
+  screen = await c.waitScreen(s => s.includes('Saved by human') && !s.includes('# Saved'), 'saved raw version reaches the grid');
+  assert.ok(!screen.includes('Updated by agent'), screen);
+});
+
+const wideTable = '| Name | Description | State |\n|---|---|---|\n| Alpha | A deliberately long description spanning sixty display cells | ready |\n| Beta | Another deliberately long description for the second record | waiting |\n\nAfter the table.';
+
+test('artifact tables follow the thread layout at 120 and 80 columns and toggle at their source line', { skip }, async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'wide.md');
+  await writeFile(path, wideTable);
+  const c = await (await artifactScreen(t, root)).start();
+  await waitInitialSnapshots(c);
+  await c.lua(`local s=require('cland.state'); s.S.ui.left=false; s.S.ui.right=nil; s.S.ui.dock=false
+    vim.o.columns=120; require('cland.layout').build({insert=false})
+    require('cland.artifacts').open({id='A-wide',kind='note',creator='human',status='shared',title='Wide table',topic='general',path=...})`, path);
+  await c.waitScreen(s => s.includes('| Alpha') && s.includes('| Beta'), '120-column table');
+  assert.equal(await c.lua('return vim.api.nvim_win_get_width(0)'), 120);
+  const oracle = () => c.lua(`local lines=require('cland.thread_md').render(...,vim.api.nvim_win_get_width(0))
+    return vim.deep_equal(lines,vim.api.nvim_buf_get_lines(0,0,-1,false))`, wideTable);
+  assert.equal(await oracle(), true, 'wide layout equals the thread projection');
+  await c.lua('vim.o.columns=80');
+  await c.waitScreen(s => s.includes('Name: Alpha') && s.includes('State: waiting'), '80-column stacked table');
+  assert.equal(await c.lua('return vim.api.nvim_win_get_width(0)'), 80);
+  assert.equal(await oracle(), true, 'narrow layout equals the thread projection');
+  await c.input('7G');
+  await c.lua("require('cland.artifacts').refresh(); _G.refresh_done=false; vim.schedule(function() _G.refresh_done=true end)");
+  await eventually('unchanged refresh completed', async () => await c.lua('return _G.refresh_done') || undefined);
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [7, '  State: waiting']);
+  // The stacked Beta row is rendered row 5 but comes from source row 4.
+  await c.input('5G<Space>v');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [4, '| Beta | Another deliberately long description for the second record | waiting |']);
+  await c.input('<Space>v');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [5, '  Name: Beta']);
+  await c.input('G<Space>v');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [6, 'After the table.']);
+  await c.input('<Space>v');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [9, 'After the table.']);
+  await c.lua('vim.o.columns=120');
+  await c.waitScreen(s => s.includes('| Alpha') && s.includes('| Beta'), 'table widens again');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [6, 'After the table.']);
+});
+
+test('restart snapshot restores an artifact rendered even when it was raw', { skip }, async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'restart.md');
+  await writeFile(path, '# Restart rendered\nUse **saved** text.');
+  const c = await (await artifactScreen(t, root)).start();
+  await waitInitialSnapshots(c);
+  await c.lua("require('cland.artifacts').open({id='A-restart',kind='note',creator='human',status='shared',title='Restart',topic='general',path=...})", path);
+  await c.waitScreen(s => s.includes('Restart rendered') && !s.includes('# Restart'), 'before restart');
+  await c.input('<Space>v');
+  await c.waitScreen(s => s.includes('# Restart rendered'), 'raw before restart');
+  const snapshot = await c.lua(`local s=require('cland.state'); local snap=s.snapshot()
+    s.reset({root=s.S.root}); s.restore(snap); require('cland.layout').build({insert=false})
+    return snap.view`);
+  assert.deepEqual(snapshot, { kind: 'artifact', id: 'A-restart' });
+  const screen = await c.waitScreen(s => s.includes('Restart rendered') && s.includes('Use saved text.') && !s.includes('# Restart'), 'snapshot restore defaults rendered');
+  assert.ok(!screen.includes('**saved**'), screen);
+  assert.deepEqual(await c.lua('return {vim.b.cland_rendered,vim.bo.readonly,vim.bo.modifiable}'), [true,true,false]);
+});
+
+test('moving an open Markdown artifact rebinds its rendered view and editable raw source', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  const artifact = await scene.create({kind:'note',title:'Moving note',topic:'general',content:'# Moving heading\nUse **durable** text.'});
+  const folder = await scene.create({kind:'note',title:'Destination',topic:'general',folder:true,content:'# Folder entry'});
+  const c = await scene.start();
+  await waitInitialSnapshots(c);
+  await c.lua("require('cland.artifacts').open(...)", artifact.id);
+  await c.waitScreen(s => s.includes('Moving heading') && !s.includes('# Moving'), 'rendered before move');
+  // An already-loaded raw buffer must follow the move as well.
+  await c.input('<Space>v<Space>v');
+  await c.waitScreen(s => s.includes('Moving heading') && !s.includes('# Moving'), 'rendered with cached raw');
+  await scene.change({type:'artifact.move',artifact:artifact.id,folder:folder.id,name:'moved.md'});
+  const moved = join(folder.path,'moved.md');
+  await eventually('artifact resolves the moved path', async () => await c.lua("return require('cland.artifacts').get(...).path", artifact.id) === moved || undefined);
+  await c.waitScreen(s => s.includes('Moving heading') && !s.includes('# Moving'), 'rendered after move');
+  await c.input('<Space>v');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_buf_get_name(0),vim.bo.readonly,vim.bo.modifiable,vim.api.nvim_get_current_line()}'), [moved,false,true,'# Moving heading']);
+  await c.lua("vim.api.nvim_buf_set_lines(0,0,1,false,{'# Saved in folder'}); vim.cmd('write')");
+  await c.input('<Space>v');
+  const screen = await c.waitScreen(s => s.includes('Saved in folder') && !s.includes('# Saved'), 'moved raw save renders');
+  assert.ok(screen.includes('Use durable text.'), screen);
+  assert.deepEqual(await c.lua('return {vim.b.cland_artifact,vim.b.cland_rendered}'), [artifact.id,true]);
+});
+
+test('a raw toggle keeps its source position when deferred tables change the final row count', { skip }, async t => {
+  const root = await tempProject(t);
+  const path = join(root, 'deferred-position.md');
+  const text = [...Array.from({length:80}, (_,i) => `Before ${i}`), wideTable, ...Array.from({length:20}, (_,i) => `After ${i}`), 'Reading anchor'].join('\n');
+  await writeFile(path, text);
+  const c = await (await artifactScreen(t, root)).start();
+  await waitInitialSnapshots(c);
+  assert.equal(await c.lua(`local s=require('cland.state'); s.S.ui.left=false; s.S.ui.right=nil; s.S.ui.dock=false
+    vim.o.columns=80; require('cland.layout').build({insert=false})
+    local a=require('cland.artifacts')
+    a.open({id='A-position',kind='note',creator='human',status='shared',title='Position',topic='general',path=...})
+    a.toggle(); vim.api.nvim_win_set_cursor(0,{107,0}); a.toggle()
+    return vim.b.cland_render_pending`, path), true);
+  await eventually('deferred position final decoration', async () => await c.lua('return vim.b.cland_render_pending==false') || undefined);
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [110,'Reading anchor']);
+  await c.input('<Space>v');
+  assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [107,'Reading anchor']);
+});
