@@ -11,6 +11,7 @@ import { FakeClock } from './fake-clock.ts';
 import { drive } from './remote-clock.ts';
 import { onCleanup, beforeDirectories } from './process-cleanup.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { keyHash, snapshotPath, type Snapshot } from '../src/executor/droplet/prepare.ts';
 import { readLeases } from '../src/executor/droplet/lease.ts';
 
 async function fixture(t: TestContext, overrides: Record<string, string> = {}) {
@@ -226,6 +227,92 @@ test('acquire needs a prepared image, uses its regions without user data and ref
   f.setFailure('unready');
   await assert.rejects(drive(f, executor.acquire({ id: 'timeout' }, deadline())), /readiness deadline/);
   assert.deepEqual(api.droplets, []); assert.deepEqual(api.keys, []);
+});
+
+// T2: bundle bytes are injected; the real acquire/deliver policy sees a snapshot
+// switch at the provider create boundary, without Git, SSH or a worker process.
+test('delivery survives a snapshot replacement during machine creation', async t => {
+  const f = await fixture(t);
+  await f.stop();
+  const old: Snapshot = { image: 900, name: 'old', key: f.key, keyHash: keyHash(f.key), regions: ['lon1'], sizeGb: 1, minDiskSize: 10, created: f.clock.now().toISOString() };
+  const nextKey = { ...f.key, base: 'd'.repeat(40) };
+  const next: Snapshot = { ...old, image: 901, name: 'next', key: nextKey, keyHash: keyHash(nextKey) };
+  await mkdir(join(f.root, '.cland/run/executor'), { recursive: true });
+  await writeFile(snapshotPath(f.root), JSON.stringify(old));
+  f.api.beforeCreate(async () => { await writeFile(snapshotPath(f.root), JSON.stringify(next)); });
+  const bundles: Array<string | undefined> = [];
+  const uploads: Array<string | undefined> = [];
+  let attempts = 0;
+  let failure: 'race' | 'fetch' | 'persistent' | 'prepare' | 'none' = 'race';
+  const commands: string[] = [];
+  const { run: _scriptedRun, ...dependencies } = f.dependencies;
+  const executor = new DropletExecutor(f.root, undefined, undefined, f.env, undefined, {
+    ...dependencies,
+    runBundle: async (_run, path, base) => { bundles.push(base); await writeFile(path, JSON.stringify({ base })); },
+    machine: { ...f.dependencies.machine,
+      put: async (_lease, path, remote) => { if (remote.endsWith('/tree.bundle')) uploads.push(JSON.parse(await readFile(path, 'utf8')).base); },
+      result: async (_lease, command) => {
+        attempts++; commands.push(command);
+        if (failure === 'fetch') return { code: 7, stdout: '', stderr: 'fetch refused' };
+        const fetching = command.includes('git fetch');
+        if ((failure === 'prepare' && !fetching) || failure === 'persistent') return { code: 1, stdout: '', stderr: 'Repository lacks these prerequisite commits' };
+        // The machine booted the old image. Only its old base is present locally.
+        const missing = failure === 'race' && uploads.at(-1) && uploads.at(-1) !== old.key.base;
+        return missing ? { code: 1, stdout: '', stderr: `error: Repository lacks these prerequisite commits:\nerror: ${nextKey.base}\n` } : { code: 0, stdout: 'delivered\n', stderr: '' };
+      },
+    },
+  });
+  const lease = await drive(f, executor.acquire({ id: 'snapshot-race' }, new Date(f.clock.now().getTime() + 600000).toISOString()));
+  try {
+    const create = f.api.requests.find(r => r.method === 'POST' && r.path === '/v2/droplets')!.body!;
+    assert.equal(create.image, old.image);
+    const dir = join(f.root, '.cland/run/snapshot-race');
+    await mkdir(dir, { recursive: true });
+    const run = { id: lease.run, cwd: f.root, head: 'e'.repeat(40), mode: 'auto', log: join(dir, 'log'), result: join(dir, 'result'), gate: join(dir, 'gate'), commands: { check: '', prepare: 'prepare-fixture', test: '' } };
+    await executor.deliver(lease, run);
+    assert.equal(lease.execution?.delivered, true);
+    assert.deepEqual(bundles, [old.key.base]);
+    assert.deepEqual(uploads, bundles);
+    assert.equal(attempts, 2); // fetch, then checkout/prepare, using the acquired image
+    assert.ok(commands[1]!.includes(JSON.stringify(old.key)));
+    assert.ok(!commands[1]!.includes(JSON.stringify(next.key)));
+    // A lease persisted by an older hub may lack the pinned snapshot. Its
+    // mismatched incremental bundle still receives the bounded full fallback.
+    delete lease.snapshot;
+    attempts = 0; bundles.length = 0; uploads.length = 0; commands.length = 0;
+    await executor.deliver(lease, run);
+    assert.deepEqual(bundles, [nextKey.base, undefined]);
+    assert.deepEqual(uploads, bundles);
+    assert.equal(attempts, 3); // failed fetch, full fetch, then checkout/prepare
+    assert.ok(commands[0]!.includes('git fetch'));
+    assert.ok(!commands[0]!.includes('git checkout'));
+    assert.ok(commands[2]!.includes('git checkout'));
+    assert.match(await readFile(join(dir, 'delivery.log'), 'utf8'), /retrying with a full bundle/);
+    // Retry policy table shares one fixture. Unrelated fetch failures, a failed
+    // full fetch, and prepare output resembling Git's error must remain failures.
+    const delivered = () => lease.execution?.delivered;
+    for (const row of [
+      { failure: 'none', calls: 2, bundles: 1, error: undefined },
+      { failure: 'fetch', calls: 1, bundles: 1, error: /fetch refused/ },
+      { failure: 'persistent', calls: 2, bundles: 2, error: /Repository lacks/ },
+      { failure: 'prepare', calls: 2, bundles: 1, error: /Repository lacks/ },
+    ] as const) {
+      failure = row.failure;
+      attempts = 0; bundles.length = 0; uploads.length = 0; commands.length = 0;
+      delete lease.execution;
+      if (row.error) {
+        await assert.rejects(executor.deliver(lease, run), row.error);
+        assert.equal(lease.execution, undefined);
+        assert.match(await readFile(join(dir, 'delivery.log'), 'utf8'), row.error);
+      } else {
+        await executor.deliver(lease, run);
+        assert.equal(delivered(), true);
+      }
+      assert.equal(attempts, row.calls, row.failure);
+      assert.equal(bundles.length, row.bundles, row.failure);
+    }
+  } finally { await drive(f, executor.release(lease)); }
+  assert.deepEqual(f.api.droplets, []);
 });
 
 test('completed transfers wait for snapshot regions to become visible before publishing the image', async t => {

@@ -128,7 +128,12 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const snapshot = await readSnapshot(this.root);
     if (!snapshot) throw new Error('no prepared snapshot; run cland executor prepare');
     const lease = await this.#acquire(run, deadline, { size: run.size ?? config.verification.droplet.size, regions: config.verification.droplet.regions.filter(region => snapshot.regions.includes(region)), image: snapshot.image, minDiskSize: snapshot.minDiskSize, ...(demo ? { demo } : {}) }, config);
-    try { await waitForMachine(this.root, lease, snapshot.key, undefined, undefined, this.#env, this.dependencies); return lease; }
+    try {
+      lease.snapshot = snapshot;
+      await this.#save(lease);
+      await waitForMachine(this.root, lease, snapshot.key, undefined, undefined, this.#env, this.dependencies);
+      return lease;
+    }
     catch (error) { await this.release(lease); throw error; }
   }
 

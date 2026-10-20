@@ -25,6 +25,30 @@ const remoteDir = (lease: DropletLease): string => {
   return `"$HOME/runs/${lease.run}"`;
 };
 
+/** Native Git bytes and worktree validation, separate from delivery policy. */
+export async function runBundle(run: RunRef, bundle: string, snapshotBase: string | undefined, committedOnly: boolean, env: NodeJS.ProcessEnv): Promise<void> {
+  const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
+  const checkWorktree = async () => {
+    // Administrative writes may race delivery; bundle the submitted committed head.
+    if (await git('rev-parse', 'HEAD') !== run.head && !(run.integrated && run.tree && await candidateTree(run.cwd, undefined, machineEnv(env)) === run.tree)) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
+    const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', ...candidatePathspec);
+    if (dirty) throw new Error(`dirty or changed worktree cannot be bundled for droplet: ${dirty.split('\n').join('; ')}`);
+  };
+  if (!committedOnly) await checkWorktree();
+  const base = snapshotBase ? await git('merge-base', run.head, snapshotBase).catch(() => '') : '';
+  // A candidate equal to the snapshot base has no incremental objects: send a full bundle.
+  const ref = `refs/cland/suites/${run.id}`;
+  try { await git('update-ref', ref, run.head, '0'.repeat(40)); }
+  catch (error) {
+    // A crash while bundling can leave the same run's ref behind.
+    const existing = await git('show-ref', '--verify', '--hash', ref).catch(() => { throw error; });
+    if (existing !== run.head) throw new Error(`suite ref ${ref} points at ${existing}; expected ${run.head}`);
+  }
+  try { await git('bundle', 'create', bundle, ref, ...(base && base !== run.head ? [`^${base}`] : [])); }
+  finally { await git('update-ref', '-d', ref, run.head); }
+  if (!committedOnly) await checkWorktree();
+}
+
 /** Suite delivery and observation; lifecycle and provider accounting stay in DropletExecutor. */
 export class DropletRun {
   readonly #root: string;
@@ -34,30 +58,12 @@ export class DropletRun {
   readonly #env: NodeJS.ProcessEnv;
   constructor(root: string, env: NodeJS.ProcessEnv = process.env, dependencies: DropletDependencies = {}) { this.#dependencies = dependencies; this.#clock = dependencies.clock ?? realClock; this.#root = root; this.#env = env; this.#machine = dependencies.machine ?? new Machine(root, env); }
   async deliver(lease: DropletLease, run: RunRef, committedOnly = false): Promise<void> {
-    const git = async (...args: string[]) => (await exec('git', args, { cwd: run.cwd, env: machineEnv(this.#env), timeout: 30000, maxBuffer: 16 * 1024 * 1024 })).stdout.trim();
-    const checkWorktree = async () => {
-      // Administrative writes may race delivery; bundle the submitted committed head.
-      if (await git('rev-parse', 'HEAD') !== run.head && !(run.integrated && run.tree && await candidateTree(run.cwd, undefined, machineEnv(this.#env)) === run.tree)) throw new Error('dirty or changed worktree cannot be bundled for droplet: HEAD changed');
-      const dirty = await git('status', '--porcelain=v1', '--untracked-files=all', '--', ...candidatePathspec);
-      if (dirty) throw new Error(`dirty or changed worktree cannot be bundled for droplet: ${dirty.split('\n').join('; ')}`);
-    };
-    if (!committedOnly) await checkWorktree();
-    const snapshot = await readSnapshot(this.#root);
+    const snapshot = lease.snapshot ?? await readSnapshot(this.#root);
     if (!snapshot) throw new Error('prepared snapshot disappeared');
-    const base = await git('merge-base', run.head, snapshot.key.base).catch(() => '');
     const local = dirname(run.result);
     const bundle = join(local, 'tree.bundle');
-    // A candidate equal to the snapshot base has no incremental objects: send a full bundle.
-    const ref = `refs/cland/suites/${run.id}`;
-    try { await git('update-ref', ref, run.head, '0'.repeat(40)); }
-    catch (error) {
-      // A crash while bundling can leave the same run's ref behind.
-      const existing = await git('show-ref', '--verify', '--hash', ref).catch(() => { throw error; });
-      if (existing !== run.head) throw new Error(`suite ref ${ref} points at ${existing}; expected ${run.head}`);
-    }
-    try { await git('bundle', 'create', bundle, ref, ...(base && base !== run.head ? [`^${base}`] : [])); }
-    finally { await git('update-ref', '-d', ref, run.head); }
-    if (!committedOnly) await checkWorktree();
+    const buildBundle = this.#dependencies.runBundle ?? runBundle;
+    await buildBundle(run, bundle, snapshot.key.base, committedOnly, this.#env);
     const dir = remoteDir(lease);
     await this.#machine.exec(lease, `mkdir -p ${dir}`, { timeoutMs: 10000 });
     const transport = selectionTransport(run.selection, join(local, 'selection.json'));
@@ -103,9 +109,27 @@ git write-tree
     for (const file of ['health.ts', 'temp.sh']) await writeFile(join(local, file), await readFile(fileURLToPath(new URL(`./${file}`, import.meta.url))));
     for (const file of ['tree.bundle', 'env', 'run.sh', 'health.ts', 'temp.sh', ...(transport.file ? ['selection.json'] : [])]) await this.#machine.put(lease, join(local, file), `runs/${lease.run}/${file}`);
     const prepare = lines.prepare ? `CLAND_PREPARE_KEY=${quote(JSON.stringify(snapshot.key))} /bin/sh -c ${quote(lines.prepare)} 2>&1 || { prepare_exit=$?; echo "prepare failed (exit $prepare_exit)"; exit "$prepare_exit"; }` : "echo 'prepare: not set'";
-    const command = `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\n${prepare}\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\nprepare_dirty=$(git status --porcelain --untracked-files=all)\nif test -n "$prepare_dirty"; then echo "prepare left the checkout dirty: $prepare_dirty"; exit 1; fi`;
-    const result = await this.#machine.result(lease, command, Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env)));
-    const output = result.stdout + result.stderr;
+    const timeout = () => Math.max(1, Date.parse(lease.deadline) - this.#clock.now().getTime() - testTiming('CLAND_TEST_EXECUTOR_COLLECTION_MARGIN_MS', 120000, this.#env));
+    const fetch = () => this.#machine.result(lease, `set -e\ncd "$HOME/cland"\ngit fetch ${dir}/tree.bundle ${quote(run.head)}`, timeout());
+    let fetched = await fetch();
+    let output = fetched.stdout + fetched.stderr;
+    // Acquire and deliver can straddle snapshot publication. The new bundle base
+    // may be absent from the already booted image; retry only the fetch, once.
+    if (fetched.code !== 0 && /Repository lacks these prerequisite commits/.test(output)) {
+      output += '\nSnapshot base unavailable on machine; retrying with a full bundle.\n';
+      await buildBundle(run, bundle, undefined, committedOnly, this.#env);
+      await this.#machine.put(lease, bundle, `runs/${lease.run}/tree.bundle`);
+      fetched = await fetch();
+      output += fetched.stdout + fetched.stderr;
+    }
+    if (fetched.code !== 0) {
+      await writeFile(join(local, 'delivery.log'), output);
+      await appendFile(run.log, output);
+      throw new Error(output.trim() || `delivery failed (exit ${fetched.code})`);
+    }
+    const command = `set -e\ncd "$HOME/cland"\ngit checkout --detach ${quote(run.head)}\ngit clean -fdx -e node_modules -e .cache\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\ntest -z "$(git status --porcelain)"\n${prepare}\ntest "$(git rev-parse HEAD)" = ${quote(run.head)}\nprepare_dirty=$(git status --porcelain --untracked-files=all)\nif test -n "$prepare_dirty"; then echo "prepare left the checkout dirty: $prepare_dirty"; exit 1; fi`;
+    const result = await this.#machine.result(lease, command, timeout());
+    output += result.stdout + result.stderr;
     await writeFile(join(local, 'delivery.log'), output);
     if (result.code !== 0) {
       await appendFile(run.log, output);

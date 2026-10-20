@@ -6,7 +6,7 @@ import type { LockProcessTable } from '../../hub/lock.ts';
 import type { Clock } from '../../hub/clock.ts';
 import type { DigitalOceanApi } from './api.ts';
 import { machineEnv, type Machine } from './machine.ts';
-import type { DropletRun } from './run.ts';
+import type { runBundle, DropletRun } from './run.ts';
 import { armWatchdog, stopWatchdog, watchdogAlive } from './watchdog.ts';
 import type { HostGate, RunRef } from '../executor.ts';
 import type { prepareBundle, prepareKey } from './prepare.ts';
@@ -35,4 +35,5 @@ export type DropletDependencies = {
   host?: typeof processHost;
   prepareKey?: typeof prepareKey;
   prepareBundle?: typeof prepareBundle;
+  runBundle?: typeof runBundle;
 };

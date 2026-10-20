@@ -21,6 +21,7 @@ export type DropletLease = Lease & {
   createStarted?: string; createFinished?: string; deleteStarted?: string; released?: string;
   lifetimeMs?: number; costUsd?: number; watchdogFired?: string;
   attention?: ReleaseAttention;
+  snapshot?: import('./prepare.ts').Snapshot;
   demo?: { epic: string; commit: string; ready?: boolean; commands?: import('../../verification-commands.ts').VerificationCommands };
   execution?: { head: string; delivered?: boolean; started?: boolean; startedAt?: string; unreachableSince?: string };
   watchdog?: { pid: number; startedUtc: string };

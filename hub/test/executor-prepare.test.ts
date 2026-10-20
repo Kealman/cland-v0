@@ -63,7 +63,7 @@ test('a project without pins prepares a reusable snapshot for delivery', async c
     const commands: string[] = [];
     const dependencies = { ...machine.dependencies, api: api.provider, machine: { ...machine.dependencies.machine,
       exec: async (_lease: unknown, command: string) => { commands.push(command); return command.includes('.cland-image.json') ? JSON.stringify(key) : ''; },
-      result: async (_lease: unknown, command: string) => { commands.push(command); return { stdout: 'prepare: not set\n', stderr: '', code: 0 }; },
+      result: async (_lease: unknown, command: string) => { commands.push(command); return { stdout: command.includes("echo 'prepare: not set'") ? 'prepare: not set\n' : '', stderr: '', code: 0 }; },
       put: async () => {},
     } };
     const env = { DIGITALOCEAN_TOKEN: 'sentinel-pinless', CLAND_EXECUTOR_STATE: join(root, '.cland/state') };
