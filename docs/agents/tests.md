@@ -2,7 +2,13 @@
 
 The root `npm run typecheck` uses native TypeScript 7.0.2 for the hub's bin, src
 and test files and Neovim's bin and test files, through their respective
-`tsconfig.json` files. `npm run typecheck --workspace hub` checks only the hub.
+`tsconfig.json` files. It also checks `shared/wire/tsconfig.json` with DOM libraries
+and `types: []`, so the browser leaf has no ambient Node types.
+`npm run typecheck --workspace hub` checks only the hub, including the compile-time
+wire conformance assertions in `hub/test/wire-conformance.ts`. These compare the
+independently restated shapes (including nested and optional fields) to their hub
+owners; keep the assertions outside the browser leaf. New snapshot and delta
+types belong in `shared/wire/` when their protocol extensions are implemented.
 The scripts use `hub/bin/typecheck.ts` to resolve the pinned `typescript7` npm
 alias, including from task worktrees that inherit the root install. This avoids
 the two compilers' shared `tsc` executable name. TypeScript 5.9.3 stays installed as
@@ -259,6 +265,13 @@ item, reason and expiry required below still govern manifest additions.
 - Use the task's same-head verify receipt and the hub's green merge batch as the runtime evidence for a queued landing.
 
 Deterministic whole-repository source guards run through `npm run test:static`, included in the task host gate’s `npm run test:lint`.
+
+The wire import guard (`hub/test/lint-wire-imports.ts`) rejects imports and
+re-exports outside `shared/wire/`, including type-only and dynamic imports,
+Node built-ins, package imports and ambient type references. Its negative source
+fixtures exercise these refusals without starting a test process. Add wire
+dependencies only within that directory; restate hub shapes there and add
+conformance assertions in the hub's typecheck instead of re-exporting hub types.
 
 ### Queued merge batches
 
