@@ -26,7 +26,14 @@ for (const retained of [0, 200_000]) {
     const log = journal.tap(() => {});
     const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), log });
     const hub = await startHub({ tracker, journal, log });
-    t.after(async () => { await hub.close(); await tracker.stop(); await journal.close(); });
+    let timer: ReturnType<typeof setInterval> | undefined;
+    t.after(async () => {
+      // Stop publications before closing the store they access.
+      clearInterval(timer);
+      await hub.close();
+      await tracker.stop();
+      await journal.close();
+    });
     const ui = await connectWsUi(t, hub);
     const ids: string[] = [];
     for (let i = 0; i < 30; i++) {
@@ -47,8 +54,7 @@ for (const retained of [0, 200_000]) {
       if (tick % 3 === 0) void hub.core.publishAccountLimits({ account: 'fixture', harness: 'codex', windows: [{ id: 'primary', label: '5h', usedPercent: tick % 100, resetsAt: '2027-01-01T00:00:00Z' }], source: { kind: 'session', session: `impl-${i}` }, at: new Date().toISOString() });
     };
     // 170 usage / 87 state / 65 account events in six minutes, as in T-548.
-    const timer = setInterval(publish, 360_000 / 170);
-    t.after(() => clearInterval(timer));
+    timer = setInterval(publish, 360_000 / 170);
     publish();
     const timings: Record<string, number[]> = { 'task.view': [], 'task.criterion': [] };
     const request = async (type: 'task.view' | 'task.criterion', item: string) => {
