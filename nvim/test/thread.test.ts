@@ -642,14 +642,14 @@ test('200 message rewrites and steady-state appends retain cached parsing and in
   const text = '## Plan\nLine 1: **T-58** and `history`\n- keep words aligned under the bullet\n[brief](https://example.com/a/long/destination)\n```lua\nlocal value = 1\nprint(value)\n```';
   const c = await start(t, { messages: { general: Array.from({ length: 200 }, (_, i) => msg(`cost${i}`, i % 3 === 0 ? 'human' : 'implementer', text)) } });
   await c.waitScreen(s => s.includes('print(value)'), 'history loaded');
-  // The component proves cache/relative cost; the explicit benchmark keeps its longer samples.
+  // The component proves work done; timing limits belong to the unloaded benchmark.
   const benchmark = process.env.CLAND_RENDER_BENCHMARK === '1';
-  const costs = await c.lua<{ append: number; rewrite: number; appendWall: number; rewriteWall: number; cold: number; coldParses: number; warmParses: number }>(`
+  const appendRuns = benchmark ? 31 : 200;
+  const costs = await c.lua<{ append: number; rewrite: number; appendWall: number; rewriteWall: number; cold: number; coldParses: number; warmParses: number; appends: Array<{ parses: number; before: number; changes: number[][] }>; count: number; first: string; last: string }>(`
     local t=require('cland.views').topic('general').thread
     local function median(n,fn)
       local samples,wall={},{}
-      -- Process CPU time is the unloaded cost of rendering. Wall time also includes
-      -- arbitrary descheduling by the other suite workers; retain it as a diagnostic.
+      -- CPU and wall samples are diagnostic outside the explicit unloaded benchmark.
       for i=1,n do
         local start,cpu=vim.uv.hrtime(),os.clock()
         fn(i)
@@ -677,21 +677,37 @@ test('200 message rewrites and steady-state appends retain cached parsing and in
     parses=0
     local rewrite,rewriteWall=median(${benchmark ? 15 : 5},function() t:render(); vim.cmd('redraw!') end)
     local warmParses=parses
-    vim.treesitter.get_string_parser=original
-    local append,appendWall=median(${benchmark ? 31 : 9},function(i)
+    local changes,appends={},{}
+    api.nvim_buf_attach(t.buf,false,{on_lines=function(_,_,_,first,last,newlast)
+      changes[#changes+1]={first,last,newlast}
+    end})
+    local append,appendWall=median(${appendRuns},function(i)
+      changes={}
+      parses=0
+      local before=api.nvim_buf_line_count(t.buf)
       t:add({id='cost-new-'..i,from='human',fromKind='human',to={'coordinator'},ts='2026-10-09T10:01:00Z',text='## New '..i..'\\nUse \`history\` and **T-58**',stage='queued'})
+      appends[i]={parses=parses,before=before,changes=changes}
     end)
-    return {append=append,rewrite=rewrite,appendWall=appendWall,rewriteWall=rewriteWall,cold=cold,coldParses=coldParses,warmParses=warmParses}
+    vim.treesitter.get_string_parser=original
+    return {append=append,rewrite=rewrite,appendWall=appendWall,rewriteWall=rewriteWall,cold=cold,coldParses=coldParses,warmParses=warmParses,appends=appends,count=#t.messages,first=t.messages[1].id,last=t.messages[#t.messages].id}
   `);
   t.diagnostic(`200 messages: CPU append ${costs.append.toFixed(3)} ms (includes eviction), rewrite/redraw ${costs.rewrite.toFixed(3)} ms; wall ${costs.appendWall.toFixed(3)}/${costs.rewriteWall.toFixed(3)} ms`);
   t.diagnostic(`Cold distinct-body render ${costs.cold.toFixed(3)} ms / ${costs.coldParses} parses; warm render ${costs.warmParses} parses`);
   assert.equal(costs.coldParses, 200);
   assert.equal(costs.warmParses, 0);
-  // Calibrate incremental work against the same renderer on this machine. A full
-  // rewrite on append loses this eightfold advantage even on a heavily loaded host.
-  assert.ok(costs.append * 8 <= costs.rewrite, `append ${costs.append} ms vs rewrite ${costs.rewrite} ms`);
-  // Absolute machine-speed limits belong to the explicit unloaded benchmark (T-172).
-  if (process.env.CLAND_RENDER_BENCHMARK === '1') {
+  assert.equal(costs.appends.length, appendRuns);
+  for (const [i, append] of costs.appends.entries()) {
+    assert.equal(append.parses, 1, `append ${i + 1} parses only its new body`);
+    // Two body rows plus separator/header; eviction removes one original ten-row
+    // message. A full rewrite is observable even when all its parses are cached.
+    assert.deepEqual(append.changes, [[append.before, append.before, append.before + 4], [0, 10, 0]], `append ${i + 1} writes only its new block and evicts the oldest`);
+  }
+  assert.equal(costs.count, 200);
+  assert.equal(costs.first, benchmark ? `cost${appendRuns}` : 'cost-new-1');
+  assert.equal(costs.last, `cost-new-${appendRuns}`);
+  // Relative and absolute machine-speed limits are only for the unloaded benchmark (T-172).
+  if (benchmark) {
+    assert.ok(costs.append * 8 <= costs.rewrite, `append ${costs.append} ms vs rewrite ${costs.rewrite} ms`);
     assert.ok(costs.append <= 2, `append budget: ${costs.append} ms`);
     assert.ok(costs.rewrite <= 35, `warm rewrite budget: ${costs.rewrite} ms`);
   }
