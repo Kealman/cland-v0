@@ -2,8 +2,8 @@
 id: T-808
 kind: task
 title: record-nvim-frames treats a skipped Neovim file as a success and can replace the catalog with zero recordings
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-709
 topic: topic-716
 branch: t/T-808-record-nvim-frames-treats-a-skipped
 created: 2026-10-18T14:48:39.460Z
-updated: 2026-10-20T09:58:05.616Z
+updated: 2026-10-20T10:13:46.767Z
+closed: 2026-10-20T10:13:46.767Z
 ---
 
 ## Summary
@@ -24,8 +25,12 @@ Found by impl-774 while reading the recorder. `hub/test/record-nvim-frames.ts` `
 
 ## Acceptance criteria
 
-- [ ] C1. A capture whose files were skipped, or that recorded zero frames for a file that had frames before, refuses before any fixture is replaced, naming the file. A T1/T2 test with a fake unavailable-binary control proves it.
-- [ ] C2. The final live check fails closed: the shared runner refuses any successful-exit run that lacks a complete nonzero zero-skip receipt, including the final workbench producer check, so an unavailable Neovim or a skipped file can never pass it.
+- [x] C1. A capture whose files were skipped, or that recorded zero frames for a file that had frames before, refuses before any fixture is replaced, naming the file. A T1/T2 test with a fake unavailable-binary control proves it.
+  - verified: rev-31 [reviewer] · run rev-20261020-808-final · 2026-10-20T10:07:25.006Z · commit 3b2228d675f2a21d227ab01c9c1191cf7ba2b881
+  - done: impl-808 · 2026-10-20T10:07:39.339Z
+- [x] C2. The final live check fails closed: the shared runner refuses any successful-exit run that lacks a complete nonzero zero-skip receipt, including the final workbench producer check, so an unavailable Neovim or a skipped file can never pass it.
+  - verified: rev-31 [reviewer] · run rev-20261020-808-final · 2026-10-20T10:07:25.006Z · commit 3b2228d675f2a21d227ab01c9c1191cf7ba2b881
+  - done: impl-808 · 2026-10-20T10:07:40.487Z
 
 ## Comments
 
@@ -45,3 +50,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-7303: full source review clear. Standards and Spec: no findings. All captures validate before fixture publication; skip/zero/reduced receipts refuse with file attribution. Four new T1 identities require actual same-head 5/5 load receipts. C2 remains unverified: the final selected live producer check uses projectHub with no Neovim skip; lead reconciliation is requested separately.
+
+### rev-31 · 2026-10-20T10:07:25.006Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-808-final
+commit: 3b2228d675f2a21d227ab01c9c1191cf7ba2b881
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7355: final evidence clear. C1 and Coordinator-reconciled C2 verified: exact-head 741b0300/A-7344 passes 1950 ordinary tests and all four new identities 5/5 (twenty repetitions), maximum owned body 0.005817559 s. No resource/duration failures; new file has a report-only missing baseline, recorded explicitly. No real recorder/T3 run is claimed.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:13:46.767Z
+
+Merged 071bc44547cf9368d4cbd1463ed5f8405e962a67 onto dev.

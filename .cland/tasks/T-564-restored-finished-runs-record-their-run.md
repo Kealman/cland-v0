@@ -2,8 +2,8 @@
 id: T-564
 kind: task
 title: Restored finished runs record their run time up to recovery, inflating runMs and queue ETAs
-state: open
-status: planned
+state: closed
+status: done
 size: XS
 labels:
   - hub
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T02:56:19.121Z
-updated: 2026-10-20T09:41:43.707Z
+updated: 2026-10-20T10:11:12.596Z
+closed: 2026-10-20T10:11:12.596Z
 ---
 
 ## Summary
@@ -23,3 +24,9 @@ Found in T-562's source review (A-3624, 2026-10-16, low). When the hub restores 
 ## Acceptance criteria
 - [ ] C1. A run restored at startup records runMs from its durable start and finished times, never from the recovery time.
 - [ ] C2. A test restores a finished run after a simulated restart delay and shows its recorded runMs equal to finished minus start.
+
+## Comments
+
+### coord · 2026-10-20T10:11:12.596Z
+
+Closed as covered by T-618 (landed 0a9c89ea). A restored finished run now records runMs from its durable start and finished times, not from the recovery time (C1). A delayed-restart T1 regression proves runMs equals finished minus start (C2). The reviewer assessed this coverage at T-618's clear source verdict. Evidence: A-7269.

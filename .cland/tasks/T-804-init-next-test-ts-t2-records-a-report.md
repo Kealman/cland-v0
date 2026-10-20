@@ -2,8 +2,8 @@
 id: T-804
 kind: task
 title: "init-next.test.ts (T2) records a report-only execFile trip: its initIn CLI helper lacks the scoped CLI-child exemption"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ found_by: review
 topic: topic-719
 branch: t/T-804-init-next-test-ts-t2-records-a-report
 created: 2026-10-18T13:33:40.432Z
-updated: 2026-10-20T09:59:04.417Z
+updated: 2026-10-20T10:04:26.576Z
+closed: 2026-10-20T10:04:26.576Z
 ---
 
 ## Summary
@@ -62,3 +63,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7312: final evidence clear. Amended C1 verified: A-7282's enforced T2 launch/negative controls plus unchanged scratch isolation and T3 classifications, and exact-head 98262224/A-7297 host/T1/fallback-all-T2 green 1946/1946. No resource/duration failures. Supplemental native T3 receipts are distinguished from task gate; Linux T3 remains landing evidence.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-20T10:04:26.576Z
+
+Merged 8b47f4243dca314aff923eb7ab6fdf6443949523 onto dev.

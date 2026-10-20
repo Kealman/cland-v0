@@ -3,19 +3,19 @@ id: T-561
 kind: task
 title: A verify that fell back to local keeps waiting for the local slot after remote slots free up
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - bug
   - hub
-  - needs-triage
+  - ready-for-agent
 assignee: null
 parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-732
+branch: t/T-561-a-verify-that-fell-back-to-local-keeps
 created: 2026-10-16T01:25:55.841Z
-updated: 2026-10-20T09:41:43.746Z
+updated: 2026-10-20T10:13:56.776Z
 ---
 
 ## Summary
@@ -24,3 +24,9 @@ On 2026-10-16 at about 01:24Z, `cland verify queue` showed T-523's and T-548's v
 ## Acceptance criteria
 - [ ] C1. A no-flag verify waiting for the local slot is re-evaluated when a remote slot frees and moves to the droplet, keeping its queue order and reporting the change. An explicit `--executor local` stays local.
 - [ ] C2. A test fills the remote budget, submits a no-flag verify (local fallback, waiting behind a local holder), then frees one remote slot, and sees the verify admitted remotely.
+
+## Comments
+
+### impl-561 · 2026-10-20T10:13:51.379Z
+
+Reproduced with targeted T2 real lease-budget test (scripted provider/worker). With local held and a preparation lease filling remote_budget=1, the no-flag verify records local fallback; after scheduler restart and confirmed lease release it still has executor local. Actual assertion: 'local' !== 'droplet' (a freed remote slot must reclaim the earlier local fallback). No full verification receipt yet.

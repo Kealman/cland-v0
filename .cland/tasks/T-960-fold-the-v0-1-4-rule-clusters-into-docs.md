@@ -2,8 +2,8 @@
 id: T-960
 kind: task
 title: Fold the v0.1.4 rule clusters into docs/agents/tests.md and hub/README.md
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-730
 branch: t/T-960-fold-the-v0-1-4-rule-clusters-into-docs
 created: 2026-10-20T09:53:44.722Z
-updated: 2026-10-20T09:56:34.088Z
+updated: 2026-10-20T10:03:28.400Z
+closed: 2026-10-20T10:03:28.400Z
 ---
 
 ## Summary
@@ -38,11 +39,32 @@ Cite no ticket lists, and do not restate what those sections already say. Docs o
 
 - [x] C1. Each of the five places above carries its cluster's guidance, with no duplicate of existing text (the evidence quotes each insertion's anchor heading).
   - done: impl-960 · 2026-10-20T09:56:32.075Z
+  - verified: rev-31 [reviewer] · run rev-20261020-960-source · 2026-10-20T10:03:16.091Z · commit 7c509c5b8d74b7dc415fa8fa3d022101e801b249
 - [x] C2. Rule 9's text names "Waiting for an observable condition" and that section holds the worked examples (Neovim rows, workerPid, tracker frames).
   - done: impl-960 · 2026-10-20T09:56:33.123Z
+  - verified: rev-31 [reviewer] · run rev-20261020-960-source · 2026-10-20T10:03:16.091Z · commit 7c509c5b8d74b7dc415fa8fa3d022101e801b249
 
 ## Comments
 
 ### impl-960 · 2026-10-20T09:56:32.044Z
 
 Implemented and pushed 7c509c5b8d74b7dc415fa8fa3d022101e801b249 on t/T-960-fold-the-v0-1-4-rule-clusters-into-docs. A-7300 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7300-t-960-five-documentation-insertions-and-review-evidence.md) quotes all five heading anchors and maps clusters to insertions; confirms rule 9's section pointer and Neovim rows/workerPid/tracker-frame examples. git diff --check passed; fetched and merged origin/dev before first review (already up to date). Docs only: no tests/typecheck/verify executed or needed per launch brief. qaPolicy scope none; no qaCriteria.
+
+### rev-31 · 2026-10-20T10:03:16.091Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-960-source
+commit: 7c509c5b8d74b7dc415fa8fa3d022101e801b249
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7331: docs-only source clear. All five A-7281 cluster anchors are covered without adjacent duplication; current rule 9's section pointer and the Neovim row, workerPid and tracker-frame examples match source. Both criteria are established by source inspection; no runtime/typecheck/verify pass is claimed.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:03:28.400Z
+
+Merged 2e381e6df332d17ef4480c82c7cc82b5cbd8f89b onto dev.

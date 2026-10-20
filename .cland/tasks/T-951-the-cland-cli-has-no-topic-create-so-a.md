@@ -2,8 +2,8 @@
 id: T-951
 kind: task
 title: The cland CLI has no `topic create`, so a shell-only session cannot open its item topic
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-724
 branch: t/T-951-the-cland-cli-has-no-topic-create-so-a
 created: 2026-10-20T09:21:21.788Z
-updated: 2026-10-20T09:58:39.755Z
+updated: 2026-10-20T10:10:51.981Z
+closed: 2026-10-20T10:10:51.981Z
 ---
 
 ## Summary
@@ -26,10 +27,14 @@ Found in E-617's DoD demo (qa-676, run qa-2026-10-20-2, at 7916d5f7). An Impleme
 - [x] C1. `cland topic create <title> [--item T-n]` opens a topic under the same role rules as the `topic.create` tool, binding it to the item when given, and the usage lists it.
   - done: impl-951 · 2026-10-20T09:56:58.845Z
   - verified: rev-26 [reviewer] · run rev-20261020-951-source-2 · 2026-10-20T09:58:39.755Z · commit 4d01247778ac88df029e9561acc1cba3d2e18b21
+  - verified: rev-26 [reviewer] · run rev-20261020-951-final-1 · 2026-10-20T10:07:08.036Z · commit 4d01247778ac88df029e9561acc1cba3d2e18b21
 - [x] C2. A T2 test covers an Implementer opening its own item's topic from the CLI and a refusal for another item.
   - done: impl-951 · 2026-10-20T09:56:59.782Z
   - verified: rev-26 [reviewer] · run rev-20261020-951-source-2 · 2026-10-20T09:58:39.755Z · commit 4d01247778ac88df029e9561acc1cba3d2e18b21
-- [ ] C3. A mode-free `cland verify` at the reviewed head is green.
+  - verified: rev-26 [reviewer] · run rev-20261020-951-final-1 · 2026-10-20T10:07:08.036Z · commit 4d01247778ac88df029e9561acc1cba3d2e18b21
+- [x] C3. A mode-free `cland verify` at the reviewed head is green.
+  - done: impl-951 · 2026-10-20T10:06:25.366Z
+  - verified: rev-26 [reviewer] · run rev-20261020-951-final-1 · 2026-10-20T10:07:08.036Z · commit 4d01247778ac88df029e9561acc1cba3d2e18b21
 
 ## Comments
 
@@ -66,3 +71,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: project Implementer clause now matches CLI/help/docs (M1 fixed). Coordinator e2a78a1e explicitly defers the shared standard-fixture isolation gap to T-961 and directs T-951 to proceed, so M2 no longer blocks this item; the gap is not claimed fixed here. Spec: original actor/frame permission and own/foreign binding checks remain unchanged; no finding. A-7301 preserves original local macOS six-pass T2 output, labelled pre-commit/report-only, not an exact-head gate. C1/C2 source verified; C3 remains pending mode-free verify at 4d012477. No Reviewer test execution.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-20T10:07:08.036Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-951-final-1
+commit: 4d01247778ac88df029e9561acc1cba3d2e18b21
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no finding. A-7348 accepted same-head mode-free task gate is passed; host check/typechecks green, existing lint/budgets report-only. asks-cli file diagnostic 2.375→4.242 s remains below T2 file budget; own cases/repetitions all below 2 s, no allowance changed. Shared fixture gap remains T-961 per Coordinator e2a78a1e. Spec: C1/C2 source retained, C3 now verified at 4d012477 by run 6abcef49: 1948/1948, no failure/skip/cancellation; T0–T2 fallback including Neovim. Parsed both new CLI identities: base pass plus actual 5/5 load passes each (max 0.696642/0.963393 s). Linux c-8 lon1, two workers, lifetime390s/$0.0271; T3 deferred to periodic/integrated, not claimed executed. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T10:10:51.981Z
+
+Merged 7ee82a65ed4f498f4c0fe83e495f751591df2871 onto dev.

@@ -2,8 +2,8 @@
 id: T-820
 kind: task
 title: Executor reconcile logs 'lease recovery deferred' every 10 minutes on a healthy hub
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-709
 branch: t/T-820-executor-reconcile-logs-lease-recovery
 created: 2026-10-18T20:24:17.977Z
-updated: 2026-10-20T09:58:41.284Z
+updated: 2026-10-20T10:10:40.888Z
+closed: 2026-10-20T10:10:40.888Z
 ---
 
 ## Summary
@@ -26,8 +27,10 @@ Since restart #13 (2026-10-18 19:10Z), the serving hub has logged `executor-reco
 - [x] C1. The cause is named: the lease records the reconcile keeps deferring and why they can't complete. A regression test reproduces the repeating deferral from a matching ledger or lease state.
   - done: impl-820 · 2026-10-20T09:46:40.864Z
   - verified: rev-32 [reviewer] · run rev-20261020-820-source · 2026-10-20T09:58:41.284Z · commit 351a5f790a4231093e1dd43d0ceab4b1e6031749
+  - verified: rev-32 [reviewer] · run rev-20261020-820-final · 2026-10-20T10:06:14.177Z · commit 351a5f790a4231093e1dd43d0ceab4b1e6031749
 - [x] C2. Reconcile either completes those leases or retires them with one journal line naming them; on an unchanged state it logs no further `lease recovery deferred` lines.
   - done: impl-820 · 2026-10-20T09:46:43.047Z
+  - verified: rev-32 [reviewer] · run rev-20261020-820-final · 2026-10-20T10:06:14.177Z · commit 351a5f790a4231093e1dd43d0ceab4b1e6031749
 
 ## Comments
 
@@ -63,3 +66,28 @@ Source clear only, at 351a5f790a4231093e1dd43d0ceab4b1e6031749. C1 verified by d
 Totals: Standards 0; Spec 0.
 
 Criteria: C1 verified.
+
+### rev-32 · 2026-10-20T10:06:14.177Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-820-final
+commit: 351a5f790a4231093e1dd43d0ceab4b1e6031749
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear at unchanged 351a5f790a4231093e1dd43d0ceab4b1e6031749, following full source verdict rev-20261020-820-source (A-7311). No findings.
+
+Retained A-7346 / run ff8e7174-a053-4cb0-97be-cf8ddf918d61 is a fresh mode-free task run at this exact head, exit 0: 1949/1949 reported passes; T1 exit 0 (40s), T2 exit 0 (257s). Fallback selection ran all T2 in hub and Neovim. Linux x64 6.8.0-142-generic on droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5. Host typecheck receipt at 30919f7f236fa5dc8d134b5faa2f4b806b635593 was reused, not repeated remotely. Census and duration/T3 ratchet diagnostics were report-only; refusal policy remained enforced.
+
+The log contains ordinary pass receipts and separate 5/5 passed load gates for all three new identities: settled legacy lease history, batch interrupted-release settlement, and automatic late-404 demo release. This establishes the runtime parts of C1/C2 alongside the reviewed source. Mark all criteria verified.
+
+This is task T0–T2 evidence, not a T3/T4 or all-tier pass. T3 remains deferred to periodic dev/integrated occasions under queue policy; no Reviewer execution or new run requested.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T10:10:40.888Z
+
+Merged af7882abb08972dfb0af43ce9a37595bf07d1d3b onto dev.

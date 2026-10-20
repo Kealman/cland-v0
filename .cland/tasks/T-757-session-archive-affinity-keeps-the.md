@@ -2,8 +2,8 @@
 id: T-757
 kind: task
 title: Session archive affinity keeps the earlier verifier item when consecutive holds share one heldAt instant
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-713
 branch: t/T-757-session-archive-affinity-keeps-the
 created: 2026-10-17T22:01:23.815Z
-updated: 2026-10-20T09:59:27.240Z
+updated: 2026-10-20T10:04:40.143Z
+closed: 2026-10-20T10:04:40.143Z
 ---
 
 ## Summary
@@ -85,3 +86,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7313: final evidence clear. C1 verified, reconciling prior failure: retained replay red/green A-7285 plus exact-head 48fa25e6/A-7307 green 1528 ordinary passes and five distinct passing new-identity repetitions, explicit 5/5 at raw line 46521. Maximum new case 0.539946772 s; no resource/duration failures. Source unchanged.
 
 Criteria: C1 verified.
+
+### coord · 2026-10-20T10:04:40.143Z
+
+Merged 608ca7715b64ef9979544fc5c2f04c7a5b2b8df8 onto dev.
