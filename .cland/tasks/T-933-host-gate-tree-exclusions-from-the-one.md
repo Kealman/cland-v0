@@ -2,8 +2,8 @@
 id: T-933
 kind: task
 title: Host-gate tree exclusions from the one shared definition, and tests.md names the rulebook exclusion
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-686
 branch: t/T-933-host-gate-tree-exclusions-from-the-one
 created: 2026-10-20T04:09:20.206Z
-updated: 2026-10-20T04:18:43.788Z
+updated: 2026-10-20T05:18:51.058Z
+closed: 2026-10-20T05:18:51.058Z
 ---
 
 ## Summary
@@ -83,3 +84,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7046: final clear at unchanged reviewed/pushedc6f503f6. WholeA-7045 audit1920/1920ordinarypasses,zero nonpasses/loadgroups/durationfailures/resource mismatches;hostcheck/allT1/fallbackallT2bothpackagesgreen. Knownheartbeatfilebaseline notice report-only,not failure. C1sharedexclusions/targetednative9/9+1/1 and C2docs sourceA-7042remaincurrent;C3freshgreen established. Allclaimantdone,no findings. QA none;devfreeze/do-not-merge remains separate;no Reviewer tests/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T05:18:51.058Z
+
+Merged 058a389446c4e7b20c0e193a29535ccf977a309e onto dev.

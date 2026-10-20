@@ -2,8 +2,8 @@
 id: T-932
 kind: task
 title: Lease stays 'releasing' when DigitalOcean returns a destroying droplet with empty tags (identity guard refuses; demo lease 3781f5d9)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-689
 branch: t/T-932-lease-stays-releasing-when-digitalocean
 created: 2026-10-20T03:00:27.589Z
-updated: 2026-10-20T05:13:03.864Z
+updated: 2026-10-20T05:26:47.289Z
+closed: 2026-10-20T05:26:47.289Z
 ---
 
 ## Summary
@@ -30,7 +31,10 @@ While a release is in progress, treat matching id and name with an empty tags ar
 - [x] C1. A fake-provider T2 test: during release, a get with empty tags followed by a 404 confirms release and frees the slot and the reservation; a get with foreign tags still refuses.
   - done: impl-932 · 2026-10-20T05:11:46.383Z
   - verified: rev-31 [reviewer] · run rev-20261020-932-source · 2026-10-20T05:13:03.864Z · commit f6ab011c9cc7ce6dc9381f89a34607ba5bbd42f8
-- [ ] C2. A mode-free verify at the reviewed head is green.
+  - verified: rev-31 [reviewer] · run rev-20261020-932-final · 2026-10-20T05:21:46.706Z · commit f6ab011c9cc7ce6dc9381f89a34607ba5bbd42f8
+- [x] C2. A mode-free verify at the reviewed head is green.
+  - done: impl-932 · 2026-10-20T05:20:35.778Z
+  - verified: rev-31 [reviewer] · run rev-20261020-932-final · 2026-10-20T05:21:46.706Z · commit f6ab011c9cc7ce6dc9381f89a34607ba5bbd42f8
 
 ## Comments
 
@@ -64,3 +68,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear, no findings; A-7062 records Standards/Spec review. Empty tags with matching id/name permit observation while releasing but never grant DELETE authority; non-empty mismatched tags refuse before and after accepted DELETE. A-7060 retains 8/8 fake-provider release tests and prepare-retry 1/1, including >2-second virtual deletion, reservation settlement and actual remote_budget=1 reuse. C1 verified; C2 awaits configured mode-free verify at this exact unchanged head.
 
 Criteria: C1 verified.
+
+### rev-31 · 2026-10-20T05:21:46.706Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-932-final
+commit: f6ab011c9cc7ce6dc9381f89a34607ba5bbd42f8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-7087 audits complete A-7082 / 74dec684 at unchanged reviewed head. 1920 ordinary plus five distinct new-case repetitions all pass; explicit slow-deletion 5/5 line 44009, maximum 0.547050734 s. All eight release cases pass, host check/all T1/fallback all T2 green, no tier mismatch or hard budget failure. C1/C2 verified and claimant done. No merge action.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T05:26:47.289Z
+
+Merged 0327b2ef9d0d8ba65ca9124d12b445c5f5900200 onto dev.

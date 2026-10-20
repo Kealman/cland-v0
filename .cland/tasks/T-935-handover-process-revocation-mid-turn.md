@@ -2,8 +2,8 @@
 id: T-935
 kind: task
 title: handover-process "revocation mid-turn" fails at 5 s under four-file load and its node process does not exit (E-482 demo round 4)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -17,7 +17,8 @@ found_by: qa
 topic: topic-688
 branch: t/T-935-handover-process-revocation-mid-turn
 created: 2026-10-20T04:56:46.417Z
-updated: 2026-10-20T05:09:41.945Z
+updated: 2026-10-20T05:21:00.451Z
+closed: 2026-10-20T05:21:00.451Z
 ---
 
 ## Summary
@@ -33,16 +34,22 @@ Find the wait that times out at 5 s under load, from the evidence log and a repr
 - [x] C1. The cause of the 5 s failure is named from the E-482 log or a reproduction, and the wait is an observed event or a FakeClock step, with every assertion kept.
   - done: impl-935 · 2026-10-20T05:06:10.534Z
   - verified: rev-31 [reviewer] · run rev-20261020-935-source · 2026-10-20T05:09:41.944Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
+  - verified: rev-31 [reviewer] · run rev-20261020-935-final · 2026-10-20T05:16:32.903Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
 - [x] C2. A forced failure of the case (a test-only injection, reverted before review) shows the file's process exits within 10 s of the failure.
   - done: impl-935 · 2026-10-20T05:06:11.181Z
   - verified: rev-31 [reviewer] · run rev-20261020-935-source · 2026-10-20T05:09:41.944Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
+  - verified: rev-31 [reviewer] · run rev-20261020-935-final · 2026-10-20T05:16:32.903Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
 - [x] C3. The file passes 20/20 alone and 10/10 beside three other T3 files run at once on the Mac, as a stress loop started only on an empty verify queue (load rule), with the run counts in the evidence; the droplet 5/5 under load is judged by E-482's rerun.
   - done: impl-935 · 2026-10-20T05:06:11.867Z
   - verified: rev-31 [reviewer] · run rev-20261020-935-source · 2026-10-20T05:09:41.944Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
-- [ ] C4. A mode-free `cland verify` at the reviewed head is green.
+  - verified: rev-31 [reviewer] · run rev-20261020-935-final · 2026-10-20T05:16:32.903Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
+- [x] C4. A mode-free `cland verify` at the reviewed head is green.
+  - done: impl-935 · 2026-10-20T05:16:11.936Z
+  - verified: rev-31 [reviewer] · run rev-20261020-935-final · 2026-10-20T05:16:32.903Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
 - [x] C5. fakeCodex and connectWsUi in hub/test/harness.ts register their shutdown and home removal through the same ordered cleanup ownership as fakeClaude (no raw t.after removal of a fixture home remains in harness.ts), with their existing tests green.
   - done: impl-935 · 2026-10-20T05:06:12.508Z
   - verified: rev-31 [reviewer] · run rev-20261020-935-source · 2026-10-20T05:09:41.944Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
+  - verified: rev-31 [reviewer] · run rev-20261020-935-final · 2026-10-20T05:16:32.903Z · commit 4563685bd704e4a0518b6bba8b65ec8500879668
 
 ## Comments
 
@@ -68,3 +75,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; no findings. A-7056 records Standards/Spec review and independent A-7054/A-7055 audit. ENOTEMPTY was teardown failure after revocation assertions, not a five-second wait failure. Shared cleanup now disposes resources and hubs before homes and continues after errors. Final fault injection exits naturally in 0.021 s; all 20 solo and ten concurrent four-file Mac rounds pass. C1,C2,C3,C5 verified; C4 awaits exact-head configured mode-free verification. Linux 5/5 under load remains E-482 post-landing evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified, C5 verified.
+
+### impl-935 · 2026-10-20T05:16:19.796Z
+
+Exact reviewed-head mode-free verify0723b46c-1488-4efd-a588-0f40dbd6bd3d passed at unchanged4563685bd704e4a0518b6bba8b65ec8500879668:1920tests,1920pass,0fail/cancel/skip; log A-7067. Shared harness fallback ran all T2 in both packages plus all T1. Linuxx64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5; droplet lifetime340s,cost$0.0236. C4 marked done; Reviewer receives same-head result for final verdict. T3 load remains E-482 rerun, no merge queued; claim retained.
+
+### rev-31 · 2026-10-20T05:16:32.903Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-935-final
+commit: 4563685bd704e4a0518b6bba8b65ec8500879668
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-7068 independently audits complete A-7067 / 0723b46c at unchanged reviewed head. 1920/1920 ordinary passes, host check and all T1/fallback all T2 green, no tier mismatch or hard budget failure; existing heartbeat baseline notice is report-only. C4 verified; prior source/Mac/fault evidence A-7056/A-7055 remains applicable to C1/C2/C3/C5. Task gate excludes T3; E-482 retains Linux loaded 5/5 demonstration after landing. All C1–C5 current and claimant done.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-20T05:21:00.451Z
+
+Merged a0b135a6daa64e3746f7ccc732ccf7c081a2e4e4 onto dev.

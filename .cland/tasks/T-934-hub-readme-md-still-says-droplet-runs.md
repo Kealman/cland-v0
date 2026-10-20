@@ -2,8 +2,8 @@
 id: T-934
 kind: task
 title: hub/README.md still says droplet runs use four workers; D53 set two
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-687
 branch: t/T-934-hub-readme-md-still-says-droplet-runs
 created: 2026-10-20T04:18:24.341Z
-updated: 2026-10-20T04:27:54.565Z
+updated: 2026-10-20T05:14:12.197Z
+closed: 2026-10-20T05:14:12.197Z
 ---
 
 ## Summary
@@ -79,3 +80,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7051: final clear. WholeA-7050at unchanged reviewed/pushed49031175has1920/1920ordinarypasses,no nonpasses/loadgroups/durationfailures/resource mismatches;hostcheck/allT1/fallbackallT2bothpackagesgreen,configured dropletworkers2. Knownheartbeatbaseline notice report-only. C1sourceA-7048remainscurrent;C2freshgreen established. C1/C2verified,no findings. QA none,devfreeze/no-merge remains;no Reviewer tests/edits.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T05:14:12.197Z
+
+Merged 87c5826b7f82ad28d01954e028fe1bcdfb5b8a90 onto dev.
