@@ -320,6 +320,12 @@ When a session becomes an Aide, pending broadcasts and explicit subscription not
 
 ### Reloading project configuration
 
+Commands editing human-owned config or settings preserve untouched bytes and
+validate the whole candidate with the consumer's startup or launch parser before
+one atomic write; refusal leaves the file unchanged. Bootstrap, migration,
+doctor and launch share one exported source for defaults and writable keys.
+Test missing, explicit-default and legacy values separately.
+
 `cland hub reload` and SIGHUP validate `.cland/config.toml` and `.cland/roles.toml`
 and publish one last-good pair. A parse, validation or restart-required error in
 either file retains both old snapshots, journals `config-reload-failed` with the
@@ -1959,6 +1965,13 @@ commands fall back to the project root's config. Queued runs keep the recorded
 commands across reloads. Commit configuration changes before a droplet run:
 only a clean candidate's committed Git objects are bundled (tracker and rulebook
 edits have the exclusions described below).
+
+Verification identity and tree exclusions have one definition in
+`verification-tree.ts`; admission owns selection policy and pins the command
+plan, tiers and base for execution, cache lookup and reports. Reuse a receipt only
+when command, tree, tier and occasion coverage, and execution overrides all match.
+Persist stage and schedule state in durable records rather than reconstructing
+it from transient history or message text.
 
 Prepare must be idempotent and write only ignored files, leaving HEAD and tracked
 files unchanged. Delivery cleans the checkout before rerunning it, preserving

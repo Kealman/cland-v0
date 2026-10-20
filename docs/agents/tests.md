@@ -233,6 +233,13 @@ item, reason and expiry required below still govern manifest additions.
 - A new duration allowance carries a non-TODO reason, an open owner item, and UTC `added`/`expires` dates at most seven days apart (31 days for the configured legacy owner under D72); it lands with the test.
 - Before review, run typecheck and the touched files one at a time. Put each file's seconds into the review request.
 
+**When you move or split tests:**
+
+- Map each original test title and its assertions to their destinations; account for every assertion.
+- Report timing and process starts across every destination file, including retained originals, so a split cannot hide cost.
+- Keep each native claim at a named T3 boundary. Declare fixture native resources and verification commands, and cite the hub's tripwire report as tier evidence.
+- Keep shared fakes faithful by importing production semantics and round-tripping their output through the real decoder.
+
 **When you review a test (Reviewer):**
 
 - Count `startDaemon(`, `spawnSpoke(`, `cland(` and `sleep(` in each new or changed test. For each one, ask which is the frame proof and why a lower tier can't prove the rest.
@@ -578,6 +585,23 @@ needs a positive completion boundary or fake time; an already-true predicate doe
 not prove that nothing happens later. Existing intentional expiry waits remain
 part of the baseline until migrated.
 
+Rule 9's boundary depends on the assertion. Worked examples:
+
+- **Neovim rows:** after navigation or resize, use `waitScreen` for the anchored
+  item row and the fields the assertion reads, then keep the exact row, order or
+  highlight assertion. A connected client or updated panel title can precede the
+  content render; see the row wait in `nvim/test/vboard.test.ts`'s `select` helper.
+- **Worker PID:** after `f.launch()`, use `await f.workerPid(job.id)` to read the
+  matching live job record and register ownership for cleanup. The launch reply
+  can still have a null PID. Before fault injection, also observe the relevant
+  package-start log or filesystem marker; keep the crash/recovery assertions
+  (`hub/test/suite.test.ts` and `hub/test/suite-recovery.test.ts`).
+- **Tracker frames:** subscribe before the mutation, then wait for a `task` frame
+  matching both the item id and the expected transition, such as released holds
+  and `status === 'review'`. Assert the resulting claim/status as before; request
+  acceptance or an attempt timestamp does not prove the continuation published
+  its result (`hub/test/tracker-ready.test.ts`).
+
 ### Real-binary adapter contract checklist
 
 Each harness has one T3 manifest entry `{ "tier": "T3", "contract": "<harness>" }`.
@@ -620,8 +644,13 @@ for every time-dependent collaborator in a fixture. Bare `now` overrides are
 refused; inject a complete Clock instead. A real-process fixture that needs
 progressing native schedules may explicitly supply an offset real clock.
 
+Give that shared clock one advancing driver. Before advancing, observe the timer
+wait under test and native I/O receipts from every participant sharing the clock.
+`FakeClock.advance` is not a completion barrier; repeated advances must not stand
+in for those receipts.
+
 Do not mock global timers in a `projectHub` scheduling test: sockets, journal
-flush and I/O retries, native transport/reconnect deadlines, AccountPoller child-process deadlines and suite
+flush and I/O retries, native transport/reconnect and kill deadlines, AccountPoller child-process deadlines and suite
 execution keep real time. AccountPoller eligibility and Claude directory schedules
 use the hub Clock. Verification-wait metrics alone use hub time.
 
