@@ -20,7 +20,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   Object.assign(config.verification, commands, { test_unit: 'printf admitted-unit', test_soak: 'printf admitted-soak' });
   await writeFile(configPath, renderConfig(config));
   api.beforeCreate(async () => {
-    Object.assign(config.verification, { prepare: 'false', check: 'false', test: 'false', test_unit: 'false', test_soak: 'false' });
+    Object.assign(config.verification, { prepare: "printf 'changed prepare must not run\\n' >&2; false", check: 'false', test: 'false', test_unit: 'false', test_soak: 'false' });
     await writeFile(configPath, renderConfig(config));
   });
   const made = await ui.request({ type: 'task.create', title: 'Demo', kind: 'epic' });
@@ -60,9 +60,13 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   const viewed = await next.request({ type: 'task.view', item: epic });
   assert.match(JSON.stringify(viewed.value), /demo.*created/);
   assert.match(JSON.stringify(viewed.value), /demo.*destroyed.*cost/);
+  // The next demo is a new admission; retire the first admission's failure injection.
+  Object.assign(config.verification, commands, { test_unit: 'printf admitted-unit', test_soak: 'printf admitted-soak' });
+  await writeFile(configPath, renderConfig(config));
   const repeated = await next.request({ type: 'demo.start', epic, commit: head });
   assert.equal(repeated.ok, true, repeated.error);
   assert.notEqual((repeated.value as { lease: string }).lease, (started.value as { lease: string }).lease);
+  assert.deepEqual((await readLease(join(root, '.cland/run/executor/leases', (repeated.value as { lease: string }).lease))).demo?.commands, pinned);
   const exit255 = await next.request({ type: 'demo.exec', epic, command: ['sh', '-c', 'git rev-parse HEAD; exit 255'] });
   assert.equal(exit255.ok, true, exit255.error);
   assert.deepEqual(exit255.value, { stdout: `${head}\n`, stderr: '', code: 255 });
