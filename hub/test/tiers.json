@@ -497,6 +497,7 @@
     "hub/test/visibility-component.test.ts": "T2",
     "hub/test/visibility-volume.test.ts": "T4",
     "hub/test/visibility.test.ts": "T3",
+    "hub/test/web-edge.test.ts": "T2",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",
     "nvim/test/agents-filters.test.ts": "T2",

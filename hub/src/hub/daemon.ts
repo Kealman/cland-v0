@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { DropletDependencies } from '../executor/droplet/dependencies.ts';
+import { createWebEdge, type WebEdge } from './web-edge.ts';
 import { realClock, type Clock } from './clock.ts';
 // The hub as a project's daemon: the project's lock taken first, `.cland/` prepared, the store opened on
 // `hub.db`, the WebSocket edge for spokes and the Unix socket edge for the UI bound, and the discovery file
@@ -14,7 +15,7 @@ import { AccountPoller } from '../accounts/poller.ts';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { access, unlink, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { sweepOrphans } from '../orphans.ts';
 import { VisibilityPreferenceFile } from './visibility-preferences.ts';
 import { Store } from './store.ts';
@@ -185,6 +186,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
   const crew = new CrewFile(l.crew, log, config => hub?.core.publishCrew(config), tracker, requestGuard.resumer('crew.refresh'), clock);
   let adapters: ProjectSessions | null = null;
   let accountPoller: AccountPoller | null = null;
+  let web: WebEdge | null = null;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
   try {
@@ -267,6 +269,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
           pid: process.pid,
           priority,
           port: ws?.port ?? 0,
+          ...(web ? { web: web.status } : {}),
           socket: edge ? l.socket : '',
           version: VERSION,
           root,
@@ -312,6 +315,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
         await attempt(() => log({ event: 'stopping' }));
         await attempt(() => edge?.close());
         await attempt(() => ws?.close());
+        await attempt(() => web?.close());
         await attempt(() => sweep);
         await attempt(() => accountPoller?.close());
         // Both journal and session projections depend on the adapters' open table.
@@ -372,6 +376,9 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
+  web = await createWebEdge({ stateDir: l.dir, ...(config ? { port: config.web.port, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
+  if (!web.status.available) log({ event: 'web-unavailable', ...web.status });
+
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again
   try {
     log({ event: 'hub-startup-step', step: 'restoring sessions', pid: process.pid });
@@ -384,7 +391,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
     throw error;
   }
 
-  const discovery: Discovery = { root, socket: l.socket, port: ws.port, secret, pid: process.pid, version: VERSION };
+  const discovery: Discovery = { root, socket: l.socket, port: ws.port, webPort: web.status.port, secret, pid: process.pid, version: VERSION };
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;

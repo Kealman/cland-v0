@@ -25,6 +25,7 @@ export const GITIGNORE = `${MANAGED_MARK} ${VERSION} — rewritten by cland; rem
 # Volatile hub state: never committed. tasks/, roles.toml, crew.toml, config.toml and RULES.md are.
 hub.db*
 hub.json
+web-port
 ui.json
 ui.json.lock*
 hub.lock*

@@ -59,7 +59,7 @@ export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-cod
                   opens the workbench on aide-1; --attach uses the harness's attach in this terminal instead
 `;
 
-export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub and what cland init provisioned; one line per
+export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub/web edge and what cland init provisioned; one line per
                   check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers, deleted-project hubs and fixtures)
                   deleted-project hubs retain the orphan hub classification even with fixture ownership
 `;
@@ -68,7 +68,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
                   --autostart: honor the deliberate-stop grace period; --client cli|nvim|other identifies the starter
   hub subscriptions list every session's event subscriptions (--json for JSON)
   hub reload      validate and reload config.toml and roles.toml (also SIGHUP)
-  hub status      show the running hub and its connected sessions (--json for JSON)
+  hub status      show the running hub, web edge availability and connected sessions (--json for JSON)
   hub stop        stop the project's hub
   hub serve       run the hub in the foreground (what start runs)
                   --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
@@ -221,7 +221,10 @@ export const DEMO_USAGE = `  demo start <epic> [--commit <sha>] [--json]  lease 
 
 export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <name>] [--refresh] [--json]\n                  list model ids and the default; hub cache lasts 24 hours\n`;
 
-export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value\n`;
+export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value
+                  web.port: 0 keeps the first free port; 1–65535 overrides it; a taken port disables only the web edge
+                  web.dist: bundle directory (empty: installed web/dist); web settings apply after a hub restart
+`;
 
 export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this build's help and built-in roles, without executing commands
                   checks table ids/surfaces, commands/flags in code, and variable rm operands

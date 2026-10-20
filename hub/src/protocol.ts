@@ -715,7 +715,11 @@ export type VerificationQueue = {
   metrics: { window: number; count: number; wait: DurationStats; run: DurationStats; queueWait?: QueueWaitMetrics };
 };
 
+export type WebEdgeStatus = { port: number; available: boolean; reason?: string };
+
 export type HubStatus = {
+  /** The independent browser listener; absent on older or stdio-only hubs. */
+  web?: WebEdgeStatus;
   /** Scheduling priority observed at hub startup. Absent on older hubs. */
   priority?: import('./hub/priority.ts').HubPriority;
   mergeQueue?: MergeQueueEntry[];

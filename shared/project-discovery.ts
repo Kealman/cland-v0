@@ -11,6 +11,8 @@ export type Discovery = {
   socket: string;
   /** The 127.0.0.1 port spokes open their WebSocket on. */
   port: number;
+  /** Stable browser origin port; may be unavailable (see hub.status.web). Absent on older hubs. */
+  webPort?: number;
   secret: string;
   pid: number;
   version: string;

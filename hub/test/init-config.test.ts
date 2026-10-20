@@ -133,3 +133,25 @@ test('marketing allow-list preserves configured exact paths and directory prefix
     assert.throws(() => parseConfig(`[publish]\nallow_paths = [${JSON.stringify(path)}]`, 'scratch'), /publish.allow_paths/);
   }
 });
+
+// T1: web settings validate and round-trip without opening listeners.
+test('web port and development bundle settings round-trip and reject invalid values', t => {
+  assert.deepEqual(parseConfig('', 'web').web, { port: 0, dist: '' });
+  const c = parseConfig('[web]\nport = 54321\ndist = "../shell bundle"', 'web');
+  assert.deepEqual(c.web, { port: 54321, dist: '../shell bundle' });
+  assert.deepEqual(parseConfig(renderConfig(c), 'web').web, c.web);
+  for (const port of [-1, 65536, 1.5, '1234', null]) {
+    assert.throws(() => parseConfig(`[web]\nport = ${JSON.stringify(port)}`, 'web', {}, { strict: true }), /web.port|Invalid TOML/);
+  }
+  for (const dist of [1, false, ['bundle']]) {
+    assert.throws(() => parseConfig(`[web]\ndist = ${JSON.stringify(dist)}`, 'web', {}, { strict: true }), /web.dist/);
+  }
+  const root = mkdtempSync(join(tmpdir(), 'cland-web-config-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  writeFileSync(path, renderConfig(defaultConfig('web')));
+  assert.equal(setConfigValue(root, path, 'web.port', 65535, {}), 65535);
+  assert.equal(setConfigValue(root, path, 'web.dist', 'prototype/dist', {}), 'prototype/dist');
+  assert.equal(setConfigValue(root, path, 'web.port', 0, {}), 0);
+});

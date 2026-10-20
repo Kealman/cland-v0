@@ -25,6 +25,7 @@ export type ProjectConfig = {
   tracker: { levels: Levels; fatalStallMs: number };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
+  web: { port: number; dist: string };
   keys: { layouts: string[] };
   hygiene: { eventLimit: RateLimit; rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
 };
@@ -42,6 +43,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
   artifacts: { retentionDays: 30 },
+  web: { port: 0, dist: '' },
   keys: { layouts: [] },
   hygiene: { eventLimit: { ...EVENT_LIMIT }, rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
 });
@@ -166,6 +168,13 @@ loop_breaker_window_minutes = ${minutes(h.loopBreaker.windowMs)}
 loop_breaker_mute_minutes = ${minutes(h.loopBreaker.muteMs)}
 # the largest message text, in bytes
 max_text_bytes = ${h.maxTextBytes}
+
+# The browser listener is loopback-only. Changes apply after a hub restart.
+[web]
+# 0 keeps the first free port in .cland/web-port; a taken port disables only this edge.
+port = ${c.web.port}
+# Empty serves the installed web/dist; a development bundle path is relative to the project root.
+dist = ${JSON.stringify(c.web.dist)}
 
 # Archived artifact files are removed after this many days; their index entries stay.
 [artifacts]
@@ -332,6 +341,15 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   const keys = (doc.keys ?? {}) as Record<string, unknown>;
   accepts('keys.layouts', keys.layouts, Boolean(Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')), 'a list of strings');
   if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];
+  const web = (doc.web ?? {}) as Record<string, unknown>;
+  if (web.port !== undefined) {
+    if (typeof web.port !== 'number' || !Number.isInteger(web.port) || web.port < 0 || web.port > 65535) throw new Error('web.port must be an integer from 0 to 65535 (0 keeps the first free port)');
+    c.web.port = web.port;
+  }
+  if (web.dist !== undefined) {
+    if (typeof web.dist !== 'string' || web.dist.includes('\0')) throw new Error('web.dist must be a bundle directory path');
+    c.web.dist = web.dist;
+  }
   const a = (doc.artifacts ?? {}) as Record<string, unknown>;
   accepts('artifacts.retention_days', a.retention_days, Boolean(typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0), 'a nonnegative number');
   if (typeof a.retention_days === 'number' && Number.isFinite(a.retention_days) && a.retention_days >= 0) c.artifacts.retentionDays = a.retention_days;

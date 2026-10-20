@@ -20,3 +20,16 @@ The same JSON-lines frames also run over the stdio of a child process: for QA ru
 The statement above that QA runs "inside the Codex sandbox, where Unix sockets are blocked" is superseded for sessions the hub launches. The human decided on 2026-10-09 (item T-48) that a Codex session launched by cland runs with `approvalPolicy` `never` inside a sandbox chosen for its role in `.cland/roles.toml`. For the Implementer and QA that sandbox allows Unix sockets under the project's `.cland/`, the session's directory and the temp dir, and loopback, with the rest of the network closed; the Implementer's also allows writes to the main worktree and the project's git directories. `docs/review-and-qa.md` ("The Codex sandbox") says what each role's sandbox allows and how it was measured.
 
 The stdio transport stays, and so does its reason, for the places where sockets are still blocked: a rescue run (`/codex:rescue`), which the hub does not launch and which runs in Codex's own default sandbox, and any role whose `network` is `none`, such as the Reviewer.
+
+
+## Amendment, 2026-10-20: an independent web edge (v0.2 §3.7, T-978)
+
+The hub process also owns a separate loopback HTTP listener for the web bundle.
+Its stable port is recorded as `hub.json.webPort`, independently of the spokes'
+WebSocket `port`. `[web] port` overrides the automatically kept port; `[web] dist`
+selects a development bundle. A taken web port starts the hub without that edge,
+with the reason in the log, `hub.status.web` and `cland doctor`; it never changes
+the browser's origin to another port: the origin carries browser storage and
+notification permission. The spoke and Unix-socket edges keep their
+existing admission rules. This amendment permits the separate loopback edge;
+network binding and browser authentication remain subsequent work under E-412.

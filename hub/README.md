@@ -106,7 +106,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/hub/lines.ts` | The JSON-lines framing both byte-stream edges share: complete lines split off first, each held to the frame limit on its own, then only the unfinished remainder. |
 | `src/hub/stdio.ts` | The stdio edge for a UI that spawned the hub as its child (`cland hub serve --stdio`): JSON lines on stdin and stdout, no secret, the hub stops when stdin ends. |
 | `src/hub/lock.ts` | The project's hub lock, `.cland/hub.lock`: created whole or not at all, holding the holder's pid and process start time; a stale one (pid gone, or reused by a process started at another time) is broken under a guard. |
-| `src/hub/daemon.ts` | The hub serving one project in the background: the lock taken first, `.cland/` prepared, store on `hub.db`, both edges bound, the adapters plugged in, `hub.json` written last; the launched sessions re-found once it is reachable. Shutdown runs backwards: edges closed, `hub.json` removed, the lock released last. For a stdio hub the listeners are optional (below). |
+| `src/hub/daemon.ts` | The hub serving one project in the background: the lock taken first, `.cland/` prepared, store on `hub.db`, spoke and Unix-socket edges bound, the independent web edge attempted, the adapters plugged in, `hub.json` written last; the launched sessions re-found once it is reachable. Shutdown runs backwards: edges closed, `hub.json` removed, the lock released last. For a stdio hub the listeners are optional (below). |
 | `src/adapters/contract.ts` | The adapter contract (spec 4.3) and its capability table; the message envelope a harness reads. |
 | `src/adapters/processes.ts` | The process table: the harness processes the hub launched, in `hub.db` (table `harness_processes`), through a connection of its own (termination is handled by `src/system-processes.ts` `endProcess` after its recorded start time matches). |
 | `src/system-processes.ts` | Asynchronous OS process snapshots and verified process-tree termination, with bounded probes and kill escalation. |
@@ -156,6 +156,41 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `test/harness.ts` | Starts a real hub on an ephemeral port and spawns real spokes over MCP stdio; runs the `cland` CLI as its own process in a temporary project and speaks to that hub's Unix socket; puts a fake Claude Code first on a daemon's PATH. The tests touch nothing else. |
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. Every CLI invocation records its time, arguments and effective config directory in `invocations.jsonl` (and the compatible `calls.jsonl`); sessions are partitioned by that directory and job records include only the names of inherited auth variables; a `logged-out` marker refuses `agents` and `--bg` with token expiry. Like the real one it also runs the project's `.claude/settings.json` hooks and reads `CLAUDE.md` with its `@` imports, else `AGENTS.md`; what a session loaded goes to `jobs/<id>.context.json`. |
 | `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
+
+The hub also owns an independent **web edge**, an HTTP listener on `127.0.0.1`.
+It serves the installed `web/dist` bundle. Its stable port is `webPort` in
+`.cland/hub.json`; `port` remains the spokes' WebSocket port. With `[web] port = 0`
+(the default, also when unset), the first start chooses a free port and keeps it
+in the volatile, ignored `.cland/web-port` file across restarts. An explicit
+`[web] port` (1–65535) overrides that file without replacing the kept automatic
+port. A taken port never causes a move to another origin: the hub starts with
+its spoke and Unix-socket edges, logs `web-unavailable` with the port and reason,
+and reports `{ port, available: false, reason }` as `hub.status.web`.
+`cland hub status` shows that reason and `cland doctor` warns. Free the port or
+change the setting and restart the hub. A running edge reports
+`hub.status.web = { port, available: true }`; stdio-only hubs omit it.
+
+For development, `[web] dist = "path/to/bundle"` serves another bundle; relative
+paths resolve from the project root, absolute paths are accepted, and the empty
+default uses the installed bundle. Both settings take effect on hub restart.
+For example:
+
+```toml
+[web]
+port = 54321
+dist = "web/dist"
+```
+
+Use `http://127.0.0.1:<webPort>/`. Host must be `127.0.0.1`, `localhost` or `[::1]`
+with that exact port. The edge currently serves static files over loopback. The spokes' authentication
+and refusal of client hellos are unchanged. Paths stay inside the bundle,
+including symlinks; extensionless routes fall back to `index.html`. Missing
+bundle/index responses name `npm run build --workspace web` (503, plain text).
+Every response has CSP (including `frame-ancestors 'none'`),
+`X-Content-Type-Options: nosniff` and `Referrer-Policy: no-referrer`.
+Entry files, manifest, service worker and icons use `no-cache` and an ETag
+(matching `If-None-Match` returns 304); existing `/assets/*` files use
+`public, max-age=31536000, immutable`. SPA fallbacks keep `no-cache`.
 
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_KEEPALIVE_MS`, `CLAND_HUB_REQUEST_TIMEOUT_MS` and `CLAND_HUB_WELCOME_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_GATE`, read by `cland hub serve`, names a test-only directory: the next tracker temporary write consumes its `armed` file, writes `entered`, and waits until the test creates `release` before proceeding to rename. Tests arm it after fixture setup, then release it after the competing operation; nothing else sets it. Also for tests only: `CLAND_QUEUE_TTL_MS` shortens the queue TTL (how long a queued message and a remembered name last), and `CLAND_TEST_CRASH_AT=handover-committed` kills the hub right after a handover's transaction committed (`launch-reserved`: right after a launch reserved its role, before the spawn).
 
@@ -1281,7 +1316,8 @@ Doctor requires only the harnesses used by `.cland/roles.toml`: each role's laun
 | `project` | Only when `.cland/` is missing: then the project checks below are this one `fail`, `cland init`. | |
 | `territory` | `origin` is the local bare territory, it holds `main` and `dev`, `HEAD` is on `dev`, and the protection hook is current and executable; a non-Git folder needs none. | `fail` names missing or damaged state; run `cland init` (restore a changed `origin` to `.cland/territory.git` first). |
 | `hub` | `hub.json` names a live pid that holds `.cland/hub.lock` and answers `hub.status` on the socket, at this cland's version. | No hub (no file, a stale file): `warn`, `cland hub start`. A lock holder without `hub.json`, an invalid file, a hub that does not answer: `fail`. A stale file (its pid gone, or not the lock's holder) while a live process holds the lock: `fail` naming the holder, `kill <holder>`, then `rm .cland/hub.json` and `cland hub start` (`cland hub start` alone would refuse). Another version: `warn`, restart it. |
-| `hub.json` | Valid (socket, port, secret, pid, version), or absent while no hub runs. | Missing while a hub holds the lock, or invalid: `fail`. Stale: `warn`. |
+| `web edge` | The independent browser listener is available. | `warn` with its port and bind failure reason; free the port or change `[web] port`, then restart. Spoke/Unix-socket service continues. |
+| `hub.json` | Valid (socket, port, secret, pid, version; optional webPort), or absent while no hub runs. | Missing while a hub holds the lock, or invalid: `fail`. Stale: `warn`. |
 | `secret` | `.cland/secret` is 64 hex digits, mode 0600, the one `hub.json` carries. | Absent before the first start: `warn`; loose mode: `fail`, `chmod 600 .cland/secret`. |
 | `roles.toml`, `config.toml` | Parse (`roles.toml` as the hub reads it, `config.toml` as `cland update` does). | `fail` with smol-toml's error and its line and column. Absent: `warn`. |
 | `skills manifest` | `.agents/skills/.cland-manifest.json` is valid (validated as `cland update` does: the mark, the names, the paths) and each skill it lists is a folder holding its `SKILL.md` (cland's own repository, the skills' source, needs none). | `fail`, `cland update`. |

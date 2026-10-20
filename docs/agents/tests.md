@@ -736,6 +736,16 @@ protocols. Pass environment overrides to the fixture; never temporarily mutate
 owned processes, then fails on surviving owned handles, timers or process
 listeners, with `process.getActiveResourcesInfo()` diagnostics.
 
+Web-edge component tests use `projectHub` discovery (`webPort`), HTTP requests
+and `hub.status.web` frames. `hub/test/web-edge.test.ts` is T2: its restarts
+exercise listener port persistence without starting a daemon process. Bundle
+fixtures live inside the disposable project, selected through `[web] dist`;
+missing-bundle cases use a missing fixture directory/index, so building the real
+`web/dist` cannot change their expected result. An occupied web port leaves the
+spoke and Unix-socket edges available; inspect the `web-unavailable` log and
+`cland doctor` warning rather than expecting a hub startup failure. Set
+`[web] port` or `[web] dist` before startup; both require a restart to apply.
+
 Hub scheduling tests pass one complete clock at the fixture boundary:
 `projectHub(t, root, env, { clock: new FakeClock() })` (`hub/test/fake-clock.ts`).
 `await clock.advance(ms)` runs due hub timers in deadline order and yields to
