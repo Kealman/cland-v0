@@ -2,8 +2,8 @@
 id: T-924
 kind: task
 title: Run delivery fails with missing prerequisite commits when a snapshot prepare finishes during run start (A-6898)
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ found_by: droplet
 topic: topic-676
 branch: t/T-924-run-delivery-fails-with-missing
 created: 2026-10-20T01:19:43.164Z
-updated: 2026-10-20T01:27:17.831Z
+updated: 2026-10-20T01:40:01.694Z
+closed: 2026-10-20T01:40:01.694Z
 ---
 
 ## Summary
@@ -29,12 +30,17 @@ Make a run's bundle base and its droplet image come from one snapshot record, re
 
 ## Acceptance criteria
 
-- [ ] C1. A T2 test with a fake executor swaps the snapshot between bundle creation and machine creation, and the run still delivers (single record, or a full-bundle fallback).
+- [x] C1. A T2 test with a fake executor swaps the snapshot between bundle creation and machine creation, and the run still delivers (single record, or a full-bundle fallback).
   - verified: rev-31 [reviewer] · run rev-20261020-924-source-corrected · 2026-10-20T01:27:17.831Z · commit ead24b2b261895a8f19b8a7640eaa712572cd99b
-- [ ] C2. The cause is named in the report against A-6898 and the executor events.
+  - done: impl-924 · 2026-10-20T01:35:22.163Z
+  - verified: rev-31 [reviewer] · run rev-20261020-924-final · 2026-10-20T01:35:51.333Z · commit ead24b2b261895a8f19b8a7640eaa712572cd99b
+- [x] C2. The cause is named in the report against A-6898 and the executor events.
   - verified: rev-31 [reviewer] · run rev-20261020-924-source-corrected · 2026-10-20T01:27:17.831Z · commit ead24b2b261895a8f19b8a7640eaa712572cd99b
-- [ ] C3. A mode-free verify at the reviewed head is green.
-  - failed: rev-31 [reviewer] · 2026-10-20T01:26:26.118Z · note Source change breaks a retained native delivery assertion; repair and fresh source review required before mode-free verification.
+  - done: impl-924 · 2026-10-20T01:35:22.654Z
+  - verified: rev-31 [reviewer] · run rev-20261020-924-final · 2026-10-20T01:35:51.333Z · commit ead24b2b261895a8f19b8a7640eaa712572cd99b
+- [x] C3. A mode-free verify at the reviewed head is green.
+  - done: impl-924 · 2026-10-20T01:35:23.247Z
+  - verified: rev-31 [reviewer] · run rev-20261020-924-final · 2026-10-20T01:35:51.333Z · commit ead24b2b261895a8f19b8a7640eaa712572cd99b
 
 ## Comments
 
@@ -75,3 +81,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-6917: source clear, M1 resolved. Sole correction from2bee82ff makes native fixture result step-specific; exact delivery.log assertion and all other assertions unchanged. A-6915complete retained local native file5/5zero nonpasses,10.516690625s whole/pinless.818748834s (reported local provenance, no Linux claim). Production snapshot pinning/persistence, bounded prerequisite-only fallback, worktree/head/ref checks and T2fake regression unchanged and sound per A-6914. C1/C2verified; C2 independently corroborated against A-6898 and journaltimestamps. C3remains pending fresh configured mode-free green at this exact head, including new T2identity5/5. No findings; no Reviewer tests/edits; QA none.
 
 Criteria: C1 verified, C2 verified.
+
+### rev-31 · 2026-10-20T01:35:51.334Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-924-final
+commit: ead24b2b261895a8f19b8a7640eaa712572cd99b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6925: final clear at unchanged ead24b2b. Whole A-6923 audit confirms1916ordinary+5load passes,zero nonpasses/no duration/resource/missing diagnostics. New snapshot-regression ordinary.073134457s,5distinctrepsmax.213444847s,explicit5/5at44586;file10/10,sum3.179529475s. Hostcheck/allT1/fallbackallT2bothpackages green. C1/C2sourceA-6917 remains applicable, C3nowestablished;allclaimantdoneconfirmed22159f06. M1resolved, no findings. Retained nativeA-6915local5/5 remains separate from deferred LinuxT3. QA none;no Reviewer tests/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T01:40:01.694Z
+
+Merged 1b509ea8d0afece648a45c06e2257487c2d9225d onto dev.

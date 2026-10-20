@@ -2,8 +2,8 @@
 id: T-923
 kind: task
 title: "Enforce mode: headroom allowances for tests near their tier budget (periodic run A-6900 red at 2.06 s and 2.39 s vs 2 s)"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-675
 branch: t/T-923-enforce-mode-headroom-allowances-for
 created: 2026-10-20T01:13:40.197Z
-updated: 2026-10-20T01:24:05.160Z
+updated: 2026-10-20T01:36:52.766Z
+closed: 2026-10-20T01:36:52.766Z
 ---
 
 ## Summary
@@ -32,10 +33,14 @@ Give every test identity whose observed time in any of A-6792, A-6795, A-6796, A
 - [x] C1. A replay of all four logs through the production budget checker shows zero failures, and the list of identities at 80 % or more without an allowance is empty.
   - done: impl-923 · 2026-10-20T01:19:02.414Z
   - verified: rev-31 [reviewer] · run rev-20261020-923-source-corrected · 2026-10-20T01:24:05.160Z · commit a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50
+  - verified: rev-31 [reviewer] · run rev-20261020-923-final · 2026-10-20T01:32:33.618Z · commit a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50
 - [x] C2. The report lists every added allowance with its observed peak, and the diff contains only additions.
   - done: impl-923 · 2026-10-20T01:16:13.047Z
   - verified: rev-31 [reviewer] · run rev-20261020-923-source-corrected · 2026-10-20T01:24:05.160Z · commit a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50
-- [ ] C3. The dry-run and the mode-free verify at the reviewed head are green.
+  - verified: rev-31 [reviewer] · run rev-20261020-923-final · 2026-10-20T01:32:33.618Z · commit a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50
+- [x] C3. The dry-run and the mode-free verify at the reviewed head are green.
+  - done: impl-923 · 2026-10-20T01:32:14.384Z
+  - verified: rev-31 [reviewer] · run rev-20261020-923-final · 2026-10-20T01:32:33.618Z · commit a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50
 
 ## Comments
 
@@ -76,3 +81,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-6911: source clear, M1 resolved. Independent normalized six-log audit finds107qualifying keys, exactly47new test allowances/no file additions, four Coordinator-authorized raises, zero remaining missing allowances/failures. Every cap, per-log peak, report entry, E-880/date/reason matches; only durations.json changes, baseline/source/budget/enforce unchanged and other allowances preserved. A-6907 uses production tier normalization plus recognized-tier assertions and checker/report calls. Fourth crew raise explicitly authorized by489179e2; originalthree byadda58c4, six-log expansion by7d7f5b95. C1/C2verified. A-6908 exact-head dry-run green; C3awaits fresh configured mode-free green at this unchanged source-cleared head. Historical A-6905not-clear retained; no findings. QA none/per-item.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-923 · 2026-10-20T01:32:14.874Z
+
+C3 complete: committed-head dry-run A-6908 green and configured mode-free verify 335f86f2-ac23-4ac3-9d44-e917c7492af2 green at unchanged a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50. A-6921: 1915 pass, 0 fail/cancel/skip/TODO; T1+T2 full fallback, enforce kept on. Linux x64 droplet c-8 lon1, workers 2, lifetime 444 s, cost $0.0309. T3 remains deferred to periodic dev/integrated occasions per configured task plan. Awaiting Reviewer's same-head final verdict.
+
+### rev-31 · 2026-10-20T01:32:33.618Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-923-final
+commit: a6b1785bc26f4c4d8ac8e771c4d26e5a9ad1ec50
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6922: final clear. Independent whole A-6921audit at exact unchanged reviewed/pushed a6b1785b:1915ordinary passes,zero nonpasses/no duration/resource/missing diagnostics,0loadgroups expected for data-only change. Host check and allT1/fallbackallT2 bothpackages green;ratchet2109.778=base. A-6908green exact-head dry-run completes C3with run335f86f2. C1/C2sourceA-6911 normalized six-log107qualifying/47additions/fourauthorizedraises and0failures remain current. C1–C3verified,no findings. T3not executed bytask; historical replay evidence separate. QA none; no Reviewer tests/edits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T01:36:52.766Z
+
+Merged 1fe0e7870a5065428cc64980288ab221ffcdb83e onto dev.
