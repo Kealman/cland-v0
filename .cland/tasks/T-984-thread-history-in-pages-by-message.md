@@ -2,8 +2,8 @@
 id: T-984
 kind: task
 title: Thread history in pages by message number
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-776
 branch: t/T-984-thread-history-in-pages-by-message
 created: 2026-10-20T16:50:00.375Z
-updated: 2026-10-20T21:13:18.505Z
+updated: 2026-10-20T21:28:05.247Z
+closed: 2026-10-20T21:28:05.247Z
 ---
 
 ## Summary
@@ -100,3 +101,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards/Spec evidence audit A-8073 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8073-t-984-final-evidence-review-at-b30718ea.md), same-head configured run f8ff3910/A-8071. Linux x64 droplet T1 and all-T2 fallback completed: 2,155 ordinary test passes/335 passing files; four new store identities each 5/5 load passes, counted separately. Store 24/24, topics component 4/4, unedited Neovim thread 23/23. Confirms bounded before/after paging, 450-message traversal, once-only interleaved insert and legacy compatibility. C5 docs remain source-established. Host check reference 5dd6c173 was not repeated remotely; lint/duration/ratchet report-only, eight missing baselines. No T3/T4 or after-stage QA claim. No findings; verify C1–C5.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-20T21:28:05.247Z
+
+Merged 101e0b33a250bedb40229ccfbdfc5c7ef2fc5d1f onto dev.

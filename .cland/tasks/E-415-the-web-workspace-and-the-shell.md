@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-20T19:21:57.675Z
+updated: 2026-10-20T21:28:12.643Z
 ---
 
 ## Summary
@@ -118,7 +118,6 @@ stages:
       - - T-990
         - T-1025
         - T-991
-      - - T-1011
   - name: the connection, the rail and the droplets
     qa:
       scope: affected
@@ -127,6 +126,7 @@ stages:
       - - T-992
         - T-994
       - - T-993
+      - - T-1011
   - name: split, palette and folds
     qa:
       scope: full

@@ -2,8 +2,8 @@
 id: T-1005
 kind: task
 title: Every surface that opens a Markdown artifact renders it
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-777
 branch: t/T-1005-every-surface-that-opens-a-markdown
 created: 2026-10-20T16:58:42.045Z
-updated: 2026-10-20T21:20:35.929Z
+updated: 2026-10-20T21:28:15.039Z
+closed: 2026-10-20T21:28:15.039Z
 ---
 
 ## Summary
@@ -74,3 +75,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; Standards/Spec audit A-8078 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8078-t-1005-final-evidence-review-at-bcd215f8.md). Exact-head configured 1246626b/A-8077 exited 0 on Linux x64 droplet: T1/all-T2 fallback, 2,154 ordinary test passes/335 passing files. Three new C1–C3 identities each pass 5/5 load repetitions; artifact-render 14/14, compatibility 9/9 and thread 23/23. C4 reviewed ARTIFACT-002 registration/grid assertions and A-8069's separate matching pre-commit local Darwin arm64 targeted 1/1 establish its scoped case evidence; no Linux T4/whole-shipped or after-stage QA claim. Host check 48006be2 not repeated remotely; lint/duration/ratchet report-only, existing timing diagnostics retained. No findings; verify C1–C4. E-795 full after-stage QA remains separate.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-20T21:28:15.039Z
+
+Merged d8a7781c5fd15e379bc9261248bc482b96311d0c onto dev.

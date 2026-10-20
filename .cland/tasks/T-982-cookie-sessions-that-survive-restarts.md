@@ -3,7 +3,7 @@ id: T-982
 kind: task
 title: Cookie sessions that survive restarts, listed and revoked
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-412
 blocked_by:
   - T-980
-topic: null
-branch: null
+topic: topic-778
+branch: t/T-982-cookie-sessions-that-survive-restarts
 created: 2026-10-20T16:50:00.187Z
-updated: 2026-10-20T20:57:50.557Z
+updated: 2026-10-20T21:30:16.270Z
 ---
 
 ## Summary
@@ -33,3 +33,9 @@ Each cookie session is stored as a hash, with its creation time and its last use
 - [ ] C4. `cland web --revoke <id>` closes that session's open sockets within the call, and its cookie is refused afterwards (test).
 - [ ] C5. A cookie session older than 30 days is refused (fake-clock test).
 - [ ] C6. `hub/README.md` documents `--sessions`, `--revoke` and the 30-day lifetime.
+
+## Comments
+
+### impl-982 · 2026-10-20T21:30:16.270Z
+
+Implementation seams follow C1–C5: T1 persisted row/hash + reopen + fake-clock lifetime; T2 two serveProject starts on one disposable root and executable CLI list/revoke with socket receipts. Additive web_sessions table; no message backfill. QA affected/after-stage, no per-item brief/criteria. Targeted red unit run confirms missing persistent-store constructor boundary; no suite run yet.

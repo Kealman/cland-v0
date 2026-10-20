@@ -3,6 +3,7 @@ id: E-795
 kind: epic
 title: Rendered Markdown artifacts in the Neovim workbench
 state: open
+criterion_seq: 3
 labels:
   - epic
   - v0.2
@@ -12,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T10:14:36.459Z
-updated: 2026-10-20T17:26:18.548Z
+updated: 2026-10-20T21:31:38.033Z
 ---
 
 ## Summary
@@ -21,9 +22,9 @@ The human, 2026-10-18 10:14Z in General: an opened artifact shows raw Markdown a
 
 ## Definition of done
 
-- [ ] D1. A Markdown artifact opened in the workbench renders like a thread message (headings, emphasis, inline and fenced code, lists, links, quotes, tables readable), with a key that toggles the raw source.
-- [ ] D2. Long artifacts open and scroll without a visible delay. Rendering is cached per artifact version and never blocks the UI.
-- [ ] D3. Headless-grid cases cover a rendered artifact and the raw toggle.
+- [ ] C1. A Markdown artifact opened in the workbench renders like a thread message (headings, emphasis, inline and fenced code, lists, links, quotes, tables readable), with a key that toggles the raw source.
+- [ ] C2. Long artifacts open and scroll without a visible delay. Rendering is cached per artifact version and never blocks the UI.
+- [ ] C3. Headless-grid cases cover a rendered artifact and the raw toggle.
 
 ## Plan
 

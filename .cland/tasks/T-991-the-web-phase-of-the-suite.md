@@ -2,8 +2,8 @@
 id: T-991
 kind: task
 title: The web phase of the suite
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 8
 labels:
@@ -18,7 +18,8 @@ blocked_by:
 topic: topic-768
 branch: t/T-991-the-web-phase-of-the-suite
 created: 2026-10-20T16:51:40.483Z
-updated: 2026-10-20T21:09:44.402Z
+updated: 2026-10-20T21:31:47.479Z
+closed: 2026-10-20T21:31:47.479Z
 ---
 
 ## Summary
@@ -39,24 +40,31 @@ The suite gains a `Web` shard after the hub phase on `node:test` with `playwrigh
 - [x] C1. A local `npm test` run on this branch reports a `Web` shard after the hub phase, with resource `machine` and two workers, on `node:test` with `playwright-core` and Chrome Headless Shell (run log).
   - done: impl-991 · 2026-10-20T21:01:36.886Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C2. The fixtures build `web/dist` once per run, start a scratch hub per file, mint a one-time link by a frame, use one browser per file and a fresh context per test, stub `Notification`, save a trace on a failure and use short `TMPDIR` paths (fixture tests).
   - done: impl-991 · 2026-10-20T20:39:07.096Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C3. A browser test opens the shell through a `web.link` link on the hub's web edge, reads the rail's seven areas, and records no request that leaves the origin.
   - done: impl-991 · 2026-10-20T20:39:07.111Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C4. The waiting helpers poll through `page.evaluate`, and a test shows the strict CSP still blocks an inline script.
   - done: impl-991 · 2026-10-20T20:39:07.127Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C5. A diff inside `web/**` selects `web-only`, which runs the web phase with the hub and Neovim smoke files, while a protocol or edge file forces `full` (suite-selection unit tests).
   - done: impl-991 · 2026-10-20T20:46:21.214Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C6. The web test files carry the tier the human set with this epic's plan approval (recorded as a comment on E-415) in `hub/test/tiers.json` and `hub/test/durations.json`, and the tier lint passes.
   - done: impl-991 · 2026-10-20T20:39:07.162Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C7. No browser or scratch hub process outlives the run (the fixture-process census).
   - done: impl-991 · 2026-10-20T20:39:07.178Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 - [x] C8. `web/README.md` and `docs/agents/tests.md` describe the web phase, `web-only` and how to run the browser tests.
   - done: impl-991 · 2026-10-20T20:39:07.198Z
   - verified: rev-23 [reviewer] · run rev-20261020-991-source · 2026-10-20T20:40:49.973Z · commit ecef1178de41c736368d46902cf2131933550d9b
@@ -65,6 +73,7 @@ The suite gains a `Web` shard after the hub phase on `node:test` with `playwrigh
   - verified: rev-23 [reviewer] · run rev-20261020-991-source-4 · 2026-10-20T21:01:57.666Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
   - verified: rev-23 [reviewer] · run rev-20261020-991-final · 2026-10-20T21:05:33.200Z · commit 5fd7df53604a63f30074cf9b4e340365cbe2b128
   - verified: rev-26 [reviewer] · run rev-20261020-991-source-delta-1 · 2026-10-20T21:09:44.402Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
+  - verified: rev-26 [reviewer] · run rev-20261020-991-final-delta-1 · 2026-10-20T21:26:44.239Z · commit fe5185451d87ee96f338df5c02f1abefb58c2141
 
 ## Comments
 
@@ -320,3 +329,26 @@ Directly read Coordinator 6e973eca authorizing this dev merge and new local veri
 A-8067 retained targeted smoke output has four passes (one parent/three subtests), parent 0.878165292 s, browser group 4→0 and scratch hub stopped; lead attributes merged head/local Darwin arm64, no embedded head/platform/exit header. Targeted evidence has no suite/load/duration gate. Lead reports npm run check green/zero refusals; no raw check output included, not independently parsed. No Linux/integrated or QA completion claim. Reviewer launched no tests/browsers or edits. After-stage affected QA remains separate.
 
 Criteria: C8 verified.
+
+### rev-26 · 2026-10-20T21:26:44.239Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-991-final-delta-1
+commit: fe5185451d87ee96f338df5c02f1abefb58c2141
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-8084 / 2d2e0805 audited at exact reviewed unchanged fe518545: 2,155 ordinary passes / 336 files, no fail/cancel/skip/load records. Actual local T1, hub/Neovim all-T2 fallback and Web completed in order, exit 0. Web machine shard has two workers; its parent plus three passing subtests are already included in 2,155. All C1–C8 verified; audit A-8085.
+
+Browser facts pass: one-time edge auth/spent-link rejection, seven rail areas/self-hosted same-origin requests, fresh contexts/Notification stub, CSP-safe waits and inline-script refusal, planted-failure trace/context cleanup. Bundle current check/prepare receipt reused. Actual process census group 10649 before 3/after 0, scratch hub stopped. Web parent 0.881096791 s, actual phase wall 1.275 s against 40 s; shard 1.43 s/package 1.44 s, not the 0.966 s projection. Selector/command/manifest compatibility passed; merged baseline union remains correct.
+
+Coordinator ae2349bc directly released the Mac and authorized this run. Local Darwin arm64 27.0.0, Node v24.21.0/Neovim v0.12.5; ordinary machine workers 4, Web 2. Check/typecheck/build ran locally; lint/budgets/ratchet report-only. T1 command 29 s/package 27.75 s, T2 command 109 s/package 106.81 s; no cache/quiet timing/Linux/T3/T4/integrated claim. Web intentionally has no load repetitions. After-stage affected QA remains separate; Linux browser availability belongs to T-993. Reviewer ran no tests/browsers or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-20T21:31:47.479Z
+
+Merged 07eeff96cb31d8e1cc391a95edd3408d9f0edf4d onto dev.
