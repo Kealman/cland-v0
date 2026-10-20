@@ -8,6 +8,7 @@ import type { TestContext } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CliResult } from './harness.ts';
 import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
+import { clandCliLaunch } from './tier-cli.ts';
 
 export type InitMachine = { root: string; home: string; env: NodeJS.ProcessEnv; context: TestContext };
 export type SpendEntry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
@@ -65,7 +66,7 @@ export function commandIn(machine: InitMachine, cwd: string, command: string, ar
 
 /** Like clandWithEnv, accepts the complete CLI arguments, e.g. 'init', '--json' or 'update'. */
 export function initIn(machine: InitMachine, folder: string, ...args: string[]): Promise<CliResult> {
-  return commandIn(machine, folder, process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), ...args]);
+  return clandCliLaunch(() => commandIn(machine, folder, process.execPath, [fileURLToPath(new URL('../bin/cland.ts', import.meta.url)), ...args]));
 }
 
 export function gitIn(machine: InitMachine, folder: string, ...args: string[]): Promise<CliResult> {
