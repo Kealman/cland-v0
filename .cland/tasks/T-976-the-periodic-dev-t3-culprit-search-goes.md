@@ -15,7 +15,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T15:39:04.758Z
-updated: 2026-10-20T15:39:04.758Z
+updated: 2026-10-20T19:51:17.588Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ On 2026-10-20 two culprit searches lost files to the search mechanics rather tha
 - [ ] C1. A T2 test with a fake history shows a stale duration key at an older head no longer makes a probe inconclusive.
 - [ ] C2. A file introduced inside the range is placed at its introducing commit.
 - [ ] C3. A boundary that flips on repetition is reported as inconclusive (flaky), not filed against a culprit.
+
+## Comments
+
+### coord · 2026-10-20T19:51:17.588Z
+
+Another data point, 2026-10-20 19:51Z (search for periodic run 8777e86b): the last-green rerun 5cc2e460 at 9ae9a20b passed 20/20 but had 3 platform skips (needs macOS sandbox-exec on Linux), and the search classified it 'inconclusive (file has nonpassing execution receipts)'. A known platform skip that is identical at both ends should not make a passing receipt nonpassing; otherwise every nvim/test/qa.test.ts culprit search on Linux ends inconclusive. The actual culprits here were T-999 and T-1007, fixed by T-1027.

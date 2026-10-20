@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-20T17:26:17.523Z
+updated: 2026-10-20T19:21:57.675Z
 ---
 
 ## Summary
@@ -116,6 +116,7 @@ stages:
       when: after-stage
     lanes:
       - - T-990
+        - T-1025
         - T-991
       - - T-1011
   - name: the connection, the rail and the droplets

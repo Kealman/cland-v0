@@ -13,10 +13,11 @@ blocked_by:
   - T-990
   - T-978
   - T-980
+  - T-1025
 topic: topic-768
 branch: t/T-991-the-web-phase-of-the-suite
 created: 2026-10-20T16:51:40.483Z
-updated: 2026-10-20T19:20:47.518Z
+updated: 2026-10-20T19:24:27.931Z
 ---
 
 ## Summary
@@ -48,3 +49,7 @@ The suite gains a `Web` shard after the hub phase on `node:test` with `playwrigh
 ### impl-991 · 2026-10-20T19:20:47.518Z
 
 Implemented separate Web classification, task/occasion cadence and web-only selection, isolated Headless Shell browser fixtures with real web.link auth/CSP/origin assertions, failure traces and teardown census, plus matching help/docs/skills/clauses. Targeted macOS arm64 smoke currently passes (4 assertions including nested cases; latest top-level 0.857 s, browser group 4→0). Typecheck and planner compatibility checks in progress; source review precedes hub verification.
+
+### impl-991 · 2026-10-20T19:24:27.931Z
+
+Coordinator split the expansion/bootstrap into T-1025. Published planner patch A-7991 (base fe05d55fbed2b9965c621ac91f9e1b1639a78599), removed its source delta from this worktree, and kept only browser dependency/fixtures/smoke/docs changes. A-7992 records pre-cover targeted/check evidence. Blocked pending T-1025 landing, Web-aware hub restart and Coordinator instruction to merge dev. Local tests held by the active stage-cover quiet rule; final fixture cleanup refinements are source-only and need revalidation afterward.
