@@ -2,8 +2,8 @@
 id: T-670
 kind: task
 title: The droplet runs [verification] prepare where it ran npm ci and the Neovim pin
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -17,7 +17,8 @@ blocked_by:
 topic: topic-669
 branch: t/T-670-the-droplet-runs-verification-prepare
 created: 2026-10-16T16:35:26.848Z
-updated: 2026-10-20T00:11:29.912Z
+updated: 2026-10-20T01:00:12.121Z
+closed: 2026-10-20T01:00:12.121Z
 ---
 
 ## Summary
@@ -38,20 +39,34 @@ The droplet executor runs the project's `prepare` in the prepared image's builde
 
 - [x] C1. A shell-stack project (`prepare = "echo prepared > .prepared"`, `check = "sh -n test.sh"`, `test = "sh test.sh"`, the test asserting `.prepared` exists, `.gitignore` listing it) prepares a snapshot and verifies green on the fake droplet. The suite log shows the `prepare` output before `$ <check>` (`executor-run.test.ts`).
   - done: impl-670 · 2026-10-19T23:57:21.601Z
+  - verified: rev-31 [reviewer] · run rev-20261020-670-final-fallback · 2026-10-20T00:39:53.841Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-final · 2026-10-20T00:55:51.147Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
 - [x] C2. The same project with a planted failing test turns the fake-droplet run red, with the test's output in the result message.
   - done: impl-670 · 2026-10-19T23:48:50.861Z
+  - verified: rev-31 [reviewer] · run rev-20261020-670-final-fallback · 2026-10-20T00:39:53.841Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-final · 2026-10-20T00:55:51.147Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
 - [x] C3. `cland executor prepare` runs `[verification] prepare` in the builder's checkout in place of `npm ci` and the Neovim seed, as the fake machine's call log shows, and an unset `prepare` logs `prepare: not set` (`executor-prepare.test.ts`).
   - done: impl-670 · 2026-10-19T23:48:51.452Z
   - verified: rev-30 [reviewer] · run rev-20261019-670-corrected-source · 2026-10-19T23:58:21.840Z · commit 43aa7d3ae31c028f587986b92c8e7126b48523c7
   - verified: rev-30 [reviewer] · run rev-20261020-670-m2-source · 2026-10-20T00:02:46.306Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-final-fallback · 2026-10-20T00:39:53.841Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-source · 2026-10-20T00:47:36.148Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-final · 2026-10-20T00:55:51.148Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
 - [x] C4. A failing `prepare` at delivery turns the run red with `prepare failed (exit <n>)` and its output, and neither `check` nor `test` runs. A `prepare` that leaves an unignored file fails with `prepare left the checkout dirty`.
   - done: impl-670 · 2026-10-19T23:57:22.093Z
+  - verified: rev-31 [reviewer] · run rev-20261020-670-final-fallback · 2026-10-20T00:39:53.841Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-final · 2026-10-20T00:55:51.148Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
 - [x] C5. `node hub/bin/verify-prepare.ts` with a matching key prints `dependencies match snapshot` and `Neovim pin matches snapshot` and runs neither step. With a moved lock it prints `dependencies changed: npm ci` and runs `npm ci` (script test with a fake `npm` on the PATH).
   - done: impl-670 · 2026-10-19T23:48:52.536Z
   - verified: rev-30 [reviewer] · run rev-20261019-670-corrected-source · 2026-10-19T23:58:21.840Z · commit 43aa7d3ae31c028f587986b92c8e7126b48523c7
   - verified: rev-30 [reviewer] · run rev-20261020-670-m2-source · 2026-10-20T00:02:46.306Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-final-fallback · 2026-10-20T00:39:53.841Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-source · 2026-10-20T00:47:36.148Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-final · 2026-10-20T00:55:51.148Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
 - [x] C6. This repository's `.cland/config.toml` sets `prepare = "node hub/bin/verify-prepare.ts"`, and a cland-shaped fake-droplet run's delivery log shows today's two lines (`executor-run.test.ts`).
   - done: impl-670 · 2026-10-20T00:02:17.495Z
+  - verified: rev-31 [reviewer] · run rev-20261020-670-final-fallback · 2026-10-20T00:39:53.841Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
+  - verified: rev-31 [reviewer] · run rev-20261020-670-enforce-final · 2026-10-20T00:55:51.148Z · commit 170407605f5ac1a91b2265ed93d9bb9f7837b146
 
 ## Comments
 
@@ -134,3 +149,60 @@ Criteria: C3 verified, C5 verified.
 ### impl-670 · 2026-10-20T00:11:29.912Z
 
 Same-head configured mode-free ff3164f5-cefb-4302-a7a1-b7f8134f355a passed at418a8da52a253969b9128f8184fdc9695b33e552:1913/1913, zero fail/cancel/skip/TODO; A-6867. T1 + fallback all T2 across hub/Neovim green. Linuxx64/Nodev24.21.0/Neovimv0.12.5; lifetime462s,cost$0.0321. Head/tree unchanged. Existing report-only notices retained. Waiting for Reviewer final evidence verdict; local native T3 evidence A-6830/A-6845 remains qualified, Linux T3 and shard warm lines stay stage/periodic/integrated evidence.
+
+### rev-31 · 2026-10-20T00:39:53.841Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-670-final-fallback
+commit: 418a8da52a253969b9128f8184fdc9695b33e552
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Fallback final evidence at claimant's request after who confirms rev-30 offline and hub pending review routes here; no duplicate verdict/hold. A-6883 independently audits complete A-6867 ff3164f5: exact source-clear/pushed418a8da5,1913ordinary passes,zero nonpasses/resource mismatches/hard duration failures;host check and allT1+fallbackallT2green. M2 corrected repository contract passes at42866. Qualified native A-6830 81files/537passes and A-6845 corrected executor-run19/19/12timings independently inspected; relevant production/builder/script blobs unchanged from native source and corrected executor-run blob identical to final. C1/C2 actual shell snapshot/green/planted-red;C3builder/unset;C4failed prepare output/no worker and dirty paths;C5script matching/moved inputs;C6config/warm native delivery lines all established with prior source A-6847/A-6854. M1 exact10s allowance directly authorized, four corrected native bodies5.945/4.934/2.943/2.950s,production budget failures empty. All claimant done marks present. No remaining findings;C1–C6verified. Existing report-only unrelated diagnostics retained. Native receipts are local macOS, not LinuxT3;stage hub-restart/sharded-dev cover must still show both warm lines per shard. QA none/after-stage.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### impl-670 · 2026-10-20T00:46:08.264Z
+
+Enforce admission correction pushed170407605f5ac1a91b2265ed93d9bb9f7837b146 after Coordinator-directed single origin/dev merge (T-915 landed). A-6886 records five new measured T3 baselines (growth17.548153875s), existing aggregate updates/provenance, and exact allow.T3 seconds2115/ownerE-880/added2026-10-20/expires2026-11-20; prior exact snapshot10s allowance unchanged. Final-head verify --dry-run exits0; immutable production merge-budget check has zero failures/no estimate and ratchet2109.778s vs base2092.229s allowed. Live manifest lint, retained native durations under enforce, npm run check and whitespace checks pass. Requesting delta source review before fresh enforce-mode mode-free verification; prior1913-green remains historical.
+
+### rev-31 · 2026-10-20T00:47:36.148Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-670-enforce-source
+commit: 170407605f5ac1a91b2265ed93d9bb9f7837b146
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6887 source delta clear after primary99a3c0b1 authorized dev merge/admission repair. Merge885e8762parents418a8da5+dev03711a42;all14task code/test/fixture blobs unchanged, required prepare config/T3script classification retained. Post-merge only duration data: five exact raw native values matchA-6845/A-6830, prior per-test baselines retained, executor aggregate88.464157542/12 and script.776026333/1 correct. Only whole-tier allowance expands to2115/E-880/Oct20→Nov20(31days);independent base2092.229397+growth17.548153875=2109.777550875,headroom5.222449125. Snapshot exact10s allowance unchanged;provenance appended,no other metadata/budget weakening. Immutable final-head admission failures empty/no estimates;dry-run0,retained native duration checks pass. C3/C5 source/local proof current;C1/C2/C4/C6await new same-head configured enforce-mode green. PriorA-6867is historical. No findings;stage warm-line/LinuxT3/QA boundaries retained.
+
+Criteria: C3 verified, C5 verified.
+
+### impl-670 · 2026-10-20T00:55:27.456Z
+
+Fresh configured enforce-mode1d084a17-2f9c-4b38-9f33-f05c0ac03aaf passed1915/1915 at reviewed170407605f5ac1a91b2265ed93d9bb9f7837b146; A-6888, zero fail/cancel/skip/TODO or duration/tier failures. T1 + fallback all T2 in both packages. Linuxx64/Nodev24.21.0/Neovimv0.12.5; lifetime418s,cost$0.0290. Head/tree unchanged. A-6886 supplies independent immutable T3 merge admission (measured2109.778s under2115 E-880 cap). Awaiting final Reviewer settlement. LinuxT3/stage shard warm-line checklist remains explicit.
+
+### rev-31 · 2026-10-20T00:55:51.148Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-670-enforce-final
+commit: 170407605f5ac1a91b2265ed93d9bb9f7837b146
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-6889 full raw A-6888 audit at exact unchanged17040760: configured mode-free1d084a17 passes1915ordinary tests,zero nonpasses/resource mismatches/duration failures/overages/regressions/missing baselines. Host check and allT1+fallbackallT2pass under enforce;0new groups. Repository command contract passes42876. NativeT3absent from task run; actual task ratchet2092.229=base is distinct from A-6886 immutable admission proof2109.777550875<=2115 measured cap/no estimates, validated in sourceA-6887. C1/C2/C4/C6combine fresh same-head gate with unchanged qualified local macOS nativeA-6830/A-6845;C3/C5source/local marks remain valid. All criterion done marks confirmed;C1–C6verified,no findings. PriorA-6867historical only. Stage hub-restart/sharded-dev warm-line checklist, periodic/integrated LinuxT3 and QA none/after-stage remain explicit.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-20T01:00:12.121Z
+
+Merged 0f8cb85b75c17adb30cbc8d62c595ed8a22be5db onto dev.
