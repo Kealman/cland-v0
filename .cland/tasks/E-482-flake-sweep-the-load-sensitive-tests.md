@@ -2,7 +2,7 @@
 id: E-482
 kind: epic
 title: "Flake sweep: the load-sensitive tests found in v0.1.2"
-state: open
+state: closed
 criterion_seq: 2
 labels:
   - epic
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-661
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-20T05:53:14.801Z
+updated: 2026-10-20T07:02:02.444Z
+closed: 2026-10-20T07:02:02.444Z
 ---
 
 ## Goal
@@ -30,8 +31,9 @@ T-442 (sessions midnight reset), T-445 (suite cleanup observer), T-446 (artifact
 Each ticket's Implementer produces its own evidence before merge. It runs the fixed file 5 times serially beside any non-coord local full run, labelled loaded or quiet, and its post-review `cland verify` is the droplet run. At the epic's close, QA re-checks every fixed file once beside a full run and once on a droplet, and its verdict closes the epic. (Coordinator clarification, 2026-10-15 09:57Z.)
 
 - [ ] C1. Every child's file passes 5/5 beside a local full run and once on a Linux droplet.
-  - failed: qa-2 [qa] · 2026-10-20T05:10:53.327Z · note INCONCLUSIVE: only four of five main load rounds and one of five loaded reruns completed; T-801 handover-process failed ENOTEMPTY cleanup and hung until exit124.
+  - verified: qa-2 [qa] · run qa-2026-10-20-qa2-4 · 2026-10-20T07:01:12.000Z · commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
 - [ ] C2. No child weakens an assertion or widens a time bound without a recorded reason.
+  - verified: qa-2 [qa] · run qa-2026-10-20-qa2-4 · 2026-10-20T07:01:12.000Z · commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
 
 ## Plan
 
@@ -180,3 +182,61 @@ demo a606ddb6-3708-4466-8d58-4dc64e5bcee8 destroyed: lifetime 4368199 ms; cost $
 ### hub · 2026-10-20T05:53:14.801Z
 
 demo ef55ad44-fb42-491d-aae9-2c16cc9dc2f9 created: droplet cland-v0-ef55ad44, commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b, deadline 2026-10-20T07:07:13.395Z.
+
+### hub · 2026-10-20T07:00:24.103Z
+
+demo ef55ad44-fb42-491d-aae9-2c16cc9dc2f9 destroyed: lifetime 4077523 ms; cost $0.2832.
+
+### qa-2 · 2026-10-20T07:01:12.000Z
+
+verdict: qa
+result: clear
+by: qa-2 [qa]
+run: qa-2026-10-20-qa2-4
+commit: 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Venue / surface | Result | Evidence |
+| --- | --- | --- | --- |
+| G0 | local / hub-api | PASS | G0.txt |
+| G1 | local / hub-api | PASS | G1.txt, G1-epic.json, G1-children.json |
+| G2 | local / hub-api | PASS | G2-hold.json |
+| F1 | local / hub-api | PASS | F1-summary.txt, F1-files.txt, F1-files.txt.map, T-935-files.txt, request-amendment.txt |
+| D0 | droplet / hub-api | PASS | D0-start.json, D0-status.json |
+| D1 | droplet / hub-api | PASS | D1-build.txt |
+| D2 | droplet / hub-api | PASS | D2-setup.txt, D2-process-clean.txt |
+| D3 | droplet / hub-api | PASS | D3-serial.txt, runtime-summary.json, D14-status.json |
+| D4 | droplet / hub-api | PASS | D4-complete-observed.txt, lease1-archive-audit.json, archive-totals.json |
+| D5 | droplet / hub-api | PASS | D5-no-reruns.txt, D5-after-processes.txt |
+| R1 | local / hub-api | PASS | R1-evidence.txt, T-935.json, G1-children.json |
+| R2 | local / hub-api | PASS | R2-scan.txt, R2-comparison.txt, R2-judgements.md, R2-T935.diff, T-935.json |
+| R3 | local / hub-api | PASS | R3-Linux-summary.txt, R3-macOS-summary.txt, R3-coverage.txt, R3-ran.txt |
+| D14 | droplet / hub-api | PASS | D14-final.json, D14-dev.txt, D14-worktree-status.txt |
+| D15 | local / hub-api | PASS | D15-stop-time.txt, D15-stop.json, D15-after.json, D15-confirmation.txt |
+
+No high, medium, or low findings in this pass.
+
+Clear at `9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b`, run `qa-2026-10-20-qa2-4`. C1 and C2 verified in this run.
+
+C1: 94 fixed files from 110 closed children, including T-935. Quiet serial 94/94; all five four-file loaded rounds 94/94. Peaks: serial 2.21; loaded 7.21, 7.07, 8.44, 7.78, 8.61. All 564 file runs exit 0; all 564 complete raw logs retained and audited. Each sweep has 795 passed tests, zero failures/cancellations, and five prerequisite skips. All five skipped Linux cases explicitly pass in the same-S2 Mac cover. Handover-process passes once serially and 5/5 under load, with normal exit; the prior cleanup/hang signature did not recur. D5 has no eligible file and required no rerun.
+
+C2: fresh scan of 104 landing commits, 11 explained candidates. Immutable candidate patches match the previously read diffs; fresh live records were captured and the new T-935 test/shared-harness changes were read. No assertion or wait was weakened or widened without a recorded reason. Detailed judgments are in R2-judgements.md.
+
+C1 uses the recorded 2026-10-15T12:32:49.963Z rule replacing the Mac beside-full-run requirement with four-file Linux load, alongside child Mac receipts and supplied same-S2 integrated covers. R1 retains the exact eight historical no-code exceptions, with all other 102 children verified and no ancestor/stale/failed gaps.
+
+One Linux x86_64 c-8 / 8-CPU demo lease, Node 24.21.0 and pinned Neovim 0.12.5: `ef55ad44-fb42-491d-aae9-2c16cc9dc2f9`. Created 2026-10-20T05:52:14.938Z; deadline 2026-10-20T07:07:13.395Z. Confirmed destroyed at the hub comment 2026-10-20T07:00:24.103Z: lifetime 4,077,523 ms (67.959 min), cost $0.28316132. Total demo lease lifetime/cost are the same, because no second lease was needed. Final test-process probe is zero; build remains fresh and worktree clean.
+
+Same-S2 stage covers reused, no duplicate suite submitted: Linux A-7105 (14b674ab), both shards T1–T4 exit 0, all 94 fixed files present; macOS A-7109 (bfb912c4), exit 0 with all five prerequisite-skipped Linux cases explicitly passing. Linux shard 1 cland-v0-57497c77: duration 1007.62 s, lifetime 998 s, $0.0693; shard 2 cland-v0-d762d069: duration 910.62 s, lifetime 910 s, $0.0632. Merged Linux cover wall 1027.56 s, total $0.1325. These are reused cover costs, separate from this demo; Mac cost not applicable. Report-only budget notices do not change the green outcomes.
+
+Run-specific authorizations: Coordinator 578615b3 waived F1/R2's empty-slot gate for read-only scans; dfa76567 allowed a second sequential lease only if the D4 deadline guard required it (unused). Measurement corrections: exact exit-row parsing excludes the peak marker, and D2's inline process probe matched setup text; its standalone repeat was zero before any test started. No local tests, stress, suite submissions, provider controls, product edits, or additional worktrees.
+
+Criteria marks: C1 verified; C2 verified.
+
+Evidence: A-7175 (complete folder, all 564 raw logs and audits); A-7176 (final case table and C2 judgments).
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T07:02:02.444Z
+
+Closed on qa-2's clear at release candidate 2, 9b2cb194 (fresh run qa-2026-10-20-qa2-4, A-7176 / A-7175): C1 and C2 verified. 94/94 serial and five loaded rounds 94/94 each (564 file runs); handover-process passed 6/6 after T-935.

@@ -2,8 +2,8 @@
 id: T-940
 kind: task
 title: "Version bump: the root package.json and lockfile at 0.1.4"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-695
 branch: t/T-940-version-bump-the-root-package-json-and
 created: 2026-10-20T05:54:39.242Z
-updated: 2026-10-20T06:06:29.078Z
+updated: 2026-10-20T07:04:28.022Z
+closed: 2026-10-20T07:04:28.022Z
 ---
 
 ## Summary
@@ -70,3 +71,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; A-7121 independently audits A-7118 / 77424d7d at unchanged reviewed head. 1926 ordinary passes; CLI --version/-v dynamic root-version assertion passes at raw line 43505. Host check/all T1/fallback all T2 green, no tier mismatch or hard budget failure; three missing file baselines are report-only. C1/C2 verified across source and same-head runtime evidence; claimant done marks remain its responsibility. No tags or merge actions.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T07:04:28.022Z
+
+Merged 19533afa349d957eea9d05ef3d816bf21af9f409 onto dev.

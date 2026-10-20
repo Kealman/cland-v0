@@ -2,8 +2,8 @@
 id: T-798
 kind: task
 title: Publish marketing commits (site, brand, README) to GitHub main and site without a release, then sync
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-694
 branch: t/T-798-publish-marketing-commits-site-brand
 created: 2026-10-18T10:27:50.246Z
-updated: 2026-10-20T06:09:51.561Z
+updated: 2026-10-20T07:04:39.728Z
+closed: 2026-10-20T07:04:39.728Z
 ---
 
 ## Summary
@@ -35,12 +36,15 @@ A dry run shows the commits, the paths and the resulting tips.
 
 - [x] C1. A T3 test on a fixture territory with a fake GitHub remote (real Git, one file, about 10 s total) publishes two site-only commits: main and site fast-forward to one tip, dev contains them, and a following `cland release --dry-run` passes the behind check; allow-list, receipt and retry logic is covered in T2 with an injected Git adapter.
   - done: impl-798 · 2026-10-20T06:07:43.948Z
+  - verified: rev-31 [reviewer] · run rev-20261020-798-final · 2026-10-20T06:21:31.542Z · commit 158b790d702e01586f3af7acef051edeabfcb1e6
 - [x] C2. A commit touching a path outside the allow-list refuses the whole publish and names the path, proved by a test.
   - done: impl-798 · 2026-10-20T06:07:44.554Z
   - verified: rev-31 [reviewer] · run rev-20261020-798-source-corrected · 2026-10-20T06:09:51.561Z · commit 158b790d702e01586f3af7acef051edeabfcb1e6
+  - verified: rev-31 [reviewer] · run rev-20261020-798-final · 2026-10-20T06:21:31.542Z · commit 158b790d702e01586f3af7acef051edeabfcb1e6
 - [x] C3. The skill docs (`release`) and docs/agents describe publish as the only out-of-release GitHub push, with the human's approval.
   - done: impl-798 · 2026-10-20T06:01:46.296Z
   - verified: rev-31 [reviewer] · run rev-20261020-798-source-corrected · 2026-10-20T06:09:51.561Z · commit 158b790d702e01586f3af7acef051edeabfcb1e6
+  - verified: rev-31 [reviewer] · run rev-20261020-798-final · 2026-10-20T06:21:31.542Z · commit 158b790d702e01586f3af7acef051edeabfcb1e6
 
 ## Comments
 
@@ -77,3 +81,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Replacement source clear; A-7128. M1 resolved by current-policy validation before pending public mutation, with retained red/green regression and already-public local-only recovery. M2 resolved under Coordinator 01c7b6fb/amended C1: six injected resource-enforced T2 passes (max 0.0099525 s) and three native T3 passes (8.523069584 s file); expected three-identity T3 growth disclosed, no budget changes. Optional Git port threaded through shared helpers with production defaults preserved. C2/C3 verified; C1 awaits configured same-head green gate and actual new T1/T2 5/5 receipts, retaining targeted native proof A-7123. No real GitHub publication or merge action.
 
 Criteria: C2 verified, C3 verified.
+
+### rev-31 · 2026-10-20T06:21:31.542Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-798-final
+commit: 158b790d702e01586f3af7acef051edeabfcb1e6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7146: current-head A-7138/fcd7d784 independently audited: 1933 ordinary passes, all seven new identities 5/5 (35 distinct repetition passes), no resource/duration failures. C1 verified with retained native 3/3 A-7123 under Coordinator's T3/T2 split; Linux T3 remains deferred, not claimed. C2/C3 reverified with source A-7128. All claimant done marks present. No real publication/merge authorized.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T07:04:39.728Z
+
+Merged 8ed94bda3452ede3d8ff685f2eebc738eec0e94c onto dev.
