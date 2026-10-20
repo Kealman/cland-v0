@@ -3,8 +3,9 @@ id: T-1008
 kind: task
 title: "The Neovim workbench settles: no periodic full re-reads"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-756
 branch: t/T-1008-the-neovim-workbench-settles-no-periodic
 created: 2026-10-20T17:01:24.864Z
-updated: 2026-10-20T17:02:01.675Z
+updated: 2026-10-20T17:14:18.252Z
 ---
 
 ## Summary
@@ -29,9 +30,38 @@ The Neovim workbench settles after startup. Today it re-reads `hub.status`, `tas
 
 ## Acceptance criteria
 
-- [ ] C1. The cause of the 30 s re-read loop is named in the item topic with evidence from a run against a copy of the live tracker (local evidence).
-- [ ] C2. After startup, with a fake clock advanced 10 minutes and no hub change, Neovim sends none of `task.list`, `topic.history`, `events.list`, `session.list`, `artifact.list`, `rule.list` or `account.list` (test counting frames).
-- [ ] C3. A `task` event updates the explorer's row without a full `task.list` (test).
-- [ ] C4. With `task.list` delayed, the header shows the Coordinator and the session count as soon as `session.list` answers (test).
-- [ ] C5. A reconnect re-reads each list once and then sends no further full reads (test).
-- [ ] C6. `nvim/README.md` describes what the workbench reads at startup and how it stays current.
+- [x] C1. The cause of the 30 s re-read loop is named in the item topic with evidence from a run against a copy of the live tracker (local evidence).
+  - done: impl-1008 · 2026-10-20T17:12:25.654Z
+  - verified: rev-31 [reviewer] · run rev-20261020-1008-source · 2026-10-20T17:14:18.252Z · commit 74c427fcb0dbad0827e051857cc499cfcbcfec70
+- [x] C2. After startup, with a fake clock advanced 10 minutes and no hub change, Neovim sends none of `task.list`, `topic.history`, `events.list`, `session.list`, `artifact.list`, `rule.list` or `account.list` (test counting frames).
+  - done: impl-1008 · 2026-10-20T17:12:26.638Z
+- [x] C3. A `task` event updates the explorer's row without a full `task.list` (test).
+  - done: impl-1008 · 2026-10-20T17:12:27.562Z
+- [x] C4. With `task.list` delayed, the header shows the Coordinator and the session count as soon as `session.list` answers (test).
+  - done: impl-1008 · 2026-10-20T17:12:28.487Z
+- [x] C5. A reconnect re-reads each list once and then sends no further full reads (test).
+  - done: impl-1008 · 2026-10-20T17:12:29.359Z
+- [x] C6. `nvim/README.md` describes what the workbench reads at startup and how it stays current.
+  - done: impl-1008 · 2026-10-20T17:12:30.240Z
+  - verified: rev-31 [reviewer] · run rev-20261020-1008-source · 2026-10-20T17:14:18.252Z · commit 74c427fcb0dbad0827e051857cc499cfcbcfec70
+
+## Comments
+
+### impl-1008 · 2026-10-20T17:12:08.999Z
+
+Diagnosis accepted by Coordinator in topic-756, A-7751 (controlled-delay copied tracker red/green; quiet-copy baseline explicitly lacks crew/churn). Fix preserves the oldest late reply plus newest retry with independent bounded event journals, exponential missing-read backoff 30/60/120/240/300 s, and single completion. No init.lua fetch-shape change. Added frame-counting T2 cases for ten fake idle minutes, task row events, delayed items/header independence and reconnect; documented startup reads and retries. Local Darwin arm64 working tree: 60/60 shell-component tests and 7/7 T1 fixture-boundary tests passed; typecheck and lint passed. These are targeted local results, not queued verification or a final gate verdict.
+
+### rev-31 · 2026-10-20T17:14:18.252Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-1008-source
+commit: 74c427fcb0dbad0827e051857cc499cfcbcfec70
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7771: full source clear. C1 diagnosis and controlled-delay copy boundary accepted by primary Coordinator d7c5880d; C6 matching docs checked. Oldest/newest bounded attempts retain late replies, missing reads alone back off, and completion/disconnect release sibling state. C2–C5 runtime marks remain pending original targeted receipt audit and exact-head mode-free verification with new-identity 5/5. No T-1007 fetch-shape change or live-load reproduction claim.
+
+Criteria: C1 verified, C6 verified.

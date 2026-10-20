@@ -3,7 +3,7 @@ id: T-1009
 kind: task
 title: Tracker writes create no .conflict capture without a real concurrent edit
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-757
 branch: t/T-1009-tracker-writes-create-no-conflict
 created: 2026-10-20T17:01:25.119Z
-updated: 2026-10-20T17:06:51.571Z
+updated: 2026-10-20T17:15:21.701Z
 ---
 
 ## Summary
@@ -29,15 +29,47 @@ Find why a write with no concurrent edit takes the conflict path (the capture is
 
 - [x] C1. The cause of the false captures is named in the item topic with a reproduction in a scratch project (local evidence).
   - done: impl-1009 · 2026-10-20T17:06:49.649Z
+  - verified: rev-26 [reviewer] · run rev-20261020-1009-source-2 · 2026-10-20T17:15:21.701Z · commit eaf0080d947478f7eb1879d45e38d7fb6345e67c
 - [x] C2. `task create`, `task edit`, `task comment` and `task criterion` from the CLI and from the hub, with no concurrent edit, create no `.conflict` file (test per path).
   - done: impl-1009 · 2026-10-20T17:06:50.205Z
 - [x] C3. A real concurrent edit, where another writer changes the file between read and write, still creates a capture (test).
-  - done: impl-1009 · 2026-10-20T17:06:51.020Z
+  - done: impl-1009 · 2026-10-20T17:12:22.439Z
 - [x] C4. The tracker's file watcher does not emit a `task` event for a `.conflict` file (test).
   - done: impl-1009 · 2026-10-20T17:06:51.571Z
+  - verified: rev-26 [reviewer] · run rev-20261020-1009-source-2 · 2026-10-20T17:15:21.701Z · commit eaf0080d947478f7eb1879d45e38d7fb6345e67c
 
 ## Comments
 
 ### impl-1009 · 2026-10-20T17:06:49.639Z
 
 Root cause reproduced in a scratch tempProject/projectHub fixture with isolated HOME/XDG/Git/provider environment: an uncontested CLI criterion write left T-1-cli-writes.md.<uuid>.conflict. #replaceCriterion deliberately retained every captured source on success; automatic backlog→planned writes share it. The fix uses temporary capture sources, cleans successful sources after final original-handle validation, and promotes observed racing sources to .conflict. Concurrent editor-save protection and legacy crash-recovery intents remain. No existing captures are pruned (T-452). Targeted local macOS tests cover CLI/hub create/edit/comment/criterion, real byte races, automatic planned updates, watcher filtering, and a SIGKILL recovery boundary.
+
+### rev-26 · 2026-10-20T17:09:21.013Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261020-1009-source-1
+commit: e24b1ded755ce29939dc4a010482952d31bb12f4
+scope: full
+findings: [{"severity":"high","text":"Recovery unconditionally deletes .tmp captures after EEXIST, losing a real editor save made through the captured inode after generated live publication and before a crash. The intent lacks an expected hash. Generic-error cleanup at line 2150 can likewise delete changed/unvalidated bytes after publication. Retain/promote such sources and test both boundaries.","file":"hub/src/tracker/tracker.ts","line":702}]
+finding_counts: {"high":1,"medium":0,"low":0}
+
+Source not clear. A-7745 contains separate Standards/Spec audit at e24b1ded against fixed base 237caa0c. No independent Standards finding; one high Spec data-preservation finding: startup .tmp unlink at line 702 deletes a concurrently edited captured inode when a generated canonical file already exists, and generic-error cleanup at line 2150 has the same unsafe deletion. Existing SIGKILL test covers only absent-path recovery. Persist validation evidence, retain changed/unvalidated bytes, and add crash-after-live-publication and injected generic-read-error regressions while preserving quiet-write cleanup. C1 cause is correctly identified; C2 paths and C4 watcher filtering have explicit source coverage, but no criterion verification is settled on this not-clear pass. A-7739 is a local targeted-summary artifact, not raw exact-head gate proof; original retained stdout was requested without transcription reruns. Implementer confirmed both gaps and will submit a corrected head. No Reviewer execution or edits.
+
+Criteria: C3 failed (Crash-after-publication recovery and generic I/O-error cleanup can delete the only captured copy of a concurrent edit.).
+
+### rev-26 · 2026-10-20T17:15:21.701Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-1009-source-2
+commit: eaf0080d947478f7eb1879d45e38d7fb6345e67c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear. A-7772 records Standards and Spec delta; M1/C3 data-preservation finding is resolved. Capture intents persist expected hashes; startup and generic-error cleanup delete only validated unchanged bytes, promote observed changes, and retain unreadable/unvalidated sources. New T1 cases cover existing-live-path clean/changed/unvalidated/legacy recovery and readable/unreadable post-publication I/O errors; actual T3 SIGKILL covers both absent path and changed source after live publication, preserving the original identity. No assertion/tier/allowance was weakened. A-7764 includes raw local macOS receipts: equivalent corrected implementation at f700f114 summary8/8, criterion13/13, planned12/12; exact eaf0080d crash2/2 and check exit0. Read-only diff confirms only the crash identity changed between those heads. Direct local receipts are not accepted Linux/full task evidence. C1 cause/reproduction and C4 watcher source exclusion established; verify C1/C4. C2/C3 final execution settlement awaits fresh mode-free exact-head task verification. C3 done restored by claimant; no Reviewer tests or edits.
+
+Criteria: C1 verified, C4 verified.

@@ -2,8 +2,8 @@
 id: T-975
 kind: task
 title: "Shipped role clauses have no byte headroom: trim them to pointers (or re-derive the reserve) before v0.2 adds clause lines"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-748
 branch: t/T-975-shipped-role-clauses-have-no-byte
 created: 2026-10-20T15:38:57.185Z
-updated: 2026-10-20T16:59:02.381Z
+updated: 2026-10-20T17:13:39.594Z
+closed: 2026-10-20T17:13:39.594Z
 ---
 
 ## Summary
@@ -30,9 +31,11 @@ Move procedural detail out of the shipped clauses into the skills and docs they 
 
 - [x] C1. Every shipped clause (defaults and project) has at least 15 % headroom under its reserve in roles-clauses.test.ts, or the reserve change is reasoned and tested against the send cap.
   - done: impl-975 · 2026-10-20T16:47:49.792Z
+  - verified: rev-23 [reviewer] · run rev-20261020-975-final · 2026-10-20T17:08:48.070Z · commit 268f6fe15930d2c05f3755cc926ecc5e6485a9ee
 - [x] C2. Each removed line is either a pointer kept in the clause or text moved verbatim into the skill or doc it now lives in (assertion map in the evidence).
   - done: impl-975 · 2026-10-20T16:57:34.919Z
   - verified: rev-23 [reviewer] · run rev-20261020-975-source-contract-corrected · 2026-10-20T16:59:02.381Z · commit 268f6fe15930d2c05f3755cc926ecc5e6485a9ee
+  - verified: rev-23 [reviewer] · run rev-20261020-975-final · 2026-10-20T17:08:48.070Z · commit 268f6fe15930d2c05f3755cc926ecc5e6485a9ee
 
 ## Comments
 
@@ -111,3 +114,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no remaining findings. Four test-only corrections retain original QA/request/verdict/report/rescue/UI/brief contracts across inline normative pointers and their verbatim skill destinations. T2 category and native T3 first-turn assertions adapted without weakening actual transport/storage checks. Clauses, all 41 moves, byte ceilings and permissions unchanged; C2 source verified. A-7726 local T1 6+27, T2 11 and targeted T3 1 pass plus typecheck are supplemental summary evidence. C1 awaits new-head mode-free gate. Red c304fa87/A-7722 and A-7723 retained, no flaky retry claim. QA none; Reviewer ran no tests.
 
 Criteria: C2 verified.
+
+### impl-975 · 2026-10-20T17:08:21.204Z
+
+Replacement verification 5ba19bae-fc8a-40bb-965d-ceb3092e8a7e passed at reviewed/pushed head 268f6fe15930d2c05f3755cc926ecc5e6485a9ee. Executed T1 and fallback all T2 across hub/Neovim: 2062/2062 pass, exit 0. T3 deferred to periodic dev and integrated occasions (not in configured batch tiers); no T3-tier/full integrated claim. Executor: hub-managed droplet Linux x64, c-8 lon1, Node 24.21.0/Neovim 0.12.5; lifetime 363s, reported estimated cost $0.0252. Host typecheck gate was recorded at 69480f59f49251353cd0bfd7b9af14c40118785f, not repeated remotely. Test lint/budgets remain report-only (131 findings, zero refusals). Log A-7740; byte table/verbatim map A-7726. Awaiting Reviewer final same-head verdict; source remains unchanged. Retained failed first receipt A-7722 and review A-7723.
+
+### rev-23 · 2026-10-20T17:08:48.070Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-975-final
+commit: 268f6fe15930d2c05f3755cc926ecc5e6485a9ee
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7740/run5ba19bae passes2062 ordinary tests/327files at unchanged source-clear head, Linux T1/all-T2 including Neovim. C1 roles-clauses27/27 enforces6528 ceiling under unchanged7680 reserve; max table6508 gives15.26% headroom. C2 41 verbatim moves, unchanged permissions/config and restored rules plus corrected QA/category assertions established; all affected T1/T2 files pass. Retain old c304fa87/A-7722 red and A-7723, plus A-7714 initial boundary correction. Native T3 target local proof separate; T3/T4 deferred. Host69480f59 check not repeated, diagnostics report-only. QA none; Reviewer ran no tests.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T17:13:39.594Z
+
+Merged 03aad97fd15b9cb67382b6d15bd8ea9db4c5b9f2 onto dev.

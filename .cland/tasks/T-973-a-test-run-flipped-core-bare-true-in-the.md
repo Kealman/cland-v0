@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-749
 branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T17:02:19.405Z
+updated: 2026-10-20T17:14:22.482Z
 ---
 
 ## Summary
@@ -33,11 +33,13 @@ Find the writer and close the class. Every test and fixture child strips GIT_DIR
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-1 · 2026-10-20T16:53:29.775Z · commit f52a9182afc9a97b838ee90c9d64a08aab9cb302
   - done: impl-973 · 2026-10-20T17:01:58.057Z
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
+  - verified: rev-32 [reviewer] · run rev-20261020-973-source-3 · 2026-10-20T17:14:22.482Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
 - [x] C2. A T1 test with a poisoned GIT_DIR/GIT_COMMON_DIR proves the fixture environment strips them, and a native T3 case in territory-cli.test.ts shows a fixture git init --bare / clone --bare leaves the scratch parent repository's config bytes unchanged (targeted local run before review; its Linux receipt is landing evidence).
   - done: impl-973 · 2026-10-20T17:01:43.874Z
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
+  - verified: rev-32 [reviewer] · run rev-20261020-973-source-3 · 2026-10-20T17:14:22.482Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
 - [x] C3. Merge admission reports `core.bare=true` in the root as its own clear error instead of a raw rev-parse failure.
-  - done: impl-973 · 2026-10-20T16:48:13.215Z
+  - done: impl-973 · 2026-10-20T17:13:05.295Z
 
 ## Comments
 
@@ -99,5 +101,57 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; M1 from final-1 is resolved. A-7734 audits the entire two-file delta from f52a9182: scratchMachine deletes only the shared builder's synthetic CLAND_EXECUTOR_STATE, preserving the Git/credential seal and restoring scratch HOME/XDG default-ledger migration/lock semantics; docs name that contract. Existing assertions/tiers remain unchanged. A-7733 is complete local macOS direct targeted T1/T3 at this head: 51/51 pass, exit 0/signal null, no skips/cancellations, total 85.249877833s. Previously failing spend and lock contracts pass; native bare fixture/config-preservation case passes 0.294967333s. This direct run had no suite/tripwire gate, and two existing ledger/lock timings exceed 2s; no enforced-budget or Linux proof is claimed. A-7729 preserves the old-head 16-failure red; interrupted A-7731 is not passing evidence. C1 retains the candidate-audit alternative, with historical writer unidentified. Renew C1/C2; C2 done is restored. C3/final settlement awaits fresh mode-free verification at 8e9593c0. Failed A-7725 is not reused; native Linux T3 remains landing evidence under amended C2.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-20T17:10:24.763Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261020-973-final-2
+commit: 8e9593c0cf32f0440f716d17c394a06c9009c541
+scope: evidence
+findings: [{"severity":"medium","text":"The new bare-root preflight invokes native Git inside projectHub's in-process component probe mode. A-7746 project-probes zero-child census observes execFile:1, with the same guard in T2 tripwire stacks. Wire this fact through the injectable/native probe boundary while preserving production bare refusal and the zero-child assertion.","file":"hub/src/hub/merge.ts","line":115}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Final not clear at 8e9593c0. A-7750 audits failed A-7746/run 3e1fdc51. Actual project-probes.test.ts:58 cleanup expects {} but sees {execFile:1}; line 15 file hook repeats that census failure. New requireMergeWorktree at merge.ts:115 invokes TaskMerges' native Git runner despite projectHub's in-process facts; report-only tripwire stacks confirm the guard→territoryGitAsync→execFile chain under T2. Preserve the injection boundary, not a weakened census or tier downgrade. Prior default-ledger fix is confirmed: all 21 executor-spend/lock identities pass. T1 exits 0; T2 exits 1 before Neovim. Header counts 1800/1798/2 include the file hook, whereas interruption progress 1804/1803/1 includes five passing load repetitions and excludes that hook. No full or partial aggregate is accepted green. Linux c8 lon1 two workers,351s/$0.0244; T3 deferred. C1/C2 remain source-established; C3 failed. Corrected head needs source re-review before another verification.
+
+Criteria: C3 failed (New merge-bare preflight escapes the injected component boundary and launches native Git, failing the zero-child project-probes contract in A-7746.).
+
+### impl-973 · 2026-10-20T17:13:06.220Z
+
+Second own regression fixed in pushed head 519078b1d8bca275c91076bd4fac628712b019f5: DispatcherOptions.git now supplies TaskMerges' read-only root-probe slot; native operational recovery/territory runner remains separate. Standalone plan-stage fixture supplies its existing facts.read. project-probes preserves both zero-child census assertions and now proves injected bare=true returns merge-bare. Exact-head local macOS targeted project-probes + prior four requested files + all affected plan-stage callers/Aide/queue: 103/103 passed, exit 0/signal null, direct T1/T2/T3 without suite/tripwire gate mode. Native merge admission/batch bare-root case also passed at this head (A-7759). Hub typecheck and diff check passed on unchanged code tree. C3 done restored; fresh source review required before next mode-free verify. 3e1fdc51 remains failed T2, with native T3/Neovim absent; no passing-run claim.
+
+### rev-32 · 2026-10-20T17:14:22.482Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-973-source-3
+commit: 519078b1d8bca275c91076bd4fac628712b019f5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+## Standards
+
+No findings at 519078b1d8bca275c91076bd4fac628712b019f5. Reviewed the full T-973 source since 42f7c9c3 plus the correction from prior reviewed 8e9593c0. The new root fact uses DispatcherOptions.git through TaskMerges' read-only #rootGit boundary; native/injected operational #git still handles recovery and territory writes. Standalone plan-stage supplies existing facts.read. The component test preserves both zero-child census assertions across imports and cleanup and now rejects injected bare=true as merge-bare. No tier downgrade or weakened assertion.
+
+The fixture changes seal inherited and late-overlay GIT_* pointers through the shared environment builder. scratchMachine retains own HOME/XDG/no-identity contracts and removes only the synthetic executor-state default which caused the earlier ledger regression. CLI help, README, docs/agents/tests.md, merge skill and default/project Coordinator/Lead clauses match the refusal and repair workflow. No Reviewer runtime execution.
+
+## Spec
+
+No findings. C1's candidate-audit alternative is supported by qualified A-7710: historical writer remains unidentified; scratch experiments distinguish inherited GIT_DIR/GIT_COMMON_DIR from cwd-only/explicit-clone candidates and audit bare-operation call sites. The demonstrated init-fixture sh late-overlay class member is sealed. A-7710 is labelled investigation/transcription evidence, not an invented raw scratch log.
+
+C2: pure poisoned-parent/overlay test explicitly includes GIT_DIR/GIT_COMMON_DIR and related overrides; native territory case compares scratch-parent config bytes after implicit init, linked-cwd clone and actual shared-shell late overlays. A-7761 is exact-head local macOS direct targeted T1/T2/T3 103/103, exit 0/signal null, including the requested five files, affected plan-stage/Aide/queue callers, default-ledger/legacy-lock cases and native poison proof. No suite/tripwire budget gate was enabled. Renew C1/C2 as established by source/audit and retained targeted evidence; native Linux T3 remains landing evidence under current C2.
+
+C3 source: requireMergeWorktree rejects bare roots before worktree-dependent admission/squash/tree inspection/batch preparation, names root, core.bare=true and owner repair command, and never edits config. Current correction restores the injected component boundary. A-7759 retains exact-head macOS native admission/batch case 1/1, exit 0; A-7761 contains the zero-child component checks. C3 final freshness remains pending mode-free same-head verification.
+
+Previous A-7746 remains failed at 8e9593c0: actual zero-child assertion expected {} but observed {execFile:1}; it is a task-owned native-probe escape, not a flake. Earlier ledger failure remains failed at f52a9182. Neither receipt is reused as green.
+
+Source clear only, scope full for the corrected probe design. Fresh mode-free verification is required at 519078b1 before final settlement; no Linux/task/integrated green claim. Totals: Standards 0, Spec 0.
+
+Artifact A-7769: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7769-t-973-corrected-source-review-at-519078b1.md
 
 Criteria: C1 verified, C2 verified.

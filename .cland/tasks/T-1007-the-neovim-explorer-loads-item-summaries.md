@@ -3,7 +3,7 @@ id: T-1007
 kind: task
 title: The Neovim explorer loads item summaries, open items first
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-755
 branch: t/T-1007-the-neovim-explorer-loads-item-summaries
 created: 2026-10-20T17:01:23.939Z
-updated: 2026-10-20T17:04:53.644Z
+updated: 2026-10-20T17:18:37.261Z
 ---
 
 ## Summary
@@ -31,9 +31,21 @@ The Neovim explorer loads item summaries without bodies: open items first, close
 
 ## Acceptance criteria
 
-- [ ] C1. The summary projection returns no body, comments, verdict history, plans or verification, and on a 1,000-item fixture tracker with 100 open items the open-only first payload stays under 60 KB, with the all-items projection bytes recorded in the test output (test).
-- [ ] C2. On start the explorer requests open items only, and closed items are requested when the human expands the closed group or searches (test on recorded frames).
-- [ ] C3. Opening an item's card reads its body with `task.view` and renders it (test).
-- [ ] C4. `task.list` without the projection answers as today, and the CLI's `task list --json` output is unchanged (test).
-- [ ] C5. The projection's bytes and compose time on a copy of the live tracker are posted in the item topic (local evidence).
-- [ ] C6. `hub/README.md` documents the projection, and `nvim/README.md` documents lazy loading of closed items.
+- [x] C1. The summary projection returns no body, comments, verdict history, plans or verification, and on a 1,000-item fixture tracker with 100 open items the open-only first payload stays under 60 KB, with the all-items projection bytes recorded in the test output (test).
+  - done: impl-1007 · 2026-10-20T17:18:25.842Z
+- [x] C2. On start the explorer requests open items only, and closed items are requested when the human expands the closed group or searches (test on recorded frames).
+  - done: impl-1007 · 2026-10-20T17:18:26.477Z
+- [x] C3. Opening an item's card reads its body with `task.view` and renders it (test).
+  - done: impl-1007 · 2026-10-20T17:18:27.004Z
+- [x] C4. `task.list` without the projection answers as today, and the CLI's `task list --json` output is unchanged (test).
+  - done: impl-1007 · 2026-10-20T17:18:27.625Z
+- [x] C5. The projection's bytes and compose time on a copy of the live tracker are posted in the item topic (local evidence).
+  - done: impl-1007 · 2026-10-20T17:18:28.165Z
+- [x] C6. `hub/README.md` documents the projection, and `nvim/README.md` documents lazy loading of closed items.
+  - done: impl-1007 · 2026-10-20T17:18:28.791Z
+
+## Comments
+
+### impl-1007 · 2026-10-20T17:10:38.540Z
+
+Implementation progress: summary/open snapshot, demand-loaded closed summaries and task.view-backed card details are implemented; default request path is unchanged. T1 request/list test and new T2 recorded-frame scenarios are in place. Copied-live-tracker probe (1,011 items, macOS arm64/local): initial 112 open summaries 40,618 bytes, 16.418 ms median compose+serialize; all summaries 538,202 bytes/105.776 ms; default 1,459,822 bytes/118.859 ms. Probe excludes socket/visibility and is not a startup/suite pass. Full evidence artifact posted in item topic.

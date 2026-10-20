@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-752
 branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T17:06:25.270Z
+updated: 2026-10-20T17:18:37.100Z
 ---
 
 ## Summary
@@ -48,15 +48,33 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
   - done: impl-990 · 2026-10-20T17:06:02.894Z
 - [x] C7. The root `AGENTS.md` has a `web/` section: CSS Modules and `var(--token)` only, no UI library, no new dependency without the human, no explanatory prose, keys only through the one key map, and the reference component to copy.
   - done: impl-990 · 2026-10-20T17:06:03.636Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
 - [x] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
   - done: impl-990 · 2026-10-20T17:06:04.399Z
 - [x] C9. The added dependencies are exactly those the approved plan lists, with no UI library and no Tailwind (diff of `package.json`).
   - done: impl-990 · 2026-10-20T17:06:05.034Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
 - [x] C10. `web/README.md` describes the workspace, the build and the token rule.
   - done: impl-990 · 2026-10-20T17:06:05.766Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
 
 ## Comments
 
 ### impl-990 · 2026-10-20T17:00:19.242Z
 
 Colour guard and AGENTS web rule committed first (a56bf505), before any component. Implementing the static prototype frame only; approved E-415 comment removes the development bridge. Root check now plans typecheck → web build → static/test lint, so the required verification build also occurs locally (remote verification.prepare is not run locally). Added a deterministic T1 installed-bundle doctor test and T0 colour/hooks/contrast/build-plan fixtures. Local implementation checks are in progress; no suite receipt claimed.
+
+### rev-23 · 2026-10-20T17:10:25.615Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-990-source
+commit: b1606b2194b5bd37d90984f1dde92c33c3be4e01
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Strict web workspace/token/hooks/contrast guards, build order/stamp/doctor and static shell reviewed. C7 agent rule, C9 approved dependencies (no existing lock versions changed), C10 docs established; matching help/implement provenance retained. C5 follows direct Coordinator c4052a45 resource-target interpretation. A-7736 exact-head clean-clone local install/check/doctor/colour failures supplemental. Withdrawn A-7737/A-7738 excluded; replacement Headless Shell A-7741/A-7742 viewed and records five same-origin requests, no queued Web-phase claim. Remaining C1–C6/C8 final settlement awaits mode-free same-head gate with local evidence. QA after-stage; Reviewer ran no tests/browser.
+
+Criteria: C7 verified, C9 verified, C10 verified.

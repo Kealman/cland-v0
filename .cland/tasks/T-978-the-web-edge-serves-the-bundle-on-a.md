@@ -3,7 +3,7 @@ id: T-978
 kind: task
 title: The web edge serves the bundle on a stable port
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 7
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-750
 branch: t/T-978-the-web-edge-serves-the-bundle-on-a
 created: 2026-10-20T16:49:53.985Z
-updated: 2026-10-20T17:03:34.079Z
+updated: 2026-10-20T17:13:35.679Z
 ---
 
 ## Summary
@@ -35,19 +35,26 @@ The Host header must be `127.0.0.1`, `localhost` or `[::1]` with the web port. L
 
 - [x] C1. A frame-seam test starts a scratch project's hub twice and reads the same web port in `hub.json` both times, and `[web] port` overrides the kept port.
   - done: impl-978 · 2026-10-20T17:01:32.963Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 - [x] C2. With the web port held by another listener, the hub still starts and serves its spokes, never listens on a different web port, logs the taken port, and `hub.status` and `cland doctor` report the web edge unavailable with that reason (test).
   - done: impl-978 · 2026-10-20T17:01:33.751Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 - [x] C3. `/` serves the bundle with a CSP holding `frame-ancestors 'none'`, plus `nosniff` and `no-referrer`; `index.html` is `no-cache` with an ETag and answers 304 to a matching `If-None-Match`; `/assets/*` is `immutable` (test).
   - done: impl-978 · 2026-10-20T17:01:34.597Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 - [x] C4. A path that escapes the bundle, plain or percent-encoded, is refused; a path without an extension returns `index.html`; a missing `web/dist/index.html` returns the plain page naming `npm run build --workspace web` (test).
   - done: impl-978 · 2026-10-20T17:01:35.302Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 - [x] C5. A request on the web port with a Host other than 127.0.0.1, localhost or [::1] is refused (test).
   - done: impl-978 · 2026-10-20T17:01:36.138Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 - [x] C6. The spokes' WebSocket edge, its port and its refusal of client hellos are unchanged, and the existing edge tests pass without edits.
   - done: impl-978 · 2026-10-20T17:01:37.002Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 - [x] C7. `hub/README.md` documents the web edge, its port, `[web] port`, `[web] dist` and the new `hub.json` field.
   - done: impl-978 · 2026-10-20T17:01:37.704Z
   - verified: rev-23 [reviewer] · run rev-20261020-978-source · 2026-10-20T17:03:34.079Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
+  - verified: rev-23 [reviewer] · run rev-20261020-978-final · 2026-10-20T17:13:31.674Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 
 ## Comments
 
@@ -69,3 +76,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. Independent loopback listener persists selected port, degrades occupied-port startup without drift or spoke loss, and reports discovery/status/doctor. Handler checks exact Host/port, decoded/canonical bundle confinement, strict headers/cache/ETag and fallback/missing behavior. Config/help/README/testing/ADR align; C7 verified. Six T2 HTTP/frame tests and T1 config targets reviewed; A-7732 local macOS summary receipts are supplemental, not suite/Linux or duration-gate passes. C1–C6 await mode-free exact-head gate; existing edge/native targeted proof remains separate. QA affected/after-stage, no per-item criteria; Reviewer ran no tests.
 
 Criteria: C7 verified.
+
+### impl-978 · 2026-10-20T17:11:27.781Z
+
+Same-head verification 0c6430b7-ea5b-4f6f-b615-0af10c39f7e4 passed at 80de93faf829a16d17f3913bd7bf8555a41b95b7: T0–T2, all 2069 tests passed (zero failures/cancelled/skipped), all T2 fallback due shared protocol contract. Executor droplet c-8 lon1, Linux x64 6.8.0-142-generic, Node v24.21.0 / Neovim v0.12.5; lifetime 397s, cost $0.0276. Test lint/duration budgets report-only; one missing baseline for new web-edge file (observed 0.764s). Not an integrated/T3 pass; unchanged T3 edge cases were run separately locally before enqueue. Receipt/log A-7754; Reviewer receives it directly and final verdict is pending.
+
+### rev-23 · 2026-10-20T17:13:31.674Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-978-final
+commit: 80de93faf829a16d17f3913bd7bf8555a41b95b7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Exact-head A-7754/run 0c6430b7 audited: 2069 ordinary tests / 328 files all passed, Linux x64 c-8 lon1, T1 and fallback all T2 including Neovim; each of seven new test identities has actual 5/5 passing load receipts. C1–C5 runtime established. C6 combines unchanged source/tests, Linux edges-component pass, and separately labeled local macOS native edge/hello summary A-7732 (not raw/Linux or integrated evidence). C7 source evidence A-7735 retained. No T3/T4 task receipt; periodic/integrated coverage deferred. Host check fff2d975 not repeated remotely; lint/durations/ratchet report-only, one missing baseline. Lifetime 397s / estimated $0.0276. Full audit A-7763. Reviewer ran no tests; after-stage QA policy remains.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
