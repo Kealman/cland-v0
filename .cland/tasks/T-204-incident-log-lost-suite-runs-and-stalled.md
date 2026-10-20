@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-19T09:32:15.525Z
+updated: 2026-10-20T00:06:03.905Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -364,3 +364,7 @@ Incident 2026-10-18 22:33Z: the Coordinator's harness pid 12929 exited ('pid 129
 ### coord · 2026-10-19T09:32:15.525Z
 
 Incident 2026-10-19 09:24Z: lon1 c-8 droplets showed degraded disks. Batch 549e3e79 (run e10410a9, A-5933) measured disk fsync at 425.7 ms against the usual ~7 ms, and its first diagnostic droplet (58ee0d19, A-5934) measured 3383.7 ms. The batch went red on nvim/test/items.test.ts, 'a hand edit shows within a second': the expected row was on screen with only trailing padding, a render-timing miss. All three leave-one-out reruns passed 5/5, so no member was blamed. The next two droplets were back to 21–25 ms. The batch occasion records each machine's fsync, so when this repeats it's visible per run.
+
+### coord · 2026-10-20T00:06:03.904Z
+
+Incident 2026-10-20 00:04Z, restart #25: the old hub pid 37414 (T-913 code, about 70 min up) ignored SIGTERM for 20 s after `hub stop`. The journal wrote hub-stopped at 00:04:36Z; the stand-in's recipe SIGKILLed it at 00:04:52Z; the new hub 91673 served at 00:05:15Z, a 39 s gap. No runs lost; T-670's droplet verify survived (T-864). If hub stop stalls again, file it against the stop path (T-829 class).

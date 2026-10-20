@@ -2,8 +2,8 @@
 id: T-922
 kind: task
 title: D72 duration-lint policy in code (legacyOwner, 31-day legacy-owner allowances), landed before T-915's manifest
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-673
 branch: t/T-922-d72-duration-lint-policy-in-code
 created: 2026-10-19T23:49:43.254Z
-updated: 2026-10-19T23:59:13.429Z
+updated: 2026-10-20T00:03:52.466Z
+closed: 2026-10-20T00:03:52.466Z
 ---
 
 ## Summary
@@ -78,3 +79,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-6850 independently audits complete A-6848 at unchanged source-clear 7539a67d. Mode-free run 654e18f4 exits 0: 1915 ordinary passes, 10 repetition passes, zero nonpasses. Both new D72 controls have five distinct passing repetitions and explicit 5/5 at lines 42316/42322; maximum bodies .004419912/.004186580 s, whole-file max .501449241 s within T1 file budget. Host check/typecheck/lint passes; no resource mismatches, hard duration failures, overruns or regression records. One unrelated report-only missing file baseline remains visible. C1/C2 unchanged-manifest replay and policy source conclusions remain current from A-6839; C3 docs plus fresh same-head gate established. All claimant done marks confirmed. C1–C3 verified; Standards/Spec no findings. T3 remains periodic/integrated, not task-run evidence.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T00:03:52.466Z
+
+Merged bb745f124fb984f3ec5dc97c6a641bfee1e4131d onto dev.

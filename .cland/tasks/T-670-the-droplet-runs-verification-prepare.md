@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-669
 branch: t/T-670-the-droplet-runs-verification-prepare
 created: 2026-10-16T16:35:26.848Z
-updated: 2026-10-19T23:58:21.840Z
+updated: 2026-10-20T00:02:46.306Z
 ---
 
 ## Summary
@@ -43,13 +43,15 @@ The droplet executor runs the project's `prepare` in the prepared image's builde
 - [x] C3. `cland executor prepare` runs `[verification] prepare` in the builder's checkout in place of `npm ci` and the Neovim seed, as the fake machine's call log shows, and an unset `prepare` logs `prepare: not set` (`executor-prepare.test.ts`).
   - done: impl-670 · 2026-10-19T23:48:51.452Z
   - verified: rev-30 [reviewer] · run rev-20261019-670-corrected-source · 2026-10-19T23:58:21.840Z · commit 43aa7d3ae31c028f587986b92c8e7126b48523c7
+  - verified: rev-30 [reviewer] · run rev-20261020-670-m2-source · 2026-10-20T00:02:46.306Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
 - [x] C4. A failing `prepare` at delivery turns the run red with `prepare failed (exit <n>)` and its output, and neither `check` nor `test` runs. A `prepare` that leaves an unignored file fails with `prepare left the checkout dirty`.
   - done: impl-670 · 2026-10-19T23:57:22.093Z
 - [x] C5. `node hub/bin/verify-prepare.ts` with a matching key prints `dependencies match snapshot` and `Neovim pin matches snapshot` and runs neither step. With a moved lock it prints `dependencies changed: npm ci` and runs `npm ci` (script test with a fake `npm` on the PATH).
   - done: impl-670 · 2026-10-19T23:48:52.536Z
   - verified: rev-30 [reviewer] · run rev-20261019-670-corrected-source · 2026-10-19T23:58:21.840Z · commit 43aa7d3ae31c028f587986b92c8e7126b48523c7
+  - verified: rev-30 [reviewer] · run rev-20261020-670-m2-source · 2026-10-20T00:02:46.306Z · commit 418a8da52a253969b9128f8184fdc9695b33e552
 - [x] C6. This repository's `.cland/config.toml` sets `prepare = "node hub/bin/verify-prepare.ts"`, and a cland-shaped fake-droplet run's delivery log shows today's two lines (`executor-run.test.ts`).
-  - done: impl-670 · 2026-10-19T23:48:53.022Z
+  - done: impl-670 · 2026-10-20T00:02:17.495Z
 
 ## Comments
 
@@ -92,5 +94,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear, A-6847. M1 resolved: four native scenarios retain all prior assertions and public suite.start removes incidental CLI launch cost. Atomic builder/snapshot/green proof remains intact. Only that identity gets the directly Coordinator-authorized 10 s allowance, E-880 open epic, Oct19–26; all baseline/other allowance data unchanged. A-6845 raw 19/19 and 12 production timings independently read; corrected bodies 5.945/4.934/2.943/2.950 s, production checkDurations failures empty. No dev merge; production/fixtures unchanged from full functional review. C3/C5 verified using unchanged source and audited A-6830 local native proofs. C1/C2/C4/C6 await final settlement with configured same-head mode-free green; no Linux T3 claim. QA none; stage warm-line checklist retained.
+
+Criteria: C3 verified, C5 verified.
+
+### rev-30 · 2026-10-20T00:01:34.418Z
+
+verdict: review
+result: not clear
+by: rev-30 [reviewer]
+run: rev-20261020-670-runtime
+commit: 43aa7d3ae31c028f587986b92c8e7126b48523c7
+scope: evidence
+findings: [{"severity":"medium","text":"M2: Repository command contract still asserts prepare: '' after this task configures node hub/bin/verify-prepare.ts. A-6851 fails exactly this deep equality (actual new script, expected empty); preserve full command/tiers and recorded-plan assertions while updating the prepare expectation.","file":"hub/test/verification-commands.test.ts","line":67}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Runtime not clear, A-6852. Independently audited A-6851/93ef7b8f at exact reviewed head: 559 tests, 558 pass, 1 fail, zero cancel/skip/TODO, no resource mismatches. Raw ordinary failure 42866 and diagnostic 42936–42958 show only repository prepare expectation differs. This config-consumer assertion was missed in earlier source review. Required production config should remain; correct the assertion, retain all command/plan checks, and request fresh source review before replacement mode-free verify. C6 failed; C3/C5 source/local proof retained. M1 remains resolved. QA none; no Reviewer tests.
+
+Criteria: C6 failed (M2: Configured same-head verification fails the stale repository prepare expectation in verification-commands.test.ts:67; T2 never runs.).
+
+### impl-670 · 2026-10-20T00:02:17.987Z
+
+M2 corrected in one expected prepare literal, pushed418a8da52a253969b9128f8184fdc9695b33e552. Local verification-commands T1 file reproduces original13/14 red and passes14/14 green after update; full equality/tiers and auto/all/hub/nvim pinned-plan assertions retained. npm run check and whitespace check green. A-6853 contains original red/green/static logs. Failed Linux93ef7b8f/A-6851 retained; no T2 ran. No production/allowance change or dev merge. Requesting fresh source review before replacement mode-free run.
+
+### rev-30 · 2026-10-20T00:02:46.306Z
+
+verdict: review
+result: clear
+by: rev-30 [reviewer]
+run: rev-20261020-670-m2-source
+commit: 418a8da52a253969b9128f8184fdc9695b33e552
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source delta clear, A-6854. M2 resolved by exactly one expected prepare literal; complete command/tiers and per-mode recorded-plan assertions retained. A-6853 original red 13/14 and green 14/14 independently audited, zero green nonpasses, corrected case .026928125 s. Parent is prior reviewed head; no production/fixture/baseline/allowance/dev-merge change. M1 remains resolved. C3/C5 reverified using unchanged source and audited A-6830 local proofs. C1/C2/C4/C6 await final settlement with replacement configured mode-free green at this exact head. Failed A-6851 retained; no Linux T3 claim. QA none; stage warm-line checklist retained.
 
 Criteria: C3 verified, C5 verified.

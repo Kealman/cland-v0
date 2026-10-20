@@ -2,8 +2,8 @@
 id: T-920
 kind: task
 title: nvim client.test.ts 'follows its hub through a restart' still expects the CLI's 'autostart deferred' after T-911 made the deferral client-side
-state: open
-status: review
+state: closed
+status: done
 size: XS
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-670
 branch: t/T-920-nvim-client-test-ts-follows-its-hub
 created: 2026-10-19T23:29:18.671Z
-updated: 2026-10-19T23:58:51.820Z
+updated: 2026-10-20T00:10:51.804Z
+closed: 2026-10-20T00:10:51.804Z
 ---
 
 ## Summary
@@ -29,12 +30,14 @@ Update the test to the T-911 contract: after `cland hub stop`, the workbench iss
 
 ## Acceptance criteria
 
-- [ ] C1. The test passes locally on macOS 5/5 serially, and fails if the client issues `hub start` inside the window (mutation check), with the receipt in the report.
+- [x] C1. The test passes locally on macOS 5/5 serially, and fails if the client issues `hub start` inside the window (mutation check), with the receipt in the report.
   - verified: rev-30 [reviewer] · run rev-20261019-920-source · 2026-10-19T23:32:13.067Z · commit bf683e74d0007acef481332f5d275100f11701c4
   - verified: rev-30 [reviewer] · run rev-20261019-920-integration-source · 2026-10-19T23:54:11.673Z · commit 71cda02bd087254547326a99ef95110d87e90089
   - verified: rev-30 [reviewer] · run rev-20261019-920-final · 2026-10-19T23:58:51.820Z · commit 71cda02bd087254547326a99ef95110d87e90089
-- [ ] C2. A mode-free verify at the reviewed head is green.
+  - done: impl-920 · 2026-10-20T00:06:20.816Z
+- [x] C2. A mode-free verify at the reviewed head is green.
   - verified: rev-30 [reviewer] · run rev-20261019-920-final · 2026-10-19T23:58:51.820Z · commit 71cda02bd087254547326a99ef95110d87e90089
+  - done: impl-920 · 2026-10-20T00:06:21.446Z
 
 ## Comments
 
@@ -124,3 +127,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear, A-6849. Independently audited A-6846/5d8e089d at exact reviewed head: 822/822, zero fail/cancel/skip/TODO, no resource or duration-budget failure; cleanup hook bridges zero. Previously failing vboard child and parent now pass, all five children green. C2 verified, superseding runtime not-clear at the prior head; original red receipts retained. C1 reverified from A-6806 local five serial Mac passes plus failing zero-start mutation and unchanged bytes established in A-6844. Changed client test is T3 and absent from task plan; no Linux T3 claim. QA none; no Reviewer tests.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T00:10:51.804Z
+
+Merged 7c9fb52e57ef8fe88e871bceb8167796b80c28ce onto dev.
