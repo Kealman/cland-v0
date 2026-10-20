@@ -2,8 +2,8 @@
 id: T-1023
 kind: task
 title: "T3 fixture regressions from T-990/T-452: doctor check count, check build script, typecheck web workspace"
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,8 @@ found_by: cover
 topic: topic-767
 branch: t/T-1023-t3-fixture-regressions-from-t-990-t-452
 created: 2026-10-20T19:04:42.043Z
-updated: 2026-10-20T19:09:18.985Z
+updated: 2026-10-20T19:17:20.737Z
+closed: 2026-10-20T19:17:20.737Z
 ---
 
 ## Summary
@@ -32,11 +33,14 @@ Update the three tests and their disposable-copy fixtures for the web workspace 
 - [x] C1. hub/test/doctor-cli.test.ts passes, with the expected check count derived from the doctor's registered checks or naming the web and capture rows (targeted local T3 run named in the item).
   - done: impl-1023 · 2026-10-20T19:06:58.304Z
   - verified: rev-26 [reviewer] · run rev-20261020-1023-source-2 · 2026-10-20T19:09:18.985Z · commit 69016e875d7a1372e976e697ac7456344d90bf03
+  - verified: rev-26 [reviewer] · run rev-20261020-1023-final-1 · 2026-10-20T19:12:56.796Z · commit 69016e875d7a1372e976e697ac7456344d90bf03
 - [x] C2. hub/test/suite-check.test.ts passes with a fixture that carries the web workspace and its build script (targeted local T3 run).
   - done: impl-1023 · 2026-10-20T19:08:44.687Z
+  - verified: rev-26 [reviewer] · run rev-20261020-1023-final-1 · 2026-10-20T19:12:56.796Z · commit 69016e875d7a1372e976e697ac7456344d90bf03
 - [x] C3. hub/test/typecheck.test.ts passes with the web workspace in its fixture (targeted local T3 run).
   - done: impl-1023 · 2026-10-20T19:06:58.329Z
   - verified: rev-26 [reviewer] · run rev-20261020-1023-source-2 · 2026-10-20T19:09:18.985Z · commit 69016e875d7a1372e976e697ac7456344d90bf03
+  - verified: rev-26 [reviewer] · run rev-20261020-1023-final-1 · 2026-10-20T19:12:56.796Z · commit 69016e875d7a1372e976e697ac7456344d90bf03
 
 ## Comments
 
@@ -83,3 +87,26 @@ Standards and Spec: no remaining findings. Complete delta restores only the suit
 C1/C3 explicit local T3 criteria verified from unchanged test bodies/source plus A-7970 qualified Darwin arm64 Node v24.21.0 precommit doctor 9/9 and compiler 1/1 exit-0 receipts. Suite-check local 3/3 remains behavior-equivalent but its output has the temporary renamed title; C2/final settlement await new-head admission and mode-free receipt. No independently measured exact-head local run or Linux T3 claimed. Scratch build/typecheck exit 0; direct tests carried no load/duration gate or dirty-tree hash. C2 done restored. No Reviewer tests or edits.
 
 Criteria: C1 verified, C3 verified.
+
+### rev-26 · 2026-10-20T19:12:56.796Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-1023-final-1
+commit: 69016e875d7a1372e976e697ac7456344d90bf03
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7980/e65c26ec passes at exact reviewed unchanged 69016e87, confirming restored timing identity admits. Independently counted 655 ordinary passes across 111 T1 files, no fail/cancel/skip/load records. Selected T2 command exits 0 with no tests selected; it is not all-T2 or T3 execution. Audit A-7981.
+
+C1/C3 retain A-7970 qualified actual local Darwin arm64 Node v24.21.0 precommit T3 doctor 9/9/compiler 1/1. C2 verified from retained local suite-check 3/3 exit-0 receipt plus unchanged test-body/build assertions and title-only correction; new-head admission resolves its prior manifest blocker. All criteria explicitly require local targeted runs and are established across source/qualified local evidence; no same-head Linux T3 claim. Scratch build/typecheck also exit 0. Precommit dirty-tree hash absent, direct tests without runner load/duration gate.
+
+Linux x64 c-8 lon1 droplet, two workers, T1 command 45 s/package 41.90 s; empty selected T2 command 3 s/package 0.03 s. Actual execution, no cache/projection claim. Host check ref 15cade09 not repeated remotely; lint/budgets/ratchet report-only. T3/T4 deferred to periodic/integrated. Lifetime 130 s/$0.0090. No Reviewer tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T19:17:20.737Z
+
+Merged b9ec4a13d0dca18c6c2d4c14da0b103a274d42b9 onto dev.

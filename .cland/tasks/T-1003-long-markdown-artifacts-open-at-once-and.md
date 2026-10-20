@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-764
 branch: t/T-1003-long-markdown-artifacts-open-at-once-and
 created: 2026-10-20T16:58:40.109Z
-updated: 2026-10-20T19:11:30.931Z
+updated: 2026-10-20T19:20:37.507Z
 ---
 
 ## Summary
@@ -69,3 +69,16 @@ Criteria: C2 failed (Slice instrumentation can omit synchronous reused-parser co
 ### impl-1003 · 2026-10-20T19:11:30.931Z
 
 Corrected source review requested at 6b5612d4b8acc2a51fc0a0b4e377a99244f52c90, tree feda61a7d335e732c5fc6a8862e411f947a8aba6. Both A-7964 findings have red→green regressions: complete callback/initial-buffer timing coverage, and recursive injection text/style/link/applied-extmark equality (nested Vim/Markdown, combined and both child-range policies). C2/C3 re-marked; all four done. A-7974 has complete-audit quiet-Mac maximum-slice samples15.871,14.205,18.899,14.182,16.730ms, median15.871ms<16ms; first-paint median15.673ms; idle83.85%, load3.55/10CPUs, local queue observed empty. A-7969 retains the previous failed16.166ms median at a3e8113f and unavailable-queue annotation. A-7975 retains corrected T0/targeted T2 checks (6+23+9 pass, lint report-only) and red regressions. No dev merge after first review, no verification until source clear, no per-item QA.
+
+### rev-23 · 2026-10-20T19:12:28.090Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-1003-source-2
+commit: 6b5612d4b8acc2a51fc0a0b4e377a99244f52c90
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7979 closes both A-7964 mediums: complete pipeline/native-callback audit marks every parse/setup and proves synchronous reused turns are retained; initial construction included. Recursive pinned LanguageTree discovery preserves combined/child/offset/parent semantics with bounded independent batches; canonical text/span/link and applied-extmark differential now passes. Original audit/differential red outputs retained in A-7975.2ms cooperative budget and matching docs reviewed; key-before-completion, grid positions, cache and stale guard preserved. AmendedC2 follows Coordinatord3360f0f/item comment: A-7974 quiet exact-head Mac largest-slice samples15.871/14.205/18.899/14.182/16.730ms median15.871ms; both outliers retained. Matching-source targetedT2 6+23+9 and committed check inspected; lint131/59 report-only. OldA-7969 median16.166 target failure and incompleteA-7957 stay historical. No Linux/load/current suite receipt; C1-C4 final marks await mode-free exact-head gate. E-795 after-stageQA unchanged; no Reviewer execution/edits.

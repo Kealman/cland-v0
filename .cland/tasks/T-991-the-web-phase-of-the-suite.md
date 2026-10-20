@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-768
 branch: t/T-991-the-web-phase-of-the-suite
 created: 2026-10-20T16:51:40.483Z
-updated: 2026-10-20T19:11:44.983Z
+updated: 2026-10-20T19:20:47.518Z
 ---
 
 ## Summary
@@ -42,3 +42,9 @@ The suite gains a `Web` shard after the hub phase on `node:test` with `playwrigh
 - [ ] C6. The web test files carry the tier the human set with this epic's plan approval (recorded as a comment on E-415) in `hub/test/tiers.json` and `hub/test/durations.json`, and the tier lint passes.
 - [ ] C7. No browser or scratch hub process outlives the run (the fixture-process census).
 - [ ] C8. `web/README.md` and `docs/agents/tests.md` describe the web phase, `web-only` and how to run the browser tests.
+
+## Comments
+
+### impl-991 · 2026-10-20T19:20:47.518Z
+
+Implemented separate Web classification, task/occasion cadence and web-only selection, isolated Headless Shell browser fixtures with real web.link auth/CSP/origin assertions, failure traces and teardown census, plus matching help/docs/skills/clauses. Targeted macOS arm64 smoke currently passes (4 assertions including nested cases; latest top-level 0.857 s, browser group 4→0). Typecheck and planner compatibility checks in progress; source review precedes hub verification.
