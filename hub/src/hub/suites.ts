@@ -56,7 +56,7 @@ export type SuiteJob = {
   devT3?: { previousGreenHead: string | null; previousGreenRun: string | null };
   occasion?: VerifyOccasion; shards?: SuiteJob[]; parentRun?: string; shardName?: string; shardingSkipped?: string; shardingSkipLogged?: boolean; groupMerged?: boolean;
   workers?: number; fallbackWorkers?: number; size?: string;
-  executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
+  executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteReclaimPending?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
   submissionKey?: string;
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
@@ -86,7 +86,7 @@ export type StageCover = { id: string; head: string; tree: string; platform: Sta
 const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
-export type SuiteSchedulerOptions = { taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
+export type SuiteSchedulerOptions = { taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
 type HumanSlot = Omit<SuiteSlot, 'type'> & { queued: string; admittedAt?: string; left?: boolean };
 const HUMAN_GRACE_MS = 10_000;
 const ACCOUNTING_WAIT_MS = 120_000;
@@ -847,6 +847,14 @@ export class Suites {
     this.#options.log?.({ event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, requested: 'droplet', effective: 'local', cause: job.fallback });
     job.fallbackLogged = true; this.#save(job);
   }
+  #announceRemoteReclaim(job: SuiteJob): void {
+    if (!job.remoteReclaimPending) return;
+    // The topic notice has a stable run id. A failed callback or a restart
+    // before this checkpoint retries delivery without losing the transition.
+    this.#options.onRemoteReclaimed?.(job);
+    this.#options.log?.({ event: 'verification-executor-reclaimed', id: job.id, item: job.item ?? null, requested: 'droplet', previous: 'local', effective: 'droplet', cause: 'remote capacity available' });
+    job.remoteReclaimPending = false; this.#save(job);
+  }
   #stopHostGate(id: string): void {
     const child = this.#hostGates.get(id);
     if (child?.pid && child.exitCode === null && child.signalCode === null) try { process.kill(-child.pid, 'SIGTERM'); } catch {}
@@ -977,6 +985,20 @@ export class Suites {
         job.requestedExecutor = job.executor;
         job.requireRemote = job.executor === 'droplet' && !(this.#options.projectConfig?.().verification.localFallback ?? this.#options.localFallback ?? true);
       }
+      // A budget fallback is provisional until local admission. Preparation or
+      // cleanup leases can fill capacity outside this scheduler's active jobs.
+      if (job?.executor === 'local' && job.requestedExecutor === 'droplet' && job.fallback === 'remote budget full'
+        && remoteActive < this.#remoteBudget && (await readLeases(this.#root)).filter(lease => lease.state !== 'released').length < this.#remoteBudget) {
+        if (this.#closed || job.state !== 'queued' || job.outcome) continue;
+        job.executor = 'droplet';
+        job.workers = job.workersOverride ?? job.workerPolicy?.droplet ?? job.workers ?? 4;
+        if (job.limits) job.limits.workers = job.workers;
+        // Budget refusal created no machine; it is safe to acquire again.
+        delete job.remoteAcquireAttempted; delete job.fallback; delete job.fallbackLogged;
+        job.remoteReclaimPending = true;
+        this.#save(job);
+        this.#announceRemoteReclaim(job);
+      }
       const chosenExecutor = job?.executor;
       // Preparation and unconfirmed cleanup can occupy durable slots without a
       // running suite. Remote-only requests wait for those releases too.
@@ -1057,6 +1079,7 @@ export class Suites {
     job.accountingPending = false; job.error = null; this.#save(job);
   }
   async #inspect(job: SuiteJob): Promise<void> {
+    this.#announceRemoteReclaim(job);
     this.#announceFallback(job);
     this.#announceShardingSkip(job);
     if (job.state === 'queued' && !job.outcome) {

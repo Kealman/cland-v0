@@ -12,6 +12,7 @@ export const OPEN_USAGE = `  open [dir] [nvim args…]  start the project's hub 
 
 export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh] [--executor local|droplet] [--workers N] [--size <slug>] [--occasion stage|epic|release|soak] --report <topic|session> [--to <session>] [--json]
                   run the project's check and test detached; post one artifact-backed result
+                  queued remote-budget local fallbacks reclaim free remote slots; --executor local stays local
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
   suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
   verify cancel [<suite id>] [--json]

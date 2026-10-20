@@ -883,6 +883,12 @@ When remote slots are full and the local slot is free, a default droplet request
 `local_fallback = true` falls back
 locally with a warn notice naming `remote budget <n>/<n> full` and a
 `verification-executor-fallback` record with cause `remote budget full`.
+A request that already recorded a `remote budget full` local fallback, but has
+not been admitted locally, reclaims a freed remote slot in its original queue
+order, including across hub restart. Its topic and recipients receive
+`verify <id>: remote capacity available; moving queued local fallback to droplet`,
+and the journal records `verification-executor-reclaimed`. Other acquisition
+failures stay local, and explicit `--executor local` requests stay local.
 An explicit droplet request, or a default droplet request with `local_fallback = false`,
 remains a remote waiter, including when preparation
 or unconfirmed cleanup holds the remote budget; later local requests can proceed.

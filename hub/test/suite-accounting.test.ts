@@ -13,6 +13,7 @@ import { readLeases } from '../src/executor/droplet/lease.ts';
 import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
 import { machineAccounting, type SuiteJob } from '../src/hub/suites.ts';
 import { machineHealthSummary } from '../src/executor/droplet/health.ts';
+import { until } from './until.ts';
 
 type Fixture = Awaited<ReturnType<typeof suiteUnit>>;
 async function running(f: Fixture, id: string) {
@@ -21,6 +22,79 @@ async function running(f: Fixture, id: string) {
   await f.suites.settled();
 }
 const remote = (f: Fixture, require = true) => f.launch(require ? { executor: 'droplet', fresh: true } : { fresh: true });
+
+for (const scenario of ['live', 'restart', 'failed notice restart']) test(`a local fallback waiter returns to the freed remote budget in queue order (${scenario})`, { timeout: 10000 }, async t => {
+  const restart = scenario !== 'live';
+  let failNotice = scenario === 'failed notice restart';
+  let noticeAttempts = 0;
+  const reclaimed: string[] = [];
+  const f = await suiteUnit(t, { executor: 'droplet', remoteBudget: 1, onRemoteReclaimed: job => {
+    noticeAttempts++;
+    if (failNotice) throw new Error('reclaim topic temporarily unavailable');
+    reclaimed.push(job.id);
+  } }, '', true);
+  f.config.verification.workers = 1;
+  f.config.verification.droplet.workers = 3;
+  const local = await f.launch({ executor: 'local', fresh: true });
+  await f.when(() => f.delivered.has(local.id) ? true : undefined);
+  const executor = new DropletExecutor(f.root, undefined, undefined, {
+    DIGITALOCEAN_TOKEN: 'suite-unit-token', CLAND_EXECUTOR_STATE: join(f.root, '.cland/executor-state'),
+  }, () => f.config, { ...f.machine.dependencies, api: f.api.provider });
+  // Preparation/demo leases consume the same budget without a suite holder.
+  const lease = await f.machine.waits.run(executor.acquire({ id: 'preparation' }, new Date(f.clock.now().getTime() + 600000).toISOString()));
+  const waiting = await f.launch({ fresh: true, ...(restart ? { workers: 4 } : {}) });
+  await f.machine.waits.run(f.when(() => f.notices.includes(waiting.id) ? true : undefined));
+  await f.suites.settled();
+  assert.equal(f.status(waiting.id).executor, 'local');
+  assert.equal(f.logs.find(entry => entry.event === 'verification-executor-fallback' && entry.id === waiting.id)!.cause, 'remote budget full');
+  const queuedAt = f.suites.snapshot().waiters[0]!.queuedAt;
+  const explicitLocal = await f.launch({ executor: 'local', fresh: true });
+  const later = await f.launch({ fresh: true });
+  await f.suites.settled();
+  if (restart) await f.reopen();
+  assert.equal(f.suites.snapshot().holder?.id, local.id);
+  assert.equal(f.status(waiting.id).state, 'queued');
+  assert.equal(f.status(explicitLocal.id).executor, 'local');
+  const admitted = f.when(() => f.status(waiting.id).state === 'running' ? true : undefined);
+  await f.machine.waits.run(executor.release(lease));
+  assert.equal((await readLeases(f.root)).find(saved => saved.lease === lease.lease)!.state, 'released');
+  // Start the admission bound only after the durable capacity-release receipt.
+  const admissionDeadline = until(() => f.status(waiting.id).state === 'running', { what: 'earlier local fallback admitted remotely', timeoutMs: 2000 });
+  await f.tick();
+  await f.machine.waits.run(f.suites.settled());
+  if (failNotice) {
+    assert.equal(noticeAttempts, 1);
+    assert.deepEqual(reclaimed, []);
+    await f.reopen();
+    failNotice = false;
+    await f.tick();
+    await f.machine.waits.run(f.suites.settled());
+  }
+  await admissionDeadline;
+  await admitted;
+  assert.equal(f.status(waiting.id).executor, 'droplet', 'a freed remote slot must reclaim the earlier local fallback');
+  await f.machine.started(waiting.id);
+  assert.equal(f.status(waiting.id).workers, restart ? 4 : 3);
+  assert.deepEqual(reclaimed, [waiting.id]);
+  assert.deepEqual(f.logs.filter(entry => entry.event === 'verification-executor-reclaimed').map(entry => entry.id), [waiting.id]);
+  if (restart) {
+    const attempts = noticeAttempts;
+    await f.reopen();
+    await f.tick();
+    await f.suites.settled();
+    assert.equal(noticeAttempts, attempts, 'a committed announcement is not repeated after restart');
+  }
+  assert.equal((await f.jobs()).find(job => job.id === waiting.id)!.queued, queuedAt);
+  assert.equal(f.suites.snapshot().holder?.id, local.id);
+  assert.deepEqual(f.suites.snapshot().waiters.map(waiter => waiter.id), [explicitLocal.id, later.id]);
+  assert.equal(f.status(explicitLocal.id).executor, 'local');
+  await f.finish(waiting.id);
+  await running(f, later.id);
+  await f.finish(later.id);
+  await f.finish(local.id);
+  await f.when(() => f.delivered.has(explicitLocal.id) ? true : undefined);
+  await f.finish(explicitLocal.id);
+});
 
 test('storage health survives remote collection and receipt recovery with its run attribution', async t => {
   const f = await suiteUnit(t, { executor: 'droplet' });

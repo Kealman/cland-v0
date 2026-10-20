@@ -2269,7 +2269,8 @@ A missing `DIGITALOCEAN_TOKEN`, refused create (including 4xx/5xx), unavailable
 size in all configured regions, missing prepared snapshot, spent daily cap,
 full remote budget with a free local slot, or
 dirty candidate sends a requested droplet run to the local queue with
-`executor: local`. There is one create attempt per run. Its topic and recipients
+`executor: local`. Budget refusals before creation may retry remotely while
+queued; other acquisition failures retain one create attempt per run. Its topic and recipients
 receive `verify <id>: droplet unavailable (<cause>); running locally`, projected
 with warn severity on messages and inbox warning surfaces. The journal records
 `verification-executor-fallback` with id, item, requested, effective and cause.
@@ -2545,6 +2546,12 @@ remote waiters behind it. When all remote slots are reserved and the local slot 
 free, a default droplet request with `local_fallback = true` runs locally with one warn notice
 `verify <id>: remote budget <n>/<n> full; running locally` and a
 `verification-executor-fallback` journal record with cause `remote budget full`.
+A default request that already fell back because the remote budget was full,
+but is still waiting for local admission, reclaims a free remote slot in the same
+queue order, including after a hub restart. The hub reports
+`verify <id>: remote capacity available; moving queued local fallback to droplet`
+to its topic and recipients and journals `verification-executor-reclaimed`.
+Only budget fallbacks are reconsidered; other acquisition failures stay local.
 `--executor local` always uses the local slot. Launching/acquiring jobs reserve
 remote slots through confirmed release; acquires proceed in parallel and each
 checks the shared daily spend cap. The provider also counts durable preparation
