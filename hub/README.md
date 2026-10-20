@@ -120,7 +120,7 @@ Its core was extracted from an earlier hub (ADR 0003). What was kept, what was d
 | `src/cli/hub.ts` | `cland hub start`, `status`, `stop`, `serve [--stdio]`, `audit`. |
 | `src/cli/task.ts` | `cland task create`, `view`, `list`, `comment`, `edit`, `close`, `link`, `claim`. |
 | `src/cli/session.ts` | `cland session launch`, `list`, `attach`, `stop`, `resume`. |
-| `src/cli/role.ts` | `cland role set`, `clear`, `list`. |
+| `src/cli/role.ts` | `cland role set`, `clear`, `launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]`, `list`. |
 | `src/cli/inbox.ts` | `cland inbox`, `cland topic answer` (Asks and the inbox). |
 | `src/cli/init.ts` | `cland init [dir]`, `cland init --undo [--force]`, `cland update [dir]`. |
 | `src/territory.ts` | The territory's Git runner, shared lock, provisioning, undo and read-only health checks; the task branches' base and the task worktrees (made, listed, removed); the squash commit and guarded push; usable without a hub. |
@@ -454,6 +454,7 @@ Events, after `subscribe`:
 | --- | --- |
 | `cland role set <session> <role> [--note-file <file>] [--move]` | Assigns the role; prints `rev-1 [Reviewer]: role set` (`(offline)` when the session is not connected). `--note-file` (a Markdown note) or `--move` moves the Coordinator from its holder (Handover). |
 | `cland role clear <session>` | Revokes the session's role. |
+| `cland role launch <role> [--harness …] [--model …] [--effort …] [--account …] [--permissions …] [--json]` | Saves the role's launch settings in `.cland/roles.toml`, applying from its next launch. Requires at least one launch flag; `--model ""` and `--account ""` use the harness's default. `--json` prints the raw result. |
 | `cland role list` | Each role with its launch defaults and holders, and the coordinator or `no coordinator`; `--json` for the raw value. |
 
 ### Handover
@@ -763,7 +764,9 @@ committed `.cland/` state.
 | File | Owner and contents |
 | --- | --- |
 | `~/.config/cland/accounts.toml` | The human maintains the harness account names, harnesses and directories or database paths; no secrets. An absolute `XDG_CONFIG_HOME` changes the base directory. `cland init` creates no registry. See [Accounts and limits](#accounts-and-limits). |
-| `~/.cland/executor/spend.json` | The hub maintains the executor spend ledger across projects: project, lease, run, size, cost reservations, settled cost and times; no token. `$CLAND_EXECUTOR_STATE` overrides its directory for tests. See [leases, cleanup and spend](#leases-cleanup-and-spend). |
+| `~/.local/state/cland/spend.json` | The hub maintains the primary executor spend ledger across projects: project, lease, run, size, cost reservations, settled cost and times; no token. `$XDG_STATE_HOME` changes the state base; `$CLAND_EXECUTOR_STATE` overrides the ledger directory for tests and disables legacy migration and write-through. See [leases, cleanup and spend](#leases-cleanup-and-spend). |
+| `~/.cland/executor/spend.json` | When this legacy ledger exists, the hub reconciles it with the primary ledger and writes mutations through to it first so older project hubs still respect the shared cap. T-794 will retire the write-through and archive the legacy file once every project hub for this user runs the new state-directory code. |
+| `~/.local/state/cland-nvim/` | The workbench Neovim's own state, including `nvim.log` and restart snapshots. `$XDG_STATE_HOME` changes the state base. T-830 sets `NVIM_APPNAME=cland-nvim` to keep this separate from the hub's `cland/` state and clears an inherited `NVIM_LOG_FILE`. See [the Neovim launcher](../nvim/README.md). |
 
 ## Accounts and limits
 
@@ -2275,7 +2278,8 @@ and retries every `releasing` lease.
 
 Before every create, including a prepare builder, cland reserves the configured
 lifetime times the size's hourly price (at least sixty seconds) in
-the [per-user executor spend ledger](#per-user-state), `~/.cland/executor/spend.json`.
+the [per-user executor spend ledger](#per-user-state), `$XDG_STATE_HOME/cland/spend.json`
+(default `~/.local/state/cland/spend.json`).
 An exclusive crash-recoverable lock serializes
 reservation and settlement. The test override is `$CLAND_EXECUTOR_STATE/spend.json`.
 Entries name the project, lease, run, size, reservation, actual cost and times;
