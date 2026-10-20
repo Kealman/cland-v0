@@ -1491,7 +1491,15 @@ is read after the final rendered screen is observed; unchanged file versions
 (path, mtime and size) reuse the cached projection. Unsaved raw edits are separate
 buffer versions. `qa/cases/ARTIFACT-001.lua` checks the visible Markdown features,
 block quote, raw toggle, help and palette through the headless grid. Prompt and
-browser compatibility remain in `nvim/test/artifacts.test.ts`.
+browser compatibility remain in `nvim/test/artifacts.test.ts`. T-1005 adds T2
+recorded-client proofs in `artifact-render.test.ts` for folder entry/`.md`/`.markdown`
+children selected in the browser, palette `CTRL-v` with unequal centre/split widths
+and independent toggles, and both `␣ps`/`␣pa` sending exact saved Markdown bytes
+with the correct attachment flag. These assert rendered grids, editable raw
+source and protocol receipts, without timing targets. The headless-grid case
+`qa/cases/ARTIFACT-002.lua` reads a rendered folder child and palette split side
+by side, then checks that a split raw toggle leaves the centre rendered. It is
+appended to the shipped T4 catalogue; E-795 after-stage QA remains separate.
 
 The same T2 file covers artifact-event refresh with an already-loaded raw buffer,
 raw saves replacing a cached version, 120→80→120 table relayout against the thread

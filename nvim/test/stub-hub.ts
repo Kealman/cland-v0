@@ -324,7 +324,7 @@ function answer(f: Frame) {
     case 'artifact.list':
       if (f.artifact !== undefined) {
         const artifact = (scenario.artifacts ?? []).find(a => a.id === f.artifact);
-        return artifact ? ok(f.id, { artifact }) : fail(f.id, 'no such artifact');
+        return artifact ? ok(f.id, { artifact, ...(artifact.folder ? { files: artifact.files ?? [] } : {}) }) : fail(f.id, 'no such artifact');
       }
       return ok(f.id, { artifacts: (scenario.artifacts ?? []).filter((a) => !a.movedTo).filter((a) => f.topic === undefined || a.topic === f.topic) });
     case 'topic.list':

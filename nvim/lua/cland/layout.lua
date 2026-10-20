@@ -427,7 +427,7 @@ function M.apply_view(opts)
       })
       centre_opts(w, 'session')
     else
-      api.nvim_win_set_buf(w, views.placeholder(v))
+      api.nvim_win_set_buf(w, views.placeholder(v, w))
       centre_opts(w, v.kind)
     end
   end
@@ -503,8 +503,11 @@ end
 --- free answers still use the centre composer. These splits are not session attach clients.
 function M.show_split_view(view)
   local views = require('cland.views')
-  local buf = view.kind == 'thread' and (view.id == 'agents' and require('cland.agents_log').buffer() or views.topic(view.id).thread.buf) or views.placeholder(view)
-  local win = api.nvim_open_win(buf, true, {split='right', win=M.centre()})
+  local scratch = api.nvim_create_buf(false, true)
+  vim.bo[scratch].bufhidden = 'wipe'
+  local win = api.nvim_open_win(scratch, true, {split='right', win=M.centre()})
+  local buf = view.kind == 'thread' and (view.id == 'agents' and require('cland.agents_log').buffer() or views.topic(view.id).thread.buf) or views.placeholder(view, win)
+  api.nvim_win_set_buf(win, buf)
   M.win.object_splits = M.win.object_splits or {}
   M.win.object_splits[win] = view
   centre_opts(win, view.kind)

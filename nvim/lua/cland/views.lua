@@ -183,14 +183,14 @@ end
 
 --- The buffer of a centre view other than a thread or a session: the item view and the board (#36), the Agents
 --- log (#34), the inbox full width (#33), else a placeholder.
-function M.placeholder(v)
+function M.placeholder(v, win)
   if v.kind == 'rulebook' then return require('cland.rulebook').buffer() end
   if v.kind == 'rule_compose' then return require('cland.rulebook').compose_buffer(v.id) end
   if v.kind == 'explorer' then return require('cland.explorer').render(v) end
   if v.kind == 'events' then return require('cland.events').buffer() end
   if v.kind == 'plan' and v.id then return require('cland.plan').render(v.id) end
   if v.kind == 'artifact' then
-    return require('cland.artifacts').buffer(v.id, v.file)
+    return require('cland.artifacts').buffer(v.id, v.file, win)
   elseif v.kind == 'artifacts' then
     return require('cland.artifacts').list_buffer(v.id)
   elseif v.kind == 'item' and v.id then

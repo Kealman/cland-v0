@@ -157,7 +157,7 @@ function M.external(a)
   local ext = entry_path(a):match('%.([^%.]+)$') or ''
   return browser_ext[ext:lower()] and not (a.kind == 'prompt' and a.status == 'draft')
 end
-function M.open(value, file)
+function M.open(value, file, opts)
   local a = type(value) == 'table' and (M.get(value.id) or value) or M.get(value)
   if not a then return state.say('no such artifact', 'ClandRedBar') end
   a = M.get(a.id) or a
@@ -165,7 +165,10 @@ function M.open(value, file)
   upsert(a)
   local target = file and vim.tbl_extend('force', a, { folder = false, path = a.path .. '/' .. file }) or a
   if M.external(target) then return browser(entry_path(target)) end
-  require('cland.layout').show({ kind = 'artifact', id = a.id, file = file }, { insert = false })
+  local layout = require('cland.layout')
+  local view = { kind = 'artifact', id = a.id, file = file }
+  if opts and opts.split then return layout.show_split_view(view) end
+  return layout.show(view, { insert = false })
 end
 
 local function raw_buffer(id, file)
@@ -224,7 +227,7 @@ local function toggle_key(b)
   require('cland.actions').map('n', '<leader>v', function() M.toggle() end, { buffer = b })
 end
 
-function M.buffer(id, file)
+function M.buffer(id, file, win)
   local a = M.get(id)
   local path = file and (a.path .. '/' .. file) or entry_path(a)
   if not markdown(a, path) then return raw_buffer(id, file) end
@@ -239,7 +242,7 @@ function M.buffer(id, file)
     if existing ~= -1 and api.nvim_buf_is_loaded(existing) then raw = existing end
   end
   sync_source(raw, path)
-  local win = require('cland.layout').centre()
+  win = win or require('cland.layout').centre()
   local b = require('cland.artifact_md').buffer(path, api.nvim_win_get_width(win), raw, api.nvim_win_get_height(win))
   vim.b[b].cland_role = 'artifact'
   vim.b[b].cland_artifact = id
@@ -264,7 +267,7 @@ function M.toggle()
     target = raw_buffer(id, file)
     vim.b[target].cland_markdown = true
     toggle_key(target)
-  else target = M.buffer(id, file) end
+  else target = M.buffer(id, file, win) end
   api.nvim_win_set_buf(win, target)
   api.nvim_win_set_cursor(win, {md.rendered_line(target, source), 0})
   md.window(win)
@@ -289,8 +292,7 @@ function M.refresh()
         if vim.b[b].cland_rendered then
           local source = md.source_line(b, api.nvim_win_get_cursor(win)[1])
           local tick = api.nvim_buf_get_changedtick(b)
-          -- M.buffer uses the centre width; visible artifact views live there.
-          local target = M.buffer(id, file)
+          local target = M.buffer(id, file, win)
           if target ~= b or api.nvim_buf_get_changedtick(target) ~= tick then
             api.nvim_win_set_buf(win, target)
             api.nvim_win_set_cursor(win, {md.rendered_line(target, source), 0})

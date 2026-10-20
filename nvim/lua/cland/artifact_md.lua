@@ -42,7 +42,9 @@ function M.buffer(path, cells, raw, rows)
   if raw and vim.bo[raw].modified then
     version = version .. '\0modified:' .. api.nvim_buf_get_changedtick(raw)
   end
-  local hit = versions[path]
+  -- Simultaneous windows may lay out the same version at different widths.
+  local key = path .. '\0' .. cells
+  local hit = versions[key]
   if hit and hit.version == version and hit.cells == cells and api.nvim_buf_is_valid(hit.buf) then return hit.buf end
   local source = raw and api.nvim_buf_get_lines(raw, 0, -1, false) or vim.fn.readfile(path)
   if #source == 0 then source = {''} end
@@ -52,10 +54,10 @@ function M.buffer(path, cells, raw, rows)
   vim.bo[b].formatlistpat = [[^\s*\%(\d\+[.)]\|[-*+]\)\s\+]]
   vim.b[b].cland_rendered = true
   local entry = {version = version, cells = cells, buf = b}
-  versions[path] = entry
+  versions[key] = entry
   buffers[b] = entry
   local function valid()
-    return versions[path] == entry and api.nvim_buf_is_valid(b)
+    return versions[key] == entry and api.nvim_buf_is_valid(b)
   end
   local function writable(fn)
     vim.bo[b].readonly = false

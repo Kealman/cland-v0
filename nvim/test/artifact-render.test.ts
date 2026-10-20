@@ -1,11 +1,12 @@
 // T2: rendered artifact buffers and the grid through the recorded stdio client.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { artifactScreen, skip } from './artifact-screen-fixture.ts';
 import { tempProject, eventually } from './fixture.ts';
 import { waitInitialSnapshots } from './readiness.ts';
+import { stubControl } from './stub-control.ts';
 
 const source = '# Artifact heading\nUse **strong**, *soft* and `code`.\n\n```lua\nprint(1)\n```\n- List item\n> Quoted words\n[Brief](https://example.com/very/long/link/tail)\n\n| Name | State |\n|---|---|\n| **Alpha** | ready |';
 
@@ -514,4 +515,106 @@ test('a raw toggle keeps its source position when deferred tables change the fin
   assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [110,'Reading anchor']);
   await c.input('<Space>v');
   assert.deepEqual(await c.lua('return {vim.api.nvim_win_get_cursor(0)[1],vim.api.nvim_get_current_line()}'), [107,'Reading anchor']);
+});
+
+test('palette CTRL-v opens Markdown through the artifact opener with independent centre and split modes and widths', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  const text = '# Split heading\n\n| Name | Description | State |\n|---|---|---|\n| **Alpha** | A detailed description of the artifact | ready |';
+  const a = await scene.create({kind:'note',title:'Split note',topic:'general',content:text});
+  const c = await scene.start();
+  await waitInitialSnapshots(c);
+  const thread = await c.lua<number>("return vim.api.nvim_win_get_buf(require('cland.layout').centre())");
+  await c.input('<Esc><Space>a');
+  await c.waitScreen(s => s.includes('palette ›') && s.includes('Split note'), 'note beside thread palette');
+  await c.input('<C-v>');
+  await c.waitScreen(s => !s.includes('palette ›') && s.includes('Split heading') && !s.includes('# Split heading'), 'note beside thread rendered');
+  assert.equal(await c.lua("return vim.api.nvim_win_get_buf(require('cland.layout').centre())"),thread);
+  await c.input('<Space>v');
+  await c.waitScreen(s => s.includes('# Split heading'), 'note beside thread raw');
+  assert.equal(await c.lua("return vim.api.nvim_win_get_buf(require('cland.layout').centre())"),thread);
+  await c.input('<C-w>q');
+  await c.lua("require('cland.artifacts').open(...)", a.id);
+  await c.waitScreen(s => s.includes('Split heading') && !s.includes('# Split heading'), 'centre rendered');
+  const centre = await c.lua<number>("return require('cland.layout').centre()");
+  await c.input('<Space>a');
+  await c.waitScreen(s => s.includes('palette ›') && s.includes('Split note'), 'artifact palette');
+  await c.input('<C-v>');
+  await c.waitScreen(s => !s.includes('palette ›') && s.includes('Split heading'), 'palette split rendered');
+  const split = await c.lua<number>('return vim.api.nvim_get_current_win()');
+  assert.notEqual(split, centre);
+  await c.lua('vim.api.nvim_win_set_width(...,35); require("cland.artifacts").refresh()', split);
+  await eventually('each rendered table matches its own window width', async () => await c.lua(`
+    local source, centre, split = ...
+    local api=vim.api
+    for _,w in ipairs({centre,split}) do
+      local b=api.nvim_win_get_buf(w)
+      if not vim.b[b].cland_rendered or vim.b[b].cland_render_pending then return false end
+      local expected=require('cland.thread_md').render(source,api.nvim_win_get_width(w))
+      if not vim.deep_equal(api.nvim_buf_get_lines(b,0,-1,false),expected) then return false end
+    end
+    return true`, text, centre, split) ? true : undefined);
+  await c.input('<Space>v');
+  await c.waitScreen(s => s.includes('# Split heading'), 'split raw source');
+  assert.deepEqual(await c.lua('local c=...; return {vim.bo.modifiable,vim.bo.readonly,vim.b[vim.api.nvim_win_get_buf(c)].cland_rendered}', centre), [true,false,true]);
+  await c.input('<Space>v');
+  await c.waitScreen(s => !s.includes('# Split heading'), 'split rendered again');
+  await c.lua('vim.api.nvim_set_current_win(...)', centre);
+  await c.input('<Space>v');
+  assert.equal(await c.lua('return vim.b[vim.api.nvim_win_get_buf(...)].cland_rendered', split), true);
+  assert.deepEqual(await c.lua("return require('cland.actions').audit()"), []);
+});
+
+test('folder entry and md and markdown children open rendered from the artifacts browser and toggle to exact raw source', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  const folder = await scene.create({kind:'file',title:'Folder notes',topic:'general',folder:true,content:'# Folder entry\nUse **entry** text.'});
+  const files = ['index.md','ideas.md','details.markdown'];
+  Object.assign(scene.scenario.artifacts![0]!, {files});
+  await writeFile(join(folder.path,'ideas.md'), '# Child ideas\nUse **child** text.');
+  await writeFile(join(folder.path,'details.markdown'), '# Child details\nUse **details** text.');
+  const c = await scene.start();
+  await waitInitialSnapshots(c);
+  await c.input('<Esc>:Cland view artifacts general<CR>');
+  await c.waitScreen(s => s.includes('Folder notes') && s.includes('ARTIFACTS'), 'folder browser');
+  await c.lua("for r,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if l:find('Folder notes',1,true) then vim.api.nvim_win_set_cursor(0,{r,0}); return end end; error('folder row missing')");
+  await c.input('<CR>');
+  await c.waitScreen(s => files.every(f => s.includes(f)), 'folder children loaded');
+  for (const [file, heading, body] of [['index.md','Folder entry','entry'],['ideas.md','Child ideas','child'],['details.markdown','Child details','details']] as const) {
+    await c.lua("for r,l in ipairs(vim.api.nvim_buf_get_lines(0,0,-1,false)) do if vim.trim(l)==... then vim.api.nvim_win_set_cursor(0,{r,0}); return end end; error('child row missing')", file);
+    await c.input('<CR>');
+    await c.waitScreen(s => s.includes('Use '+body+' text.') && !s.includes('# '+heading), file+' rendered');
+    assert.deepEqual(await c.lua('return {vim.b.cland_rendered,vim.bo.readonly,vim.bo.modifiable}'), [true,true,false]);
+    await c.input('<Space>v');
+    await c.waitScreen(s => s.includes('# '+heading), file+' raw');
+    assert.deepEqual(await c.lua('return {vim.bo.modifiable,vim.bo.readonly,vim.api.nvim_buf_get_lines(0,0,-1,false)}'), [true,false,['# '+heading,'Use **'+body+'** text.']]);
+    await c.input('q');
+    await c.waitScreen(s => s.includes('ARTIFACTS') && s.includes(file), 'back to browser');
+  }
+});
+
+test('recorded prompt drafts stay raw and ps and pa send exact saved Markdown bytes with their attachment flag', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  const c = await scene.start();
+  await waitInitialSnapshots(c);
+  for (const [key, attach] of [['ps',false],['pa',true]] as const) {
+    await c.input('<Esc>:Cland view thread general<CR><Esc>:Cland prompt '+key+' draft<CR>');
+    await eventually('editable prompt draft', async () => await c.lua("return vim.b.cland_artifact and vim.bo.modifiable and not vim.bo.readonly and not vim.b.cland_rendered") ? true : undefined);
+    const text = '# Send '+key+'\nKeep **markers**, `code` and [tail](https://example.com/x).\n';
+    await c.lua("vim.api.nvim_buf_set_lines(0,0,-1,false,...); vim.bo.endofline=true", text.trimEnd().split('\n'));
+    const [id,path] = await c.lua<[string,string]>('return {vim.b.cland_artifact,vim.api.nvim_buf_get_name(0)}');
+    await c.input('<Space>'+key);
+    await eventually('prompt send completion', async () => await c.lua("return require('cland.artifacts').get(...).status=='sent'",id) ? true : undefined);
+    assert.equal(await readFile(path,'utf8'),text);
+    const received = await stubControl(join(root,'artifact-stub.sock'),{requests:true});
+    const sent = (received.requests as Record<string,unknown>[]).filter(f => f.type==='prompt.send' && f.artifact===id);
+    assert.equal(sent.length,1);
+    assert.equal(sent[0]!.attach,attach);
+    await eventually('exact source in delivered prompt message', async () => await c.lua(`
+      for _,m in ipairs(require('cland.views').topic('general').thread.messages) do
+        if m.text==... then return true end
+      end
+      return false`,text) ? true : undefined);
+  }
 });

@@ -60,10 +60,7 @@ function M.run(e, split)
   if e.group == 'actions' then return e.run() end
   local kind = ({items='item', sessions='session', topics='thread', artifacts='artifact'})[e.group]
   if e.group == 'artifacts' then
-    local a = require('cland.artifacts').get(e.value)
-    if not split or not a or a.fileDeleted or require('cland.artifacts').external(a) then
-      return require('cland.artifacts').open(e.value)
-    end
+    return require('cland.artifacts').open(e.value, nil, {split=split})
   end
   if split then
     if kind == 'session' then return layout.show_split({kind=kind,id=e.value}) end

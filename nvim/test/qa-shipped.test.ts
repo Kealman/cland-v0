@@ -27,3 +27,9 @@ test('PANELS-020 passes through the headless QA runner', { skip }, async t => {
   assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
   assert.equal(run.code, 0);
 });
+
+test('ARTIFACT-002 passes through the headless QA runner', { skip }, async t => {
+  const run = await qa(t, [`${SHIPPED}ARTIFACT-002.lua`]);
+  assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
+  assert.equal(run.code, 0);
+});
