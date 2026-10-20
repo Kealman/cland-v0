@@ -129,7 +129,7 @@ export const MERGE_USAGE = `  merge <T-id> [--json]   queue a reviewed head when
                           other paths require review; conflicts still refuse
 `;
 
-export const PUSH_USAGE = '  push [--json]         fast-forward territory dev to root dev; Coordinator’s shell or human\n';
+export const PUSH_USAGE = '  push [--json]         fast-forward territory dev to root dev; Coordinator’s or Aide’s shell, or human\n';
 
 export const RELEASE_USAGE = `  publish <branch> --item T-n [--dry-run] [--json]   publish approved marketing commits to GitHub main and site, merge and sync dev
   release <vX.Y.Z> [--dry-run] [--json]   publish dev as GitHub main and an annotated tag atomically; Coordinator's shell or human
