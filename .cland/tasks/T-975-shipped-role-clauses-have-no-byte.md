@@ -3,7 +3,7 @@ id: T-975
 kind: task
 title: "Shipped role clauses have no byte headroom: trim them to pointers (or re-derive the reserve) before v0.2 adds clause lines"
 state: open
-status: review
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-748
 branch: t/T-975-shipped-role-clauses-have-no-byte
 created: 2026-10-20T15:38:57.185Z
-updated: 2026-10-20T16:51:18.450Z
+updated: 2026-10-20T16:55:08.584Z
 ---
 
 ## Summary
@@ -30,9 +30,8 @@ Move procedural detail out of the shipped clauses into the skills and docs they 
 
 - [x] C1. Every shipped clause (defaults and project) has at least 15 % headroom under its reserve in roles-clauses.test.ts, or the reserve change is reasoned and tested against the send cap.
   - done: impl-975 · 2026-10-20T16:47:49.792Z
-- [x] C2. Each removed line is either a pointer kept in the clause or text moved verbatim into the skill or doc it now lives in (assertion map in the evidence).
-  - done: impl-975 · 2026-10-20T16:50:35.397Z
-  - verified: rev-23 [reviewer] · run rev-20261020-975-source-corrected · 2026-10-20T16:51:18.450Z · commit 7c36ab4a1835e817c5aa38fddb803c56d7306dcb
+- [ ] C2. Each removed line is either a pointer kept in the clause or text moved verbatim into the skill or doc it now lives in (assertion map in the evidence).
+  - failed: rev-23 [reviewer] · 2026-10-20T16:55:08.584Z · note Two existing QA source-contract tests still require relocated procedures inline; same-head T1 gate fails before T2/Neovim.
 
 ## Comments
 
@@ -77,3 +76,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no remaining findings. Both Coordinator summaries restore committed brief/lead path before launching the item; T1 now asserts that boundary for both sources. Original 41-line verbatim map, unchanged non-clause permissions/configuration and other normative summaries revalidated; C2 established. A-7717 corrected local T1 27/27/hub typecheck and byte table: max 6508 <= 6528, unchanged 7680 reserve. Earlier T2/T0 receipts explicitly pre-correction; C1 final gate proof awaits exact-head mode-free verify. Corrected source artifact records limits; A-7714 retained. QA none; Reviewer ran no tests.
 
 Criteria: C2 verified.
+
+### rev-23 · 2026-10-20T16:55:08.584Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261020-975-evidence-red
+commit: 7c36ab4a1835e817c5aa38fddb803c56d7306dcb
+scope: evidence
+findings: [{"severity":"medium","text":"The same-head gate fails existing QA source contracts after moving procedure detail: review-qa-component reports 'qa: the verdict header' (expected /verdict: qa/ in the compact clause), and skills-qa-catalogue.test.ts:37 reports 'the coordinator clause names the brief'. Adapt all affected assertions to verify both the retained inline normative summary/pointer and the verbatim destination procedure, preserving the original request, verdict, report, rescue, UI-driving and brief requirements rather than dropping checks.","file":"hub/test/review-qa-component.test.ts","line":16}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Standards: medium review-qa-component.ts:16 and skills-qa-catalogue.ts:37 source assertions incomplete after relocation. A-7722 actual failures: 'qa: the verdict header' expected /verdict: qa/, and 'the coordinator clause names the brief'. Adapt all affected assertions to inline summaries/pointers plus verbatim destination content, preserving original semantic checks. Spec source correction intact; roles-clauses 27/27 passes. Gate ordinary 639 pass/2 fail, Linux T1 exit 1; T2/Neovim not run, T3/T4 deferred. C2 failed. New-head source review required; not an unchanged-head retry. Host check 794f64c9 not repeated; diagnostics report-only. Reviewer ran no tests.
+
+Criteria: C2 failed (Two existing QA source-contract tests still require relocated procedures inline; same-head T1 gate fails before T2/Neovim.).

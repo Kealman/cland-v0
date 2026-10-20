@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-20T16:51:45.530Z
+updated: 2026-10-20T16:54:38.328Z
 ---
 
 ## Summary
@@ -148,3 +148,9 @@ items:
       - C1
       - C2
 ```
+
+## Comments
+
+### coord · 2026-10-20T16:54:38.328Z
+
+Plan approved by the human, 2026-10-20 16:54Z (ask 310190bf option 1, typed by the human in cland-impl's terminal; decision page A-7719). (a) The plan as set: no development bridge, the shell uses E-412's edge from the start. Approved dependencies: react 19, react-dom, vite, @vitejs/plugin-react, @types/react, @types/react-dom, oxlint, playwright-core with the Chrome Headless Shell it downloads (tests only), Golos Text and JetBrains Mono woff2 vendored with OFL, E-412's QR encoder vendored with MIT. No UI library, no Tailwind. (b) Browser-test tier: a separate Web phase outside T0-T3, selected when a diff touches web/** or the protocol and edge files; it runs in that task's own cland verify (so browser criteria are checkable before enqueue), not in T1 merge batches, and always in periodic dev T3, stage, release and integrated runs; budget 4 s a test, 40 s for the phase.

@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-749
 branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T16:50:16.897Z
+updated: 2026-10-20T16:53:29.775Z
 ---
 
 ## Summary
@@ -31,8 +31,10 @@ Find the writer and close the class. Every test and fixture child strips GIT_DIR
 
 - [x] C1. The writer is identified (test, command or session) from a reproduction in a scratch repository, or the evidence lists every candidate checked.
   - done: impl-973 · 2026-10-20T16:48:12.002Z
+  - verified: rev-26 [reviewer] · run rev-20261020-973-source-1 · 2026-10-20T16:53:29.775Z · commit f52a9182afc9a97b838ee90c9d64a08aab9cb302
 - [x] C2. A T1 test with a poisoned GIT_DIR/GIT_COMMON_DIR proves the fixture environment strips them, and a native T3 case in territory-cli.test.ts shows a fixture git init --bare / clone --bare leaves the scratch parent repository's config bytes unchanged (targeted local run before review; its Linux receipt is landing evidence).
   - done: impl-973 · 2026-10-20T16:48:12.596Z
+  - verified: rev-26 [reviewer] · run rev-20261020-973-source-1 · 2026-10-20T16:53:29.775Z · commit f52a9182afc9a97b838ee90c9d64a08aab9cb302
 - [x] C3. Merge admission reports `core.bare=true` in the root as its own clear error instead of a raw rev-parse failure.
   - done: impl-973 · 2026-10-20T16:48:13.215Z
 
@@ -49,3 +51,18 @@ Implemented and pushed c888e8e2c057ad64b3532d52ab44732c2d1e8eee. C1 candidate ev
 ### impl-973 · 2026-10-20T16:50:16.897Z
 
 M1 corrected in pushed head f52a9182afc9a97b838ee90c9d64a08aab9cb302: .cland/roles.toml Coordinator/Lead now carry merge-bare guidance. Coordinator default/project clauses point to the merge skill to preserve byte reserve; equivalent project heartbeat prose shortened. roles-clauses.test.ts passed 27/27 at this head on local macOS (direct targeted T1; no suite/tripwire gate mode). All existing reserve/wording guards retained. No dev merge or verification run after first source review request.
+
+### rev-26 · 2026-10-20T16:53:29.775Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-973-source-1
+commit: f52a9182afc9a97b838ee90c9d64a08aab9cb302
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at f52a9182; no remaining findings across Standards and Spec. A-7720 records the full read-only audit. M1 is resolved: default/project Coordinator and Lead clauses now cover merge-bare, with unchanged wording/reserve guards passing 27/27 at this head (A-7716). The sealed shell/machine builders strip repository-location Git variables after overlays; root bare admission refuses before worktree-dependent Git and names inspect/owner repair without editing config. C1 uses A-7710's enumerated-candidate alternative: historical writer remains unidentified. C2 uses source plus original focused macOS T1/T3 4/4 receipt A-7713 at c888e8e2, whose implementation/tests are unchanged at f52a9182, and actual mutation red A-7712. Native Linux T3 is landing evidence under amended C2. Earlier 82/82 is qualified pre-final tree evidence; reported later 52/52 is not relied on without its raw receipt. C3 remains unverified pending accepted same-head mode-free task verification and final evidence review. A-7715 was interim superseded material; no old-head formal verdict was recorded.
+
+Criteria: C1 verified, C2 verified.

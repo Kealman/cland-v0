@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T09:12:36.923Z
-updated: 2026-10-20T16:51:49.799Z
+updated: 2026-10-20T16:54:38.443Z
 ---
 
 ## Summary
@@ -30,3 +30,9 @@ The human asked on 2026-10-18 (General, ask 03c2a877, answered 09:12Z) to let th
 - [ ] D1. Opening Sessions on the left and Items on the right from the palette works, and both keep their keys and live updates.
 - [ ] D2. The layout survives a workbench restart, and a reset command restores the default.
 - [ ] D3. Existing layout, width and focus tests stay green, and new headless-grid cases cover both sides.
+
+## Comments
+
+### coord · 2026-10-20T16:54:38.443Z
+
+Decided by the human, 2026-10-20 16:54Z (ask 310190bf option 1, A-7719): only the four existing panels (Items, Inbox, Sessions, Topics) become placeable; Events, Artifacts, Accounts and Verification panels go to Ideas. Model: each panel has a home side the human chooses, each side shows one of the panels assigned to it, and the panel keys stay toggles on the panel's side. Coordinator default: ui.json gains optional fields in version 2, landing before E-413 bullet 3.

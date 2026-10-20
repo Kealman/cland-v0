@@ -3,17 +3,17 @@ id: T-990
 kind: task
 title: The web workspace builds, checks and holds the tokens
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-415
 blocked_by: []
-topic: null
-branch: null
+topic: topic-752
+branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T16:51:45.676Z
+updated: 2026-10-20T16:55:07.292Z
 ---
 
 ## Summary
