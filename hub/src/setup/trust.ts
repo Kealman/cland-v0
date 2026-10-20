@@ -37,11 +37,16 @@ function trusted(value: Record<string, unknown>, key: string): boolean {
 }
 
 const STALE_MS = 10_000;
+// `claude auth status --json` can exit leaving its directory lock behind. Allow it
+// to become stale on the first setup run, with margin for the acquisition backoff.
+const LOCK_WAIT_MS = 15_000;
 
 /** Claude Code's lock on its config: `<file>.lock`, a folder; a holder that has not refreshed it for 10 s is gone. */
-async function withConfigLock<T>(file: string, work: () => T, clock: Clock, waitMs = 5000): Promise<T> {
+async function withConfigLock<T>(file: string, work: () => T, clock: Clock): Promise<T> {
   const lock = `${file}.lock`;
-  const deadline = clock.now().getTime() + waitMs;
+  const started = clock.now().getTime();
+  const deadline = started + LOCK_WAIT_MS;
+  let backoff = 100;
   for (;;) {
     try {
       mkdirSync(lock);
@@ -59,8 +64,10 @@ async function withConfigLock<T>(file: string, work: () => T, clock: Clock, wait
         rmSync(lock, { recursive: true, force: true });
         continue;
       }
-      if (clock.now().getTime() > deadline) throw new Error(`Claude Code holds ${lock}; run cland setup again in a moment`);
-      await new Promise<void>(resolve => clock.setTimeout(resolve, 100));
+      const now = clock.now().getTime();
+      if (now >= deadline) throw new Error(`Timed out waiting for ${lock} after ${now - started} ms (retry window ${LOCK_WAIT_MS} ms); holder unknown (Claude Code directory lock has no PID metadata); run cland setup again in a moment`);
+      await new Promise<void>(resolve => clock.setTimeout(resolve, Math.min(backoff, deadline - now)));
+      backoff = Math.min(backoff * 2, 1000);
     }
   }
   try {
