@@ -2335,6 +2335,12 @@ Verification runs the project's configured check and test commands; see
 [Verification commands](#verification-commands). The following runner details
 and package commands describe cland's own suite.
 
+`npm run test:nvim-fixtures` refreshes the Neovim protocol recordings. It captures
+and validates all requested files before replacing fixtures, refusing skipped or
+incomplete runs and captures below the existing frame counts. See the
+[fixture maintenance guidance](../docs/agents/tests.md) for full, retained and
+per-file slice refreshes.
+
 Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by
 default. Each test serves its own project through `serveProject` in the test
 process, with normal discovery, Unix socket and WebSocket edges. Real CLI

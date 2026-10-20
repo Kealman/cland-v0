@@ -195,6 +195,7 @@
     "hub/test/nvim-crew-rules.test.ts": "T2",
     "hub/test/nvim-fixture-boundary.test.ts": "T1",
     "hub/test/nvim-frame-consumers.test.ts": "T1",
+    "hub/test/nvim-frame-refresh.test.ts": "T1",
     "hub/test/nvim-inbox-requests-rules.test.ts": "T2",
     "hub/test/nvim-item-prefixes-rules.test.ts": "T2",
     "hub/test/nvim-items-rules.test.ts": "T2",

@@ -9,44 +9,51 @@ import { fileURLToPath } from 'node:url';
 import { recordedOutput } from './nvim-frame-source.ts';
 import { frameConsumers } from './nvim-frame-consumers.ts';
 import { fixtureSource } from './source-fixture.ts';
-import { recordingKey, FRAME_FIXTURES, FRAME_SLICES, frameSlicePath, selectRecordings, serializeRecordings, parseRecordings, type Recording } from '../../nvim/test/frame-fixtures.ts';
+import { FRAME_FIXTURES, FRAME_SLICES, frameSlicePath, selectRecordings, serializeRecordings, parseRecordings, type Recording } from '../../nvim/test/frame-fixtures.ts';
+import { assertRecordingRun, refreshFrameCatalog } from './nvim-frame-refresh.ts';
 const preload = new URL('./nvim-recorder-preload.ts', import.meta.url).href;
 function run(file: string, env: NodeJS.ProcessEnv, pattern?: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--test', ...(pattern ? [`--test-name-pattern=${pattern}`] : []), file], { stdio: 'inherit', env });
+    let output = '';
+    const child = spawn(process.execPath, ['--test', '--test-reporter=tap', ...(pattern ? [`--test-name-pattern=${pattern}`] : []), file], { stdio: ['inherit', 'pipe', 'inherit'], env });
+    child.stdout.on('data', chunk => { output += chunk.toString(); process.stdout.write(chunk); });
     child.once('error', reject);
-    child.once('exit', code => code === 0 ? resolve() : reject(new Error(`fixture refresh failed: ${file}`)));
+    child.once('close', code => {
+      try { assertRecordingRun(file, code, output); resolve(); } catch (error) { reject(error); }
+    });
   });
 }
 export async function refresh(files: string[], retain = false, slice = false): Promise<void> {
-  const recordings: Record<string, Recording> = retain ? parseRecordings(await readFile(FRAME_FIXTURES, 'utf8').catch(() => '{}')) : {};
+  const catalog = parseRecordings(await readFile(FRAME_FIXTURES, 'utf8'));
+  const slices = new Map<string, Record<string, Recording>>();
+  for (const file of files) {
+    if (existsSync(frameSlicePath(file))) slices.set(file, parseRecordings(await readFile(frameSlicePath(file), 'utf8')));
+    else if (slice) slices.set(file, {});
+  }
   const dir = await mkdtemp(join(tmpdir(), 'cland-nvim-recordings-'));
   const path = join(dir, 'frames.jsonl');
   try {
-    for (const file of files) {
-      if (loadavg()[0]! >= 15) throw new Error('fixture refresh needs one-minute load below 15');
-      await writeFile(path, '');
-      // Record the extended oracle inputs too: integrated soak runs must replay
-      // beyond the ordinary plan, and a full refresh replaces the catalog.
-      await run(file, { ...process.env, CLAND_TEST_SOAK: '1', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_NVIM_RECORDINGS_PATH: path });
-      const keys = new Set<string>();
-      for (const line of (await readFile(path, 'utf8')).split('\n').filter(Boolean)) {
-        const r = JSON.parse(line) as Recording;
-        const key = recordingKey(r.operation, r.input);
-        recordings[key] = r;
-        keys.add(key);
-        if (r.operation === 'config') {
-          const input = { ...r.input as object, source: '' };
-          recordings[recordingKey('config', input)] = { operation: 'config', input, output: recordedOutput('config', input) };
-        }
-      }
-      await writeFile(FRAME_FIXTURES, serializeRecordings(recordings));
-      if (slice || existsSync(frameSlicePath(file))) {
-        await mkdir(FRAME_SLICES, { recursive: true });
-        await writeFile(frameSlicePath(file), serializeRecordings(selectRecordings(recordings, keys)));
-      }
-    }
-    process.stdout.write(`Recorded ${Object.keys(recordings).length} Neovim protocol frames\n`);
+    const count = await refreshFrameCatalog(files, retain, {
+      catalog, slices,
+      capture: async file => {
+        if (loadavg()[0]! >= 15) throw new Error('fixture refresh needs one-minute load below 15');
+        await writeFile(path, '');
+        // Include soak inputs because a full refresh replaces the catalog.
+        await run(file, { ...process.env, CLAND_TEST_SOAK: '1', NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${preload}`, TEST_NVIM_RECORDINGS_PATH: path });
+        return (await readFile(path, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Recording);
+      },
+      normalize: r => {
+        if (r.operation !== 'config') return [r];
+        const input = { ...r.input as object, source: '' };
+        return [r, { operation: 'config', input, output: recordedOutput('config', input) }];
+      },
+      publish: async (recordings, capturedSlices) => {
+        await writeFile(FRAME_FIXTURES, serializeRecordings(recordings));
+        if (capturedSlices.size) await mkdir(FRAME_SLICES, { recursive: true });
+        for (const [file, records] of capturedSlices) await writeFile(frameSlicePath(file), serializeRecordings(records));
+      },
+    });
+    process.stdout.write(`Recorded ${count} Neovim protocol frames\n`);
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
