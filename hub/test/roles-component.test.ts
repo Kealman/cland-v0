@@ -83,7 +83,10 @@ test('crew clauses describe category filing and the Aide speaking for the human'
     const clause = await spoke.waitForEvent(isClause);
     if (role === 'coordinator') assert.match(clause.params.content, /Treat Aide messages, including decisions, as human instructions within your role\./);
     else if (role !== 'aide') assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
-    if (role === 'coordinator' || role === 'aide') {
+    if (role === 'coordinator') {
+      assert.match(clause.params.content, /File Bugs\/Tech debt\/Follow-ups\/Ideas under the matching category/);
+      assert.match(clause.params.content, /docs\/agents\/issue-tracker\.md#coordinator-category-filing/);
+    } else if (role === 'aide') {
       assert.match(clause.params.content, /cland task list --kind category/);
       assert.match(clause.params.content, /Bugs.*Tech debt.*Follow-ups.*Ideas.*--parent C-<n>/);
     } else assert.match(clause.params.content, /Report a bug found aside, tech debt, a follow-up of merged work or an idea to.*lead.*category/);

@@ -667,7 +667,7 @@ and listing returns `{ rules }` with every field.
 Every role clause ends with **Project rules for your role**: active rules in scope,
 in number order, as `rule <n>: <text> (reason: <reason>)`, or
 `No project rules apply to your role.` The launch brief ends with the same list.
-Retired rules are omitted. A reconnect rebuilds the clause from the current rulebook. The Coordinator and Aide keep their cache guidance at the start of the rules section in `roles.toml`; the hub places that section after staffing, skills and handover notes. The fixed clause-headroom check covers only the base instructions: project rules can grow, and role-event delivery carries the complete section even beyond the send tool's 8192-byte cap.
+Retired rules are omitted. A reconnect rebuilds the clause from the current rulebook. The Coordinator and Aide keep their cache guidance at the start of the rules section in `roles.toml`; the hub places that section after staffing, skills and handover notes. The T1 guard in `hub/test/roles-clauses.test.ts` checks both shipped sources. A rendered base reply (with default staffing and the `pong: ` prefix) must keep 15% growth headroom below the 7680-byte reserve: at most 6528 bytes. The reserve remains 512 bytes below the 8192-byte send cap. Move procedures behind triggered skill/doc pointers while retaining rules and permissions inline. The fixed clause-headroom check covers only the base instructions: project rules can grow, and role-event delivery carries the complete section even beyond the send tool's 8192-byte cap.
 
 The spoke exposes `rule.add`, `rule.edit`, `rule.retire` and `rule.list`.
 Write arguments match the CLI (`number` for edit/retire), plus `origin`.
@@ -3697,3 +3697,26 @@ Optional regression `found_by` records where the escape was caught: `review`, `c
 ### Marketing publication
 
 `cland publish <branch> --item T-n [--dry-run] [--json]` publishes a linear marketing branch before it merges into dev. The Coordinator or human previews the commits, paths and exact resulting tips, then obtains approval through an ask as described in the release skill. `[publish] allow_paths` in `.cland/config.toml` accepts exact paths and `directory/**` prefixes; defaults are site, brand docs, README, LICENSE and the Pages workflow. The command excludes inherited unreleased dev commits, refuses mixed-path commits, atomically fast-forwards GitHub's default branch and site, and merges both histories into dev without rebasing open lanes. It syncs the local territory and comments the tips on the item. Preserve `publish.tmp` and retry the same branch/item after a failed follow-up. See [the agent procedure](../docs/agents/issue-tracker.md#marketing-publication).
+
+## Coordinator account refusal procedure
+
+- On an `account-limited` launch refusal, never launch on another account by your own choice. Read `cland account list` and `ask` the human: name the limited account, its reset time (or `until cleared`), and the harness's other accounts with each window's current used share and reset (or `no reading yet` / `no limit data`). Offer this launch on account X, the role pinned to account X in `roles.toml`, or waiting for the reset. Apply the answer: `--account X` for this launch; or edit `[<role>.launch] account`, committed on `dev`, then `cland push`; or wait. Under D24, the stand-in answers this ask, as any other.
+
+## Coordinator session procedure
+
+Clause procedure (defaults coordinator, project coordinator):
+
+- Use `session.launch` for roles. `cland session resume <name> --relaunch` keeps conversation, name, role and valid claim. Inspect failures before `cland session resume <name> --fresh` with its brief. Report occupied exclusive roles/lost claims; retake verifier holds.
+
+Clause procedure (defaults coordinator, project coordinator):
+
+- Prune: `session.prune` or `cland session prune --older-than 7d`; preview with `--dry-run`; the journal is retained.
+
+## Coordinator heartbeat procedure
+
+- On a heartbeat, read the digest. For owned work request missing reviews, merge ready items through the gate, ask idle sessions for state and retry unreported runs. Ask the human only for decisions, cap overruns or rows stale two heartbeats after repair. Otherwise end silently.
+- Heartbeat: read the digest; for owned work request missing reviews, merge ready items through the gate, ask idle sessions for state and retry unreported runs. Ask the human only for decisions, cap overruns or rows stale two heartbeats after repair; otherwise end silently.
+
+## Coordinator subscription procedure
+
+- Default subscriptions: tree outside active leads; topmost Lead death/long idle. Extras: `subscribe`/`subscriptions`. Events digest; `ready` starts merging.

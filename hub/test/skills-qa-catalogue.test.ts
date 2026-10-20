@@ -34,8 +34,13 @@ test('default QA roles include the skill and matching self-contained briefs', as
   const roles = parseRoles(DEFAULT_ROLES_TOML);
   assert.ok(roles.get('qa')?.skills.includes('qa'), 'QA has the qa skill');
   assert.ok(roles.get('coordinator')?.skills.includes('qa'), 'the Coordinator has the qa skill');
-  for (const role of ['qa', 'coordinator']) assert.match(roles.get(role)?.clause ?? '', /qa\/briefs\/T-<n>\.md/, `the ${role} clause names the brief`);
-  assert.match(await readFile(join(SKILL, 'SKILL.md'), 'utf8'), /^---\nname: qa\n/);
+  assert.match(roles.get('qa')?.clause ?? '', /qa\/briefs\/T-<n>\.md/, 'the QA request names the brief');
+  const coordinator = roles.get('coordinator')?.clause ?? '';
+  assert.match(coordinator, /Before launching an item needing QA, commit its brief and give its lead the path/, 'the Coordinator keeps the brief readiness rule');
+  assert.match(coordinator, /Follow `qa` for lint preflight/, 'the Coordinator points to the qa skill');
+  const skill = await readFile(join(SKILL, 'SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: qa\n/);
+  assert.match(skill, /Before launching an item needing QA, commit `qa\/briefs\/T-<n>\.md` via `qa` and give its lead the path/, 'the skill supplies the exact brief path');
   accessSync(RECORD, constants.R_OK);
   // the brief template and the shipped brief have the same sections, and the shipped brief names cases that exist
   const section = (text: string) => [...text.matchAll(/^## (.+)$/gm)].map((m) => m[1]);

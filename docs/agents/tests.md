@@ -1350,3 +1350,13 @@ this boundary at T1 with injected hub responses, fake time and a scratch HOME/XD
 state directory (`hub/test/executor-spend.test.ts`); socket authentication and
 command routing belong at T2. Never exercise this command against the human's
 actual state. See [the operational contract](../../hub/README.md#retiring-legacy-spend-write-through).
+
+## Implementer test selection
+
+Clause procedure (defaults implementer, project implementer):
+
+- `hub-selected` names changed functions, covering tests and the map artifact. Queue-enabled tasks run all T1 and selected T2, with all T2 in both packages on fallback. T3 smoke runs in batches and integrated runs. Coverage maps come from green integrated runs; ancestry, mapping and fallback rules are in docs/agents/tests.md.
+
+Clause procedure (defaults implementer, project implementer):
+
+- Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by default. Keep `startDaemon` only when an assertion concerns the hub process (startup, shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping, watchdog behavior, or CLI behavior with the hub down or unreachable); such tests name the process lifecycle behavior they prove. See docs/agents/tests.md.

@@ -139,3 +139,28 @@ Each `qa/cases/<ID>.lua` opens with its catalogue header, a comment block of exa
 ```
 
 `regression` is `yes` when the case was added to guard a bug that was fixed. The case then returns the table `cland --headless --qa` runs (`nvim/README.md`, "QA cases"). A case needs no grant and runs in a sandbox; the tmux and web-terminal surfaces need the grants spec 4.10 names, and a brief that uses them says which.
+
+## Coordinator fallback procedure
+
+- If Reviewer or QA is unavailable, run its brief with `/codex:rescue --wait --fresh --model gpt-6.1-sol` (read-only review) or `/codex:rescue --background --fresh --model gpt-6-astra` (QA). Record verdict/result/run id with `task.comment`; yours cannot pass the gate. Append QA `runs.jsonl` to `.cland/qa/runs.jsonl`; file finds with `qa-found`, `needs-triage` and `qa`.
+
+## QA execution procedure
+
+- Work: take a verifier hold with `task.hold` on the item (beside the Implementer's claim; it sets `qa`), then read the item with `task.view` and the brief, then run each case of the brief from the item's worktree (`cland --headless --qa`, through the skill's script, `sh .agents/skills/qa/qa-record.sh run T-<n> <run> <CASE-ID>`, which appends one line per case to `.cland/qa/runs.jsonl`, with evidence in `.cland/qa/T-<n>/<run>/`) and each manual check. Beyond the brief, the checks you can run yourself: shell-level checks (build, tests, the commands a user would run); the `cland task` CLI (`cland task list`, `cland task view`); and where UI is involved, a headless Neovim: one `nvim --headless` process running a Lua script that feeds keys with `nvim_input` and reads the grid with `screenstring()`, or the project's own test harness if it does that (`nvim --headless --listen` with `--remote-send` and `--remote-expr`). Keep what you ran and what you saw. Do not fix what you find.
+
+## QA verdict procedure
+
+- Verdict: one `task.comment` on the item with `verdict` qa, `result` clear or not clear, and `run` an id of your own for this pass. Give `commit`, the full SHA you ran. The hub writes the header from them: `verdict: qa`, `result: clear | not clear`, `by: <name> [<role>]`, `run: <id>`. `clear` only when every case in scope passed; a FAIL, BLOCKED or INCONCLUSIVE case makes it `not clear` and the text names the case. The text is the case table, then the findings ranked by severity (high, medium, low), each with the case id or file:line, the command and what it showed.
+
+## QA criterion procedure
+
+- Criteria: read `task.view` criteria and verify each tested id. On a clear verdict pass `verified: "C1,C3"` (or `"all"` only when every criterion was checked); the hub marks them with your `run`. On a not-clear verdict pass `failed: [{ criterion: "C2", note: "what failed" }]`; a failure clears done and verification and returns the task to in progress. For separate marks use `task.criterion` verify with `criterion` and `run`, or fail with `criterion` and a single-line `note`. The verdict report lists its marks.
+
+## Epic demo procedure
+
+- Epic demos (D16): when the Coordinator requests an epic, run its Definition of done at named `dev` SHA via demo lease (`cland demo start|exec|status|stop`; `qa` skill, "Epic demos"). No slot/budget: local at same SHA. Fresh: on dev, no later epic-file edits. Read `task.view` criterion ids (containers also recognize `## Definition of done`), and record a clear QA verdict on the epic with the full tested SHA and every tested id verified in that run. All criteria must pass for closure; deferred or blocked checks remain unverified. The Coordinator closes the epic after its children are closed; only the release waits for human acceptance.
+
+## Coordinator request procedure
+
+- The item’s lead requests review and QA and handles not-clear verdicts and retries. Before launching an item needing QA, commit `qa/briefs/T-<n>.md` via `qa` and give its lead the path. Use the `qa` skill’s brief-lint completion rule. Launch missing verifiers with `session.launch`. Lead an unclaimed item outside a claimed Lead subtree yourself; `@lead T-<n>` routes verdicts up.
+- The item’s lead requests review and QA and handles not-clear verdicts and retries. Before launching an item needing QA, commit `qa/briefs/T-<n>.md` via `qa` and give its lead the path. Launch missing verifiers with `session.launch`. Lead an unclaimed item outside a claimed Lead subtree yourself; `@lead T-<n>` routes verdicts up.

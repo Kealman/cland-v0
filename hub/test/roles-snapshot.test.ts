@@ -24,10 +24,14 @@ test('default and project clauses pin category filing and idle work without addi
   const defaults = parseRoles(DEFAULT_ROLES_TOML);
   const project = parseRoles(await readFile(new URL('../../.cland/roles.toml', import.meta.url), 'utf8'));
   for (const role of ['coordinator', 'lead', 'implementer', 'reviewer', 'qa', 'aide']) {
-    const filing = defaults.get(role)!.clause.split('\n').find(line => line.startsWith('- File category work:') || line.startsWith('- Report a bug found aside'));
+    const filing = defaults.get(role)!.clause.split('\n').find(line => line.startsWith('- File category work:') || line.startsWith('- File Bugs/') || line.startsWith('- Report a bug found aside'));
     assert.ok(filing, role);
     if (role === 'coordinator' || role === 'aide') {
       assert.match(filing, /Tasks need `--size XS\|S\|M\|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n` for rework of landed tasks/);
+      if (role === 'coordinator') {
+        assert.match(filing, /docs\/agents\/issue-tracker\.md#coordinator-category-filing/);
+        assert.match(await readFile(new URL('../../docs/agents/issue-tracker.md', import.meta.url), 'utf8'), /File category work: find the ids with `cland task list --kind category`.*each with `--parent C-<n>`/);
+      }
     } else assert.match(filing, /naming its size \(XS, S, M, L or XL\) and category/);
     assert.ok(project.get(role)!.clause.split('\n').includes(filing), `${role}: project clause has the same filing rule`);
     if (!['coordinator', 'aide'].includes(role)) {

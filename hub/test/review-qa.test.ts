@@ -95,7 +95,7 @@ test('a review request from the Coordinator reaches the Codex session holding Re
   const revLog = await fake.log(rev.pid as number);
   assert.match(revLog, /item: cland hub: you hold the role Reviewer in this project, shown to others as rev \[Reviewer\]/);
   assert.match(revLog, /verdict: review/, 'the Reviewer clause carries the verdict header');
-  assert.match(await fake.log(qa.pid as number), /item: cland hub: you hold the role QA[\s\S]*verdict: qa/);
+  assert.match(await fake.log(qa.pid as number), /item: cland hub: you hold the role QA[\s\S]*Follow the `qa` skill’s verdict procedure/);
 
   // review: addressed to the role, as the Coordinator would; the report comes back to the Coordinator
   await request(coord, 'review', 'reviewer', 'T-1', 'Check that `cland task list --state open` lists the item.');

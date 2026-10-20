@@ -180,3 +180,11 @@ The command selects branch-only commits that dev lacks, so unreleased product co
 After approval it atomically fast-forwards GitHub's default branch (normally `main`) and `site` to the same cherry-picked tip, merges the marketing branch and published tip into dev, and syncs the local territory while preserving dev ancestry. It comments the public and dev tips on the named item, leaving it open and unversioned. Commit the resulting tracker comment on root dev and use `cland push`. This is the D56/D59 marketing flow; ordinary `cland sync` may rebase unreleased work and is not a substitute.
 
 Preserve `.cland/publish.tmp` after a failed push reply or follow-up. Repair the obstruction and retry the same branch and item to finish the pinned publication. An unpublished retry revalidates the current allow-list; an already-published receipt may finish local synchronization after the policy changes. Release, ordinary sync, push, merge and offline tracker migration refuse while that receipt is pending.
+
+## Explorer message format
+
+- The explorer's messages come from the human in General or the item's topic: the text, then `from the explorer · scope …` and one line per item (id · kind · status · container · rank · title). Act on them through the tracker.
+
+## Coordinator category filing
+
+- File category work: find the ids with `cland task list --kind category`; file a bug found aside into Bugs, tech debt into Tech debt, a follow-up of merged work into Follow-ups and an idea into Ideas, each with `--parent C-<n>`. Tasks need `--size XS|S|M|L`, a `## Summary` of 1–3 sentences and `--regression-of T-n` for rework of landed tasks.

@@ -31,3 +31,13 @@ For a project without a release item, `cland release <chosen-version> [--dry-run
 4. If publication reports a failed follow-up or loses its push reply, preserve `.cland/publish.tmp`, repair the named obstruction and retry the same branch and item. The receipt pins the original tips; an unpublished retry must still satisfy the current allow-list. Once GitHub already has both tips, local-only recovery can finish after a policy change. Recovery never adds a second public history or duplicate tracker comment. Pending publication blocks release, ordinary sync, push, merge and offline tracker migration until recovered. A pre-push conflict leaves public and local refs untouched.
 
 Publish creates no version or tag and makes no GitHub API calls. Ordinary `cland sync` retains its replay behavior; use publish's integrated sync for this marketing flow.
+
+## Coordinator publication procedure
+
+Clause procedure (defaults coordinator):
+
+- Use `release`: `cland release --item T-n --dry-run`; `ask` notes/version approval, then `cland release --item T-n`. Human chooses version; Aides/stand-ins cite recorded choice. Marketing-only publication outside a release: `cland publish <branch> --item T-n --dry-run`; `ask` human approval, then `cland publish <branch> --item T-n`. Follow the release skill and recorded acceptance policy; never delegate release. `cland sync` imports from a clean root.
+
+Clause procedure (project coordinator):
+
+- Use `release`: `cland release --item T-n --dry-run`, then `ask` for notes/version approval; once approved, `cland release --item T-n`. The human chooses the version; Aides/stand-ins cite a recorded choice. Follow recorded acceptance policy; never delegate release. `cland sync` imports from a clean root.
