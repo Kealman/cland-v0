@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { clock, type Client } from './stub-client.ts';
-import { proc, skip, startShell } from './shell-fixture.ts';
+import { proc, skip, startShell, type Shell } from './shell-fixture.ts';
 const startSessions: typeof startShell = (t, edit, env, initialSnapshots) => startShell(t, s => {
   s.accounts = [];
   s.verification = { version: 1, at: '2026-10-19T12:00:00Z', holder: null, waiters: [], metrics: { window: 20, count: 0, wait: { count: 0, medianMs: null, p90Ms: null }, run: { count: 0, medianMs: null, p90Ms: null } } };
@@ -89,32 +89,29 @@ test('recorded account pushes update weekly windows and preserve saved folds', {
   await c.waitScreen(s => s.includes('wk 75%') && !s.includes('Accounts (3)'), 'accounts unfolded');
 });
 
-test('recorded source windows preserve severity, local resets, stale age and wrapping', { skip }, async t => {
-  const env = { TZ: 'Asia/Kolkata' };
-  const now = Date.parse('2026-10-19T12:00:00Z');
-  const today = new Date(now + 60_000).toISOString();
+// T2: each clock exercises the same recorded-frame UI seam, including both sides
+// of Kolkata midnight. Pin Lua's clock as well as the fixture timestamps.
+async function sourceWindows(c: Shell, instant: string, today: string, labels: readonly [string, string, string]) {
+  const now = Date.parse(instant);
   const tomorrow = new Date(now + 86400_000).toISOString();
   const later = new Date(now + 14 * 86400_000).toISOString();
-  const local = (iso: string, options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-GB', { timeZone: env.TZ, ...options }).format(new Date(iso));
-  const time = (iso: string) => local(iso, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
-  const date = new Date(now + 14 * 86400_000 + 5.5 * 3600_000).toISOString().slice(0, 10);
   const windows = [
     { kind: 'five_hour', percentUsed: 12.4, resetsAt: today, severity: 'warning' },
     { kind: 'seven_day', percentUsed: 3, resetsAt: tomorrow, severity: 'critical' },
     { kind: 'Fable', percentUsed: 98, resetsAt: later, severity: 'normal' },
   ];
   const sourceWindows = windows.map(w => ({ id: w.kind, label: w.kind === 'five_hour' ? '5h' : w.kind === 'seven_day' ? 'wk' : w.kind, usedPercent: w.percentUsed, resetsAt: w.resetsAt, severity: w.severity }));
-  const c = await startSessions(t, s => {
-    s.accounts = [account('claude-a', 'claude-code', sourceWindows, new Date(now - 31 * 60_000).toISOString()), account('default:claude-code', 'claude-code', sourceWindows, new Date(now).toISOString())];
-    s.processes = [{ ...proc('impl-a', 'implementer', 'idle'), account: 'claude-a' }, proc('impl-default', 'implementer', 'idle')];
-  }, env);
   await setNow(c, now / 1000);
+  for (const reading of [account('claude-a', 'claude-code', sourceWindows, new Date(now - 31 * 60_000).toISOString()), account('default:claude-code', 'claude-code', sourceWindows, new Date(now).toISOString())]) {
+    await c.control({ emit: { type: 'account', account: reading } });
+  }
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.right); vim.api.nvim_win_set_width(0, 100)");
-  const stale = await c.waitScreen(s => s.includes('31m') && s.includes('Fable 98%') && s.includes('claude-a') && s.includes('default:claude-code'), 'both account rows with three windows and stale age');
+  const stale = await c.waitScreen(s => s.includes('31m') && s.includes('claude-a') && s.includes('default:claude-code')
+    && labels.every(label => s.split(`↻${label}`).length === 3), `both account rows with current reset labels at ${instant} and stale age`);
   assert.match(stale, /claude-a\s+5h 12%/);
-  assert.ok(stale.includes(`↻${time(today)}`));
-  assert.ok(stale.includes(`↻${local(tomorrow, { weekday: 'short' })} ${time(tomorrow)}`));
-  assert.ok(stale.includes(`↻${date}`));
+  assert.ok(stale.includes(`5h 12% ↻${labels[0]}`));
+  assert.ok(stale.includes(`wk 3% ↻${labels[1]}`));
+  assert.ok(stale.includes(`Fable 98% ↻${labels[2]}`));
   assert.ok(stale.indexOf('claude-a') < stale.indexOf('default:claude-code'));
   const dim = await highlights(c);
   assert.ok(dim.some(m => m.text.includes('31m') && m.group === 'ClandDim'));
@@ -131,8 +128,8 @@ test('recorded source windows preserve severity, local resets, stale age and wra
   assert.equal(meta.length, 1);
   assert.doesNotMatch(meta[0]!, /default:|claude-a/);
   await c.lua("vim.api.nvim_win_set_width(0, 30); require('cland.state').changed()");
-  const narrow = await c.waitScreen(s => s.includes('31m') && s.includes('claude-a') && s.includes('default:claude-code') && s.split('Fable 98%').length === 3, 'both account rows with wrapped windows');
-  assert.ok(narrow.includes(`↻${date}`));
+  const narrow = await c.waitScreen(s => s.includes('31m') && s.includes('claude-a') && s.includes('default:claude-code') && s.includes('   wk 3%') && s.split('Fable 98%').length === 3, 'both account rows with wrapped windows');
+  assert.ok(narrow.includes(`↻${labels[2]}`));
   const lines = await c.lua<Array<{ text: string; width: number }>>(`local out={}
     for _,line in ipairs(vim.api.nvim_buf_get_lines(require('cland.panels').bufs.sessions,0,-1,false)) do
       if line:find('verify:',1,true) then break end
@@ -143,6 +140,21 @@ test('recorded source windows preserve severity, local resets, stale age and wra
   assert.equal(lines.filter(line => line.text.includes('Fable 98%')).length, 2);
   assert.ok(lines.some(line => /^   wk 3%/.test(line.text)), 'whole windows wrap to indented continuation lines');
   assert.ok(lines.every(line => !line.text.includes('…')), `wrapping retains all source text: ${JSON.stringify(lines)}`);
+}
+
+test('recorded source windows preserve severity, local resets, stale age and wrapping', { skip }, async t => {
+  const c = await startSessions(t, s => {
+    s.processes = [{ ...proc('impl-a', 'implementer', 'idle'), account: 'claude-a' }, proc('impl-default', 'implementer', 'idle')];
+  }, { TZ: 'Asia/Kolkata' });
+  // Reuse one fixture for input permutations. Expectations are local-calendar
+  // literals, independent of the formatter and the machine's current clock.
+  for (const [instant, today, labels] of [
+    ['2026-10-19T12:00:00Z', '2026-10-19T12:01:00Z', ['17:31', 'Tue 17:30', '2026-11-02']],
+    // 23:59:58: the same-day reset stays on this side of midnight too.
+    ['2026-10-19T18:29:58Z', '2026-10-19T18:29:59Z', ['23:59', 'Tue 23:59', '2026-11-02']],
+    // 00:00:01 on October 20: tomorrow and the later reset advance a day.
+    ['2026-10-19T18:30:01Z', '2026-10-19T18:31:01Z', ['00:01', 'Wed 00:00', '2026-11-03']],
+  ] as const) await sourceWindows(c, instant, today, labels);
 });
 
 test('recorded hard-limit pushes show and clear account marks', { skip }, async t => {
