@@ -1,9 +1,8 @@
-// `cland inbox` and `cland topic answer`: the human answers asks and reads the inbox from a terminal — no workbench
-// needed (the open point of #33). Both go over the hub's existing UI frames (`inbox.list`, `topic.answer`, "Asks and
-// the inbox"), like `cland role`: readDiscovery, askHubFrame, `--json`.
+// Inbox reads, topic creation and ask answers over the hub's existing frames, with the shell's identity.
 import { actorOf } from './actor.ts';
+import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
-import type { Inbox, TopicMessage } from '../protocol.ts';
+import type { Inbox, Topic, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export { INBOX_USAGE } from './usage.ts';
@@ -60,12 +59,33 @@ export async function runInbox(args: string[], cwd: string = process.cwd()): Pro
 export async function runTopic(args: string[], cwd: string = process.cwd()): Promise<number> {
   const [sub, ...rest] = args;
   switch (sub) {
+    case 'create':
+      return runTopicCreate(rest, cwd);
     case 'answer':
       return runTopicAnswer(rest, cwd);
     default:
       process.stderr.write(`cland: unknown topic command "${sub ?? ''}"\n\nusage: cland topic <command>\n\n${TOPIC_USAGE}`);
       return 2;
   }
+}
+
+async function runTopicCreate(args: string[], cwd: string): Promise<number> {
+  const { values, positionals } = parseArgs({ args, allowPositionals: true, options: {
+    item: { type: 'string' }, json: { type: 'boolean' }, as: { type: 'string' },
+  } });
+  if (positionals.length !== 1 || !positionals[0]?.trim()) throw new Error('usage: cland topic create <title> [--item T-n] [--json] [--as <name>]');
+  const d = readDiscovery(hubDiscovery(cwd));
+  if (!d) {
+    process.stderr.write(NO_HUB);
+    return 1;
+  }
+  const as = actorOf(values, process.env, { err: s => process.stderr.write(s) });
+  const v = await askHubFrame(d, {
+    type: 'topic.create', title: positionals[0],
+    ...(values.item !== undefined ? { item: values.item } : {}), ...(as ? { as } : {}),
+  }) as { topic: Topic };
+  process.stdout.write(`${values.json ? JSON.stringify(v) : `created ${v.topic.id}: ${v.topic.title}`}\n`);
+  return 0;
 }
 
 async function runTopicAnswer(args: string[], cwd: string): Promise<number> {

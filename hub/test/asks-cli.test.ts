@@ -1,7 +1,8 @@
 // T2: same-title hub rules through real socket/MCP edges and in-process peers; native flow in scenarios/message-tracer and crew-launch.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cland, inProcessSpoke, projectHub, tempProject, type Session } from './harness.ts';
+import { cland, clandWithEnv, connectUi, inProcessSpoke, projectHub, tempProject, type Session } from './harness.ts';
+import { value } from './validation-support.ts';
 
 type InboxAsk = { id: string; topic: { id: string; title: string; item?: string | null }; question: string; options: string[]; free: boolean; from: string; label: string };
 type Inbox = { asks: InboxAsk[]; approvals: Array<{ session: string }>; waiting: Array<{ id: string; title: string }>; needsYou: number };
@@ -16,6 +17,55 @@ async function coordinator(t: import('node:test').TestContext, root: string): Pr
 
 const ask = (s: Session, topic: string, question: string, options: string[], free?: boolean) =>
   s.call<AskResult>('ask', { topic, question, options, ...(free !== undefined ? { free } : {}) });
+
+test('cland topic create binds an Implementer topic to its claimed item and refuses another item', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  await value(ui, { type: 'task.create', size: 'XS', title: 'Mine', assignee: 'impl' });
+  await value(ui, { type: 'task.create', size: 'XS', title: 'Another item' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'sess-impl' });
+  t.after(() => impl.close());
+  await impl.waitForPresence(['impl']);
+  assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: 'T-1' })).ok, true);
+  const shell = { CLAND_SESSION_NAME: 'impl', CLAND_SESSION_ID: 'sess-impl' };
+
+  const created = await clandWithEnv(root, shell, 'topic', 'create', 'My work', '--item', 'T-1', '--json');
+  assert.equal(created.code, 0, created.stderr);
+  const { topic } = JSON.parse(created.stdout) as { topic: { id: string; title: string; item: string } };
+  assert.equal(topic.title, 'My work');
+  assert.equal(topic.item, 'T-1');
+  const bound = await value<{ item: { topic: string } }>(ui, { type: 'task.view', item: 'T-1' });
+  assert.equal(bound.item.topic, topic.id);
+
+  const refused = await clandWithEnv(root, shell, 'topic', 'create', 'Other work', '--item', 'T-2');
+  assert.equal(refused.code, 1);
+  assert.equal(refused.stdout, '');
+  assert.match(refused.stderr, /forbidden: topic\.create \(Implementer may create a topic only bound to its own item\)/);
+  const other = await value<{ item: { topic: string | null } }>(ui, { type: 'task.view', item: 'T-2' });
+  assert.equal(other.item.topic, null);
+  const listed = await value<{ topics: Array<{ id: string }> }>(ui, { type: 'topic.list' });
+  assert.deepEqual(listed.topics.map(t => t.id), ['general', 'agents', topic.id]);
+});
+
+test('cland topic create opens an unbound human topic and rejects malformed arguments', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const ui = await connectUi(t, discovery);
+  const created = await cland(root, 'topic', 'create', 'Design discussion');
+  assert.equal(created.code, 0, created.stderr);
+  const { topics } = await value<{ topics: Array<{ id: string; title: string; item: string | null }> }>(ui, { type: 'topic.list' });
+  const topic = topics.find(t => t.title === 'Design discussion');
+  assert.ok(topic);
+  assert.equal(topic.item, null);
+  assert.equal(created.stdout, `created ${topic.id}: Design discussion\n`);
+  for (const args of [[], [' '], ['extra', 'title'], ['Title', '--item']]) {
+    const bad = await cland(root, 'topic', 'create', ...args);
+    assert.equal(bad.code, 1);
+    assert.equal(bad.stdout, '');
+  }
+  assert.equal((await value<{ topics: unknown[] }>(ui, { type: 'topic.list' })).topics.length, 3);
+});
 
 test('cland inbox lists an open ask with its section, id, topic, asker, first line and age, and needs you; --json prints the hub\'s Inbox', async (t) => {
   const root = await tempProject(t);

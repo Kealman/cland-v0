@@ -162,7 +162,9 @@ export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and
                           --archive prints departures from the last seven days, newest first, with when and why
 `;
 
-export const TOPIC_USAGE = `  topic answer <ask id> <option number> [--as <stand-in name>]
+export const TOPIC_USAGE = `  topic create <title> [--item T-n] [--json] [--as <name>]
+                          open a topic, optionally bound to an item; Implementers may open only their own item's topic
+  topic answer <ask id> <option number> [--as <stand-in name>]
                           answer an ask with its option n (1-based): prints
                           'answered <ask id> in <topic title>: <the answer>'
     topic answer <ask id> --text "<free answer>" [--as <stand-in name>]
