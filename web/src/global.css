@@ -1,0 +1,32 @@
+html, body, #root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--prose);
+  font-size: 13px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+a { color: var(--link); text-decoration: none; }
+a:hover { color: var(--link-hover); text-decoration: underline; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+::placeholder { color: var(--muted); opacity: 1; }
+kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 5px;
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  background: var(--control);
+  color: var(--text);
+  white-space: nowrap;
+}
+code { font-family: var(--mono); }
+* { scrollbar-color: var(--control-border) transparent; }

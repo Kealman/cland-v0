@@ -12,6 +12,12 @@ Default triage vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `rea
 
 Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+## web/
+
+Use CSS Modules and `var(--token)` from `web/src/tokens.css` for styling; colour values live only in that file. Copy `web/src/Shell.tsx` and `Shell.module.css` for component structure. Keep secondary text at 4.5:1 on ground and selection; the typecheck checks colours and contrast.
+
+No UI library or Tailwind, and no new dependency without the human's approval. Show names, counts and facts in the interface; put explanations in tooltips, help and docs. Route keyboard bindings through the single physical-code key map (the shell-key slice adds it); never add a component-local key listener.
+
 <!-- cland:begin managed by cland 0.1.0 — cland init and cland update rewrite this block; write your own instructions outside it -->
 ## cland
 

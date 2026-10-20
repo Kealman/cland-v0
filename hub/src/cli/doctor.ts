@@ -8,6 +8,7 @@ import { run, render, summarise, warn, ok, fail, type Check } from '../doctor/re
 import { checkToolchain } from '../doctor/toolchain.ts';
 import { checkKeys } from '../doctor/keys.ts';
 import { projectRoot } from '../project.ts';
+import { checkWebBundle } from '../doctor/web.ts';
 import { VERSION } from '../version.ts';
 import { harnessesInUse } from '../roles/harnesses.ts';
 
@@ -57,7 +58,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     if (err instanceof SweepBusy) orphanChecks.push(warn('orphan sweep', err.message, 'wait for the active sweep, then rerun cland doctor --fix'));
     else orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
   }
-  const checks = [...toolchain, ...requirementChecks, ...project, ...keys, ...orphanChecks];
+  const checks = [...toolchain, ...requirementChecks, ...project, ...keys, await checkWebBundle(), ...orphanChecks];
   const summary = summarise(checks);
   if (json) write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
   else {

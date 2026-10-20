@@ -1,0 +1,83 @@
+/* Canvas tokens from Q-405, aligned with spec v0.2 and nvim/lua/cland/hl.lua. */
+:root {
+  color-scheme: dark;
+
+  /* grounds */
+  --ground: #0b0e14;
+  --panel: #10141b;
+  --drawer: #0d1117;
+  --standing: #0f141c;
+  --control: #141a23;
+  --control-hover: #1a222d;
+  --row-hover: #131923;
+  --selection: #182131;
+  --human-band: #131b29;
+  --code: #1a212c;
+  --badge-quiet: #1e2631;
+  --meter-track: #1e2631;
+
+  /* lines */
+  --border: #222a35;
+  --border-soft: #1a212b;
+  --control-border: #2a3340;
+  --control-border-hover: #3d4a5c;
+  --kbd-border: #3a4452;
+  --separator: #3d4756;
+
+  /* text */
+  --text: #d6dbe4;
+  --text-strong: #eef1f5;
+  --text-quiet: #c9d1dc;
+  --text-soft: #a7b0bc;
+  --muted: #8a94a3;
+
+  /* meaning */
+  --needs-human: #f0b429;
+  --needs-human-ink: #1a1400;
+  --watch: #c2a15e;
+  --active: #35c4a0;
+  --done-glyph: #7ddc8a;
+  --done-text: #98bfa2;
+  --failed: #ff7b72;
+  --link: #6aa5ff;
+  --link-hover: #9cc3ff;
+  --link-ink: #0b1424;
+  --cell-backlog: #2a3340;
+
+  /* tinted surfaces */
+  --teal-line: #24584b;
+  --teal-badge: #123a31;
+  --teal-surface: #0f1d1a;
+  --amber-line: #5c4a1a;
+  --watch-badge: #2e2716;
+  --green-line: #2c4a33;
+  --green-surface: #0f1712;
+  --red-line: #5a2a28;
+  --red-surface: #150e10;
+  --red-row: #1a0f11;
+  --ask-surface: #211c12;
+  --ask-line: #4a3b17;
+  --ask-option: #19150d;
+  --ask-option-line: #4f4220;
+  --ask-key: #2a2312;
+  --ask-key-line: #6b5823;
+  --ask-quiet: #b9ae93;
+  --sticker: #e6e9ef;
+  --scrim: #05070b99;
+  --shadow: 0 18px 60px #00000080;
+
+  /* roles (nvim/lua/cland/hl.lua) */
+  --role-human: #6aa5ff;
+  --role-aide: #6aa5ff;
+  --role-coordinator: #35c4a0;
+  --role-lead: #35c4a0;
+  --role-implementer: #bc8cff;
+  --role-reviewer: #f778ba;
+  --role-qa: #56d4dd;
+  --role-hub: #8a94a3;
+  --role-other: #8a94a3;
+
+  /* type */
+  --prose: 'Golos Text', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}

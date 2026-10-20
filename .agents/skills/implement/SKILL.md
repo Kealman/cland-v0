@@ -3,7 +3,7 @@ name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 metadata:
   origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); clause procedure reference (T-975)"
+  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); web build/check flow (T-990); clause procedure reference (T-975)"
 ---
 
 Implement the work described by the user in the spec or tickets.
@@ -13,6 +13,8 @@ If the user passes a ticket reference, fetch it from the issue tracker and state
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
+
+For `web/` changes in this repository, follow the root AGENTS.md web rule and `web/README.md`. The root check builds the ignored bundle after typechecking, including on local verification; no separate development bridge is used.
 
 Run typechecking and targeted single test files while implementing. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
 

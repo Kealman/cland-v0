@@ -20,3 +20,6 @@ node_modules/
 
 # the pinned Neovim release cland downloads (nvim/NVIM_VERSION)
 .cache/
+
+# generated browser bundle
+web/dist/

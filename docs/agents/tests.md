@@ -1,7 +1,7 @@
 # Running tests
 
 The root `npm run typecheck` uses native TypeScript 7.0.2 for the hub's bin, src
-and test files and Neovim's bin and test files, through their respective
+and test files, Neovim's bin and test files, and the web workspace, through their respective
 `tsconfig.json` files. It also checks `shared/wire/tsconfig.json` with DOM libraries
 and `types: []`, so the browser leaf has no ambient Node types.
 `npm run typecheck --workspace hub` checks only the hub, including the compile-time
@@ -27,7 +27,13 @@ check = "npm run check"
 test = "npm test"
 ```
 
-`npm run check` includes `npm run typecheck` and static/test lint. Prepare installs
+`npm run check` runs `npm run typecheck`, builds `web/dist`, then runs static/test lint.
+The web typecheck keeps the hub strict flags, adds DOM/JSX and browser-only types,
+and runs the colour fixtures, text contrast checks and oxlint React hooks rules
+(including a rejected conditional-hook fixture). The T0 workspace guard checks
+the build order. Root `npm install` builds the bundle through `prepare`; the
+post-typecheck build also runs on local verification, where remote prepare is absent.
+`web/dist` is ignored. See [the web workspace](../../web/README.md). Prepare installs
 dependencies and seeds the pinned Neovim on the builder and before every droplet
 delivery; it never runs during local verification. See
 [Verification commands](../../hub/README.md#verification-commands) for the shell,

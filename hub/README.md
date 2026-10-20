@@ -5,7 +5,7 @@
 You need Node 24 and Git. Install cland from the release checkout:
 
 ```sh
-git clone --depth 1 --branch v0.1.4 https://github.com/Kealman/cland-v0.git ~/.local/share/cland && npm --prefix ~/.local/share/cland ci --omit=dev && npm install -g ~/.local/share/cland
+git clone --depth 1 --branch v0.1.4 https://github.com/Kealman/cland-v0.git ~/.local/share/cland && npm --prefix ~/.local/share/cland ci && npm install -g ~/.local/share/cland
 ```
 
 In your project folder, initialise cland:
@@ -78,6 +78,23 @@ with `x` on its row in the sessions panel or `cland session stop aide-1`. Then
 The cland hub: the per-project service sessions talk through, the spoke each session runs, and the `cland` CLI. Node 24, TypeScript run by type stripping (no build step), `node:sqlite`, `ws`, the MCP SDK.
 
 Its core was extracted from an earlier hub (ADR 0003). What was kept, what was dropped and why, and the pointer to the survey behind it (issue #2) are in `docs/hub-extraction.md`.
+
+## Web workspace
+
+The sibling `web/` workspace builds the browser bundle with React 19 and Vite.
+Keep development dependencies installed: the prepare hook needs Vite even for a
+release checkout. Root `npm install` builds `web/dist` through `prepare`. Verification's `npm run check`
+runs the shared strict typecheck, builds the bundle, then static/test lint, on local
+and remote executors. Remote `verification.prepare` still handles dependencies
+and Neovim; it is not the local bundle build hook. `web/dist` stays ignored.
+
+`cland doctor` includes a **web bundle** row for this cland installation (independent
+of the project being diagnosed). It compares `web/dist/build-stamp.json` with the
+source filenames, content digest and latest modification time. Missing, invalid,
+changed or newer inputs warn to run `npm run build` in the installation. A Vite
+build, including watch rebuilds, writes a stamp only after checking local asset
+references and unchanged inputs. See [web/README.md](../web/README.md) for tokens,
+fonts and the development loop. E-412 serves this bundle; there is no dev bridge.
 
 ## Modules
 

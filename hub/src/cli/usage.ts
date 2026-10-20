@@ -61,6 +61,7 @@ export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-cod
 
 export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub/web edge and what cland init provisioned; one line per
                   check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers, deleted-project hubs and fixtures)
+                  web bundle: compare the installed web/dist build stamp with its source inputs; npm run build refreshes it
                   tracker conflicts counts live .conflict captures and names differing bytes; read-only, including --fix
                   hub retention prunes finalized captures after seven days at startup and hourly; recover differences before expiry
                   deleted-project hubs retain the orphan hub classification even with fixture ownership

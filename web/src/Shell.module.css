@@ -1,0 +1,22 @@
+/* Q-405 shell geometry and canvas tokens; the drawer has no selection and stays closed. */
+.app { height: 100dvh; display: flex; flex-direction: column; background: var(--ground); }
+.top { flex: none; display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.brand { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--text-strong); }
+.project { font-weight: 600; }
+.release, .coordinator { display: inline-flex; gap: 8px; align-items: center; height: 30px; padding: 0 10px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); }
+.coordinator { color: var(--role-coordinator); }
+.search { margin-left: 20px; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 23rem; height: 32px; padding: 0 8px 0 12px; border: 1px solid var(--control-border); border-radius: 8px; color: var(--muted); }
+.right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.needs { display: inline-flex; gap: 8px; color: var(--muted); }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--failed); }
+.help { font-family: var(--mono); color: var(--muted); }
+.mono { font-family: var(--mono); white-space: nowrap; }
+.body { flex: 1; min-height: 0; display: flex; }
+.rail { flex: none; width: 188px; padding: 12px 8px; background: var(--panel); border-right: 1px solid var(--border); }
+.area, .current { display: flex; align-items: center; height: 38px; padding: 0 12px; margin-bottom: 2px; border-radius: 6px; color: var(--muted); }
+.current { background: var(--selection); color: var(--text); }
+.main { flex: 1; min-width: 0; overflow: auto; }
+.heading { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 20px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.heading h1 { font: 600 14px var(--prose); color: var(--text); }
+@media (max-width: 1100px) { .search { width: auto; flex: 1; margin-left: 0; } .project { display: none; } }
