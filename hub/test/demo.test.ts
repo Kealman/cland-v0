@@ -13,7 +13,7 @@ import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 
 test('demo frames deliver a named dev commit, preserve command results and stop after restart', async t => {
-  const { root, api, env, discovery, ui } = await fixture(t);
+  const { root, api, env, discovery, ui, syntheticProvider } = await fixture(t);
   const configPath = join(root, '.cland/config.toml');
   const config = parseConfig(await readFile(configPath, 'utf8'), 'demo commands');
   const commands = { prepare: 'printf admitted-prepare', check: 'printf admitted-check', test: 'printf admitted-test' };
@@ -47,7 +47,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   const cli = await clandWithEnv(root, {}, 'demo', 'exec', epic, '--', 'printf', 'a b');
   assert.equal(cli.code, 0, cli.stderr); assert.equal(cli.stdout, 'a b');
   await killDaemon(discovery.pid);
-  const restarted = await startDaemon(t, root, env);
+  const restarted = await startDaemon(t, root, env, { syntheticProvider });
   const next = await connectUi(t, restarted.discovery);
   assert.deepEqual((await readLease(dir)).demo?.commands, pinned);
   const stopped = await next.request({ type: 'demo.stop', epic });

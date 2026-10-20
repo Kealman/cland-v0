@@ -18,6 +18,7 @@ import { fakeDigitalOcean } from './fakes/digitalocean/fake-api.ts';
 import { prepareKey, keyHash } from '../src/executor/droplet/prepare.ts';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { syntheticProviderEnvironment } from './synthetic-provider.ts';
+import { scratchGitEnvironment } from './fixture-environment.ts';
 import { fixtureGuard } from './fixture-guard.ts';
 
 const exec = promisify(execFile);
@@ -32,7 +33,7 @@ export function remoteEventually<T>(what: string, check: () => Promise<T | undef
   return eventually(what, check, remoteWaitMs(baseMs));
 }
 /** Scripted machines share the supplied hub clock; process machines keep real time. */
-export async function fixture(t: TestContext, options: FixtureStack & { devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository; git?: import('../src/tracker/verdict-git.ts').Git; machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
+export async function fixture(t: TestContext, options: FixtureStack & { devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository; git?: import('../src/tracker/verdict-git.ts').Git; machine?: 'scripted' | 'process'; clock?: FakeClock; script?: MachineScript; territory?: boolean; hub?: typeof projectHub | typeof startDaemon; typecheck?: string | undefined; test?: string | undefined; executor?: 'local' | 'droplet'; config?: string; gitExcludes?: string; env?: Record<string, string>; name?: string; api?: Awaited<ReturnType<typeof fakeDigitalOcean>> } = {}) {
   const embedded = options.hub !== undefined && options.hub !== startDaemon;
   const scripted = options.machine === 'scripted';
   const root = await tempProject(t, 'remote-run-');
@@ -136,7 +137,15 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
   };
   const syntheticProvider = { token, endpoint: api.url } as const;
   const scriptedProvider = { token, api: api.provider } as const;
-  const env = syntheticProviderEnvironment(await accountFixtureEnvironment(overrides), scripted ? scriptedProvider : syntheticProvider, dependencies.api) as Record<string, string> & { PATH: string };
+  // A named setting exercises Git config injection without admitting arbitrary GIT_* extras.
+  const scratchGitConfig = options.gitExcludes === undefined ? undefined : { excludesFile: join(root, '.cland/fixture-git-excludes') };
+  if (scratchGitConfig) {
+    assert.ok(embedded && !scripted, 'scratch Git excludes require the native embedded hub');
+    await writeFile(scratchGitConfig.excludesFile, options.gitExcludes!);
+  }
+  const sealed = await accountFixtureEnvironment(overrides);
+  const gitEnv = scratchGitConfig ? scratchGitEnvironment(root, sealed, scratchGitConfig) : sealed;
+  const env = syntheticProviderEnvironment(gitEnv, scripted ? scriptedProvider : syntheticProvider, dependencies.api) as Record<string, string> & { PATH: string };
   const probes = {
     syntheticProvider: scriptedProvider,
     // Scripted hubs cannot inspect historical Git objects without explicit repository facts.
@@ -153,7 +162,7 @@ export async function fixture(t: TestContext, options: FixtureStack & { devT3Rep
     }),
     readBase: async () => 'dev',
   };
-  const daemon = scripted ? await projectHub(t, root, env, probes) : await (options.hub ?? startDaemon)(t, root, env, { syntheticProvider });
+  const daemon = scripted ? await projectHub(t, root, env, probes) : await (options.hub ?? startDaemon)(t, root, env, { syntheticProvider, ...(scratchGitConfig ? { scratchGitConfig } : {}) });
   if ('stop' in daemon) stopHub = daemon.stop;
   const ui = await connectUi(t, daemon.discovery);
   assert.equal((await ui.request({ type: 'role.set', session: 'impl', role: 'implementer' })).ok, true);

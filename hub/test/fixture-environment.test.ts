@@ -1,7 +1,7 @@
 // T1: pure child-environment construction, no processes or machine state.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fixtureEnvironment, scratchAccountEnvironment } from './fixture-environment.ts';
+import { fixtureEnvironment, scratchAccountEnvironment, scratchGitEnvironment } from './fixture-environment.ts';
 import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
 import type { Provider } from '../src/executor/droplet/dependencies.ts';
 
@@ -14,11 +14,16 @@ test('shared fixture environments seal poisoned parent and overlay credentials a
     'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'GOOGLE_APPLICATION_CREDENTIALS', 'GEMINI_API_KEY', 'GITHUB_TOKEN', 'GH_TOKEN',
     'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'SSH_ASKPASS', 'NPM_CONFIG_USERCONFIG', 'npm_config_userconfig', 'NPM_CONFIG_GLOBALCONFIG', 'NPM_TOKEN', 'NODE_AUTH_TOKEN',
     'YARN_RC_FILENAME', 'PNPM_HOME', 'BASH_ENV', 'ENV', 'ZDOTDIR', 'KRB5CCNAME', 'GNUPGHOME',
-    'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'OPENCODE_DB', 'CLAND_EXECUTOR_STATE', 'GIT_AUTHOR_NAME',
+    'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'OPENCODE_DB', 'CLAND_EXECUTOR_STATE',
+    'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL',
   ].map(key => [key, 'poison']));
   const overlay = { ...poison };
   // Explicit scratch profile overrides are supported, as native account tests need them.
-  for (const key of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAND_EXECUTOR_STATE', 'GIT_AUTHOR_NAME']) delete overlay[key];
+  const identity = {
+    GIT_AUTHOR_NAME: 'Fixture Test', GIT_AUTHOR_EMAIL: 'fixture@example.test',
+    GIT_COMMITTER_NAME: 'Fixture Test', GIT_COMMITTER_EMAIL: 'fixture@example.test',
+  };
+  for (const key of ['XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAND_EXECUTOR_STATE', ...Object.keys(identity)]) delete overlay[key];
   const before = { ...poison };
   for (const extra of [{}, overlay]) {
     const env = fixtureEnvironment('/scratch', { ...poison, PATH: '/test-bin', NODE_V8_COVERAGE: '/coverage' }, extra);
@@ -27,9 +32,10 @@ test('shared fixture environments seal poisoned parent and overlay credentials a
       XDG_CONFIG_HOME: '/scratch/config', XDG_DATA_HOME: '/scratch/opencode', XDG_STATE_HOME: '/scratch/state', XDG_CACHE_HOME: '/scratch/cache',
       CODEX_HOME: '/scratch/codex', CLAUDE_CONFIG_DIR: '/scratch/claude', CLAND_EXECUTOR_STATE: '/scratch/executor-state',
       PATH: '/test-bin', NODE_V8_COVERAGE: '/coverage',
+      ...identity,
     })) assert.ok(env[key] === expected, key);
     for (const key of Object.keys(poison)) {
-      if (!['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'GIT_CONFIG_GLOBAL', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAND_EXECUTOR_STATE'].includes(key)) assert.ok(!(key in env), key);
+      if (!['HOME', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME', 'GIT_CONFIG_GLOBAL', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR', 'CLAND_EXECUTOR_STATE', ...Object.keys(identity)].includes(key)) assert.ok(!(key in env), key);
     }
   }
   assert.ok(Object.keys(poison).every(key => poison[key] === before[key]), 'parent is unchanged');
@@ -62,4 +68,18 @@ test('synthetic provider credentials require a sentinel and an isolated transpor
   assert.throws(() => syntheticProviderEnvironment(base, { token: 'poison' as SyntheticProvider['token'], endpoint }), /sentinel token/);
   assert.throws(() => syntheticProviderEnvironment(base, { token, api }), /injected fake API/);
   assert.throws(() => syntheticProviderEnvironment(base, { token, api }, {} as Provider), /injected fake API/);
+});
+
+test('deliberate Git excludes stay under the disposable project without opening config overlays', () => {
+  const base = fixtureEnvironment('/scratch', { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'credential.helper', GIT_CONFIG_VALUE_0: 'poison' });
+  const env = scratchGitEnvironment('/scratch/project', base, { excludesFile: '/scratch/project/excludes' });
+  assert.equal(env.GIT_CONFIG_COUNT, '1');
+  assert.equal(env.GIT_CONFIG_KEY_0, 'core.excludesFile');
+  assert.equal(env.GIT_CONFIG_VALUE_0, '/scratch/project/excludes');
+  assert.equal(env.GIT_CONFIG_GLOBAL, '/scratch/home/.gitconfig');
+  assert.equal(env.GIT_COMMITTER_EMAIL, 'fixture@example.test');
+  assert.ok(!('GIT_CONFIG_COUNT' in base), 'sealed parent unchanged');
+  for (const excludesFile of ['/host', '../host', '/scratch/project/../../host', '/scratch/project-sibling']) {
+    assert.throws(() => scratchGitEnvironment('/scratch/project', base, { excludesFile }), /disposable project: excludesFile/);
+  }
 });

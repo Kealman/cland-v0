@@ -10,7 +10,7 @@ export { until, testWaitMs } from './until.ts';
 // Nothing here reaches into either side's state; everything goes through the seams.
 import { ensureAccountFixture, accountFixtureEnvironment } from './account-fixture-env.ts';
 import { syntheticProviderEnvironment, type SyntheticProvider } from './synthetic-provider.ts';
-import { scratchAccountEnvironment, type ScratchAccountPaths } from './fixture-environment.ts';
+import { scratchAccountEnvironment, type ScratchAccountPaths, scratchGitEnvironment, type ScratchGitConfig } from './fixture-environment.ts';
 import { execFile } from 'node:child_process';
 import { clandCliLaunch } from './tier-cli.ts';
 import assert from 'node:assert/strict';
@@ -397,6 +397,7 @@ export async function isolateVerification(root: string): Promise<void> {
 export type ProjectHubOptions = {
   syntheticProvider?: SyntheticProvider;
   scratchAccountPaths?: ScratchAccountPaths;
+  scratchGitConfig?: ScratchGitConfig;
   priorityProbe?: () => number;
   publishRelease?: import('../src/hub/dispatch.ts').DispatcherOptions['publishRelease'];
   devT3Repository?: import('../src/hub/dev-t3-probe.ts').ProbeRepository;
@@ -435,7 +436,8 @@ export async function projectHub(t: TestContext, root: string, extra: Record<str
   await isolateVerification(root);
   const sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', ...extra });
   const accountEnv = options.scratchAccountPaths ? scratchAccountEnvironment(root, sealed, options.scratchAccountPaths) : sealed;
-  const env = options.syntheticProvider ? syntheticProviderEnvironment(accountEnv, options.syntheticProvider, options.droplet?.api) : accountEnv;
+  const gitEnv = options.scratchGitConfig ? scratchGitEnvironment(root, accountEnv, options.scratchGitConfig) : accountEnv;
+  const env = options.syntheticProvider ? syntheticProviderEnvironment(gitEnv, options.syntheticProvider, options.droplet?.api) : gitEnv;
   const resources = hubResources();
   // The CLI redirects startup stderr into this file. Embedded hubs use the same
   // asynchronous sink explicitly, including its flush barrier for hub.status.

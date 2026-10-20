@@ -670,6 +670,9 @@ map, before/after file seconds and process-start call sites in the review eviden
 Rule 15: shared hub fixtures use `hub/test/fixture-environment.ts` to replace
 inherited HOME, XDG, account roots and Git configuration with worker-owned scratch
 paths. Git system/config injection and inherited identities are removed.
+The builder supplies `Fixture Test <fixture@example.test>` as both author and
+committer so commits, rebases and releases never depend on host identity detection.
+Tests may override these defaults with explicit synthetic Git identities in extras.
 Ambient SSH-agent, askpass, npm/yarn configuration and other credential-file
 handles are removed from both parent input and extras too.
 `accountFixtureEnvironment(extra)` admits the worker and applies that builder;
@@ -684,6 +687,14 @@ dependency for HOME fallback and a conflicting OpenCode database. Both paths
 must be absolute and contained in that fixture's disposable project. Ordinary
 HOME/OPENCODE_DB extras stay sealed; these explicit inputs preserve default,
 exclusion and restart assertions without exposing a machine account.
+Native Git contracts may supply `projectHub`'s typed `scratchGitConfig` with an
+`excludesFile` inside the disposable project. `scratchGitEnvironment` admits only
+that named `core.excludesFile` setting through `GIT_CONFIG_COUNT/KEY_0/VALUE_0`;
+arbitrary Git config extras remain filtered. The remote fixture's `gitExcludes`
+option writes that file inside its own project and reapplies the typed setting
+after sealing the hub environment. Provider fixtures must pass their typed
+`syntheticProvider` dependency again on daemon restart; env extras alone do not
+preserve its sentinel token.
 
 The pure T1 poisoned-parent/overlay test is `fixture-environment.test.ts`.
 `claude-code-accounts.test.ts` deliberately injects three synthetic auth variables

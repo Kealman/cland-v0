@@ -8,7 +8,7 @@ const credential = (key: string) => /^(DIGITALOCEAN_|DO_|OPENAI_|ANTHROPIC_|AWS_
 
 /** root is disposable and owned by the caller. Explicit profile/fake paths in
  * extra must also be scratch-owned. HOME and Git configuration cannot be overlaid.
- * Keep fixture identities explicit; never inherit a machine's Git identity. */
+ * Default to a synthetic Git identity; never inherit a machine's identity. */
 export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra: NodeJS.ProcessEnv = {}): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(base)) {
@@ -18,6 +18,8 @@ export function fixtureEnvironment(root: string, base: NodeJS.ProcessEnv, extra:
     XDG_CONFIG_HOME: join(root, 'config'), XDG_DATA_HOME: join(root, 'opencode'),
     XDG_STATE_HOME: join(root, 'state'), XDG_CACHE_HOME: join(root, 'cache'),
     CLAND_EXECUTOR_STATE: join(root, 'executor-state'),
+    GIT_AUTHOR_NAME: 'Fixture Test', GIT_AUTHOR_EMAIL: 'fixture@example.test',
+    GIT_COMMITTER_NAME: 'Fixture Test', GIT_COMMITTER_EMAIL: 'fixture@example.test',
     CLAUDE_CONFIG_DIR: join(root, 'claude'), CODEX_HOME: join(root, 'codex'),
     FAKE_CLAUDE_HOME: join(root, 'fake-claude'), FAKE_CODEX_HOME: join(root, 'fake-codex'), FAKE_OPENCODE_HOME: join(root, 'fake-opencode'),
   }, extra);
@@ -44,4 +46,13 @@ export function scratchAccountEnvironment(root: string, env: NodeJS.ProcessEnv, 
     extra[key] = path;
   }
   return withoutExecutorCredentials({ ...env, ...extra });
+}
+
+/** Only this scratch-owned Git setting may bypass the ordinary config filter. */
+export type ScratchGitConfig = { excludesFile: string };
+
+export function scratchGitEnvironment(root: string, env: NodeJS.ProcessEnv, config: ScratchGitConfig): NodeJS.ProcessEnv {
+  const within = relative(resolve(root), resolve(config.excludesFile));
+  if (!isAbsolute(config.excludesFile) || within === '..' || within.startsWith('../') || isAbsolute(within)) throw new Error('scratch Git config must belong to the disposable project: excludesFile');
+  return withoutExecutorCredentials({ ...env, GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesFile', GIT_CONFIG_VALUE_0: config.excludesFile });
 }

@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { nativeProjectHub as projectHub, cland, clandWithEnv, flushProjectLogs, tempProject, pidAlive } from '../harness.ts';
+import { nativeProjectHub as projectHub, cland, clandWithEnv, flushProjectLogs, pidAlive } from '../harness.ts';
 import { ownProcess } from '../process-cleanup.ts';
 import type { HubStatus } from '../../src/protocol.ts';
 import { fixture, remoteEventually as eventually, remoteWaitMs } from '../remote-fixture.ts';
@@ -21,12 +21,11 @@ const token = 'cland-test-remote-suite-token';
 test('remote verify delivers host selection, runs as runner, reports accounting, contains the token and caches across executors', async t => {
   const hostMargin = process.env.CLAND_TEST_EXECUTOR_MARGIN_MS;
   const gitEnv = { GIT_CONFIG_COUNT: process.env.GIT_CONFIG_COUNT, GIT_CONFIG_KEY_0: process.env.GIT_CONFIG_KEY_0, GIT_CONFIG_VALUE_0: process.env.GIT_CONFIG_VALUE_0 };
-  const excludes = join(await tempProject(t), 'git-excludes');
-  await writeFile(excludes, 'env-only-untracked\n');
   const f = await fixture(t, {
     hub: projectHub,
     config: 'lifetime = "3m"\nrun_timeout = "1m"\n',
-    env: { CLAND_TEST_EXECUTOR_MARGIN_MS: '1000', GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'core.excludesFile', GIT_CONFIG_VALUE_0: excludes },
+    gitExcludes: 'env-only-untracked\n',
+    env: { CLAND_TEST_EXECUTOR_MARGIN_MS: '1000' },
   });
   await writeFile(join(f.root, 'env-only-untracked'), 'ignored only by this hub');
   assert.match(await f.git('status', '--porcelain'), /env-only-untracked/);

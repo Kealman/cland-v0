@@ -3105,6 +3105,8 @@ Shared hub test launches use `test/fixture-environment.ts`, through
 `accountFixtureEnvironment(extra)` in the worker harness. They own scratch HOME,
 XDG/account paths and Git configuration, discard inherited Git overrides and
 identities, and filter provider/account credentials after the final overlay.
+The default Git author and committer are `Fixture Test <fixture@example.test>`;
+explicit synthetic identities in extras override those defaults.
 They also remove ambient SSH-agent/askpass and package-manager credential config
 handles. Account product tests use a separate `scratchAccountPaths` dependency
 for deliberate HOME/database inputs, validated inside the disposable project.
@@ -3115,6 +3117,11 @@ Fake-provider contracts opt in separately through the typed `syntheticProvider`
 fixture dependency or `clandWithProvider`: only `cland-test-…` sentinel tokens
 with an explicit HTTP loopback endpoint and port or the injected fake API qualify.
 Credential overlays in the normal builder remain filtered.
+Daemon restarts must pass the typed `syntheticProvider` dependency again.
+Native Git contracts use `projectHub`'s typed `scratchGitConfig.excludesFile`
+for a project-owned excludes file; the remote fixture's `gitExcludes` option
+creates it. Only `core.excludesFile` is admitted through inline Git config,
+and arbitrary `GIT_CONFIG_*` extras remain filtered.
 See [Fixtures](../docs/agents/tests.md#fixtures) for the T1 poisoned-parent proof
 and the deliberate synthetic-auth native adapter contract.
 
