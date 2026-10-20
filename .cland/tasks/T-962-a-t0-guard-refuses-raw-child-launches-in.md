@@ -2,8 +2,8 @@
 id: T-962
 kind: task
 title: A T0 guard refuses raw child launches in hub/test that inherit the environment without the sealed builder
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-735
 branch: t/T-962-a-t0-guard-refuses-raw-child-launches-in
 created: 2026-10-20T10:10:19.498Z
-updated: 2026-10-20T11:54:27.397Z
+updated: 2026-10-20T12:49:26.434Z
+closed: 2026-10-20T12:49:26.434Z
 ---
 
 ## Summary
@@ -36,12 +37,16 @@ Each finding is reported with file and line. Found by impl-961 and recorded as a
 ## Acceptance criteria
 
 - [x] C1. A scratch test that spawns with `env: process.env`, or with no env, fails the T0 check, naming the file and line.
-  - done: impl-962 · 2026-10-20T11:13:24.832Z
   - verified: rev-23 [reviewer] · run rev-20261020-962-source-corrected · 2026-10-20T11:38:36.157Z · commit 981943358ae1dd6e746084e14029f3a7334716b3
   - verified: rev-23 [reviewer] · run rev-20261020-962-source-integration-corrected · 2026-10-20T11:46:43.168Z · commit 80c8f983142ebbaf3843406589ae8ae9ee918dec
   - verified: rev-23 [reviewer] · run rev-20261020-962-final · 2026-10-20T11:54:27.397Z · commit 80c8f983142ebbaf3843406589ae8ae9ee918dec
-- [ ] C2. Every existing launch either uses the sealed builder or carries a listed exemption with a reason, and the evidence lists them.
-  - verified: rev-23 [reviewer] · run rev-20261020-962-final · 2026-10-20T11:54:27.397Z · commit 80c8f983142ebbaf3843406589ae8ae9ee918dec
+  - verified: rev-23 [reviewer] · run rev-20261020-962-merge-source · 2026-10-20T12:31:50.867Z · commit 6b0e990c11f213ffdff498c1616aeb914fb71153
+  - done: impl-962 · 2026-10-20T12:35:55.660Z
+  - verified: rev-23 [reviewer] · run rev-20261020-962-reserve-source · 2026-10-20T12:36:26.204Z · commit 483851f4269c182b2d71109a9b9dd58da658672a
+  - verified: rev-23 [reviewer] · run rev-20261020-962-merge-final · 2026-10-20T12:44:25.651Z · commit 483851f4269c182b2d71109a9b9dd58da658672a
+- [x] C2. Every existing launch either uses the sealed builder or carries a listed exemption with a reason, and the evidence lists them.
+  - done: impl-962 · 2026-10-20T12:35:56.461Z
+  - verified: rev-23 [reviewer] · run rev-20261020-962-merge-final · 2026-10-20T12:44:25.651Z · commit 483851f4269c182b2d71109a9b9dd58da658672a
 
 ## Comments
 
@@ -146,3 +151,75 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. A-7586 audits replacement A-7585/run 40d5b06d at exact source-cleared head: 2048/2048 ordinary tests; new isolation/writer identities each 5/5 load passes. All predecessor failing ledger/init/setup files now pass. C1 enforcing T0/refusal proof and C2 260-site reviewed inventory plus current T1/all-T2 integration established. Historical red f5b077eb/A-7573 (617 pass/23 fail) and A-7575 task-owned repairs retained; changed-head correction, not flaky retry. Linux T1/all-T2 includes Neovim; native T3/T4 deferred and prior local targets supplemental. Host check844b2a46 not repeated. Lint/budgets/ratchet report-only;11 missing baselines/incomplete timing not passes. No item QA.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-962 · 2026-10-20T12:27:42.689Z
+
+Coordinator-authorized dev merge pushed as 6b0e990c11f213ffdff498c1616aeb914fb71153. All T-964 identity/excludes/restart changes retained with T-962 runner controls; init machine's deliberate absent/configured Git identity contract preserved, red→green. Local targeted fixture5/release22/demo5/droplet4/init-wrapper1 pass; npm check passes (lint report-only131/59,0refusals); updated inventory260=181sealed+79exempt. Both C1/C2 claimant done marked. Fresh delta review requested; historical A-7585 gate is not current-head evidence.
+
+### rev-23 · 2026-10-20T12:31:50.867Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-962-merge-source
+commit: 6b0e990c11f213ffdff498c1616aeb914fb71153
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7637 reviews Coordinator-authorized merge 8463bd99: T-964 identity/typed excludes/provider restart and both fixture groups retained alongside T-962 runner filtering and directory preparation. Init machine clears only worker-default author/committer variables so original absent/configured identity assertions remain meaningful; ledger default repair retained. Guard source unchanged; A-7631 inventory 260 = 181 sealed + 79 exempt. A-7632 same-code local targeted checks and guard/T0 are supplemental; C1 current, C2 integration awaits fresh mode-free exact-head verify. Prior A-7585/A-7586 at 80c8f983 are historical, not coverage of this merge. No QA; Reviewer ran no tests.
+
+Criteria: C1 verified.
+
+### rev-23 · 2026-10-20T12:35:15.932Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261020-962-merge-evidence-red
+commit: 6b0e990c11f213ffdff498c1616aeb914fb71153
+scope: evidence
+findings: [{"severity":"medium","text":"The merged default Implementer clause exceeds its existing reply reserve: A-7639 reports 7684 bytes against the 7680-byte ceiling (512 bytes below the send cap). The T-962 guard paragraph remains additive to incoming clause changes, so the same-head T1 gate fails deterministically. Shorten the guidance or use a concise docs pointer while retaining the sealing requirement and the existing reserve/assertion; request fresh source review before verification.","file":"hub/src/roles/default-roles.ts","line":159}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Standards: medium default-roles.ts:159, merged Implementer guidance exceeds the existing reply reserve. A-7639 exact assertion: 'clause reply is 7684 bytes; reserve ceiling 7680 bytes'. Shorten guidance/use the docs pointer, retaining sealing semantics and reserve assertion. Spec: C1 guard source proof remains, but C2 integration fails. A-7640 audits c28b8066: 642 pass/1 fail ordinary tests, not the 653 completed counter including repetitions; Linux T1 exit 1, T2/Neovim not run, T3/T4 deferred. Host 712dd83d check not repeated; lint/budgets report-only. New source review required before replacement verify; no unchanged-head retry. Reviewer ran no tests.
+
+Criteria: C2 failed (Merged default Implementer clause is 7684 bytes above the 7680-byte reserve ceiling; exact-head T1 gate fails and T2/Neovim do not execute.).
+
+### rev-23 · 2026-10-20T12:36:26.204Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-962-reserve-source
+commit: 483851f4269c182b2d71109a9b9dd58da658672a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no remaining findings. Sole line default-roles.ts:159 is now the sealed-builder/docs pointer requested by Coordinator d381737c. Full guidance remains documented; reserve/cap/test and guard/runtime code unchanged. A-7644 local roles-clauses 27/27 and guard controls pass, rendered reply 7307 bytes (373-byte headroom). A-7645 source trace; C1 current, C2 awaits replacement exact-head mode-free verify. Retain deterministic red c28b8066/A-7639 and A-7640; prior gates historical. Reviewer ran no tests.
+
+Criteria: C1 verified.
+
+### impl-962 · 2026-10-20T12:44:02.770Z
+
+Current exact-head mode-free run d17566de-5637-4099-b928-43af3b149887 passed at483851f4269c182b2d71109a9b9dd58da658672a: A-7649 exit0, receipt2063passes/0failures. Host T0/check passed; Linux x64 droplet c-8 lon1 Node24.21.0/Neovim0.12.5, T1 and all-T2 fallback completed including Neovim; T3/T4 deferred. Lint/budgets/ratchet report-only,13missing baselines; timing projections are not wall times. Lifetime398s/cost$0.0277. Failed c28b8066/A-7639 retained alongside reserve repair A-7644/sourceclear A-7645. Awaiting same-head final reviewer verdict; both claimant done marks recorded.
+
+### rev-23 · 2026-10-20T12:44:25.651Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-962-merge-final
+commit: 483851f4269c182b2d71109a9b9dd58da658672a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7649/run d17566de passes 2063 ordinary tests and 328 files at exact source-clear head, Linux droplet T1/all-T2 including Neovim. Roles-clauses 27/27 now green; runner isolation and names-only writer each 5/5 load passes. C1 enforcing guard/controls and C2 260-site inventory plus replacement integration established. Final audit artifact retains c28b8066/A-7639 reserve red and A-7640, plus earlier ledger/directory history; correction changed the head, not a flaky retry. Host check ca2a6593 not repeated remotely; T3/T4 native coverage deferred, prior local targets supplemental. Lint/budgets/ratchet report-only, 13 missing baselines/incomplete timings not passes. No QA; Reviewer ran no tests.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T12:49:26.434Z
+
+Merged 9a76404c4cf1caceee86317c29cd54d2c344994a onto dev.
