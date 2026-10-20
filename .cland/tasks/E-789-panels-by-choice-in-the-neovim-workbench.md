@@ -3,6 +3,7 @@ id: E-789
 kind: epic
 title: Panels by choice in the Neovim workbench
 state: open
+criterion_seq: 3
 labels:
   - epic
   - v0.2
@@ -12,7 +13,7 @@ blocked_by: []
 topic: topic-774
 branch: null
 created: 2026-10-18T09:12:36.923Z
-updated: 2026-10-20T20:52:43.799Z
+updated: 2026-10-20T21:05:50.144Z
 ---
 
 ## Summary
@@ -27,9 +28,9 @@ The human asked on 2026-10-18 (General, ask 03c2a877, answered 09:12Z) to let th
 
 ## Definition of done
 
-- [ ] D1. Opening Sessions on the left and Items on the right from the palette works, and both keep their keys and live updates.
-- [ ] D2. The layout survives a workbench restart, and a reset command restores the default.
-- [ ] D3. Existing layout, width and focus tests stay green, and new headless-grid cases cover both sides.
+- [ ] C1. Opening Sessions on the left and Items on the right from the palette works, and both keep their keys and live updates.
+- [ ] C2. The layout survives a workbench restart, and a reset command restores the default.
+- [ ] C3. Existing layout, width and focus tests stay green, and new headless-grid cases cover both sides.
 
 ## Plan
 
