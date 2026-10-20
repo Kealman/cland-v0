@@ -3,19 +3,19 @@ id: T-973
 kind: task
 title: A test run flipped core.bare=true in the live repository (shared by all worktrees), breaking merge admission
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
   - bug
   - security
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: R-377
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T13:45:01.828Z
+updated: 2026-10-20T16:40:03.829Z
 ---
 
 ## Summary

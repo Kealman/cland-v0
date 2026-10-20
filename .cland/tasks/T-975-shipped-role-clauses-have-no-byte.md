@@ -3,18 +3,18 @@ id: T-975
 kind: task
 title: "Shipped role clauses have no byte headroom: trim them to pointers (or re-derive the reserve) before v0.2 adds clause lines"
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
-  - needs-triage
   - tech-debt
+  - ready-for-agent
 assignee: null
 parent: R-377
 blocked_by: []
-topic: null
-branch: null
+topic: topic-748
+branch: t/T-975-shipped-role-clauses-have-no-byte
 created: 2026-10-20T15:38:57.185Z
-updated: 2026-10-20T15:38:57.185Z
+updated: 2026-10-20T16:40:04.039Z
 ---
 
 ## Summary
