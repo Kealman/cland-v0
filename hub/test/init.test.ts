@@ -177,7 +177,7 @@ test('cland init on a repository with history: git status shows exactly the comm
   const agents = await readFile(join(root, 'AGENTS.md'), 'utf8');
   assert.match(agents, /^<!-- cland:begin managed by cland [^\n]*-->\n## cland\n/);
   assert.match(agents, /<!-- cland:end -->\n$/);
-  for (const rule of ['Obey hub events', '`cland task`', 'Show work through `artifact.create`', 'Sub-agents never use the hub', 'only `cland release` pushes to `github`']) assert.ok(agents.includes(rule), rule);
+  for (const rule of ['Obey hub events', '`cland task`', 'Show work through `artifact.create`', 'Sub-agents never use the hub', '`cland publish` is the only out-of-release push']) assert.ok(agents.includes(rule), rule);
 
   // committed files carry no machine path (the project's, the home folder, cland's own checkout)
   for (const f of expected) {

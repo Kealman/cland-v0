@@ -230,6 +230,8 @@
     "hub/test/project-layout.test.ts": "T1",
     "hub/test/project-probes.test.ts": "T2",
     "hub/test/prompt-races.test.ts": "T2",
+    "hub/test/publish-component.test.ts": "T2",
+    "hub/test/publish.test.ts": "T3",
     "hub/test/push-component.test.ts": "T2",
     "hub/test/push.test.ts": "T3",
     "hub/test/quarantine-runner.test.ts": "T3",

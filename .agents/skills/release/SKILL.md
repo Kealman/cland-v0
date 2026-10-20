@@ -1,6 +1,6 @@
 ---
 name: release
-description: Publish dev to GitHub with a version the human chooses, or recover a pending cland release.
+description: Release a human-chosen version, publish marketing commits outside a release, or recover pending publication.
 ---
 
 The Coordinator performs this skill from its own shell. **Never delegate a release to a sub-agent:** a sub-agent in the Coordinator's shell inherits its authority. The human may also run `cland release` from their own shell.
@@ -14,3 +14,14 @@ The Coordinator performs this skill from its own shell. **Never delegate a relea
 For a project without a release item, `cland release <chosen-version> [--dry-run]` retains the version-based flow: run the same applicable preflight check, preview the notes, ask for approval with a human-chosen version, then publish from your own shell. It does not comment on or close tracker items.
 
 `cland sync` fetches GitHub and prepares a replay of dev's unreleased commits. Finish any pending `cland merge` follow-up first: sync refuses to rewrite a merge whose checkout, item, claim or topic completion is still pending. A dirty root refuses; a conflict names the files and leaves the default branch, dev and the root untouched. Reconcile the conflicting work on dev, then retry. Sync publishes only to the local territory, never to GitHub. If it says `synced locally; follow-up failed`, preserve its receipt, repair the named obstruction, and retry sync; it finishes the same prepared replay.
+
+## Publish marketing without a release
+
+`cland publish` is the only out-of-release GitHub push. The Coordinator uses its own shell; the human may also run it. Use it **before merging** the marketing branch into dev. Keep the project root clean on `dev` and finish pending merge/release/sync follow-ups first.
+
+1. Run `cland publish <branch> --item T-n --dry-run`. It selects branch-only commits (`dev..<branch>`), excluding inherited unreleased dev commits. Every path in every commit must match `[publish] allow_paths` in `.cland/config.toml` (exact paths or `directory/**` prefixes). The default permits site, brand docs, README, LICENSE and the Pages workflow. Mixed commits and merge commits refuse the whole operation; prepare a linear marketing branch instead. Never broaden the allow-list just to pass unrelated product work.
+2. Share the preview's source, commits, paths and resulting GitHub/dev tips through `artifact.create` in the item's topic. Ask the human through `ask`, with `free: true`, to approve this exact publication. Wait for approval, as for a release. If the source, dev, GitHub tips or configuration changes, preview and ask again.
+3. Run `cland publish <branch> --item T-n`. It cherry-picks onto GitHub's default branch, atomically fast-forwards that branch and `site` to one tip, merges both the source branch and public tip into dev, and syncs local refs and the territory. This sync preserves existing dev ancestry (D59); it does not replay open lanes. The hub comments the public and dev tips on the item and leaves it open. Commit that tracker change on root dev and use `cland push` to publish it to the territory.
+4. If publication reports a failed follow-up or loses its push reply, preserve `.cland/publish.tmp`, repair the named obstruction and retry the same branch and item. The receipt pins the original tips; an unpublished retry must still satisfy the current allow-list. Once GitHub already has both tips, local-only recovery can finish after a policy change. Recovery never adds a second public history or duplicate tracker comment. Pending publication blocks release, ordinary sync, push, merge and offline tracker migration until recovered. A pre-push conflict leaves public and local refs untouched.
+
+Publish creates no version or tag and makes no GitHub API calls. Ordinary `cland sync` retains its replay behavior; use publish's integrated sync for this marketing flow.

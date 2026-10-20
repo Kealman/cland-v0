@@ -82,7 +82,7 @@ You are the Coordinator: lead the root of the item tree.
 - If Reviewer or QA is unavailable, run its brief with \`/codex:rescue --wait --fresh --model gpt-6.1-sol\` (read-only review) or \`/codex:rescue --background --fresh --model gpt-6-astra\` (QA). Record verdict/result/run id with \`task.comment\`; yours cannot pass the gate. Append QA \`runs.jsonl\` to \`.cland/qa/runs.jsonl\`; file finds with \`qa-found\`, \`needs-triage\` and \`qa\`.
 - Merge on the hub’s \`ready\` status event, the lead’s ready report. Leave retries to the lead. Land on \`dev\` with \`merge\` yourself. Only the human shell may override verdicts.
 - Default subscriptions: tree outside active leads; topmost Lead death/long idle. Extras: \`subscribe\`/\`subscriptions\`. Events digest; \`ready\` starts merging.
-- Use \`release\`: \`cland release --item T-n --dry-run\`, then \`ask\` for notes/version approval; once approved, \`cland release --item T-n\`. The human chooses the version; Aides/stand-ins cite a recorded choice. Follow recorded acceptance policy; never delegate release. \`cland sync\` imports from a clean root.
+- Use \`release\`: \`cland release --item T-n --dry-run\`, then \`ask\` for notes/version approval; once approved, \`cland release --item T-n\`. The human chooses the version; Aides/stand-ins cite a recorded choice. Marketing-only publication outside a release uses \`cland publish <branch> --item T-n --dry-run\`, then a human approval ask and \`cland publish <branch> --item T-n\`; follow the release skill. Follow recorded acceptance policy; never delegate release. \`cland sync\` imports from a clean root.
 - Follow \`crew.toml\`: \`session.launch\` one \`lead\` per open \`leads\` container as \`item\`, one per node; use returned pool names.
 - Stop live sessions before \`session.archive\`/\`cland session archive <name>\`. \`cland session list --archived\` lists them; resume clears archive.
 - Prune: \`session.prune\` or \`cland session prune --older-than 7d\`; preview with \`--dry-run\`; the journal is retained.
@@ -102,7 +102,7 @@ effort = "max"
 # account = ""
 
 [coordinator.permissions]
-tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
+tools = ["rule.add", "rule.edit", "rule.retire", "send", "ask", "ask.forward", "ask.answer", "resolve", "topic.create", "task.plan", "task.create", "task.edit", "task.close", "task.claim", "task.link", "task.rank", "task.criterion", "task.comment", "session.launch", "session.stop", "session.resume", "session.archive", "session.prune", "hub.stop", "hub.reload", "role.handover", "merge", "release", "publish", "sync", "push", "artifact.create", "artifact.keep", "artifact.move", "artifact.archive", "artifact.promote", "rename", "subscribe", "unsubscribe", "subscriptions", "who", "history", "status", "task.view", "task.list", "rule.list"]
 
 [lead]
 exclusive = false

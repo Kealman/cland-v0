@@ -1,3 +1,4 @@
+import { publishGit, clearPublishReceipt, type PublishResult } from '../territory-publish.ts';
 import { pushDev, PushError, type PushResult } from '../territory-push.ts';
 import type { Actor, Tracker } from '../tracker/tracker.ts';
 import { ReleaseError, type ReleaseResult } from '../release.ts';
@@ -35,6 +36,37 @@ export class Releases {
   readonly #lock: typeof withTerritoryLockAsync;
   readonly requireT3: ((head: string, tree: string) => void) | undefined;
   constructor(tracker: Tracker, worktrees: TaskWorktrees, log: LogFn, env: NodeJS.ProcessEnv = process.env, requireT3?: (head: string, tree: string) => void, boundary: { publish?: typeof releaseGit; lock?: typeof withTerritoryLockAsync } = {}) { this.#publish = boundary.publish ?? releaseGit; this.#lock = boundary.lock ?? withTerritoryLockAsync; this.requireT3 = requireT3; this.#env = env; this.tracker = tracker; this.worktrees = worktrees; this.log = log; }
+
+  publish(branch: string, item: string, dryRun: boolean, allowPaths: string[], resumed: Resumed, authorize: () => void, actor: Actor): Promise<PublishResult> {
+    return this.worktrees.serial(async () => {
+      let published: PublishResult | undefined;
+      try {
+        const result = await this.#lock(this.tracker.root, async () => {
+          resumed(authorize);
+          for (const entry of this.tracker.list()) {
+            const receipt = this.tracker.mergeReceipt(entry.id);
+            if (!receipt) continue;
+            if (receipt.checkout || ((entry.state !== 'closed' || entry.claim) && await landedTask(this.tracker.root, entry.id, receipt, resumed, undefined, this.#env))) throw new Error(`publish-state: finish pending cland merge ${entry.id} first`);
+          }
+          // Validate the audit destination before anything can reach GitHub.
+          const view = await this.tracker.viewAsync(item, resumed);
+          const result = await publishGit(this.tracker.root, branch, view.id, dryRun, allowPaths, resumed, authorize, this.#env);
+          if (!dryRun) published = result;
+          if (!dryRun && !result.followUp) {
+            const text = `Published marketing ${branch} at ${result.main} (GitHub default branch and site); dev ${result.dev}.`;
+            if (!view.comments.some(comment => comment.text === text)) await this.tracker.comment(actor, view.id, text, undefined, resumed, () => { authorize(); return actor; });
+          }
+          resumed(() => this.log({ event: dryRun ? 'publish-preview' : 'marketing-published', ...result }));
+          return result;
+        }, resumed);
+        if (!dryRun && !result.followUp) await clearPublishReceipt(this.tracker.root);
+        return result;
+      } catch (err) {
+        if (published) return { ...published, followUp: published.followUp ?? { step: 'record', error: `published; follow-up failed: ${String(err)}; retry the same branch and item` } };
+        throw err;
+      }
+    });
+  }
 
   push(resumed: Resumed, authorize: () => void): Promise<PushResult> {
     let published: PushResult | undefined;

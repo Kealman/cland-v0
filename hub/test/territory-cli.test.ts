@@ -225,7 +225,7 @@ test('init redirects origin locally, preserves GitHub and upstreams, seeds main/
   assert.equal(git(root, 'symbolic-ref', 'refs/remotes/origin/HEAD'), 'refs/remotes/origin/dev');
   assert.equal(git(root, 'rev-parse', 'origin/dev'), git(root, 'rev-parse', 'dev'));
   assert.equal(git(github, 'show-ref'), before);
-  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /only `cland release` pushes to `github`/);
+  assert.match(await readFile(join(root, 'AGENTS.md'), 'utf8'), /`cland publish` is the only out-of-release push/);
   const again = (await init(root)).filter((c) => c.path.startsWith('.cland/territory.git'));
   assert.ok(again.length >= 6);
   assert.ok(again.every((c) => c.action === 'unchanged'), JSON.stringify(again));
@@ -385,7 +385,7 @@ test('projects without a remote get only origin; non-Git folders get a first com
   assert.equal(git(folder, 'ls-tree', '--name-only', 'HEAD', '--', 'README.md'), '');
   assert.equal(git(folder, 'status', '--porcelain'), '?? README.md');
   const agents = await readFile(join(folder, 'AGENTS.md'), 'utf8');
-  assert.match(agents, /Only cland release pushes to GitHub/);
+  assert.match(agents, /Publish to GitHub through cland/);
   ok(await captureCli(write => runUpdate([], folder, write)));
   assert.equal(await readFile(join(folder, 'AGENTS.md'), 'utf8'), agents);
 });
@@ -422,9 +422,9 @@ test('update refreshes territory instructions but leaves a Git project without a
   const { root } = await fixture(t);
   await init(root);
   const agentsPath = join(root, 'AGENTS.md');
-  await writeFile(agentsPath, (await readFile(agentsPath, 'utf8')).replace('only `cland release` pushes to `github`', 'old rule'));
+  await writeFile(agentsPath, (await readFile(agentsPath, 'utf8')).replace('`cland publish` is the only out-of-release push', 'old rule'));
   ok(await captureCli(write => runUpdate([], root, write)));
-  assert.match(await readFile(agentsPath, 'utf8'), /only `cland release` pushes to `github`/);
+  assert.match(await readFile(agentsPath, 'utf8'), /`cland publish` is the only out-of-release push/);
   await init(root, '--undo');
   ok(await captureCli(write => runUpdate([], root, write)));
   assert.match(await readFile(agentsPath, 'utf8'), /Push to GitHub only on the Coordinator/);

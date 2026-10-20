@@ -11,32 +11,34 @@ import { ReleaseError, type ReleaseResult, type SyncResult } from './release.ts'
 import type { Resumed } from './hub/worktrees.ts';
 import { isSemverVersion } from './tracker/item.ts';
 
+type RunGit = typeof git;
+
 type Receipt = { version: string; commit: string; main: string; tag: string; notes: string; github: string; item?: string };
 // Keep receipt `main` as the default branch tip so older recovery files still resume.
-const releaseBranch = async (root: string, env: NodeJS.ProcessEnv): Promise<string> => {
-  const recorded = await git(territoryPath(root), ['config', '--get', 'cland.defaultBranch'], undefined, undefined, env).catch(() => '');
+const releaseBranch = async (root: string, env: NodeJS.ProcessEnv, run: RunGit = git): Promise<string> => {
+  const recorded = await run(territoryPath(root), ['config', '--get', 'cland.defaultBranch'], undefined, undefined, env).catch(() => '');
   return defaultBranch(root, new Map([['cland.defaultbranch', recorded]]));
 };
 const receiptPath = (root: string) => join(root, '.cland', 'release.tmp');
-const ref = (root: string, name: string, env: NodeJS.ProcessEnv = process.env) => git(root, ['rev-parse', '--verify', '--quiet', name], undefined, undefined, env).catch(() => null);
+const ref = (root: string, name: string, env: NodeJS.ProcessEnv = process.env, run: RunGit = git) => run(root, ['rev-parse', '--verify', '--quiet', name], undefined, undefined, env).catch(() => null);
 const ancestor = (root: string, older: string, newer: string, env: NodeJS.ProcessEnv = process.env) => git(root, ['merge-base', '--is-ancestor', older, newer], undefined, undefined, env).then(() => true, () => false);
 
 /** No Git operation in progress, no linked checkout of the default branch, and a managed local territory. */
-export async function releaseState(root: string, resumed: Resumed, env: NodeJS.ProcessEnv = process.env): Promise<{ main: string; dev: string }> {
-  if (!await hasTerritory(root, env)) throw new ReleaseError('release-territory', 'this project has no managed territory');
+export async function releaseState(root: string, resumed: Resumed, env: NodeJS.ProcessEnv = process.env, run: RunGit = git): Promise<{ main: string; dev: string }> {
+  if (!await hasTerritory(root, env, run)) throw new ReleaseError('release-territory', 'this project has no managed territory');
   const states = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer'];
-  const paths = (await git(root, ['rev-parse', ...states.flatMap(state => ['--git-path', state])], undefined, undefined, env)).split('\n');
+  const paths = (await run(root, ['rev-parse', ...states.flatMap(state => ['--git-path', state])], undefined, undefined, env)).split('\n');
   for (const [index, state] of states.entries()) {
     // A Git directory can contain a newline. Keep the original single-path
     // behavior when the batch's line boundaries are ambiguous.
-    const path = paths.length === states.length ? paths[index]!.trim() : await git(root, ['rev-parse', '--git-path', state], undefined, undefined, env);
+    const path = paths.length === states.length ? paths[index]!.trim() : await run(root, ['rev-parse', '--git-path', state], undefined, undefined, env);
     const present = await access(resolve(root, path)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
     resumed(() => { if (present) throw new ReleaseError('release-state', `${state} is in progress; finish or abort it first`); });
   }
-  const primary = await releaseBranch(root, env);
-  const main = await ref(root, `refs/heads/${primary}`, env);
-  const dev = await ref(root, 'refs/heads/dev', env);
-  const checkouts = await git(root, ['worktree', 'list', '--porcelain', '-z'], undefined, undefined, env);
+  const primary = await releaseBranch(root, env, run);
+  const main = await ref(root, `refs/heads/${primary}`, env, run);
+  const dev = await ref(root, 'refs/heads/dev', env, run);
+  const checkouts = await run(root, ['worktree', 'list', '--porcelain', '-z'], undefined, undefined, env);
   return resumed(() => {
     if (!main || !dev) throw new ReleaseError('release-state', `${primary} and dev must both exist`);
     if (checkouts.split('\0').includes(`branch refs/heads/${primary}`)) throw new ReleaseError('release-state', `${primary} is checked out; use dev in the project root and free ${primary} in other worktrees`);
@@ -45,15 +47,15 @@ export async function releaseState(root: string, resumed: Resumed, env: NodeJS.P
 }
 
 /** Fetch objects without moving local or remote-tracking refs, including on a refusal or dry run. */
-export async function fetchGithub(root: string, resumed: Resumed, publishing = false, env: NodeJS.ProcessEnv = process.env): Promise<{ url: string; main: string; tags: Map<string, string> }> {
-  const primary = await releaseBranch(root, env);
-  const urls = await git(root, ['remote', 'get-url', ...(publishing ? ['--push', '--all'] : []), 'github'], undefined, undefined, env).catch(() => null);
+export async function fetchGithub(root: string, resumed: Resumed, publishing = false, env: NodeJS.ProcessEnv = process.env, run: RunGit = git): Promise<{ url: string; main: string; tags: Map<string, string> }> {
+  const primary = await releaseBranch(root, env, run);
+  const urls = await run(root, ['remote', 'get-url', ...(publishing ? ['--push', '--all'] : []), 'github'], undefined, undefined, env).catch(() => null);
   const url = resumed(() => {
     if (publishing && urls?.includes('\n')) throw new ReleaseError('release-github', 'release needs exactly one push destination for its atomic transaction');
     if (!urls) throw new ReleaseError('release-github', 'no github remote; configure it before releasing or syncing');
     return urls;
   });
-  const refs = await git(root, ['ls-remote', '--refs', '--', url, `refs/heads/${primary}`, 'refs/tags/*'], undefined, undefined, env);
+  const refs = await run(root, ['ls-remote', '--refs', '--', url, `refs/heads/${primary}`, 'refs/tags/*'], undefined, undefined, env);
   const { found, main } = resumed(() => {
     const found = new Map(refs.split('\n').filter(Boolean).map(line => {
       const [sha, name] = line.split(/\s+/); return [name!, sha!];
@@ -62,7 +64,7 @@ export async function fetchGithub(root: string, resumed: Resumed, publishing = f
     if (!sha) throw new ReleaseError('release-github', `github has no ${primary} branch`);
     return { found, main: sha };
   });
-  await git(root, ['fetch', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', url, main], undefined, undefined, env);
+  await run(root, ['fetch', '--no-tags', '--no-write-fetch-head', '--refmap=', '--', url, main], undefined, undefined, env);
   return resumed(() => ({ url, main, tags: found }));
 }
 
@@ -95,6 +97,7 @@ async function finish(root: string, receipt: Receipt, resumed: Resumed, env: Nod
 export const clearPublicationReceipt = (root: string, kind: 'release' | 'sync'): Promise<void> => rm(kind === 'release' ? receiptPath(root) : syncReceiptPath(root), { force: true });
 
 export async function releaseGit(root: string, version: string | undefined, dryRun: boolean, title: (id: string) => Promise<string | null>, resumed: Resumed, authorize: () => void, itemRelease?: { item: string; notesPrefix: string }, env: NodeJS.ProcessEnv = process.env, requireT3?: (head: string, tree: string) => void): Promise<ReleaseResult> {
+  if (await access(join(root, '.cland', 'publish.tmp')).then(() => true, err => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; })) throw new ReleaseError('release-state', 'finish pending cland publish first');
   const pendingSync = await access(syncReceiptPath(root)).then(() => true, err => resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; }));
   resumed(() => { if (pendingSync) throw new ReleaseError('sync-recovery', 'finish the pending cland sync before releasing'); });
   const primary = await releaseBranch(root, env);
@@ -197,47 +200,47 @@ export async function releaseGit(root: string, version: string | undefined, dryR
   catch (err) { return resumed(() => ({ ...result(receipt), followUp: { step: 'local refs', error: `released; follow-up failed: ${err instanceof Error ? err.message : String(err)}` } })); }
 }
 
-type SyncReceipt = { oldMain: string; oldDev: string; main: string; dev: string; territoryMain: string | null; territoryDev: string | null };
+export type SyncReceipt = { oldMain: string; oldDev: string; main: string; dev: string; territoryMain: string | null; territoryDev: string | null };
 const syncReceiptPath = (root: string) => join(root, '.cland', 'sync.tmp');
 
-async function finishSync(root: string, receipt: SyncReceipt, resumed: Resumed, authorize: () => void, env: NodeJS.ProcessEnv = process.env): Promise<SyncResult> {
-  const primary = await releaseBranch(root, env);
-  const main = await ref(root, `refs/heads/${primary}`, env);
-  const dev = await ref(root, 'refs/heads/dev', env);
-  const branch = await git(root, ['symbolic-ref', '--quiet', 'HEAD'], undefined, undefined, env);
-  const index = await git(root, ['write-tree'], undefined, undefined, env);
-  const oldTree = await git(root, ['rev-parse', `${receipt.oldDev}^{tree}`], undefined, undefined, env);
-  const newTree = await git(root, ['rev-parse', `${receipt.dev}^{tree}`], undefined, undefined, env);
-  const changed = await git(root, ['diff-files', '--name-only'], undefined, undefined, env);
-  const untracked = await git(root, ['ls-files', '--others', '--exclude-standard'], undefined, undefined, env);
+export async function finishSync(root: string, receipt: SyncReceipt, resumed: Resumed, authorize: () => void, env: NodeJS.ProcessEnv = process.env, run: RunGit = git): Promise<SyncResult> {
+  const primary = await releaseBranch(root, env, run);
+  const main = await ref(root, `refs/heads/${primary}`, env, run);
+  const dev = await ref(root, 'refs/heads/dev', env, run);
+  const branch = await run(root, ['symbolic-ref', '--quiet', 'HEAD'], undefined, undefined, env);
+  const index = await run(root, ['write-tree'], undefined, undefined, env);
+  const oldTree = await run(root, ['rev-parse', `${receipt.oldDev}^{tree}`], undefined, undefined, env);
+  const newTree = await run(root, ['rev-parse', `${receipt.dev}^{tree}`], undefined, undefined, env);
+  const changed = await run(root, ['diff-files', '--name-only'], undefined, undefined, env);
+  const untracked = await run(root, ['ls-files', '--others', '--exclude-standard'], undefined, undefined, env);
   resumed(() => {
     authorize();
     if (branch !== 'refs/heads/dev' || !((main === receipt.oldMain && dev === receipt.oldDev) || (main === receipt.main && dev === receipt.dev))) throw new ReleaseError('sync-recovery', 'refs or the root checkout changed since sync preparation; preserve sync.tmp and reconcile them');
     if ((index !== oldTree && index !== newTree) || changed || untracked) throw new ReleaseError('sync-recovery', 'the root changed since sync preparation; preserve its work and sync.tmp before retrying');
   });
   if (index !== newTree) {
-    await git(root, ['read-tree', '-u', '-m', receipt.oldDev, receipt.dev], true, undefined, env);
+    await run(root, ['read-tree', '-u', '-m', receipt.oldDev, receipt.dev], true, undefined, env);
   }
   if (main !== receipt.main || dev !== receipt.dev) {
     try {
       if (index !== newTree) resumed(authorize);
-      await git(root, ['update-ref', '--stdin'], true, `start\nupdate refs/heads/${primary} ${receipt.main} ${main}\nupdate refs/heads/dev ${receipt.dev} ${dev}\nprepare\ncommit\n`, env);
+      await run(root, ['update-ref', '--stdin'], true, `start\nupdate refs/heads/${primary} ${receipt.main} ${main}\nupdate refs/heads/dev ${receipt.dev} ${dev}\nprepare\ncommit\n`, env);
     } catch (err) {
       // Both refs are atomic. Restore the clean checkout if their transaction was refused.
-      try { await git(root, ['read-tree', '-u', '-m', receipt.dev, receipt.oldDev], true, undefined, env); }
+      try { await run(root, ['read-tree', '-u', '-m', receipt.dev, receipt.oldDev], true, undefined, env); }
       catch { throw new ReleaseError('sync-recovery', `checkout restoration pending; retry sync with sync.tmp intact: ${err instanceof Error ? err.message : String(err)}`); }
       throw err;
     }
   }
   try {
     const territory = territoryPath(root);
-    const territoryMain = await ref(territory, `refs/heads/${primary}`, env);
-    const territoryDev = await ref(territory, 'refs/heads/dev', env);
+    const territoryMain = await ref(territory, `refs/heads/${primary}`, env, run);
+    const territoryDev = await ref(territory, 'refs/heads/dev', env, run);
     resumed(() => {
       if ((territoryMain !== receipt.territoryMain && territoryMain !== receipt.main) || (territoryDev !== receipt.territoryDev && territoryDev !== receipt.dev)) throw new ReleaseError('sync-recovery', 'territory refs changed since preparation; preserve sync.tmp and reconcile them');
       authorize();
     });
-    await git(root, ['push', '--atomic', `--force-with-lease=refs/heads/dev:${territoryDev ?? ''}`, `--force-with-lease=refs/heads/${primary}:${territoryMain ?? ''}`, territory,
+    await run(root, ['push', '--atomic', `--force-with-lease=refs/heads/dev:${territoryDev ?? ''}`, `--force-with-lease=refs/heads/${primary}:${territoryMain ?? ''}`, territory,
       `${receipt.main}:refs/heads/${primary}`, `${receipt.dev}:refs/heads/dev`], true, undefined, env);
     return resumed(() => ({ main: receipt.main, dev: receipt.dev }));
   } catch (err) {
@@ -247,6 +250,7 @@ async function finishSync(root: string, receipt: SyncReceipt, resumed: Resumed, 
 
 /** Prepare the replay in an isolated checkout, then install its tree and refs in the clean dev root. */
 export async function syncGit(root: string, resumed: Resumed, authorize: () => void, env: NodeJS.ProcessEnv = process.env): Promise<SyncResult> {
+  if (await access(join(root, '.cland', 'publish.tmp')).then(() => true, err => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; })) throw new ReleaseError('release-state', 'finish pending cland publish first');
   const primary = await releaseBranch(root, env);
   const state = await releaseState(root, resumed, env);
   resumed(authorize);

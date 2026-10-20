@@ -200,6 +200,12 @@ switch (command) {
     }
     catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
     break;
+  case 'publish':
+    try {
+      const { runPublish } = await import('../src/cli/publish.ts');
+      process.exitCode = await runPublish(rest);
+    } catch (err) { process.stderr.write(`cland: ${err instanceof Error ? err.message : String(err)}\n`); process.exitCode = 1; }
+    break;
   case 'release':
     try {
       const { runRelease } = await import('../src/cli/release.ts');

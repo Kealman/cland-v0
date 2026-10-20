@@ -17,7 +17,7 @@ export async function pushDev(root: string, resumed: Resumed, authorize: () => v
   resumed(authorize);
   const managed = await hasTerritory(root, env, run);
   resumed(() => { if (!managed) throw new PushError('push-territory', 'the project has no managed territory'); });
-  for (const operation of ['release', 'sync']) {
+  for (const operation of ['release', 'sync', 'publish']) {
     const pending = await access(join(root, '.cland', `${operation}.tmp`)).then(() => true, err => {
       return resumed(() => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; });
     });

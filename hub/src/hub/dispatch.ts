@@ -1,3 +1,5 @@
+import { PublishError } from '../territory-publish.ts';
+import { defaultConfig } from '../init/config.ts';
 import { DevT3Search } from './dev-t3-search.ts';
 import { DevT3Probes } from './dev-t3-probe.ts';
 import { reportDevT3Search } from './dev-t3-report.ts';
@@ -419,6 +421,7 @@ export class Dispatcher {
   /** A failed request's result: a handover note without its four sections is typed (`note-incomplete`, `missing`). */
   static #failure(id: string, err: unknown): HubFrame {
     if (err instanceof AccountLimited) return { type: 'result', id, ok: false, error: err.message, code: err.code, account: err.account, resetsAt: err.resetsAt };
+    if (err instanceof PublishError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof PushError) return { type: 'result', id, ok: false, error: err.message, code: err.code };
     if (err instanceof ReleaseError) return { type: 'result', id, ok: false, error: err.message, code: err.code, ...(err.files ? { files: err.files } : {}) };
     if (err instanceof SuiteAdmissionError) return { type: 'result', id, ok: false, error: err.message, code: err.code, files: err.files };
@@ -1945,7 +1948,7 @@ export class Dispatcher {
           return artifact(frame as ArtifactCreate | ArtifactList, () => this.#asSession(frame));
         }
         if (frame.type === 'prompt.send' || (frame.type === 'topic.send' && frame.artifacts !== undefined)) return attachedSend(frame, () => this.#asSession(frame));
-        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync' || frame.type === 'push')) {
+        if (isClientRequest(frame) && (frame.type === 'release' || frame.type === 'sync' || frame.type === 'push' || frame.type === 'publish')) {
           const tool = frame.type;
           const allowedRole = (role: string | null | undefined) => role === 'coordinator' || (tool === 'push' && role === 'aide');
           const roles = tool === 'push' ? 'Coordinator or an Aide' : 'Coordinator';
@@ -1964,7 +1967,7 @@ export class Dispatcher {
             }
           };
           const actor = caller ? sessionActor(caller, UNKNOWN_SESSION) : { id: 'human', name: 'human', role: null, human: true };
-          const operation = frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize, actor, frame.item) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
+          const operation = frame.type === 'publish' ? this.#releases.publish(frame.branch, frame.item, frame.dryRun === true, this.#options.projectConfig?.().publish.allowPaths ?? defaultConfig('').publish.allowPaths, resumed, authorize, actor) : frame.type === 'release' ? this.#releases.release(frame.version, frame.dryRun === true, resumed, authorize, actor, frame.item) : frame.type === 'push' ? this.#releases.push(resumed, authorize) : this.#releases.sync(resumed, authorize);
           later(tool, operation.then(
             (value): HubFrame => resumed(() => ({ type: 'result', id: frame.id, ok: true, value })),
             (err: unknown) => resumed(() => Dispatcher.#failure(frame.id, err)),

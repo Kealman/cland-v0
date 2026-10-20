@@ -124,3 +124,12 @@ test('this repository enables the merge batch queue while new projects keep it o
   assert.deepEqual(config.merge.batchTiers, ['T1']);
   assert.equal(config.verification.devT3Every, '2h');
 });
+
+test('marketing allow-list preserves configured exact paths and directory prefixes across updates', () => {
+  const config = parseConfig('[publish]\nallow_paths = ["assets/**", "NOTICE"]', 'scratch');
+  assert.deepEqual(config.publish.allowPaths, ['assets/**', 'NOTICE']);
+  assert.deepEqual(parseConfig(renderConfig(config), 'scratch').publish.allowPaths, ['assets/**', 'NOTICE']);
+  for (const path of ['/site/**', '../README.md', 'site/../code.ts', 'site/*', '**', '']) {
+    assert.throws(() => parseConfig(`[publish]\nallow_paths = [${JSON.stringify(path)}]`, 'scratch'), /publish.allow_paths/);
+  }
+});

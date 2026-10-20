@@ -111,6 +111,8 @@ export class TaskMerges {
       try {
         await this.#territoryLock(this.tracker.root, async () => {
           resumed(authorize);
+          const pendingPublish = await access(join(this.tracker.root, '.cland', 'publish.tmp')).then(() => true, err => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; });
+          if (pendingPublish) throw new MergeError('merge-recovery', `finish pending cland publish before merging ${id}`);
           const pendingSync = await access(join(this.tracker.root, '.cland', 'sync.tmp')).then(() => true, err => resumed(() => {
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
             throw err;

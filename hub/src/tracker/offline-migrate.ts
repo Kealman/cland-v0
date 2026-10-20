@@ -48,6 +48,7 @@ export async function migrateOffline(cwd: string, dryRun: boolean, caller?: Fram
       ['tracker.lock', 'tracker write in flight'],
       ['sync.tmp', 'pending cland sync recovery'],
       ['release.tmp', 'pending cland release recovery'],
+      ['publish.tmp', 'pending cland publish recovery'],
     ]) if (existsSync(join(l.dir, path!))) throw new Error(`${reason}: ${join(l.dir, path!)}`);
     const names = await readdir(l.tasks);
     const pending = names.find(name => name.startsWith('.criterion-capture-') || name.endsWith('.tmp'));
