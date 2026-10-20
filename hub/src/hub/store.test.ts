@@ -12,6 +12,41 @@ import type { Message } from '../protocol.ts';
 
 const message = (id: string, from: string, to: string[], text: string, ts = '2026-10-08T12:00:00.000Z'): Message => ({ id, from, fromKind: 'agent', via: 'session', to, text, ts });
 
+test('store reuses prepared SQL with fresh bindings and keeps connections and rollback isolated', () => {
+  const counts: Map<string, number>[] = [];
+  const open = (path: string) => {
+    const db = new DatabaseSync(path), prepare = db.prepare;
+    const prepared = new Map<string, number>();
+    counts.push(prepared);
+    db.prepare = function(sql) {
+      prepared.set(sql, (prepared.get(sql) ?? 0) + 1);
+      return prepare.call(this, sql);
+    };
+    return db;
+  };
+  const first = new Store(':memory:', open), second = new Store(':memory:', open);
+  try {
+    first.rememberSession('alpha', 1000);
+    first.rememberSession('beta', 1000);
+    first.rememberRole('alpha', 'reviewer');
+    first.rememberRole('beta', 'implementer');
+    for (let i = 0; i < 3; i++) {
+      assert.equal(first.roleOf('alpha'), 'reviewer');
+      assert.equal(first.roleOf('beta'), 'implementer');
+      assert.equal(first.roleOf('missing'), null);
+      assert.equal(second.roleOf('alpha'), null);
+    }
+    assert.throws(() => first.transaction(() => {
+      first.rememberRole('alpha', 'qa');
+      throw new Error('rollback');
+    }), /rollback/);
+    assert.equal(first.roleOf('alpha'), 'reviewer');
+    first.rememberRole('alpha', 'coordinator');
+    assert.equal(first.roleOf('alpha'), 'coordinator');
+    for (const prepared of counts) assert.equal(prepared.get('select role from sessions where name = ?'), 1);
+  } finally { first.close(); second.close(); }
+});
+
 test('a sessions table written by an older hub gains the status and role columns in place and keeps its rows', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'cland-hub-migrate-'));
   const file = join(dir, 'hub.sqlite');

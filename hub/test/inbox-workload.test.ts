@@ -7,7 +7,6 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { DatabaseSync } from 'node:sqlite';
 import { Store } from '../src/hub/store.ts';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { Dispatcher } from '../src/hub/dispatch.ts';
@@ -70,11 +69,9 @@ test(`a protocol stop burst does bounded indexed work despite unrelated retained
   const table = new ProcessTable(db);
   for (let i = 0; i < 8; i++) table.put({ name: `stop-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `stop-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
   table.close();
-  const prepare = database.prepare;
   let queries = 0;
-  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    if (args[0].includes('tracker_')) queries++;
-    return prepare.apply(this, args);
+  database.trace(t, function(sql) {
+    if (sql.includes('tracker_')) queries++;
   });
   human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `stop-${i}` })));
   await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
@@ -104,12 +101,8 @@ test('a task hold release reads bounded indexed work despite unrelated retained 
   verifier.send({ type: 'hello', protocol: 2, name: 'verifier', sessionId: 'verifier-id', cwd: root });
   await eventually('verifier connected', () => verifier.frames.some(f => f.type === 'welcome') || undefined);
   await tick();
-  const prepare = database.prepare;
   let queries = 0;
-  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    queries++;
-    return prepare.apply(this, args);
-  });
+  database.trace(t, function() { queries++; });
   const released = await verifier.request({ type: 'task.hold', id: 'release', item: target.id, release: true });
   assert.equal(released.ok, true, String(released.error));
   t.diagnostic(`hold-release indexed queries: ${queries}`);

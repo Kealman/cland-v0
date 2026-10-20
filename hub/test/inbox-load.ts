@@ -2,7 +2,7 @@
 // Not a suite test: five seconds of paced adapter traffic and protocol latency samples.
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { loadavg, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { DatabaseSync } from 'node:sqlite';
@@ -23,7 +23,27 @@ seed.transaction(() => {
   }
 });
 seed.close();
-const daemon = await serveProject(root, { log: () => {}, env: { ...process.env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_ADAPTER_POLL_MS: '60000' } });
+let measuring = false, preparations = 0, executions = 0, rebuilds = 0;
+const openDatabase = (path: string) => {
+  const db = new DatabaseSync(path), prepare = db.prepare;
+  db.prepare = function(sql) {
+    if (measuring) preparations++;
+    const statement = prepare.call(this, sql);
+    for (const method of ['get', 'all', 'run'] as const) {
+      const execute = statement[method];
+      statement[method] = function(...bindings: unknown[]) {
+        if (measuring) {
+          executions++;
+          if (sql.includes('with latest_messages as')) rebuilds++;
+        }
+        return Reflect.apply(execute, this, bindings);
+      };
+    }
+    return statement;
+  };
+  return db;
+};
+const daemon = await serveProject(root, { openDatabase, log: () => {}, env: { ...process.env, CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_ADAPTER_POLL_MS: '60000' } });
 const clients: Array<() => void> = [];
 function client(hello: Record<string, unknown>) {
   const input = new PassThrough(), output = new PassThrough();
@@ -66,14 +86,10 @@ try {
   }
   table.close();
   await pause(300);
-  let rebuilds = 0;
-  const prepare = DatabaseSync.prototype.prepare;
-  DatabaseSync.prototype.prepare = function(...args: Parameters<typeof prepare>) {
-    if (args[0].includes('with latest_messages as')) rebuilds++;
-    return prepare.apply(this, args);
-  };
   const hold: number[] = [], comment: number[] = [], bursts: number[] = [];
+  const load1m = loadavg()[0];
   const cpu = process.cpuUsage(), start = performance.now();
+  measuring = true;
   try {
     for (let round = 0; round < 5; round++) {
       const before = rebuilds;
@@ -97,8 +113,8 @@ try {
     await pause(Math.max(0, start + 5000 - performance.now()));
     const elapsedMs = performance.now() - start, used = process.cpuUsage(cpu);
     const p95 = (samples: number[]) => samples.sort((a, b) => a - b)[Math.ceil(samples.length * .95) - 1];
-    console.log(JSON.stringify({ elapsedMs, cpuMs: (used.user + used.system) / 1000, cpuPercent: (used.user + used.system) / (elapsedMs * 10), holdP95Ms: p95(hold), commentP95Ms: p95(comment), rebuilds, rebuildsPerSecond: bursts }, null, 2));
-  } finally { DatabaseSync.prototype.prepare = prepare; }
+    console.log(JSON.stringify({ requests: 400, preparations, executions, load1m, elapsedMs, cpuMs: (used.user + used.system) / 1000, cpuPercent: (used.user + used.system) / (elapsedMs * 10), holdP95Ms: p95(hold), commentP95Ms: p95(comment), rebuilds, rebuildsPerSecond: bursts }, null, 2));
+  } finally { measuring = false; }
 } finally {
   for (const close of clients) close();
   await daemon.stop();

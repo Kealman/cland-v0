@@ -3,7 +3,7 @@ import { idNumber } from '../tracker/item.ts';
 const itemKey = (id: string): string => Number.isSafeInteger(idNumber(id)) ? `T-${idNumber(id)}` : id;
 // The hub's memory: every message, every delivery's state, every session the hub has seen — one
 // SQLite file through node:sqlite (WAL), or `:memory:` for tests.
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type StatementSync } from 'node:sqlite';
 import { openDatabase } from '../database.ts';
 import { existsSync } from 'node:fs';
 import { isHeldDelivery } from '../protocol.ts';
@@ -365,6 +365,7 @@ export function hasRoleMappedSession(path: string, sessionId: string): boolean {
 
 export class Store implements HygieneMemory {
   readonly #db: DatabaseSync;
+  readonly #statements = new Map<string, StatementSync>();
   #itemResolver: (id: string) => string | null = () => null;
 
   setItemResolver(resolve: (id: string) => string | null): void { this.#itemResolver = resolve; }
@@ -396,7 +397,7 @@ export class Store implements HygieneMemory {
     const columnsOf = (table: string): Set<string> => {
       let set = columns.get(table);
       if (!set) {
-        set = new Set((this.#db.prepare(`pragma table_info(${table})`).all() as Row[]).map((r) => r.name as string));
+        set = new Set((this.#prepare(`pragma table_info(${table})`).all() as Row[]).map((r) => r.name as string));
         columns.set(table, set);
       }
       return set;
@@ -411,78 +412,89 @@ export class Store implements HygieneMemory {
   }
 
   mergeQueue(): MergeQueueEntry[] {
-    return (this.#db.prepare('select value from merge_queue order by number').all() as Array<{ value: string }>).map(row => JSON.parse(row.value) as MergeQueueEntry);
+    return (this.#prepare('select value from merge_queue order by number').all() as Array<{ value: string }>).map(row => JSON.parse(row.value) as MergeQueueEntry);
   }
 
   enqueueMerge(entry: MergeQueueEntry): number {
-    this.#db.prepare('insert into merge_queue (item, value) values (?, ?) on conflict(item) do nothing').run(itemKey(entry.item), JSON.stringify(entry));
+    this.#prepare('insert into merge_queue (item, value) values (?, ?) on conflict(item) do nothing').run(itemKey(entry.item), JSON.stringify(entry));
     return this.mergeQueue().findIndex(row => itemKey(row.item) === itemKey(entry.item)) + 1;
   }
 
   dropMerge(item: string): void {
-    this.#db.prepare('delete from merge_queue where item = ?').run(itemKey(item));
+    this.#prepare('delete from merge_queue where item = ?').run(itemKey(item));
+  }
+
+  /** Bound dynamic SQL shapes as well as the fixed statements; each cache belongs to this connection. */
+  #prepare(sql: string): StatementSync {
+    const cached = this.#statements.get(sql);
+    if (cached) return cached;
+    const statement = this.#db.prepare(sql);
+    if (this.#statements.size >= 256) this.#statements.delete(this.#statements.keys().next().value!);
+    this.#statements.set(sql, statement);
+    return statement;
   }
 
   close(): void {
+    this.#statements.clear();
     this.#db.close();
   }
 
   rememberSession(name: string, now: number): void {
-    this.#db.prepare('insert into sessions (name, last_seen) values (?, ?) on conflict (name) do update set last_seen = excluded.last_seen').run(name, now);
+    this.#prepare('insert into sessions (name, last_seen) values (?, ?) on conflict (name) do update set last_seen = excluded.last_seen').run(name, now);
   }
 
   /** Drop a session's record and whatever waited for it; returns how many queued deliveries went. */
   forgetSession(name: string): { queued: number } {
-    const queued = Number(this.#db.prepare("delete from deliveries where session = ? and state = 'queued'").run(name).changes);
-    this.#db.prepare('delete from sessions where name = ?').run(name);
+    const queued = Number(this.#prepare("delete from deliveries where session = ? and state = 'queued'").run(name).changes);
+    this.#prepare('delete from sessions where name = ?').run(name);
     return { queued };
   }
 
   /** Only session bookkeeping. Historical messages, deliveries and subscriptions stay readable. */
   pruneSession(name: string, sessionId: string): void {
     this.transaction(() => {
-      this.#db.prepare('delete from sessions where name = ? and (session_id = ? or session_id is null)').run(name, sessionId);
-      this.#db.prepare('delete from launch_reservations where name = ?').run(name);
-      this.#db.prepare('delete from subscription_usage where session_id = ?').run(sessionId);
+      this.#prepare('delete from sessions where name = ? and (session_id = ? or session_id is null)').run(name, sessionId);
+      this.#prepare('delete from launch_reservations where name = ?').run(name);
+      this.#prepare('delete from subscription_usage where session_id = ?').run(sessionId);
       for (const prefix of ['pending-verification:', 'subscription-terminal:', 'pool-handoff:']) this.clearMeta(prefix + sessionId);
-      this.#db.prepare("delete from meta where key like 'session-alias:%' and value = ?").run(sessionId);
-      this.#db.prepare("delete from meta where key like 'verifier-request:%' and json_extract(value, '$.sessionId') = ?").run(sessionId);
+      this.#prepare("delete from meta where key like 'session-alias:%' and value = ?").run(sessionId);
+      this.#prepare("delete from meta where key like 'verifier-request:%' and json_extract(value, '$.sessionId') = ?").run(sessionId);
     });
   }
 
   heartbeatSchedule(sessionId: string, role: string, interval: number, start: number): HeartbeatSchedule {
-    const row = this.#db.prepare('select * from heartbeats where session_id = ?').get(sessionId) as Row | undefined;
+    const row = this.#prepare('select * from heartbeats where session_id = ?').get(sessionId) as Row | undefined;
     const last = row ? row.last_at as number : start;
     const next = row && row.role === role && row.interval_ms === interval ? row.next_at as number : last + interval;
-    this.#db.prepare(`insert into heartbeats values (?, ?, ?, ?, ?) on conflict(session_id) do update
+    this.#prepare(`insert into heartbeats values (?, ?, ?, ?, ?) on conflict(session_id) do update
       set role=excluded.role, interval_ms=excluded.interval_ms, next_at=excluded.next_at`).run(sessionId, role, interval, last, next);
     return { sessionId, role, interval, last, next };
   }
 
   firedHeartbeat(schedule: HeartbeatSchedule, now: number): void {
-    this.#db.prepare('update heartbeats set last_at = ?, next_at = ? where session_id = ?').run(now, now + schedule.interval, schedule.sessionId);
+    this.#prepare('update heartbeats set last_at = ?, next_at = ? where session_id = ?').run(now, now + schedule.interval, schedule.sessionId);
   }
 
-  stopHeartbeat(sessionId: string): void { this.#db.prepare('delete from heartbeats where session_id = ?').run(sessionId); }
+  stopHeartbeat(sessionId: string): void { this.#prepare('delete from heartbeats where session_id = ?').run(sessionId); }
 
   heartbeatItemSince(item: string, status: string, initial: number, now: number): number {
-    const row = this.#db.prepare('select * from heartbeat_item_states where item = ?').get(item) as Row | undefined;
+    const row = this.#prepare('select * from heartbeat_item_states where item = ?').get(item) as Row | undefined;
     if (row?.status === status) return row.since as number;
     // Known transitions use observation time: a hand edit can retain an old frontmatter date.
     const since = row || !Number.isFinite(initial) ? now : Math.min(initial, now);
-    this.#db.prepare('insert into heartbeat_item_states values (?, ?, ?) on conflict(item) do update set status=excluded.status, since=excluded.since').run(item, status, since);
+    this.#prepare('insert into heartbeat_item_states values (?, ?, ?) on conflict(item) do update set status=excluded.status, since=excluded.since').run(item, status, since);
     return since;
   }
 
   /** Each firing stays in history; only unbound, undelivered heartbeats are replaced. */
   replaceHeartbeat(session: string): void {
-    this.#db.prepare(`update deliveries set state = 'dropped' where session = ? and state = 'queued'
+    this.#prepare(`update deliveries set state = 'dropped' where session = ? and state = 'queued'
       and digest_id is null and message_id in (select id from messages where notice = 'event'
       and json_extract(notice_detail, '$.event') = 'heartbeat')`).run(session);
   }
 
   pendingReview(item: string, since: number): boolean {
-    return this.#db.prepare(`select 1 from messages m join deliveries d on d.message_id = m.id
+    return this.#prepare(`select 1 from messages m join deliveries d on d.message_id = m.id
       where m.created_at >= ? and d.state in ('queued', 'delivered', 'injected', 'uncertain')
       and (d.verifier_role = 'reviewer' or d.session in ('@reviewer', '@verifier:reviewer')
         or d.session in (select name from sessions where role = 'reviewer'))
@@ -492,23 +504,23 @@ export class Store implements HygieneMemory {
 
   /** Sessions seen since `since` (ms epoch) — the ones `@all` or a glob still reaches; older ones are history. */
   knownSessions(since = 0): KnownSession[] {
-    return (this.#db.prepare('select name, last_seen, status, role from sessions where last_seen >= ? order by name').all(since) as Row[]).map(toKnown);
+    return (this.#prepare('select name, last_seen, status, role from sessions where last_seen >= ? order by name').all(since) as Row[]).map(toKnown);
   }
 
   /** A keepalive: the session is still here, so `last_seen` means what it says. */
   touchSession(name: string, now: number): void {
-    this.#db.prepare('update sessions set last_seen = ? where name = ?').run(now, name);
+    this.#prepare('update sessions set last_seen = ? where name = ?').run(now, name);
   }
 
   /** The session's status line beside its row — what a reconnect of the same name gets back. */
   rememberStatus(name: string, status: string | null): void {
-    this.#db.prepare('update sessions set status = ? where name = ?').run(status, name);
+    this.#prepare('update sessions set status = ? where name = ?').run(status, name);
   }
 
   /** The remembered status of a name seen since `since` (ms epoch) by this same session, else null: a name older
    *  than the window is history, and another session's line is not this one's. */
   statusOf(name: string, since: number, sessionId: string): string | null {
-    const row = this.#db.prepare('select status from sessions where name = ? and last_seen >= ? and session_id = ?').get(name, since, sessionId) as Row | undefined;
+    const row = this.#prepare('select status from sessions where name = ? and last_seen >= ? and session_id = ?').get(name, since, sessionId) as Row | undefined;
     return (row?.status as string | null | undefined) ?? null;
   }
 
@@ -516,8 +528,7 @@ export class Store implements HygieneMemory {
    *  session renamed away from has no row, but its traffic still names it, so it is never generated again. */
   sessionNames(): string[] {
     return (
-      this.#db
-        .prepare(
+      this.#prepare(
           `select name from sessions
            union select from_name from messages
            union select session from deliveries
@@ -529,40 +540,40 @@ export class Store implements HygieneMemory {
 
   /** The name a session last held, by its session id, or null. */
   nameOfSession(sessionId: string): string | null {
-    const row = this.#db.prepare('select name from sessions where session_id = ? order by last_seen desc limit 1').get(sessionId) as Row | undefined;
+    const row = this.#prepare('select name from sessions where session_id = ? order by last_seen desc limit 1').get(sessionId) as Row | undefined;
     return (row?.name as string | undefined) ?? null;
   }
 
   /** The harness session behind a name: hygiene is keyed by it, so a rename changes nothing there. */
   rememberSessionId(name: string, sessionId: string): void {
     this.transaction(() => {
-      this.#db.prepare('update sessions set session_id = ? where name = ?').run(sessionId, name);
+      this.#prepare('update sessions set session_id = ? where name = ?').run(sessionId, name);
       // A never-connected handover target has only name:<target>. Binding adopts both ask endpoints,
       // including retained aliases during tracker adoption, before a rename can remove that name's row.
       if (sessionId === 'unknown') return;
       const names = new Set([name, ...this.sessionAliases().filter(a => a.id === sessionId).map(a => a.name)]);
-      const adopt = this.#db.prepare("update asks set to_session_id = case when to_session_id = ? then ? else to_session_id end, from_session_id = case when from_session_id = ? then ? else from_session_id end where state = 'open' and (to_session_id = ? or from_session_id = ?)");
+      const adopt = this.#prepare("update asks set to_session_id = case when to_session_id = ? then ? else to_session_id end, from_session_id = case when from_session_id = ? then ? else from_session_id end where state = 'open' and (to_session_id = ? or from_session_id = ?)");
       for (const n of names) {
         adopt.run(`name:${n}`, sessionId, `name:${n}`, sessionId, `name:${n}`, `name:${n}`);
         // Node notes and ownership also start provisional for human moves to unseen Leads.
-        this.#db.prepare("update role_state set value = json_set(value, '$.holderId', ?) where json_extract(value, '$.holderId') = ?").run(sessionId, `name:${n}`);
-        this.#db.prepare("update role_state set value = json_set(value, '$.noteToId', ?) where json_extract(value, '$.noteToId') = ?").run(sessionId, `name:${n}`);
+        this.#prepare("update role_state set value = json_set(value, '$.holderId', ?) where json_extract(value, '$.holderId') = ?").run(sessionId, `name:${n}`);
+        this.#prepare("update role_state set value = json_set(value, '$.noteToId', ?) where json_extract(value, '$.noteToId') = ?").run(sessionId, `name:${n}`);
       }
     });
   }
 
   sessionIdOf(name: string): string | null {
-    const row = this.#db.prepare('select session_id from sessions where name = ?').get(name) as Row | undefined;
+    const row = this.#prepare('select session_id from sessions where name = ?').get(name) as Row | undefined;
     return (row?.session_id as string | null | undefined) ?? null;
   }
 
   rememberRole(name: string, role: string | null): void {
-    this.#db.prepare('update sessions set role = ? where name = ?').run(role, name);
+    this.#prepare('update sessions set role = ? where name = ?').run(role, name);
   }
 
   /** The role a name holds, as the hub last recorded it, or null. */
   roleOf(name: string): string | null {
-    const row = this.#db.prepare('select role from sessions where name = ?').get(name) as Row | undefined;
+    const row = this.#prepare('select role from sessions where name = ?').get(name) as Row | undefined;
     return (row?.role as string | null | undefined) ?? null;
   }
 
@@ -571,8 +582,7 @@ export class Store implements HygieneMemory {
    *  Returns their ids. */
   dropNotices(session: string, notice: string): string[] {
     return (
-      this.#db
-        .prepare(
+      this.#prepare(
           `update deliveries set state = 'dropped', digest_id = null where session = ? and state in ('queued', 'delivered', 'uncertain')
            and message_id in (select id from messages where notice = ?) returning message_id`,
         )
@@ -583,12 +593,12 @@ export class Store implements HygieneMemory {
   /** An Aide keeps direct addresses and its role clause, including direct notes bound to a discarded broadcast. */
   dropCrewDeliveries(session: string): { dropped: string[]; reheld: string[] } {
     return this.#transaction(() => {
-      const dropped = (this.#db.prepare(`update deliveries set state = 'dropped', digest_id = null where session = ?
+      const dropped = (this.#prepare(`update deliveries set state = 'dropped', digest_id = null where session = ?
         and state in ('queued', 'delivered', 'uncertain') and direct = 0
         and message_id in (select id from messages where coalesce(notice, '') <> 'role')
         returning message_id`).all(session) as Row[]).map(row => row.message_id as string);
       // A named progress note can outlive the broadcast that was going to carry it. Hold it for the next direct turn.
-      const reheld = (this.#db.prepare(`update deliveries set digest_id = null, state = 'queued', delivered_at = null
+      const reheld = (this.#prepare(`update deliveries set digest_id = null, state = 'queued', delivered_at = null
         where session = ? and state in ('queued', 'delivered', 'uncertain') and direct = 1
         and digest_id in (select message_id from deliveries where session = ? and state = 'dropped')
         returning message_id`).all(session, session) as Row[]).map(row => row.message_id as string);
@@ -598,86 +608,86 @@ export class Store implements HygieneMemory {
 
   /** One value the hub keeps beside its rows (the Agents journal's checkpoint), or null. */
   meta(key: string): string | null {
-    const row = this.#db.prepare('select value from meta where key = ?').get(key) as Row | undefined;
+    const row = this.#prepare('select value from meta where key = ?').get(key) as Row | undefined;
     return (row?.value as string | undefined) ?? null;
   }
 
   setMeta(key: string, value: string): void {
-    this.#db.prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
+    this.#prepare('insert into meta (key, value) values (?, ?) on conflict (key) do update set value = excluded.value').run(key, value);
   }
 
   /** Finished suites are separate rows, never part of the frequently rewritten active snapshot. */
   suiteJobHistory(): string[] {
-    return (this.#db.prepare("select value from meta where key glob 'suite-job:*'").all() as Row[]).map(row => row.value as string);
+    return (this.#prepare("select value from meta where key glob 'suite-job:*'").all() as Row[]).map(row => row.value as string);
   }
 
-  clearMeta(key: string): void { this.#db.prepare('delete from meta where key = ?').run(key); }
+  clearMeta(key: string): void { this.#prepare('delete from meta where key = ?').run(key); }
 
   /** A provisional tracker identity kept while its real session renames during failed adoption. */
   sessionAlias(name: string): string | null { return this.meta(`session-alias:${name}`); }
 
   sessionAliases(): Array<{ name: string; id: string }> {
-    const rows = this.#db.prepare("select key, value from meta where key like 'session-alias:%'").all() as Row[];
+    const rows = this.#prepare("select key, value from meta where key like 'session-alias:%'").all() as Row[];
     return rows.map(row => ({ name: (row.key as string).slice('session-alias:'.length), id: row.value as string }));
   }
 
   preserveSessionAlias(name: string, id: string): void { this.setMeta(`session-alias:${name}`, id); }
 
   settleSessionAlias(name: string, id: string): void {
-    this.#db.prepare('delete from meta where key = ? and value = ?').run(`session-alias:${name}`, id);
+    this.#prepare('delete from meta where key = ? and value = ?').run(`session-alias:${name}`, id);
   }
 
   /** A launch reserved `role` for `name` (what the name held before: `previous`); cleared once its process row is
    *  written or the launch gave the role back. One left at a start belongs to a launch the hub died in. */
   saveReservation(name: string, role: string, previous: string | null, at: number): void {
-    this.#db.prepare('insert into launch_reservations (name, role, previous, at) values (?, ?, ?, ?) on conflict (name) do update set role = excluded.role, previous = excluded.previous, at = excluded.at').run(name, role, previous, at);
+    this.#prepare('insert into launch_reservations (name, role, previous, at) values (?, ?, ?, ?) on conflict (name) do update set role = excluded.role, previous = excluded.previous, at = excluded.at').run(name, role, previous, at);
   }
 
   dropReservation(name: string): void {
-    this.#db.prepare('delete from launch_reservations where name = ?').run(name);
+    this.#prepare('delete from launch_reservations where name = ?').run(name);
   }
 
   reservations(): Array<{ name: string; role: string; previous: string | null }> {
-    return (this.#db.prepare('select name, role, previous from launch_reservations order by name').all() as Row[]).map((r) => ({ name: r.name as string, role: r.role as string, previous: (r.previous as string | null) ?? null }));
+    return (this.#prepare('select name, role, previous from launch_reservations order by name').all() as Row[]).map((r) => ({ name: r.name as string, role: r.role as string, previous: (r.previous as string | null) ?? null }));
   }
 
   /** The names holding a role, seen since `since` — a role as a tag resolves to these. */
   sessionsWithRole(role: string, since = 0): string[] {
-    return (this.#db.prepare('select name from sessions where role = ? and last_seen >= ? order by name').all(role, since) as Row[]).map((r) => r.name as string);
+    return (this.#prepare('select name from sessions where role = ? and last_seen >= ? order by name').all(role, since) as Row[]).map((r) => r.name as string);
   }
 
   /** Hygiene's state, as it last wrote it: rate windows, pair counts, mutes. */
   hygieneRows(): HygieneRow[] {
-    return (this.#db.prepare('select kind, key, value from hygiene').all() as Row[]).map((r) => ({ kind: r.kind as HygieneRow['kind'], key: r.key as string, value: r.value as string }));
+    return (this.#prepare('select kind, key, value from hygiene').all() as Row[]).map((r) => ({ kind: r.kind as HygieneRow['kind'], key: r.key as string, value: r.value as string }));
   }
 
   /** One window as visible in the current transaction, including any rollback. */
   hygieneValue(kind: HygieneRow['kind'], key: string): string | null {
-    const row = this.#db.prepare('select value from hygiene where kind = ? and key = ?').get(kind, key) as Row | undefined;
+    const row = this.#prepare('select value from hygiene where kind = ? and key = ?').get(kind, key) as Row | undefined;
     return row ? row.value as string : null;
   }
 
   /** One piece of hygiene's state; null forgets it. */
   saveHygiene(kind: HygieneRow['kind'], key: string, value: string | null): void {
-    if (value === null) this.#db.prepare('delete from hygiene where kind = ? and key = ?').run(kind, key);
-    else this.#db.prepare('insert into hygiene (kind, key, value) values (?, ?, ?) on conflict (kind, key) do update set value = excluded.value').run(kind, key, value);
+    if (value === null) this.#prepare('delete from hygiene where kind = ? and key = ?').run(kind, key);
+    else this.#prepare('insert into hygiene (kind, key, value) values (?, ?, ?) on conflict (kind, key) do update set value = excluded.value').run(kind, key, value);
   }
 
   /** A role's state as the hub keeps it (#31: its handover note and its latest move), as JSON, or null. */
   roleRecord(role: string): unknown {
     if (role.startsWith('lead:')) role = `lead:${itemKey(role.slice(5))}`;
-    const row = this.#db.prepare('select value from role_state where role = ?').get(role) as Row | undefined;
+    const row = this.#prepare('select value from role_state where role = ?').get(role) as Row | undefined;
     return row ? (JSON.parse(row.value as string) as unknown) : null;
   }
 
   /** Node-scoped Lead records also need replay after a crash. */
   roleRecords(): Array<{ key: string; value: unknown }> {
-    return (this.#db.prepare('select role, value from role_state').all() as Row[]).map(row => ({ key: row.role as string, value: JSON.parse(row.value as string) as unknown }));
+    return (this.#prepare('select role, value from role_state').all() as Row[]).map(row => ({ key: row.role as string, value: JSON.parse(row.value as string) as unknown }));
   }
 
   saveRoleRecord(role: string, value: unknown): void {
     if (role.startsWith('lead:')) role = `lead:${itemKey(role.slice(5))}`;
-    this.#db.prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
+    this.#prepare('insert into role_state (role, value) values (?, ?) on conflict (role) do update set value = excluded.value').run(role, JSON.stringify(value));
   }
 
   /** Run `fn` in one transaction (a role's move, #31): all of its writes land, or none does, the messages it records
@@ -736,9 +746,8 @@ export class Store implements HygieneMemory {
    *  only some of its deliveries. */
   record(message: Message, deliveries: Array<{ session: string; state: DeliveryState; direct?: boolean }>, now: number, notice: string | null = null, bindHeld = true): void {
     this.#transaction(() => {
-      const seq = Number((this.#db.prepare("update counters set value = value + 1 where name = 'message_seq' returning value").get() as Row).value);
-      this.#db
-        .prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail, answer_to, seq) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      const seq = Number((this.#prepare("update counters set value = value + 1 where name = 'message_seq' returning value").get() as Row).value);
+      this.#prepare('insert into messages (id, from_name, from_kind, from_role, via, to_json, text, reply_to, ts, created_at, topic, notice, notice_detail, answer_to, seq) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .run(
           message.id,
           message.from,
@@ -756,21 +765,21 @@ export class Store implements HygieneMemory {
           message.answerTo ?? null,
           seq,
         );
-      if (message.answered_as !== undefined) this.#db.prepare('update messages set answer_attribution = ? where id = ?').run(JSON.stringify({ answered_as: message.answered_as, answered_by: message.answered_by, relayed_by: message.relayed_by }), message.id);
-      if (message.criteria !== undefined) this.#db.prepare('update messages set criteria = ? where id = ?').run(JSON.stringify(message.criteria), message.id);
-      if (message.request !== undefined) this.#db.prepare('update messages set request_kind = ?, request_subject = ? where id = ?').run(message.request, message.subject ?? null, message.id);
-      if (message.artifact) this.#db.prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
+      if (message.answered_as !== undefined) this.#prepare('update messages set answer_attribution = ? where id = ?').run(JSON.stringify({ answered_as: message.answered_as, answered_by: message.answered_by, relayed_by: message.relayed_by }), message.id);
+      if (message.criteria !== undefined) this.#prepare('update messages set criteria = ? where id = ?').run(JSON.stringify(message.criteria), message.id);
+      if (message.request !== undefined) this.#prepare('update messages set request_kind = ?, request_subject = ? where id = ?').run(message.request, message.subject ?? null, message.id);
+      if (message.artifact) this.#prepare('update messages set artifact = ? where id = ?').run(JSON.stringify(message.artifact), message.id);
       if (message.artifacts?.length) {
-        this.#db.prepare('update messages set artifacts = ? where id = ?').run(JSON.stringify(message.artifacts), message.id);
+        this.#prepare('update messages set artifacts = ? where id = ?').run(JSON.stringify(message.artifacts), message.id);
         // Status and post commit together, before the core publishes either. A failed status write rolls back the post.
         for (const a of message.artifacts) if (a.kind === 'prompt' && a.status === 'sent' && !a.movedTo) {
           const current = this.artifact(a.id);
           if (current && !current.movedTo) this.updateArtifact({ ...current, status: 'sent' });
         }
       }
-      if (message.fromKind === 'agent') this.#db.prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
+      if (message.fromKind === 'agent') this.#prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
-      const insert = this.#db.prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id, direct) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?), ?)');
+      const insert = this.#prepare('insert into deliveries (message_id, session, state, queued_at, delivered_at, session_id, direct) values (?, ?, ?, ?, ?, (select session_id from sessions where name = ?), ?)');
       for (const d of deliveries) insert.run(message.id, d.session, d.state, now, d.state === 'delivered' ? now : null, d.session, d.direct ? 1 : 0);
       // Binding and recording are one synchronous transaction: no awaited transport can claim these notes twice.
       // Role clauses on reconnect establish authority, but leave held progress for the next ordinary delivery.
@@ -782,7 +791,7 @@ export class Store implements HygieneMemory {
   }
 
   allSubscriptions(): OwnedSubscription[] {
-    return (this.#db.prepare('select * from subscriptions order by rowid').all() as Row[]).map(row => ({
+    return (this.#prepare('select * from subscriptions order by rowid').all() as Row[]).map(row => ({
       id: row.id as string, subscriberId: row.subscriber_id as string,
       subject: this.#subject(JSON.parse(row.subject_json as string), true), events: JSON.parse(row.events_json as string),
       digest: row.digest as Subscription['digest'],
@@ -798,33 +807,33 @@ export class Store implements HygieneMemory {
     return this.#transaction(() => {
       const existing = this.subscriptions(subscriberId).find(s => JSON.stringify([this.#subject(s.subject), s.events, s.digest, s.threshold]) === JSON.stringify([this.#subject(subscription.subject), subscription.events, subscription.digest, subscription.threshold]));
       if (existing) return existing;
-      this.#db.prepare('insert into subscriptions (id, subscriber_id, subject_json, events_json, digest, threshold_json) values (?, ?, ?, ?, ?, ?)')
+      this.#prepare('insert into subscriptions (id, subscriber_id, subject_json, events_json, digest, threshold_json) values (?, ?, ?, ?, ?, ?)')
         .run(subscription.id, subscriberId, JSON.stringify(this.#subject(subscription.subject)), JSON.stringify(subscription.events), subscription.digest, subscription.threshold ? JSON.stringify(subscription.threshold) : null);
       return { ...subscription, subject: this.#subject(subscription.subject, true) };
     });
   }
 
   removeSubscription(subscriberId: string, id: string): boolean {
-    return this.#db.prepare('delete from subscriptions where id = ? and subscriber_id = ?').run(id, subscriberId).changes > 0;
+    return this.#prepare('delete from subscriptions where id = ? and subscriber_id = ?').run(id, subscriberId).changes > 0;
   }
 
   endSubscriptions(subscriberId: string): void {
-    this.#db.prepare('delete from subscriptions where subscriber_id = ?').run(subscriberId);
+    this.#prepare('delete from subscriptions where subscriber_id = ?').run(subscriberId);
   }
 
   endSubject(subject: SubscriptionSubject): void {
-    this.#db.prepare('delete from subscriptions where subject_json = ?').run(JSON.stringify(this.#subject(subject)));
+    this.#prepare('delete from subscriptions where subject_json = ?').run(JSON.stringify(this.#subject(subject)));
   }
 
   usageCrossed(subscription: string, sessionId: string, above: boolean): boolean {
-    const before = this.#db.prepare('select above from subscription_usage where subscription_id = ? and session_id = ?').get(subscription, sessionId) as Row | undefined;
-    this.#db.prepare('insert into subscription_usage values (?, ?, ?) on conflict(subscription_id, session_id) do update set above = excluded.above').run(subscription, sessionId, above ? 1 : 0);
+    const before = this.#prepare('select above from subscription_usage where subscription_id = ? and session_id = ?').get(subscription, sessionId) as Row | undefined;
+    this.#prepare('insert into subscription_usage values (?, ?, ?) on conflict(subscription_id, session_id) do update set above = excluded.above').run(subscription, sessionId, above ? 1 : 0);
     return above && !before?.above;
   }
 
   /** Only the latest event for this subject can extend a run. Direct provenance is a union; bound batches and other recipients are immutable. */
   coalesceEvent(session: string, subject: SubscriptionSubject, key: string, now: number, direct = false, windowMs = 60_000): { id: string; count: number } | null {
-    const row = this.#db.prepare(`select * from (
+    const row = this.#prepare(`select * from (
       select m.id, m.created_at, m.notice_detail, d.event_count, d.state, d.digest_id
       from messages m join deliveries d on d.message_id = m.id
       where d.session = ? and m.notice = 'event' and json_extract(m.notice_detail, '$.subject') = ?
@@ -834,19 +843,19 @@ export class Store implements HygieneMemory {
       .get(session, JSON.stringify(subject), now - windowMs, key) as Row | undefined;
     if (!row) return null;
     const count = (row.event_count as number) + 1;
-    this.#db.prepare('update deliveries set event_count = ?, direct = max(direct, ?) where message_id = ? and session = ?').run(count, direct ? 1 : 0, row.id as string, session);
+    this.#prepare('update deliveries set event_count = ?, direct = max(direct, ?) where message_id = ? and session = ?').run(count, direct ? 1 : 0, row.id as string, session);
     return { id: row.id as string, count };
   }
 
   renameSubscriptionSubject(from: string, to: string): void {
     // Converging subjects keep both subscription ids, so each remains removable by its owner.
-    this.#db.prepare('update subscriptions set subject_json = ? where subject_json = ?')
+    this.#prepare('update subscriptions set subject_json = ? where subject_json = ?')
       .run(JSON.stringify({ session: to }), JSON.stringify({ session: from }));
   }
 
   /** One stored message by its hub id, or null. */
   message(id: string): Message | null {
-    const row = this.#db.prepare('select * from messages where id = ?').get(id) as Row | undefined;
+    const row = this.#prepare('select * from messages where id = ?').get(id) as Row | undefined;
     if (!row) return null;
     const ask = this.ask(id);
     return { ...toMessage(row), ...(ask ? { ask: cardOf(ask) } : {}) };
@@ -856,8 +865,7 @@ export class Store implements HygieneMemory {
    *  separately. The rest stay queued: only the spoke's ack marks one delivered (`markDelivered`). */
   pendingFor(session: string, now: number, ttlMs: number): { deliver: Message[]; dropped: Message[] } {
     const dropped = this.expireQueued(session, now, ttlMs);
-    const rows = this.#db
-      .prepare(`select m.*, d.queued_at as queued_at from deliveries d join messages m on m.id = d.message_id
+    const rows = this.#prepare(`select m.*, d.queued_at as queued_at from deliveries d join messages m on m.id = d.message_id
         where d.session = ? and d.state = ? and d.digest_id is null
         and (d.launch_brief is null or d.launch_brief_ready = 1) order by m.seq`)
       .all(session, 'queued') as Row[];
@@ -872,10 +880,10 @@ export class Store implements HygieneMemory {
   /** Unbound notes keep their own TTL; a bound batch expires together at its trigger's TTL. */
   expireQueued(session: string, now: number, ttlMs: number): Message[] {
     return this.#transaction(() => {
-      const roots = this.#db.prepare(`select distinct coalesce(digest_id, message_id) as root from deliveries
+      const roots = this.#prepare(`select distinct coalesce(digest_id, message_id) as root from deliveries
         where session = ? and state = 'queued' and digest_id is null and queued_at < ?`).all(session, now - ttlMs) as Row[];
       const dropped: Message[] = [];
-      const expire = this.#db.prepare("update deliveries set state = 'dropped', delivered_at = null where session = ? and (message_id = ? or digest_id = ?) and state = 'queued'");
+      const expire = this.#prepare("update deliveries set state = 'dropped', delivered_at = null where session = ? and (message_id = ? or digest_id = ?) and state = 'queued'");
       for (const row of roots) {
         const root = row.root as string;
         dropped.push(...this.deliveryIds(root, session).map(id => this.message(id)!));
@@ -886,47 +894,46 @@ export class Store implements HygieneMemory {
   }
 
   queuedSessions(): string[] {
-    return (this.#db.prepare("select distinct session from deliveries where state = 'queued'").all() as Row[]).map(row => row.session as string);
+    return (this.#prepare("select distinct session from deliveries where state = 'queued'").all() as Row[]).map(row => row.session as string);
   }
 
   unacknowledgedCount(session: string): number {
-    return Number((this.#db.prepare("select count(*) as count from deliveries where session = ? and state in ('queued', 'delivered', 'uncertain', 'injected')").get(session) as Row).count);
+    return Number((this.#prepare("select count(*) as count from deliveries where session = ? and state in ('queued', 'delivered', 'uncertain', 'injected')").get(session) as Row).count);
   }
 
   deliveryCollisionCount(from: string, to: string): number {
-    return Number((this.#db.prepare(`select count(*) as count from deliveries source join deliveries target
+    return Number((this.#prepare(`select count(*) as count from deliveries source join deliveries target
       on source.message_id = target.message_id where source.session = ? and target.session = ?`).get(from, to) as Row).count);
   }
 
   /** The session's spoke accepted the message; false when there was no queued delivery of it (a repeat ack). */
   markDelivered(messageId: string, session: string, now: number): boolean {
     const root = this.deliveryRoot(messageId, session);
-    return this.#db.prepare("update deliveries set state = 'delivered', delivered_at = ? where (message_id = ? or digest_id = ?) and session = ? and state = 'queued'").run(now, root, root, session).changes > 0;
+    return this.#prepare("update deliveries set state = 'delivered', delivered_at = ? where (message_id = ? or digest_id = ?) and session = ? and state = 'queued'").run(now, root, root, session).changes > 0;
   }
 
   /** The session's adapter confirmed the turn; false when the delivery was not `delivered` (a repeat, or never acked). */
   markInjected(messageId: string, session: string): boolean {
     const root = this.deliveryRoot(messageId, session);
-    return this.#db.prepare("update deliveries set state = 'injected' where (message_id = ? or digest_id = ?) and session = ? and state in ('delivered', 'uncertain')").run(root, root, session).changes > 0;
+    return this.#prepare("update deliveries set state = 'injected' where (message_id = ? or digest_id = ?) and session = ? and state in ('delivered', 'uncertain')").run(root, root, session).changes > 0;
   }
 
   /** The adapter's inject reached the harness and got no answer: the turn may have started. `uncertain` is never
    *  retried on its own (`uninjected` leaves it out). False when the delivery was not `delivered`. */
   markUncertain(messageId: string, session: string): boolean {
     const root = this.deliveryRoot(messageId, session);
-    return this.#db.prepare("update deliveries set state = 'uncertain' where (message_id = ? or digest_id = ?) and session = ? and state = 'delivered'").run(root, root, session).changes > 0;
+    return this.#prepare("update deliveries set state = 'uncertain' where (message_id = ? or digest_id = ?) and session = ? and state = 'delivered'").run(root, root, session).changes > 0;
   }
 
   /** The human asked for an uncertain delivery to be sent again: it is `delivered` (waiting for its inject) once more. */
   retryUncertain(messageId: string, session: string): boolean {
     const root = this.deliveryRoot(messageId, session);
-    return this.#db.prepare("update deliveries set state = 'delivered' where (message_id = ? or digest_id = ?) and session = ? and state = 'uncertain'").run(root, root, session).changes > 0;
+    return this.#prepare("update deliveries set state = 'delivered' where (message_id = ? or digest_id = ?) and session = ? and state = 'uncertain'").run(root, root, session).changes > 0;
   }
 
   /** What the session's spoke accepted but its adapter has not confirmed yet, oldest first: the next idle retries these. */
   uninjected(session: string): Message[] {
-    const rows = this.#db
-      .prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') != 'progress' and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') order by m.seq")
+    const rows = this.#prepare("select m.* from deliveries d join messages m on m.id = d.message_id where d.session = ? and d.state = 'delivered' and d.digest_id is null and coalesce(m.notice, '') != 'progress' and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') order by m.seq")
       .all(session) as Row[];
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
   }
@@ -934,7 +941,7 @@ export class Store implements HygieneMemory {
   /** Uncertain deliveries require explicit retry, not a staffing reservation. Verification reservations
    * live in sessionPending/holds. Bare spokes finish delivery work when they accept the message. */
   hasPendingWork(session: string, awaitsInjection = true): boolean {
-    return this.#db.prepare(`select 1 from deliveries d join messages m on m.id = d.message_id
+    return this.#prepare(`select 1 from deliveries d join messages m on m.id = d.message_id
       where d.session = ? and d.state in ('queued', 'delivered')
       and (? or d.state != 'delivered')
       and coalesce(m.notice, '') != 'progress'
@@ -943,12 +950,12 @@ export class Store implements HygieneMemory {
 
   queueVerifierRequest(messageId: string, item: string, role: 'reviewer' | 'qa'): void {
     item = item ? itemKey(item) : item;
-    this.#db.prepare('update deliveries set verifier_item = ?, verifier_role = ? where message_id = ? and session = ?')
+    this.#prepare('update deliveries set verifier_item = ?, verifier_role = ? where message_id = ? and session = ?')
       .run(item, role, messageId, `@verifier:${role}`);
   }
 
   queuedVerifierRequests(): Array<{ message: Message; item: string; role: 'reviewer' | 'qa'; senderId: string | null; queuedAt: number }> {
-    return (this.#db.prepare(`select m.*, d.verifier_item, d.verifier_role, d.queued_at from deliveries d join messages m on m.id = d.message_id
+    return (this.#prepare(`select m.*, d.verifier_item, d.verifier_role, d.queued_at from deliveries d join messages m on m.id = d.message_id
       where d.verifier_item is not null and d.state = 'queued' order by m.seq`).all() as Row[]).map(row => ({
       message: toMessage(row), item: this.#canonicalItem(row.verifier_item as string), role: row.verifier_role as 'reviewer' | 'qa',
       senderId: row.from_session_id as string | null, queuedAt: row.queued_at as number,
@@ -960,14 +967,14 @@ export class Store implements HygieneMemory {
     return this.#transaction(() => {
       const message = this.message(messageId)!;
       message.to = [...new Set(message.to.map(name => name === role ? session : name))];
-      this.#db.prepare('update messages set to_json = ? where id = ?').run(JSON.stringify(message.to), messageId);
-      const existing = this.#db.prepare('select 1 from deliveries where message_id = ? and session = ?').get(messageId, session);
+      this.#prepare('update messages set to_json = ? where id = ?').run(JSON.stringify(message.to), messageId);
+      const existing = this.#prepare('select 1 from deliveries where message_id = ? and session = ?').get(messageId, session);
       if (existing) this.dropVerifierRequest(messageId, role);
-      else this.#db.prepare(`update deliveries set session = ?, session_id = (select session_id from sessions where name = ?),
+      else this.#prepare(`update deliveries set session = ?, session_id = (select session_id from sessions where name = ?),
         direct = 1, verifier_item = null, verifier_role = null where message_id = ? and session = ? and state = 'queued'`)
         .run(session, session, messageId, `@verifier:${role}`);
       if (!isHeldDelivery(message)) {
-        const { seq } = this.#db.prepare('select seq from messages where id = ?').get(messageId) as Row;
+        const { seq } = this.#prepare('select seq from messages where id = ?').get(messageId) as Row;
         this.#bindProgress(messageId, session, seq as number);
       }
       return message;
@@ -975,18 +982,18 @@ export class Store implements HygieneMemory {
   }
 
   dropVerifierRequest(messageId: string, role: 'reviewer' | 'qa'): void {
-    this.#db.prepare("update deliveries set state = 'dropped' where message_id = ? and session = ? and state = 'queued'")
+    this.#prepare("update deliveries set state = 'dropped' where message_id = ? and session = ? and state = 'queued'")
       .run(messageId, `@verifier:${role}`);
   }
 
   deliveryRoot(messageId: string, session: string): string {
-    const row = this.#db.prepare('select digest_id from deliveries where message_id = ? and session = ?').get(messageId, session) as Row | undefined;
+    const row = this.#prepare('select digest_id from deliveries where message_id = ? and session = ?').get(messageId, session) as Row | undefined;
     return typeof row?.digest_id === 'string' ? row.digest_id : messageId;
   }
 
   deliveryIds(messageId: string, session: string): string[] {
     const root = this.deliveryRoot(messageId, session);
-    return (this.#db.prepare(`select m.id from deliveries d join messages m on m.id = d.message_id
+    return (this.#prepare(`select m.id from deliveries d join messages m on m.id = d.message_id
       where d.session = ? and (d.message_id = ? or d.digest_id = ?) order by m.seq`).all(session, root, root) as Row[]).map(row => row.id as string);
   }
 
@@ -998,7 +1005,7 @@ export class Store implements HygieneMemory {
     const members = this.deliveryIds(root, session).filter(id => id !== root).map(id => {
       const note = this.message(id)!;
       if (note.kind !== 'event') return note;
-      const row = this.#db.prepare('select event_count from deliveries where message_id = ? and session = ?').get(id, session) as Row;
+      const row = this.#prepare('select event_count from deliveries where message_id = ? and session = ?').get(id, session) as Row;
       const count = row.event_count as number;
       return count > 1 ? { ...note, text: `${note.text} (×${count})`, detail: { ...note.detail, count } } : note;
     });
@@ -1019,30 +1026,30 @@ export class Store implements HygieneMemory {
   /** Bundle the initial queued clause into its launch brief. The records and stages stay separate;
    * a single acknowledgement/injection settles both, just like an ordinary delivery digest. */
   bindLaunchClause(briefId: string, session: string): void {
-    this.#db.prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
+    this.#prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
       and digest_id is null and message_id in (select id from messages where notice = 'role')`).run(briefId, session);
   }
 
   /** A pending first input survives restart and follows any rename with its ordinary delivery row. */
   rememberLaunchBrief(id: string, session: string, launchId: string): void {
-    this.#db.prepare('update deliveries set launch_brief = ? where message_id = ? and session = ?').run(launchId, id, session);
+    this.#prepare('update deliveries set launch_brief = ? where message_id = ? and session = ?').run(launchId, id, session);
   }
 
   /** Only this launch's accepted hello can make its brief an ordinary first input. Carried input waits for
    * native acceptance; an already injected carried brief becomes a spoke notice without another injection. */
   activateLaunchBriefs(session: string, launchId: string, allowQueued: boolean): Message[] {
     return this.#transaction(() => {
-      const rows = this.#db.prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
+      const rows = this.#prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
         where d.session = ? and d.launch_brief = ? and d.launch_brief_ready = 0
         and (d.state = 'injected' or (? and d.state = 'queued')) order by m.seq`).all(session, launchId, Number(allowQueued)) as Row[];
-      for (const row of rows) this.#db.prepare('update deliveries set launch_brief_ready = 1 where message_id = ? and session = ?').run(row.id as string, session);
+      for (const row of rows) this.#prepare('update deliveries set launch_brief_ready = 1 where message_id = ? and session = ?').run(row.id as string, session);
       return rows.map(toMessage);
     });
   }
 
   /** Delivery ownership remains attached to the launch through acceptance, cancellation and recovery. */
   launchBriefs(launchId: string): Message[] {
-    return (this.#db.prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
+    return (this.#prepare(`select m.* from messages m join deliveries d on d.message_id = m.id
       where d.launch_brief = ? order by m.seq`).all(launchId) as Row[]).map(toMessage);
   }
 
@@ -1050,14 +1057,14 @@ export class Store implements HygieneMemory {
   cancelLaunchBriefs(launchId: string): Array<{ message: Message; dropped: boolean; released: ReleasedDigest }> {
     return this.#transaction(() => this.launchBriefs(launchId).map(message => {
       const id = message.id, session = message.to[0]!;
-      const members = this.#db.prepare('select message_id, state from deliveries where digest_id = ? and session = ?').all(id, session) as Row[];
+      const members = this.#prepare('select message_id, state from deliveries where digest_id = ? and session = ?').all(id, session) as Row[];
       const released: ReleasedDigest = { trigger: id, session, notes: members.map(row => row.message_id as string), reheld: members.filter(row => ['queued', 'delivered', 'uncertain'].includes(row.state as string)).map(row => row.message_id as string) };
       // Like deleting an ordinary trigger: pending notes return at their original TTL; settled notes stay settled.
-      this.#db.prepare(`update deliveries set digest_id = null,
+      this.#prepare(`update deliveries set digest_id = null,
         state = case when state in ('queued', 'delivered', 'uncertain') then 'queued' else state end,
         delivered_at = case when state in ('queued', 'delivered', 'uncertain') then null else delivered_at end
         where digest_id = ? and session = ?`).run(id, session);
-      const dropped = this.#db.prepare(`update deliveries set state = 'dropped' where message_id = ? and session = ?
+      const dropped = this.#prepare(`update deliveries set state = 'dropped' where message_id = ? and session = ?
         and state in ('queued', 'delivered', 'uncertain')`).run(id, session).changes > 0;
       return { message, dropped, released };
     }));
@@ -1071,18 +1078,18 @@ export class Store implements HygieneMemory {
 
   /** A queued root may have been recorded during a turn; bind its idle-only events at the next idle send. */
   bindTurnEvents(messageId: string, session: string): void {
-    const row = this.#db.prepare(`select m.seq from messages m join deliveries d on d.message_id = m.id
+    const row = this.#prepare(`select m.seq from messages m join deliveries d on d.message_id = m.id
       where m.id = ? and d.session = ? and d.state = 'queued' and d.digest_id is null
       and coalesce(m.notice, '') != 'role'`).get(messageId, session) as Row | undefined;
     if (!row || !this.#heartbeatIdle(session)) return;
-    this.#db.prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
+    this.#prepare(`update deliveries set digest_id = ? where session = ? and state = 'queued'
       and digest_id is null and message_id in (select id from messages where notice = 'event'
       and json_extract(notice_detail, '$.event') in ('heartbeat', 'rule')
       and json_extract(notice_detail, '$.digest') = 'turn' and seq < ?)`).run(messageId, session, row.seq as number);
   }
 
   #bindProgress(messageId: string, session: string, seq: number): void {
-    this.#db.prepare(`update deliveries set digest_id = ?
+    this.#prepare(`update deliveries set digest_id = ?
       where session = ? and state = 'queued' and digest_id is null and message_id in
       (select id from messages where (notice = 'progress' or (notice = 'event' and coalesce(json_extract(notice_detail, '$.digest'), 'turn') = 'turn')) and seq < ?
       and (json_extract(notice_detail, '$.event') not in ('heartbeat', 'rule') or json_extract(notice_detail, '$.event') is null or ?))`).run(messageId, session, seq, this.#heartbeatIdle(session) ? 1 : 0);
@@ -1095,7 +1102,7 @@ export class Store implements HygieneMemory {
   claimRoleQueue(role: string, session: string): { moved: number; merged: string[] } {
     return this.#transaction(() => {
       // Only newly acquired ordinary deliveries: a duplicate already held by this recipient keeps its fixed batch.
-      const acquired = this.#db.prepare(`select m.id, m.seq from deliveries d join messages m on m.id = d.message_id
+      const acquired = this.#prepare(`select m.id, m.seq from deliveries d join messages m on m.id = d.message_id
         where d.session = ? and d.state = 'queued' and d.digest_id is null and coalesce(m.notice, '') not in ('progress', 'event', 'role')
         and not exists (select 1 from deliveries existing where existing.session = ? and existing.message_id = d.message_id)
         order by m.seq`).all(`@${role}`, session) as Row[];
@@ -1103,7 +1110,7 @@ export class Store implements HygieneMemory {
       // The placeholder has acquired its real recipient: bind that recipient's held notes before transport can start.
       for (const message of acquired) this.#bindProgress(message.id as string, session, message.seq as number);
       // the deliveries it took are this session's: by its id, as every other delivery
-      if (r.moved) this.#db.prepare("update deliveries set session_id = (select session_id from sessions where name = ?) where session = ? and session_id is null and state = 'queued'").run(session, session);
+      if (r.moved) this.#prepare("update deliveries set session_id = (select session_id from sessions where name = ?) where session = ? and session_id is null and state = 'queued'").run(session, session);
       return r;
     });
   }
@@ -1115,36 +1122,36 @@ export class Store implements HygieneMemory {
    */
   #moveQueuedTo(from: string, to: string): { moved: number; merged: string[] } {
     return this.#transaction(() => {
-      const moved = Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(to, from).changes);
-      const merged = (this.#db.prepare("delete from deliveries where session = ? and state = 'queued' returning message_id").all(from) as Row[]).map((r) => r.message_id as string);
+      const moved = Number(this.#prepare("update or ignore deliveries set session = ? where session = ? and state = 'queued'").run(to, from).changes);
+      const merged = (this.#prepare("delete from deliveries where session = ? and state = 'queued' returning message_id").all(from) as Row[]).map((r) => r.message_id as string);
       return { moved, merged };
     });
   }
 
   /** The stage of a message over all its deliveries; undefined when it had no addressee. */
   stage(messageId: string): DeliveryStage | undefined {
-    return stageOf((this.#db.prepare('select state from deliveries where message_id = ?').all(messageId) as Row[]).map((r) => r.state as string));
+    return stageOf((this.#prepare('select state from deliveries where message_id = ?').all(messageId) as Row[]).map((r) => r.state as string));
   }
 
   /** The index and its publication are one database transaction; the file is cleaned up by the caller on failure. */
   registerArtifact(make: (id: string) => Artifact, publish: (a: Artifact) => void): Artifact {
     return this.#transaction(() => {
-      const n = this.#db.prepare("insert into artifacts (value) values ('{}')").run().lastInsertRowid;
+      const n = this.#prepare("insert into artifacts (value) values ('{}')").run().lastInsertRowid;
       const a = make(`A-${n}`);
-      this.#db.prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), n);
+      this.#prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), n);
       publish(a);
       return a;
     });
   }
 
   nextArtifactId(): string {
-    const row = this.#db.prepare("select coalesce((select seq from sqlite_sequence where name = 'artifacts'), 0) + 1 as n").get() as Row;
+    const row = this.#prepare("select coalesce((select seq from sqlite_sequence where name = 'artifacts'), 0) + 1 as n").get() as Row;
     return `A-${row.n}`;
   }
 
   artifact(id: string): Artifact | null {
     if (!/^A-[1-9][0-9]*$/.test(id)) return null;
-    const row = this.#db.prepare('select value from artifacts where number = ?').get(Number(id.slice(2))) as Row | undefined;
+    const row = this.#prepare('select value from artifacts where number = ?').get(Number(id.slice(2))) as Row | undefined;
     return row ? JSON.parse(row.value as string) as Artifact : null;
   }
 
@@ -1153,7 +1160,7 @@ export class Store implements HygieneMemory {
     if (a.creatorKind !== undefined) return a.creatorKind === 'human' || a.creatorRole === 'aide';
     if (Object.hasOwn(a, 'creatorRole')) return a.creator === 'human' || a.creatorRole === 'aide';
     // Older chips retain their sender's role even when the live role changed or was cleared.
-    const author = this.#db.prepare("select from_kind, from_role from messages where json_extract(artifact, '$.id') = ? order by created_at limit 1").get(a.id) as Row | undefined;
+    const author = this.#prepare("select from_kind, from_role from messages where json_extract(artifact, '$.id') = ? order by created_at limit 1").get(a.id) as Row | undefined;
     return a.creator === 'human' || author?.from_kind === 'human' || author?.from_role === 'aide' ||
       (!author && this.roleOf(a.creator) === 'aide');
   }
@@ -1167,7 +1174,7 @@ export class Store implements HygieneMemory {
   }
 
   updateArtifact(a: Artifact): void {
-    const result = this.#db.prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), Number(a.id.slice(2)));
+    const result = this.#prepare('update artifacts set value = ? where number = ?').run(JSON.stringify(a), Number(a.id.slice(2)));
     if (!result.changes) throw new Error(`no artifact ${a.id}`);
   }
 
@@ -1193,7 +1200,7 @@ export class Store implements HygieneMemory {
   }
 
   addressedInTopic(sessionId: string, topic: string): boolean {
-    return this.#db.prepare("select 1 from deliveries d join messages m on m.id = d.message_id where d.session_id = ? and m.topic = ? and d.state in ('delivered', 'injected', 'uncertain') limit 1").get(sessionId, topic) !== undefined;
+    return this.#prepare("select 1 from deliveries d join messages m on m.id = d.message_id where d.session_id = ? and m.topic = ? and d.state in ('delivered', 'injected', 'uncertain') limit 1").get(sessionId, topic) !== undefined;
   }
 
   movedArtifacts(): Artifact[] { return this.#artifactIndex().filter(a => a.movedTo); }
@@ -1203,7 +1210,7 @@ export class Store implements HygieneMemory {
   }
 
   #artifactIndex(): Artifact[] {
-    const rows = this.#db.prepare('select value from artifacts order by number').all() as Row[];
+    const rows = this.#prepare('select value from artifacts order by number').all() as Row[];
     return rows.map(r => JSON.parse(r.value as string) as Artifact);
   }
 
@@ -1211,11 +1218,11 @@ export class Store implements HygieneMemory {
 
   /** Create the topic unless it exists; an existing one is left exactly as it is. */
   ensureTopic(id: string, title: string, standing: boolean, now: string): void {
-    this.#db.prepare("insert into topics (id, title, status, standing, created_at, updated_at) values (?, ?, 'open', ?, ?, ?) on conflict (id) do nothing").run(id, title, standing ? 1 : 0, now, now);
+    this.#prepare("insert into topics (id, title, status, standing, created_at, updated_at) values (?, ?, 'open', ?, ?, ?) on conflict (id) do nothing").run(id, title, standing ? 1 : 0, now, now);
   }
 
   topic(id: string): Topic | null {
-    const row = this.#db.prepare(`${TOPIC_SELECT} where t.id = ?`).get(id) as Row | undefined;
+    const row = this.#prepare(`${TOPIC_SELECT} where t.id = ?`).get(id) as Row | undefined;
     return row ? this.#canonicalTopic(toTopic(row)) : null;
   }
 
@@ -1223,8 +1230,7 @@ export class Store implements HygieneMemory {
    *  activity; a topic with no message yet comes last (spec 4.5: a task's topic appears with its first message). */
   topics(): Topic[] {
     return (
-      this.#db
-        .prepare(
+      this.#prepare(
           `select * from (${TOPIC_SELECT}) order by standing desc, case when standing = 1 then rid end,
              case when status = 'waiting for human' then 0 when last_message_at is null then 2 else 1 end, updated_at desc, rid`,
         )
@@ -1235,19 +1241,19 @@ export class Store implements HygieneMemory {
   /** A new topic, open; `item` binds it (the unique index refuses a second topic for one item). */
   createTopic(id: string, title: string, item: string | null, now: string): void {
     item = item ? itemKey(item) : item;
-    this.#db.prepare("insert into topics (id, title, status, standing, created_at, updated_at, item) values (?, ?, 'open', 0, ?, ?, ?)").run(id, title, now, now, item);
+    this.#prepare("insert into topics (id, title, status, standing, created_at, updated_at, item) values (?, ?, 'open', 0, ?, ?, ?)").run(id, title, now, now, item);
   }
 
   /** The next free id of a created topic: `topic-<n>`, above every one the store has. */
   nextTopicId(): string {
-    const row = this.#db.prepare("select max(cast(substr(id, 7) as integer)) as n from topics where id like 'topic-%'").get() as Row | undefined;
+    const row = this.#prepare("select max(cast(substr(id, 7) as integer)) as n from topics where id like 'topic-%'").get() as Row | undefined;
     return `topic-${Number(row?.n ?? 0) + 1}`;
   }
 
   /** The topic bound to an item, or null. */
   topicOfItem(item: string): Topic | null {
     item = item ? itemKey(item) : item;
-    const row = this.#db.prepare(`${TOPIC_SELECT} where t.item = ?`).get(item) as Row | undefined;
+    const row = this.#prepare(`${TOPIC_SELECT} where t.item = ?`).get(item) as Row | undefined;
     return row ? this.#canonicalTopic(toTopic(row)) : null;
   }
 
@@ -1255,14 +1261,14 @@ export class Store implements HygieneMemory {
   setItemTopic(item: string, topic: string | null): void {
     item = item ? itemKey(item) : item;
     this.#transaction(() => {
-      this.#db.prepare('update topics set item = null where item = ?').run(item);
-      if (topic !== null) this.#db.prepare('update topics set item = ? where id = ?').run(item, topic);
+      this.#prepare('update topics set item = null where item = ?').run(item);
+      if (topic !== null) this.#prepare('update topics set item = ? where id = ?').run(item, topic);
     });
   }
 
   setTopicStatus(id: string, status: TopicStatus, now = new Date().toISOString()): Artifact[] {
     return this.#transaction(() => {
-      this.#db.prepare('update topics set status = ? where id = ?').run(status, id);
+      this.#prepare('update topics set status = ? where id = ?').run(status, id);
       return this.moveArtifacts(id, status === 'closed', now);
     });
   }
@@ -1271,20 +1277,19 @@ export class Store implements HygieneMemory {
   markTopicRead(id: string, upTo?: string): void {
     const row = (
       upTo !== undefined
-        ? this.#db.prepare('select seq as r from messages where id = ? and topic = ?').get(upTo, id)
-        : this.#db.prepare('select max(seq) as r from messages where topic = ?').get(id)
+        ? this.#prepare('select seq as r from messages where id = ? and topic = ?').get(upTo, id)
+        : this.#prepare('select max(seq) as r from messages where topic = ?').get(id)
     ) as Row | undefined;
     if (upTo !== undefined && !row) throw new Error(`no message "${upTo}" in this topic`);
     const r = Number(row?.r ?? 0);
-    this.#db.prepare('update topics set read_seq = max(read_seq, ?) where id = ?').run(r, id);
+    this.#prepare('update topics set read_seq = max(read_seq, ?) where id = ?').run(r, id);
   }
 
   /** The deliveries of the topic's latest human message: each addressee's name and the session id it was recorded
    *  for (null for a role's unclaimed placeholder, or a row older than the column). */
   lastHumanDeliveries(topic: string): Array<{ session: string; sessionId: string | null }> {
     return (
-      this.#db
-        .prepare(
+      this.#prepare(
           `select d.session, d.session_id from deliveries d where d.message_id = (
              select id from messages where topic = ? and from_kind = 'human' order by created_at desc, rowid desc limit 1)`,
         )
@@ -1294,29 +1299,28 @@ export class Store implements HygieneMemory {
 
   /** The session id an agent's message was sent from, or null (a hub notice, the human, a row older than the column). */
   senderSessionId(messageId: string): string | null {
-    const row = this.#db.prepare('select from_session_id from messages where id = ?').get(messageId) as Row | undefined;
+    const row = this.#prepare('select from_session_id from messages where id = ?').get(messageId) as Row | undefined;
     return (row?.from_session_id as string | null | undefined) ?? null;
   }
 
   /** The session an item was assigned to by the hub (its name then, and its session id when the hub knew it). */
   assigneeOf(item: string): { name: string; sessionId: string | null } | null {
     item = item ? itemKey(item) : item;
-    const row = this.#db.prepare('select name, session_id from assignees where item = ?').get(item) as Row | undefined;
+    const row = this.#prepare('select name, session_id from assignees where item = ?').get(item) as Row | undefined;
     return row ? { name: row.name as string, sessionId: (row.session_id as string | null) ?? null } : null;
   }
 
   /** Bind an item's assignee to a session (null name: the item has none). */
   bindAssignee(item: string, name: string | null, sessionId: string | null): void {
     item = item ? itemKey(item) : item;
-    if (name === null) this.#db.prepare('delete from assignees where item = ?').run(item);
-    else this.#db.prepare('insert into assignees (item, name, session_id) values (?, ?, ?) on conflict (item) do update set name = excluded.name, session_id = excluded.session_id').run(item, name, sessionId);
+    if (name === null) this.#prepare('delete from assignees where item = ?').run(item);
+    else this.#prepare('insert into assignees (item, name, session_id) values (?, ?, ?) on conflict (item) do update set name = excluded.name, session_id = excluded.session_id').run(item, name, sessionId);
   }
 
   /** Who the topic's latest human message was delivered to (a role's placeholder once claimed is its holder). */
   lastHumanAddressees(topic: string): string[] {
     return (
-      this.#db
-        .prepare(
+      this.#prepare(
           `select d.session from deliveries d where d.message_id = (
              select id from messages where topic = ? and from_kind = 'human' order by created_at desc, rowid desc limit 1)`,
         )
@@ -1325,19 +1329,19 @@ export class Store implements HygieneMemory {
   }
 
   touchTopic(id: string, now: string): void {
-    this.#db.prepare('update topics set updated_at = ? where id = ?').run(now, id);
+    this.#prepare('update topics set updated_at = ? where id = ?').run(now, id);
   }
 
   renameTopic(id: string, title: string, now: string): void {
-    this.#db.prepare('update topics set title = ?, updated_at = ? where id = ?').run(title, now, id);
+    this.#prepare('update topics set title = ?, updated_at = ? where id = ?').run(title, now, id);
   }
 
   /** The topic and its messages go; surviving notes are released before trigger deliveries cascade. */
   deleteTopic(id: string): ReleasedDigest[] {
     return this.#transaction(() => {
       const { released } = this.#deleteMessages('select id from messages where topic = ?', [id]);
-      this.#db.prepare('delete from asks where topic = ?').run(id);
-      this.#db.prepare('delete from topics where id = ?').run(id);
+      this.#prepare('delete from asks where topic = ?').run(id);
+      this.#prepare('delete from topics where id = ?').run(id);
       return released;
     });
   }
@@ -1346,11 +1350,11 @@ export class Store implements HygieneMemory {
    * Pending notes return to the same queue at their original queued_at; settled notes never replay. */
   #deleteMessages(selectIds: string, args: Array<string | number>): { gone: number; released: ReleasedDigest[] } {
     return this.#transaction(() => {
-      const rows = this.#db.prepare(`select d.message_id, d.digest_id, d.session, d.state from deliveries d
+      const rows = this.#prepare(`select d.message_id, d.digest_id, d.session, d.state from deliveries d
         join messages m on m.id = d.message_id where d.digest_id in (${selectIds})
         and d.message_id not in (${selectIds}) order by m.seq`).all(...args, ...args) as Row[];
       const released: ReleasedDigest[] = [];
-      const clear = this.#db.prepare(`update deliveries set digest_id = null,
+      const clear = this.#prepare(`update deliveries set digest_id = null,
         state = case when state in ('queued', 'delivered', 'uncertain') then 'queued' else state end,
         delivered_at = case when state in ('queued', 'delivered', 'uncertain') then null else delivered_at end
         where message_id = ? and session = ?`);
@@ -1362,8 +1366,8 @@ export class Store implements HygieneMemory {
         if (['queued', 'delivered', 'uncertain'].includes(row.state as string)) batch.reheld.push(note);
         clear.run(note, session);
       }
-      this.#db.prepare(`delete from message_reads where id in (${selectIds})`).run(...args);
-      const gone = Number(this.#db.prepare(`delete from messages where id in (${selectIds})`).run(...args).changes);
+      this.#prepare(`delete from message_reads where id in (${selectIds})`).run(...args);
+      const gone = Number(this.#prepare(`delete from messages where id in (${selectIds})`).run(...args).changes);
       return { gone, released };
     });
   }
@@ -1390,7 +1394,7 @@ export class Store implements HygieneMemory {
       args.push(filter.before, topic);
     }
     args.push(limit);
-    const rows = this.#db.prepare(`select * from messages where ${clauses.join(' and ')} order by created_at desc, rowid desc limit ?`).all(...args) as Row[];
+    const rows = this.#prepare(`select * from messages where ${clauses.join(' and ')} order by created_at desc, rowid desc limit ?`).all(...args) as Row[];
     return rows.reverse().map((row) => {
       const stage = this.stage(row.id as string);
       const ask = this.ask(row.id as string);
@@ -1402,7 +1406,7 @@ export class Store implements HygieneMemory {
 
   /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
   inboxMessages(): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
-    const rows = this.#db.prepare(`with latest_messages as materialized (
+    const rows = this.#prepare(`with latest_messages as materialized (
       select t.id as topic, (select m.seq from messages m where m.topic = t.id
         and m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
         and not exists (select 1 from asks a where a.id = m.id)
@@ -1438,72 +1442,71 @@ export class Store implements HygieneMemory {
   }
 
   inboxWaits(): InboxWait[] {
-    return this.#db.prepare('select kind, id, subject, since, text from inbox_waits').all() as InboxWait[];
+    return this.#prepare('select kind, id, subject, since, text from inbox_waits').all() as InboxWait[];
   }
 
   /** The first human reply's time, using topic/sequence and reply indexes separately. */
   inboxReplyAt(id: string, topic: string): string | undefined {
-    const sameTopic = this.#db.prepare(`select seq, ts from messages where topic = ?
+    const sameTopic = this.#prepare(`select seq, ts from messages where topic = ?
       and seq > (select seq from messages where id = ?) and from_kind = 'human' order by seq limit 1`).get(topic, id) as Row | undefined;
-    const explicit = this.#db.prepare(`select seq, ts from messages where reply_to = ?
+    const explicit = this.#prepare(`select seq, ts from messages where reply_to = ?
       and seq > (select seq from messages where id = ?) and from_kind = 'human' order by seq limit 1`).get(id, id) as Row | undefined;
     const reply = !sameTopic ? explicit : !explicit || Number(sameTopic.seq) < Number(explicit.seq) ? sameTopic : explicit;
     return reply?.ts as string | undefined;
   }
 
   waitInInbox(row: InboxWait): string {
-    this.#db.prepare('insert into inbox_waits (kind, id, subject, since, text) values (?, ?, ?, ?, ?) on conflict (kind, id) do nothing').run(row.kind, row.id, row.subject, row.since, row.text?.split(/\r?\n/, 1)[0] ?? '');
-    return (this.#db.prepare('select since from inbox_waits where kind = ? and id = ?').get(row.kind, row.id) as Row).since as string;
+    this.#prepare('insert into inbox_waits (kind, id, subject, since, text) values (?, ?, ?, ?, ?) on conflict (kind, id) do nothing').run(row.kind, row.id, row.subject, row.since, row.text?.split(/\r?\n/, 1)[0] ?? '');
+    return (this.#prepare('select since from inbox_waits where kind = ? and id = ?').get(row.kind, row.id) as Row).since as string;
   }
 
   leftInbox(kind: InboxRowKind, id: string): boolean {
-    return this.#db.prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
+    return this.#prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
   }
 
   departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = ''): InboxDeparture | null {
     return this.#transaction(() => {
-      const waiting = this.#db.prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes;
+      const waiting = this.#prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes;
       // A request replied to before the coalesced tick still belongs in the archive, once.
       if (!waiting && (row.kind !== 'request' || this.leftInbox(row.kind, row.id))) return null;
-      this.#db.prepare('insert into inbox_departures (kind, id, subject, since, ts, reason, text) values (?, ?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason, text);
+      this.#prepare('insert into inbox_departures (kind, id, subject, since, ts, reason, text) values (?, ?, ?, ?, ?, ?, ?)').run(row.kind, row.id, row.subject, row.since, ts, reason, text);
       return { ...row, ts, reason, text };
     });
   }
 
   /** The later archive frame can read seven days directly, without scanning the journal. */
   inboxDepartures(after: string): InboxDeparture[] {
-    const rows = this.#db.prepare(`select d.kind, d.id, d.subject, d.since, d.ts, d.reason,
+    const rows = this.#prepare(`select d.kind, d.id, d.subject, d.since, d.ts, d.reason,
       coalesce(nullif(d.text, ''), (select m.text from messages m where m.id = d.id), '') as text
       from inbox_departures d where d.ts >= ? order by d.ts desc, d.number desc`).all(after) as InboxDeparture[];
     return rows.map(row => ({ ...row, text: row.text?.split(/\r?\n/, 1)[0] ?? '' }));
   }
 
   inboxDeparturesToday(after: string): number {
-    return (this.#db.prepare('select count(*) as n from inbox_departures where ts >= ?').get(after) as Row).n as number;
+    return (this.#prepare('select count(*) as n from inbox_departures where ts >= ?').get(after) as Row).n as number;
   }
 
   markMessageRead(id: string): void {
-    this.#db.prepare('insert into message_reads (id) values (?) on conflict do nothing').run(id);
+    this.#prepare('insert into message_reads (id) values (?) on conflict do nothing').run(id);
   }
 
   createAsk(a: { id: string; topic: string; from: string; question: string; options: string[]; free: boolean; ts: string; to?: string }): void {
-    this.#db
-      .prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts, to_name, to_session_id, from_session_id) values (?, ?, ?, ?, ?, ?, 'open', ?, ?, (select session_id from sessions where name = ?), (select from_session_id from messages where id = ?))")
+    this.#prepare("insert into asks (id, topic, from_name, question, options_json, free, state, ts, to_name, to_session_id, from_session_id) values (?, ?, ?, ?, ?, ?, 'open', ?, ?, (select session_id from sessions where name = ?), (select from_session_id from messages where id = ?))")
       .run(a.id, a.topic, a.from, a.question, JSON.stringify(a.options), a.free ? 1 : 0, a.ts, a.to ?? null, a.to ?? null, a.id);
   }
 
   /** Actionable ends of an open agent chain move with their role, atomically with its handover record. */
   moveAgentAsks(fromId: string, to: string, toId: string): void {
-    this.#db.prepare("update asks set to_name = ?, to_session_id = ? where state = 'open' and to_session_id = ?").run(to, toId, fromId);
-    this.#db.prepare("update asks set from_session_id = ? where state = 'open' and to_name is not null and coalesce(from_session_id, (select from_session_id from messages where messages.id = asks.id)) = ?").run(toId, fromId);
+    this.#prepare("update asks set to_name = ?, to_session_id = ? where state = 'open' and to_session_id = ?").run(to, toId, fromId);
+    this.#prepare("update asks set from_session_id = ? where state = 'open' and to_name is not null and coalesce(from_session_id, (select from_session_id from messages where messages.id = asks.id)) = ?").run(toId, fromId);
   }
 
   forwardAsk(id: string, forwarded: string): void {
-    this.#db.prepare('update asks set forwarded_id = ? where id = ?').run(forwarded, id);
+    this.#prepare('update asks set forwarded_id = ? where id = ?').run(forwarded, id);
   }
 
   ask(id: string): AskRow | null {
-    const row = this.#db.prepare('select * from asks where id = ?').get(id) as Row | undefined;
+    const row = this.#prepare('select * from asks where id = ?').get(id) as Row | undefined;
     return row ? this.#askRow(row) : null;
   }
 
@@ -1515,29 +1518,29 @@ export class Store implements HygieneMemory {
 
   /** The open asks, oldest first; of one topic when given. */
   openAsks(topic?: string): AskRow[] {
-    const rows = (topic === undefined ? this.#db.prepare("select * from asks where state = 'open' order by ts, rowid").all() : this.#db.prepare("select * from asks where state = 'open' and topic = ? order by ts, rowid").all(topic)) as Row[];
+    const rows = (topic === undefined ? this.#prepare("select * from asks where state = 'open' order by ts, rowid").all() : this.#prepare("select * from asks where state = 'open' and topic = ? order by ts, rowid").all(topic)) as Row[];
     return rows.map(row => this.#askRow(row));
   }
 
   /** An open ask leaves `open` (answered, withdrawn, cancelled); false when it was no longer open. */
   closeAsk(id: string, state: Exclude<AskState, 'open'>, at: string, answer?: { id: string; option?: number; attribution?: AnswerAttribution }): boolean {
-    return this.#db.prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ?, answer_attribution = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, answer?.attribution ? JSON.stringify(answer.attribution) : null, id).changes > 0;
+    return this.#prepare("update asks set state = ?, closed_at = ?, answer_id = ?, option = ?, answer_attribution = ? where id = ? and state = 'open'").run(state, at, answer?.id ?? null, answer?.option ?? null, answer?.attribution ? JSON.stringify(answer.attribution) : null, id).changes > 0;
   }
 
   /** An answer that could not be sent: the ask is open again. */
   reopenAsk(id: string): void {
-    this.#db.prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null, answer_attribution = null where id = ?").run(id);
+    this.#prepare("update asks set state = 'open', closed_at = null, answer_id = null, option = null, answer_attribution = null where id = ?").run(id);
   }
 
   /** Recorded answer origins for an item's topic, independent of history pagination. */
   askAnswers(topic: string): AskAnswer[] {
-    const rows = this.#db.prepare("select * from asks where topic = ? and state = 'answered' and answer_attribution is not null order by ts, rowid").all(topic) as Row[];
+    const rows = this.#prepare("select * from asks where topic = ? and state = 'answered' and answer_attribution is not null order by ts, rowid").all(topic) as Row[];
     return rows.map(row => ({ ask: row.id as string, answer: row.answer_id as string, ...JSON.parse(row.answer_attribution as string) as AnswerAttribution }));
   }
 
   /** The answer's message id, once it is recorded. */
   setAskAnswer(id: string, answer: string): void {
-    this.#db.prepare('update asks set answer_id = ? where id = ?').run(answer, id);
+    this.#prepare('update asks set answer_id = ? where id = ?').run(answer, id);
   }
 
   /** A rename: what still waits for the old name (in flight to the live session) waits for the new one; a
@@ -1549,7 +1552,7 @@ export class Store implements HygieneMemory {
   /** What `from`'s spoke accepted and its adapter has not confirmed (`delivered`) is `to`'s now: the same session
    *  renamed. A message that already has a delivery for `to` keeps that one. Returns how many rows moved. */
   moveUninjected(from: string, to: string): number {
-    return Number(this.#db.prepare("update or ignore deliveries set session = ? where session = ? and state in ('delivered', 'uncertain')").run(to, from).changes);
+    return Number(this.#prepare("update or ignore deliveries set session = ? where session = ? and state in ('delivered', 'uncertain')").run(to, from).changes);
   }
 
   /**
@@ -1567,7 +1570,7 @@ export class Store implements HygieneMemory {
       and id not in (select d.message_id from deliveries d join pending_digests pending
         on pending.session = d.session and (d.message_id = pending.root or d.digest_id = pending.root))`, [now - retentionMs]);
       // an answered, withdrawn or cancelled ask goes with its message
-      if (result.gone) this.#db.prepare('delete from asks where id not in (select id from messages)').run();
+      if (result.gone) this.#prepare('delete from asks where id not in (select id from messages)').run();
       return result;
     });
   }
@@ -1575,8 +1578,7 @@ export class Store implements HygieneMemory {
   /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only.
    *  The counterpart is filtered in SQL before the limit, so a burst of other traffic never hides an older exchange. */
   history(session: string, limit: number, counterpart?: string): Message[] {
-    const rows = this.#db
-      .prepare(
+    const rows = this.#prepare(
         `select m.* from messages m
          where (m.from_name = :session or exists (select 1 from deliveries d where d.message_id = m.id and d.session = :session))
            and (:counterpart is null or m.from_name = :counterpart or exists (select 1 from json_each(m.to_json) t where t.value = :counterpart))

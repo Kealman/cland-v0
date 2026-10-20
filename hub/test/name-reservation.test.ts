@@ -1214,18 +1214,10 @@ test('failed terminal publication retains its owned row and resumes fan-out and 
   for (const subject of [{ session: 'target' }, { role: 'implementer' }]) {
     assert.equal((await f.owner.call<{ ok: boolean }>('subscribe', { subject, events: ['session.state'] })).ok, true);
   }
-  const prepare = f.database.prepare;
   let fault = true;
-  f.database.mock(t, function (this: DatabaseSync, sql: string) {
-    const statement = prepare.call(this, sql);
-    if (sql.startsWith('insert into meta')) {
-      const run = statement.run.bind(statement);
-      t.mock.method(statement, 'run', (...values: SQLInputValue[]) => {
-        if (fault && values[0] === 'subscription-terminal:launched:target' && String(values[1]).includes('stopped')) throw new Error('terminal checkpoint deliberately failed');
-        return run(...values);
-      });
-    }
-    return statement;
+  f.database.before(t, (sql, method, values) => {
+    if (fault && method === 'run' && sql.startsWith('insert into meta')
+      && values[0] === 'subscription-terminal:launched:target' && String(values[1]).includes('stopped')) throw new Error('terminal checkpoint deliberately failed');
   });
   const { started, release, credential } = deferSpawn(t, f.sessions);
   f.sessions.register({ ...f.sessions.adapter('test'), watch: () => { throw new Error('watch failed after publication'); } });
@@ -1344,19 +1336,13 @@ for (const failure of ['role transaction checkpoint', 'process receipt rollback 
       if (process.status === 'running') throw new Error('committed publication observer failed');
     });
     onCleanup(t, unsubscribe);
-    const prepare = f.database.prepare;
     let fault = true;
-    f.database.mock(t, function (this: DatabaseSync, sql: string) {
-      const statement = prepare.call(this, sql);
-      const run = statement.run.bind(statement);
-      if (sql.startsWith('insert into meta') || sql.startsWith('insert or replace into harness_pending_stops')) {
-        t.mock.method(statement, 'run', (...values: SQLInputValue[]) => {
-          if (fault && failure === 'role transaction checkpoint' && String(values[0]).startsWith('launch-role-rollback:')) throw new Error('role checkpoint deliberately failed');
-          if (fault && failure === 'process receipt rollback checkpoint' && sql.startsWith('insert or replace') && JSON.parse(String(values[1])).stages.roleRolledBack) throw new Error('rollback completion save deliberately failed');
-          return run(...values);
-        });
-      }
-      return statement;
+    f.database.before(t, (sql, method, values) => {
+      if (!fault || method !== 'run') return;
+      if (failure === 'role transaction checkpoint' && sql.startsWith('insert into meta')
+        && String(values[0]).startsWith('launch-role-rollback:')) throw new Error('role checkpoint deliberately failed');
+      if (failure === 'process receipt rollback checkpoint' && sql.startsWith('insert or replace into harness_pending_stops')
+        && JSON.parse(String(values[1])).stages.roleRolledBack) throw new Error('rollback completion save deliberately failed');
     });
     const refused = await f.launch('target');
     assert.equal(refused.ok, false);

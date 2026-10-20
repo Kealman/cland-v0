@@ -67,15 +67,17 @@ export async function archiveWorkload(t: import('node:test').TestContext, scale:
   const processes = new ProcessTable(db);
   for (let i = 0; i < scale.processes; i++) processes.put({ name: `old-${i}`, harness: 'claude-code', role: 'implementer', item: 'T-1', model: null, cwd: root, pid: null, harnessId: null, sessionId: `old-id-${i}`, harnessSessionId: null, startedAt: ts, stoppedAt: ts, status: 'stopped' });
   processes.close();
-  const prepare = database.prepare;
   let batches = 0, lifecycleLookups = 0, archiveCounts = 0;
   // A native tracer counts queries without retaining node:test's per-call stack/arguments on this large store.
-  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    if (args[0].startsWith('update harness_processes set archived_at')) batches++;
+  const prepare = database.prepare;
+  database.mock(t, function(this: DatabaseSync, sql) {
+    if (sql.startsWith('update harness_processes set archived_at')) batches++;
+    return prepare.call(this, sql);
+  });
+  database.trace(t, function(sql) {
     // The lifecycle lookup now prefers the frontmatter column before its receipt fallback.
-    if (args[0].includes('coalesce(i.closed, m.merged_at')) lifecycleLookups++;
-    if (args[0] === 'select count(*) as n from harness_processes where archived_at is not null') archiveCounts++;
-    return prepare.apply(this, args);
+    if (sql.includes('coalesce(i.closed, m.merged_at')) lifecycleLookups++;
+    if (sql === 'select count(*) as n from harness_processes where archived_at is not null') archiveCounts++;
   });
   const records: Array<Record<string, unknown>> = [];
   let turn = 0;
@@ -155,21 +157,13 @@ export async function inboxStartupWorkload(t: import('node:test').TestContext, s
   processes.close();
 
   let queries = 0, candidateRows = 0, inboxSql = '', topicSql = '';
-  const prepare = database.prepare;
-  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    const sql = args[0], statement = prepare.apply(this, args);
+  database.trace(t, function(sql, method, _bindings, result) {
     if (sql.includes('order by standing desc')) topicSql = sql;
-    if (sql.startsWith('with latest_messages as')) {
+    if (sql.startsWith('with latest_messages as') && method === 'all') {
       queries++;
       inboxSql = sql;
-      const all = statement.all;
-      t.mock.method(statement, 'all', function(this: typeof statement, ...bindings: Parameters<typeof all>) {
-        const rows = all.apply(this, bindings);
-        candidateRows = rows.length;
-        return rows;
-      });
+      candidateRows = (result as unknown[]).length;
     }
-    return statement;
   });
   const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: () => {} });
   const clients: Array<() => void> = [];
@@ -256,8 +250,7 @@ export async function verifierWorkload(t: import('node:test').TestContext, burst
   let observing = false, messageReads = 0, pendingReads = 0;
   const scans: string[] = [];
   const scanPlans = new Map<string, boolean>();
-  database.mock(t, function(this: DatabaseSync, ...args: Parameters<typeof prepare>) {
-    const sql = args[0];
+  database.trace(t, function(sql, method, bindings) {
     if (observing && /^select|^with/i.test(sql.trim()) && /\b(?:from|join) messages\b/i.test(sql)) {
       messageReads++;
       // Schema and null-bound EXPLAIN inputs stay fixed; check each SQL shape once,
@@ -272,17 +265,8 @@ export async function verifierWorkload(t: import('node:test').TestContext, burst
       }
       if (scan) scans.push(sql);
     }
-    const statement = prepare.apply(this, args);
-    if (sql === 'select value from meta where key = ?') {
-      const get = statement.get;
-      // This statement belongs to the injected fixture database; a lightweight
-      // wrapper avoids retaining a node:test mock-call stack for every meta read.
-      statement.get = function(this: typeof statement, ...bindings: unknown[]) {
-        if (observing && bindings[0] === 'pending-verification:verifier-id') pendingReads++;
-        return Reflect.apply(get, this, bindings);
-      };
-    }
-    return statement;
+    if (observing && sql === 'select value from meta where key = ?' && method === 'get'
+      && bindings[0] === 'pending-verification:verifier-id') pendingReads++;
   });
   for (let burst = 0; burst < 3; burst++) {
     const before = human.frames.length, readsBefore = pendingReads;
