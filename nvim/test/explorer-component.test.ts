@@ -493,3 +493,35 @@ test('cold startup shows loading then selects the release without entering the c
   await at(c,'R-1');
   assert.equal(await c.lua("return vim.b.cland_role"),'explorer');
 });
+
+// T2: the card's real split geometry, recorded hub frames, and saved side preferences.
+test('explorer card replaces any right occupant on a narrow screen and restores it on widening', {skip}, async t => {
+  const {c}=await stub(t,fixture,undefined,'general');
+  const rightRole=()=>c.lua<string>(`local l=require('cland.layout'); local w=l.win.right
+    return w and vim.api.nvim_win_is_valid(w) and vim.b[vim.api.nvim_win_get_buf(w)].cland_role or ''`);
+  for (const kind of ['items','inbox','sessions','topics']) {
+    await c.input(`<Esc>:Cland view board<CR>:Cland panel ${kind === 'sessions' ? 'inbox' : 'sessions'} left<CR>:Cland panel ${kind} right<CR>`);
+    const homes=await c.lua("return require('cland.state').S.ui.panel_homes");
+    await c.input(':Cland explorer<CR>');
+    await c.waitScreen(s=>s.includes('Explorer') && s.includes('CARD'),'explorer card drawn');
+    await eventually('right occupant covered by card',async()=>await c.lua(`local e=require('cland.explorer');local l=require('cland.layout')
+      return e.card.over_right and e.card.win and vim.api.nvim_win_is_valid(e.card.win) and not l.win.right`) || undefined);
+    assert.equal(await rightRole(),'');
+    assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"),homes);
+    assert.equal(await c.lua("return require('cland.state').S.ui.right"),kind);
+    await c.rpc.request('nvim_ui_try_resize',320,50);
+    await eventually('right occupant restored beside card',async()=>await rightRole()===kind || undefined);
+    await c.waitScreen(s=>s.includes('CARD') && s.includes(kind.toUpperCase()),'restored panel and card painted');
+    assert.equal(await rightRole(),kind);
+    assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"),homes);
+    assert.equal(await c.lua("return require('cland.state').S.ui.right"),kind);
+    await c.rpc.request('nvim_ui_try_resize',200,50);
+    await eventually('card covers right again',async()=>await c.lua("return require('cland.explorer').card.over_right and not require('cland.layout').win.right") || undefined);
+    assert.equal(await rightRole(),'');
+    await c.input(':Cland view board<CR>');
+    await eventually('leaving explorer restores right occupant',async()=>await rightRole()===kind || undefined);
+    await c.waitScreen(s=>s.includes('BOARD') && s.includes(kind.toUpperCase()),'restored panel beside board painted');
+    assert.equal(await rightRole(),kind);
+    assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"),homes);
+  }
+});

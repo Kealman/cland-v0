@@ -72,8 +72,11 @@ test('a cold Neovim restart restores Sessions left and Items right from version-
   const c = await client(t, root);
   await c.input('<Esc>:Cland panel sessions left<CR>:Cland panel items right<CR>');
   await c.waitScreen(s => s.includes('SESSIONS') && s.includes('ITEMS'), 'both swapped panels before quit');
+  await resize(c, 'left', 48, '|');
+  await resize(c, 'right', 46, '|');
   await quit(c);
   const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.deepEqual(saved.sizes, { left: 48, right: 46 });
   assert.equal(saved.version, 2);
   assert.equal(saved.panels.left_kind, 'sessions');
   assert.equal(saved.panels.right, 'items');
@@ -85,6 +88,8 @@ test('a cold Neovim restart restores Sessions left and Items right from version-
     left_role: 'sessions', right_role: 'items',
     homes: { items: 'right', sessions: 'left', inbox: 'right', topics: 'right' },
   });
+  assert.deepEqual(await fresh.lua(preferences), { left: true, right: 'items', dock: false,
+    sizes: { left: 48, right: 46 }, filter: 'board', width: 48, right_width: 46 });
 });
 
 async function resize(c: Client, slot: string, size: number, key: string) {

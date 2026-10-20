@@ -405,3 +405,86 @@ test('Inbox digits and Topics n work on the left', { skip }, async t => {
   await c.waitScreen(s => s.includes('From left panel') && s.includes('to: Coordinator'), 'new topic opens in centre');
   assert.equal((await requestsOf(c, 'topic.create')).at(-1)?.title, 'From left panel');
 });
+
+// T2: physical headless resize events and v2 reload; cold-process restore stays in ui.test.ts.
+test('manual widths belong to sides through moves, views, presets and preference reload', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'sessions', 'left');
+  await place(c, 'items', 'right');
+  for (const [side, width] of [['left', 48], ['right', 46]] as const) {
+    await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win[...])", side);
+    await c.input(`<C-w>${width}|`);
+    await eventually(`${side} manual width recorded`, async () => await c.lua(
+      "local side,width=...; return require('cland.state').S.ui.sizes[side]==width", side, width) || undefined);
+  }
+  const widths = () => c.lua(`local l=require('cland.layout'); return {
+    left=l.win.left and vim.api.nvim_win_get_width(l.win.left),
+    right=l.win.right and vim.api.nvim_win_get_width(l.win.right),
+    sizes=require('cland.state').S.ui.sizes}`);
+  assert.deepEqual(await widths(), { left: 48, right: 46, sizes: { left: 48, right: 46 } });
+  await place(c, 'items', 'left');
+  assert.deepEqual(await widths(), { left: 48, sizes: { left: 48, right: 46 } });
+  await place(c, 'sessions', 'right');
+  assert.deepEqual(await widths(), { left: 48, right: 46, sizes: { left: 48, right: 46 } });
+  await place(c, 'sessions', 'left');
+  await place(c, 'items', 'right');
+  await place(c, 'inbox', 'left');
+  const homes = { items: 'right', sessions: 'left', inbox: 'left', topics: 'right' };
+  await c.input(':Cland view board<CR>');
+  assert.deepEqual(await widths(), { left: 48, right: 46, sizes: { left: 48, right: 46 } });
+  for (const [preset, left, right] of [['charting', '', 'ITEMS'], ['steady', 'INBOX', ''], ['watch', 'INBOX', 'ITEMS']] as const) {
+    await c.input(`:Cland preset ${preset}<CR>`);
+    await eventually(`${preset} physical panel set applied`, async () => {
+      const l = await panel(c, 'left'), r = await panel(c, 'right');
+      return (left ? l.includes(left) : l === '') && (right ? r.includes(right) : r === '') || undefined;
+    });
+    assert.equal(await panel(c, 'left') === '', left === '');
+    assert.equal(await panel(c, 'right') === '', right === '');
+    if (left) await expectPanel(c, 'left', left);
+    if (right) await expectPanel(c, 'right', right);
+    assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"), homes);
+    const w = await widths();
+    assert.deepEqual(w, { ...(left ? { left: 48 } : {}), ...(right ? { right: 46 } : {}), sizes: { left: 48, right: 46 } });
+  }
+  await c.lua("require('cland.ui').changed(); assert(require('cland.ui').flush())");
+  await c.lua("require('cland.ui').load(require('cland.state').S.root); require('cland.layout').build({insert=false})");
+  await expectPanel(c, 'left', 'INBOX');
+  await expectPanel(c, 'right', 'ITEMS');
+  assert.deepEqual(await widths(), { left: 48, right: 46, sizes: { left: 48, right: 46 } });
+});
+
+test('Topics dock stays above the right Sessions panel with Inbox left and keeps its manual height without duplicates', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'inbox', 'left');
+  await c.input('<Space>T');
+  await c.waitScreen(s => s.includes('TOPICS') && s.includes('SESSIONS'), 'dock with right Sessions');
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win.dock)");
+  await c.input('<C-w>11_');
+  await eventually('manual dock height recorded', async () => await c.lua("return require('cland.state').S.ui.sizes.dock==11") || undefined);
+  for (const side of ['left', 'right'] as const) {
+    await place(c, 'topics', side);
+    assert.equal(await c.lua("return require('cland.state').S.ui.dock"), false);
+    await c.input('<Space>T');
+    await eventually('Topics dock window opened', async () => await c.lua(`local w=require('cland.layout').win.dock
+      return w and vim.api.nvim_win_is_valid(w)`) || undefined);
+    await c.waitScreen(s => s.includes('TOPICS'), 'Topics moved from its side into the dock');
+    assert.equal(await c.lua(`local a=vim.api;local n=0
+      for _,w in ipairs(a.nvim_tabpage_list_wins(0)) do
+        if vim.b[a.nvim_win_get_buf(w)].cland_role=='topics' then n=n+1 end
+      end; return n`), 1, 'docking removes the visible Topics side before opening its dock');
+    await place(c, 'inbox', 'left');
+    await place(c, 'sessions', 'right');
+    await c.waitScreen(s => s.includes('TOPICS') && s.includes('SESSIONS'), 'dock restored above Sessions');
+    await expectPanel(c, 'left', 'INBOX');
+    await expectPanel(c, 'right', 'SESSIONS');
+    assert.deepEqual(await c.lua(`local l=require('cland.layout'); local a=vim.api
+      local count=0; for _,w in ipairs(a.nvim_tabpage_list_wins(0)) do
+        if vim.b[a.nvim_win_get_buf(w)].cland_role=='topics' then count=count+1 end
+      end
+      return {count=count,height=a.nvim_win_get_height(l.win.dock),
+        above=a.nvim_win_get_position(l.win.dock)[1]<a.nvim_win_get_position(l.win.right)[1],
+        aligned=a.nvim_win_get_position(l.win.dock)[2]==a.nvim_win_get_position(l.win.right)[2]}`),
+      { count: 1, height: 11, above: true, aligned: true });
+    await c.input('<Space>T');
+  }
+});
