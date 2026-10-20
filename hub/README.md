@@ -3444,6 +3444,18 @@ candidates and are preserved. Command lines and environments are never printed o
 used alone to authorize signals. Task pruning, creation rollback and merge-batch
 checkout removal stop receipt-bearing fixtures associated with that worktree and
 observe completion before Git removes it; incomplete cleanup keeps the worktree.
+When a deleted-project hub has both OS project ownership and a fixture receipt,
+doctor reports it once as `orphan hub`; the hub classification takes precedence.
+The receipt still authorizes fixture/worktree cleanup when its source checkout
+disappears while the project itself remains live.
+
+Neovim fixtures inherit the receipt as explicit child fd 3. Unix spawn clears
+close-on-exec for this descriptor; the parent's copy then closes. Linux discovery
+reads `/proc/<pid>/fd` symlinks, while macOS uses `lsof`. Receipt birth windows
+include the second before the parent's spawn interval: Linux `ps lstart` adds
+whole boot seconds to truncated start ticks, which can report that earlier second.
+Open-file, UID, PID and fresh start-time checks remain required; the margin alone
+never establishes ownership.
 
 `cland doctor [dir]` reports orphan servers, names their recorded session and status, and recommends `cland doctor --fix`. The fix ends verified orphan harness servers while preserving running sessions and unverifiable identities. An unpublished server is preserved while another live hub holds the project lock, because doctor cannot see that hub’s in-flight launch reservations; stop that hub before retrying cleanup. Doctor also reports cland hub daemons whose project directories were deleted, using their OS cwd and open project files to prove ownership, and `--fix` ends those daemons. Doctor tests scope deleted-project discovery to their fixture root with `CLAND_TEST_ORPHAN_ROOT`, so parallel fixtures cannot end each other’s hubs. If the OS cannot supply ownership evidence, inspect the candidate manually. On Linux the sweep reads `/proc`; on macOS it uses bounded asynchronous `lsof` calls. Every session start-time probe and termination probe uses asynchronous `ps`, keeping process inspection off the hub’s synchronous request path. Concurrent start-time reads with the same timeout and timezone share one `ps -p a,b,c` per event-loop turn; callers for an already in-flight PID share that read. Results are removed before callers resume, so a later read still detects PID reuse.
 

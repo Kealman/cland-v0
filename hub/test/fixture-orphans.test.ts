@@ -53,10 +53,20 @@ test('live roots and other projects are outside deleted-root sweeping', async t 
 
 test('receipt PID binding, private permissions, same user and open descriptor are required', async t => {
   const f = fixture(t);
+  // Linux ps lstart adds integer boot seconds to truncated start ticks. Its
+  // reported second can precede the parent's wall-clock spawn second by one.
+  const spawnSecond = Date.parse(row(101).started) + 1000;
+  f.receipts[0]!.bind(101, spawnSecond, spawnSecond + 100);
+  assert.ok((await findFixtureOrphans(undefined, undefined, f.readers)).some(p => p.process.pid === 101 && p.owned), 'an open child receipt covers Linux ps second truncation');
+  const originalRows = f.readers.rows;
+  for (const offset of [-2000, 1000]) {
+    f.readers.rows = async () => [{ ...row(101), started: new Date(spawnSecond + offset).toString() }];
+    assert.deepEqual((await findFixtureOrphans(undefined, undefined, f.readers)).filter(p => p.owned), [], 'births outside the bounded spawn window remain unowned');
+  }
+  f.readers.rows = originalRows;
   f.receipts[0]!.bind(999);
   // A stale receipt cannot authorize a replacement PID even if it opens that old file.
   const replacement = [{ ...row(101), started: 'Tue Oct 20 09:00:00 2026' }];
-  const originalRows = f.readers.rows;
   f.receipts[0]!.bind(101, Date.parse(row(101).started), Date.parse(row(101).started));
   f.readers.rows = async () => replacement;
   assert.deepEqual((await findFixtureOrphans(undefined, undefined, f.readers)).filter(p => p.owned), []);

@@ -19,12 +19,14 @@ export function fixtureOwnership(roots: string[]): { path: string; fd: number; b
   const createdAt = Date.now();
   // ps lstart has whole-second precision. A self receipt uses Node's process time origin;
   // a spawned child is bound to the parent's observed spawn interval instead.
+  // Linux ps adds integer boot seconds to truncated start ticks, so its lstart
+  // can be one second earlier than the parent's wall-clock spawn second too.
   const birth = Math.floor(performance.timeOrigin / 1000);
   const receipt: FixtureReceipt = { version: 1, pid: process.pid, born: { min: birth - 1, max: birth }, roots: roots.map(canonical) };
   const save = () => { const text = JSON.stringify(receipt); writeSync(fd, text, 0, 'utf8'); ftruncateSync(fd, Buffer.byteLength(text)); };
   save();
   let closed = false;
-  return { path, fd, bind: (pid, earliest = createdAt, latest = Date.now()) => { receipt.pid = pid; receipt.born = { min: Math.floor(earliest / 1000), max: Math.floor(latest / 1000) }; save(); }, close: () => { if (!closed) { closeSync(fd); closed = true; } }, remove: () => { try { unlinkSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; } } };
+  return { path, fd, bind: (pid, earliest = createdAt, latest = Date.now()) => { receipt.pid = pid; receipt.born = { min: Math.floor(earliest / 1000) - 1, max: Math.floor(latest / 1000) }; save(); }, close: () => { if (!closed) { closeSync(fd); closed = true; } }, remove: () => { try { unlinkSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; } } };
 }
 
 /** Only paths in our private receipt directory are read; symlinks and loose files fail closed. */

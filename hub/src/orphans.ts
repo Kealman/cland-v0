@@ -127,7 +127,9 @@ export async function findOrphans(root: string, includeHubs = false, deadline?: 
   if (includeHubs && includeFixtures) {
     for (const fixture of await findFixtureOrphans(hubScopeRoot, deadline)) {
       const previous = out.findIndex(p => p.process.pid === fixture.process.pid);
-      if (previous >= 0) { if (fixture.owned) out[previous] = fixture; }
+      // Deleted-project OS proof retains the public hub classification even
+      // when that same hub also carries a fixture receipt.
+      if (previous >= 0) { if (fixture.owned && out[previous]!.kind !== 'hub') out[previous] = fixture; }
       else out.push(fixture);
     }
   }

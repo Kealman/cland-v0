@@ -331,8 +331,9 @@ async function runCland(cwd: string, extra: Record<string, string>, provider: (S
   const overrides: Record<string, string> = {};
   // CLAND_* stripping must not restore the host's default/legacy executor ledger.
   overrides.CLAND_EXECUTOR_STATE = join(cwd, '.cland/executor-state');
-  // Doctor normally discovers deleted-project hubs machine-wide. Tests only inspect their own fixture.
-  if (args[0] === 'doctor') overrides.CLAND_TEST_ORPHAN_ROOT = cwd;
+  // Doctor and daemon startup discover deleted fixtures machine-wide in
+  // production. A test launch must never sweep another test's deleted root.
+  if (args[0] === 'doctor' || args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) overrides.CLAND_TEST_ORPHAN_ROOT = cwd;
   // Fixture ownership is authoritative for daemon launches, even over caller extras.
   const ownership = args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '') ? { CLAND_TEST_FIXTURE_ROOT: cwd } : {};
   const sealed = await accountFixtureEnvironment({ ...overrides, ...extra, ...ownership });
@@ -434,7 +435,7 @@ export type ProjectHubOptions = {
 export async function projectHub(t: TestContext, root: string, extra: Record<string, string> = {}, options: ProjectHubOptions = {}): Promise<{ fakes: Partial<Record<FakeFlavour, FakeHarness>>; discovery: Discovery; dispatcher: Pick<Dispatcher, 'open'>; stopped: Promise<void>; stop: () => Promise<void>; verificationSettled: () => Promise<void> }> {
   assert.ok(!extra.CLAND_TEST_CRASH_AT, 'process crash tests require startDaemon');
   await isolateVerification(root);
-  const sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', ...extra });
+  const sealed = await accountFixtureEnvironment({ CLAND_EXECUTOR_STATE: join(root, '.cland/executor-state'), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_ORPHAN_ROOT: root, ...extra });
   const accountEnv = options.scratchAccountPaths ? scratchAccountEnvironment(root, sealed, options.scratchAccountPaths) : sealed;
   const gitEnv = options.scratchGitConfig ? scratchGitEnvironment(root, accountEnv, options.scratchGitConfig) : accountEnv;
   const env = options.syntheticProvider ? syntheticProviderEnvironment(gitEnv, options.syntheticProvider, options.droplet?.api) : gitEnv;

@@ -60,7 +60,8 @@ export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-cod
 `;
 
 export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub and what cland init provisioned; one line per
-                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers and deleted-project hubs)
+                  check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers, deleted-project hubs and fixtures)
+                  deleted-project hubs retain the orphan hub classification even with fixture ownership
 `;
 
 export const HUB_USAGE = `  hub start       start the project's hub in the background (idempotent)

@@ -1258,7 +1258,17 @@ after cleanup and fails if a phase candidate survives, preserving ambiguous proc
 For old orphans use `cland doctor` to inspect and `cland doctor --fix` to sweep only
 the calling user's verified bridges whose explicit hub file is missing. An existing
 hub file, ambiguous argv or unverifiable identity prevents cleanup. Doctor fixtures
-scope both deleted hubs and bridges with `CLAND_TEST_ORPHAN_ROOT`.
+scope deleted hubs, bridges and fixtures with `CLAND_TEST_ORPHAN_ROOT`; both CLI
+and embedded daemon launches through the test harness default startup fixture sweeping to their own
+project root too. Explicit scratch scopes may widen that test boundary. A doctor
+cleanup case uses the default skipped startup sweep, or observes its completion
+before removing roots, so a pending startup sweep cannot consume doctor's target.
+Deleted-project hub OS proof wins over fixture classification in doctor's output.
+The native fixture-ownership T3 case checks the open receipt separately from its
+PID/birth match, then observes both client/stub receipts and confirmed process
+death before removing the root. Linux `ps lstart` truncation needs the one-second
+lower birth margin already used by self receipts; fd inheritance alone is not
+the complete ownership proof.
 
 ## Cover-quiet
 

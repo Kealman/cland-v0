@@ -249,8 +249,9 @@ test('doctor reports a hub whose project was deleted; --fix ends it while preser
   const root = await tempProject(t, 'live-', scope);
   const removed = await tempProject(t, 'removed-', scope);
   const env = { CLAND_TEST_ORPHAN_ROOT: scope };
-  const { discovery } = await startDaemon(t, removed, {}, { sweep: true });
-  const live = await startDaemon(t, root, {}, { sweep: true });
+  // Doctor owns this cleanup; a pending startup sweep is a different boundary.
+  const { discovery } = await startDaemon(t, removed);
+  const live = await startDaemon(t, root);
   await rm(removed, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
   const readOnly = await clandWithEnv(root, env, 'doctor', '--json');
   const check = (JSON.parse(readOnly.stdout) as { checks: Array<{ name: string; detail: string; fix?: string }> }).checks.find(c => c.name === 'orphan hub' && c.detail.includes(String(discovery.pid)));
