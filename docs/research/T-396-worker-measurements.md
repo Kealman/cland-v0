@@ -7,7 +7,7 @@ configuration, per-run overrides, saved request, price reservation, refusal of
 unoffered sizes and result headers with fixtures. Measurements belong to E-387
 stage-2 close after merge and a hub restart. The Coordinator runs this procedure,
 posts the receipts on T-396 and changes the defaults in a follow-up config commit
-only if the numbers justify it. Four workers remain the unmeasured default.
+only if the numbers justify it. Four workers were the unmeasured default; D53 later set droplet workers to 2, measured on c-8 (T-655, A-4106 and A-4156).
 
 ## One build and comparable runs
 
@@ -73,8 +73,8 @@ alone is evidence of load sensitivity, not proof that a parallel red was safe.
 Retain four workers locally unless a failure-free leader beats its four-worker
 baseline by at least 10%. For close contenders use the mean of comparable
 repeats and list both observations. Select droplet workers separately using the
-c-16 baseline; retain four if failures or incomplete data prevent a reliable
-choice. Today's c-8 four-worker Linux timeouts at load 12–14 (E-482) make raw
+c-16 baseline; this original procedure proposed retaining four if failures or incomplete data prevented a reliable
+choice (superseded by D53: 2 workers on c-8). Today's c-8 four-worker Linux timeouts at load 12–14 (E-482) make raw
 speed alone insufficient: report whether the exact failing cases pass alone and
 whether higher counts introduce additional timeout failures. Do not project a
 c-16 result onto c-8 without evidence.

@@ -2786,7 +2786,8 @@ Neovim entries or sorted keys. If both manifests exist, `tiers.json` takes prior
 
 The hub free shard runs on one worker. `[verification] workers` sets the hub
 machine shard and Neovim concurrency (default 4). `[verification.droplet] workers`
-overrides it on droplets and otherwise inherits it. Both accept positive integers;
+overrides it on droplets and otherwise inherits it; this repository sets it to 2
+(D53, measured on c-8; T-655, A-4106 and A-4156). Both accept positive integers;
 `cland update` preserves them. Hand runs use the local setting even when the
 project's default verification executor is a droplet.
 
@@ -2798,7 +2799,7 @@ queueing/restart and appear in the result header. Cache reuse requires matching
 worker counts and size overrides; use `--fresh` for every timed measurement.
 A droplet fallback uses the local configured workers unless `--workers` was given.
 
-T-396 retains four workers pending the stage-2 measurements. Earlier Mac runs at
+D53 sets droplet workers to 2 from the c-8 measurements. Earlier Mac runs at
 four workers approached load 14–15, where readiness failures began; higher counts
 need measured evidence after the inspection diet and in-process hub changes.
 Compare c-16 at 4/6/8, then the quiet Mac at 4/5/6. Keep four locally unless a
@@ -3058,7 +3059,7 @@ A live seed that no longer verifies falls back to the full ownership proof, pres
 its replacement identity. Root cleanup without seeds and the runner’s phase sweep
 retain machine-wide discovery so unregistered leaks are still found.
 
-The machine shards run at concurrency 4; hermetic shards run at 1. Targeted single-file runs are free:
+The machine shards run at concurrency 4 locally and 2 on droplets (D53, measured on c-8); hermetic shards run at 1. Targeted single-file runs are free:
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw
 `node --test` is reserved for targeted runs.
