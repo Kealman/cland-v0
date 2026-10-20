@@ -13,8 +13,8 @@ import { ownDirectory } from './process-cleanup.ts';
 
 test('hub implementation changes select hub plus Neovim smoke', () => {
   assert.equal(chooseSuiteMode(['hub/src/adapters/codex.ts', 'hub/test/tracker.test.ts']), 'hub-only');
-  assert.ok(suitePhases('hub-only')[1]!.targets.includes('nvim/test/startup-budget.test.ts'), 'reduced hub runs retain the startup budget');
-  assert.equal(chooseSuiteMode(['web/app.ts']), 'hub-only', 'web-only diffs retain Neovim smoke');
+  assert.ok(suitePhases('hub-only').find(phase => phase.name === 'Neovim smoke')!.targets.includes('nvim/test/startup-budget.test.ts'), 'reduced hub runs retain the startup budget');
+  assert.equal(chooseSuiteMode(['web/app.ts']), 'web-only', 'web-only diffs retain Neovim smoke');
 });
 
 test('Neovim implementation changes select Neovim plus hub smoke', () => {

@@ -502,6 +502,7 @@
     "hub/test/web-auth.test.ts": "T2",
     "hub/test/web-bundle.test.ts": "T1",
     "hub/test/web-edge.test.ts": "T2",
+    "hub/test/web-phase.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",
     "nvim/test/agents-filters.test.ts": "T2",

@@ -61,7 +61,7 @@ async function sourceTitles(cwd: string): Promise<(name: string) => string | und
   const ts = await import('typescript');
   const titles: Array<{ file: string; pattern: RegExp }> = [];
   const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  for await (const file of glob(['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts'], { cwd })) {
+  for await (const file of glob(['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts', 'nvim/test/**/*.test.ts', 'web/test/**/*.test.ts'], { cwd })) {
     const source = ts.createSourceFile(file, await readFile(join(cwd, file), 'utf8'), ts.ScriptTarget.Latest, true);
     const visit = (node: import('typescript').Node) => {
       if (ts.isCallExpression(node) && /^(?:test|it|describe)(?:\.(?:skip|todo|only))?$/.test(node.expression.getText(source))) {

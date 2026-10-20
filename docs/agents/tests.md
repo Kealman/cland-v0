@@ -1092,7 +1092,7 @@ The underlying package scripts remain available for humans and isolated CI:
 - `npm test`: automatic phase selection; `npm test -- --all` forces full.
 - `npm test --workspace hub` and `npm run test:nvim`: request the matching reduced mode, widening to full when the diff does not qualify.
 
-`hub/test/tiers.json` declares every `hub/src/**/*.test.ts`, `hub/test/**/*.test.ts` and `nvim/test/**/*.test.ts` file in one path-sorted `tests` map, with `version: 1`. Add a new path at its sorted position in that map in the same commit as the test. Choose T1 (unit), T2 (component), T3 (integration) or T4 (soak) using the levels above. An entry is a tier string, or a T3 descriptor with exactly one nonempty `contract` or `scenario` string, for example `{ "tier": "T3", "contract": "codex" }`. Fixture/tool writers use `serializeTierManifest` from `hub/src/suite-shards.ts` to keep path order.
+`hub/test/tiers.json` declares every `hub/src/**/*.test.ts`, `hub/test/**/*.test.ts`, `nvim/test/**/*.test.ts` and `web/test/**/*.test.ts` file in one path-sorted `tests` map, with `version: 1`. Add a new path at its sorted position in that map in the same commit as the test. Choose T1 (unit), T2 (component), T3 (integration), T4 (soak) or Web (browser) using the levels above. An entry is a tier string, or a T3 descriptor with exactly one nonempty `contract` or `scenario` string, for example `{ "tier": "T3", "contract": "codex" }`. Fixture/tool writers use `serializeTierManifest` from `hub/src/suite-shards.ts` to keep path order.
 
 Run `npm run test:tiers`; `test:shards` remains an alias for one release. The lint rejects unclassified files, entries for missing files, invalid tier strings/objects and unsorted maps (naming the first out-of-order path). T1 still rejects process/port/timer APIs, process-fixture helpers, real-time waits, lock paths or Neovim in the source. In projects carrying the manifest, `cland verify` checks both the working files and immutable submitted head before queueing (`verify-tiers`), and `cland merge` checks the merged candidate before changing refs or the root checkout (`merge-tiers`). The old wire codes `verify-shards` and `merge-shards` remain accepted aliases. An in-flight candidate with only `hub/test/shards.json` still verifies: `free` reads as T1 and `machine` as T3, with its original hub-only classification coverage and no sorted-map requirement. When both manifests exist, `tiers.json` wins.
 
@@ -1526,3 +1526,39 @@ Clause procedure (defaults implementer, project implementer):
 Clause procedure (defaults implementer, project implementer):
 
 - Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by default. Keep `startDaemon` only when an assertion concerns the hub process (startup, shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping, watchdog behavior, or CLI behavior with the hub down or unreachable); such tests name the process lifecycle behavior they prove. See docs/agents/tests.md.
+
+## Web phase
+
+Browser tests carry `Web` in `hub/test/tiers.json`, outside T0–T3, with a separate
+4 s/test and 40 s/phase budget in `hub/test/durations.json` (report mode follows
+the repository budget setting). The package runner reports actual phase wall time
+separately from tier projections and keeps a 60 s gross hang guard. Web runs after
+the hub phases with resource `machine`, two workers locally and four on droplets.
+It keeps the suite's joint lease and never runs in load-gate repetition lanes.
+
+A diff wholly under `web/**` selects `web-only`: all Web tests plus `HUB_SMOKE`
+and `NVIM_SMOKE`. Other reduced modes include `web/test/smoke.test.ts`; protocol,
+shared wire, web edge and mixed web/non-web paths force full. Queue-enabled task
+runs keep Web beside all T1 and selected T2. Hub-owned merge batches exclude Web;
+periodic dev (`dev-t3`), integrated, stage, epic, release and soak runs include it.
+The candidate's `supportsWebPhase` runner capability adds a recorded Web command
+to tier-based verification; other projects and older candidates retain their
+commands. Close shards place Web with the shard that owns Neovim so it runs once.
+
+The browser fixture/dependency slice (T-991) supplies the first Web test file and
+installation commands. Until it lands, a manifest without Web files retains its
+existing phases. `node hub/test/run-suite.ts --tier Web` selects only the candidate's
+Web files; the root check builds the browser bundle, and a hand-run package suite
+checks its source receipt or builds once before workers when needed. Browser
+fixtures must use isolated Chrome Headless Shell profiles and scratch environments;
+see the Web workspace's browser-test documentation when T-991 lands.
+
+The candidate's `web/test/prerequisite.ts` exports `webPrerequisite()` and returns
+`{available: true, executablePath}` or `{available: false, reason}` without
+launching a browser. For a missing executable or system library, the runner emits
+"Web unavailable on this machine" and a structured `suite web phase` receipt
+with `status: "not-run"` and the reason. It skips browser workers and continues
+the other phases. Results retain `webPhase` in the durable job and result JSON;
+an unavailable phase supplies no passing Web evidence and cannot be reused as a
+green cache receipt. A broken or missing probe with Web selected is an error.
+T-991 supplies this probe; T-993 installs the Linux browser libraries.

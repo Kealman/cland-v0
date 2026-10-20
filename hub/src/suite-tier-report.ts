@@ -18,7 +18,7 @@ export function taskTierEvidence(selection: SuiteSelection | undefined, queue: {
 export type TierPlan = Array<{ tier: Tier; files: string[]; tests: number; seconds: number; projectedWall: number; workers: number; missing: number; wallBudget?: number; phases?: Array<{ weights: number[]; serial: boolean }> }>;
 export type SuiteDryRun = { dryRun: true; head: string; executor: 'local' | 'droplet'; workers: number; selection: SuiteSelection; tiers: TierPlan; lines: string[] };
 const seconds = (n: number) => Number(n.toFixed(3)).toString();
-const budgets: Record<Tier, number | null> = { T1: 120, T2: 480, T3: 900, T4: null };
+const budgets: Record<Tier, number | null> = { T1: 120, T2: 480, T3: 900, T4: null, Web: 40 };
 
 /** Expand the actual package phases, including smoke, deduplicating planned files. */
 export async function planTierReport(cwd: string, selection: SuiteSelection, workers: number, phases?: SuiteShard[], history: DurationHistory = {}): Promise<TierPlan> {
@@ -32,7 +32,7 @@ export async function planTierReport(cwd: string, selection: SuiteSelection, wor
   for (const phase of phases ?? await packageShards(cwd, selection.mode, selection.shard, selection, { workers, ...history })) {
     const paths: string[] = [];
     for await (const path of glob(phase.targets, { cwd })) if (!seen.has(path) && tiers.has(path)) { seen.add(path); paths.push(path); }
-    for (const tier of ['T1', 'T2', 'T3', 'T4'] as const) {
+    for (const tier of ['T1', 'T2', 'T3', 'T4', 'Web'] as const) {
       const files = paths.filter(path => tiers.get(path) === tier).sort();
       if (!files.length) continue;
       let row = result.find(row => row.tier === tier);
@@ -67,7 +67,7 @@ export function projectedWall(weights: number[], workers: number): number {
 
 /** Admission can change the worker policy or fall back to the local executor. */
 export function tierPlanWorkers(plan: TierPlan, workers: number): TierPlan {
-  return plan.map(row => row.phases ? { ...row,
+  return plan.map(row => row.tier === 'Web' ? row : row.phases ? { ...row,
     workers: row.phases.every(phase => phase.serial) ? 1 : workers,
     projectedWall: row.phases.reduce((sum, phase) => sum + projectedWall(phase.weights, phase.serial ? 1 : workers), 0),
   } : row);
@@ -91,6 +91,6 @@ export function tierReport(plan: TierPlan, observed?: TestTiming[]): string[] {
   });
   const total = plan.reduce((sum, row) => sum + row.seconds, 0);
   const sum = (tiers: Tier[]) => plan.filter(row => tiers.includes(row.tier)).reduce((n, row) => n + row.seconds, 0);
-  lines.push(`tier share: T1+T2 ${total ? seconds(100 * sum(['T1', 'T2']) / total) : 'unavailable'} % of ${seconds(total)} s (T3 ${seconds(sum(['T3']))} s, T4 ${seconds(sum(['T4']))} s)`);
+  lines.push(`tier share: T1+T2 ${total ? seconds(100 * sum(['T1', 'T2']) / total) : 'unavailable'} % of ${seconds(total)} s (T3 ${seconds(sum(['T3']))} s, T4 ${seconds(sum(['T4']))} s${sum(['Web']) ? `, Web ${seconds(sum(['Web']))} s` : ''})`);
   return lines;
 }

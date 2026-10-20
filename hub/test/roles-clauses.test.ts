@@ -61,7 +61,7 @@ for (const [source, definitions] of sources) {
       }
       if (role === 'implementer') {
         assert.match(clause, /Mark every criterion done before requesting the final review/);
-        assert.match(clause, /Queue-enabled task runs are T0–T2; T3 runs in the merge batch/);
+        assert.match(clause, /Queue-enabled task runs are T0–T2 plus Web; batches exclude Web/);
         assert.match(testProcedures, /T3 smoke runs in batches and integrated runs/);
         assert.match(clause, /docs\/agents\/tests\.md#implementer-test-selection/);
         assert.match(clause, /all T2 in both packages on fallback/);

@@ -130,7 +130,7 @@ export function checkMergeBudgets(context: DurationBudgetContext, workers: numbe
 /** Result chips show the ten largest overages and count missing baselines; the log keeps every line. */
 export function durationBudgetSummary(lines: string[]): string[] {
   const overages = [...new Set(lines.filter(line => /^(?:budget \(report only\): would fail |duration budget:)/.test(line)))];
-  const excess = (line: string) => { const match = / ([\d.]+) s > ([\d.]+) s \(T[1-4]\)$/.exec(line); return match ? Number(match[1]) - Number(match[2]) : 0; };
+  const excess = (line: string) => { const match = / ([\d.]+) s > ([\d.]+) s \((?:T[1-4]|Web)\)$/.exec(line); return match ? Number(match[1]) - Number(match[2]) : 0; };
   const details = [...new Set(lines.filter(line => /^(?:budget(?: \(report only\))?: missing |T3 ratchet(?: \(report only\))?:|budget legacy allowances:)/.test(line)))];
   const ratchets = details.filter(line => line.startsWith('T3 ratchet'));
   const lastRatchet = ratchets.findLast(line => !line.includes('unavailable')) ?? ratchets.at(-1);

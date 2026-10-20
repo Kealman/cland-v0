@@ -53,7 +53,7 @@ export async function retainedLoadProofs(path: string): Promise<string[]> {
 /** Records consumed by summaries, timings, failures, quarantine and interruption reports.
  * Storage scales with test receipts/diagnostics, not ordinary command output.
  */
-const evidence = /^(?:suite (?:timing |progress |interruption |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
+const evidence = /^(?:suite (?:web phase |timing |progress |interruption |test failures |quarantine |admission timeouts |machine health |duration |budget overhead |command excerpt )|(?:#|ℹ) (?:tests|pass|fail|cancelled|skipped|todo) \d+\s*$|\s*not ok \d+|✖ |test at |duration (?:budget:|regression )|shard[- ]|verification queue wait |total cost |occasion |--- close shards ---|tier |typecheck: |load gate|quarantine load gate: |test lint |budget|T3 ratchet)/;
 export class SuiteLogEvidence {
   readonly #records: string[] = [];
   readonly #commands = new Map<string, { name: string; line: string; tail: string[]; blanks: string[] }>();
@@ -74,7 +74,7 @@ export class SuiteLogEvidence {
     if (line.startsWith('suite command start ')) {
       try {
         const row = JSON.parse(line.slice('suite command start '.length));
-        if (typeof row.id === 'string' && !this.#commands.has(row.id) && typeof row.line === 'string' && (row.name === 'check' || row.name === 'test' || /^T[1-4]$/.test(row.name))) this.#commands.set(row.id, { name: row.name, line: row.line, tail: [], blanks: [] });
+        if (typeof row.id === 'string' && !this.#commands.has(row.id) && typeof row.line === 'string' && (row.name === 'check' || row.name === 'test' || /^(?:T[1-4]|Web)$/.test(row.name))) this.#commands.set(row.id, { name: row.name, line: row.line, tail: [], blanks: [] });
       } catch { /* ordinary output */ }
     }
     if ((!line.startsWith('suite command excerpt ') && evidence.test(line)) || /failureType: ['"]testTimeoutFailure['"]/.test(line)) this.#records.push(line);
@@ -102,7 +102,7 @@ async function* copiedLines(path: string, shard?: string): AsyncGenerator<string
   let pending = '', continued = false, suffix = '';
   const begin = (line: string) => {
     suffix = shard && /^\s*(?:not ok \d+|✖ |duration budget: )/.test(line) ? ` [${shard}]` : '';
-    return shard ? line.replace(/^tier (T[1-4]:)/, `${shard} tier $1`) : line;
+    return shard ? line.replace(/^tier ((?:T[1-4]|Web):)/, `${shard} tier $1`) : line;
   };
   try {
     for await (const chunk of input) {

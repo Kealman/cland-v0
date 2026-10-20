@@ -33,6 +33,7 @@
       "wallSeconds": 900
     },
     "T4": null,
+    "Web": { "testSeconds": 4, "fileSeconds": 40, "wallSeconds": 40 },
     "mode": "report",
     "legacyOwner": "E-880"
   },

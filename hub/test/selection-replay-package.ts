@@ -20,7 +20,7 @@ export function replayPackage(options: readonly string[], commits: readonly stri
   const count = replayCount(options);
   const rows = commits.slice(0, count);
   if (rows.length < count) throw new Error(`need ${count} task landings, found ${rows.length}`);
-  const counts: Record<SuiteMode, number> = { full: 0, 'hub-only': 0, 'hub-selected': 0, 'nvim-only': 0 };
+  const counts: Record<SuiteMode, number> = { full: 0, 'hub-only': 0, 'hub-selected': 0, 'nvim-only': 0, 'web-only': 0 };
   log(`Selector: ${selectorRef ?? 'working source'}; range: ${range}; ${rows.length} task landings`);
   log('| Commit | Item | Mode | Deciding file or rule |');
   log('| --- | --- | --- | --- |');

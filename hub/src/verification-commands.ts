@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { defaultConfig, parseConfig } from './init/config.ts';
+import { readTierAssignments } from './suite-shards.ts';
 import type { TierCommands } from './verification-plan.ts';
 
 export type VerificationCommands = TierCommands;
@@ -33,7 +34,12 @@ export async function verificationCommands(cwd: string, root: string, env: NodeJ
     const line = candidate[key] || fallback[key];
     if (line) tiers[tier] = line;
   }
-  if (Object.keys(tiers).length) return { ...commands, tiers };
+  if (Object.keys(tiers).length) {
+    // Capability belongs to the candidate, never infer it for other projects or old branches.
+    const runner = await readFile(join(cwd, 'hub/test/run-suite.ts'), 'utf8').catch(() => '');
+    if (runner.includes("supportsWebPhase = true") && [...await readTierAssignments(cwd) ?? []].some(([, tier]) => tier === 'Web')) tiers.Web = 'node hub/test/run-suite.ts --tier Web';
+    return { ...commands, tiers };
+  }
   if (!commands.test) throw new Error("no [verification] test for this project; set it: cland config set verification.test '<command>'");
   return commands;
 }

@@ -11,7 +11,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, realpath, stat, writeFile, rm } from 'node:fs/promises';
 import { loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { processStarted } from '../src/hub/lock.ts';
 import { acquire, acquireBroker, borrowLease, inheritedLease, sweep, type Holder, type Lease } from '../src/suite-lock.ts';
@@ -27,6 +27,11 @@ import { assertTestAdmission } from '../src/test-admission.ts';
 import { readQuarantineManifest, type QuarantineReceipt } from '../src/suite-quarantine.ts';
 import { AdmissionTimeout } from '../src/test-admission-outcome.ts';
 import { suiteTestEnv } from '../src/verification-occasion.ts';
+
+import { webPhaseAvailable, type WebPrerequisite } from '../src/web-phase.ts';
+
+// Candidate capability read by verificationCommands; old runners retain their recorded tiers.
+export const supportsWebPhase = true;
 
 type Interruption = { signal: 'SIGINT' | 'SIGTERM' | null };
 export async function runSuite(suites: string[][], options: { lockDir?: string; lockDirs?: string[]; cwd?: string; interruption?: Interruption; selection?: SuiteSelection; phaseNames?: string[]; resources?: Array<'free' | 'machine'>; workers?: number[]; force?: boolean; token?: string; tierPlan?: TierPlan } = {}): Promise<number> {
@@ -97,8 +102,19 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
     holder.root = root; holder.device = rootInfo.dev; holder.inode = rootInfo.ino;
     for (const lease of leases) await lease.publish();
     if (interruption.signal) return interruption.signal === 'SIGINT' ? 130 : 143;
+    const hasWeb = suites.some(args => args.some(arg => arg.startsWith('web/test/')));
+    const webAvailable = hasWeb && await webPhaseAvailable(async () => {
+      const prerequisite = await import(pathToFileURL(join(holder.worktree!, 'web/test/prerequisite.ts')).href) as { webPrerequisite: () => Promise<WebPrerequisite> };
+      return prerequisite.webPrerequisite();
+    }, line => process.stdout.write(line + '\n'));
+    if (webAvailable && existsSync(join(holder.worktree!, 'web/build.ts'))) {
+      const { ensureWebBuild } = await import('./web-build.ts');
+      await ensureWebBuild(holder.worktree!);
+    }
     for (const [index, args] of suites.entries()) {
       if (interruption.signal) break;
+      const webPhase = args.some(arg => arg.startsWith('web/test/'));
+      if (webPhase && !webAvailable) continue;
       if (options.phaseNames?.[index]) process.stderr.write(`suite phase ${options.phaseNames[index]}; locks held ${JSON.stringify(leases.length ? options.lockDirs ?? [options.lockDir ?? '/tmp/cland-suite.lock'] : [])}\n`);
       if (index > 0) {
         // The previous phase was swept; create a fresh root without giving up admission.
@@ -172,7 +188,7 @@ process.chdir(cwd);`);
       const timingsPath = join(root, `durations-${index}.jsonl`);
       if (durationManifest && args.includes('--test')) reporters.unshift(`--test-reporter=${fileURLToPath(new URL('./duration-reporter.ts', import.meta.url))}`, `--test-reporter-destination=${timingsPath}`);
       const loadDiscovery = join(root, `load-discovery-${index}.jsonl`);
-      const loadGate = options.selection?.loadGate === true && durationManifest && args.includes('--test');
+      const loadGate = !webPhase && options.selection?.loadGate === true && durationManifest && args.includes('--test');
       if (loadGate) reporters.push(`--test-reporter=${loadGateReporter}`, `--test-reporter-destination=${loadDiscovery}`);
       const quarantinePath = join(root, `quarantine-${index}.json`);
       // Always collect assertion/admission identities, even with no quarantine.
@@ -198,7 +214,13 @@ process.chdir(cwd);`);
         timeoutMs: limits.testTimeoutMs, workers: limits.loadGateWorkers, phase: done,
         interrupted: () => interruption.signal !== null, active: loadRunners,
       }) : Promise.resolve({ failed: false, extraWallMs: 0 });
+      // A gross hang guard is separate from the measured 40 s Web budget.
+      const phaseGuard = webPhase ? setTimeout(() => {
+        process.stderr.write('Web phase exceeded 60 s gross hang guard\n');
+        if (activeIdentity) void cleanupOwnedProcesses([activeIdentity]);
+      }, 60_000) : undefined;
       const [phaseOutcome, gateOutcome] = await Promise.allSettled([done, repeats]);
+      clearTimeout(phaseGuard);
       if (phaseOutcome.status === 'rejected') throw phaseOutcome.reason;
       if (gateOutcome.status === 'rejected') throw gateOutcome.reason;
       let code = phaseOutcome.value;
@@ -223,6 +245,12 @@ process.chdir(cwd);`);
       // Resource policy is independent of assertion quarantine or caught errors.
       if (tierFailed) code = 1;
       let budgetFailed = false;
+      if (webPhase) {
+        const seconds = (Date.now() - phaseStarted - machineWait) / 1000;
+        const limit = durationManifest?.budget.Web?.wallSeconds ?? 40;
+        process.stdout.write(`budget${durationManifest?.budget.mode === 'enforce' ? '' : ' (report only)'}: Web phase wall ${seconds.toFixed(3)} s; budget ${limit} s${seconds > limit ? '; over budget' : ''}\n`);
+        budgetFailed = seconds > limit && durationManifest?.budget.mode === 'enforce';
+      }
       if (durationManifest && args.includes('--test')) {
         const budgetStarted = performance.now();
         try {
@@ -235,7 +263,7 @@ process.chdir(cwd);`);
           const checked = checkDurations(tests, durationManifest, tiers ? Object.fromEntries(tiers) : {});
           regressions.push(...checked.regressions);
           for (const failure of checked.failures) process.stderr.write(failure + '\n');
-          budgetFailed = checked.failures.length > 0;
+          budgetFailed ||= checked.failures.length > 0;
         } finally { budgetOverheadMs += performance.now() - budgetStarted; }
       }
       await sweep(holder);
@@ -372,7 +400,7 @@ export async function packageSuitePlan(cwd: string, mode: string, extra: string[
   const tierIndex = extra.indexOf('--tier');
   const tier = tierIndex < 0 ? undefined : extra[tierIndex + 1];
   if (tierIndex >= 0) {
-    if (!['T1', 'T2', 'T3', 'T4'].includes(tier ?? '')) throw new Error('--tier requires T1, T2, T3 or T4');
+    if (!['T1', 'T2', 'T3', 'T4', 'Web'].includes(tier ?? '')) throw new Error('--tier requires T1, T2, T3, T4 or Web');
     extra = extra.filter((_, i) => i !== tierIndex && i !== tierIndex + 1);
     if (extra.length) throw new Error('--tier cannot be combined with explicit test targets');
   }
@@ -383,7 +411,7 @@ export async function packageSuitePlan(cwd: string, mode: string, extra: string[
     selection = { ...full, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
   }
   if (!extra.length && mode === 'all' && selection.mode !== 'full') selection = { ...selection, mode: 'full', reason: `--all / all forces full (${selection.reason})` };
-  if (tier) selection = tierSuiteSelection(selection, tier as 'T1' | 'T2' | 'T3' | 'T4');
+  if (tier) selection = tierSuiteSelection(selection, tier as 'T1' | 'T2' | 'T3' | 'T4' | 'Web');
   const executor = env.CLAND_SUITE_EXECUTOR === 'droplet' ? 'droplet' : 'local';
   const workers = env.CLAND_SUITE_WORKERS === undefined ? (await suiteLimits(cwd, executor, env)).workers : Number(env.CLAND_SUITE_WORKERS);
   if (!Number.isSafeInteger(workers) || workers < 1) throw new Error('workers must be a positive integer');

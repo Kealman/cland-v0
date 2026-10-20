@@ -3,7 +3,7 @@ name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 metadata:
   origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); web build/check flow (T-990); clause procedure reference (T-975); browser sign-in fixtures (T-980)"
+  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); web build/check flow (T-990); clause procedure reference (T-975); browser sign-in fixtures (T-980); separate Web phase planning (T-1025)"
 ---
 
 Implement the work described by the user in the spec or tickets.
@@ -15,6 +15,8 @@ Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 
 For `web/` changes in this repository, follow the root AGENTS.md web rule and `web/README.md`. The root check builds the ignored bundle after typechecking, including on local verification; no separate development bridge is used.
+
+For browser tests, follow `docs/agents/tests.md#web-phase` and the Web workspace fixture docs. Task verification includes Web outside T0–T2; merge batches exclude it. A machine-unavailable Web receipt is not passing browser evidence; see that section.
 
 For browser sign-in probes, follow `docs/agents/tests.md#browser-sign-in-fixtures`: `cland web` is human-only; use a disposable project and test client, with scratch browser opener stubs.
 

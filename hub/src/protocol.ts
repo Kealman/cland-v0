@@ -673,6 +673,7 @@ export type CoverStatus = { id: string; head: string; branch: string; completedA
 
 /** Admission and completion facts; extra fields are absent on pre-V1 hubs. */
 export type SuiteStatus = {
+  webPhase?: { status: 'not-run'; reason: string };
   devT3Probe?: { key: string; files: string[] };
   batch?: BatchSuite;
   cover?: CoverRecord;
@@ -842,7 +843,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       }
       // Normal package runners reserve their existing human slot.
     case 'suite.forced':
-      return ['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
+      return ['full', 'hub-only', 'hub-selected', 'nvim-only', 'web-only'].includes(String(f.mode)) && typeof f.cwd === 'string' && typeof f.head === 'string' && Number.isSafeInteger(f.pid) && Number(f.pid) > 0 && typeof f.token === 'string' && f.token.length > 0;
     case 'suite.start':
       return suiteStartIssues(f).length === 0;
     case 'suite.cancel':

@@ -2915,11 +2915,12 @@ the hub retries without duplicating the result.
 `origin/dev`, compare the branch from its merge base with fetched dev, and include
 staged, unstaged and untracked files. Renames include both old and new paths.
 The pure `chooseSuiteMode` in `src/suite-selection.ts` uses ordered package rules.
+A diff wholly under `web/` selects `web-only` (Web plus hub/Neovim smoke).
 A diff wholly under `nvim/` selects `nvim-only`; a mix of Neovim and any other
 paths runs full. Everything else selects `hub-only`, including hub code, docs,
 skills, `.agents/` and `.cland/tasks/`.
 Before those package rules, shared paths force full: the crew/role(s) CLI, adapter
-contract, protocol, Neovim hub transport/event state, package/lockfile/tsconfig
+contract, protocol, web edge/auth/CLI, Neovim hub transport/event state, package/lockfile/tsconfig
 files, suite runner, selection and shards modules. A shard-manifest change alone
 uses the package rules; the shard lint guards hub file assignments. Any hub
 file imported by `nvim/test/**/*.test.ts` or their helpers also forces full.
@@ -3852,3 +3853,27 @@ Clause procedure (defaults coordinator, project coordinator):
 ## Coordinator subscription procedure
 
 - Default subscriptions: tree outside active leads; topmost Lead death/long idle. Extras: `subscribe`/`subscriptions`. Events digest; `ready` starts merging.
+
+### Web verification phase
+
+The Web phase is outside T0–T3 and runs after hub phases: machine resource, two
+local workers, four droplet workers. Task verification includes it, even under
+the T0–T2 cap; merge batches exclude it. Periodic dev and integrated/occasion
+runs include it. Reduced hub/Neovim modes include the Web smoke. Close shards
+carry Web with Neovim once. Tier commands infer Web only for candidates declaring
+`supportsWebPhase` in the cland runner; pinned commands and result/cache identity
+retain its coverage. Root check builds the browser bundle; hand-run package suites
+check its source receipt and build once before workers if needed.
+
+T-991 supplies the browser dependency, installation commands and first Web file.
+A candidate with no Web files keeps its current phases. The runner's
+`--tier Web` selects only browser files; the phase's 4 s/test and 40 s/phase budgets
+follow duration report/enforce mode. A separate 60 s gross guard reaps hangs; Web
+gets no load-gate repetitions. Browser fixtures use isolated Headless Shell
+profiles and scratch environments. See [the Web phase](../docs/agents/tests.md#web-phase).
+
+Missing browser executables or libraries produce "Web unavailable on this machine"
+with the reason and `webPhase: {status: "not-run", reason}` in the durable job and
+result receipt. Other phases continue. This supplies no passing Web receipt and
+is ineligible for cache reuse. The candidate prerequisite module is supplied by
+T-991; T-993 supplies Linux browser libraries. A broken probe remains an error.

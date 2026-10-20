@@ -37,10 +37,12 @@ import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suit
 import { suiteAdmissionTimeouts } from '../test-admission-outcome.ts';
 import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
 import { occasionSelection } from '../verification-occasion.ts';
+import { unavailableWebPhase, webUnavailableLine, type WebPhaseUnavailable } from '../web-phase.ts';
 import { receiptExecutionMatches } from '../verification-tree.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
+  webPhase?: WebPhaseUnavailable;
   commands?: import('../verification-commands.ts').VerificationCommands;
   batch?: import('../protocol.ts').BatchSuite;
   sequence?: number;
@@ -81,10 +83,10 @@ export type SuiteJob = {
   state?: 'queued' | 'launching' | 'running' | 'finished';
   locks?: string[]; requesterDied?: boolean;
 };
-export type VerifyResult = { executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
+export type VerifyResult = { webPhase?: WebPhaseUnavailable; executor: ExecutorKind; id: string; state: NonNullable<SuiteJob['state']>; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: SuiteJob['cached'] };
 export type StagePlatform = 'Linux droplet' | 'macOS';
 export type StageCover = { id: string; head: string; tree: string; platform: StagePlatform };
-const verifyResult = (job: SuiteJob): VerifyResult => ({ executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
+const verifyResult = (job: SuiteJob): VerifyResult => ({ ...(job.webPhase ? { webPhase: job.webPhase } : {}), executor: job.executor, id: job.id, state: job.state ?? 'running', result: job.state !== 'finished' ? null : job.cancelled || job.requesterDied ? 'cancelled' : job.outcome ? job.outcome.code === 0 ? 'passed' : 'failed' : null, head: job.head, finished: job.finished ?? job.completedAt ?? null, artifact: job.artifact, ...(job.cached ? { cached: { ...job.cached } } : {}) });
 
 // A supplied context is a complete snapshot; undefined reads Git, null omits budget reporting.
 export type SuiteSchedulerOptions = { taskLanding?: (item: string) => { tip: string; branch: string; base: string } | null; compatibility?: import('../executor/local.ts').LocalCompatibility; durationContext?: DurationBudgetContext | null; candidate?: SuiteCandidate; clock?: Clock; dropletServices?: DropletDependencies; waitClock?: Clock; projectConfig?: () => ProjectConfig; env?: NodeJS.ProcessEnv; executor?: ExecutorKind; localFallback?: boolean; lifetimeMs?: number; runTimeoutMs?: number; runTimeout?: string; onSoakNotice?: (id: string, text: string) => void; onAccountingConfirmed?: (job: Readonly<SuiteJob>) => void | Promise<void>; onFallback?: (job: Readonly<SuiteJob>, cause: string) => void; onRemoteReclaimed?: (job: Readonly<SuiteJob>) => void; budget?: number; remoteBudget?: number; shards?: number; onShardingSkipped?: (job: Readonly<SuiteJob>, cause: string) => void; cacheMaxAgeMs?: number; waitP90TargetMs?: number; locks?: string[]; requesterDead?: (actor: SuiteActor) => boolean; log?: LogFn; onQueue?: (queue: VerificationQueue) => void; onJob?: (job: Readonly<SuiteJob>) => void };
@@ -143,18 +145,20 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
   // Keep every failed repetition's full error/stack next to the count summary.
   const loadDiagnostics = text.split('\n').filter(line => line.startsWith('load gate failure '));
   timings.push(...loadDiagnostics);
-  const tierLines = text.split('\n').filter(line => /^tier (?:T[1-4]:|share:)/.test(line));
-  timings.push(...text.split('\n').filter(line => /^shard-\d+ tier T[1-4]:/.test(line)));
+  const tierLines = text.split('\n').filter(line => /^tier (?:(?:T[1-4]|Web):|share:)/.test(line));
+  timings.push(...text.split('\n').filter(line => /^shard-\d+ tier (?:T[1-4]|Web):/.test(line)));
   const lastTiers = new Map<string, string>();
   for (const line of tierLines) lastTiers.set(line.split(':')[0]!, line);
   // Repository-sized lint detail belongs to the artifact. Keep the decision
   // summaries ahead of timings and failure excerpts in the bounded delivery.
   const lintTiers = lines.filter(line => line.startsWith('test lint tier:')).length;
   const lintFindings = lines.filter(line => line.startsWith('test lint finding:')).length;
-  const executedTiers = tierLines.filter(line => /^tier T[1-4]: exit /.test(line));
+  const executedTiers = tierLines.filter(line => /^tier (?:T[1-4]|Web): exit /.test(line));
+  const webPhase = unavailableWebPhase(text);
   const priority = [
+    ...(webPhase ? [webUnavailableLine(webPhase)] : []),
     ...executedTiers,
-    ...['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier share'].flatMap(key => lastTiers.has(key) && !executedTiers.includes(lastTiers.get(key)!) ? [lastTiers.get(key)!] : []),
+    ...['tier T1', 'tier T2', 'tier T3', 'tier T4', 'tier Web', 'tier share'].flatMap(key => !(key === 'tier Web' && webPhase) && lastTiers.has(key) && !executedTiers.includes(lastTiers.get(key)!) ? [lastTiers.get(key)!] : []),
     ...new Set(lines.filter(line => line.startsWith('test lint (report only):'))),
     ...durationBudgetSummary(lines),
     ...(lintTiers || lintFindings ? [`test lint detail: ${lintTiers} tier lines; ${lintFindings} finding lines; log${options.logArtifact ? ' ' + options.logArtifact : ''}`] : []),
@@ -636,7 +640,7 @@ export class Suites {
     // Pre-admission head changes carry their cancellation in the outcome rather than a flag.
     const job = this.#jobs.findLast(j => JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
-    if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
+    if (!job || job.webPhase?.status === 'not-run' || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
     if (!receiptExecutionMatches(job, { occasion, executor: requiredExecutor })) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
     // otherwise a failed or unreported fresh stage run resurrects an older green.
@@ -1183,6 +1187,16 @@ export class Suites {
       // remain raw byte offsets until the machine has been released.
       let evidence: string | undefined;
       const logEvidence = async () => evidence ??= await (job.cached ? this.evidence(job) : readSuiteEvidence(job.log));
+      if (!job.cached) {
+        const webPhase = unavailableWebPhase(await logEvidence());
+        if (webPhase) {
+          job.webPhase = webPhase;
+          const result = JSON.parse(await readFile(job.result, 'utf8'));
+          await writeFile(`${job.result}.web.tmp`, JSON.stringify({ ...result, webPhase }), { mode: 0o600 });
+          await rename(`${job.result}.web.tmp`, job.result);
+          this.#save(job);
+        }
+      }
       if (remote && !job.cached && !job.progressReported) {
         const log = await logEvidence();
         const progress = suiteProgress(log, Date.parse(job.interruptedAt ?? job.finished ?? this.#clock.now().toISOString()));
@@ -1318,7 +1332,7 @@ export class Suites {
       ...(job.cover ? { cover: job.cover } : {}),
       ...(job.occasion ? { occasion: job.occasion } : {}),
       ...(job.workers === undefined ? {} : { workers: job.workers }), ...(job.size ? { size: job.size } : {}),
-      executor: job.executor, ...(job.platform ? { platform: job.platform } : {}),
+      executor: job.executor, ...(job.webPhase ? { webPhase: job.webPhase } : {}), ...(job.platform ? { platform: job.platform } : {}),
       id: job.id, pid: job.pid, topic: job.topic, reported: job.reported, outcome: job.outcome, error: job.error,
       state: job.state ?? 'running', queued: job.queued ?? null, priority: job.priority ?? null,
       item: job.item ?? null, head: job.head, branch: job.branch, integrated: job.integrated ?? false,

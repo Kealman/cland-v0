@@ -1,7 +1,8 @@
 // T1: cache eligibility and provenance at Suites; real Git/run recovery stays in suite-cache-recovery.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stat } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
+import { webPhaseAvailable } from '../src/web-phase.ts';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
 test('selected-run cache reuse requires the same covering test files', async t => {
@@ -135,4 +136,24 @@ test('candidate inspection cleanup completes after a controlled pre-release asse
   const admitted = await pending;
   assert.ok(f.delivered.has(admitted.id), 'submission drained before the store closed');
   await assert.rejects(stat(f.root), { code: 'ENOENT' });
+});
+
+test('machine-unavailable Web stays not run in durable receipts and cannot seed green cache after restart', async t => {
+  const f = await suiteUnit(t);
+  const lines: string[] = [];
+  assert.equal(await webPhaseAvailable(async () => ({ available: false, reason: 'libnss3.so => not found' }), line => lines.push(line)), false);
+  const first = await f.launch();
+  await f.suites.settled();
+  const run = f.delivered.get(first.id);
+  assert.ok(run, 'observe worker admission before its unavailable receipt');
+  await writeFile(run.result, JSON.stringify({ code: 0, finished: f.clock.now().toISOString() }));
+  const result = await f.finish(first.id, 0, '# tests 1\n# pass 1\n' + lines.join('\n'));
+  assert.equal(result.outcome!.code, 0, 'other phases still complete successfully');
+  assert.deepEqual(result.webPhase, { status: 'not-run', reason: 'libnss3.so => not found' });
+  assert.deepEqual(JSON.parse(await readFile(run.result, 'utf8')).webPhase, result.webPhase);
+  await f.reopen();
+  assert.deepEqual(f.status(first.id).webPhase, result.webPhase);
+  const retry = await f.launch();
+  assert.equal(retry.cached, undefined, 'unavailable browser coverage must execute again');
+  await f.finish(retry.id);
 });

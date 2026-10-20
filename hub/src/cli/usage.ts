@@ -15,6 +15,7 @@ export const SUITE_USAGE = `  verify [all|hub|nvim] [--dry-run] [--all] [--fresh
                   queued remote-budget local fallbacks reclaim free remote slots; --executor local stays local
                   occasion: integrated dev closes only (Coordinator; QA epic); batch runs stay on one slot
                   release cache: same effective executor/OS and full coverage; cache notices name original occasion/executor
+                  Web: task and integrated/periodic/occasion runs, excluded from merge batches; web/** selects web-only; missing browser/libs: Web not run (reason retained)
                   periodic dev T3 is hub-owned and runs only when the verification candidate tree changed
   suite           alias for verify\n                  run the project's check and test detached; post one artifact-backed result
   verify cancel [<suite id>] [--json]

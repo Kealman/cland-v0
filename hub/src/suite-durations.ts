@@ -13,11 +13,12 @@ export const TIER_BUDGETS = {
   T2: { testSeconds: 2, fileSeconds: 30, wallSeconds: 480 },
   T3: { testSeconds: 10, fileSeconds: 120, wallSeconds: 900 },
   T4: null,
+  Web: { testSeconds: 4, fileSeconds: 40, wallSeconds: 40 },
 };
 export type DurationManifest = {
   version: 1;
   source: { artifacts: string[]; commit: string };
-  budget: { mode?: 'report' | 'enforce'; legacyOwner?: string; testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null };
+  budget: { mode?: 'report' | 'enforce'; legacyOwner?: string; testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null; Web?: TierBudget };
   files: Record<string, { seconds: number; tests: number }>;
   tests: Record<string, number>;
   allow: Record<string, { file?: true; seconds: number; reason: string; owner?: string; added?: string; expires?: string; legacy?: true }>;
@@ -82,7 +83,7 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
   if (manifest.budget.mode !== undefined && manifest.budget.mode !== 'report' && manifest.budget.mode !== 'enforce') throw new Error('invalid duration budget mode: expected report or enforce');
   if (manifest.budget.legacyOwner !== undefined && (typeof manifest.budget.legacyOwner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(manifest.budget.legacyOwner))) throw new Error('invalid duration legacy owner: expected an item id');
   const legacyOwner = manifest.budget.legacyOwner ?? 'E-677';
-  for (const tier of ['T1', 'T2', 'T3'] as const) {
+  for (const tier of ['T1', 'T2', 'T3', 'Web'] as const) {
     const budget = manifest.budget[tier];
     if (budget !== undefined && (!object(budget) || ![budget.testSeconds, budget.fileSeconds, budget.wallSeconds].every(value => time(value) && value > 0))) throw new Error(`invalid duration tier budget: ${tier}`);
   }

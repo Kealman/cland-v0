@@ -6,7 +6,7 @@ import type { SuiteSelection } from './suite-selection.ts';
 export function occasionSelection(selection: SuiteSelection, occasion?: VerifyOccasion, batchTiers: NonNullable<SuiteSelection['tiers']> = ['T1', 'T3']): SuiteSelection {
   if (occasion === 'batch') {
     const { tests: _tests, nvimTests: _nvimTests, shard: _shard, ...full } = selection;
-    return { ...full, mode: 'full', tiers: [...batchTiers], soak: batchTiers.includes('T4'), loadGate: true };
+    return { ...full, mode: 'full', web: 'none', tiers: [...batchTiers], soak: batchTiers.includes('T4'), loadGate: true };
   }
   if (occasion === 'dev-t3') {
     const { tests: _tests, nvimTests: _nvimTests, shard: _shard, ...full } = selection;

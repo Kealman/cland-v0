@@ -531,7 +531,7 @@ export type QaPolicy = { scope: 'none' | 'affected' | 'full'; when: 'per-item' |
 export type CriteriaCounts = { total: number; done: number; verified: number; stale: number; failed: number };
 
 // hub/src/hub/suites.ts
-export type VerifyResult = { executor: ExecutorKind; id: string; state: 'queued' | 'launching' | 'running' | 'finished'; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: ExecutorKind } | undefined };
+export type VerifyResult = { webPhase?: { status: 'not-run'; reason: string }; executor: ExecutorKind; id: string; state: 'queued' | 'launching' | 'running' | 'finished'; result: 'passed' | 'failed' | 'cancelled' | null; head: string; finished: string | null; artifact: string | null; cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: ExecutorKind } | undefined };
 
 // hub/src/executor/executor.ts
 export type ExecutorKind = 'local' | 'droplet';
@@ -843,6 +843,7 @@ export type CoverStatus = { id: string; head: string; branch: string; completedA
 
 // hub/src/protocol.ts
 export type SuiteStatus = {
+  webPhase?: { status: 'not-run'; reason: string };
   devT3Probe?: { key: string; files: string[] };
   batch?: BatchSuite;
   cover?: CoverRecord;
@@ -864,10 +865,10 @@ export type SuiteStatus = {
 export type Platform = { os: string; arch: string; release: string; node: string; nvim: string };
 
 // hub/src/suite-selection.ts
-export type SuiteSelection = { tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
+export type SuiteSelection = { web?: 'all' | 'smoke' | 'none'; tiers?: Array<'T1' | 'T2' | 'T3' | 'T4'>; mode: SuiteMode; files: string[]; reason: string; fallback?: string; loadGateKnownTests?: string[]; loadGateFiles?: string[]; loadGateTests?: string[]; loadGate?: boolean; soak?: boolean; loadGateBaseline?: { run: string | null; tests: string[] }; fetchedDev?: string; tests?: string[]; functions?: string[]; coverage?: { artifact: string; path: string; head: string }; nvimFull?: boolean; nvimTests?: string[]; recordCoverage?: CoverageRecording; shard?: { files: string[]; nvim: boolean } };
 
 // hub/src/suite-selection.ts
-export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'full';
+export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' | 'full';
 
 // hub/src/suite-coverage.ts
 export type CoverageRecording = { head: string; tree: string; run: string };

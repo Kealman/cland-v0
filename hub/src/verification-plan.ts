@@ -1,7 +1,7 @@
 import type { SuiteSelection } from './suite-selection.ts';
 import type { VerifyOccasion } from './protocol.ts';
 
-export type VerificationTier = 'T1' | 'T2' | 'T3' | 'T4';
+export type VerificationTier = 'T1' | 'T2' | 'T3' | 'T4' | 'Web';
 export type VerificationStep = { name: 'check' | 'test' | VerificationTier; command: string };
 export type TierCommands = { prepare: string; check: string; test: string; tiers?: Partial<Record<VerificationTier, string>>; plan?: VerificationStep[] };
 
@@ -14,6 +14,7 @@ export function pinVerificationPlan(commands: TierCommands, run: { branch: strin
     : run.branch.startsWith('t/') && run.mode !== 'all' && run.queueEnabled !== false ? ['T1', 'T2'] : ['T1', 'T2', 'T3']);
   const plan: VerificationStep[] = run.occasion !== 'batch' && commands.check ? [{ name: 'check', command: commands.check }] : [];
   for (const tier of tiers) if (commands.tiers[tier]) plan.push({ name: tier, command: commands.tiers[tier]! });
+  if (commands.tiers.Web && run.occasion !== 'batch' && run.selection?.web !== 'none' && (!run.selection?.shard || run.selection.shard.nvim)) plan.push({ name: 'Web', command: commands.tiers.Web });
   return { ...commands, plan };
 }
 
@@ -36,6 +37,6 @@ tier_start=$(date +%s)
 tier_code=$(cat "$tier_log.status") || exit 1
 tier_seconds=$(( $(date +%s) - tier_start ))
 tier_tail=$(tail -n 8 "$tier_log" | tr '\\n' ' ' | cut -c 1-1200)
-printf '\\ntier ${step.name}: exit %s; duration %s s; output tail: %s\\n' "$tier_code" "$tier_seconds" "$tier_tail"
+${step.name === 'Web' ? `if test \"$tier_code\" -eq 0 && grep -q '^tier Web: not run;' \"$tier_log\"; then exit 0; fi\n` : ''}printf '\\ntier ${step.name}: exit %s; duration %s s; output tail: %s\\n' "$tier_code" "$tier_seconds" "$tier_tail"
 exit "$tier_code"`)}`;
 }

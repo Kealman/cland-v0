@@ -7,7 +7,7 @@ import { treeSources } from './git-tree-sources.ts';
 import { touchesMachineResources } from './test-lint.ts';
 import { suiteLimits } from './suite-limits.ts';
 import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
-import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
+import { HUB_SMOKE, NVIM_SMOKE, WEB_SMOKE } from './suite-selection.ts';
 import { DURATION_MANIFEST, durationOwners, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 import { QUARANTINE_MANIFEST, lintQuarantineManifest, readQuarantineManifest } from './suite-quarantine.ts';
 import { lintDurationIdentities } from './suite-test-identities.ts';
@@ -18,10 +18,10 @@ export type SuiteShard = { name: string; targets: string[]; resource: Shard; wor
 // SQL .exec() and promise gates are hermetic; process launches and wall-clock waits are not.
 
 const HUB_PATTERNS = ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'];
-const PATTERNS = [...HUB_PATTERNS, 'nvim/test/**/*.test.ts'];
+const PATTERNS = [...HUB_PATTERNS, 'nvim/test/**/*.test.ts', 'web/test/**/*.test.ts'];
 export const TIER_MANIFEST = 'hub/test/tiers.json';
 const LEGACY_MANIFEST = 'hub/test/shards.json';
-export type Tier = 'T1' | 'T2' | 'T3' | 'T4';
+export type Tier = 'T1' | 'T2' | 'T3' | 'T4' | 'Web';
 export type TierEntry = Tier | { tier: 'T3'; contract: string } | { tier: 'T3'; scenario: string };
 export type TierManifest = { version: 1; tests: Record<string, TierEntry> };
 // Inject recorded allowance provenance for in-process planners; production reads Git.
@@ -38,7 +38,7 @@ export class ShardManifestError extends Error {
 }
 
 function tierOf(entry: unknown): Tier | undefined {
-  if (entry === 'T1' || entry === 'T2' || entry === 'T3' || entry === 'T4') return entry;
+  if (entry === 'T1' || entry === 'T2' || entry === 'T3' || entry === 'T4' || entry === 'Web') return entry;
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;
   const value = entry as Record<string, unknown>;
   const keys = Object.keys(value);
@@ -66,6 +66,7 @@ async function classify(paths: string[], manifest: Manifest, source: (path: stri
     if (!paths.includes(path)) throw new ShardManifestError(`test manifest names missing test: ${path}`, [path]);
     const tier = legacy ? tests[path] === 'free' ? 'T1' : tests[path] === 'machine' ? 'T3' : undefined : tierOf(tests[path]);
     if (!tier) throw new ShardManifestError(`invalid ${legacy ? 'resource' : 'tier or tier object'} for test: ${path}`, [path]);
+    if (path.startsWith('web/') !== (tier === 'Web')) throw new ShardManifestError(`Web classification requires a web/test path: ${path}`, [path]);
     tiers.set(path, tier);
   }
   const groups: Record<Shard, string[]> = { free: [], machine: [] };
@@ -137,7 +138,7 @@ async function legacyDurationKeys(git: (args: string[]) => Promise<string>, head
 export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.ProcessEnv = process.env, history: { head: string; base?: string } = { head: tree }): Promise<void> {
   const exec = promisify(execFile);
   const git = async (args: string[]) => (await exec('git', args, { cwd, env, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
-  const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test', 'nvim/test'])).split('\0').filter(Boolean);
+  const paths = (await git(['ls-tree', '-r', '--name-only', '-z', tree, '--', 'hub/src', 'hub/test', 'nvim/test', 'web/test'])).split('\0').filter(Boolean);
   // T1 validation reads every source even when direct facts are warm. One
   // batch avoids a serial Git process startup per test on the refusal path.
   let sources: Promise<(file: string) => Promise<string>> | undefined;
@@ -192,13 +193,20 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
 /** Package cadence excludes soak files unless the admitted selection enables them. */
 export async function packageShards(cwd: string, mode: SuiteMode, selection?: { files: string[]; nvim: boolean }, coverage?: SuiteSelection, options: DurationHistory & { executor?: 'local' | 'droplet'; workers?: number } = {}): Promise<SuiteShard[]> {
   const phases = await unfilteredPackageShards(cwd, mode, selection, coverage, options);
+  const webFiles = [...await readTierAssignments(cwd) ?? []].filter(([, tier]) => tier === 'Web').map(([file]) => file).sort();
+  if (webFiles.length && coverage?.web !== 'none' && (!selection || selection.nvim)) {
+    const full = coverage?.web === 'all' || coverage?.web !== 'smoke' && (mode === 'full' || mode === 'web-only');
+    const web: SuiteShard = { name: full ? 'Web' : 'Web smoke', targets: full ? webFiles : WEB_SMOKE.filter(file => webFiles.includes(file)), resource: 'machine', workers: options.executor === 'droplet' ? 4 : 2 };
+    const index = phases.findIndex(phase => phase.name.startsWith('Neovim'));
+    phases.splice(index < 0 ? phases.length : index, 0, web);
+  }
   if (coverage?.tiers) {
     const tiers = await readTierAssignments(cwd);
     if (!tiers) throw new ShardManifestError('batch requires tier assignments', [TIER_MANIFEST]);
     const planned: SuiteShard[] = [];
     for (const phase of phases) {
       const targets: string[] = [];
-      for await (const file of glob(phase.targets, { cwd })) if (coverage.tiers.includes(tiers.get(file)!)) targets.push(file);
+      for await (const file of glob(phase.targets, { cwd })) if (tiers.get(file) === 'Web' || coverage.tiers.includes(tiers.get(file)! as NonNullable<SuiteSelection['tiers']>[number])) targets.push(file);
       if (targets.length) planned.push({ ...phase, targets: targets.sort() });
     }
     // Coverage restricts T2 only. Every task proves the whole T1 rule set,
@@ -242,7 +250,7 @@ async function unfilteredPackageShards(cwd: string, mode: SuiteMode, selection?:
     return [...shards.map(shard => ({ ...shard, name: `${shard.name} selected`, targets: shard.targets.filter(file => coverage.tests!.includes(file)) })).filter(shard => shard.targets.length),
       { name: coverage.nvimFull ? 'Neovim' : coverage.nvimTests ? 'Neovim selected' : 'Neovim smoke', targets: coverage.nvimFull ? ['nvim/test/**/*.test.ts'] : coverage.nvimTests ?? NVIM_SMOKE, resource: 'machine', workers }];
   }
-  return [...await hubShards(cwd, mode === 'nvim-only', workers, options), { name: coverage?.nvimTests ? 'Neovim selected' : mode === 'hub-only' ? 'Neovim smoke' : 'Neovim', targets: coverage?.nvimTests ?? (mode === 'hub-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts']), resource: 'machine', workers }];
+  return [...await hubShards(cwd, mode === 'nvim-only' || mode === 'web-only', workers, options), { name: coverage?.nvimTests ? 'Neovim selected' : mode === 'hub-only' || mode === 'web-only' ? 'Neovim smoke' : 'Neovim', targets: coverage?.nvimTests ?? (mode === 'hub-only' || mode === 'web-only' ? NVIM_SMOKE : ['nvim/test/**/*.test.ts']), resource: 'machine', workers }];
 }
 
 /** Longest-processing-time placement, including Neovim as one indivisible job. */
