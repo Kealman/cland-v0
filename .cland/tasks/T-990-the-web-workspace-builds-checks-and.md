@@ -2,8 +2,8 @@
 id: T-990
 kind: task
 title: The web workspace builds, checks and holds the tokens
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 10
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-752
 branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T17:56:04.977Z
+updated: 2026-10-20T18:36:03.763Z
+closed: 2026-10-20T18:36:03.763Z
 ---
 
 ## Summary
@@ -37,62 +38,75 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
 - [x] C1. `npm install` at the root builds `web/dist`, and `git status` shows `web/dist` ignored (local evidence from a clean worktree).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.538Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.774Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:28.430Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:32.675Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.184Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C2. `npm run typecheck` runs the web's typecheck on the hub's strict flags plus the DOM libraries, and fails on a fixture with a hex, `rgb()` or `hsl()` colour under `web/src` outside `tokens.css` (lint test with fixtures).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:29.125Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:33.313Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.184Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C3. oxlint with the React hooks rules runs in the web's typecheck script and fails on a fixture that breaks a hooks rule.
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:29.794Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:33.827Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.184Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C4. The verification pre-step builds `web/dist` after the typecheck (test of the prepare plan, or a local `cland verify` log).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:30.324Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:34.444Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.184Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C5. The two fonts are served from `web/public/fonts/` as woff2 with Latin and Cyrillic and their OFL files, and a test finds no absolute external URL in the built `web/dist`.
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:30.963Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:35.060Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.184Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C6. `tokens.css` carries the canvas tokens with the role colours of `hl.lua`, and a unit test reads every text token at 4.5:1 or better on the ground and on the selection background.
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:31.580Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:35.581Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.184Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C7. The root `AGENTS.md` has a `web/` section: CSS Modules and `var(--token)` only, no UI library, no new dependency without the human, no explanatory prose, keys only through the one key map, and the reference component to copy.
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:32.100Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-source · 2026-10-20T17:47:02.063Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:36.195Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-source · 2026-10-20T18:23:14.510Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.185Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:32.722Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.689Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:36.714Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.185Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C9. The added dependencies are exactly those the approved plan lists, with no UI library and no Tailwind (diff of `package.json`).
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:33.255Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-source · 2026-10-20T17:47:02.064Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.690Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:37.327Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-source · 2026-10-20T18:23:14.511Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.185Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 - [x] C10. `web/README.md` describes the workspace, the build and the token rule.
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
   - verified: rev-23 [reviewer] · run rev-20261020-990-merge-final · 2026-10-20T17:32:10.775Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
-  - done: impl-990 · 2026-10-20T17:45:33.876Z
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-source · 2026-10-20T17:47:02.064Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
   - verified: rev-31 [reviewer] · run rev-20261020-990-edge-merge-final · 2026-10-20T17:55:59.690Z · commit c70bb5d2a18b96a262888abdb25b8511808009cb
+  - done: impl-990 · 2026-10-20T18:22:37.849Z
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-source · 2026-10-20T18:23:14.511Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
+  - verified: rev-31 [reviewer] · run rev-20261020-990-retention-final · 2026-10-20T18:30:56.185Z · commit 00e822d98ddd3477553cbc6256ec605987eef213
 
 ## Comments
 
@@ -189,3 +203,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7863 final evidence clear at unchanged reviewed c70bb5d2. A-7859 exact-head mode-free fef09c76: 2082 ordinary pass plus5 distinct doctor load passes, host check/T1/full fallback T2 including Neovim exit0; six merged web-edge cases pass. Actual merged typecheck/build/guard order and font/resource/contrast/hooks checks pass. A-7842 refreshed clean-clone install/ignored dist/negative-colour controls plus A-7848 source establish remaining criteria. All claimant done marks present. Report-only lint/budget/ratchet and two missing duration baselines explicitly qualified; no owned violations. Historical browser evidence retains old attribution; no current browser/T3/T4/integrated/Web-phase claim. No findings or merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### rev-31 · 2026-10-20T18:23:14.511Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-990-retention-source
+commit: 00e822d98ddd3477553cbc6256ec605987eef213
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7911: authorized retention merge delta source clear. Sole doctor-help conflict preserves web stamp/rebuild plus tracker conflict/retention guidance; web workspace/dependencies/guards/bundle doctor unchanged, merged docs/tiers retained. A-7910 exact-head local clean-clone install/ignored dist/ordered check/doctor/actual colour-negative receipts audited with their stated scope. C7/C9/C10 refreshed. C1–C6/C8 final require fresh mode-free verification at this exact head. A-7859 historical c70bb5d2 and browser observations old b1606b21 only; no new browser/T3/T4/integrated claim. No findings or merge enqueue.
+
+Criteria: C7 verified, C9 verified, C10 verified.
+
+### rev-31 · 2026-10-20T18:30:56.185Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-990-retention-final
+commit: 00e822d98ddd3477553cbc6256ec605987eef213
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7919 final clear at unchanged00e822d9. A-7918 exact-head968cfb9a has2100 ordinary passes plus5 distinct doctor load passes, host/T1/full fallbackT2 including Neovim exit0. Actual typecheck/build/guard order and doctor assertions pass. A-7910 exact-head local clean-clone/ignored dist/colour-negative receipts and A-7911 source establish remaining criteria; all claimant done marks present. Report-only lint/ratchet, four missing baselines and inherited file regression retain their qualifications; no owned violation. Historical browser evidence keeps original attribution; no current browser/T3/T4/integrated/Web-phase claim. No findings or merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-20T18:36:03.763Z
+
+Merged ec0361851a7a2c25ec7806b01dcae41cc019b186 onto dev.

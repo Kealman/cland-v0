@@ -3,7 +3,7 @@ id: T-1010
 kind: task
 title: A startup budget smoke test for the Neovim workbench on a 1,000-item tracker
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ parent: E-1006
 blocked_by:
   - T-1007
   - T-1008
-topic: null
-branch: null
+topic: topic-762
+branch: t/T-1010-a-startup-budget-smoke-test-for-the
 created: 2026-10-20T17:01:25.275Z
-updated: 2026-10-20T17:01:25.275Z
+updated: 2026-10-20T18:33:08.679Z
 ---
 
 ## Summary

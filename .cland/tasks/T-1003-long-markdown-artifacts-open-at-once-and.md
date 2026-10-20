@@ -3,7 +3,7 @@ id: T-1003
 kind: task
 title: Long Markdown artifacts open at once and render without blocking
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-795
 blocked_by:
   - T-796
 topic: null
-branch: null
+branch: t/T-1003-long-markdown-artifacts-open-at-once-and
 created: 2026-10-20T16:58:40.109Z
-updated: 2026-10-20T16:58:49.084Z
+updated: 2026-10-20T18:36:26.063Z
 ---
 
 ## Summary

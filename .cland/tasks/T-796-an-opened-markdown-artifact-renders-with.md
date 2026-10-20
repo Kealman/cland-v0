@@ -2,8 +2,8 @@
 id: T-796
 kind: task
 title: An opened Markdown artifact renders with the thread's Markdown decorations, with a raw toggle
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-754
 branch: t/T-796-an-opened-markdown-artifact-renders-with
 created: 2026-10-18T10:14:36.589Z
-updated: 2026-10-20T18:10:40.965Z
+updated: 2026-10-20T18:36:14.004Z
+closed: 2026-10-20T18:36:14.004Z
 ---
 
 ## Summary
@@ -33,13 +34,16 @@ Notes, pages, `.md` and `.markdown` files, and folder entry files and children r
   - done: impl-796 · 2026-10-20T17:11:03.194Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
   - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
+  - verified: rev-23 [reviewer] · run rev-20261020-796-gm-merge-final · 2026-10-20T18:31:27.128Z · commit 0dca044171786dba20d8a4ce73e7a866d93822c1
 - [x] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
   - done: impl-796 · 2026-10-20T17:28:12.247Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
   - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
+  - verified: rev-23 [reviewer] · run rev-20261020-796-gm-merge-final · 2026-10-20T18:31:27.128Z · commit 0dca044171786dba20d8a4ce73e7a866d93822c1
 - [x] C3. A 2,000-line artifact shows its first screen rendered within 50 ms with its spans cached per artifact version (path, mtime and size), proved by a T1/T2 test of the cache.
   - done: impl-796 · 2026-10-20T17:58:26.215Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
+  - verified: rev-23 [reviewer] · run rev-20261020-796-gm-merge-final · 2026-10-20T18:31:27.128Z · commit 0dca044171786dba20d8a4ce73e7a866d93822c1
 - [x] C4. The raw toggle is a registered action with its key `␣v` in `␣?` and the palette, and the "Shared artifacts" section of `nvim/README.md` describes the rendered and raw modes.
   - done: impl-796 · 2026-10-20T17:11:04.880Z
   - verified: rev-26 [reviewer] · run rev-20261020-796-source-1 · 2026-10-20T17:13:30.864Z · commit 42d222a4699cba4f7b79049b78de719a2b6f5c85
@@ -49,10 +53,13 @@ Notes, pages, `.md` and `.markdown` files, and folder entry files and children r
   - verified: rev-23 [reviewer] · run rev-20261020-796-source-structural · 2026-10-20T17:59:39.270Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
   - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
   - verified: rev-23 [reviewer] · run rev-20261020-796-panel-merge-source · 2026-10-20T18:10:40.965Z · commit 04067ab75d171980dc7196c80ec73277084a7d95
+  - verified: rev-23 [reviewer] · run rev-20261020-796-gm-merge-source · 2026-10-20T18:20:42.309Z · commit 0dca044171786dba20d8a4ce73e7a866d93822c1
+  - verified: rev-23 [reviewer] · run rev-20261020-796-gm-merge-final · 2026-10-20T18:31:27.128Z · commit 0dca044171786dba20d8a4ce73e7a866d93822c1
 - [x] C5. Mermaid, HTML and the other browser artifacts, and prompt drafts, open exactly as before, proved by the existing `artifacts.test.ts` cases passing unchanged.
   - done: impl-796 · 2026-10-20T17:11:05.496Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
   - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
+  - verified: rev-23 [reviewer] · run rev-20261020-796-gm-merge-final · 2026-10-20T18:31:27.128Z · commit 0dca044171786dba20d8a4ce73e7a866d93822c1
 
 ## Comments
 
@@ -221,3 +228,41 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. Authorized dev merge retains ARTIFACT-001/PANELS-017 and all shipped cases, artifact help/layout/registry/docs/tier additions. Artifact implementation/shared renderer/tests/case independently byte-equal to b03 prior clear. A-7881 exact-head local original stdout/exits inspected: shipped27/27 and requested T2/T3/typecheck; no suite claim. A-7882 refreshed quiet Mac median12.14ms over five fresh clients,84%idle/load2.74/10CPUs, each46/2000prefixrows. Proof split f3b3fb34 unchanged. C4 refreshed; fresh mode-free exact-head runtime receipt required. Audit A-7883; old green/red histories and after-stage QA remain separate. No Reviewer execution.
 
 Criteria: C4 verified.
+
+### impl-796 · 2026-10-20T18:20:03.614Z
+
+Coordinator-authorized conflict merges now include T-999 and T-1000. Current pushed head 0dca044171786dba20d8a4ce73e7a866d93822c1 merges dev eb7d5ccf and retains ARTIFACT-001, PANELS-017 and PANELS-018. Typecheck, 28/28 shipped T4 cases and 4/4 T2 artifact tests pass locally at that head; refreshed quiet-Mac median12.21 ms. Fresh delta source review requested. Prior green Linux receipts b03ae378 (2085 tests) and 04067ab7 (2092 tests) are historical after the merges; current-head verification follows source clear. All acceptance criteria remain done; stage QA separate.
+
+### rev-23 · 2026-10-20T18:20:42.309Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-gm-merge-source
+commit: 0dca044171786dba20d8a4ce73e7a866d93822c1
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Directed dev/T-1000 merge retains all3 shipped additions and both gm/artifact-toggle registry/help paths; artifact implementation/shared projector/tests/case byte-equal to prior clear source. A-7899 exact-head local typecheck/shipped28/28/render4/4 inspected; A-7900 refreshed quiet Mac median12.21ms,5fresh clients,84%idle/load3.83/10CPUs. Proof split f3b3fb34 unchanged. C4 refreshed; fresh mode-free exact-head gate needed for final runtime marks, old A-7893 historical only. Audit A-7906; after-stageQA unchanged, no Reviewer execution.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-20T18:31:27.128Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-gm-merge-final
+commit: 0dca044171786dba20d8a4ce73e7a866d93822c1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. A-7920 audits same-head A-7917/run8aaa5f87: Linux x64 droplet, all T1/fallback all T2 across hub/Neovim exit0; 2099 ordinary tests/330 files pass, four artifact-render identities each5/5 load passes, nine existing artifact compatibility cases pass. C3 uses explicit Coordinator f3b3fb34 proof split: bounded first-paint prefix+margin/deferred completion with200ms gross guard in loaded T2; exact-head quiet Mac A-7900 median12.21ms over five fresh clients (46/2000 parsed rows) proves50ms target. Same-head local shipped28/28 and render4/4 in A-7899 are separate targeted evidence. C1-C5 review verified; E-795 after-stage QA separate. T3/T4 not run by Linux task gate. Host typecheck7f1011a5 not repeated remotely; lint/duration/missing-baseline/ratchet report-only.442s/$0.0307. Prior failed receipts retained; no Reviewer execution or source edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-20T18:36:14.004Z
+
+Merged 8ef8ff4deb09d09f6d20d200586e9f7133001463 onto dev.

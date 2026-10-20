@@ -2,8 +2,8 @@
 id: T-1000
 kind: task
 title: Panel keys, a move key and every panel opener follow the panel's side
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-759
 branch: t/T-1000-panel-keys-a-move-key-and-every-panel
 created: 2026-10-20T16:57:44.090Z
-updated: 2026-10-20T18:13:01.879Z
+updated: 2026-10-20T18:18:10.189Z
+closed: 2026-10-20T18:18:10.189Z
 ---
 
 ## Summary
@@ -92,3 +93,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. A-7884/eac2511e exact-head audit:2095 ordinary tests/329 files all pass, Linux T1/all-T2 including Neovim. Panel13/shell60/palette13 pass; all seven new identities actual5/5 load passes establish moves/toggles/registry/openers/focus. C6 physical-grid PANELS-018 local T4 proof remains separately attributed A-7873, absent this task gate; C7 source A-7875 retained. C1–C7 review marks verified. Host74a5554a not repeated remotely; lint/budgets/ratchet report-only,two missing baselines. Lifetime360s/$0.0250. No T3/T4/integrated task or stageQA verdict. Full E-789 QA after T-1002 remains. Audit A-7885; Reviewer ran no tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-20T18:18:10.189Z
+
+Merged eb7d5ccf5f903406fa5defa1a85236ebb20e41a3 onto dev.

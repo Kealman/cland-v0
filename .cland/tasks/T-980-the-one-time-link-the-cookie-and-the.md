@@ -3,7 +3,7 @@ id: T-980
 kind: task
 title: The one-time link, the cookie and the human's socket
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-412
 blocked_by:
   - T-978
-topic: null
-branch: null
+topic: topic-763
+branch: t/T-980-the-one-time-link-the-cookie-and-the
 created: 2026-10-20T16:49:59.904Z
-updated: 2026-10-20T16:50:14.719Z
+updated: 2026-10-20T18:36:27.640Z
 ---
 
 ## Summary

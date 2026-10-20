@@ -2,8 +2,8 @@
 id: T-1007
 kind: task
 title: The Neovim explorer loads item summaries, open items first
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-755
 branch: t/T-1007-the-neovim-explorer-loads-item-summaries
 created: 2026-10-20T17:01:23.939Z
-updated: 2026-10-20T18:14:16.443Z
+updated: 2026-10-20T18:32:36.507Z
+closed: 2026-10-20T18:32:36.507Z
 ---
 
 ## Summary
@@ -35,17 +36,21 @@ The Neovim explorer loads item summaries without bodies: open items first, close
   - done: impl-1007 · 2026-10-20T17:42:15.626Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-final · 2026-10-20T18:28:51.213Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
 - [x] C2. On start the explorer requests open items only, and closed items are requested when the human expands the closed group or searches (test on recorded frames).
   - done: impl-1007 · 2026-10-20T18:05:48.209Z
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-final · 2026-10-20T18:28:51.213Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
 - [x] C3. Opening an item's card reads its body with `task.view` and renders it (test).
   - done: impl-1007 · 2026-10-20T17:24:36.312Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-final · 2026-10-20T18:28:51.214Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
 - [x] C4. `task.list` without the projection answers as today, and the CLI's `task list --json` output is unchanged (test).
   - done: impl-1007 · 2026-10-20T17:18:27.625Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-final · 2026-10-20T18:28:51.214Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
 - [x] C5. The projection's bytes and compose time on a copy of the live tracker are posted in the item topic (local evidence).
   - done: impl-1007 · 2026-10-20T17:18:28.165Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-source-3 · 2026-10-20T17:29:57.397Z · commit bb35e1b0a0dae4e1618b6daf51b789bbd6c2e50a
@@ -54,6 +59,8 @@ The Neovim explorer loads item summaries without bodies: open items first, close
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-source · 2026-10-20T17:55:04.662Z · commit e760ca6b0c3e8848ff37fca6c7603b61dc83c82c
   - verified: rev-31 [reviewer] · run rev-20261020-1007-carrier-source · 2026-10-20T18:06:23.227Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-source · 2026-10-20T18:21:26.085Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-final · 2026-10-20T18:28:51.214Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
 - [x] C6. `hub/README.md` documents the projection, and `nvim/README.md` documents lazy loading of closed items.
   - done: impl-1007 · 2026-10-20T17:18:28.791Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-source-3 · 2026-10-20T17:29:57.398Z · commit bb35e1b0a0dae4e1618b6daf51b789bbd6c2e50a
@@ -62,6 +69,8 @@ The Neovim explorer loads item summaries without bodies: open items first, close
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-source · 2026-10-20T17:55:04.662Z · commit e760ca6b0c3e8848ff37fca6c7603b61dc83c82c
   - verified: rev-31 [reviewer] · run rev-20261020-1007-carrier-source · 2026-10-20T18:06:23.227Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
   - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-source · 2026-10-20T18:21:26.085Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-panel-final · 2026-10-20T18:28:51.214Z · commit 1dd69583055b261102bcef46f3c2d9624d1564ab
 
 ## Comments
 
@@ -224,3 +233,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7888 final evidence clear at unchanged 94b59069. A-7886 exact-head replacement ffca1b45 has 2087 ordinary passes plus 25 passing repetitions, host check/T1/full fallback T2 including Neovim exit 0. All five new identities have distinct actual 5/5 receipts. Corrected reconnect carrier passes 0.595936790 s, preserving independent human-demand receipt, event no-read and both fake-idle assertions; prior failure resolved. Summary ordinary 2.548 s/repeat max 2.490 s fits unchanged 4 s exact allowance; open payload 42303 bytes. C1–C6 checked across source and qualified evidence; all claimant done marks present. Report-only duration regressions/missing baseline/lint/ratchet retain their stated limits; original C5 measurements retain original attribution. No T3/T4, integrated or real-ten-minute claim, no remaining findings or merge enqueue.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-31 · 2026-10-20T18:21:26.085Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-1007-panel-source
+commit: 1dd69583055b261102bcef46f3c2d9624d1564ab
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7909: Coordinator-authorized panel merge delta source clear. All dev catalog records/nodes preserved unchanged with92 additions, no removals; existing explorer slice unchanged. Recorder generation A-7897/A-7898 is distinguished from exact-head ordinary replay A-7903–A-7905 (19/15/60 pass), compiler A-7901 and tracker9/9 A-7902. Projection/lazy-load/card/reconnect test and allowance unchanged; merged panel openers/help/docs coexist. C5 qualified original measurements and C6 docs refreshed. C1–C4/final need new mode-free same-head gate; A-7886 is historical94b59069 only. No findings, Reviewer tests or merge enqueue.
+
+Criteria: C5 verified, C6 verified.
+
+### rev-31 · 2026-10-20T18:28:51.214Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-1007-panel-final
+commit: 1dd69583055b261102bcef46f3c2d9624d1564ab
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7916 final clear at unchanged panel-integrated1dd69583. A-7915 exact-head6b39ba24 has2100 ordinary passes plus25 passing repetitions, host/T1/full fallbackT2 including Neovim exit0. All five new identities have distinct actual5/5; fixture2.435s/repeat max2.485s fits exact4s allowance, open42303bytes. Corrected reconnect0.581s and all13 inherited panel cases pass. C1–C6 checked, all claimant done marks present. Generation vs replay and local vs Linux evidence remain distinct. Existing report-only duration/file-regression/missing-baseline/lint diagnostics qualified; no owned violations, T3/T4/native QA or real-ten-minute claim. No findings or merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-20T18:32:36.507Z
+
+Merged 5453c2807814ad0ac652b586deb1b72dac718295 onto dev.

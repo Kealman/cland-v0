@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-20T17:06:48.385Z
+updated: 2026-10-20T18:32:39.700Z
 ---
 
 ## Summary
@@ -41,20 +41,15 @@ The epic takes priority over every other v0.2 launch and over E-412 stage 2.
 
 ```yaml
 stages:
-  - name: summaries, settling and quiet writes
+  - name: summaries, settling, quiet writes and the startup budget
     qa:
-      scope: none
+      scope: affected
       when: after-stage
     lanes:
       - - T-1007
       - - T-1008
       - - T-1009
         - T-452
-  - name: the startup budget
-    qa:
-      scope: affected
-      when: after-stage
-    lanes:
       - - T-1010
 ```
 
@@ -63,3 +58,7 @@ stages:
 ### coord · 2026-10-20T17:06:48.385Z
 
 Crew GUI rule (Coordinator, 2026-10-20 17:06Z): Neovim or browser checks for this epic run headless (nvim --headless or --embed under a scratch HOME); no GUI process starts from a crew session on the human's Mac. Live measurement on the human's own workbench is T-1010 C4 and the epic's C1, run by the Coordinator or with the human.
+
+### coord · 2026-10-20T18:21:44.183Z
+
+Live evidence for C4 (first half), 2026-10-20 18:21Z, measured by cland-impl after hub restart #33 (pid 7502, dev 21b33962, T-1009 live): .cland/tasks/*.conflict = 5169 before the stop and 5169 five minutes after, newest capture T-1007 at 18:13:43Z (before the restart), while the hub logged 21 task-written events and 2 dev landings. Tracker writes no longer create captures. Pruning of the existing 5169 (T-452, landed 6ec2883a) goes live at restart #34.

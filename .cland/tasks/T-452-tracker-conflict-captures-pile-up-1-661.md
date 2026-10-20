@@ -2,8 +2,8 @@
 id: T-452
 kind: task
 title: "Tracker conflict captures pile up: 1,661 .conflict files in .cland/tasks with no pruning"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-758
 branch: t/T-452-tracker-conflict-captures-pile-up-1-661
 created: 2026-10-15T05:56:39.354Z
-updated: 2026-10-20T17:47:01.659Z
+updated: 2026-10-20T18:20:59.381Z
+closed: 2026-10-20T18:20:59.381Z
 ---
 
 ## Summary
@@ -64,3 +65,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. A-7847/run64919481 exact-head audit:2085 ordinary tests/329 files all pass, Linux T1/all-T2 including Neovim. Retention3/3 and doctor19/19; each of four new identities actual5/5 load passes. C1 automatic retention/docs and C2 doctor counts/differing names established with source A-7833. Host8000c189 not repeated remotely; lint/budgets/ratchet report-only, two missing baselines. Lifetime361s/estimated$0.0250. No T3/T4/integrated task or QA claim; no per-item QA required. Audit A-7849. Reviewer ran no tests/live pruning.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T18:20:59.381Z
+
+Merged 6ec2883a033f3aaf9ec939e6f889da969b11d6dd onto dev.
