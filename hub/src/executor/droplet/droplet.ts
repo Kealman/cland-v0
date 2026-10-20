@@ -5,13 +5,13 @@ import { acquireLockWithRetry } from '../../hub/lock.ts';
 import type { Store } from '../../hub/store.ts';
 import type { LogFn } from '../../log.ts';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { basename } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { defaultConfig, parseConfig, type ProjectConfig } from '../../init/config.ts';
 import { DigitalOceanApi, DigitalOceanError, apiTimeoutMs } from './api.ts';
-import { accountRelease, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
+import { accountRelease, durableJson, leaseDir, liveLease, matchesLease, readLease, readLeases, writeLease, type DropletLease, type WatchdogReceipt } from './lease.ts';
 import { pause, testTiming } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
@@ -105,7 +105,42 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     if (!selected || !Number.isFinite(selected.price_hourly) || selected.price_hourly < 0) throw new Error(`droplet size ${size} is unavailable or has no valid price`);
     await reserveShardSpend(this.root, runs, size, selected.price_hourly, testTiming('CLAND_TEST_EXECUTOR_LIFETIME_MS', config.verification.lifetimeMs, this.#env), config.verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes);
   }
-  async releaseShardReservations(runs: string[]): Promise<void> { await releaseShardSpend(this.root, runs, this.#env, this.clock, this.dependencies.processes); }
+  async releaseShardReservations(runs: string[]): Promise<void> {
+    // Synthetic reservations have no lease for settleSpend to recover. Persist
+    // their release intent before the parent is allowed to finish reporting.
+    const directory = join(this.root, '.cland/run/executor/shard-releases');
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    runs = [...new Set(runs)].sort();
+    const path = join(directory, `${createHash('sha256').update(JSON.stringify(runs)).digest('hex')}.json`);
+    await durableJson(path, runs);
+    await this.#finishShardRelease(path, runs);
+  }
+
+  async #finishShardRelease(path: string, runs: string[]): Promise<void> {
+    try { await releaseShardSpend(this.root, runs, this.#env, this.clock, this.dependencies.processes); }
+    catch (error) {
+      this.logger({ event: 'executor-shard-reservations-deferred', runs, error: String(error) });
+      throw error;
+    }
+    await rm(path, { force: true });
+    this.logger({ event: 'executor-shard-reservations-released', runs });
+  }
+
+  async #retryShardReleases(): Promise<void> {
+    const directory = join(this.root, '.cland/run/executor/shard-releases');
+    const entries = await readdir(directory, { withFileTypes: true }).catch(error => {
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    });
+    for (const entry of entries) if (entry.isFile() && entry.name.endsWith('.json')) {
+      const path = join(directory, entry.name);
+      const text = await readFile(path, 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+      if (text === null) continue; // A concurrent release already settled it.
+      const runs: unknown = JSON.parse(text);
+      if (!Array.isArray(runs) || runs.some(run => typeof run !== 'string' || !run)) throw new Error('invalid shard reservation release request');
+      await this.#finishShardRelease(path, runs);
+    }
+  }
 
   /** Submission check only; acquire still reserves atomically against other hubs. */
   async checkSpend(overrideSize?: string, snapshot?: ProjectConfig): Promise<void> {
@@ -334,6 +369,7 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
 
   /** Restart repair and releasing-only retries. General orphan sweeping belongs to the safety stage. */
   async reconcile(restart = true): Promise<void> {
+    await this.#retryShardReleases();
     if (this.#env.DIGITALOCEAN_TOKEN) await rememberProject(this.root, this.#env, this.dependencies.processes, this.clock, this.dependencies.wait);
     type OwnedJob = { id: string; reported: boolean; state?: string; outcome: unknown; shards?: OwnedJob[] };
     const jobs = JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as OwnedJob[];

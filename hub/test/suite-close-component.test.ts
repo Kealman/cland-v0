@@ -8,6 +8,10 @@ import { drive } from './remote-clock.ts';
 import { onCleanup } from './process-cleanup.ts';
 import { eventually } from './harness.ts';
 import type { VerificationQueue } from '../src/protocol.ts';
+import { readLeases } from '../src/executor/droplet/lease.ts';
+import { caseDeadlines } from './case-deadlines.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { Store } from '../src/hub/store.ts';
 import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 
 test('two-shard stage result shows each shard T4 tier line', async t => {
@@ -43,6 +47,110 @@ async function startedShards(f: Awaited<ReturnType<typeof integrated>>, id: stri
     return jobs.find(job => job.id === id)?.state === 'running' ? true : undefined;
   });
 }
+
+test('two-shard close reports despite a corrupt spend ledger and the executor sweep retries accounting', async t => {
+  const setup = caseDeadlines(t);
+  const f = await setup.wait('isolated close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
+  f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  await setup.wait('two durably running shards', () => startedShards(f, job.id));
+  const runs = [1, 2].map(n => `${job.id}-shard-${n}`);
+  const path = join(f.root, '.cland/executor-state/spend.json');
+  const saved = await readFile(path, 'utf8');
+  const log = async () => {
+    await f.ui.request({ type: 'hub.status', flushLogs: true });
+    return (await readFile(join(f.root, '.cland/log/hub.log'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  };
+  const result = eventually('merged parent receipt with broken ledger', async () => {
+    await f.clock.advance(1000);
+    await f.verificationSettled();
+    return (await f.messages(job.id))[0];
+  }, 5000);
+  try {
+    await writeFile(path, '{"version":0,"entries":[]}');
+    for (const run of runs) f.machine.finish(run, 0);
+    const receipt = await result;
+    assert.match(receipt.text, /exit 0/);
+    assert.match(receipt.text, /tests 2; pass 2/);
+    assert.equal((await f.messages(job.id)).length, 1);
+    const queue = (await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue;
+    assert.deepEqual(queue.remote, [], 'both scheduler reservations are free while accounting is broken');
+    const leases = (await readLeases(f.root)).filter(lease => runs.includes(lease.run));
+    assert.equal(leases.length, 2);
+    assert.ok(leases.every(lease => lease.state === 'released'), 'provider deletion is durably confirmed');
+    assert.deepEqual(f.api.droplets, []);
+    const logs = await log();
+    for (const run of runs) assert.ok(logs.some(entry => entry.event === 'verification-release-deferred' && entry.id === run));
+    assert.ok(logs.some(entry => entry.event === 'verification-shard-release-deferred' && entry.id === job.id && entry.error.includes('invalid executor spend ledger')));
+    assert.ok(logs.some(entry => entry.event === 'executor-reconcile-failed'));
+    assert.equal(await readFile(path, 'utf8'), '{"version":0,"entries":[]}', 'reporting must not repair or discard the broken ledger');
+  } finally {
+    await writeFile(path, saved);
+  }
+  await f.verificationSettled();
+  await f.clock.advance(1000);
+  await eventually('executor sweep settles both released shard leases', async () => {
+    const ledger = JSON.parse(await readFile(path, 'utf8')) as { entries: { run: string; cost: number | null }[] };
+    return runs.every(run => ledger.entries.some(entry => entry.run === run && entry.cost !== null)) ? true : undefined;
+  });
+  const ledger = JSON.parse(await readFile(path, 'utf8')) as { entries: { run: string; cost: number | null }[] };
+  for (const lease of (await readLeases(f.root)).filter(lease => runs.includes(lease.run))) {
+    assert.equal(ledger.entries.find(entry => entry.run === lease.run)!.cost, lease.costUsd);
+  }
+  await eventually('successful accounting retry recorded', async () => (await log()).findLast(entry => entry.event === 'executor-sweep')?.failures === 0 ? true : undefined);
+  assert.equal((await f.messages(job.id)).length, 1, 'accounting recovery does not duplicate the parent receipt');
+});
+
+test('pre-lease shard failures retain reservation release through executor restart', async t => {
+  const setup = caseDeadlines(t);
+  const f = await setup.wait('isolated close fixture', () => integrated(setup.fixtures, '', 2, undefined, { machine: 'scripted' }));
+  assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
+  const path = join(f.root, '.cland/executor-state/spend.json');
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  onCleanup(setup.fixtures, () => release.resolve());
+  let acquiring = 0;
+  f.api.beforeSizes(async () => {
+    const ledger = JSON.parse(await readFile(path, 'utf8').catch(() => '{"entries":[]}')) as { entries: { lease: string }[] };
+    if (ledger.entries.filter(entry => entry.lease.startsWith('reserved:')).length !== 2) return;
+    if (++acquiring === 2) entered.resolve();
+    await release.promise;
+  });
+  const job = await f.launch('all', '--fresh', '--occasion', 'stage');
+  await setup.wait('both shards reach pre-lease provider lookup', () => entered.promise);
+  const saved = await readFile(path, 'utf8');
+  assert.deepEqual(await readLeases(f.root), []);
+  const result = eventually('failed parent receipt with broken ledger', async () => {
+    await f.clock.advance(1000);
+    await f.verificationSettled();
+    return (await f.messages(job.id))[0];
+  }, 5000);
+  await writeFile(path, '{"version":0,"entries":[]}');
+  f.api.sizes[0]!.available = false;
+  release.resolve();
+  assert.match((await result).text, /exit 1/);
+  assert.deepEqual(await readLeases(f.root), [], 'no real lease can own these synthetic reservations');
+  assert.equal((await f.messages(job.id)).length, 1);
+  assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).remote, []);
+  const receiptPath = join(f.root, '.cland/run/suites', job.id, 'result.json');
+  const receipt = await readFile(receiptPath, 'utf8');
+  await f.stop();
+  await writeFile(path, saved);
+  f.api.sizes[0]!.available = true;
+  const logs: Record<string, unknown>[] = [];
+  const executor = new DropletExecutor(f.root, undefined, entry => logs.push(entry), f.env, undefined, f.dependencies);
+  await drive(f, executor.sweep(true));
+  const ledger = JSON.parse(await readFile(path, 'utf8')) as { entries: { lease: string; cost: number | null }[] };
+  assert.equal(ledger.entries.length, 2);
+  assert.ok(ledger.entries.every(entry => entry.lease.startsWith('reserved:') && entry.cost === 0), 'the restarted sweep clears every unacquired reservation');
+  assert.ok(logs.some(entry => entry.event === 'executor-shard-reservations-released'));
+  assert.ok(logs.some(entry => entry.event === 'executor-sweep' && entry.failures === 0));
+  await drive(f, executor.sweep());
+  assert.equal(await readFile(receiptPath, 'utf8'), receipt);
+  const store = new Store(join(f.root, '.cland/hub.db'));
+  try { assert.equal(store.topicMessages(f.topic, 50).filter(message => message.id === `suite:${job.id}`).length, 1); }
+  finally { store.close(); }
+});
 
 test('a Coordinator integrated batch reserves two shards without stage provenance', async t => {
   const f = await integrated(t, 'daily_spend_usd=3', 2, undefined, { machine: 'scripted' });

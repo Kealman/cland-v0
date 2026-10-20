@@ -791,7 +791,11 @@ export class Suites {
     for (const shard of shards) if (shard.state === 'launching' && !shard.outcome && !this.#launching.has(shard.id) && this.#clock.now().getTime() >= (shard.nextPoll ?? 0)) this.#launchRemote(shard);
     await Promise.all(shards.map(shard => this.#inspectJob(shard)));
     if (shards.some(shard => !shard.reported)) return false;
-    await this.#droplet.releaseShardReservations(shards.map(shard => shard.id));
+    await this.#droplet.releaseShardReservations(shards.map(shard => shard.id)).catch(error => {
+      // Child leases and durable group-release requests retain sweep ownership.
+      // A broken ledger must not suppress the group's terminal receipt.
+      this.#options.log?.({ event: 'verification-shard-release-deferred', id: job.id, error: String(error) });
+    });
     const failures = shards.filter(shard => shard.outcome?.code !== 0);
     job.accountingPending = shards.some(shard => shard.accountingPending);
     // Different machines' repeated log receipts cannot share the single-machine

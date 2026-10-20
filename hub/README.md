@@ -2322,6 +2322,14 @@ watchdog receipts, re-arms a dead watchdog for a live lease's remaining lifetime
 already-settled accounting history without ledger locks and settles interrupted
 releases in one batch, preserving the recovery deadline for unfinished leases.
 
+Sharded close results still publish when the spend ledger is unavailable after
+the shards have reported. Group reservation release is retained under
+`.cland/run/executor/shard-releases/` until the ledger confirms settlement;
+reconciliation retries these requests across hub restarts, including reservations
+for shards that failed before acquiring a lease. The log records
+`executor-shard-reservations-deferred` and `executor-shard-reservations-released`.
+Accounting retries do not rerun shards or publish a second parent receipt.
+
 Before every create, including a prepare builder, cland reserves the configured
 lifetime times the size's hourly price (at least sixty seconds) in
 the [per-user executor spend ledger](#per-user-state), `$XDG_STATE_HOME/cland/spend.json`

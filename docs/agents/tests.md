@@ -901,6 +901,12 @@ lets a late provider deletion confirm within the six-minute recovery bound. Once
 the durable lease confirms release, the hub posts one
 accounting correction in the same topic. Restart resumes from the saved outcome
 without polling the deleted machine and retains the wait window/correction state.
+Sharded parents also report despite a broken spend ledger once all shards have
+reported. The executor retains durable group-release requests and retries them
+during reconciliation, including after restart and for shards with no lease.
+The T2 cases in `hub/test/suite-close-component.test.ts` corrupt only the scratch
+ledger, observe the parent receipt and freed scheduler slots, then repair the
+fixture and prove both lease settlement and pre-lease reservation recovery.
 `--executor local` and human hand runs use the local slot behind compatibility leases. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
 
 `cland verify queue [--json]` prints `local: <holder or none>`, then one
