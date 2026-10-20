@@ -34,9 +34,8 @@ subagents = false
 # heartbeat = "off" # (default)
 
 [crew.qa]
-# D70 (2026-10-19 22:13Z, stand-in under D24, ask 239c3c32): a pool of 3 until the v0.1.4 release, so epic demos run in parallel; back to singleton (size 1) after it.
-policy = "pool"
-size = 3
+policy = "singleton"
+size = 1
 keep_context = false
 stop_after = "never"
 subagents = false
