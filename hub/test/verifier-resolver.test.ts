@@ -107,3 +107,23 @@ test('QA affinity ignores copied and reordered verdict headers and retains stage
   assert.equal(stage.outcomes[0]?.resolvedTo, 'qa-1');
   assert.equal(send('coord', 'qa', `qa request ${epic.id} stage first\nRepeat stage brief`).outcomes[0]?.resolvedTo, 'qa-1');
 });
+
+test('an uncertain tracker outage notice does not reserve an idle Reviewer', async t => {
+  const { tracker, core, received, connections, peer, ack, send, coord } = await resolver(t);
+  peer('rev', 'reviewer');
+  ack('rev');
+  core.setSessionState('rev-id', 'rev', 'busy', 'fixture');
+  const notice = core.noticeTo('agents', {
+    kind: 'tracker-storage-fatal', to: ['all'],
+    text: 'tracker storage stalled: planned check on T-467; abandoning storage and exiting with code 1.',
+  })!;
+  core.ack(connections.get('rev')!, notice);
+  assert.equal(core.markUncertain(notice, 'rev', 'hub connection closed before the admission answer'), true);
+  const item = await tracker.create(coord, { title: 'Review after outage', size: 'S' });
+  const text = `review request ${item.id}\nRecovered build`;
+  assert.equal(send('coord', 'reviewer', text).outcomes[0]?.outcome, 'queued');
+  core.setSessionState('rev-id', 'rev', 'idle', 'fixture');
+  assert.deepEqual(core.topicHistory('agents').messages.find(m => m.text === text)?.to, ['rev']);
+  assert.equal(received.get('rev')!.filter(m => m.text === text).length, 1);
+  assert.equal(received.get('rev')!.filter(m => m.id === notice).length, 1, 'the uncertain notice is not replayed');
+});

@@ -58,6 +58,7 @@ test('Reviewer pool handoffs enforce admission and retention policy across flavo
     assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
     const journal = await readFile(join(root, '.cland/journal.jsonl'), 'utf8');
     assert.match(journal, /"event":"session-reused"/);
+    assert.equal((await peers[0]!.call<{ ok: boolean }>('task.comment', { id: secondItem, verdict: 'review', scope: 'full', result: 'clear', run: `completed-${harness}` })).ok, true);
     fake.idle('rev-one');
     await eventually('retained reviewer finishes its review turn', async () => (await processes()).processes.find(p => p.name === 'rev-one')?.state === 'idle' ? true : undefined);
     const handoff = await launch('next-handoff', firstItem);

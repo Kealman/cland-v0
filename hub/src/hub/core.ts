@@ -1352,6 +1352,7 @@ export class HubCore {
     if (!this.#store.markUncertain(messageId, session)) return false;
     for (const id of this.#store.deliveryIds(messageId, session)) this.#log({ event: 'inject-uncertain', id, session, why });
     this.inbox.uncertain(session, this.label(session), messageId, why);
+    this.#drainVerifierRequests();
     return true;
   }
 
@@ -1458,6 +1459,7 @@ export class HubCore {
     if (!stored || !this.#sameItem((JSON.parse(stored) as PendingVerification).item, item)) return;
     this.#store.clearMeta(key);
     this.#schedulePresence();
+    this.#drainVerifierRequests();
   }
 
   /** Delivery acceptance captures only the delivered first line, never the message history. */
@@ -2304,7 +2306,13 @@ export class HubCore {
   }
 
   #requestVerifier(item: ItemSummary, role: 'reviewer' | 'qa', except: string): string | undefined {
-    const live = [...this.#live.values()].filter(c => c.role === role && c.name !== except).sort((a, b) => a.name.localeCompare(b.name));
+    const live = [...this.#live.values()].filter(c => {
+      if (c.role !== role || c.name === except) return false;
+      // Affinity and pool handoffs cannot displace a received verification request either.
+      const pending = this.sessionPending(c);
+      return (!pending || this.#sameItem(pending.item, item.id))
+        && this.sessionHolds(c).every(hold => this.#sameItem(hold.item, item.id));
+    }).sort((a, b) => a.name.localeCompare(b.name));
     const held = item.holds.find(h => h.role === role);
     const verdict = this.#items?.lastVerifier?.(item.id, role);
     const prior = this.#store.meta(`verifier-request:T-${idNumber(item.id)}:${role}`);
@@ -2317,7 +2325,8 @@ export class HubCore {
     const reserved = live.find(c => this.#sameItem(this.#store.meta(`pool-handoff:${c.sessionId}`), item.id));
     if (reserved) return reserved.name;
     return live.find(c => ['idle', 'unknown'].includes(this.sessionState(c.sessionId))
-      && !this.sessionHolds(c).length && !this.#store.hasPendingWork(c.name, this.#processFacts.get(c.sessionId)?.status === 'running')
+      && !this.sessionHolds(c).length && !this.sessionPending(c)
+      && !this.#store.hasPendingWork(c.name, this.#processFacts.get(c.sessionId)?.status === 'running')
       && !this.#store.meta(`pool-handoff:${c.sessionId}`))?.name;
   }
 

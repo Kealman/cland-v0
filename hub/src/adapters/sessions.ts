@@ -228,7 +228,8 @@ export class Sessions {
   #reuseEligible(p: HarnessProcess, role: string | null, cwd: string, checkLifecycle = true): boolean {
     return p.status === 'running' && p.role === role && p.cwd === cwd
       && !!this.#core.connectionOf(p.sessionId) && this.#core.sessionState(p.sessionId) === 'idle'
-      && !this.#core.sessionHolds(p).length && (!checkLifecycle || !this.#lifecycle.has(p.sessionId))
+      && !this.#core.sessionHolds(p).length && !this.#core.sessionPending(p)
+      && (!checkLifecycle || !this.#lifecycle.has(p.sessionId))
       && !this.#core.store.meta(`pool-handoff:${p.sessionId}`)
       && !this.#pendingStops.has(p.sessionId) && !this.#core.store.hasPendingWork(p.name)
       && !this.#inflightHasSession(p.sessionId);

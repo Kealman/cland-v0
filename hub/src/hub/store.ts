@@ -931,10 +931,11 @@ export class Store implements HygieneMemory {
     return rows.map(row => this.deliveryMessage(row.id as string, session)!);
   }
 
-  /** Bare spokes have no adapter to confirm injection: their accepted deliveries have finished staffing work. */
+  /** Uncertain deliveries require explicit retry, not a staffing reservation. Verification reservations
+   * live in sessionPending/holds. Bare spokes finish delivery work when they accept the message. */
   hasPendingWork(session: string, awaitsInjection = true): boolean {
     return this.#db.prepare(`select 1 from deliveries d join messages m on m.id = d.message_id
-      where d.session = ? and d.state in ('queued', 'delivered', 'uncertain')
+      where d.session = ? and d.state in ('queued', 'delivered')
       and (? or d.state != 'delivered')
       and coalesce(m.notice, '') != 'progress'
       and (coalesce(m.notice, '') != 'event' or json_extract(m.notice_detail, '$.digest') = 'now') limit 1`).get(session, Number(awaitsInjection)) !== undefined;
