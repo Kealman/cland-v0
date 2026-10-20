@@ -526,16 +526,19 @@ test('executor lock wait retries a probe deadline with backoff before acquiring'
 
 test('executor lock wait bounds contention and names the lock and elapsed wait', async t => {
   const { acquireLockAsync, acquireLockWithRetry, HubLocked } = await import('../src/hub/lock.ts');
+  const { FakeClock } = await import('./fake-clock.ts');
   const root = await tempProject(t);
   const path = join(root, 'executor.lock');
   const owner = await acquireLockAsync(path);
   try {
-    const started = Date.now();
-    await assert.rejects(acquireLockWithRetry(path, started + 150), error => {
+    // The caller and helper share one clock; only retry waits advance the contention budget.
+    const clock = new FakeClock();
+    const deadline = clock.now().getTime() + 150;
+    await assert.rejects(acquireLockWithRetry(path, deadline, { clock, wait: ms => clock.advance(ms) }), error => {
       assert.ok(error instanceof Error);
       assert.ok(error.message.includes(`lock ${path}: acquisition deadline reached after waiting `));
       const waited = Number(/waiting (\d+) ms$/.exec(error.message)?.[1]);
-      assert.ok(waited >= 150, `elapsed wait ${waited}`);
+      assert.equal(waited, 150);
       assert.ok(error.cause instanceof HubLocked || error.cause instanceof Error);
       return true;
     });
