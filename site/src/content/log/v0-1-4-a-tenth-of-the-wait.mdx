@@ -1,0 +1,148 @@
+---
+title: 'v0.1.4: the wait for tests fell to a tenth, and the release eve took five runs'
+description: 'A merge queue and test tiers cut the time tasks spent waiting for tests from 21% of test time to under 10%, and the crew landed 315 tasks in 91 hours. The night before the release still took five runs and eight hours, and not one of the red runs was a product bug.'
+date: 2026-10-20
+release: v0.1.4
+tags: [retrospective, verification, merge-queue, onboarding]
+---
+
+import BarChart from '../../components/BarChart.astro';
+import Stats from '../../components/Stats.astro';
+
+v0.1.4 took 91 hours from the v0.1.3 tag to its own. The crew landed 315 tasks, 3.5 an hour, and all 14 epics closed on an independent QA verdict. Tasks spent less time waiting for tests than in any release before: waiting came to 9.8% of the time tests actually ran, down from 194% two releases ago. Then came the night before the release. We expected one green run after the last merge. It took five runs and about eight hours, and not one of the failures was a product bug.
+
+The crew was the same as in the last two releases: a Coordinator on `claude-opus-5-5`, Implementers and Reviewers on `gpt-6.1-sol`, and QA on Codex. One thing changed: QA ran as a pool of three, so epic demos could run side by side.
+
+## What we set out to build
+
+v0.1.4 started as "cland on a new project". Until now cland had only ever run on cland. The plan was a path for a newcomer:
+
+- **Init** serves only the folder it is given and makes a first commit of cland's own files.
+- **Setup** checks the harnesses, logins, trust, the hub and the first agent in eight one-line steps, and ends in the workbench.
+- **Onboarding** has that first agent, the Aide, study the project, ask about the person's role, record decisions as rules, file the first release or a map, and launch the Coordinator.
+- **Verification for any stack** runs the project's own check and test commands, locally or on a droplet. QA proved it on a Python project.
+- **A curated skill set** cut 43 skills to 20, plus an update command that refreshes the skills nobody edited and keeps the ones the project changed.
+
+On the first day of the build the maintainer made tests the top priority. Three verification epics joined the release, and feature work paused for two days. The previous post, [Why the test suite ate the crew](/log/why-the-suite-eats-the-crew/), ended with a promise to report what that work actually saved. This is the report.
+
+## The numbers
+
+<Stats
+  items={[
+    { value: '315', label: 'tasks landed in 91 hours, 3.5 an hour', was: 'v0.1.3: 3.1 an hour by the same count' },
+    { value: '14 of 14', label: 'epics closed on an independent QA verdict', was: 'v0.1.3: 5' },
+    { value: '71%', label: 'cleared their first review', was: 'v0.1.3: 79% by the same count' },
+    { value: '9.8%', label: 'waiting for tests, as a share of test running time', was: 'v0.1.3: 21%; v0.1.2: 194%' },
+    { value: '26%', label: 'of 759 test runs red', was: 'v0.1.3: 68%' },
+    { value: '$59.99', label: 'of droplets, 788 leases', was: 'v0.1.3: $18.11, 203 leases' },
+  ]}
+/>
+
+Review got stricter, not sloppier. The Reviewers returned 905 clear verdicts and 214 not-clear ones. Most bounces were about test timing and claims that the evidence did not back up.
+
+## The wait for tests, three releases in a row
+
+<BarChart
+  title="Minutes all tasks spent waiting for tests, and running them"
+  legend={[
+    { name: 'waiting', color: 'teal' },
+    { name: 'running', color: 'amber' },
+  ]}
+  rows={[
+    { label: 'v0.1.2', bars: [{ value: 6618, text: '6,618', color: 'teal' }, { value: 3411, text: '3,411' }] },
+    { label: 'v0.1.3', bars: [{ value: 1224, text: '1,224', color: 'teal' }, { value: 5822, text: '5,822' }] },
+    { label: 'v0.1.4', bars: [{ value: 1519, text: '1,519', color: 'teal' }, { value: 15459, text: '15,459' }] },
+  ]}
+  caption="Counted the same way for all three releases. In v0.1.2 tasks waited twice as long as their tests ran; in v0.1.4 they waited a tenth as long. Running time grew 4.5 times: far more runs and bigger suites, 816 of 841 suites on droplets."
+/>
+
+The waiting went away. The running did not. Three changes did most of the work.
+
+**Test tiers.** Every test file now has a tier, from T1 (pure logic) to T4, and the hub enforces it. All 405 files were sorted: 65 in T1, 150 in T2, 180 in T3, 10 in T4. At verify time and at merge, a lint refuses a new numeric sleep, a new real hub daemon in a test, or a new process-level file without its header. The hub gained a fake clock and in-process fakes of the three harnesses. One heartbeat test fell from 25.7 seconds to at most 1.6. A full run now starts 176 hub daemons, down from 743. On the Mac, the tests the two releases share run 34% faster.
+
+**A merge queue.** `cland merge` no longer lands a branch on the spot. It puts a reviewed head into a queue the hub owns. The hub batches heads, runs the batch, lands it when green, and bisects it by failing file when red. In the 24 hours around go-live, landings went from 2.96 to 5.38 an hour with the same crew. There were 98 batch runs: 87 green and 11 red, three of them for infrastructure. The Coordinator summed up its own change: "my job moved from merge clerk to watching the queue."
+
+**Fast batches, slow tests later.** At first a batch ran the process-level T3 tests too, and the median batch took 21.2 minutes. The maintainer chose to run T1 only per batch and to run T3 on `dev` every two hours and before every release. The median batch fell to 2.1 minutes, and red batches went from 9 of 38 to 2 of 60. The trade is explicit: a process-level regression may land, and the periodic run has to catch it before a release.
+
+The periodic run did its job. On the release morning one red run made 12 reruns across older heads in 26 minutes, pinned two culprit merges and filed a bug for each. Nobody asked it to. Both bugs had already been fixed from other tickets, so they closed as duplicates, and three earlier red runs named no culprit. Still, it worked the first time it had to.
+
+### The targets we did not hit
+
+The study set targets, and we missed several. The fast tiers make up 16% of test time against a 60% target. The process-level tier holds 2,110 seconds against 1,800, and a two-shard stage run takes 1,615 seconds against 600. Coverage-selected task suites take a median of 2.0 minutes, and 8 of 10 finish under 5. The maintainer accepted the measured values for this release and moved the targets to a later study.
+
+## How many questions reached a human
+
+Agents ask questions all the time. In this release 361 of them were answered by leads: the Coordinator took 245 and Implementers leading other Implementers took 116. Only 11 were passed up. In the end, 16 reached the maintainer or the stand-in, a session that answers on the maintainer's behalf at night. The maintainer answered 12 and the stand-in 4, with a median wait of 0.8 minutes and a longest of 27.5.
+
+## What broke or hurt
+
+### The night of five runs
+
+The last merges landed on the evening of 19 October. All that was left was one green release-candidate run on Linux and one on macOS.
+
+| Time (UTC) | What happened |
+| --- | --- |
+| 19:00 | The night starts. The final hub code needs a hub restart to go live. |
+| evening | Twice a hub start missed its 15-second deadline and was killed. In a restart gap the workbench started a hub of its own and killed that one too. |
+| 21:36 | The hub restarts with the final code. |
+| 21:43 | 7.5 minutes later it runs out of its 4 GB heap: it read 15 to 20 MB test logs whole into one string. |
+| night | Four red runs, each for a different reason that was not the product. |
+| 02:56 | Duration budgets, enforced since 00:41, go back to report mode. |
+| 03:39 | Linux green: 3,159 tests, 0 failed. |
+| 03:48 | macOS green: 3,167 of 3,167. |
+
+The four red runs failed on flaky tests under load, on tests left stale by renames, on a guard that refused a test of the release command, on a socket path over macOS's 104-byte limit, on fixtures started without a working directory, on a demo fixture nobody restored, and on duration budgets. Those budgets turned runs red on 15–20% load noise with zero failing tests. It took twelve small fixes. The rule that made the budgets block lasted 2 hours 15 minutes: it caught real growth, and then it broke runs on noise.
+
+The release day itself ran ten epic demos, three at a time. They found eight problems, among them a droplet lease stuck in "releasing", a cleanup hang under load, setup's wait for a lock and a wrong worker count in the README. Each was fixed before the tag. Eight release candidates followed over the morning, and the release run went green at 09:32. The tag came at 09:35.
+
+### 30 hub restarts in one release
+
+The crew runs on the hub it is building. Every landing that touches hub code needs a restart, and so does every crash. That made 30 restart episodes and 38 process starts, with a median gap of 18 seconds. Five gaps ran over 60 seconds, and the longest was 182.
+
+Sixty seconds matters. Once a gap passed it, the Coordinator's Claude Code bridge to the hub quietly gave up. For the next 2 hours 47 minutes the hub kept acknowledging messages that never arrived. The Coordinator sat idle while four ready tasks waited. A fix revived the bridge without a relaunch, and about 250 queued messages arrived at once.
+
+The Coordinator's own harness died six times. When that happens the hub releases the role, so the next call is refused and the Coordinator cannot even post. "There is no exit," it told us, "only a gap in my memory." It gets its bearings back from its own running log, the merge and verify queues, the heartbeat digest and its memory files. A Coordinator exit is now posted to everyone automatically.
+
+The last restart of the release was the gentle one. The old hub ignored its stop signal for 20 seconds, the gap was 69 seconds, and every session re-attached by its process id, thanks to a fix merged an hour earlier.
+
+### What a newcomer hits that we never did
+
+Our crew never starts from zero, so we ran setup in a clean home folder with the real Claude Code, Codex and OpenCode. It found what our own machine had hidden:
+
+- The first setup timed out on Claude Code's own lock. Its auth check leaves an empty lock folder behind, setup gave up after 5 seconds, and Claude Code treats a lock as stale only after 10.
+- The workbench's Neovim wrote its log into the hub's state folder.
+- OpenCode roles got broader permissions than OpenCode's own defaults.
+- Live harnesses were marked as exited after a hub restart.
+
+All were fixed before the tag. One honest gap remains: the full onboarding ran end to end on fake harnesses, and the live run on someone else's repository is still to do.
+
+### Small ones
+
+- **QA's process counter counted itself.** A check had to prove that no stray process was left over, and it found two. The only match was the inspection shell, whose own command line held the path it searched for. It happened twice.
+- **The file that changed anyway.** A check watched a Claude Code config file's timestamp to prove setup never touched it. The timestamp kept changing, because the maintainer's own live Claude Code sessions rewrite that file all the time.
+- **Stopping at a refusal.** One QA agent tried to hand evidence to an Implementer in another topic, and the hub refused. QA stopped and asked instead of finding a way round. The rule behind this, "when a hub action is refused, stop", was written after an agent whose test cancel was refused killed the worker instead. This release it held again and again.
+
+## Who was right
+
+- An Implementer over its ticket. The ticket said a hub stop should kill everything, but restarts rely on the opposite.
+- An Implementer over the Coordinator, on a lock constraint that an accepted step had already broken.
+- QA blocked the release twice, both times rightly.
+- The maintainer overruled the Coordinator twice: no process-level tests before every merge, and a narrower cut of the debt list.
+
+## Cost
+
+Droplets cost $59.99 over 788 leases, $16.74 on the busiest day. The daily cap was raised for single days and reset at midnight each time, and spend never passed $16.74. The hub recorded about 6.3 billion Codex tokens: 3.65 billion for Implementers over 318 sessions, 2.46 billion for four long-lived Reviewers and 0.23 billion for QA. Almost all of it is cached re-reads. One Reviewer used 426 million tokens on 15 million of fresh input. It all ran on subscriptions, and the Coordinator's own usage is not reported to the hub.
+
+## What we changed in cland because of it
+
+- **Decide where each kind of failure is caught.** The Coordinator's lesson from the release: "Ours: per-task checks before merge, everything else before the release. Then make that gate automatic and fast. A crew without that line either crawls or ships breakage."
+- **Flaky tests wait on state.** 68 more load-sensitive tests were fixed, 110 over two releases. Each now waits on the state it asserts, never on wall time. Our analysis put the cause on machine load: 0% red below a peak load of 6, 62% at 10 to 15. A known flaky test still runs and is reported, but no longer fails the run, and a lint refuses new wall-clock waits.
+- **Duration budgets report and do not block**, until they can tell growth from noise.
+- **A harness survives a hub restart**, tracked by its process id, and the hub notices when a session can no longer hear it.
+- **About 160 rules proposed** by Implementers, nearly one per ticket, are waiting for the maintainer.
+
+## What is next
+
+Writing the release notes surfaced 37 bugs and debt items nobody had scheduled. Eleven closed as already fixed or duplicates, and the six that affect a newcomer went into v0.1.4. The rest were swept in a short follow-up release, v0.1.5, which shipped the same afternoon as v0.1.4. The build of v0.2, the web workbench, started the same day.
+
+We asked the Coordinator what the job feels like now. "It's less like writing code and more like running a small airport at night. The planes are good pilots; my job is the schedule, the runway rules, and noticing the one that's circling."
