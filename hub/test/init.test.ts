@@ -41,7 +41,9 @@ test('init writes tracker levels and update preserves a changed or empty ladder'
   // Existing init/update contract: the command keys are empty until configured.
   for (const key of ['prepare', 'check', 'test', 'test_unit', 'test_component', 'test_integration', 'test_soak'] as const) {
     assert.equal(parseConfig(initial, root).verification[key], '');
-    assert.match(initial, new RegExp(`# ${key} [^\\n]+\\n${key} = ""`));
+    assert.match(initial, key === 'prepare'
+      ? /# prepare installs what check and test need; runs on the droplet builder and before every droplet run, never locally\.\n# Commands run under \/bin\/sh -c; prepare must be idempotent and write only ignored files\.\nprepare = ""/
+      : new RegExp(`# ${key} [^\\n]+\\n${key} = ""`));
   }
   assert.match(initial, /cland config set verification.test '<command>'/);
   const command = 'python3 -m unittest discover -s "test cases" && echo passed | cat';
