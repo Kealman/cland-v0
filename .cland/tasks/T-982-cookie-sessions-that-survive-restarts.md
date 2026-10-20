@@ -3,7 +3,7 @@ id: T-982
 kind: task
 title: Cookie sessions that survive restarts, listed and revoked
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:50:00.187Z
-updated: 2026-10-20T16:50:00.187Z
+updated: 2026-10-20T20:57:50.557Z
 ---
 
 ## Summary

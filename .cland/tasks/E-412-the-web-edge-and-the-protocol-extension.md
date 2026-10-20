@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: R-377
 blocked_by: []
-topic: null
+topic: topic-773
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-20T17:26:17.199Z
+updated: 2026-10-20T20:57:49.538Z
 ---
 
 ## Summary
@@ -145,3 +145,47 @@ stages:
       - - T-988
         - T-989
 ```
+
+## Comments
+
+### qa-676 · 2026-10-20T20:57:49.538Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-20-1
+commit: 44097bad32444c7db96492ef15d182c819166f99
+stage: the edge and the wire
+stage_hash: e4191e34ed640985c9fb3187711de9b3000a7a4dbc63ef3136ae7bb7927f3670
+findings: [{"severity":"low","text":"S0 duplicates init's existing [web] table; doctor explicitly reports invalid TOML/default fallback and M3 initially returned 503. Authorized scratch-only correction to existing web.dist and affected rechecks pass; original captures retained.","file":"qa/briefs/E-412-stage-1.md","line":41},{"severity":"low","text":"M9 standalone web-auth needs built web/dist but fails with raw ENOENT scandir when absent (12 pass/1 fail). Authorized exact-source npm run build --workspace web then rerun passes 13/13. Bugs/S prerequisite-message follow-up; original failure retained.","file":"hub/test/web-auth.test.ts","line":150}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Check | Surface | Result | Command / observation |
+| --- | --- | --- | --- |
+| S0 | hub-api | PASS | Two disposable projects, scratch HOME/XDG/Git, system TMPDIR; init; authorized correction to existing web.dist |
+| M1 | hub-api | PASS | cland hub start/stop/start: web port 51416 stable and persisted, distinct from spokes port 51547 |
+| M2 | hub-api | PASS | Occupied p2 web port 51419: hub/spokes stay up, status and doctor name EADDRINUSE; webPort unchanged; holder curl 000/timeout; holder stopped |
+| M3 | curl | PASS | GET /: 200, scratch bundle, CSP frame-ancestors 'none', nosniff and no-referrer |
+| M4 | curl | PASS | Nonempty ETag, no-cache, conditional 304 with empty body; extensionless /anything returns index |
+| M5 | curl | PASS | Four foreign/portless Hosts 403; localhost:51416 200 |
+| M6 | hub-api | PASS | cland web --no-open: exactly one 64-hex-token link; zero raw token occurrences under scratch .cland |
+| M7 | curl | PASS | First GET 302 and one HttpOnly/SameSite=Strict/Path=/ cookie with Max-Age=2592000; reused/unknown links 401; no cookie on reuse |
+| M8 | curl | PASS | No cookie 401; foreign/null/missing Origin each 403; no 101 |
+| M9 | node --test | PASS | Serial web-edge 6/6, web-auth 13/13 after authorized build, web-auth-unit 2/2; no skips |
+| M10 | shell/node --test | PASS | lint-wire-imports exit 0; hub-lifecycle 6/6, including webPort/status assertions |
+| M11 | shell | PASS | npm run typecheck exit 0; hub, Neovim, DOM-only shared wire/conformance and web checks |
+
+Low findings:
+1. S0/M3, qa/briefs/E-412-stage-1.md:41: the setup appends a second [web] table although cland init already supplies one. Original curl returned “HTTP/1.1 503 Service Unavailable” and “The cland web bundle is missing. Run npm run build --workspace web.” Doctor explicitly reported “fail config.toml does not parse: Invalid TOML document: trying to redefine an already defined table or value (line 133, column 2)” and said the hub uses built-in defaults. This was not silent in doctor. Coordinator decision 39f168a8-b54d-4255-bfe1-b05667b14be1 approved only the scratch correction: remove appended duplicate, set existing web.dist to the prescribed tiny bundle, restart hubs, repeat M1–M8. Corrected doctor reports config parses; all affected checks pass. Original setup/config/output preserved in initial-setup/. No committed brief or product code was edited.
+2. M9, hub/test/web-auth.test.ts:150: standalone `node --test hub/test/web-auth.test.ts` requires a built web/dist but fails with raw “ENOENT: no such file or directory, scandir '<detached worktree>/web/dist/'” instead of provisioning it or explaining the prerequisite. Initial result 12 pass/1 fail. Coordinator decision 3e93d7ab-5ca3-4151-9164-a5c8285b13c5 authorized `npm run build --workspace web` in the detached tested sources, then only the web-auth recheck. Build exit 0; recheck 13/13. Initial failure and build log retained. Reported for a Bugs/S follow-up; this does not remain a stage behavior failure after the authorized setup.
+
+Stage: the edge and the wire (affected).
+Build: 44097bad32444c7db96492ef15d182c819166f99.
+Run: qa-2026-10-20-1.
+S0 and M1–M11 PASS after the two authorized setup corrections. Final supporting targeted tests: 27 pass, 0 fail/cancelled/skipped. Initial failing setup/test outputs are retained and not counted as passing executions. Tests ran serially on local Darwin arm64 with Node v24.21.0, checking local:none before files. No full suite submitted or claimed; the Coordinator owns the stage covers. Static/type/build checks enforced their exit codes; report-only duration budgets are not evaluated here.
+
+Manual checks used real scratch CLI hubs, curl and a tiny fixture bundle. A Python driver called curl with argument arrays to preserve each Host/Origin/header case and asserted the brief's responses; its exact commands are in check-http.py. Synthetic one-time tokens/cookies were kept only in memory and redacted from durable captures. No browser/GUI was opened; targeted web-auth opener test uses scratch platform opener stubs. Provider/account variables were absent, with own HOME/XDG/Git and system TMPDIR.
+
+Build gates: clean detached HEAD and refs/heads/dev matched before/after; all three first-parent item landing commits captured in build.txt. Cleanup: both scratch hubs stopped normally, port holder terminated by the prescribed M2 command, remaining scratch process count 0, scratch root removed with non-force rm -r. Stage verdict only: no epic criterion marks.
+
+Evidence A-8056: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8056-e-412-stage-qa-evidence-at-44097bad-the-edge-and-the-wire-12-pass/report.md

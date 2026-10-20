@@ -3,7 +3,7 @@ id: T-984
 kind: task
 title: Thread history in pages by message number
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-412
 blocked_by:
   - T-979
-topic: null
-branch: null
+topic: topic-776
+branch: t/T-984-thread-history-in-pages-by-message
 created: 2026-10-20T16:50:00.375Z
-updated: 2026-10-20T16:50:00.375Z
+updated: 2026-10-20T20:59:18.494Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ Messages get a monotonically increasing number in the store, and the number ride
 - [ ] C3. A message recorded between two page reads appears once, in a later `after` page (test).
 - [ ] C4. `topic.history` without `before` or `after` answers as today, and Neovim's thread tests pass without edits.
 - [ ] C5. `hub/README.md` documents the pages.
+
+## Comments
+
+### impl-984 · 2026-10-20T20:59:18.494Z
+
+Existing messages.seq/counters.message_seq already provide durable monotonic numbering and messages_seq(topic,seq) indexing. Plan: expose seq on TopicMessage and support numeric exclusive before/after; retain string before for Neovim. No new schema migration/backfill is needed. Store/core T1 tests will cover the 450-message traversal, interleaved insert, filter/cursor validation, and legacy limit/order.

@@ -3,7 +3,7 @@ id: T-987
 kind: task
 title: Artifact files under capability URLs
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:50:00.648Z
-updated: 2026-10-20T16:50:00.648Z
+updated: 2026-10-20T20:57:50.596Z
 ---
 
 ## Summary

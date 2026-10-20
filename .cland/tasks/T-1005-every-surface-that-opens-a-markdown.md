@@ -3,7 +3,7 @@ id: T-1005
 kind: task
 title: Every surface that opens a Markdown artifact renders it
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-795
 blocked_by:
   - T-796
-topic: null
-branch: null
+topic: topic-777
+branch: t/T-1005-every-surface-that-opens-a-markdown
 created: 2026-10-20T16:58:42.045Z
-updated: 2026-10-20T16:58:55.656Z
+updated: 2026-10-20T21:03:00.386Z
 ---
 
 ## Summary

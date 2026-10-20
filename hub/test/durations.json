@@ -10,9 +10,11 @@
       "A-6845",
       "A-6830",
       "A-7703",
-      "A-7699"
+      "A-7699",
+      "A-8040",
+      "A-8038"
     ],
-    "commit": "9ae9a20b1579bf2e47268e3e8e33f2cae20bde59"
+    "commit": "44097bad32444c7db96492ef15d182c819166f99"
   },
   "budget": {
     "testSeconds": 5,
@@ -2089,6 +2091,42 @@
     "hub/test/suite-release-cache.test.ts": {
       "seconds": 0.820141,
       "tests": 6
+    },
+    "hub/test/tracker-conflict-captures.test.ts": {
+      "seconds": 0.056722,
+      "tests": 3
+    },
+    "hub/test/web-auth-unit.test.ts": {
+      "seconds": 0.00269,
+      "tests": 2
+    },
+    "hub/test/web-auth.test.ts": {
+      "seconds": 1.779132,
+      "tests": 13
+    },
+    "hub/test/web-bundle.test.ts": {
+      "seconds": 0.032127,
+      "tests": 1
+    },
+    "hub/test/web-edge.test.ts": {
+      "seconds": 0.674914,
+      "tests": 6
+    },
+    "hub/test/web-phase.test.ts": {
+      "seconds": 0.302087,
+      "tests": 8
+    },
+    "nvim/test/artifact-render.test.ts": {
+      "seconds": 6.537297,
+      "tests": 6
+    },
+    "nvim/test/panel-placement-component.test.ts": {
+      "seconds": 7.005639,
+      "tests": 22
+    },
+    "nvim/test/startup-budget.test.ts": {
+      "seconds": 13.721553,
+      "tests": 3
     }
   },
   "tests": {
@@ -5336,7 +5374,103 @@
     "hub/test/verifier-routing.test.ts::queued qa reaches idle after verdict and hold release despite uncertain traffic": 0.192526,
     "hub/test/verifier-routing.test.ts::queued qa reaches idle after verdict and hold release despite uncertain traffic across restart": 0.27152,
     "hub/test/verifier-routing.test.ts::queued review reaches idle after verdict and hold release despite uncertain traffic": 0.191728,
-    "hub/test/verifier-routing.test.ts::queued review reaches idle after verdict and hold release despite uncertain traffic across restart": 0.378391
+    "hub/test/verifier-routing.test.ts::queued review reaches idle after verdict and hold release despite uncertain traffic across restart": 0.378391,
+    "hub/test/doctor.test.ts::doctor counts live captures and names differing bytes and missing items without pruning": 0.113718,
+    "hub/test/hub-status-component.test.ts::status keeps available and unavailable web details in the hub block before sessions": 0.013724,
+    "hub/test/init-config.test.ts::web port and development bundle settings round-trip and reject invalid values": 0.009143,
+    "hub/test/merge-batches.test.ts::batch refuses a bare project before reading refs or writing candidate objects": 0.000397,
+    "hub/test/merge-gate.test.ts::merge admission and batch preparation identify a bare root before Git worktree operations": 1.128644,
+    "hub/test/suite-cache.test.ts::machine-unavailable Web stays not run in durable receipts and cannot seed green cache after restart": 0.022351,
+    "hub/test/territory-cli.test.ts::bare fixture init and clone seal poisoned repository locations and preserve the scratch parent config": 0.159007,
+    "hub/test/tracker-conflict-captures.test.ts::an old mtime cannot expire a freshly captured inode and abort prevents deletion": 0.002904,
+    "hub/test/tracker-conflict-captures.test.ts::retention deletes only expired finalized captures, preserving intents and item bytes": 0.019174,
+    "hub/test/tracker-conflict-captures.test.ts::tracker prunes at startup and hourly while task writes preserve their canonical file": 0.034644,
+    "hub/test/tracker-criterion-crash.test.ts::restart retains edited source after the criterion process is killed following live publication": 0.275021,
+    "hub/test/tracker-criterion-write.test.ts::uncontested CLI and hub task writes leave no conflict captures": 0.897685,
+    "hub/test/tracker-summary.test.ts::a post-publication I/O error preserves the changed editor source": 0.019128,
+    "hub/test/tracker-summary.test.ts::a post-publication I/O error preserves the unvalidated editor source": 0.012167,
+    "hub/test/tracker-summary.test.ts::startup recovery preserves the live item and handles a changed source": 0.018731,
+    "hub/test/tracker-summary.test.ts::startup recovery preserves the live item and handles a clean source": 0.055531,
+    "hub/test/tracker-summary.test.ts::startup recovery preserves the live item and handles a legacy source": 0.018913,
+    "hub/test/tracker-summary.test.ts::startup recovery preserves the live item and handles a unvalidated source": 0.018277,
+    "hub/test/tracker-summary.test.ts::summary projection bounds the first open payload in a thousand-item tracker and preserves default lists": 2.425238,
+    "hub/test/tracker-summary.test.ts::watcher notifications and rescans ignore conflict captures without emitting an item change": 0.012647,
+    "hub/test/web-auth-unit.test.ts::cookie sessions last thirty days and use a project-specific name": 0.000336,
+    "hub/test/web-auth-unit.test.ts::links retain only a SHA-256 digest, spend once, and expire at five minutes": 0.002354,
+    "hub/test/web-auth.test.ts::/ws refuses a spoke hello and closes its socket": 0.074025,
+    "hub/test/web-auth.test.ts::/ws refuses an upgrade before frames with cookie": 0.063216,
+    "hub/test/web-auth.test.ts::/ws refuses an upgrade before frames with Host": 0.062238,
+    "hub/test/web-auth.test.ts::/ws refuses an upgrade before frames with missing Origin": 0.06858,
+    "hub/test/web-auth.test.ts::/ws refuses an upgrade before frames with null Origin": 0.063246,
+    "hub/test/web-auth.test.ts::/ws refuses an upgrade before frames with Origin": 0.062409,
+    "hub/test/web-auth.test.ts::/ws welcomes a secret-free client as human and answers hub.status": 0.071175,
+    "hub/test/web-auth.test.ts::cland web --no-open prints a single-use link; auth sets the cookie and redirects": 0.256503,
+    "hub/test/web-auth.test.ts::cland web opens the printed link using a scratch platform opener": 0.38419,
+    "hub/test/web-auth.test.ts::server pings reap a browser that does not return a pong": 0.10314,
+    "hub/test/web-auth.test.ts::the served bundle, auth responses and every browser frame contain no hub secret": 0.099331,
+    "hub/test/web-auth.test.ts::web.link is callable by a local test client and auth expires at five minutes": 0.278665,
+    "hub/test/web-auth.test.ts::web.link refuses a session's shell even with an unknown identity": 0.192414,
+    "hub/test/web-bundle.test.ts::doctor compares the installed web stamp and diagnoses missing, changed and newer sources": 0.032127,
+    "hub/test/web-edge.test.ts::a missing bundle directory or index returns the build instruction": 0.054296,
+    "hub/test/web-edge.test.ts::an occupied web port disables only the web edge and doctor reports its reason": 0.180106,
+    "hub/test/web-edge.test.ts::bundle path confinement with extensionless route fallback": 0.064536,
+    "hub/test/web-edge.test.ts::the bundle has strict headers, revalidation for entry files and immutable assets": 0.080714,
+    "hub/test/web-edge.test.ts::the web edge accepts only a loopback Host with its exact port": 0.065652,
+    "hub/test/web-edge.test.ts::the web port survives a hub restart and explicit configuration overrides it": 0.22961,
+    "hub/test/web-phase.test.ts::candidate Web capability pins one Web command and never adds it to batch plans": 0.007772,
+    "hub/test/web-phase.test.ts::missing browser libraries report Web not run in durable evidence and result without failing other phases": 0.002724,
+    "hub/test/web-phase.test.ts::tasks keep Web through T0-T2 caps; batches exclude it and periodic and occasion runs include it": 0.042713,
+    "hub/test/web-phase.test.ts::tier lint accepts Web and rejects an unknown classification": 0.187606,
+    "hub/test/web-phase.test.ts::web diffs select web-only and protocol, edge and mixed diffs force full": 0.001688,
+    "hub/test/web-phase.test.ts::Web is a separate machine phase after hub with two local and four remote workers": 0.029531,
+    "hub/test/web-phase.test.ts::Web per-test budgets use four seconds in enforce mode": 0.000946,
+    "hub/test/web-phase.test.ts::without Web files task, batch, periodic and stage commands and phases stay unchanged": 0.029107,
+    "nvim/test/artifact-render.test.ts::a 2,000-line artifact bounds parsing before first paint and reuses spans for its file version": 0.692703,
+    "nvim/test/artifact-render.test.ts::a 20,000-line artifact yields to keys, bounds render work and caches the settled projection": 3.860309,
+    "nvim/test/artifact-render.test.ts::ARTIFACT-001: rendered Markdown is read-only and raw toggles back to the exact editable source": 0.550533,
+    "nvim/test/artifact-render.test.ts::first artifact open projects an existing modified editor buffer without losing its unsaved source": 0.421191,
+    "nvim/test/artifact-render.test.ts::sliced artifacts retain whole-document Markdown context and discard superseded work": 0.593398,
+    "nvim/test/artifact-render.test.ts::the artifact projection cache distinguishes path, mtime and size independently": 0.419163,
+    "nvim/test/explorer-card-component.test.ts::compact latest verdicts retain historical criterion review rounds through task.view": 0.574131,
+    "nvim/test/explorer-component.test.ts::a held closed snapshot replays a reopen as exactly one open item": 0.278536,
+    "nvim/test/explorer-component.test.ts::explorer card replaces any right occupant on a narrow screen and restores it on widening": 0.578765,
+    "nvim/test/explorer-component.test.ts::explorer fetches open summaries first, closed summaries on expansion, and card text through task.view": 0.410411,
+    "nvim/test/explorer-component.test.ts::item search loads closed summaries without a startup closed request": 0.273155,
+    "nvim/test/panel-placement-component.test.ts::gp reopens Items on the right and a scoped palette action reopens Sessions on the left": 0.321631,
+    "nvim/test/panel-placement-component.test.ts::Inbox digits and Topics n work on the left": 0.299761,
+    "nvim/test/panel-placement-component.test.ts::inbox: gm and its palette action move the panel; its key toggles on the new home": 0.281811,
+    "nvim/test/panel-placement-component.test.ts::invalid panel assignments fall back once in amber while other preferences survive": 0.251286,
+    "nvim/test/panel-placement-component.test.ts::items: gm and its palette action move the panel; its key toggles on the new home": 0.352766,
+    "nvim/test/panel-placement-component.test.ts::manual widths belong to sides through moves, views, presets and preference reload": 0.345034,
+    "nvim/test/panel-placement-component.test.ts::moving a panel clears its old side; replacing one on a shared home keeps both homes": 0.303741,
+    "nvim/test/panel-placement-component.test.ts::native closes clear only their side and rebuilding a sole centre keeps swapped panels": 0.476869,
+    "nvim/test/panel-placement-component.test.ts::Normal and Terminal focus chords reach swapped panels from the centre without a harness process": 0.263843,
+    "nvim/test/panel-placement-component.test.ts::older version-2 preferences load default homes and retain every existing preference": 0.261679,
+    "nvim/test/panel-placement-component.test.ts::palette and command place each of the four panels on either side": 0.555004,
+    "nvim/test/panel-placement-component.test.ts::presets keep chosen homes and open their panel set on those homes": 0.306814,
+    "nvim/test/panel-placement-component.test.ts::reset command and palette restore default sides and widths immediately without changing open panels": 0.331808,
+    "nvim/test/panel-placement-component.test.ts::reset keeps colliding visible panels and their dock open, then toggles use default homes": 0.286498,
+    "nvim/test/panel-placement-component.test.ts::restart snapshot and restore keep chosen homes and both visible occupants in-process": 0.294736,
+    "nvim/test/panel-placement-component.test.ts::Sessions keys on the left and Items filters, folds and Enter on the right retain their context": 0.321482,
+    "nvim/test/panel-placement-component.test.ts::sessions: gm and its palette action move the panel; its key toggles on the new home": 0.282184,
+    "nvim/test/panel-placement-component.test.ts::swapped Sessions and Items repaint their rows after session.state and task frames": 0.289137,
+    "nvim/test/panel-placement-component.test.ts::top-bar chips reopen Inbox and Sessions on their chosen side, including a vacant Coordinator": 0.283712,
+    "nvim/test/panel-placement-component.test.ts::Topics dock stays above the right Sessions panel with Inbox left and keeps its manual height without duplicates": 0.301446,
+    "nvim/test/panel-placement-component.test.ts::topics: gm and its palette action move the panel; its key toggles on the new home": 0.298116,
+    "nvim/test/panel-placement-component.test.ts::version-2 panel homes and occupants round-trip without losing import receipts": 0.296281,
+    "nvim/test/qa-shipped.test.ts::ARTIFACT-001 passes through the headless QA runner": 0.534465,
+    "nvim/test/qa-shipped.test.ts::PANELS-017 passes through the headless QA runner": 0.441325,
+    "nvim/test/qa-shipped.test.ts::PANELS-018 passes through the headless QA runner": 0.420998,
+    "nvim/test/qa-shipped.test.ts::PANELS-019 passes through the headless QA runner": 0.419612,
+    "nvim/test/qa-shipped.test.ts::PANELS-020 passes through the headless QA runner": 0.631158,
+    "nvim/test/shell-component.test.ts::a late original items answer completes startup after its deadline instead of being discarded": 0.283065,
+    "nvim/test/shell-component.test.ts::a reconnect reads each startup list once then settles for ten fake minutes while task events update the explorer": 0.550154,
+    "nvim/test/shell-component.test.ts::only a missing snapshot retries with backoff, and its oldest late answer retains live task events": 0.306767,
+    "nvim/test/shell-component.test.ts::the header shows sessions and Coordinator while the startup items list is delayed": 0.337131,
+    "nvim/test/startup-budget.test.ts::a slowed task.list trips the rendered startup time budget": 6.382719,
+    "nvim/test/startup-budget.test.ts::bodies added to the first task.list trip the payload byte budget": 3.528401,
+    "nvim/test/startup-budget.test.ts::thousand-item workbench startup fits the time and first-payload budgets": 3.810433,
+    "nvim/test/ui.test.ts::a cold Neovim restart restores Sessions left and Items right from version-2 preferences": 0.678077
   },
   "allow": {
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {

@@ -37,8 +37,11 @@ cland() { node "$W/hub/bin/cland.ts" "\$@"; }
 ENV
 . "$Q/env.sh"; : > "$Q/gitconfig"
 mkdir -p "$Q/p1" "$Q/p2" && for p in p1 p2; do ( cd "$Q/$p" && git init -q -b dev && git commit -q --allow-empty -m init && cland init . ) ; done
-# serve the scratch bundles: [web] dist is the documented development setting; a tiny bundle keeps the checks independent of `npm run build --workspace web`
-for p in p1:bundle p2:bundle2; do printf '\n[web]\ndist = "%s"\n' "$Q/${p#*:}" >> "$Q/${p%%:*}/.cland/config.toml"; done
+# serve the scratch bundles: [web] dist is the documented development setting; a tiny bundle keeps the checks independent of `npm run build --workspace web`.
+# `cland init` already writes a [web] table with dist = "": edit that key, never append a second [web] table (a duplicate table makes config.toml invalid and the hub runs on defaults).
+for p in p1:bundle p2:bundle2; do node -e 'const fs=require("fs");const f=process.argv[1];const t=fs.readFileSync(f,"utf8");const n=t.replace(/^(\[web\][^\[]*?^dist = )"[^"]*"/m,(m,a)=>a+JSON.stringify(process.argv[2]));if(n===t)throw new Error("no [web] dist key in "+f);fs.writeFileSync(f,n)' "$Q/${p%%:*}/.cland/config.toml" "$Q/${p#*:}"; done
+# M9 runs hub/test/web-auth.test.ts, which reads the built bundle: build it once from the tested sources
+( cd "$W" && npm run build --workspace web )
 ```
 
 Cleanup at the end, after the evidence is recorded: stop both hubs (`( . "$Q/env.sh"; cd "$Q/p1" && cland hub stop; cd "$Q/p2" && cland hub stop )`), kill the port holder of M2, then print `$Q` and remove it by its literal path with a non-force `rm -r` after checking it begins with `/tmp/qa-e412-`.
