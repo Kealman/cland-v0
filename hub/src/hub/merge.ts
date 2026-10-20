@@ -1,5 +1,7 @@
 // The Coordinator's merge gate: one queued territory operation, provenance and cached freshness, then Git and
 // the tracker's close. No check command runs here (D16); conflicts go back to the Implementer (D9).
+import type { Git } from '../tracker/verdict-git.ts';
+import { requireMergeWorktree } from '../territory.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
 import type { LogFn } from '../log.ts';
 import { access } from 'node:fs/promises';
@@ -33,11 +35,15 @@ export class TaskMerges {
   readonly worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>;
   readonly #squash: typeof squashTask;
   readonly #git: typeof territoryGitAsync;
+  readonly #rootGit: typeof territoryGitAsync;
   readonly log: LogFn;
   readonly #territoryLock: typeof withTerritoryLockAsync;
   readonly afterMerge: (item: string, resumed: Resumed) => Promise<void>;
-  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync) {
+  constructor(tracker: Tracker, worktrees: Pick<TaskWorktrees, 'serial' | 'prune' | 'pruneMerged'>, log: LogFn, afterMerge: (item: string, resumed: Resumed) => Promise<void> = async () => {}, env: NodeJS.ProcessEnv = process.env, territoryLock: typeof withTerritoryLockAsync = withTerritoryLockAsync, queue?: MergeQueue, squash: typeof squashTask = squashTask, git: typeof territoryGitAsync = territoryGitAsync, rootGit?: Git) {
     this.#git = git;
+    // The admission fact shares the hub's read-only probe boundary. Recovery
+    // and territory writes retain their separate native/injected Git runner.
+    this.#rootGit = rootGit ? async (_cwd, args, _marked, input) => await rootGit(args, input) ?? '' : git;
     this.#squash = squash;
     this.queue = queue;
     this.#env = env;
@@ -111,6 +117,7 @@ export class TaskMerges {
       try {
         await this.#territoryLock(this.tracker.root, async () => {
           resumed(authorize);
+          await requireMergeWorktree(this.tracker.root, resumed, this.#env, this.#rootGit);
           const pendingPublish = await access(join(this.tracker.root, '.cland', 'publish.tmp')).then(() => true, err => { if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false; throw err; });
           if (pendingPublish) throw new MergeError('merge-recovery', `finish pending cland publish before merging ${id}`);
           const pendingSync = await access(join(this.tracker.root, '.cland', 'sync.tmp')).then(() => true, err => resumed(() => {

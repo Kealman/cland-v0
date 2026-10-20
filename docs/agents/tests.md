@@ -691,7 +691,13 @@ map, before/after file seconds and process-start call sites in the review eviden
 Rule 15: shared fixtures use the pure `test-support/fixture-environment.ts`
 (`hub/test/fixture-environment.ts` remains a compatibility export) to replace
 inherited HOME, XDG, account roots and Git configuration with worker-owned scratch
-paths. Git system/config injection and inherited identities are removed.
+paths. Every inherited `GIT_*` override is removed, including `GIT_DIR`,
+`GIT_COMMON_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, object directories, templates
+and inline/system config. Filtering runs again after extras. An inherited
+`GIT_DIR` plus an implicit `git init --bare` can rewrite a parent repository's
+shared config even when cwd and HOME are scratch-owned. A linked worktree of the
+live project is not a disposable repository for these probes.
+Git system/config injection and inherited identities are removed.
 The builder supplies `Fixture Test <fixture@example.test>` as both author and
 committer so commits, rebases and releases never depend on host identity detection.
 Tests may override these defaults with explicit synthetic Git identities in extras.
@@ -718,7 +724,18 @@ after sealing the hub environment. Provider fixtures must pass their typed
 `syntheticProvider` dependency again on daemon restart; env extras alone do not
 preserve its sentinel token.
 
+Bare-root merge admission uses the hub's injected read-only Git probe in component
+fixtures; the production boundary runs native Git. `project-probes.test.ts` proves
+the injected bare fact still refuses while imports, merge preflight and cleanup
+retain the zero-child census.
+
 The pure T1 poisoned-parent/overlay test is `fixture-environment.test.ts`.
+The native T3 bare-init/clone proof in `territory-cli.test.ts` compares the scratch
+parent's config bytes after each operation, including clone from a linked cwd.
+`init-machine.ts` and `init-fixture.ts` also use the shared builder; child extras
+must never be spread onto an already sealed result. The scratch machine removes
+the builder's `CLAND_EXECUTOR_STATE` default so its own scratch HOME/XDG ledger
+and legacy migration paths remain the product defaults under test.
 `claude-code-accounts.test.ts` deliberately injects three synthetic auth variables
 at the native adapter seam to prove default-account inheritance and named-account
 exclusion. Such credential-handling tests never inject into shared fixture defaults

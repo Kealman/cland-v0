@@ -94,10 +94,12 @@ test('projectHub defaults launch, signal and stop every harness with zero child 
   const factsRoot = await tempProject(t);
   await mkdir(join(factsRoot, '.cland/territory.git'), { recursive: true });
   let commit = 'a'.repeat(40);
+  let bare = false;
   const baseRead = Promise.withResolvers<void>();
   const facts = await projectHub(t, factsRoot, {}, {
     clock: new FakeClock(),
     git: async args => {
+      if (args[0] === 'rev-parse' && args[1] === '--is-bare-repository') return String(bare);
       if (args[0] === 'log') return commit;
       if (args[0] === 'for-each-ref') return `${'b'.repeat(40)} refs/heads/dev`;
       assert.fail(`unexpected Git read: ${args[0]}`);
@@ -123,6 +125,11 @@ test('projectHub defaults launch, signal and stop every harness with zero child 
   const merged = await factsUi.request({ type: 'merge', item });
   assert.equal(merged.ok, false);
   assert.equal((merged as { code?: string }).code, 'merge-branch', 'the ordinary merge preflight runs without a native lock probe');
+  bare = true;
+  const bareMerge = await factsUi.request({ type: 'merge', item });
+  assert.equal(bareMerge.ok, false);
+  assert.equal((bareMerge as { code?: string }).code, 'merge-bare');
+  assert.ok(bareMerge.error?.includes(`core.bare=true in project root ${factsRoot}`));
   commit = 'c'.repeat(40);
   const reload = await factsUi.request({ type: 'hub.reload' });
   assert.equal(reload.ok, true, reload.error);

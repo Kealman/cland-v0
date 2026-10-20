@@ -8,6 +8,7 @@ import type { TestContext } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { CliResult } from './harness.ts';
 import { beforeDirectories, ownDirectory, ownProcess } from './process-cleanup.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { clandCliLaunch } from './tier-cli.ts';
 
 export type InitMachine = { root: string; home: string; env: NodeJS.ProcessEnv; context: TestContext };
@@ -18,11 +19,13 @@ export async function scratchMachine(t: TestContext, { identity }: { identity: b
   const root = await realpath(await mkdtemp(join(tmpdir(), 'cland-init-machine-')));
   ownDirectory(t, root);
   const home = join(root, 'home');
-  const env: NodeJS.ProcessEnv = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    // Clear all Git overrides, including injected config, worktrees, templates and identities.
-    if (!/^(CLAND_|GIT_|EMAIL$|DIGITALOCEAN_|DO_|OPENAI_|ANTHROPIC_|CLAUDE_|CODEX_|OPENCODE_)/.test(key)) env[key] = value;
-  }
+  const env: NodeJS.ProcessEnv = fixtureEnvironment(root, process.env);
+  // Machine contracts exercise the user-default XDG ledger and legacy HOME
+  // migration. Keep that product default while retaining the shared Git seal.
+  delete env.CLAND_EXECUTOR_STATE;
+  // Identity absence is the subject of init's identity contracts; the builder's
+  // synthetic defaults must not turn a missing identity into a configured one.
+  for (const key of ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL']) delete env[key];
   Object.assign(env, {
     HOME: home,
     XDG_CONFIG_HOME: join(home, '.config'),

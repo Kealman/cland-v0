@@ -658,7 +658,7 @@ export type ReleaseCode = 'release-item' | 'release-version' | 'release-tag' | '
   | 'release-t3' | 'release-state' | 'release-territory' | 'release-changed' | 'sync-dirty' | 'sync-conflict' | 'sync-behind' | 'sync-recovery';
 
 // hub/src/merge.ts
-export type MergeCode = 'merge-git' | 'merge-item' | 'merge-branch' | 'merge-territory' | 'merge-base' | 'merge-unpublished' | 'merge-checkout'
+export type MergeCode = 'merge-bare' | 'merge-git' | 'merge-item' | 'merge-branch' | 'merge-territory' | 'merge-base' | 'merge-unpublished' | 'merge-checkout'
   | 'review-missing' | 'review-provenance' | 'review-role' | 'review-claimant' | 'review-not-clear' | 'review-stale' | 'review-pending'
   | 'qa-missing' | 'qa-provenance' | 'qa-role' | 'qa-claimant' | 'qa-not-clear' | 'qa-stale' | 'qa-pending'
   | 'merge-hold' | 'merge-budget' | 'merge-test-lint' | 'merge-tiers' | 'merge-shards' | 'merge-override-scope' | 'merge-conflict' | 'merge-dirty' | 'merge-changed' | 'merge-recovery' | 'verdict-missing' | 'criteria-incomplete';

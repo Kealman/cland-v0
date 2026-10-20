@@ -289,3 +289,20 @@ test('a task moving during a batched freshness read is rejected at the merge dec
   assert.equal(merged.ok, true, merged.error);
   assert.equal(await readFile(join(root, 'parser.txt'), 'utf8'), 'changed during the read\n');
 });
+
+// T3: root config is shared with its native linked task worktrees.
+test('merge admission and batch preparation identify a bare root before Git worktree operations', async t => {
+  const { root, ui, rev } = await project(t);
+  const work = await task(root);
+  await review(rev, work.id);
+  const before = git(root, 'rev-parse', 'dev');
+  git(root, 'config', '--local', 'core.bare', 'true');
+  const config = await readFile(join(root, '.git/config'));
+  const refusal = await refused(ui, root, work.id, 'merge-bare');
+  assert.ok(refusal.error!.includes(`core.bare=true in project root ${root}`));
+  assert.match(refusal.error!, /git -C .* config --local core.bare false/);
+  const { prepareMergeBatch } = await import('../src/hub/merge-batch-territory.ts');
+  await assert.rejects(prepareMergeBatch(root, 'bare-root', []), /merge-bare: core.bare=true in project root/);
+  assert.deepEqual(await readFile(join(root, '.git/config')), config, 'admission does not repair or write config');
+  assert.equal(git(root, 'rev-parse', 'dev'), before, 'no integration ref moved');
+});

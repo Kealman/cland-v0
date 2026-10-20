@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
 import type { MergeQueueEntry } from '../protocol.ts';
 import { MergeError } from '../merge.ts';
-import { mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, type MergeTreeFacts } from '../territory.ts';
+import { requireMergeWorktree, mergeTreeFacts, gateMergeTree, territoryGitAsync, TerritoryGitError, type MergeTreeFacts } from '../territory.ts';
 import { committedTreeOrThrow } from '../verification-tree.ts';
 import { BatchRefusal, type BatchCandidate } from './merge-batches.ts';
 import { refusedOverridePaths } from '../merge-override.ts';
@@ -37,6 +37,7 @@ export async function prepareMergeBatch(root: string, id: string, members: Merge
     checkout: (candidate: BatchCandidate) => checkoutMergeBatch(root, candidate, env),
     remove: (candidate: BatchCandidate) => removeMergeBatch(root, candidate, env) };
   const git = repository.git;
+  await requireMergeWorktree(root, undefined, env, (_cwd, args, _marked, input) => git(args, input));
   const base = pinnedBase ?? await git(['rev-parse', 'refs/heads/dev']);
   let head = base;
   const budgetLines: string[] = [];

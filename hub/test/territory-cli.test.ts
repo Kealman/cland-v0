@@ -14,6 +14,8 @@ import { commandIn, gitIn, initIn, masterClone, scratchMachine, snapshot } from 
 import { Report } from '../src/init/files.ts';
 import { listTaskWorktrees, provisionTerritory, territoryGit, territoryGitAsync, territoryProblems } from '../src/territory.ts';
 import { gitIn as verdictGit } from '../src/tracker/verdict-git.ts';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 import { refusedOverridePaths } from '../src/merge-override.ts';
 
 const git = (root: string, ...args: string[]): string => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -484,4 +486,37 @@ test('init repairs origin push overrides and extra URLs so ordinary pushes canno
   assert.equal(git(root, 'remote', 'get-url', '--push', '--all', 'origin'), territory);
   git(root, 'push', '-q', 'origin', 'HEAD:refs/heads/t/T-1-local');
   assert.equal(git(github, 'show-ref'), before);
+});
+
+// T3: native Git is required to prove the parent config bytes, not just env keys.
+test('bare fixture init and clone seal poisoned repository locations and preserve the scratch parent config', async t => {
+  const parent = await tempProject(t, 'cland-bare-parent-');
+  const clean = await accountFixtureEnvironment();
+  const { sh } = await import('./init-fixture.ts');
+  const run = (cwd: string, args: string[], env: NodeJS.ProcessEnv) => execFileSync('git', args, { cwd, env, encoding: 'utf8', stdio: 'pipe' }).trim();
+  run(parent, ['init', '-q', '-b', 'main'], clean);
+  run(parent, ['commit', '--allow-empty', '-qm', 'Scratch parent'], clean);
+  const config = join(parent, '.git/config');
+  const before = await readFile(config);
+  const linked = join(parent, 'linked');
+  run(parent, ['worktree', 'add', '-q', '--detach', linked], clean);
+  const poison = { GIT_DIR: join(parent, '.git'), GIT_COMMON_DIR: join(parent, '.git'), GIT_WORK_TREE: parent,
+    GIT_INDEX_FILE: join(parent, '.git/index'), GIT_OBJECT_DIRECTORY: join(parent, '.git/objects') };
+  for (const source of ['parent', 'overlay'] as const) {
+    const root = await tempProject(t, 'cland-bare-child-');
+    const env = fixtureEnvironment(root, source === 'parent' ? { ...clean, ...poison } : clean, source === 'overlay' ? poison : {});
+    await mkdir(env.HOME!, { recursive: true });
+    run(root, ['init', '--bare', '-q'], env);
+    assert.deepEqual(await readFile(config), before, `${source} implicit init preserves parent config bytes`);
+    run(linked, ['clone', '--bare', '-q', parent, join(root, 'clone.git')], env);
+    assert.deepEqual(await readFile(config), before, `${source} clone from linked cwd preserves parent config bytes`);
+    const shell = await sh(root, 'git init --bare -q', { GIT_DIR: join(parent, '.git') });
+    assert.equal(shell.code, 0, shell.stderr);
+    assert.deepEqual(await readFile(config), before, 'shared shell builder seals a late GIT_DIR overlay');
+    const common = await sh(root, 'git init --bare -q', { GIT_COMMON_DIR: join(parent, '.git') });
+    assert.equal(common.code, 0, common.stderr);
+    assert.deepEqual(await readFile(config), before, 'shared shell builder seals GIT_COMMON_DIR with an initialized target');
+    assert.equal(run(root, ['config', '--bool', '--get', 'core.bare'], env), 'true', 'the fixture itself is bare');
+    assert.equal(run(parent, ['config', '--bool', '--get', 'core.bare'], clean), 'false');
+  }
 });

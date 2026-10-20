@@ -660,12 +660,24 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
   }, resumed);
 }
 
+/** A bare project root shares this setting with all linked task worktrees.
+ * Diagnose it before any checkout/diff or immutable-tree inspection. Never repair
+ * configuration automatically: only the repository owner may choose that fix. */
+export async function requireMergeWorktree(root: string, resumed: <T>(work: () => T) => T = work => work(),
+  env: NodeJS.ProcessEnv = process.env, git: typeof territoryGitAsync = territoryGitAsync): Promise<void> {
+  const bare = await maybeGitAsync(root, ['rev-parse', '--is-bare-repository'], env, git);
+  resumed(() => {
+    if (bare === 'true') throw new MergeError('merge-bare', `core.bare=true in project root ${root}; inspect the shared Git config, then restore the worktree with git -C '${root.replaceAll("'", "'\\''")}' config --local core.bare false before retrying`);
+  });
+}
+
 /** Immutable admission is shared by immediate squashes and queued batch preparation. */
 export type MergeTreeFacts = { context: DurationBudgetContext | null; workers: number };
 
 /** Read-only repository facts; callers gate the resulting immutable snapshot. */
 export async function mergeTreeFacts(root: string, tree: string, head: string, base: string,
   resumed: <T>(work: () => T) => T = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<MergeTreeFacts> {
+  await requireMergeWorktree(root, resumed, env);
   try { await lintHubShardTree(root, tree, env, { head, base }); }
   catch (err) { resumed(() => { throw new MergeError('merge-tiers', err instanceof Error ? err.message : String(err), err instanceof ShardManifestError ? err.files : undefined); }); }
   try {
@@ -701,6 +713,7 @@ export async function squashTask(
   prepared: (landing: { commit: string; base: string; tip: string; checkout?: { before: string; after: string } }) => void = () => {},
   authorize: () => void = () => {},env: NodeJS.ProcessEnv = process.env,
 ): Promise<{ commit: string; base: string; budgetLines?: string[] }> {
+  await requireMergeWorktree(root, resumed, env);
   const managed = await hasTerritory(root, env);
   resumed(() => { if (!managed) throw new MergeError('merge-territory', 'the project has no managed territory'); });
   const foundBase = await taskBase(root, undefined, env);

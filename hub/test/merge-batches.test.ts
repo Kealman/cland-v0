@@ -82,7 +82,7 @@ test('diagnostic identity failure holds the batch with omission and Git evidence
   await runner.tick();
   await f.finish(f.suites.status()[0]!.id, 1, failureLog);
   boundary.build = (id, members, base) => prepareMergeBatch(f.root, id, members, {}, {
-    git: async args => args[0] === 'rev-parse' ? members.find(entry => `refs/heads/${entry.branch}` === args[1])!.head
+    git: async args => args[1] === '--is-bare-repository' ? 'false' : args[0] === 'rev-parse' ? members.find(entry => `refs/heads/${entry.branch}` === args[1])!.head
       : args[0] === 'commit-tree' ? 'fresh-commit' : 'merged-tree\0',
     facts: async () => ({ context: null, workers: 1 }),
     identity: async () => { throw new Error('git write-tree: stdout: partial output; stderr: unable to write tree'); },
@@ -467,6 +467,11 @@ test('three queued heads run once on a single candidate before landing FIFO', as
       const commit = String(landed.length + 4).repeat(40);
       prepared!({ commit, base: 'dev', tip }); heads.set('dev', commit);
       return { commit, base: 'dev' };
+    }, async (_cwd, args) => {
+      if (args[1] === '--is-bare-repository') return 'false';
+      const value = await git(args);
+      assert.notEqual(value, null, `missing Git fact: ${args.join(' ')}`);
+      return value!;
     });
   t.after(() => merges.stop());
   const land = boundary.land;
@@ -731,4 +736,17 @@ test('merge batches form and land while periodic culprit search awaits its runne
     assert.equal(completed, false, 'both batches land before the search runner is released');
   }
   release.resolve(null); await pending;
+});
+
+test('batch refuses a bare project before reading refs or writing candidate objects', async () => {
+  const calls: string[][] = [];
+  const unexpected = async (): Promise<never> => { throw new Error('bare root reached candidate preparation'); };
+  const repository: BatchRepository = {
+    git: async args => { calls.push(args); return 'true'; },
+    facts: unexpected, identity: unexpected, checkout: unexpected, remove: unexpected,
+  };
+  await assert.rejects(prepareMergeBatch('/scratch/project', 'bare-root', [], {}, repository), {
+    code: 'merge-bare', message: "merge-bare: core.bare=true in project root /scratch/project; inspect the shared Git config, then restore the worktree with git -C '/scratch/project' config --local core.bare false before retrying",
+  });
+  assert.deepEqual(calls, [['rev-parse', '--is-bare-repository']]);
 });

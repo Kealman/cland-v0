@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile, readlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
 import { clandWithEnv } from './harness.ts';
 import { captureCli } from './cli-in-process.ts';
 import { runInit, runUpdate } from '../src/cli/init.ts';
@@ -22,10 +23,12 @@ export function assertNoMachinePath(text: string, machine: string, file: string)
 
 export type Change = { path: string; action: string; note?: string };
 
-export const sh = (cwd: string, command: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> =>
-  new Promise((resolve) =>
-    execFile('sh', ['-c', command], { cwd, env: { ...process.env, ...env }, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? Number(err.code ?? 1) : 0, stdout, stderr })),
+export const sh = async (cwd: string, command: string, env: Record<string, string> = {}): Promise<{ code: number; stdout: string; stderr: string }> => {
+  const sealed = await accountFixtureEnvironment(env);
+  return new Promise((resolve) =>
+    execFile('sh', ['-c', command], { cwd, env: sealed, encoding: 'utf8' }, (err, stdout, stderr) => resolve({ code: err ? Number(err.code ?? 1) : 0, stdout, stderr })),
   );
+};
 
 export async function gitRepo(root: string): Promise<void> {
   const r = await sh(root, 'git init -q && git config user.email t@example.com && git config user.name t');

@@ -28,6 +28,7 @@ export class MergeFacts {
   beforeSurface: (() => Promise<void>) | undefined;
   readonly git: Git = async args => {
     if (args[0] === 'for-each-ref') return [...this.heads].map(([b, h]) => `${h} refs/heads/${b}`).join('\n');
+    if (args[0] === 'rev-parse' && args[1] === '--is-bare-repository') return 'false';
     if (args[0] === 'rev-parse') {
       const ref = args.at(-1)!.replace(/\^\{commit\}$/, '').replace(/^refs\/heads\//, '');
       return this.heads.get(ref) ?? this.landings.find(l => `${l.commit}^` === ref)?.parent ?? (/^[a-f0-9]{40}$/.test(ref) ? ref : null);

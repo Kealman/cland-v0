@@ -149,7 +149,7 @@ export async function planStageHub(t: TestContext, root: string, facts = new Pla
       const commit = facts.commit([]);
       prepared?.({ commit, base: 'dev', tip });
       return { commit, base: 'dev' };
-    });
+    }, undefined, facts.read);
     owners.push(() => merges.stop());
     const merge = async (id: string) => {
       try {

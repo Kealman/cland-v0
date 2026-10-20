@@ -209,7 +209,7 @@ export class Dispatcher {
     }) : null;
     this.#mergeQueueReady = this.#mergeQueue?.refresh().catch(error => this.#log({ event: 'merge-queue-reconcile-failed', error: String(error) })) ?? Promise.resolve();
     options.tracker?.useMergeQueue(id => this.#mergeQueue?.position(id));
-    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock, this.#mergeQueue ?? undefined) : null;
+    this.#merges = options.tracker && this.#worktrees ? new TaskMerges(options.tracker, this.#worktrees, this.#log, async (item, resumed) => { await this.#sessions?.stopAfterMerge(item, resumed); }, options.env, options.territoryLock, this.#mergeQueue ?? undefined, undefined, undefined, options.git) : null;
     this.#releases = options.tracker && this.#worktrees ? new Releases(options.tracker, this.#worktrees, this.#log, options.env, (head, tree) => {
       if (!releaseT3Cover(options.core.store, tree)) throw new ReleaseError('release-t3', `no green T3 covers release head ${head} (tree ${tree}); needs cland verify all --occasion release --report general on this dev tree (or a green dev-t3, soak or stage run)`);
     }, { ...(options.publishRelease ? { publish: options.publishRelease } : {}), ...(options.territoryLock ? { lock: options.territoryLock } : {}) }) : null;
