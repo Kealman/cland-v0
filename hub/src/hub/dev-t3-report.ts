@@ -40,7 +40,8 @@ export async function reportDevT3Search(core: HubCore, tracker: Tracker, report:
     }
     bugs.push({ item: bug.id, merge });
   }
-  const text = `Periodic dev T3 search ${input.run}${files.length ? '' : ': inconclusive; no failing files identified'}\n${bugs.map(bug => `Bug ${bug.item}: merge ${bug.merge}`).join('\n')}\n${evidence}`;
+  const diagnosis = input.budgetIdentities?.length ? `: budget only: ${input.budgetIdentities.join(', ')}` : files.length ? '' : ': inconclusive; no failing files identified';
+  const text = `Periodic dev T3 search ${input.run}${diagnosis}\n${bugs.map(bug => `Bug ${bug.item}: merge ${bug.merge}`).join('\n')}\n${evidence}`;
   core.noticeTo(GENERAL.id, { id: `dev-t3-search:${input.run}`, kind: 'report', to: ['coordinator', ...claimants], text: core.boundedText(text),
     detail: { event: 'verification-dev-t3-search', ...report, bugs } });
 }

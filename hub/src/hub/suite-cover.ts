@@ -8,7 +8,7 @@ export function deriveCover(job: Readonly<SuiteJob>, log: string): CoverRecord |
   // Close-run collection labels receipts after their reporter terminator.
   const text = log.replace(/\x1b\[[0-9;]*m/g, '').replace(/ \[shard-\d+\]$/gm, '');
   const failed = failingTests(text);
-  const budgets = [...text.matchAll(/^duration budget: (.+) [\d.]+ s > [\d.]+ s \(add to .+ with a reason\)/gm)].map(match => match[1]!);
+  const budgets = [...text.matchAll(/^duration budget: (.+) [\d.]+ s > [\d.]+ s(?: \(T[1-4]\))?(?: \(add to .+ with a reason\))?$/gm)].map(match => match[1]!);
   const hasFailure = failed.length > 0 || /^(?:\s*not ok \d+|✖ (?!failing tests:)|(?:#|ℹ) fail [1-9])/m.test(text);
   if (/^cancelled: (?:queued head changed|submitted head |candidate tree changed)/.test(job.outcome.cause)) return { status: 'cancelled', cause: 'cancel-head', tests: failed };
   if (job.cancelled || job.requesterDied) return { status: 'cancelled', cause: 'cancel-requester', tests: failed };

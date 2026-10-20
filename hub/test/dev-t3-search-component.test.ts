@@ -14,6 +14,32 @@ import type { SuiteStatus } from '../src/protocol.ts';
 const file = 'hub/test/example.test.ts';
 const failed = `suite test failures ${JSON.stringify([{ file, name: 'regression' }])}\n# tests 1\n# fail 1\n`;
 const passed = `suite progress ${JSON.stringify({ event: 'finish', id: 'test', file, name: 'regression', at: 1, nesting: 0, outcome: 'pass', seconds: 0.01 })}\nsuite test failures []\n# tests 1\n# pass 1\n`;
+const budget = 'duration budget: hub/test/slow.test.ts::slow 2.39 s > 2 s (T2) (add to hub/test/durations.json with a reason)\n';
+
+test('budget-only periodic red names over-budget identities without starting culprit probes', async t => {
+  const f = await fixture(t, { machine: 'scripted', config: 'dev_t3_every="1s"\nshards=1\nlifetime="15m"\nrun_timeout="5m"' });
+  f.candidate.branch = 'dev';
+  f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
+  const jobs = async () => ((await f.ui.request({ type: 'hub.status' })).value as { suites: SuiteStatus[] }).suites;
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  const run = (await jobs()).find(job => job.occasion === 'dev-t3')!;
+  assert.ok(run); await drive(f, f.machine.started(run.id));
+  const log = 'suite test failures []\n# tests 2\n# pass 2\n# fail 0\n' + budget
+    + 'duration budget: hub/test/other.test.ts::other 2.06 s > 2 s (T2) (add to hub/test/durations.json with a reason)\n'
+    + 'duration budget: hub/test/slow.test.ts::slow 2.39 s > 2 s (T2)\n';
+  f.machine.finish(run.id, 1, log);
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  assert.deepEqual((await jobs()).find(job => job.id === run.id)!.cover, { status: 'red', cause: 'budget',
+    tests: ['hub/test/slow.test.ts::slow', 'hub/test/other.test.ts::other'] });
+  await f.clock.advance(1000); await drive(f, f.verificationSettled());
+  const history = ((await f.ui.request({ type: 'topic.history', topic: 'general' })).value as { messages: { text: string; detail?: { event?: string } }[] }).messages;
+  const report = history.find(message => message.detail?.event === 'verification-dev-t3-search');
+  assert.ok(report, 'periodic culprit search publishes a diagnosis');
+  assert.match(report.text, /budget only: hub\/test\/slow.test.ts::slow, hub\/test\/other.test.ts::other/);
+  assert.doesNotMatch(report.text, /inconclusive/);
+  assert.equal((await jobs()).filter(job => job.devT3Probe).length, 0, 'budget-only reds do not run failing-file probes');
+});
 
 for (const flake of [false, true]) test(`red periodic run ${flake ? 'reports a passing rerun as a flake without filing' : 'files one Bug with live last-claimant delivery'}`, async t => {
   const baseline = 'a'.repeat(40), redHead = 'b'.repeat(40), baselineTree = 'd'.repeat(40), redTree = 'e'.repeat(40);
@@ -51,8 +77,10 @@ for (const flake of [false, true]) test(`red periodic run ${flake ? 'reports a p
   f.candidate.head = redHead; f.candidate.tree = redTree; f.candidate.selection.fetchedDev = redHead;
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   const red = (await jobs()).findLast(job => job.occasion === 'dev-t3')!;
-  assert.notEqual(red.id, green.id); await finish(red, 1, failed);
-  type SearchMessage = { detail: { input: { run: string; head: string; previousGreenHead: string }; bugs: { item: string; merge: string }[]; files: { result: string; receipts: { run: string }[] }[] }; to: string[]; text: string };
+  assert.notEqual(red.id, green.id); await finish(red, 1, failed + budget);
+  assert.deepEqual((await jobs()).find(job => job.id === red.id)!.cover, { status: 'red', cause: 'test-failure',
+    tests: ['hub/test/example.test.ts::regression', 'hub/test/slow.test.ts::slow'] });
+  type SearchMessage = { detail: { input: { run: string; head: string; previousGreenHead: string; failingFiles: string[]; budgetIdentities?: string[] }; bugs: { item: string; merge: string }[]; files: { result: string; receipts: { run: string }[] }[] }; to: string[]; text: string };
   let search: SearchMessage | undefined;
   for (let i = 0; i < 12 && !search; i++) {
     const probe = (await jobs()).find(job => job.devT3Probe && !job.reported);
@@ -67,6 +95,8 @@ for (const flake of [false, true]) test(`red periodic run ${flake ? 'reports a p
   }
   assert.ok(search, 'search completes with a General report');
   assert.equal(search.detail.input.run, red.id); assert.equal(search.detail.input.head, redHead); assert.equal(search.detail.input.previousGreenHead, baseline);
+  assert.deepEqual(search.detail.input.failingFiles, [file]); assert.equal(search.detail.input.budgetIdentities, undefined);
+  assert.doesNotMatch(search.text, /budget only:/);
   assert.equal(search.detail.files[0]!.result, flake ? 'flake' : 'culprit', JSON.stringify(search.detail));
   assert.equal(search.detail.bugs.length, flake ? 0 : 1);
   const items = ((await f.ui.request({ type: 'task.list' })).value as { items: { id: string; title: string; parent: string; labels: string[] }[] }).items;
