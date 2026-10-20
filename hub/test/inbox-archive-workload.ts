@@ -79,10 +79,6 @@ export async function archiveWorkload(t: import('node:test').TestContext, scale:
   });
   const records: Array<Record<string, unknown>> = [];
   let turn = 0;
-  let turnTimer: ReturnType<typeof setImmediate>;
-  const nextTurn = () => { turn++; turnTimer = setImmediate(nextTurn); };
-  nextTurn();
-  onCleanup(t, () => clearImmediate(turnTimer));
   const daemon = await projectHub(t, root, {}, { openDatabase: database.open, clock, probes: 'fake', harnesses: 'fake', log: entry => records.push({ ...entry, turn }) });
   const human = pipe(daemon), verifier = pipe(daemon);
   stop = async () => { human.close(); verifier.close(); await daemon.stop(); };
@@ -111,14 +107,24 @@ export async function archiveWorkload(t: import('node:test').TestContext, scale:
   for (let i = 0; i < 8; i++) live.put({ name: `new-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `new-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
   live.close();
   const beforeStops = records.filter(r => r.event === 'session-archive-sweep').length;
-  human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `new-${i}` })));
-  await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
-  const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
-  assert.ok(stopped.every(f => f.ok), `stop frames succeeded: ${JSON.stringify(stopped.find(f => !f.ok))}`);
+  assert.equal(turn, 0, 'turn counter stays idle through startup and archive I/O');
+  // Only the stop-coalescing assertion needs event-loop turn labels.
+  let turnTimer: ReturnType<typeof setImmediate>;
+  const nextTurn = () => { turn++; turnTimer = setImmediate(nextTurn); };
+  nextTurn();
+  try {
+    human.batch(Array.from({ length: 8 }, (_, i) => ({ type: 'session.stop', id: `stop-${i}`, session: `new-${i}` })));
+    await eventually('all protocol stops committed', () => human.frames.filter(f => f.type === 'result' && String(f.id).startsWith('stop-')).length === 8 || undefined);
+    const stopped = human.frames.filter(f => String(f.id).startsWith('stop-'));
+    assert.ok(stopped.every(f => f.ok), `stop frames succeeded: ${JSON.stringify(stopped.find(f => !f.ok))}`);
+    await tick();
+    const sweeps = records.filter(r => r.event === 'session-archive-sweep').slice(beforeStops);
+    assert.ok(sweeps.length > 0, 'stops trigger cleanup');
+    assert.equal(sweeps.length, new Set(sweeps.map(r => r.turn)).size, 'asynchronous stops produce at most one sweep in each event-loop tick');
+  } finally { clearImmediate(turnTimer!); }
+  const afterStops = turn;
   await tick();
-  const sweeps = records.filter(r => r.event === 'session-archive-sweep').slice(beforeStops);
-  assert.ok(sweeps.length > 0, 'stops trigger cleanup');
-  assert.equal(sweeps.length, new Set(sweeps.map(r => r.turn)).size, 'asynchronous stops produce at most one sweep in each event-loop tick');
+  assert.equal(turn, afterStops, 'turn counter stops before teardown');
 }
 
 /** The same startup query-plan and coalescing proof at component and load scales. */
