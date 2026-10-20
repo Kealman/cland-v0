@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { processAlive } from './processes.ts';
@@ -242,7 +243,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
     this.#host.log({ event: 'claude-schedule', agentsMs: this.#agentsMs, pollMs: this.#pollMs });
     this.#stopGraceMs = options.stopGraceMs ?? 5000;
     const env: NodeJS.ProcessEnv = {};
-    for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') || k === 'CLAND_CLAUDE_BIN') env[k] = v;
+    for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') || k === 'CLAND_CLAUDE_BIN') env[k] = v;
     this.#env = env;
     this.#configDir = resolve(env.CLAUDE_CONFIG_DIR || join(env.HOME || homedir(), '.claude'));
     if (env.CLAUDE_CONFIG_DIR) this.#env.CLAUDE_CONFIG_DIR = this.#configDir;
@@ -287,7 +288,7 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- the harness's CLI
 
   #run(args: string[], cwd: string, p: Pick<HarnessProcess, 'account' | 'accountEnv'>, timeoutMs = 30_000, resumed: Resumed = untimed, launchToken?: string): Promise<{ code: number; stdout: string; stderr: string }> {
-    const env = { ...this.#env, ...p.accountEnv };
+    const env = withoutExecutorCredentials({ ...this.#env, ...p.accountEnv });
     if (p.account) for (const key of AUTH_VARIABLES) delete env[key];
     return new Promise((resolve, reject) => {
       execFile(this.#bin, args, { cwd, env: { ...env, ...(launchToken ? { CLAND_LAUNCH_TOKEN: launchToken } : {}) }, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => resumed(() => {

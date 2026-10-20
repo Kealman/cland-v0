@@ -37,7 +37,7 @@ test('nothing loads from the user configuration: every sourced script is the bun
   const state = join(root, 'state');
   await mkdir(join(state, 'cland'), { recursive: true });
   await writeFile(join(state, 'cland/spend.json'), 'hub spend');
-  const c = await startClient(t, bin, root, { XDG_STATE_HOME: state, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]) }, { launcher: true });
+  const c = await startClient(t, bin, root, { DIGITALOCEAN_TOKEN: 'test-token-not-real', XDG_STATE_HOME: state, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]) }, { launcher: true });
   await c.waitScreen((s) => s.includes('General'), 'the client');
   const out = await c.rpc.request<{ output: string }>('nvim_exec2', 'scriptnames', { output: true });
   const runtime = realpathSync(await c.lua<string>('return vim.env.VIMRUNTIME'));
@@ -56,6 +56,7 @@ test('nothing loads from the user configuration: every sourced script is the bun
   assert.deepEqual(foreign, [], `scripts from outside the runtime and nvim/:\n${out.output}`);
   const appname = await c.lua<string>('return vim.env.NVIM_APPNAME');
   assert.equal(appname, 'cland-nvim');
+  assert.equal(await c.lua('return vim.env.DIGITALOCEAN_TOKEN == nil'), true, 'the launched Neovim client has no executor credential');
   assert.equal(await c.lua("return vim.fn.stdpath('state')"), join(state, 'cland-nvim'));
   assert.deepEqual(await readdir(join(state, 'cland')), ['spend.json'], 'opening the workbench leaves only hub files in the hub state directory');
   assert.equal(await readFile(join(state, 'cland/spend.json'), 'utf8'), 'hub spend');

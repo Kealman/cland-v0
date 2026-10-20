@@ -77,3 +77,18 @@ exit codes, test counts, wall time, queue wait (zero for direct probes), and loa
 Do not use this direct probe to run machine shards or full suites. Task runs use
 `cland verify` with no mode (D29); full suites are the Coordinator's integrated
 `dev` runs (`cland verify all`).
+
+## Executor credentials
+
+`DIGITALOCEAN_TOKEN` stays in the hub's executor environment and its local
+watchdog, which needs DigitalOcean API access if the hub dies. The shared
+`shared/executor-credentials.ts` deny-list removes it from harness launches
+(including account environment overlays), local verification workers and
+commands, suite and load-gate test processes, Neovim test/QA clients, and local
+SSH/SCP tools. Remote machines receive no provider token. The executor currently
+uses this fixed variable name; configuration does not select another token
+variable. New provider credential names must join the same deny-list.
+
+The shell that exported the token still holds it. This filtering does not remove
+it from independently launched processes or scrub arbitrary commands or output
+that a user supplied with a secret embedded in them. Do not put secrets in argv.

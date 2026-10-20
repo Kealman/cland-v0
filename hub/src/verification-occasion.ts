@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 import { VERIFY_OCCASIONS, type VerifyOccasion } from './protocol.ts';
 import type { SuiteSelection } from './suite-selection.ts';
 
@@ -15,7 +16,7 @@ export function occasionSelection(selection: SuiteSelection, occasion?: VerifyOc
 }
 
 export function suiteTestEnv(selection?: SuiteSelection, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
-  const env = { ...base };
+  const env = withoutExecutorCredentials(base);
   if (selection?.soak) env.CLAND_TEST_SOAK = '1';
   else delete env.CLAND_TEST_SOAK;
   return env;

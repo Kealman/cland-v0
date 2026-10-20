@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 // The Neovim client's seam: the real client (`nvim --clean -u nvim/init.lua`) headless with `--listen`,
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -126,9 +127,10 @@ export async function createClient(t: TestContext, bin: string, root: string, en
     if (env.CLAND_COMMAND && process.env[key]) childEnv[key] = process.env[key];
   }
   if (opts.launcher) childEnv.CLAND_NVIM = bin;
+  const launchEnv = withoutExecutorCredentials(childEnv);
   const launch = () => opts.launcher
-    ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] })
-    : spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+    ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] })
+    : spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
   const child = stubOnly ? headlessNvimLaunch(bin, sock, launch) : launch();
   if (stubOnly) ownStubClient(t, child, native?.beforeDirectories);
   else native!.ownProcess(t, child.pid);

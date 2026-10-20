@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
 // The Codex adapter (spec 4.3, research `harness-surfaces` §2). Codex runs each session on an app-server the hub
 // owns, one per session, and the hub joins it as a client:
@@ -365,7 +366,7 @@ export class CodexAdapter implements HarnessAdapter {
     this.#injectTimeoutMs = options.injectTimeoutMs ?? 60_000;
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 30_000;
     const env: NodeJS.ProcessEnv = {};
-    for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') || k === 'CLAND_CODEX_BIN') env[k] = v;
+    for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') || k === 'CLAND_CODEX_BIN') env[k] = v;
     this.#env = env;
   }
 
@@ -378,7 +379,7 @@ export class CodexAdapter implements HarnessAdapter {
       const key = JSON.stringify(accountEnv ?? null);
       if (this.#versionChecked.has(key))
         return;
-      const out = yield* wait(new Promise<string>((resolve, reject) => execFile(this.#bin, ['--version'], { cwd, env: { ...this.#env, ...accountEnv }, encoding: 'utf8', timeout: 15000 }, (err, stdout) => (err ? reject(new Error(`${this.#bin} --version: ${err.message}`)) : resolve(stdout)))));
+      const out = yield* wait(new Promise<string>((resolve, reject) => execFile(this.#bin, ['--version'], { cwd, env: withoutExecutorCredentials({ ...this.#env, ...accountEnv }), encoding: 'utf8', timeout: 15000 }, (err, stdout) => (err ? reject(new Error(`${this.#bin} --version: ${err.message}`)) : resolve(stdout)))));
       const v = /(\d+)\.(\d+)\.(\d+)/.exec(out);
       const [a, b, c] = MIN_CODEX_VERSION;
       const n = v ? [Number(v[1]), Number(v[2]), Number(v[3])] : null;
@@ -428,7 +429,7 @@ export class CodexAdapter implements HarnessAdapter {
           ...(p.role ? { CLAND_ROLE: p.role } : {}),
         };
         authorize();
-        const child = spawn(this.#bin, args, { cwd: p.cwd, env, detached: true, stdio: ['ignore', out.fd, out.fd] });
+        const child = spawn(this.#bin, args, { cwd: p.cwd, env: withoutExecutorCredentials(env), detached: true, stdio: ['ignore', out.fd, out.fd] });
         child.once('exit', (code, signal) => (exited = `exited (${code ?? signal})`));
         child.once('error', (err) => (exited = err.message));
         child.unref();

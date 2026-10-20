@@ -128,7 +128,6 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       delete env.CLAND_SUITE_SELECTION_FILE;
       // Never propagate a parent's capture into nested fixture package runs.
       delete env.CLAND_COVERAGE_OUTPUT;
-      delete env.DIGITALOCEAN_TOKEN;
       delete env.NODE_TEST_CONTEXT;
       delete env.CLAND_TEST_QUARANTINE;
       delete env.CLAND_TEST_TIER_ASSIGNMENTS;

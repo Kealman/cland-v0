@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 // Shared headless QA CLI fixture; all children belong to the calling test.
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
@@ -18,7 +19,7 @@ export function qa(t: TestContext, args: string[], options: { prefix?: string[];
   // Node restores a deleted coverage variable; disable writes sandbox profiles may deny.
   if (options.prefix?.includes('/usr/bin/sandbox-exec')) env.NODE_V8_COVERAGE = '';
   const argv = [...(options.prefix ?? []), process.execPath, CLI, '--headless', '--qa', ...args];
-  const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? process.cwd(), env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(argv[0] as string, argv.slice(1), { cwd: options.cwd ?? process.cwd(), env: withoutExecutorCredentials(env), stdio: ['ignore', 'pipe', 'pipe'] });
   ownProcess(t, child.pid);
   t.after(() => void child.kill('SIGKILL'));
   options.started?.(child);

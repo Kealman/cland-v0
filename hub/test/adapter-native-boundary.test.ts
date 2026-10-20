@@ -51,13 +51,14 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
   let identityRefused = false;
   let clientClosed = 0;
   const watchCalls: string[] = [];
+  const launchEnvs: NodeJS.ProcessEnv[] = [];
   const events: Array<Record<string, unknown>> = [];
   let delay = () => {};
   let delayed = false;
   const resultDelay = () => { if (!delayed) { delayed = true; delay(); } };
   let claudeId = '';
   const child = (options: cp.SpawnOptions = {}) => {
-    const source = fault === 'server-exit' ? "console.error('planted server exit'); process.exit(1)" : "setInterval(() => {}, 1000)";
+    const source = fault === 'server-exit' ? "console.error('planted server exit'); process.exit(1)" : "if (Object.hasOwn(process.env, 'DIGITALOCEAN_TOKEN')) process.exit(61); setInterval(() => {}, 1000)";
     const p = nativeSpawn(process.execPath, ['-e', source], options);
     children.push(p);
     return p;
@@ -66,6 +67,7 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
     if (_bin === 'ps' && _args[0] === '-o' && identityRefused) return nativeSpawn(process.execPath, ['-e', 'process.exit(1)'], options);
     if (_bin !== 'fake-harness') return nativeSpawn(_bin, _args, options);
     if (fault === 'spawn') throw new Error('planted spawn failure');
+    launchEnvs.push(options.env ?? {});
     return child(options);
   });
   t.mock.method(cp, 'execFile', (bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
@@ -74,7 +76,8 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
     if (args[0] === '--bg') {
       if (fault === 'bg') return setImmediate(() => callback({ code: 1 }, '', 'planted bg failure'));
       claudeId = args[args.indexOf('--session-id') + 1] ?? args[args.indexOf('--resume') + 1] ?? '';
-      child({ cwd: root, stdio: 'ignore' });
+      launchEnvs.push(options.env ?? {});
+      child({ cwd: root, env: options.env, stdio: 'ignore' });
       return setImmediate(() => callback(null, 'claude attach abcdef12', ''));
     }
     if (args[0] === 'agents') watchCalls.push('agents');
@@ -119,14 +122,14 @@ async function fixture(t: TestContext, Adapter: typeof adapters[number], pollMs 
     log: entry => { events.push(entry); if (entry.event === (Adapter === CodexAdapter ? 'harness-thread-started' : 'harness-launched')) delay(); if (fault === 'log' && entry.event === 'harness-launched') throw new Error('planted log failure'); },
     signal: () => {}, recordPid: () => {}, exited: () => {},
   };
-  const adapter = new Adapter(host, { bin: 'fake-harness', spawnDeadlineMs: 1000, pollMs, stopGraceMs: 50 });
+  const adapter = new Adapter(host, { bin: 'fake-harness', env: { PATH: process.env.PATH, HOME: root, DIGITALOCEAN_TOKEN: 'test-token-not-real' }, spawnDeadlineMs: 1000, pollMs, stopGraceMs: 50 });
   t.after(async () => {
     adapter.close();
     for (const p of children) { if (p.exitCode === null && p.signalCode === null) { p.kill(); await once(p, 'exit'); } }
     t.mock.restoreAll(); syncBuiltinESMExports();
   });
   const request = { name: 'impl', cwd: root, role: null, model: 'test/model', sandbox: { mode: 'workspace-write' as const, writableRoots: [root], network: 'local' as const } };
-  return { root, adapter, request, children, events, watchCalls, disconnect: () => client.emit('close'), closedClients: () => clientClosed, refuseIdentity: (value: boolean) => { identityRefused = value; }, setDelay: (value: () => void) => { delay = value; }, setFault: (value: string) => { fault = value; } };
+  return { root, adapter, request, children, launchEnvs, events, watchCalls, disconnect: () => client.emit('close'), closedClients: () => clientClosed, refuseIdentity: (value: boolean) => { identityRefused = value; }, setDelay: (value: () => void) => { delay = value; }, setFault: (value: string) => { fault = value; } };
 }
 
 for (const Adapter of adapters) test(`${Adapter.name}: identity unwatch ends poll and reconnect loops without signalling`, async t => {
@@ -181,7 +184,9 @@ test('Codex identity disposal closes an in-flight reconnect without restoring it
 for (const Adapter of adapters) test(`${Adapter.name}: successful spawn, watch, live resume, stop and relaunch use no synchronous native call`, async t => {
   const f = await fixture(t, Adapter);
   await guarded(async () => {
-    let p = await f.adapter.spawn(f.request);
+    const request = { ...f.request, accountEnv: { DIGITALOCEAN_TOKEN: 'test-token-not-real' } };
+    let p = await f.adapter.spawn(request);
+    assert.ok(f.launchEnvs.length > 0);
     p.pidStarted ??= await processStarted(p.pid!);
     f.adapter.watch(p);
     assert.ok(f.adapter.attachCommand(p));
@@ -190,6 +195,7 @@ for (const Adapter of adapters) test(`${Adapter.name}: successful spawn, watch, 
     const relaunched = await f.adapter.resume({ ...p, status: 'stopped' }, { relaunch: true });
     assert.equal(relaunched.found, true);
     if (relaunched.found) { p = relaunched.process; p.pidStarted = await processStarted(p.pid!); await f.adapter.stop(p); }
+    for (const env of f.launchEnvs) assert.equal(Object.hasOwn(env, 'DIGITALOCEAN_TOKEN'), false, 'launched and relaunched fake sessions have no provider credential');
   });
 });
 

@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../../../shared/executor-credentials.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { join } from 'node:path';
@@ -16,9 +17,7 @@ function failure(kind: string, error: unknown, env: NodeJS.ProcessEnv): Error {
 }
 /** Provider credentials stay in API calls, including for local delivery tools. */
 export function machineEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
-  const env = { ...base };
-  delete env.DIGITALOCEAN_TOKEN;
-  return env;
+  return withoutExecutorCredentials(base);
 }
 export const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
 

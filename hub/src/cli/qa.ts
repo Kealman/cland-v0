@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 // `cland --headless --qa <case.lua> [--out <dir>]`: one scripted QA case in one headless Neovim with no
 // socket (spec 4.10, #57). The case runs inside Neovim through the Lua QA API (`nvim/lua/cland/qa.lua`),
 // against a fixture project in the temp dir with its own stdio hub (`cland hub serve --stdio --no-listen`)
@@ -167,7 +168,7 @@ export async function runQa(args: string[], cwd: string = process.cwd()): Promis
   if (process.env.TMPDIR) env.TMPDIR = process.env.TMPDIR;
 
   // detached: Neovim leads a process group of its own, so whatever it leaves is found and killed
-  const child = spawn(nvim, ['--clean', '-u', join(NVIM_DIR, 'init.lua'), '--headless'], { cwd: dir ?? '/', env, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(nvim, ['--clean', '-u', join(NVIM_DIR, 'init.lua'), '--headless'], { cwd: dir ?? '/', env: withoutExecutorCredentials(env), detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let stdout = '';
   let stderr = '';
   let quitting: NodeJS.Timeout | null = null;

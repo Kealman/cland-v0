@@ -18,3 +18,19 @@ test('the executor contract has nine operations and no backend-specific identifi
   assert.deepEqual(contract.members.map(member => member.name!.getText(file)), ['acquire', 'prepare', 'deliver', 'start', 'status', 'log', 'cancel', 'release', 'reap']);
   assert.match(source, /'paused'/);
 });
+
+// Pure environment policy: no process or real credential is needed.
+test('executor credentials are stripped by name without reading values or changing the API environment', async () => {
+  const { withoutExecutorCredentials } = await import('../../shared/executor-credentials.ts');
+  const { machineEnv } = await import('../src/executor/droplet/machine.ts');
+  const { suiteTestEnv } = await import('../src/verification-occasion.ts');
+  const base = { PATH: '/fixture/bin', ANTHROPIC_API_KEY: 'test-harness-key' };
+  Object.defineProperty(base, 'DIGITALOCEAN_TOKEN', { enumerable: true, get: () => { throw new Error('credential value must not be read'); } });
+  for (const filter of [withoutExecutorCredentials, machineEnv, suiteTestEnv.bind(null, undefined)]) {
+    const env = filter(base);
+    assert.equal(Object.hasOwn(env, 'DIGITALOCEAN_TOKEN'), false);
+    assert.equal(env.PATH, '/fixture/bin');
+    assert.equal(env.ANTHROPIC_API_KEY, 'test-harness-key', 'harness authentication remains available');
+    assert.equal(Object.hasOwn(base, 'DIGITALOCEAN_TOKEN'), true, 'hub API environment is intact');
+  }
+});

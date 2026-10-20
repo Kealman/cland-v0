@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { verificationSteps, verificationStepCommand } from '../verification-plan.ts';
 // Detached from both the CLI and the hub. Completion is a durable receipt, not a socket callback.
 import { execFile } from 'node:child_process';
@@ -58,7 +59,7 @@ export async function suiteWorker(input: string): Promise<void> {
     // then let their unchanged package runner take the legacy locks itself.
     const runner = await clandRunner(job.cwd);
     const borrowable = runner === null || runner.inheritedLease;
-    const node = (await promisify(execFile)('node', ['--version'], { cwd: job.cwd, env: process.env })).stdout.trim();
+    const node = (await promisify(execFile)('node', ['--version'], { cwd: job.cwd, env: withoutExecutorCredentials(process.env) })).stdout.trim();
     const nvim = await readFile(join(job.cwd, 'nvim', 'NVIM_VERSION'), 'utf8').then(text => text.trim(), () => 'none');
     platform = { os: osPlatform(), arch: arch(), release: release(), node, nvim };
     process.stdout.write(`platform ${platform.os} ${platform.arch} ${platform.release} · Node ${node} · Neovim ${nvim}\n`);
@@ -95,7 +96,7 @@ export async function suiteWorker(input: string): Promise<void> {
       else delete env.CLAND_COVERAGE_OUTPUT;
       if (commands.plan && name !== 'check') env.CLAND_COVERAGE_APPEND = '1';
       else delete env.CLAND_COVERAGE_APPEND;
-      const outcome = await suiteCommand(verificationStepCommand(step), job.cwd, env);
+      const outcome = await suiteCommand(verificationStepCommand(step), job.cwd, withoutExecutorCredentials(env));
       process.stdout.write(`\nsuite command end ${commandId} ${outcome.code}\n`);
       code = outcome.code;
       cause = outcome.cause;

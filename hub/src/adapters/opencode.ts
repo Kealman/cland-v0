@@ -1,3 +1,4 @@
+import { withoutExecutorCredentials } from '../../../shared/executor-credentials.ts';
 import { harnessBinary } from '../doctor/harnesses.ts';
 // The OpenCode adapter (spec 4.3, research `harness-surfaces` §3; built against opencode v2.0.24). OpenCode 2.x
 // runs every session on a server the host can join, so everything goes through that server:
@@ -135,7 +136,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
     this.#spawnDeadlineMs = options.spawnDeadlineMs ?? 30_000;
     const env: NodeJS.ProcessEnv = {};
     // cland's own variables stay out, and so does a password or config meant for another OpenCode server
-    for (const [k, v] of Object.entries(options.env ?? process.env)) if (!k.startsWith('CLAND_') && !['OPENCODE_CONFIG', 'OPENCODE_CONFIG_CONTENT', 'OPENCODE_PASSWORD', 'OPENCODE_DB', 'XDG_DATA_HOME'].includes(k)) env[k] = v;
+    for (const [k, v] of Object.entries(withoutExecutorCredentials(options.env ?? process.env))) if (!k.startsWith('CLAND_') && !['OPENCODE_CONFIG', 'OPENCODE_CONFIG_CONTENT', 'OPENCODE_PASSWORD', 'OPENCODE_DB', 'XDG_DATA_HOME'].includes(k)) env[k] = v;
     this.#env = env;
     this.#clandDir = dirname(host.discoveryFile);
   }
@@ -170,7 +171,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       try {
         const password = yield* wait(prepareFiles(this.#clandDir, files, this.#config(p.name, p.role, p.sessionId, launchToken), !relaunch, transaction, resumed, entry => this.#host.log(entry)));
         yield* wait(transaction.file(files.log, true));
-        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: accountEnvironment(this.#env, p.accountEnv), files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
+        const started = yield* wait(startServer({ bin: this.#bin, cwd: p.cwd, env: withoutExecutorCredentials(accountEnvironment(this.#env, p.accountEnv)), files, password, deadlineMs: this.#spawnDeadlineMs, resumed, authorize, transaction, log: this.#host.log, stopGraceMs: this.#stopGraceMs }));
         pid = started.pid;
         const { url } = started;
         const client = new OpenCodeClient(url, password);

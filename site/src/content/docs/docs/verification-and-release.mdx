@@ -126,7 +126,7 @@ Cloud runs let the crew verify several tasks in parallel without loading your ma
    cland hub stop && cland hub start
    ```
 
-   cland reads it at each API call and sends it only to DigitalOcean's API. It never prints, logs or saves it, and never sends it to a machine.
+   The hub reads it for DigitalOcean API calls. Its local watchdog also inherits it so it can delete a machine if the hub dies. cland strips the token from launched harness sessions, verification workers and commands, test runners, Neovim test/QA clients, and SSH/SCP tools. It does not write the token to configuration or send it to a remote machine. The shell that exported it still holds it; independently started processes can inherit that shell's environment.
 3. Build the snapshot every run starts from:
 
    ```sh
