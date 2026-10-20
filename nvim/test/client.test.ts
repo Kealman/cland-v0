@@ -82,30 +82,33 @@ test('the client follows its hub through a restart and keeps the thread', { skip
   await c.waitScreen((s) => centreOf(s).includes('No messages in General yet.') && !notice(s), 'General, connected');
   await c.input('before<CR>');
   await c.waitScreen((s) => /^[▎▌] before *$/m.test(centreOf(s)), 'the first message');
-  // Observe the workbench's CLI boundary, retaining the real command and its completion callback.
+  // Observe attempted starts at the CLI boundary; the client defers before spawning the CLI.
   await c.lua(`
     local system = vim.system
+    vim.g.cland_autostart_calls = 0
     vim.system = function(cmd, opts, cb)
       if cmd[3] == 'hub' and cmd[4] == 'start' then
-        return system(cmd, opts, function(out)
-          vim.schedule(function() vim.g.cland_autostart_result = out.stdout end)
-          cb(out)
-        end)
+        vim.g.cland_autostart_calls = vim.g.cland_autostart_calls + 1
       end
       return system(cmd, opts, cb)
     end
   `);
   assert.equal((await cland(root, 'hub', 'stop')).code, 0);
   await c.waitScreen((s) => notice(s), 'a notice that the hub is gone');
-  const until = Date.now() + 5000;
-  let automatic = '';
-  while (Date.now() < until) {
-    automatic = await c.lua<string>("return vim.g.cland_autostart_result or ''");
-    if (automatic) break;
-    await new Promise(resolve => setTimeout(resolve, 25));
-  }
-  assert.match(automatic, /autostart deferred/);
+  const deferred = await c.lua<{ calls: number; hub: { state: string; detail: string } }>(`
+    assert(vim.wait(5000, function()
+      local hub = require('cland.qa').state().hub
+      return hub.state == 'waiting' or vim.g.cland_autostart_calls > 0
+    end), 'the client observed the stopped hub')
+    return { calls = vim.g.cland_autostart_calls, hub = require('cland.qa').state().hub }
+  `);
+  assert.equal(deferred.calls, 0, 'no hub start is issued inside the deliberate-stop grace window');
+  assert.deepEqual(deferred.hub, {
+    state: 'waiting',
+    detail: 'hub autostart deferred during the deliberate-stop grace period',
+  });
   await assert.rejects(readDiscovery(root), { code: 'ENOENT' });
+  // Explicit start bypasses the window; no 30 s wall-clock wait is needed here.
   const restarted = await startDaemon(t, root);
   assert.match(restarted.result.stdout, /hub started for/);
   await c.waitScreen((s) => !notice(s), 'the notice cleared on reconnect', 15_000);
