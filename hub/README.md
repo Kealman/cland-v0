@@ -2604,8 +2604,14 @@ acquire time. Remote holders do not add delay to local waiter estimates. A cache
 without entering this queue even when a hand run occupies the compatibility slot.
 
 Each run's status includes `admittedAt`, `completedAt`, `waitMs` and `runMs`.
-Admission is worker launch; running time includes typecheck, all package phases and
-cleanup. A cancellation before admission records its elapsed wait and zero run time.
+Admission starts executor acquisition; `runMs` spans admission through the durable
+worker `finished` receipt, including typecheck and all package phases. Recovery
+uses that receipt even without live worker status, excluding hub downtime.
+For close runs, each `shard duration` names admission through remote finish, and
+`shard collection` separately names remote finish through final collection and
+machine release (or the bounded accounting wait). Missing timestamps report
+`unavailable`; the merged overall wall still spans admission through collection.
+A cancellation before admission records its elapsed wait and zero run time.
 Cache hits record zero wait and run time; their separate `completedAt` never changes
 the original `finished` used for cache expiry. The journal records `verification-timing`
 once per measured request. Existing T-232 receipt/start records seed estimates at

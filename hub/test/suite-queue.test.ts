@@ -2,6 +2,7 @@
 // CLI formatting and a real package holder retain separate protocol/runner proofs.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
 import { suiteUnit } from './suite-unit-fixture.ts';
 
 test('verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart', async t => {
@@ -63,4 +64,25 @@ test('verify records wait/run timings, zero-time cache hits, recent median/p90 a
   const { queueWait, ...legacy } = bounded.metrics;
   assert.deepEqual(legacy, { window: 20, count: 20, wait: { count: 20, medianMs: 0, p90Ms: 0 }, run: { count: 20, medianMs: 0, p90Ms: 0 } });
   assert.equal(queueWait?.last50Runs.local.count, 2); assert.equal(queueWait?.last50Runs.local.cacheHits, 21);
+});
+
+test('restored finished remote run excludes restart downtime from run timing and queue duration statistics', async t => {
+  const f = await suiteUnit(t);
+  const run = await f.launch();
+  await f.tick(4000); await f.finish(run.id);
+  const prior = (await f.jobs()).find(job => job.id === run.id)!;
+  const admittedAt = prior.admittedAt!;
+  const finished = new Date(Date.parse(admittedAt) + 4000).toISOString();
+  Object.assign(prior, { executor: 'droplet', state: 'finished', finished, reported: false, artifact: null, cleaned: true });
+  delete prior.lease; delete prior.completedAt; delete prior.runMs;
+  await writeFile(prior.result, JSON.stringify({ code: 0, finished }));
+  await f.suites.close();
+  await f.clock.advance(60000);
+  await f.reopen([prior]); await f.tick();
+  const restored = await f.result(run.id);
+  assert.equal(restored.completedAt, finished);
+  assert.equal(restored.runMs, 4000);
+  assert.deepEqual(f.suites.snapshot().metrics.run, { count: 1, medianMs: 4000, p90Ms: 4000 });
+  await f.reopen();
+  assert.equal(f.status(run.id).runMs, 4000);
 });

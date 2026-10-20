@@ -69,7 +69,7 @@ export type SuiteJob = {
   tree?: string | null; finished?: string;
   cached?: { run: string; head: string; tree: string };
   cacheBypass?: string;
-  admittedAt?: string; completedAt?: string; waitMs?: number | null; runMs?: number | null;
+  admittedAt?: string; completedAt?: string; collectedAt?: string; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
   tierPlan?: TierPlan; tierReported?: boolean; durationBase?: string; budgetReported?: boolean;
   loadProofs?: string[];
@@ -130,8 +130,8 @@ export function suiteSummary(log: string, quarantineStatus?: string[], options: 
     : [...structured.map(f => `${f.file}::${f.name}`), ...text.split('\n').filter(line => /^(?:✖ load gate: |duration budget: |shard failure )/.test(line))]).slice(0, 12).map(line => line.slice(0, 200));
   const merged = text.includes('\n--- close shards ---\n');
   const timings = merged
-    ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard duration shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
-    : text.split('\n').filter(line => /^(?:verification queue wait |shard duration |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
+    ? text.split('\n--- close shards ---\n')[1]!.split('\n').filter(line => /^(?:shard (?:duration|collection) shard-\d+ |total cost |occasion |suite duration .*overall wall)/.test(line)).map(line => line.slice(0, 300))
+    : text.split('\n').filter(line => /^(?:verification queue wait |shard (?:duration|collection) |suite duration )/.test(line)).slice(-8).map(line => line.slice(0, 300));
   timings.push(...text.split('\n').filter(line => /^duration regression /.test(line)).slice(0, 5));
   timings.push(...text.split('\n').filter(line => /^suite budget overhead /.test(line)).slice(-1));
   timings.push(...text.split('\n').filter(line => /^typecheck: /.test(line)));
@@ -822,7 +822,11 @@ export class Suites {
       merged.testFiles.sort();
       await writeFile(join(this.#root, '.cland/run/suites', job.id, 'coverage-map.json'), JSON.stringify(merged), { mode: 0o600 });
     }
-    const lines = shards.map(shard => `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${((shard.runMs ?? 0) / 1000).toFixed(2)}s · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}`);
+    const seconds = (ms: number | null) => ms === null ? 'unavailable' : `${(ms / 1000).toFixed(2)}s`;
+    const lines = shards.flatMap(shard => [
+      `shard duration ${shard.shardName} · ${shard.machine?.name ?? 'unavailable'} · ${shard.machine?.size ?? 'unknown'} ${shard.machine?.region ?? ''} · ${seconds(shard.finished ? elapsed(shard.admittedAt, Date.parse(shard.finished)) : null)} · ${shard.machine ? machineAccounting(shard.machine) : 'cost $0.0000'}; admission through remote finish`,
+      `shard collection ${shard.shardName} ${seconds(shard.collectedAt ? elapsed(shard.finished, Date.parse(shard.collectedAt)) : null)}; remote finish through collection complete`,
+    ]);
     await aggregateSuiteLogs(job.log, shards, `${job.occasion ? `occasion ${job.occasion}\n` : ''}${failures.map(shard => `shard failure ${shard.shardName}: ${shard.outcome?.cause || `exit ${shard.outcome?.code}`}`).join('\n')}\n${lines.join('\n')}\ntotal cost ${job.accountingPending ? 'pending confirmation' : '$' + shards.reduce((sum, shard) => sum + (shard.machine?.costUsd ?? 0), 0).toFixed(4)}\nsuite duration ${((this.#clock.now().getTime() - Date.parse(job.admittedAt!)) / 1000).toFixed(2)}s; overall wall from admission through collection\n`);
     await rename(job.log + '.shards.tmp', job.log);
     job.groupMerged = true; job.cleaned = true; this.#save(job);
@@ -1144,6 +1148,8 @@ export class Suites {
         }
         job.cleaned = true; this.#save(job);
       }
+      job.collectedAt ??= this.#clock.now().toISOString();
+      this.#save(job);
       // Final collection is over before appending derived lines: remote offsets
       // remain raw byte offsets until the machine has been released.
       let evidence: string | undefined;
@@ -1188,7 +1194,7 @@ export class Suites {
       if (!job.loadProofs && job.item && !job.integrated && !job.occasion && !job.cached && !job.cancelled && !job.requesterDied && job.selection?.loadGate && job.outcome.code === 0) {
         job.loadProofs = loadProofIdentities(await logEvidence());
       }
-      this.#recordTiming(job, job.completedAt ?? (!job.cached && job.outcome.code === 0 && receipt?.finished ? receipt.finished : this.#clock.now().toISOString()));
+      this.#recordTiming(job, job.completedAt ?? (!job.cached && job.finished ? job.finished : job.collectedAt));
       if (job.integrated && !job.parentRun && !job.cover) {
         const cover = deriveCover(job, await logEvidence());
         if (cover) job.cover = cover;

@@ -86,16 +86,36 @@ test('a Coordinator integrated batch reserves two shards without stage provenanc
   assert.deepEqual(f.api.droplets, []);
 });
 
-test('a failed shard fails one merged result with its label and no automatic rerun', async t => {
+test('live and restored shards separate remote execution from collection in one failed merged result', async t => {
   const f = await integrated(t, '', 2, undefined, { machine: 'scripted' });
   f.machine.script({ outcome: 'slow' }, { outcome: 'slow' });
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   const job = await f.launch('all', '--fresh', '--occasion', 'stage');
   await startedShards(f, job.id);
+  await f.clock.advance(4000);
+  await f.verificationSettled();
+  const finished = f.clock.now().toISOString();
+  const status = (await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; admittedAt: string }[] };
+  const admittedAt = status.suites.find(run => run.id === job.id)!.admittedAt;
   f.machine.finish(`${job.id}-shard-1`, 0);
   f.machine.finish(`${job.id}-shard-2`, 1, '# tests 1\n# fail 1\nnot ok 1 - shard example\n');
-  await f.clock.advance(1000);
+  // The second shard is recovered from its durable receipt, without live status.
+  await writeFile(join(f.root, '.cland/run/suites', `${job.id}-shard-2`, 'suite.log'), '# tests 1\n# fail 1\nnot ok 1 - shard example\n');
+  await writeFile(join(f.root, '.cland/run/suites', `${job.id}-shard-2`, 'result.json'), JSON.stringify({ code: 1, finished }));
+  await f.clock.advance(7000);
   const result = await drive(f, f.result(job.id));
+  const execution = ((Date.parse(finished) - Date.parse(admittedAt)) / 1000).toFixed(2);
+  for (const shard of ['shard-1', 'shard-2']) {
+    const duration = result.text.split('\n').find(line => line.startsWith(`shard duration ${shard} `))!;
+    assert.ok(duration.includes(` · ${execution}s · `), duration);
+    assert.match(duration, /; admission through remote finish/);
+    assert.match(result.text, new RegExp(`shard collection ${shard} [\\d.]+s; remote finish through collection complete`));
+  }
+  const collection = [...result.text.matchAll(/shard collection shard-\d+ ([\d.]+)s/g)].map(match => Number(match[1]));
+  assert.equal(collection.length, 2);
+  assert.ok(collection.every(seconds => seconds >= 7 && seconds < 8), result.text);
+  const wall = Number(result.text.match(/suite duration ([\d.]+)s; overall wall from admission through collection/)?.[1]);
+  assert.ok(wall >= (Date.parse(finished) - Date.parse(admittedAt)) / 1000 + 7, result.text);
   assert.match(result.text, /exit 1; shard-2: exit 1/);
   assert.match(result.text, /tests 2; pass 1; fail 1|tests 2; fail 1; pass 1/);
   assert.match(result.text, /not ok 1 - shard example \[shard-2\]/);
