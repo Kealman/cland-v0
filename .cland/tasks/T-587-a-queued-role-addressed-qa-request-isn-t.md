@@ -3,8 +3,9 @@ id: T-587
 kind: task
 title: A queued role-addressed QA request isn't delivered when the verifier goes idle
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - needs-triage
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-712
 branch: t/T-587-a-queued-role-addressed-qa-request-isn-t
 created: 2026-10-16T10:42:55.641Z
-updated: 2026-10-20T09:42:14.542Z
+updated: 2026-10-20T09:51:49.152Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ A `qa request E-387` sent to the `qa` role at 10:28:27Z came back `queued` ("wai
 
 ## Acceptance criteria
 
-- [ ] C1. A role-addressed review or QA request that is queued while every verifier is busy reaches the first verifier that becomes idle or free, within one state change, including after a hub restart.
-- [ ] C2. A test reproduces the order: verdict, then hold release, then request queued while the verifier's turn is still running, then the verifier goes idle. The request is delivered.
+- [x] C1. A role-addressed review or QA request that is queued while every verifier is busy reaches the first verifier that becomes idle or free, within one state change, including after a hub restart.
+  - done: impl-587 · 2026-10-20T09:51:37.411Z
+- [x] C2. A test reproduces the order: verdict, then hold release, then request queued while the verifier's turn is still running, then the verifier goes idle. The request is delivered.
+  - done: impl-587 · 2026-10-20T09:51:38.184Z
 
 ## Comments
 
@@ -41,3 +44,7 @@ Second instance, 2026-10-16 12:10Z: `qa request E-426` to the `qa` role in topic
 ### coord · 2026-10-16T12:11:20.213Z
 
 Correction to the 12:11Z entry: the queued E-426 request was assigned to qa-27 at 12:11:13Z, about 1 minute after it was queued. qa-27 was probably still finishing a turn, so this second instance is normal queueing, not the bug. The 10:28Z case (14 minutes while idle) stands.
+
+### impl-587 · 2026-10-20T09:51:37.378Z
+
+Reproduced the queue stall at T2. Correction to Context: drain hooks are present; hasPendingWork counted an old uncertain delivery indefinitely. Read-only live evidence found uncertain tracker-storage-fatal notices for rev-23 and rev-26 with empty pool-handoff values. Coordinator approved excluding uncertain non-verification traffic from staffing, while preserving received/held verification reservations. Fix and tests cover QA/review, restart, exact outage notice, prior-reviewer affinity, pending-to-hold transition and pool reuse. Targeted 15/15 tests, hub typecheck, static checks and diff checks pass; preparing source review.

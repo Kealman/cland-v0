@@ -1,5 +1,5 @@
 # Project rules
-<!-- cland: rule high-water 14 -->
+<!-- cland: rule high-water 17 -->
 
 ## 1 Briefs address the role
 Scope: coordinator, lead, implementer, aide
@@ -73,21 +73,22 @@ Reason: Moving or dirtying the tree used by an integrated cover cancels valuable
 
 Check cland verify queue before a dev commit that changes hub code, and coordinate that commit with the Coordinator when integrated coverage is queued or running. Keep planning changes committed promptly through their authorized owner. Tracker, spec and glossary commits need no waiting when the cover runs from a separate clean copy at a fixed dev commit. Run integrated covers from a clean detached worktree and, before a hub restart, confirm that the hub code at the dev tip still matches the cover’s commit.
 
-## 9 P1. Wait for the exact thing the test asserts
+## 9 Wait for the durable receipt of the boundary you assert
 Scope: implementer, reviewer
-Date: 2026-10-15
+Date: 2026-10-20
 Status: active
-Origin: session:aide-rules
-Reason: load exposes the gap between the two boundaries, so fixed sleeps and immediate cross-boundary assertions flake.
+Origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
+Reason: Rules 9 and 10 each covered one case of this. During the v0.1.4 build the same gap reappeared in 41 tickets: launch snapshots, presence, file receipts, UI frames after a resize, cleanup after a merge, fault injection after startup. Each flaked under load. Approved by the human with the v0.1.4 rule batch (A-7281); it absorbs rule 10.
 
-A process-lifecycle test waits with a bounded condition for the exact observation it asserts, such as a PID being gone after an acknowledged stop, and keeps the final assertion. A lifecycle acknowledgement may mark a different boundary, for example "not running" as against the OS having reaped the PID.
+A test waits, with a bound, for the durable receipt of the exact boundary it asserts, and keeps its final assertion. Examples of such receipts: a completion record, a pid on its job or session record, the anchored rendered row, the observed filesystem state. These are not that receipt: a launch reply, presence or a hello, an attempt stamp, a title or status line, a pending-timer count, elapsed time. Arm the observer before triggering the action. Bound setup separately from the behaviour under test. Start a latency bound only after completion is observed, unless the test measures end-to-end latency. A lifecycle acknowledgement can mark a different boundary: "not running" is not the OS having reaped the PID. Worked examples: docs/agents/tests.md, "Waiting for an observable condition".
 
 ## 10 P2. Observe completion before timing the report
 Scope: implementer, reviewer
-Date: 2026-10-15
-Status: active
+Date: 2026-10-20
+Status: retired 2026-10-20
 Origin: session:aide-rules
-Reason: permission to finish isn't observed completion. One deadline over both produced a false timeout (A-3099, A-3120).
+Reason: permission to finish isn't observed completion. One deadline over both produced a false timeout (A-3099, A-3120).; Merged into rule 9 ("Wait for the durable receipt of the boundary you assert"): observing a worker's completion before timing its report is one case of that rule. Human approval of the v0.1.4 rule batch (A-7281).
+Retired-origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
 
 A test that releases a worker barrier observes the worker's completion receipt before it starts a bounded wait for the worker's downstream report, unless it is measuring end-to-end latency. It bounds the completion and report assertions separately, and keeps the concurrency assertions before the release.
 
@@ -121,14 +122,42 @@ Never run the `opencode` CLI inside a cland session against the user's default O
 
 ## 14 Marketing pushes on cland-marketing's word
 Scope: coordinator
-Date: 2026-10-18
-Status: active
+Date: 2026-10-20
+Status: retired 2026-10-20
 Origin: message:general/96f55758-7a6f-4567-a884-47df25be611f
-Reason: The human talks to cland-marketing about the site and should not have to repeat each push request in General; release-gated code must still never reach GitHub this way.
+Reason: The human talks to cland-marketing about the site and should not have to repeat each push request in General; release-gated code must still never reach GitHub this way.; Superseded by the shipped `cland publish` flow (T-798): marketing commits reach GitHub through `cland publish` after an ask to the human, as the Coordinator clause and the release skill say. Retired by the human with the v0.1.4 rule batch (A-7281).
+Retired-origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
 
 The human authorizes cland-marketing to tell the Coordinator when to publish marketing material to GitHub outside a release. On cland-marketing's request the Coordinator pushes the named commits to GitHub `site` and `main` without a fresh human confirmation, but only when:
 - every changed path is in site/**, docs/brand/**, README.md, LICENSE or .github/workflows/pages.yml;
 - the push fast-forwards main from its current GitHub tip;
 - the diff carries no secret.
 The Coordinator then merges the published tip into dev; it never runs `cland sync` for this. Anything outside those paths, or not a fast-forward, still needs the human's own confirmation.
+
+## 15 Real-machine work runs sealed
+Scope: all
+Date: 2026-10-20
+Status: active
+Origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
+Reason: A scratch HOME alone still inherited DIGITALOCEAN_TOKEN and harness account paths (T-651, T-646). `cland init` provisioned a real HOME on 2026-10-16. T-492 leaked a credential into argv. Retired rule 13 was one case of this. The v0.1.4 build produced 24 proposals of this rule (A-7281).
+
+Any test, probe, demo or experiment that runs cland, Git, a harness or an installer uses a disposable root. It also uses its own HOME, XDG directories and Git configuration, and an environment with provider and account variables removed. It never runs against the live project, the human's HOME or inherited credentials. Child launch environments apply the shared credential filter after every overlay.
+
+## 16 Docs, help, skills and clauses change in the same item
+Scope: implementer, reviewer
+Date: 2026-10-20
+Status: active
+Origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
+Reason: Docs drift surfaced late, in the E-617 demo's C4 docs check and in the release's T-940, T-941 and T-943 work. Several skills still told the human to run a command the role could now run itself. 16 proposals in the v0.1.4 build (A-7281).
+
+An item that changes a command, setting, policy, verification default or role permission updates the matching docs in the same item: its `--help`, the hub/README.md and docs/agents/ sections, the skills that describe the flow, and the role clause. A kept upstream skill records the edit in `metadata.changes`. The review checks these against the shipped behaviour at the reviewed head.
+
+## 17 Evidence states what actually ran
+Scope: all
+Date: 2026-10-20
+Status: active
+Origin: message:general/a055dbab-4b83-4b6a-a94b-3f5dd83c829a
+Reason: These failures happened in the v0.1.4 run: a release run was satisfied from a macOS stage cache (T-950); projections were judged as wall times; a T0–T2 receipt was described as an integration pass (T-713); missing receipts read as zero (T-681). 21 proposals in the v0.1.4 build (A-7281).
+
+A claim about tests, timing or coverage names what actually ran: the head or tree, the tiers or phases completed, the platform and executor, and whether a gate was in report or enforce mode. A partial run, a cache hit, a projection or a missing receipt is labelled as such. None of them ever counts as a pass, a wall time or zero. A diagnosis quotes the actual failure output before it classifies the failure.
 

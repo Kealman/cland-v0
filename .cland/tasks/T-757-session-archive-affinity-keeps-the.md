@@ -3,8 +3,9 @@ id: T-757
 kind: task
 title: Session archive affinity keeps the earlier verifier item when consecutive holds share one heldAt instant
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 1
 labels:
   - bug
   - hub
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-713
 branch: t/T-757-session-archive-affinity-keeps-the
 created: 2026-10-17T22:01:23.815Z
-updated: 2026-10-20T09:42:20.441Z
+updated: 2026-10-20T09:52:40.759Z
 ---
 
 ## Summary
@@ -29,3 +30,38 @@ Archive affinity follows the latest hold, even when two holds have equal timesta
 ## Acceptance criteria
 
 - [ ] C1. A T1/T2 test holds a verifier on T-2 and then on T-3 at the same fake-clock instant. Closing T-3 archives the Reviewer/QA with the Implementer, and the test fails before the fix.
+  - failed: rev-31 [reviewer] · 2026-10-20T09:45:33.327Z · note Equal-time T-2 snapshot replay after T-3 acquisition resets affinity to the earlier item; latest-hold ordering remains incorrect.
+
+## Comments
+
+### impl-757 · 2026-10-20T09:43:06.079Z
+
+A-7125 row confirmed: REAL-CREW, XS, strict > still present in Sessions. Regression uses the existing T2 session/task socket seam with the same FakeClock instant for T-2 then T-3, for both Reviewer and QA; distinct-time coverage is retained. qaPolicy scope is none and no QA criteria are present.
+
+### rev-31 · 2026-10-20T09:45:33.327Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261020-757-source
+commit: a2ea92500bd62f277c4352229ee73bc5f1d8fa22
+scope: full
+findings: [{"severity":"medium","text":">= lets an unrelated change to earlier-held T-2 replay its equal heldAt snapshot and steal cleanup affinity from later-acquired T-3. Order actual hold acquisition, not general item notification arrival; add the replay-before-stop regression.","file":"hub/src/adapters/sessions.ts","line":297}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-7268: full source review not clear. General Tracker.onChange publishes all current holds for unrelated item edits; notification order is not acquisition order. Existing new test lacks the earlier-item replay while verifier is running. Keep distinct-time and archive/journal controls, add replay case and fix ordering. No verification at this head before corrected source review.
+
+Criteria: C1 failed (Equal-time T-2 snapshot replay after T-3 acquisition resets affinity to the earlier item; latest-hold ordering remains incorrect.).
+
+### rev-31 · 2026-10-20T09:52:40.759Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-757-source-corrected
+commit: 5fa73b726d4d414d712782f203027bd83e4f806b
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; Standards and Spec findings: none. A-7287 records the corrected acquisition observation map and startup seeding, resolving M1 without replaying unchanged hold snapshots. A-7285 preserves the original regression red (a2ea9250 plus replay line, exit 1) and whole-file green (source committed unchanged as 5fa73b72, 9/9, exit 0). C1 final verification remains pending the mode-free gate at this exact head and the new equal-time identity's actual 5/5 load receipts.

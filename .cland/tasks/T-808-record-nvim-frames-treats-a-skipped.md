@@ -3,7 +3,7 @@ id: T-808
 kind: task
 title: record-nvim-frames treats a skipped Neovim file as a success and can replace the catalog with zero recordings
 state: open
-status: in progress
+status: review
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ regression_of: T-709
 topic: topic-716
 branch: t/T-808-record-nvim-frames-treats-a-skipped
 created: 2026-10-18T14:48:39.460Z
-updated: 2026-10-20T09:42:25.004Z
+updated: 2026-10-20T09:45:22.488Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ Found by impl-774 while reading the recorder. `hub/test/record-nvim-frames.ts` `
 
 - [ ] C1. A capture whose files were skipped, or that recorded zero frames for a file that had frames before, refuses before any fixture is replaced, naming the file. A T1/T2 test with a fake unavailable-binary control proves it.
 - [ ] C2. The final live check refuses rather than skips when Neovim is unavailable.
+
+## Comments
+
+### impl-808 · 2026-10-20T09:43:00.142Z
+
+A-7125 row confirmed. C2 is moot as written: final recorded-protocol test in nvim/test/scenarios/workbench.test.ts has no skip option and uses projectHub (no Neovim binary). C1 implementation will validate all captures before replacing fixtures, including skips and expected per-file/catalog frame counts.

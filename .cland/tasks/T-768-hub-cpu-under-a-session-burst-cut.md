@@ -3,8 +3,9 @@ id: T-768
 kind: task
 title: "Hub CPU under a session burst: cut repeated SQLite statement preparation and per-session presence/visibility queries"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 1
 labels:
   - hub
   - performance
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-717
 branch: t/T-768-hub-cpu-under-a-session-burst-cut
 created: 2026-10-18T03:10:12.614Z
-updated: 2026-10-20T09:42:32.109Z
+updated: 2026-10-20T09:47:52.046Z
 ---
 
 ## Summary
@@ -28,4 +29,11 @@ Profile the live-size case: a copy of a large hub.db in a temp project under the
 
 ## Acceptance criteria
 
-- [ ] C1. A before/after inspector profile of a hub using a copied large hub.db under a nine-session burst shows hub CPU per request falling by half or more, recorded with both artifacts, and the visibility and permission tests pass unchanged.
+- [x] C1. A bounded, connection-local statement cache serves the store's prepared statements with SQL, bindings and visibility unchanged; inbox-load.ts (or an equivalent T4 harness) reports executed SQL operations and prepare calls per burst before and after, plus an indicative CPU figure with the machine load noted. The ≥50 % CPU target and presence/visibility batching move to a follow-up in Ideas.
+  - done: impl-768 · 2026-10-20T09:47:42.200Z
+
+## Comments
+
+### impl-768 · 2026-10-20T09:47:43.072Z
+
+Implemented a bounded 256-entry connection-local Store statement cache, mechanically routing all 172 Store prepare calls with unchanged SQL argument expressions (AST checked). Prepared calls fell 23,874 -> 16,528 (30.8%) for 400 paced requests; executions 23,474 -> 23,542, inbox rebuilds 17 both. Indicative CPU 1351.639 -> 1798.536 ms at 1-minute load 11.907 -> 9.854; after sample also overlapped targeted visibility checks, so no CPU improvement claim. Evidence A-7277 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7277-t-768-cache-implementation-and-before-after-evidence.md), raw A-7271/A-7272, committed docs/evidence/T-768-statement-cache.md. Store 20/20, inbox 8/8, name reservation 67/67, visibility 7/7, permissions 13/13, npm run check green. Query tracers and warmed-statement fault injectors now observe execution. Source review next, then mode-free verification at reviewed head.

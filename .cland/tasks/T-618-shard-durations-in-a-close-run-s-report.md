@@ -3,8 +3,9 @@ id: T-618
 kind: task
 title: Shard durations in a close run's report use different completion boundaries per shard
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 2
 labels:
   - needs-triage
   - hub
@@ -14,7 +15,7 @@ blocked_by: []
 topic: topic-711
 branch: t/T-618-shard-durations-in-a-close-run-s-report
 created: 2026-10-16T15:53:52.122Z
-updated: 2026-10-20T09:42:32.160Z
+updated: 2026-10-20T09:45:47.968Z
 ---
 
 ## Summary
@@ -23,8 +24,10 @@ Found by impl-520 during T-520's C1 breakdown (A-3935). In close run 1bebcda2, s
 
 ## Acceptance criteria
 
-- [ ] C1. Every shard's reported duration uses the same boundary (remote finish), with collection reported as its own line per shard, proved by a test on a fake two-shard run.
-- [ ] C2. The merged report's overall wall still spans admission through collection, and the docs name each boundary.
+- [x] C1. Every shard's reported duration uses the same boundary (remote finish), with collection reported as its own line per shard, proved by a test on a fake two-shard run.
+  - done: impl-618 · 2026-10-20T09:45:29.579Z
+- [x] C2. The merged report's overall wall still spans admission through collection, and the docs name each boundary.
+  - done: impl-618 · 2026-10-20T09:45:30.817Z
 
 ## Comments
 

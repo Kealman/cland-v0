@@ -3,8 +3,9 @@ id: T-607
 kind: task
 title: account-limits "fake Codex pushes account windows and sparse per-model updates while reads are held" counts 6 where 4 are expected on a loaded Mac
 state: open
-status: in progress
+status: review
 size: XS
+criterion_seq: 1
 labels:
   - needs-triage
   - hub
@@ -15,7 +16,7 @@ blocked_by: []
 topic: topic-718
 branch: t/T-607-account-limits-fake-codex-pushes-account
 created: 2026-10-16T12:29:35.335Z
-updated: 2026-10-20T09:42:34.001Z
+updated: 2026-10-20T09:52:05.939Z
 ---
 
 ## Summary
@@ -24,4 +25,10 @@ The v0.1.3 macOS release run dbf1b763 at 0e2a0aee (A-3904, darwin arm64, peak lo
 
 ## Acceptance criteria
 
-- [ ] C1. The test waits for the exact pushes it counts (rule 9) and passes 10/10 under parallel load on macOS and on a droplet.
+- [ ] C1. Every write of the Codex rate-limits fixture is atomic (same-directory temp file plus rename), and account-limits.test.ts passes 20/20 sequential whole-file runs plus a green mode-free verify at the reviewed head.
+
+## Comments
+
+### impl-607 · 2026-10-20T09:43:40.307Z
+
+A-7125 triage confirmed the fixture truncate/write window can trigger fake Codex's 6% fallback. Changed only hub/test/account-limits.test.ts: same-directory temp write then rename for all Codex rate-limits snapshots. Existing native-contract T3 waits and assertions retained; no new processes or time waits. Baseline file passed; root npm run typecheck passed. Running 20 complete-file repetitions sequentially, no stress load; source review precedes mode-free verification.
