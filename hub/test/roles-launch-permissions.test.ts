@@ -1,7 +1,7 @@
 // T1: roles.toml permission values through the public parser.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRoles } from '../src/roles/config.ts';
+import { parseRoles, roleLaunchPolicy } from '../src/roles/config.ts';
 import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 
@@ -29,6 +29,22 @@ test('Claude Code and Codex retain per-role inherited policy', { timeout: 500 },
       assert.deepEqual([launch.approval, launch.sandbox, launch.permissions], [approval, sandbox, permissions], `${harness}/${role}`);
     }
   }
+});
+
+test('OpenCode defaults retain policy inputs for launches on another harness (T-944)', { timeout: 500 }, () => {
+  const native = { approval: null, sandbox: null, permissions: null };
+  for (const text of ['', '[implementer.launch]\nharness = "opencode"\n']) {
+    const definition = parseRoles(text).get('implementer')!;
+    assert.deepEqual(roleLaunchPolicy(definition, 'opencode'), native);
+    for (const harness of ['claude-code', 'codex']) assert.deepEqual(roleLaunchPolicy(definition, harness), {
+      approval: 'never', sandbox: { mode: 'danger-full-access', writableRoots: [], network: 'full' }, permissions: null,
+    });
+  }
+  const own = parseRoles('[implementer.launch]\nharness = "opencode"\napproval = ""\nsandbox = ""\npermissions = ""\n').get('implementer')!;
+  for (const harness of ['claude-code', 'codex', 'opencode']) assert.deepEqual(roleLaunchPolicy(own, harness), native);
+  const invalid = parseRoles('[implementer.launch]\nharness = "opencode"\napproval = "invalid"\n').get('implementer')!;
+  assert.deepEqual(roleLaunchPolicy(invalid, 'opencode'), native, 'OpenCode never consumes ignored inputs');
+  assert.throws(() => roleLaunchPolicy(invalid, 'codex'), /implementer\.launch\.approval must be one of/);
 });
 
 test('roles accept auto, skip and the harness permission settings', { timeout: 500 }, () => {

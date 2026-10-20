@@ -386,7 +386,7 @@ A role that moves gets `model = ""` and effort `max` on Claude Code, `high` on C
 
 The header records the canonical installed harness set, without machine paths. `isRolesTemplate(text)` in `src/roles/template.ts` checks exact bytes against the recorded build; edits, unknown stamps and older template versions return false. This lets setup conservatively recognise an untouched template. The parser's built-in fallback for omitted roles or keys remains the shipped mapping on every machine. Init/update preserve existing `roles.toml` and `crew.toml` byte for byte; new crew policy permits Aide sub-agents.
 
-How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). They belong to the role, whatever harness a launch names (the model and effort are the role's harness's only). The Codex adapter applies it as a sandbox (The Codex adapter, below). OpenCode maps it to per-session permission rules at creation (The OpenCode adapter, below). Claude Code uses its own permission settings and the `permissions` launch key.
+How a launched session may act is read from `[<role>.launch]` at each launch, and again at a relaunch (`session.resume` with `relaunch`). Policy belongs to the role: Codex and Claude Code inherit it even when the role's default harness is OpenCode (model and effort apply only to the role's default harness). The Codex adapter applies it as a sandbox (The Codex adapter, below). A launch on OpenCode ignores approval, sandbox and permissions and keeps OpenCode's own configuration (The OpenCode adapter, below). Claude Code uses its own permission settings and the `permissions` launch key.
 
 | Key | Values | Meaning |
 | --- | --- | --- |

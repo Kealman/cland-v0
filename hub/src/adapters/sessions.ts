@@ -27,6 +27,7 @@ import { InjectUncertain, type AdapterHost, type Capabilities, type HarnessAdapt
 import { ProcessTable, processStarted, type PendingStop } from './processes.ts';
 import type { Resumed } from '../hub/worktrees.ts';
 import { clauseText, projectRulesText } from '../roles/clause.ts';
+import { roleLaunchPolicy } from '../roles/config.ts';
 import { systemProcesses } from '../system-processes.ts';
 import { LaunchFiles, LaunchRecoveryPending } from './launch-files.ts';
 import type { Tracker } from '../tracker/tracker.ts';
@@ -746,10 +747,11 @@ export class Sessions {
   // ---------------------------------------------------------------- launch, attach, stop, resume
 
   /** The role's approval and sandbox (roles.toml as it is now), the writable roots resolved against the project
-   *  root. They belong to the role, whatever harness the launch chose: an adapter whose harness takes none ignores them. */
-  #launchPolicy(role: string | null): LaunchPolicy {
-    const defaults = role !== null ? (this.#core.roles?.get().get(role)?.launch ?? null) : null;
-    if (defaults === null) return {};
+   *  root. Resolve against the actual harness, which can differ from the role's default. */
+  #launchPolicy(role: string | null, harness: string): LaunchPolicy {
+    const definition = role !== null ? this.#core.roles?.get().get(role) : null;
+    if (!definition) return {};
+    const defaults = roleLaunchPolicy(definition, harness);
     const sandbox = defaults.sandbox && { ...defaults.sandbox, writableRoots: defaults.sandbox.writableRoots.map((r) => resolve(this.#root, r)) };
     return { ...(defaults.approval ? { approval: defaults.approval } : {}), ...(sandbox ? { sandbox } : {}), ...(defaults.permissions ? { permissions: defaults.permissions } : {}) };
   }
@@ -904,7 +906,7 @@ export class Sessions {
     const model = retainedId ? request.model ?? null : request.model ?? (forHarness ? defaults.model : null);
     const effort = retainedId ? request.effort ?? null : request.effort ?? (forHarness ? defaults.effort : null);
     const selected = request.resolvedAccount;
-    const policy = this.#launchPolicy(role);
+    const policy = this.#launchPolicy(role, harness);
     const adapter = this.adapter(harness);
     const definition = role !== null ? this.#core.roleInstructions(role) : undefined;
     const rules = role !== null ? projectRulesText(role, this.#core.rules?.get() ?? [], definition) : null;
@@ -1162,10 +1164,10 @@ export class Sessions {
         p = row();
         // The adapter's synchronous prefix belongs to this stretch, up to its next await.
         this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`);
-        return adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role) });
+        return adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role, p.harness) });
       });
     } else {
-      resuming = adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role) });
+      resuming = adapter.resume(p, { relaunch, resumed, authorize: () => { if (relaunch) this.#core.checkAccountLimit(p.account ?? `default:${p.harness}`); }, policy: this.#launchPolicy(p.role, p.harness) });
     }
     let r: ResumeResult;
     try { r = await resuming; }

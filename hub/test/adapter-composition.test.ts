@@ -4,11 +4,43 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { envelope } from '../src/adapters/contract.ts';
 import type { HarnessProcessView, Message } from '../src/protocol.ts';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FakeClock } from './fake-clock.ts';
 import { FAKE_FLAVOURS } from './fakes/harness.ts';
 import { connectSocket, connectUi, eventually, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+
+test('launch and relaunch policy follows the actual harness across role defaults (T-944)', async t => {
+  const root = await tempProject(t);
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock: new FakeClock(), harnesses: 'fake' });
+  const ui = await connectUi(t, discovery);
+  const file = join(root, '.cland/roles.toml');
+  for (const defaultHarness of FAKE_FLAVOURS) {
+    for (const explicit of [false, true]) {
+      const policy = explicit ? 'approval = "untrusted"\nsandbox = "workspace-write"\nwritable_roots = ["shared"]\nnetwork = "local"\npermissions = "auto"\n' : '';
+      await writeFile(file, `[implementer.launch]\nharness = "${defaultHarness}"\n${policy}`);
+      for (const harness of FAKE_FLAVOURS) {
+        const name = `policy-${FAKE_FLAVOURS.indexOf(defaultHarness)}-${FAKE_FLAVOURS.indexOf(harness)}-${explicit}`;
+        const launched = await ui.request({ type: 'session.launch', name, harness, role: 'implementer' });
+        assert.equal(launched.ok, true, launched.error);
+        const fake = fakes[harness]!;
+        const { approval, sandbox, permissions } = fake.spawns.at(-1)!;
+        const expected = harness === 'opencode' ? {} : explicit
+          ? { approval: 'untrusted', sandbox: { mode: 'workspace-write', writableRoots: [join(root, 'shared')], network: 'local' }, permissions: 'auto' }
+          : { approval: 'never', sandbox: { mode: 'danger-full-access', writableRoots: [], network: 'full' } };
+        assert.deepEqual({ ...(approval ? { approval } : {}), ...(sandbox ? { sandbox } : {}), ...(permissions ? { permissions } : {}) }, expected, name);
+        assert.equal((await ui.request({ type: 'session.stop', session: name })).ok, true);
+        // Change the role's default after launch: relaunch must keep the session's actual harness.
+        await writeFile(file, `[implementer.launch]\nharness = "opencode"\n${policy}`);
+        const resumed = await ui.request({ type: 'session.resume', session: name, relaunch: true });
+        assert.equal(resumed.ok, true, resumed.error);
+        assert.deepEqual(fake.resumes.at(-1)!.options!.policy, expected, `${name} relaunch`);
+        assert.equal((await ui.request({ type: 'session.stop', session: name })).ok, true);
+        await writeFile(file, `[implementer.launch]\nharness = "${defaultHarness}"\n${policy}`);
+      }
+    }
+  }
+});
 
 test('the hub composes clause, launch brief, artifact envelope and Lead claim for every flavour', async t => {
   const root = await tempProject(t);

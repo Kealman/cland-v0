@@ -37,6 +37,8 @@ export type RoleDefinition = {
   clause: string;
   skills: string[];
   launch: LaunchDefaults;
+  /** OpenCode's default snapshot hides these inputs; resolve them only for a launch on another harness. */
+  policyOverrides?: Readonly<Record<string, unknown>>;
   /** Explicit launch keys ignored by the selected harness; one warning per role. */
   warnings?: string[];
   /** The spoke tools the role may use, as grants (`tool` or `tool:scope`, see `permissions.ts`); enforced by the
@@ -102,6 +104,20 @@ const sandboxOf = (launch: Record<string, unknown>, where: string, base: Sandbox
   };
 };
 
+/** Policy belongs to the role; only the actual OpenCode launch ignores it. */
+export function roleLaunchPolicy(definition: RoleDefinition, harness: string): Pick<LaunchDefaults, 'approval' | 'sandbox' | 'permissions'> {
+  if (harness === 'opencode') return { approval: null, sandbox: null, permissions: null };
+  const launch = definition.policyOverrides;
+  if (!launch) return definition.launch;
+  const role = definition.role;
+  const builtin = BUILT_IN?.get(role)?.launch;
+  return {
+    approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
+    sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
+    permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
+  };
+}
+
 /** A role's grants: each one checked against the table's tools and scopes; absent → the built-in list. */
 const grants = (v: unknown, role: string): string[] => {
   if (v === undefined) return [...(DEFAULT_PERMISSIONS[role] ?? [])];
@@ -153,14 +169,15 @@ function parseDefinitions(text: string, fallback: RolesConfig | null, allowedHar
       exclusive: t.exclusive === true,
       clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
       skills: strings(t.skills, `${role}.skills`),
+      ...(nativePolicy ? { policyOverrides: Object.fromEntries(ignored.map(key => [key, launch[key]])) } : {}),
       ...(ignored.length ? { warnings: [`${role}.launch: OpenCode ignores ${ignored.join(', ')}; OpenCode's own configuration governs`] } : {}),
       launch: {
         account: optString(launch.account, `${role}.launch.account`),
         harness,
         model: optString(launch.model, `${role}.launch.model`),
         effort: optString(launch.effort, `${role}.launch.effort`),
-        // OpenCode keeps its own policy, including when the file writes ignored keys.
-        // Other harnesses retain the role's built-in values; `""` selects their own defaults.
+        // The snapshot describes the role's default harness. Keep OpenCode's ignored inputs
+        // above for other actual launch harnesses; `""` selects a harness's own defaults.
         approval: nativePolicy ? null : launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
         sandbox: nativePolicy ? null : sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
         permissions: nativePolicy ? null : launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
