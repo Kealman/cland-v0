@@ -1,17 +1,17 @@
 ---
 id: E-952
 kind: epic
-title: Debt sweep before the v0.2 build (D76)
+title: Debt sweep after v0.1.4, released as v0.1.5 (D76, D78)
 state: open
 labels:
   - epic
 assignee: null
-parent: R-377
+parent: R-866
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T09:41:28.312Z
-updated: 2026-10-20T11:58:39.882Z
+updated: 2026-10-20T12:19:33.282Z
 ---
 
 ## Summary
