@@ -3,6 +3,7 @@ id: E-482
 kind: epic
 title: "Flake sweep: the load-sensitive tests found in v0.1.2"
 state: open
+criterion_seq: 2
 labels:
   - epic
   - v0.1.3
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-661
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-19T22:46:21.661Z
+updated: 2026-10-20T05:10:57.407Z
 ---
 
 ## Goal
@@ -29,6 +30,7 @@ T-442 (sessions midnight reset), T-445 (suite cleanup observer), T-446 (artifact
 Each ticket's Implementer produces its own evidence before merge. It runs the fixed file 5 times serially beside any non-coord local full run, labelled loaded or quiet, and its post-review `cland verify` is the droplet run. At the epic's close, QA re-checks every fixed file once beside a full run and once on a droplet, and its verdict closes the epic. (Coordinator clarification, 2026-10-15 09:57Z.)
 
 - [ ] C1. Every child's file passes 5/5 beside a local full run and once on a Linux droplet.
+  - failed: qa-2 [qa] · 2026-10-20T05:10:53.327Z · note INCONCLUSIVE: only four of five main load rounds and one of five loaded reruns completed; T-801 handover-process failed ENOTEMPTY cleanup and hung until exit124.
 - [ ] C2. No child weakens an assertion or widens a time bound without a recorded reason.
 
 ## Plan
@@ -78,9 +80,6 @@ stages:
       - - T-558
       - - T-560
       - - T-581
-      - - T-654
-      - - T-655
-      - - T-656
       - - T-657
       - - T-658
       - - T-569
@@ -94,6 +93,12 @@ stages:
       - - T-849
       - - T-870
       - - T-871
+  - name: demo fixes
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-935
 ```
 
 ## Comments
@@ -119,3 +124,55 @@ Gate clarification (2026-10-15 15:04Z): the 'own files green' condition of the t
 ### coord · 2026-10-15T15:24:42.537Z
 
 Same-head clarification (2026-10-15 15:24Z): a head that moved by a full origin/dev merge counts like shared picks for the two-receipt rule, provided the Reviewer confirms the task diff against dev is unchanged. This covers merges made before the 15:23Z "pick only" notice (T-497, T-498, T-507). From now on, pick only, and merge dev on conflict or on request.
+
+### coord · 2026-10-20T03:43:11.097Z
+
+Plan revision (Coordinator, 2026-10-20 03:47Z): removed T-654, T-655 and T-656 from stage 'the sweep, part 2'. They were flake-experiment tickets closed without a code change (A-4106, A-4156, A-4163; D51), so their missing landing kept the stage from closing although stage cover #5 at 824105c5 (Linux 51b982ae, macOS 40c55103) completed it. Their results stay recorded on the items. The stage is now closed.
+
+### hub · 2026-10-20T03:54:34.366Z
+
+demo a606ddb6-3708-4466-8d58-4dc64e5bcee8 created: droplet cland-v0-a606ddb6, commit 824105c5a2a56b3495e9215cc88d60c4c129df6c, deadline 2026-10-20T05:08:33.053Z.
+
+### qa-2 · 2026-10-20T05:10:53.327Z
+
+verdict: qa
+result: not clear
+by: qa-2 [qa]
+run: qa-2026-10-20-qa2-3
+commit: 824105c5a2a56b3495e9215cc88d60c4c129df6c
+findings: [{"severity":"medium","text":"D4 round4: ENOTEMPTY removing fake-Claude directory after 5008.057615ms, followed by a process hang until the600s wrapper exited124. D5 passed five serial and one loaded rerun, insufficient for the required five loaded reruns. Child T-801; fix tracked in T-935. A-7054/A-7057 retain full failure log and open-handle evidence.","file":"hub/test/handover-process.test.ts","line":45}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Check | Surface / venue | Result | Evidence |
+| --- | --- | --- | --- |
+| G0 | hub-api / local | PASS | G0.txt |
+| G1 | hub-api / local | PASS | G1.txt, G1-epic.json, G1-children.json |
+| G2 | hub-api / local | PASS | G2-hold.json |
+| F1 | hub-api / local | PASS | F1-summary.txt, F1-files.txt, F1-files.txt.map |
+| D0 | hub-api / droplet | PASS | D0-start.json |
+| D1 | hub-api / droplet | PASS | D1-build.txt |
+| D2 | hub-api / droplet | PASS | D2-setup.txt, D2-process-clean.txt |
+| R1 | hub-api / local | PASS | R1-evidence.txt, R1-judgement.md, R1-coordinator-rules.txt |
+| R2 | hub-api / local | PASS | R2-scan.txt, R2-judgements.md |
+| R3 | hub-api / local | PASS | R3-Linux-summary.txt, R3-macOS-summary.txt, R3-ran.txt |
+| D3 | hub-api / droplet | PASS | D3-serial.txt, D14-after-D3.json |
+| D4 | hub-api / droplet | INCONCLUSIVE | D4-load.txt, D4-time-limit.txt, D4-round4-handover-final.log, D4-handover-handles.txt, D14-after-load-4.json |
+| D5 | hub-api / droplet | INCONCLUSIVE | D5-serial.txt, D5-load.txt, D5-serial-logs.tgz, D5-load-logs.tgz, D5-after-processes.txt |
+| D14 | hub-api / droplet | PASS | D14-status.json, D14-dev.txt |
+| D15 | hub-api / local | INCONCLUSIVE | D15-stop.json, D15-after.json, D15-item.json |
+
+Medium — D4 / hub/test/handover-process.test.ts:45 (child T-801; follow-up T-935). During the fourth four-file Linux load round, `timeout 600 node --test hub/test/handover-process.test.ts` failed the revocation-mid-turn case after 5008.057615 ms with `ENOTEMPTY` removing `/tmp/fake-claude-KlavRs`. The process remained alive until 600 s and exited 124. Final reporter: 0 pass, 1 fail, 1 cancelled; interruption also reports a pending Promise after the event loop resolved. This is a cleanup failure and process-lifetime defect; the duration alone does not establish a failed 5 s revocation wait. Fixture events show successful handover, forbidden send and revocation injection before the coord harness exited. Original complete log and OS process/fd evidence are retained in A-7054 and this folder.
+
+No high or low product findings. Measurement corrections are documented separately, not counted as findings.
+
+Not clear: C1 INCONCLUSIVE, main load rounds 4/5; D5 serial 5/5 passes but only 1 loaded subject receipt(s), 1 complete companion round(s) of 5. C2 source audit PASS (103 landing commits, 11 candidates, all explained). C1 uses the explicitly authorized 12:32 substitution. No second lease; build `824105c5a2a56b3495e9215cc88d60c4c129df6c`; lease `a606ddb6-3708-4466-8d58-4dc64e5bcee8` cleanup releasing, estimated 4,506,436 ms/$0.31294694; stop receipt 05:06:37Z, pending under T-932 by Coordinator decision c38d861b. Same-S integrated Linux A-7022 and macOS A-7026 both green. Full case notes, C2 judgments, brief corrections, raw logs and process handles are in the final evidence artifacts.
+
+Criteria marks: C1 failed for incomplete load/rerun proof and the observed T-801 cleanup/hang failure; C2 passed but unmarked on this not-clear verdict.
+
+Evidence: A-7057 (complete folder), A-7058 (case table, C2 judgments and verdict), A-7054 (focused failure/handles). Cleanup confirmation pending under T-932 per Coordinator c38d861b; confirmed lifetime/cost will follow in topic-661.
+
+Criteria: C1 failed (INCONCLUSIVE: only four of five main load rounds and one of five loaded reruns completed; T-801 handover-process failed ENOTEMPTY cleanup and hung until exit124.).
+
+### hub · 2026-10-20T05:10:57.407Z
+
+demo a606ddb6-3708-4466-8d58-4dc64e5bcee8 destroyed: lifetime 4368199 ms; cost $0.3033.

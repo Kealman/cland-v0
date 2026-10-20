@@ -19,7 +19,7 @@ blocked_by:
 topic: topic-306
 branch: t/T-394-coverage-selection-task-runs-select-hub
 created: 2026-10-14T12:28:19.272Z
-updated: 2026-10-15T18:46:41.807Z
+updated: 2026-10-20T04:22:07.824Z
 closed: 2026-10-15T18:46:41.807Z
 ---
 
@@ -205,3 +205,10 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 ve
 ### coord · 2026-10-15T18:46:41.807Z
 
 Merged eaf8d979a9341449562130644c9e52be3e4d47c3 onto dev.
+
+### coord · 2026-10-20T04:22:07.824Z
+
+Post-merge results (C5–C7), recorded by the Coordinator from E-578's DoD demo (qa-3, run qa-20261020-3f, release candidate 824105c5, artifact A-7049). No results had been posted here before.
+- Selection replay over the last 40 landings: 40/40 replayed, 7 hub-selected, 0 own misses, 0 historical misses.
+- Ten selected task runs: suite duration median 121.3 s (≈2.0 min); 8 of 10 under 5 minutes.
+These are runner suite durations, not end-to-end `cland verify` walls. The queue, delivery and collection overhead was not measured separately; that gap goes to E-880. Under D66/D71 these measured values count for E-578 C4 in v0.1.4.

@@ -2,7 +2,8 @@
 id: E-613
 kind: epic
 title: "Setup: the guided step ending in the workbench"
-state: open
+state: closed
+criterion_seq: 7
 labels:
   - epic
   - v0.1.4
@@ -15,7 +16,8 @@ blocked_by:
 topic: topic-561
 branch: null
 created: 2026-10-16T15:34:18.570Z
-updated: 2026-10-20T02:42:50.438Z
+updated: 2026-10-20T03:54:31.302Z
+closed: 2026-10-20T03:54:31.302Z
 ---
 
 ## Summary
@@ -60,12 +62,19 @@ QA runs the demo below on `dev` on this Mac, playing the human in a terminal of 
 With fake harnesses on the PATH, one missing and one signed out, under a scratch HOME, QA runs `cland setup` in an initialised scratch project and answers its questions: the install, the login, the accounts (left at No) and the favourite. It reads the step lines, the trust entries, `[aide.launch]`, the running hub, `aide-1` with its brief, and the workbench with the Aide in the centre. A second run reports `ok` throughout, a declined install stays declined until `--install`, and a run without a terminal reports the open steps and exits 1. QA then runs `cland setup` once with this Mac's real harnesses in a fresh scratch project, answering No to the accounts, and reads the trust and the Aide's launch. Finally `cland doctor` requires only the harnesses the roles use and `gh` only with a `github` remote, shows versions without a verdict, and does not count an OpenCode environment key as a login.
 
 - [ ] C1. `cland setup` runs its eight steps in order, one line each, and a second run reports `ok` for every step already done.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.354Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C2. A missing harness is installed on yes and detected again, a declined install is remembered until `--install`, and every harness a template role uses is checked for a login and signed in on yes.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.354Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C3. The accounts step appends to `~/.config/cland/accounts.toml` only on a yes, the default No, and the favourite harness lands in `[aide.launch]`.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.354Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C4. Trust is granted for every installed harness without a question and reported in one line, for the fake harnesses and for this Mac's real ones.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.354Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C5. Setup starts the hub, launches `aide-1` with the onboarding brief and opens the workbench with the Aide in the centre, `--attach` runs the harness's attach instead, and one closing line follows.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.355Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C6. Without a terminal setup prints each open step with its command and exits 1, and `--json`, `--yes`, `--install`, `--harness`, `--no-accounts`, `--no-aide` and `--attach` do what the spec says.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.355Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C7. `cland doctor` requires a harness only when a role uses it and `gh` only with a `github` remote, shows versions without a verdict, and does not count OpenCode environment keys as credentials.
+  - verified: qa-676 [qa] · run qa-2026-10-20-2 · 2026-10-20T03:52:32.355Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 
 ## Constraints
 
@@ -166,3 +175,89 @@ demo 865fb560-c476-46c0-ac5f-e671ac6f4a5e created: droplet cland-v0-865fb560, co
 ### hub · 2026-10-20T02:42:50.438Z
 
 demo 865fb560-c476-46c0-ac5f-e671ac6f4a5e destroyed: lifetime 315358 ms; cost $0.0219.
+
+### hub · 2026-10-20T03:13:51.770Z
+
+demo 021cc409-3041-4bed-96cb-69a6537b21de created: droplet cland-v0-021cc409, commit 824105c5a2a56b3495e9215cc88d60c4c129df6c, deadline 2026-10-20T04:27:50.652Z.
+
+### hub · 2026-10-20T03:17:15.307Z
+
+demo 021cc409-3041-4bed-96cb-69a6537b21de destroyed: lifetime 249077 ms; cost $0.0173.
+
+### qa-676 · 2026-10-20T03:52:32.355Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-20-2
+commit: 824105c5a2a56b3495e9215cc88d60c4c129df6c
+findings: [{"severity":"low","text":"L6/L8 --no-aide correctly skips launch but detail 'cland starts the hub with the workbench' does not explain the Aide skip. Behavior accepted by requester f7bb7491; Follow-ups XS.","file":"hub/src/setup/steps/aide.ts","line":11},{"severity":"low","text":"L8 first real setup could not acquire scratch Claude lock; explicitly authorized single delayed retry wrote trust and exited0. lsof returned no holder; self-infliction unproven. Initial FAIL retained and superseded by successful remedy per 8fc3ed10. Bugs S investigation.","file":"hub/src/setup/trust.ts","line":47},{"severity":"low","text":"L8 mtime-only safety probe is confounded by live Claude sessions. Observed human-file change occurred in idle gap before retry; requester independently observed another idle change. PASS-with-basis under f71d0ee6: scratch isolation, trust entries, timing and independent sample; no real-HOME config contents read.","file":"qa/briefs/E-613.md"}]
+finding_counts: {"high":0,"medium":0,"low":3}
+
+| Check | Placement | Result and observation |
+| --- | --- | --- |
+| G0 | local records | PASS: clean detached exact S, on dev, brief present, Node24.21.0 and tools |
+| G1 | records | PASS: E-613 open under R-577, C1–C7 match; all16 children closed and merges ancestral |
+| G2 | records | PASS: qa-676 verifier hold |
+| G3 | local files | PASS: all five brief helpers prepared and syntax checked |
+| D0 | droplet | PASS: one lease for this pass, exact S |
+| D1 | droplet | PASS: clean S, Linux x86_64, Node24.21.0, resolver Neovim v0.12.5 matches pin |
+| D2 | droplet | PASS: setup scenario 1/1, first attempt |
+| D3a–D3l | droplet | PASS: twelve setup files, 88 tests, all first attempts |
+| D4a–D4d | droplet | PASS: four doctor files, 33 tests, all first attempts |
+| D5 | droplet | PASS: launcher11/11, including CLAND_OPEN_SESSION terminal focus, wait, and variable removal |
+| D14 | records | PASS: fetched origin; freshness.current true; final check also current |
+| D15 | records | PASS: one stop, state released, hub destruction comment confirmed |
+| L1 | macOS M1 | PASS: plain/JSON no-terminal exit1, ten ordered lines/six open; files unchanged; no install, accounts, hub or launcher |
+| L2 | macOS M1 | PASS: fake install/login Yes, accounts defaultNo, favourite Claude, both trust entries, same hub/discovery pid, Aide running with exact empty-project onboarding brief, one launcher call for aide-1 |
+| L3 | macOS M1 | PASS: terminal and piped reruns exit0, completed steps ok, no prompts, same hub, two total launcher calls; stop Aide/hub |
+| L4 | macOS M2 | PASS: declined Codex remembered; no repeat prompt/curl; explicit --install retry installs once |
+| L5 | macOS M3 | PASS: Yes writes only own-directory claude-work account; no identity/default entries; favourite choice2 writes Codex |
+| L6 | macOS M4 | PASS: flags and fake attach behave as specified; no workbench launch under --attach; exact detail-text expectation corrected by requester |
+| L7 | macOS M5/M5b | PASS: unused harnesses not required, gh required only with github remote, versions informational, OpenCode env-only login warns |
+| L8-first | macOS real binaries | FAIL retained: initial Claude scratch lock prevented trust; Codex trusted. Superseded by authorized single delayed remedy below |
+| L8-remedy | macOS real binaries | PASS: retry exits0, Claude/Codex scratch trust entries verified; OpenCode no trust gate; all logins No, no hub/Aide/launcher |
+| L8 final | macOS real binaries | PASS-with-basis: successful remedy plus scratch isolation and requester correction of confounded mtime-only probe |
+| L9 | macOS | PASS: setup scenario1/1 first attempt, no skips |
+| L10 | macOS | PASS: scratch process count0; six fixture roots, six recorded tmpdirs and /tmp/qa-e613 removed |
+
+## Findings (low; none high or medium)
+
+1. **Low — L6/L8, hub/src/setup/steps/aide.ts:11.** `cland setup --no-aide` correctly skips launch but says `cland starts the hub with the workbench`; this does not explain why the Aide was skipped. Requester f7bb7491-20cb-4142-b059-4d4dd85b9ff3 accepts behavior against C6, corrects the brief's exact-text expectation and will file polish follow-up (Follow-ups, XS). See [L6 output](L6-output.txt) and [ruling](L6-L8-ruling.txt).
+2. **Low — L8-first, hub/src/setup/trust.ts:47.** First real `cland setup --no-aide` could not acquire the scratch Claude lock, reporting the documented retry advice. A single ten-second-delayed retry, explicitly authorized by 8fc3ed10-b56b-488b-83a7-abae9ea0b070, wrote the Claude trust entry and exited0. `lsof -Fpc` before retry found no holder; the lock path was a directory. No lock was manually changed. Whether detection caused the lock is unproven; report as Bugs/S for investigation, not as an attributed self-lock bug. See [first output](L8-output.txt), [holder evidence](L8-lock-holder-before.txt), [retry](L8-remedy-output.txt), [authorization](L8-remedy-ruling.txt).
+3. **Low — L8 safety probe, brief defect.** Human Claude-config mtime was unchanged across the first invocation (03:46:54–03:47:01Z). It changed at03:47:48Z, in the idle gap before retry began03:48:16Z. The Coordinator separately sampled another change03:49:01Z with no setup running and attributed periodic writes to other live Claude sessions. Metadata-only checks cannot isolate QA's effect on this shared file. Under decisions b1ec0681 and f71d0ee6, safety passes on explicit scratch-only HOME/profile environments, the trust entries in those scratch files, the timing, and the Coordinator's independent sample. Only intentionally selected installed binary paths and the tested worktree CLI occur under the real HOME in output; no real-HOME configuration/data target is shown. Human file contents were never read. See [timing](L8-timing.txt), [isolation basis](L8-isolation-basis.json), [decision](L8-safety-ruling.txt).
+
+## Criterion marks and substitutes
+
+Verify **C1,C2,C3,C4,C5,C6,C7** in this run. None failed or deferred.
+
+- C1: L1/L2/L3/L9 and D2/D3; ordered steps and idempotent rerun.
+- C2: L2/L4 and D2/D3/D4; installs, login and remembered declines.
+- C3: L2/L5 and D2/D3; defaultNo, explicitYes and favourite.
+- C4: L2, L8 final and D2/D3; fake trust plus real Claude2.1.304, Codex0.163.0, OpenCode2.0.24 under scratch profiles. First lock failure and authorized remedy remain visible; safety is PASS-with-basis as above.
+- C5: L2/L6 and D2/D3/D5. **Verified by substitute**: setup's stand-in launcher receives aide-1/root, paired with real headless Neovim component tests demonstrating centre terminal focus. No live end-to-end workbench was used.
+- C6: L1/L6/D3 and the install/attach observations; no-terminal and flags behave as specified.
+- C7: L7/D4; doctor's role/remote requirements and credential semantics.
+
+Real-harness substitution: L8 uses --no-aide with every login/install declined. No prompt, login or real Aide session ran; fake L2/L6 cover launch and attach. The real trust entries are in [Claude extract](scratch-evidence/real/claude-trust-only.json) and [Codex config](scratch-evidence/real/codex-trust.toml).
+
+## Test and resource evidence
+
+Direct demo testing: **18 Linux files /133 tests + one macOS file /one test =134 tests**, no failures or skips and no test-file retries. The only manual retry was the explicitly authorized L8 remedy.
+
+Lease **021cc409-3041-4bed-96cb-69a6537b21de**, machine **cland-v0-021cc409**, Linux x86_64. Created03:12:52.351Z; deadline04:27:50.652Z. Confirmed destroyed: **249077ms / $0.01729701388888889**. Local tests have no droplet cost. [Accounting](D15-after.json), [hub comments](D15-comments.txt), [final freshness](final-freshness.json).
+
+Supporting Coordinator stage cover #5 at the same S was inspected, not rerun by QA:
+- Linux **A-7022**, run51b982ae-ecdc-4e59-a786-b2294bd999ea: T1–T4, 3159 pass/0 fail/8 skips, both shards exit0. Shard1 cland-v0-1d139ca1, duration1222.07s/lifetime1215s/cost$0.0843; shard2 cland-v0-23418384, duration1592.07s/lifetime1584s/cost$0.1100; total$0.1944, wall1615.43s. [Receipt extract](INT_LOG_LINUX-read.txt).
+- macOS **A-7026**, run40c55103-93ef-41fc-ac26-b818dd91c44a: T1–T4, 3167/3167, zero failures/skips, exit0. [Receipt extract](INT_LOG_MAC-read.txt).
+- Duration-budget warnings remain report-only under D73; they were not counted as test failures.
+
+Historical pass1 at32ae5bdc is **A-7004**, superseded after the release candidate changed; no verdict was recorded. Its destroyed lease cost$0.02189986111111111/lifetime315358ms. Total demo cost across both passes **$0.039196875**. Pass2 interim evidence is A-7018; this final report includes later local evidence.
+
+All local checks were held during cover-quiet and then serialized after qa-3; local done sent to Coordinator and qa-2 after cleanup. No product files changed. The original and replacement build worktrees are removed after the verdict is accepted.
+
+Wall time from pass2 preparation through final evidence capture: 2424.03s, including cover-quiet and local-slot waits. Evidence captured 2026-10-20T03:51:59.994804+00:00.
+
+Verdict artifacts: A-7033 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7033-e-613-qa-clear-c1-c7-authorized-trust-remedy-and-safety-basis.md; full evidence A-7031 /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7031-e-613-qa-pass-2-complete-evidence-at-824105c5
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.

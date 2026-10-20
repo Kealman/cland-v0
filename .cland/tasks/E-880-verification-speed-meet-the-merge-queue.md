@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T15:24:04.550Z
-updated: 2026-10-19T19:40:16.101Z
+updated: 2026-10-20T05:13:55.343Z
 ---
 
 ## Summary
@@ -49,3 +49,14 @@ D66 applied to E-677 (2026-10-19 19:25Z): T-775 C2 measured T3 manifest seconds 
 ### coord · 2026-10-19T19:40:16.101Z
 
 T-775 C3 (the spawn census against the 150-start goal) was not measured in v0.1.4. The local census run on the crew Mac pushed the load to 51 and starved the hub (nice 5) for about 5 minutes; the Coordinator stopped it. A future census needs a quiet machine or a droplet run.
+
+### coord · 2026-10-20T05:13:55.343Z
+
+Carried from the v0.1.4 DoD demos (2026-10-20, all at the release candidate 824105c5):
+- E-677 C7 (D74): T1+T2 phase walls measured 485.66 s and 661.42 s on two c-8 shards (A-7022), target 480 s. The projection said 214.75 s; the gap between projection and wall (per-file and per-phase overhead) needs study.
+- E-677 C4 (≤ 150 hub starts): the first full-run census of v0.1.4 (E-578 demo, A-7052/A-7053) counted 176 canonical daemon starts at S. Check that it counts the same thing as C4's "hub process starts" before using it as the baseline.
+- E-578 C2: two-shard stage wall 1615.43 s against 600 s; shard spread 370 s.
+- E-578 C5: T-396's local 4/5/6 and c-16 4/6/8 rows were never measured.
+- E-578 C6: T-393's 20 migrated files −2.1 % against −20 %.
+- E-578 C4 / T-394: selected-run suite median 2.0 min (8/10 under 5 min); end-to-end verify overhead (queue, delivery, collection) not measured; T-394 C7's ≤ 15 % coverage-recording overhead was never measured.
+- E-678 C1/C2/C3/C5/C7: see A-7035 (task-body median 12.9 min, 2.31 runs per merge, red 15 %, batch median 40 s, soak timeout and budget red, no coverage maps).

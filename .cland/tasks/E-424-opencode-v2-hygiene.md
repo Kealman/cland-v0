@@ -2,7 +2,8 @@
 id: E-424
 kind: epic
 title: OpenCode v2 hygiene
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.1.3
@@ -15,7 +16,8 @@ follows:
 topic: topic-404
 branch: null
 created: 2026-10-14T16:43:08.893Z
-updated: 2026-10-20T03:03:05.106Z
+updated: 2026-10-20T03:51:10.129Z
+closed: 2026-10-20T03:51:10.129Z
 ---
 
 ## Summary
@@ -77,13 +79,21 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project with the fake OpenCode binary, QA launches an Implementer on OpenCode with no account and reads its database in the launch record; `cland doctor` names that database and its login line, and warns about the free model's training and the missing sandbox. With the real binary and a fake provider, QA starts a cland session mid-turn and then OpenCode's service on the user's default data directory, and the provider sees no second request for the session. With fake binaries reporting 1.19.0, a 2.x newer than the range and 3.0.0, and with none, the doctor prints the upgrade with `--major`, the newer-than-tested note, the refusal and the v2 installer. A fake server that prints no listening line still launches. A rejected approval shows in the headless workbench's events view as a rejection, and the session stays alive. QA launches with each row of the policy table and reads the rules the fake server received and the fields without a counterpart in the launch record; `provider/model#high` arrives as the model and the variant `high`. A retried inject is admitted once, and a child session's model and usage show in the parent's records. A session moved out of its worktree raises a warn-level event to its lead, which the headless workbench's events view shows. QA reads the two experiment artifacts on this epic and runs the `release` skill's check against the newest 2.x.
 
 - [ ] C1. cland's OpenCode servers use a database of their own, per account where the registry names one and per user otherwise, and the launch record names it; OpenCode's service started on the user's default database never resumes a cland session (the P3 test); the doctor names the database and its login.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C2. Launch waits for the server's readiness on a port cland chose and does not depend on the log line; a rejected approval is reported as a rejection, never as a shutdown.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C3. The doctor points 1.x to `opencode upgrade --major` and a missing binary to the v2 installer, reports a newer 2.x as newer than tested, and refuses 3.x; the check re-verifies the range at each cland release through the `release` skill.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C4. roles.toml's approval, sandbox, permissions, item rule and effort map onto OpenCode's session rules at creation as the table in `hub/README.md` says, `provider/model#variant` is parsed, and the launch record lists the rules applied and the fields without a counterpart.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C5. Injects carry caller-chosen idempotent ids, so a retried inject is admitted once; child sessions report their model, usage and pending approvals into the instrumentation of v0.1.2 §3.12.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C6. The `codemode: false` and the clause-as-instructions experiments are measured, with their results as artifacts on this epic, and a default changes only where its measurement supports it.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C7. The doctor warns about the free default model's training and OpenCode's missing sandbox; the clauses forbid moving a session out of its item's worktree, and a move raises a warn-level event to its lead.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 - [ ] C8. `hub/README.md` (OpenCode), the role clauses `cland init` writes and the `release` skill describe the database, the login, the version check, the policy table and the warnings; T-296 is closed.
+  - verified: qa-3 [qa] · run qa-20261020-3c · 2026-10-20T03:50:58.951Z · commit 824105c5a2a56b3495e9215cc88d60c4c129df6c
 
 ## Dogfooding
 
@@ -139,3 +149,96 @@ demo 3781f5d9-3790-45f6-89f3-719541e09f5b created: droplet cland-v0-3781f5d9, co
 ### hub · 2026-10-20T03:03:05.106Z
 
 demo 3781f5d9-3790-45f6-89f3-719541e09f5b destroyed: lifetime 1286727 ms; cost $0.0894.
+
+### hub · 2026-10-20T03:13:56.557Z
+
+demo 99e76c76-aa09-4af5-9493-90bd583056f0 destroyed: lifetime 0 ms; cost $0.0000.
+
+### hub · 2026-10-20T03:17:01.004Z
+
+demo 0144bd56-e455-4f66-b479-01a9be7c612a created: droplet cland-v0-0144bd56, commit 824105c5a2a56b3495e9215cc88d60c4c129df6c, deadline 2026-10-20T04:31:00.924Z.
+
+### qa-3 · 2026-10-20T03:50:58.951Z
+
+verdict: qa
+result: clear
+by: qa-3 [qa]
+run: qa-20261020-3c
+commit: 824105c5a2a56b3495e9215cc88d60c4c129df6c
+findings: [{"severity":"low","text":"D5 brief correction: invalid explicit binary override correctly asks to fix/unset it; separate unset-override missing-binary probe confirms installer. Product passes.","file":"qa/briefs/E-424.md","line":174},{"severity":"low","text":"D15 brief correction: sed fixture produced duplicate TOML keys. Coordinator-approved scratch atomic writer yielded all five expected policies; original failure evidence retained in A-7011. Product passes.","file":"qa/briefs/E-424.md","line":185},{"severity":"low","text":"R1 brief correction accepted by Coordinator: rule retirement may be committed with tracker title. Rule 13 retired and T-296 closed; actual evidence passes.","file":"qa/briefs/E-424.md","line":230}]
+finding_counts: {"high":0,"medium":0,"low":3}
+
+| Case | Result | Method / evidence |
+|---|---|---|
+| G0 | PASS | [local read-only] build identity, child closure, amendment and QA hold gates; G0.txt |
+| G1 | PASS | [local read-only] build identity, child closure, amendment and QA hold gates; G1.txt |
+| G2 | PASS | [local read-only] build identity, child closure, amendment and QA hold gates; G2.txt |
+| D0 | PASS | [droplet Linux] brief D0; fresh execution at candidate; full command/output retained; D0-start.json |
+| D1 | PASS | [droplet Linux] brief D1; fresh execution at candidate; full command/output retained; D1-build.txt |
+| S0 | PASS | [droplet Linux] brief S0; fresh execution at candidate; full command/output retained; S0-scratch.txt |
+| D2 | PASS | [droplet Linux] brief D2; fresh execution at candidate; full command/output retained; D2-launch.txt |
+| D3 | PASS | [droplet Linux] brief D3; fresh execution at candidate; full command/output retained; D3-server-env.txt |
+| D4 | PASS | [droplet Linux] brief D4; fresh execution at candidate; full command/output retained; D4-resume.txt |
+| D5 | PASS | [droplet Linux] doctor versions informational per human amendment; missing binary tested with override unset as well as invalid override; v2 installer present; D5-versions.txt, D5-missing-unset.txt |
+| D6 | PASS | [droplet Linux] brief D6; fresh execution at candidate; full command/output retained; D6-doctor.txt |
+| D7 | PASS | [droplet Linux] brief D7; fresh execution at candidate; full command/output retained; D7-accounts.txt |
+| D8 | PASS | [droplet Linux] brief D8; fresh execution at candidate; full command/output retained; D8-quiet.txt |
+| D8b | PASS | [droplet Linux] brief D8b; fresh execution at candidate; full command/output retained; D8b-reject.txt |
+| D9 | PASS | [droplet Linux] D9 fresh test or informational release check; full log exit 0; no failed scoped tests; D9-adapter.log |
+| D10 | PASS | [droplet Linux] D10 fresh test or informational release check; full log exit 0; no failed scoped tests; D10-policy.log |
+| D11 | PASS | [droplet Linux] D11 fresh test or informational release check; full log exit 0; no failed scoped tests; D11-native.log |
+| D12a | PASS | [droplet Linux] D12a fresh test or informational release check; full log exit 0; no failed scoped tests; D12a-policy.log |
+| D12b | PASS | [droplet Linux platform skip resolved by local macOS L1] P3 skipped remotely because binary absent; same-SHA real binary test passed 1/1; PASS with L1 basis per brief; D12b-database.log, L1-p3.log |
+| D13a | PASS | [droplet Linux] D13a fresh test or informational release check; full log exit 0; no failed scoped tests; D13a-check-test.log |
+| D13 | PASS | [droplet Linux] D13 fresh test or informational release check; full log exit 0; no failed scoped tests; D13-check.txt |
+| D14 | PASS | [droplet Linux] generated clauses: 6 worktree-rule matches; doctor 18/18 and roles 4/4 pass; D14-clauses.txt, D14a-doctor.log, D14b-roles.log |
+| D15 | PASS | [droplet Linux] five launch policy rows match README; Coordinator-approved atomic fixture writer avoids known brief duplicate-TOML defect; D15-policy.txt, D15-corrected.sh, set-policy.mjs |
+| D16 | PASS | [droplet Linux] openai/gpt-5.2#high reaches fake as providerID=openai,id=gpt-5.2,variant=high; D16-variant.txt |
+| D17 | PASS | [droplet plus local git read] freshness current=true; no dev changes; D17-status.json, D17-dev.txt |
+| D18 | PASS | Scratch sessions/hub stopped, scratch process scan empty, scratch removed; demo stop accepted. Coordinator reports stand-in confirmed DigitalOcean destruction at 03:50Z (a9bc4801); known T-932 leaves hub releasing. Last estimated lifetime 1988550 ms/cost $0.13809375; accepted decision basis.; D18-cleanup-confirmed.json, D18-stop.json, D18-final-status.json, D18-release-confirmation.txt |
+| L1 | PASS | [local macOS] node --test hub/test/opencode-database.test.ts; real OpenCode 2.0.24; 1 pass/0 fail/0 skip; cleanup count 0; L1-p3.log, L1-p3.exit, L1-queue.json, L1-cleanup-count.txt |
+| R1 | PASS | [records] rule 13 retired, no active OpenCode CLI restriction; Coordinator d8f3774b accepts retirement in tracker-titled commit as brief correction; R1-rules.json, R1-rule-proof.txt, R1-history-diff.txt |
+| R2 | PASS | [records] A-3486/A-3474/A-3489/A-3492 read; historical P3 proof present; T-296 closed with C1-C5 current verified marks; R2-proof.txt, R2-T296.json |
+| R3 | PASS | [records] A-4113 default 8/10 vs false 7/10; A-4114 inconclusive adoption comparison; defaults unchanged; T-619 open; no experiment rerun; R3-experiments.txt, R3-T619.json |
+| R4 | PASS | [records at tested SHA] document-topic matrix complete after explicit exemptions; 12 policy rows; worktree clauses in defaults/project; release informational step precedes dry run; R4-matrix.md, R2-T296.json |
+| R5 | PASS | [records at tested SHA] README durable msg_ admission/retry, child model and warn-level moved event; T-534/T-535 closed; R5-docs.md, R5-T534.json, R5-T535.json |
+
+Findings, ranked by severity: no high or medium findings; no product failures. Three low brief defects were corrected only in scratch/check interpretation, with original evidence retained:
+
+- D5 — qa/briefs/E-424.md:174: setting CLAND_OPENCODE_BIN=/nonexistent/opencode requests an explicit override. Doctor correctly says to fix/unset the override, rather than offering the default installer. A separate scratch doctor command with the override unset and opencode absent from PATH returned the v2 installer. Both outputs are retained.
+- D15 — qa/briefs/E-424.md:185: the scratch sed writer accumulated duplicate TOML keys, so the hub retained its previous valid policy. The original failure/diagnosis is preserved in A-7011, run qa-20261020-3a. Coordinator authorized correcting only the scratch fixture writer (b98c1796-1fdb-4796-98a0-b60f56e0c259). This current run used the atomic fixture writer; all five newly launched policies match the README. No product source was changed.
+- R1 — qa/briefs/E-424.md:230: git history contains tracker commit 89c040bd, not exclusively rule-titled commits. Actual rule 13 is retired, no active rule prohibits the CLI, and T-296 is closed. Coordinator explicitly accepted this evidence and corrected the commit-title expectation (d8f3774b-6fd5-4434-8562-64a0e042dfdb).
+
+D4 used the brief's documented JSONL extraction alternative and directly confirmed the same native session/database after relaunch. D8b directly observed rejection and running/idle, supplemented by D11. D12b skipped remotely because no real binary is installed; its PASS basis is the same-commit L1 real OpenCode 2.0.24 P3 test: 1 passed, 0 failed, 0 skipped. D5 and D13 use the human's 2026-10-16 informational-version amendment, not the obsolete original C3 version refusals. R3 reads the measured artifacts A-4113/A-4114 without rerunning paid/free model experiments; measured defaults remain unchanged. R4 uses the document-specific exemptions explicitly written in the brief.
+
+Criterion verification in this run:
+
+| Criterion | Passing evidence |
+|---|---|
+| C1 | D2–D4, D6–D7, D12b/L1, R1–R2; private database, login, persistence and real P3 isolation |
+| C2 | D8, D8b, D9, D11; readiness without log text, rejection without shutdown |
+| C3 (amended) | D5, D13a, D13, R4; versions informational, absent-binary installer, live release check |
+| C4 | D10, D12a, D15, D16, R4; policy rows, item/effort rules, explicit variant |
+| C5 | D11, R5; idempotent admission, children model/usage/approval instrumentation |
+| C6 | R3; measured CodeMode and role-instruction artifacts/default decisions |
+| C7 | D6–D7, D11, D14, R4–R5; warnings, generated clauses and lead move event |
+| C8 | R2, R4–R5; README, generated roles, release check, closed T-296 |
+
+Run qa-20261020-3c; QA qa-3; tested full commit 824105c5a2a56b3495e9215cc88d60c4c129df6c. All 32 checks PASS. Marks requested: C1,C2,C3,C4,C5,C6,C7,C8. Targeted tests: 64 passing on Linux plus 1 real-binary P3 passing on macOS; remote P3 skip resolved by L1. No full suite was submitted by QA, per brief. Coordinator's same-commit integrated receipts A-7022 (Linux, two shards) and A-7026 (macOS) were read: both finished exit 0 with no nonzero fail summary. integrated-receipts.txt contains their exact paths, per-shard machine/duration/cost and overall wall. Report-only budget warnings remain report-only and are not E-424 findings.
+
+D cases ran in the hub-owned Linux x86_64 demo with Node 24.21.0, isolated scratch HOME/DB and fake OpenCode. L1 ran after the quiet queue gate on macOS with real OpenCode 2.0.24 and a local fake provider; it used test-owned HOME/XDG paths. G/R checks are local read-only. No real provider prompt/account/database was used. All scratch sessions/hub stopped; process scan empty; scratch directory removed; L1 cleanup count 0. Local-done was delivered to qa-676 and qa-2.
+
+Demo lease 0144bd56-e455-4f66-b479-01a9be7c612a; hub state releasing (known T-932); created 2026-10-20T03:16:02.515Z; lifetime 1988550 ms; last estimated cost $0.13809375; freshness current=true. Elapsed wall through report: 2076.9 s (includes cover-quiet wait and cleanup wait; not final billing lifetime).
+
+D18 decision basis: Coordinator a9bc4801-54a2-443b-b3db-6e3de65af2cd reports that the stand-in confirmed DigitalOcean destruction at 03:50Z. QA did not independently query DigitalOcean. The hub row awaits release due to known T-932 (empty-tags identity recheck). Cost/lifetime above are the last observed estimates, not a final receipt.
+
+Historical runs are not substitutes for this candidate: qa-20261020-3a at 32ae5bdc was superseded (A-7011; old lease final 1286727 ms/$0.08935604); qa-20261020-3b was a no-lease capacity wait. Coordinator authorized exactly one retry when a slot freed; that is this 3c lease.
+
+
+Published evidence: A-7028, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7028-e-424-qa-evidence-at-824105c5-qa-20261020-3c (entry README.md); QA note A-7029, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7029-e-424-qa-clear-32-checks-c1-c8-at-824105c5.md.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### hub · 2026-10-20T03:51:05.995Z
+
+demo 0144bd56-e455-4f66-b479-01a9be7c612a destroyed: lifetime 1662476 ms; cost $0.1154.
