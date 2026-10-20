@@ -462,6 +462,8 @@ test('Shift+Enter reaches the session terminal as ESC[13;2u; a paste keeps its t
 
 test(':restart re-attaches the session terminals instead of ending the sessions', { skip }, async (t) => {
   const c = await startShell(t);
+  await c.input('<Esc>:Cland panel sessions left<CR>:Cland panel items right<CR>');
+  await c.waitScreen(x => x.includes('SESSIONS') && x.includes('ITEMS'), 'swapped panels before restart');
   await c.input('<Esc>:Cland view session coord-1<CR>');
   await c.waitScreen((x) => x.includes('keylog ready') && statusLine(x).includes('TERMINAL'), 'the attached session');
   const before = await c.control({ requests: true });
@@ -472,6 +474,12 @@ test(':restart re-attaches the session terminals instead of ending the sessions'
   await moved;
   const s = await c.waitScreen((x) => x.includes('keylog ready') && statusLine(x).includes('coord-1 · session · attached'), 'the session attached again after the restart', 20_000);
   assert.match(s, /SESSIONS/, 'the panels as they were');
+  assert.deepEqual(await c.lua(`local l=require('cland.layout'); return {
+    left=vim.b[vim.api.nvim_win_get_buf(l.win.left)].cland_role,
+    right=vim.b[vim.api.nvim_win_get_buf(l.win.right)].cland_role,
+    homes=require('cland.state').S.ui.panel_homes}`), {
+    left: 'sessions', right: 'items', homes: { items: 'right', sessions: 'left', inbox: 'right', topics: 'right' },
+  });
   // the new instance spawned its own stub hub and asked it for the attach command again
   const after = await c.control({ requests: true });
   assert.equal(attaches(after), 1);

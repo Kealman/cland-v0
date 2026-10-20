@@ -378,6 +378,7 @@ M.HELP = {
   'Panels    ␣i items · ␣n inbox · ␣s sessions · ␣t topics (toggle on their home side)',
   '          gm inside a panel moves it to the other side',
   '          :Cland panel items|inbox|sessions|topics left|right · palette: <Panel> on the left/right',
+  '          :Cland panel reset · Reset panel layout: default homes and widths; keep open panels and dock height',
   'Items     1 board · 2 in work · 3 needs you · 4 done · 5 map · 6 all (f / F cycle) · ↵ the item view · e edits its file',
   '          ␣T topics docked above the inbox · ↵ in a panel opens the row in the centre',
   'Plan      gp epic plan · a approve · d discuss with the Lead · e edit plan',
@@ -601,12 +602,7 @@ end
 
 --- Apply a snapshot from before a restart: the layout, then the attach commands again.
 local function restore(snap)
-  local ui = state.S.ui
-  if snap.view and snap.view.kind then
-    ui.view = snap.view
-  end
-  ui.hist = snap.hist or {}
-  ui.left, ui.right, ui.dock = snap.left or false, snap.right, snap.dock or false
+  state.restore(snap)
   M.restored = snap
 end
 

@@ -67,6 +67,26 @@ test('legacy all migrates to board; explicit all cycles and persists separately 
   assert.deepEqual(await fresh.lua("return require('cland.state').S.ui.sizes"), { left: 48 });
 });
 
+test('a cold Neovim restart restores Sessions left and Items right from version-2 preferences', { skip }, async t => {
+  const { root, path } = await fixture(t);
+  const c = await client(t, root);
+  await c.input('<Esc>:Cland panel sessions left<CR>:Cland panel items right<CR>');
+  await c.waitScreen(s => s.includes('SESSIONS') && s.includes('ITEMS'), 'both swapped panels before quit');
+  await quit(c);
+  const saved = JSON.parse(await readFile(path, 'utf8'));
+  assert.equal(saved.version, 2);
+  assert.equal(saved.panels.left_kind, 'sessions');
+  assert.equal(saved.panels.right, 'items');
+  const fresh = await client(t, root);
+  assert.deepEqual(await fresh.lua(`local l=require('cland.layout'); local u=require('cland.state').S.ui
+    return {left_role=vim.b[vim.api.nvim_win_get_buf(l.win.left)].cland_role,
+      right_role=vim.b[vim.api.nvim_win_get_buf(l.win.right)].cland_role,
+      homes=u.panel_homes}`), {
+    left_role: 'sessions', right_role: 'items',
+    homes: { items: 'right', sessions: 'left', inbox: 'right', topics: 'right' },
+  });
+});
+
 async function resize(c: Client, slot: string, size: number, key: string) {
   await c.lua("vim.api.nvim_set_current_win(require('cland.layout').win[...])", slot);
   await c.input(`<Esc><C-w>${size}${key}`);

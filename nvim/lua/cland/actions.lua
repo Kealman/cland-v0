@@ -327,6 +327,7 @@ command('aide', 'Launch an Aide', function() require('cland.launcher').aide() en
 for _, preset in ipairs({'charting','watch','steady'}) do
   command('preset ' .. preset, 'Preset: ' .. preset, function() layout().preset(preset) end)
 end
+command('panel reset', 'Reset panel layout', function() layout().reset_panels() end)
 for _, panel in ipairs({'items','inbox','sessions','topics','dock'}) do
   local mapped = ({items='i', inbox='n', sessions='s', topics='t', dock='T'})[panel]
   command('panel ' .. panel, 'Toggle ' .. panel .. ' panel', function(args)

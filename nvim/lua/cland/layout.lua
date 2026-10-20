@@ -317,6 +317,31 @@ function M.toggle_dock()
   state.changed()
 end
 
+--- Reset homes and side widths without closing a visible panel or changing its content.
+function M.reset_panels()
+  local ui = state.S.ui
+  local left, right = M.panel_kind('left'), M.panel_kind('right')
+  local focused = api.nvim_get_current_win()
+  local focused_kind = focused == M.win.left and left or focused == M.win.right and right
+  ui.panel_homes = require('cland.ui').panel_defaults()
+  -- A collision keeps both occupants in place; toggles will use the reset homes.
+  if not (left and right and ui.panel_homes[left] == ui.panel_homes[right]) then
+    close('left')
+    close('right')
+    set_panel('left', nil)
+    set_panel('right', nil)
+    for _, kind in pairs({ left = left, right = right }) do set_panel(ui.panel_homes[kind], kind) end
+  end
+  ui.sizes.left, ui.sizes.right = nil, nil
+  if ui.left then M.open_left() end
+  if ui.right then M.open_right(ui.right) end
+  M.fix()
+  if focused_kind then focus(M.panel_window(focused_kind)) end
+  state.changed()
+  require('cland.ui').changed()
+  require('cland.ui').flush()
+end
+
 -- Centre views -------------------------------------------------------------------------------------
 
 local function same(a, b)
@@ -535,8 +560,8 @@ end
 -- Presets: examples of the three stages (spec section 5), never modes. A preset opens and closes panels
 -- and picks the centre view; everything still toggles afterwards.
 M.PRESETS = {
-  charting = { left = true, right = nil, dock = false, view = { kind = 'thread', id = 'general' }, note = 'items beside General, right panel hidden' },
-  watch = { left = true, right = 'inbox', dock = true, view = { kind = 'thread', id = 'general' }, note = 'items, the thread, topics docked above the inbox' },
+  charting = { left = true, right = nil, dock = false, view = { kind = 'thread', id = 'general' }, note = 'items beside General' },
+  watch = { left = true, right = 'inbox', dock = true, view = { kind = 'thread', id = 'general' }, note = 'items, the thread and inbox, topics docked on the right' },
   steady = { left = false, right = 'inbox', dock = false, view = { kind = 'board' }, note = 'the board and the inbox' },
 }
 
@@ -551,14 +576,13 @@ function M.preset(name)
   close('dock')
   close('right')
   close('left')
-  ui.left_kind = 'items'
-  ui.left, ui.right, ui.dock = p.left, p.right, p.dock
-  if p.left then
-    M.open_left()
-  end
-  if p.right then
-    M.open_right(p.right)
-  end
+  set_panel('left', nil)
+  set_panel('right', nil)
+  ui.dock = p.dock
+  if p.left then set_panel(M.panel_home('items'), 'items') end
+  if p.right then set_panel(M.panel_home(p.right), p.right) end
+  if ui.left then M.open_left() end
+  if ui.right then M.open_right(ui.right) end
   if p.dock then
     M.open_dock()
   end
@@ -655,7 +679,7 @@ end
 
 -- Flush a pending human resize before a layout operation; pending closes exclude redistribution.
 -- Programmatic changes then establish the new automatic baseline.
-for _, name in ipairs({ 'centre', 'open_side', 'open_left', 'open_right', 'open_dock', 'fix', 'place_panel', 'toggle_panel', 'toggle_left', 'right_panel', 'toggle_dock', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'show_split_view', 'preset', 'build' }) do
+for _, name in ipairs({ 'centre', 'open_side', 'open_left', 'open_right', 'open_dock', 'fix', 'place_panel', 'toggle_panel', 'toggle_left', 'right_panel', 'toggle_dock', 'reset_panels', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'show_split_view', 'preset', 'build' }) do
   local operation = M[name]
   M[name] = function(...)
     if changing then return operation(...) end

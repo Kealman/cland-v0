@@ -1,8 +1,162 @@
 // T2: panel placement through commands, palette, keys and recorded stub-hub events.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { skip, startShell, baseScenario, ts, requestsOf, statusLine, type Shell } from './shell-fixture.ts';
 import { eventually } from './fixture.ts';
+
+test('version-2 panel homes and occupants round-trip without losing import receipts', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'sessions', 'left');
+  await place(c, 'items', 'right');
+  await c.lua(`local ui=require('cland.state').S.ui
+    ui.plan_seen={['E-789']='plan-receipt'}
+    ui.events.last_look='2026-10-20T10:00:00Z'
+    require('cland.ui').changed(); assert(require('cland.ui').flush())`);
+  const saved = JSON.parse(await readFile(join(c.root, '.cland/ui.json'), 'utf8'));
+  assert.equal(saved.version, 2);
+  assert.deepEqual(saved.panel_homes, { items: 'right', sessions: 'left', inbox: 'right', topics: 'right' });
+  assert.deepEqual(saved.panels, { left: true, left_kind: 'sessions', right: 'items', dock: false });
+  assert.deepEqual(saved.plan_seen, { 'E-789': 'plan-receipt' });
+  assert.equal(saved.events.last_look, '2026-10-20T10:00:00Z');
+  await c.lua("require('cland.ui').load(require('cland.state').S.root); require('cland.layout').build({insert=false})");
+  await expectPanel(c, 'left', 'SESSIONS');
+  await expectPanel(c, 'right', 'ITEMS');
+});
+
+const oldPreferences = {
+  version: 2, preset: 'watch', panels: { left: true, right: 'inbox', dock: true },
+  sizes: { left: 48, right: 46, dock: 11 }, items_filter: 'work', accounts_folded: true,
+  current_release: 'T-109', plan_seen: { 'E-789': 'legacy-plan' },
+  events: { filter: { warnings: true }, muted: [{ kind: 'item', id: 'T-12' }], last_look: '2026-10-20T10:00:00Z' },
+};
+const readPreferences = `local u=require('cland.state').S.ui
+  return {preset=u.preset, panels={left=u.left,right=u.right,dock=u.dock}, sizes=u.sizes,
+    items_filter=u.items_filter,accounts_folded=u.accounts_folded,current_release=u.current_release,
+    plan_seen=u.plan_seen,events=u.events}`;
+
+test('older version-2 preferences load default homes and retain every existing preference', { skip }, async t => {
+  const c = await startShell(t);
+  await mkdir(join(c.root, '.cland'), { recursive: true });
+  await writeFile(join(c.root, '.cland/ui.json'), JSON.stringify(oldPreferences));
+  await c.lua("require('cland.ui').load(require('cland.state').S.root); require('cland.layout').build({insert=false})");
+  const { version: _, ...expected } = oldPreferences;
+  assert.deepEqual(await c.lua(readPreferences), expected);
+  assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"), { items: 'left', sessions: 'right', inbox: 'right', topics: 'right' });
+  await expectPanel(c, 'left', 'ITEMS');
+  await expectPanel(c, 'right', 'INBOX');
+});
+
+test('invalid panel assignments fall back once in amber while other preferences survive', { skip }, async t => {
+  const c = await startShell(t);
+  await mkdir(join(c.root, '.cland'), { recursive: true });
+  const defaults = { items: 'left', sessions: 'right', inbox: 'right', topics: 'right' };
+  for (const fields of [
+    { panel_homes: { ...defaults, unknown: 'left' } },
+    { panel_homes: { ...defaults, sessions: 'middle' } },
+    { panel_homes: false },
+    { panels: { left: true, left_kind: 'inbox', right: 'inbox', dock: true } },
+    { panels: { left: true, left_kind: 'unknown', right: 'inbox', dock: true } },
+    { panel_homes: defaults, panels: { left: true, left_kind: 'sessions', right: 'items', dock: true } },
+  ]) {
+    await writeFile(join(c.root, '.cland/ui.json'), JSON.stringify({ ...oldPreferences, ...fields }));
+    // Capture the actual status notices at the public notice boundary, not redraw counts.
+    const notices = await c.lua(`local s=require('cland.state'); local say=s.say; local notices={}
+      s.say=function(text,group) notices[#notices+1]={text=text,group=group}; say(text,group) end
+      require('cland.ui').load(s.S.root); s.say=say
+      return notices`);
+    assert.deepEqual(notices, [{ text: 'ui.json: invalid panel assignments; using default sides', group: 'ClandAmberBar' }]);
+    assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"), defaults);
+    const { version: _, ...expected } = oldPreferences;
+    assert.deepEqual(await c.lua(readPreferences), { ...expected, panels: { left: true, right: 'sessions', dock: true } });
+  }
+});
+
+test('restart snapshot and restore keep chosen homes and both visible occupants in-process', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'sessions', 'left');
+  await place(c, 'items', 'right');
+  await c.lua(`local s=require('cland.state'); local snap=s.snapshot()
+    assert(snap.left_kind=='sessions' and snap.right=='items')
+    assert(snap.panel_homes.items=='right' and snap.panel_homes.sessions=='left')
+    s.reset({root=s.S.root}); s.restore(snap); require('cland.layout').build({insert=false})`);
+  await expectPanel(c, 'left', 'SESSIONS');
+  await expectPanel(c, 'right', 'ITEMS');
+  assert.equal(await c.lua("return require('cland.layout').panel_home('sessions')"), 'left');
+  assert.equal(await c.lua("return require('cland.layout').panel_home('items')"), 'right');
+});
+
+test('reset command and palette restore default sides and widths immediately without changing open panels', { skip }, async t => {
+  const c = await startShell(t);
+  for (const entry of ['command', 'palette']) {
+    await place(c, 'sessions', 'left');
+    await place(c, 'items', 'right');
+    await c.lua(`local u=require('cland.state').S.ui
+      u.sizes={left=48,right=46,dock=11}; u.items_filter='work'; u.current_release='T-109'
+      require('cland.layout').fix()`);
+    if (entry === 'command') await c.input(':Cland panel reset<CR>');
+    else {
+      await c.input('<Space>p>Reset panel layout');
+      await c.waitScreen(s => s.includes('Reset panel layout'), 'reset palette action');
+      await c.input('<CR>');
+    }
+    await expectPanel(c, 'left', 'ITEMS');
+    await expectPanel(c, 'right', 'SESSIONS');
+    const saved = JSON.parse(await readFile(join(c.root, '.cland/ui.json'), 'utf8'));
+    assert.deepEqual(saved.panel_homes, { items: 'left', sessions: 'right', inbox: 'right', topics: 'right' });
+    assert.deepEqual(saved.panels, { left: true, left_kind: 'items', right: 'sessions', dock: false });
+    assert.deepEqual(saved.sizes, { dock: 11 }, 'dock height is preserved');
+    assert.equal(saved.items_filter, 'work');
+    assert.equal(saved.current_release, 'T-109');
+    assert.deepEqual(await c.lua(`local l=require('cland.layout'); return {
+      vim.api.nvim_win_get_width(l.win.left),vim.api.nvim_win_get_width(l.win.right)}`), [35, 40]);
+  }
+  await c.input('<Space>i<Space>s:Cland panel reset<CR>');
+  assert.equal(await panel(c, 'left'), '', 'reset keeps Items hidden');
+  assert.equal(await panel(c, 'right'), '', 'reset keeps Sessions hidden');
+});
+
+test('reset keeps colliding visible panels and their dock open, then toggles use default homes', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'sessions', 'left');
+  await place(c, 'inbox', 'right');
+  await c.input('<Space>T:Cland panel reset<CR>');
+  await expectPanel(c, 'left', 'SESSIONS');
+  await expectPanel(c, 'right', 'INBOX');
+  assert.equal(await c.lua("return require('cland.state').S.ui.dock"), true);
+  assert.equal(await c.lua("return require('cland.layout').panel_home('sessions')"), 'right');
+  await c.lua("require('cland.ui').load(require('cland.state').S.root); require('cland.layout').build({insert=false})");
+  await expectPanel(c, 'left', 'SESSIONS');
+  await expectPanel(c, 'right', 'INBOX');
+  assert.equal(await c.lua("return require('cland.state').S.ui.dock"), true, 'collision and dock survive reloading the reset file');
+  await c.input('<Space>s');
+  await expectPanel(c, 'right', 'SESSIONS');
+  assert.equal(await panel(c, 'left'), '', 'the next toggle follows the reset home');
+});
+
+test('presets keep chosen homes and open their panel set on those homes', { skip }, async t => {
+  const c = await startShell(t);
+  await place(c, 'sessions', 'left');
+  await place(c, 'items', 'right');
+  await place(c, 'inbox', 'left');
+  await c.input(':Cland preset watch<CR>');
+  await expectPanel(c, 'left', 'INBOX');
+  await expectPanel(c, 'right', 'ITEMS');
+  assert.equal(await c.lua("return require('cland.state').S.ui.dock"), true);
+  assert.deepEqual(await c.lua("return require('cland.state').S.ui.panel_homes"), { items: 'right', sessions: 'left', inbox: 'left', topics: 'right' });
+  await c.input(':Cland preset charting<CR>');
+  await expectPanel(c, 'right', 'ITEMS');
+  assert.equal(await panel(c, 'left'), '');
+  await c.input(':Cland preset steady<CR>');
+  await expectPanel(c, 'left', 'INBOX');
+  assert.equal(await panel(c, 'right'), '');
+  await place(c, 'inbox', 'right');
+  await c.input(':Cland preset watch<CR>');
+  await expectPanel(c, 'right', 'INBOX');
+  assert.equal(await panel(c, 'left'), '', 'Inbox takes priority when both requested panels share a home');
+  assert.equal(await c.lua("return require('cland.layout').panel_home('items')"), 'right');
+});
 
 // Read the rendered window, including its winbar, rather than a global title or launch reply.
 async function panel(c: Shell, side: 'left' | 'right') {

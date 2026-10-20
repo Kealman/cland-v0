@@ -493,10 +493,28 @@ function M.snapshot()
     view = ui.view,
     hist = ui.hist,
     left = ui.left,
+    left_kind = ui.left_kind,
+    panel_homes = vim.deepcopy(ui.panel_homes),
     right = ui.right,
     dock = ui.dock,
     attached = attached,
   }
+end
+
+--- Restore the restart layout before rebuilding windows; older snapshots use default homes.
+function M.restore(snap)
+  local ui = M.S.ui
+  if snap.view and snap.view.kind then ui.view = snap.view end
+  ui.hist = snap.hist or {}
+  ui.left, ui.right, ui.dock = snap.left or false, snap.right, snap.dock or false
+  local ok, sides = pcall(require('cland.ui').panel_assignment, snap.panel_homes, snap.left_kind, ui.left, ui.right, ui.dock)
+  if ok then
+    ui.panel_homes, ui.left_kind = sides.homes, sides.left_kind
+  else
+    ui.panel_homes, ui.left_kind = require('cland.ui').panel_defaults(), 'items'
+    ui.right = snap.right and 'sessions' or nil
+    M.say('restart: invalid panel assignments; using default sides', 'ClandAmberBar')
+  end
 end
 
 return M

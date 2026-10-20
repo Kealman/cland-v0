@@ -4,6 +4,29 @@ local uv = vim.uv
 local M = { DEBOUNCE_MS = 200 }
 local path, timer, pending, saved, warned
 
+function M.panel_defaults()
+  return { items = 'left', inbox = 'right', sessions = 'right', topics = 'right' }
+end
+
+-- Optional v2 fields are validated together, independently of other preferences.
+-- Occupants may differ from their homes after a reset with a side collision.
+function M.panel_assignment(homes, left_kind, left, right, dock)
+  if homes == nil then homes = M.panel_defaults() end
+  if left_kind == nil then left_kind = 'items' end
+  assert(type(homes) == 'table' and not vim.islist(homes), 'invalid panel homes')
+  local defaults = M.panel_defaults()
+  for kind, side in pairs(homes) do
+    assert(defaults[kind] and (side == 'left' or side == 'right'), 'invalid panel home')
+  end
+  for kind in pairs(defaults) do assert(homes[kind], 'missing panel home') end
+  assert(defaults[left_kind] and (right == nil or defaults[right]), 'invalid panel kind')
+  assert(not (left and left_kind == right), 'duplicate side panel')
+  assert(not (dock and (right == 'topics' or left and left_kind == 'topics')), 'duplicate topics panels')
+  local collision = left and right and homes[left_kind] == homes[right]
+  assert(collision or (not left or homes[left_kind] == 'left') and (not right or homes[right] == 'right'), 'contradictory panel homes')
+  return { homes = homes, left_kind = left_kind, right = right }
+end
+
 function M.explorer_defaults()
   return {folds=vim.empty_dict(),hide_done=false,archive=false}
 end
@@ -25,9 +48,8 @@ local function snapshot()
     plan_seen = vim.deepcopy(ui.plan_seen or vim.empty_dict()),
     events = vim.deepcopy(ui.events or { filter = vim.empty_dict(), muted = {} }),
     preset = ui.preset or vim.NIL,
-    -- Side choices are runtime-only until T-1001 adds their optional v2 fields.
-    -- Keep the legacy projection readable: Items was never a legacy right panel.
-    panels = { left = ui.left, right = ui.right ~= 'items' and ui.right or vim.NIL, dock = ui.dock },
+    panel_homes = vim.deepcopy(ui.panel_homes),
+    panels = { left = ui.left, left_kind = ui.left_kind, right = ui.right or vim.NIL, dock = ui.dock },
     sizes = vim.deepcopy(ui.sizes),
     items_filter = ui.items_filter,
     accounts_folded = ui.accounts_folded,
@@ -59,8 +81,12 @@ local function validate(data)
   assert(data.preset == nil or (type(data.preset) == 'string' and require('cland.layout').PRESETS[data.preset]), 'invalid preset')
   local p = data.panels
   assert(type(p) == 'table' and type(p.left) == 'boolean' and type(p.dock) == 'boolean', 'invalid panels')
-  assert(p.right == nil or vim.tbl_contains({ 'sessions', 'inbox', 'topics' }, p.right), 'invalid right panel')
-  assert(not (p.dock and p.right == 'topics'), 'duplicate topics panels')
+  local sides_ok, sides = pcall(M.panel_assignment, data.panel_homes, p.left_kind, p.left, p.right, p.dock)
+  data.sides_invalid = not sides_ok
+  if not sides_ok then
+    sides = { homes = M.panel_defaults(), left_kind = 'items', right = p.right and 'sessions' or nil }
+  end
+  data.sides = sides
   assert(type(data.sizes) == 'table' and not vim.islist(data.sizes), 'invalid sizes')
   for key, size in pairs(data.sizes) do
     assert(vim.tbl_contains({ 'left', 'right', 'dock' }, key), 'unknown size')
@@ -105,7 +131,7 @@ function M.load(root)
   ui.explorer = M.explorer_defaults()
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
   ui.left_kind = 'items'
-  ui.panel_homes = { items = 'left', inbox = 'right', sessions = 'right', topics = 'right' }
+  ui.panel_homes = M.panel_defaults()
   ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
   local _, _, stat_code = uv.fs_stat(path)
   local ok, data = pcall(function()
@@ -117,9 +143,11 @@ function M.load(root)
     ui.events = data.events
     ui.preset = data.preset
     ui.left, ui.right, ui.dock = data.panels.left, data.panels.right, data.panels.dock
+    ui.panel_homes, ui.left_kind, ui.right = data.sides.homes, data.sides.left_kind, data.sides.right
     ui.sizes, ui.items_filter, ui.current_release = data.sizes, data.items_filter, data.current_release
     ui.explorer = data.explorer
     if data.explorer_invalid then state.say('ui.json: invalid explorer preferences; using explorer defaults', 'ClandAmberBar') end
+    if data.sides_invalid then state.say('ui.json: invalid panel assignments; using default sides', 'ClandAmberBar') end
     if ui.preset then ui.view = vim.deepcopy(require('cland.layout').PRESETS[ui.preset].view) end
   elseif stat_code ~= 'ENOENT' then
     state.say('ui.json unreadable or invalid; using default layout', 'ClandAmberBar')
