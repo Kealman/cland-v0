@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-14T15:59:56.690Z
+updated: 2026-10-20T16:50:14.542Z
 ---
 
 ## Summary
@@ -112,3 +112,50 @@ The edge and the snapshot serve the shell first (spec §4). As soon as the first
 - Prototype: `prototype/web-shell` (`web/PROTOTYPE.md`, the open points for Q-407; `web/proto/bridge.ts`, `web/proto/bridge.test.ts`).
 - ADR: `docs/adr/0003-hub-is-a-per-project-daemon-from-the-bcas-core.md`.
 - GLOSSARY: Web workbench, Snapshot, Delta, Hub, Spoke.
+
+## Plan
+
+```yaml
+stages:
+  - name: the edge and the wire
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-978
+        - T-980
+      - - T-979
+  - name: authority, cookie sessions, snapshot and pages
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-981
+        - T-983
+      - - T-984
+        - T-982
+        - T-987
+  - name: deltas, resume, the network and the door
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-985
+        - T-986
+      - - T-988
+        - T-989
+items:
+  T-980:
+    qa_criteria:
+      - C1
+      - C2
+      - C3
+  T-983:
+    qa_criteria:
+      - C1
+      - C2
+  T-986:
+    qa_criteria:
+      - C1
+      - C3
+```
