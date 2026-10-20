@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:18:17.804Z
-updated: 2026-10-20T17:18:17.804Z
+updated: 2026-10-20T17:27:26.766Z
 ---
 
 ## Summary
@@ -22,3 +22,9 @@ Publish the v0.1.4 build-log post (commit 6fb2aa8e on brand/identity, site/src/c
 ## Acceptance criteria
 
 - [ ] C1. `cland publish brand/identity` publishes 6fb2aa8e, and the public tip is recorded on this item.
+
+## Comments
+
+### coord · 2026-10-20T17:27:26.766Z
+
+Published marketing brand/identity at 19690fe0a37d5010e470780313e90ec8756f21ec (GitHub default branch and site); dev 215570599441a87adc0c14b12df5d9fc0e172531.
