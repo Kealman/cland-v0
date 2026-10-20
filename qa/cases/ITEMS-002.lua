@@ -26,8 +26,9 @@ return {
   run = function(qa)
     local api, layout = vim.api, require('cland.layout')
     qa.wait_for(function() return qa.state().hub.state == 'connected' and #qa.state().items == 2 end, 10000, 'fixture loaded')
-    local file
-    for _, item in ipairs(qa.state().items) do if item.id == 'T-2' then file = qa.root .. '/.cland/tasks/' .. item.file end end
+    -- The explorer carries summary rows without file paths (T-1007), so find the item file on disk.
+    local file = vim.fn.glob(qa.root .. '/.cland/tasks/T-2-*.md')
+    qa.expect(file ~= '' and not file:find('\n'), 'T-2 has exactly one item file')
     local function git(args)
       local command = { 'git', '-C', qa.root }
       vim.list_extend(command, args)
