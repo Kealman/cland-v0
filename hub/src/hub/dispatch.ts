@@ -152,7 +152,7 @@ class VerifyAllReserved extends Error {}
  * What a CLI call made as a session may send beside the permission table's tools: reading the hub's state. Any
  * other frame is the human's alone.
  */
-const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
+const SESSION_CLI_FRAMES: ReadonlySet<string> = new Set(['demo.start', 'demo.exec', 'demo.stop', 'demo.status', 'models.list', 'account.clear', 'account.list', 'account.poll', 'executor.status', 'executor.reap', 'executor.prepare', 'executor.retire-legacy', 'task.migrate', 'rule.add', 'rule.edit', 'rule.retire', 'rule.list', 'rule.show', 'crew.show', 'crew.set', 'role.launch', 'config.set', 'artifact.list', 'hub.reload', 'hub.status', 'merge.queue', 'inbox.list', 'role.list', 'worktree.list', 'suite.start', 'suite.cancel', 'suite.classify', 'suite.queue', 'suite.slot']);
 
 /** Who a call is checked and audited as: a spoke's session, or the session a CLI call acts as. */
 type Caller = Pick<Connection, 'name' | 'sessionId' | 'role'>;
@@ -1768,13 +1768,19 @@ export class Dispatcher {
             return this.#demos!.status(request.epic, request.commit);
           }).then(value => ({ type: 'result' as const, id: request.id, ok: true, value }), error => Dispatcher.#failure(request.id, error)));
         }
-        if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap' || frame.type === 'executor.prepare')) {
+        if (isClientRequest(frame) && (frame.type === 'executor.status' || frame.type === 'executor.reap' || frame.type === 'executor.prepare' || frame.type === 'executor.retire-legacy')) {
           if (caller && caller.role !== 'coordinator') return this.#refuse(caller, frame, peer, frame.type, 'executor controls belong to the Coordinator or the human');
           if (!this.#droplets) return peer.send(Dispatcher.#failure(frame.id, new Error('this hub serves no project for executors')));
           const authorize = () => {
             const now = this.#asSession(frame);
             if (caller && (!now || now.sessionId !== caller.sessionId || now.role !== 'coordinator')) throw new ToolForbidden(now?.role ?? null, frame.type, 'executor controls belong to the Coordinator or the human');
           };
+          if (frame.type === 'executor.retire-legacy') {
+            return later(frame.type, this.#dropletReady.then(() => {
+              authorize();
+              return this.#droplets!.retireLegacy(frame.confirmRegisteredHubs, authorize);
+            }).then(value => ({ type: 'result' as const, id: frame.id, ok: true as const, value }), error => Dispatcher.#failure(frame.id, error)));
+          }
           if (frame.type === 'executor.prepare') {
             const topic = frame.report === undefined ? core.store.topic('general') : core.topics().find(topic => topic.id === frame.report || topic.title === frame.report);
             if (!topic) return peer.send(Dispatcher.#failure(frame.id, new Error('unknown prepare report topic')));

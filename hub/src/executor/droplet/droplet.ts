@@ -16,7 +16,7 @@ import { pause, testTiming } from './watchdog.ts';
 import { deleteLeaseResources, DropletIdentityMismatch, DropletDeletionTimeout } from './cleanup.ts';
 import { readRecoveries, recoverSnapshots } from './snapshot-recovery.ts';
 import { prepareKey, prepareSnapshot, readSnapshot, staleParts, sameKey, waitForMachine, type PrepareKey, type Prepared } from './prepare.ts';
-import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend } from './spend.ts';
+import { hostLeases, inspectSpend, rememberProject, reserveSpend, settleSpend, reserveShardSpend, releaseShardSpend, retireLegacySpend } from './spend.ts';
 import { DropletRun } from './run.ts';
 import type { Executor, Released, RunRef } from '../executor.ts';
 
@@ -300,6 +300,10 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     return { lifetimeMs: null, costUsd: null };
   }
 
+  async retireLegacy(confirmed: boolean, authorize: () => void) {
+    return retireLegacySpend(confirmed, this.#env, this.clock, this.dependencies.processes, undefined, authorize);
+  }
+
   async inspect() {
     for (;;) {
       const job = this.#prepareJob;
@@ -313,7 +317,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
       const token = Boolean(this.#env.DIGITALOCEAN_TOKEN);
       const all = await readLeases(this.root);
       const leases = await Promise.all(all.filter(l => l.state !== 'released').map(async l => ({ name: l.name, id: l.resource, region: l.region, size: l.size, state: l.state, ...(l.attention ? { attention: l.attention } : {}), ageMs: this.clock.now().getTime() - Date.parse(l.created), deadline: l.deadline, watchdogAlive: await within((this.dependencies.host ?? processHost).watchdogAlive(l, this.#env), 250, this.clock).catch(() => false) })));
-      const spend = await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes, true);
+      // Capability 1 promises that every transaction preserves legacyRetired and
+      // stops reading/writing the legacy ledger once that marker is activated.
+      const spend = { ...await inspectSpend((await this.#config()).verification.dailySpendUsd, this.#env, this.clock, this.dependencies.processes, true), legacyRetirement: 1 as const };
       const todayCostUsd = spend.spent;
       let taggedDroplets: number | null = this.#taggedDroplets;
       let providerError: string | undefined;

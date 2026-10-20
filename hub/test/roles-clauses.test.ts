@@ -65,9 +65,7 @@ for (const [source, definitions] of sources) {
         assert.match(clause, /hub alone creates, lists and deletes droplets, sessions never do it themselves/);
         assert.match(clause, /`cland executor` is for the human and Coordinator/);
       } else if (role === 'coordinator') {
-        assert.match(clause, /`cland executor status\|prepare\|reap`/);
-        assert.match(clause, /re-prepare on release\/lockfile change/);
-        assert.match(clause, /stand-in checks tags hourly/);
+        assert.match(clause, /`cland executor status\|prepare\|reap\|retire-legacy`; see hub\/README\.md/);
       }
       if (role === 'coordinator' || role === 'lead' || role === 'implementer') {
         assert.match(clause, /Request review first[.;] (?:after a clear source verdict, the Implementer runs|When the verdict on your source is clear, run) `cland verify` at the exact reviewed head/);

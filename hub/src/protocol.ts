@@ -587,6 +587,7 @@ export type ClientRequest =
   | { type: 'crew.show'; id: string }
   | { type: 'executor.status' | 'executor.reap'; id: string }
   | { type: 'executor.prepare'; id: string; report?: string }
+  | { type: 'executor.retire-legacy'; id: string; confirmRegisteredHubs: boolean }
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'config.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
@@ -897,6 +898,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return true;
     case 'executor.prepare':
       return f.report === undefined || typeof f.report === 'string';
+    case 'executor.retire-legacy':
+      return typeof f.confirmRegisteredHubs === 'boolean';
     case 'inbox.list':
       return f.archive === undefined || typeof f.archive === 'boolean';
     case 'inbox.decline':

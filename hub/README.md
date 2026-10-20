@@ -781,7 +781,7 @@ committed `.cland/` state.
 | --- | --- |
 | `~/.config/cland/accounts.toml` | The human maintains the harness account names, harnesses and directories or database paths; no secrets. An absolute `XDG_CONFIG_HOME` changes the base directory. `cland init` creates no registry. See [Accounts and limits](#accounts-and-limits). |
 | `~/.local/state/cland/spend.json` | The hub maintains the primary executor spend ledger across projects: project, lease, run, size, cost reservations, settled cost and times; no token. `$XDG_STATE_HOME` changes the state base; `$CLAND_EXECUTOR_STATE` overrides the ledger directory for tests and disables legacy migration and write-through. See [leases, cleanup and spend](#leases-cleanup-and-spend). |
-| `~/.cland/executor/spend.json` | When this legacy ledger exists, the hub reconciles it with the primary ledger and writes mutations through to it first so older project hubs still respect the shared cap. T-794 will retire the write-through and archive the legacy file once every project hub for this user runs the new state-directory code. |
+| `~/.cland/executor/spend.json` | Until explicit retirement, the hub reconciles this legacy ledger with the primary ledger and writes mutations through to it first so older project hubs still respect the shared cap. Retirement leaves these bytes in place and records a snapshot beside the new ledger; see [retiring legacy spend write-through](#retiring-legacy-spend-write-through). |
 | `~/.local/state/cland-nvim/` | The workbench Neovim's own state, including `nvim.log` and restart snapshots. `$XDG_STATE_HOME` changes the state base. T-830 sets `NVIM_APPNAME=cland-nvim` to keep this separate from the hub's `cland/` state and clears an inherited `NVIM_LOG_FILE`. See [the Neovim launcher](../nvim/README.md). |
 
 ## Accounts and limits
@@ -2122,7 +2122,7 @@ costs $0.06 per GB-month, separately from run and builder time.
 #### Controls and the prepared snapshot
 
 The hub owns the lifecycle: sessions never create, list or delete droplets by
-hand. `cland executor status|prepare|reap` belongs to the human and Coordinator.
+hand. `cland executor status|prepare|reap|retire-legacy` belongs to the human and Coordinator.
 Under D27, T-282's hand driver retired when T-346 merged; Linux proof runs now
 use `cland verify --executor droplet` under the hub's enforced limits. The stand-in
 keeps the hourly tag check; the hub's sweep and watchdog do the automatic cleanup.
@@ -2332,6 +2332,37 @@ UTC midnight. The cap checks today's spent plus all outstanding reservations
 before creation. This is an estimate from hourly price and lifetime, not an
 invoice; provider billing may differ (see costs above).
 `cland executor status` prints the path and today's spent + reserved / cap.
+
+#### Retiring legacy spend write-through
+
+The human or Coordinator can run
+`cland executor retire-legacy --confirm-registered-hubs [--json]`.
+The flag confirms that the union of `projects` and every entry's `project` in
+both ledgers covers all hubs this user runs. Before confirming, upgrade all
+those hubs to code supporting the retirement marker and start them. Every registered project
+must answer an authenticated live `executor.status` request within three seconds
+and report both `spend.legacyRetirement: 1` and exactly the same primary spend path
+as the requesting hub. Capability 1 means that all ledger transactions preserve
+`legacyRetired` and stop legacy reads/writes once it is set. A state-directory
+hub without this capability can otherwise undo retirement on its next write. Missing,
+unreachable, malformed, non-capable or old-path hubs refuse retirement. Refusals list the
+registered projects; stale discovery files and version strings are insufficient.
+An empty registry, aliased ledger files and `CLAND_EXECUTOR_STATE` overrides also refuse.
+
+Both ledger locks serialize the final reconciliation, checks, snapshot and
+activation. `spend-retirement.json` beside the primary ledger records the checked
+projects, time, paths and original legacy bytes. Only after durable snapshot
+publication does the primary ledger activate `legacyRetired: true`. A failed
+activation can leave an unactivated snapshot; retry the command. Activated
+retirement is idempotent, survives hub restart, and stops legacy reads and writes
+in upgraded code. The legacy file is never moved, deleted or changed by retirement.
+Reservations, settlements and the shared daily cap continue in the primary ledger.
+
+This check cannot discover a hub that never registered in either ledger. The
+confirmation flag is the operator's assertion that no such hub remains. A later
+downgrade can restore legacy behaviour or split accounting; do not restart older
+binaries after retirement. This command does not run automatically during upgrade.
+
 
 #### Epic demo leases
 

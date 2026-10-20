@@ -1248,3 +1248,22 @@ as one machine's sample.
 Only timing/counter/filesystem facts are captured; no environment dump or
 command line is collected. Compare completed phases when investigating timings:
 a failed hub phase can omit both Neovim and coverage reduction.
+
+
+### Legacy spend retirement fixtures
+
+`cland executor retire-legacy --confirm-registered-hubs` belongs to the human or
+Coordinator. The flag asserts that both ledgers' registered projects cover all
+of the user's hubs. Each project must return `spend.legacyRetirement: 1` and the same primary spend
+path through live `executor.status`; absent, unreachable, non-capable and old-path
+hubs refuse with the
+registered project list. Neither a discovery version nor the new path alone proves marker support.
+Never-registered hubs and later downgrades are outside that check: upgrade and
+register every hub before confirming, and do not downgrade afterwards.
+
+Retirement preserves the legacy file in place and publishes `spend-retirement.json`
+with its bytes beside the new ledger before activating retirement. Tests exercise
+this boundary at T1 with injected hub responses, fake time and a scratch HOME/XDG
+state directory (`hub/test/executor-spend.test.ts`); socket authentication and
+command routing belong at T2. Never exercise this command against the human's
+actual state. See [the operational contract](../../hub/README.md#retiring-legacy-spend-write-through).

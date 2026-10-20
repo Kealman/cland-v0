@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { hostLeases, inspectSpend, releaseShardSpend, reserveShardSpend, reserveSpend, settleSpend, spendPath } from '../src/executor/droplet/spend.ts';
+import { hostLeases, inspectSpend, releaseShardSpend, reserveShardSpend, reserveSpend, settleSpend, spendPath, retireLegacySpend } from '../src/executor/droplet/spend.ts';
 import type { DropletLease } from '../src/executor/droplet/lease.ts';
 import { scratchMachine, legacyLedger, ledger, type SpendEntry } from './init-machine.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -16,6 +16,85 @@ const entry = (lease: string, cost: number | null = 2): SpendEntry => ({
   project: '/fixture/project', lease, run: lease, size: 'c-8', reservation: 1, cost,
   created: '2026-10-16T10:00:00Z', deadline: '2026-10-16T11:00:00Z',
   ...(cost === null ? {} : { released: '2026-10-16T11:00:00Z' }),
+});
+
+test('retirement requires explicit confirmation and every registered live hub on the same new path', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  await legacyLedger(machine, [entry('settled')]);
+  await inspectSpend(10, machine.env, clock, processes);
+  const current = await ledger(machine);
+  current.projects = ['/other-project'];
+  await writeFile(spendPath(machine.env), JSON.stringify(current));
+  const checked = /registered projects: \/fixture\/project, \/other-project/;
+  await assert.rejects(retireLegacySpend(false, machine.env, clock, processes, async () => { assert.fail('confirmation precedes probes'); }), checked);
+  await assert.rejects(retireLegacySpend(true, machine.env, clock, processes, async () => ({ path: spendPath(machine.env) })), /does not support the legacy retirement marker.*registered projects/);
+  const seen: string[] = [];
+  await assert.rejects(retireLegacySpend(true, machine.env, clock, processes, async project => {
+    seen.push(project);
+    if (project === '/other-project') throw new Error('hub unreachable');
+    return { path: spendPath(machine.env), legacyRetirement: 1 };
+  }), error => { assert.match(String(error), /hub unreachable/); assert.match(String(error), checked); return true; });
+  assert.deepEqual(seen, ['/fixture/project', '/other-project']);
+  await assert.rejects(retireLegacySpend(true, machine.env, clock, processes, async () => ({ path: join(machine.home, '.cland/executor/spend.json'), legacyRetirement: 1 })), /does not report.*registered projects/);
+  await assert.rejects(readFile(join(dirname(spendPath(machine.env)), 'spend-retirement.json')), { code: 'ENOENT' });
+  assert.equal((await ledger(machine) as { legacyRetired?: boolean }).legacyRetired, undefined);
+});
+
+test('retirement retains legacy bytes and its archive snapshot while the shared cap still holds after restart', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  await legacyLedger(machine, [entry('settled'), entry('active', null)]);
+  const old = join(machine.home, '.cland/executor/spend.json');
+  const bytes = await readFile(old, 'utf8');
+  const result = await retireLegacySpend(true, machine.env, clock, processes, async () => ({ path: spendPath(machine.env), legacyRetirement: 1 }));
+  const snapshot = await readFile(result.receipt, 'utf8');
+  assert.equal(JSON.parse(snapshot).legacyBytes, bytes);
+  assert.equal(JSON.parse(snapshot).event, 'executor-spend-retired');
+  assert.deepEqual(result.projects, ['/fixture/project']);
+  await reserveShardSpend('/second-project', ['fits'], 'c-8', 3, 3600000, 6, machine.env, clock, processes);
+  assert.equal(await readFile(old, 'utf8'), bytes, 'retirement and later admission never write legacy state');
+  assert.deepEqual(await inspectSpend(6, machine.env, clock, processes), { path: spendPath(machine.env), day: '2026-10-16', spent: 2, reserved: 4, cap: 6 });
+  await assert.rejects(reserveShardSpend('/third-project', ['over-cap'], 'c-8', 1, 3600000, 6, { ...machine.env }, clock, processes), /spend cap/);
+  await releaseShardSpend('/second-project', ['fits'], machine.env, clock, processes);
+  assert.equal((await inspectSpend(6, machine.env, clock, processes, true)).reserved, 1);
+  await retireLegacySpend(true, { ...machine.env }, clock, processes, async () => { assert.fail('an activated retirement survives restart'); });
+  assert.equal(await readFile(result.receipt, 'utf8'), snapshot);
+  assert.equal(await readFile(old, 'utf8'), bytes);
+});
+
+test('interrupted retirement activation retains mixed-version admission and safely retries its snapshot', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  await legacyLedger(machine, [entry('settled'), entry('active', null)]);
+  const old = join(machine.home, '.cland/executor/spend.json');
+  const bytes = await readFile(old, 'utf8');
+  const rename = fs.rename;
+  const fault = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+    if (args[1] === spendPath(machine.env) && JSON.parse(await readFile(args[0], 'utf8')).legacyRetired) throw new Error('interrupted retirement activation');
+    return rename(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(retireLegacySpend(true, machine.env, clock, processes, async () => ({ path: spendPath(machine.env), legacyRetirement: 1 })), /interrupted retirement activation/);
+  } finally { fault.mock.restore(); syncBuiltinESMExports(); }
+  assert.equal((await ledger(machine) as { legacyRetired?: boolean }).legacyRetired, undefined);
+  assert.equal(await readFile(old, 'utf8'), bytes);
+  await reserveShardSpend('/second-project', ['pending'], 'c-8', 3, 3600000, 6, machine.env, clock, processes);
+  const latest = await readFile(old, 'utf8');
+  assert.notEqual(latest, bytes, 'unactivated snapshot does not stop compatibility write-through');
+  const result = await retireLegacySpend(true, machine.env, clock, processes, async () => ({ path: spendPath(machine.env), legacyRetirement: 1 }));
+  assert.equal(JSON.parse(await readFile(result.receipt, 'utf8')).legacyBytes, latest);
+  await assert.rejects(reserveShardSpend('/third-project', ['too-much'], 'c-8', 1, 3600000, 6, machine.env, clock, processes), /spend cap/);
+  assert.equal(await readFile(old, 'utf8'), latest);
+});
+
+test('retirement refuses aliased ledgers before changing the legacy bytes', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  await legacyLedger(machine, [entry('settled')]);
+  const old = join(machine.home, '.cland/executor/spend.json');
+  const bytes = await readFile(old, 'utf8');
+  await mkdir(dirname(spendPath(machine.env)), { recursive: true });
+  await fs.symlink(old, spendPath(machine.env));
+  await assert.rejects(retireLegacySpend(true, machine.env, clock, processes, async () => ({ path: spendPath(machine.env), legacyRetirement: 1 })), /alias the same file/);
+  assert.equal(await readFile(old, 'utf8'), bytes);
 });
 
 test('spend defaults to the XDG state directory without a project marker', { timeout: 5000 }, async t => {

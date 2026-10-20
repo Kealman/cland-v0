@@ -5,9 +5,10 @@ import { dirname, isAbsolute, join } from 'node:path';
 import { homedir } from 'node:os';
 import { acquireLockAsync, acquireLockWithRetry, type LockProcessTable, type LockRetryTiming } from '../../hub/lock.ts';
 import { durableJson, readLeases, type DropletLease } from './lease.ts';
+import { registeredHubSpendStatus, type SpendHubStatus } from './spend-hubs.ts';
 
 type Entry = { project: string; lease: string; run: string; size: string; reservation: number; cost: number | null; created: string; deadline: string; released?: string };
-type Ledger = { version: 1; entries: Entry[]; projects?: string[] };
+type Ledger = { version: 1; entries: Entry[]; projects?: string[]; legacyRetired?: true };
 export const spendPath = (env: NodeJS.ProcessEnv = process.env): string => join(env.CLAND_EXECUTOR_STATE ?? join(env.XDG_STATE_HOME || join(env.HOME ?? homedir(), '.local/state'), 'cland'), 'spend.json');
 const legacyPath = (env: NodeJS.ProcessEnv): string | null => env.CLAND_EXECUTOR_STATE !== undefined ? null : join(env.HOME ?? homedir(), '.cland/executor/spend.json');
 async function readExisting(path: string): Promise<Ledger | null> {
@@ -21,8 +22,10 @@ const read = async (path: string): Promise<Ledger> => await readExisting(path) ?
 
 /** Atomically published ledgers can be observed without locking or migration. */
 async function observe(env: NodeJS.ProcessEnv): Promise<Ledger> {
+  const current = await read(spendPath(env));
+  if (current.legacyRetired) return current;
   const old = legacyPath(env);
-  return reconcile(await read(spendPath(env)), old ? await readExisting(old) ?? { version: 1, entries: [] } : { version: 1, entries: [] });
+  return reconcile(current, old ? await readExisting(old) ?? { version: 1, entries: [] } : { version: 1, entries: [] });
 }
 
 /** Both files may have been used by live hubs. Keep every lease and the more
@@ -51,7 +54,7 @@ function totals(ledger: Ledger, clock: Clock) {
   const spent = ledger.entries.filter(e => e.released?.startsWith(day)).reduce((sum, e) => sum + (e.cost ?? 0), 0);
   return { day, spent, reserved };
 }
-async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, timing?: LockRetryTiming, maxWaitMs = 60000): Promise<T> {
+async function locked<T>(work: (ledger: Ledger) => T | Promise<T>, env: NodeJS.ProcessEnv, timing?: LockRetryTiming, maxWaitMs = 60000): Promise<T> {
   const path = spendPath(env);
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const clock = timing?.clock ?? realClock;
@@ -60,7 +63,7 @@ async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, ti
   try {
     let ledger = await read(path);
     const old = legacyPath(env);
-    if (old && old !== path && await readExisting(old)) {
+    if (!ledger.legacyRetired && old && old !== path && await readExisting(old)) {
       // Old hubs still serialize on this lock. Always take new then old, and
       // retain the legacy file until an explicit cleanup after those hubs stop.
       const [currentStat, oldStat] = await Promise.all([stat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; }), stat(old)]);
@@ -82,19 +85,56 @@ async function locked<T>(work: (ledger: Ledger) => T, env: NodeJS.ProcessEnv, ti
       }
     }
     const before = JSON.stringify(ledger);
-    const result = work(ledger);
+    const result = await work(ledger);
     // Mixed-version hubs read only the legacy file. Publish mutations there
     // first while holding both locks, so a crash cannot hide new reservations
     // from old admission. Read-only migration preserves the original bytes.
-    if (legacyLock && old && JSON.stringify(ledger) !== before) await durableJson(old, ledger);
+    if (!ledger.legacyRetired && legacyLock && old && JSON.stringify(ledger) !== before) await durableJson(old, ledger);
     await durableJson(path, ledger);
     return result;
   }
   finally { try { await legacyLock?.release(); } finally { await lock.release(); } }
 }
 async function load(env: NodeJS.ProcessEnv, timing?: LockRetryTiming, maxWaitMs = 60000): Promise<Ledger> {
+  const current = await read(spendPath(env));
+  if (current.legacyRetired) return current;
   const old = legacyPath(env);
-  return old && old !== spendPath(env) && await readExisting(old) ? locked(ledger => ledger, env, timing, maxWaitMs) : read(spendPath(env));
+  return old && old !== spendPath(env) && await readExisting(old) ? locked(ledger => ledger, env, timing, maxWaitMs) : current;
+}
+
+/** Explicit, fail-closed retirement. Both ledger locks cover compatibility
+ * checks, the archival snapshot and the final activation in the primary ledger. */
+export async function retireLegacySpend(confirmed: boolean, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, hubStatus: (project: string) => Promise<SpendHubStatus> = registeredHubSpendStatus, authorize: () => void = () => {}) {
+  const path = spendPath(env), old = legacyPath(env);
+  if (!old || old === path) throw new Error('legacy retirement requires the default user ledger, without CLAND_EXECUTOR_STATE');
+  const currentStat = await stat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error; });
+  const oldStat = await stat(old);
+  if (currentStat && currentStat.dev === oldStat.dev && currentStat.ino === oldStat.ino) throw new Error('legacy retirement refused: primary and legacy ledgers alias the same file');
+  return locked(async ledger => {
+    const projects = [...new Set([...(ledger.projects ?? []), ...ledger.entries.map(entry => entry.project)])].sort();
+    const checked = `registered projects: ${projects.length ? projects.join(', ') : '(none)'}`;
+    if (!confirmed) throw new Error(`legacy retirement requires --confirm-registered-hubs; ${checked}`);
+    const receipt = join(dirname(path), 'spend-retirement.json');
+    if (ledger.legacyRetired) return { path, receipt, projects, summary: `legacy spend write-through already retired; receipt: ${receipt}` };
+    if (!projects.length) throw new Error(`legacy retirement refused: no registered hubs; ${checked}`);
+    for (const project of projects) {
+      try {
+        if (!isAbsolute(project)) throw new Error('registered project is not an absolute path');
+        const status = await hubStatus(project);
+        if (status.path !== path) throw new Error('hub does not report the shared new spend path');
+        if (status.legacyRetirement !== 1) throw new Error('hub does not support the legacy retirement marker (spend.legacyRetirement=1 required)');
+      } catch (error) {
+        throw new Error(`legacy retirement refused for ${project}: ${error instanceof Error ? error.message : String(error)}; ${checked}`);
+      }
+    }
+    // Keep the original file byte-for-byte in place, even after activation.
+    const legacyBytes = await readFile(old, 'utf8');
+    authorize();
+    await durableJson(receipt, { event: 'executor-spend-retired', from: old, to: path, at: clock.now().toISOString(), projects, legacyRetirement: 1, legacyBytes });
+    authorize();
+    ledger.legacyRetired = true;
+    return { path, receipt, projects, summary: `legacy spend write-through retired; legacy file retained: ${old}; receipt: ${receipt}` };
+  }, env, { clock, ...(processes ? { processes } : {}) });
 }
 export async function reserveSpend(project: string, lease: DropletLease, cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, wait?: (ms: number) => Promise<void>, processes?: LockProcessTable): Promise<void> {
   await locked(ledger => {

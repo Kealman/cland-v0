@@ -110,6 +110,7 @@
     "hub/test/executor-prepare-component.test.ts": "T2",
     "hub/test/executor-prepare-retry.test.ts": "T2",
     "hub/test/executor-prepare.test.ts": "T3",
+    "hub/test/executor-retirement-component.test.ts": "T2",
     "hub/test/executor-run-rules.test.ts": "T1",
     "hub/test/executor-run.test.ts": "T3",
     "hub/test/executor-safety-component.test.ts": "T2",
