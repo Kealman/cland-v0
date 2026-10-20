@@ -1,3 +1,4 @@
+import { removeWorktreeWithFixtures } from '../fixture-processes.ts';
 // Build squash objects in FIFO order; a detached worktree is only the executor's input.
 import { join } from 'node:path';
 import { mkdir, stat } from 'node:fs/promises';
@@ -89,5 +90,5 @@ export async function removeMergeBatch(root: string, candidate: BatchCandidate, 
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
     throw error;
   });
-  if (exists) await territoryGitAsync(root, ['worktree', 'remove', candidate.cwd], false, undefined, env);
+  if (exists) await removeWorktreeWithFixtures(candidate.cwd, () => territoryGitAsync(root, ['worktree', 'remove', candidate.cwd], false, undefined, env));
 }

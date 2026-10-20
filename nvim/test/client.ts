@@ -1,3 +1,4 @@
+import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 // The Neovim client's seam: the real client (`nvim --clean -u nvim/init.lua`) headless with `--listen`,
 // driven over msgpack-RPC with `nvim_input` and read back with `screenstring()`, against a real hub.
@@ -128,12 +129,19 @@ export async function createClient(t: TestContext, bin: string, root: string, en
   }
   if (opts.launcher) childEnv.CLAND_NVIM = bin;
   const launchEnv = withoutExecutorCredentials(childEnv);
+  const ownership = fixtureOwnership([root, fileURLToPath(new URL('../../', import.meta.url))]);
   const launch = () => opts.launcher
-    ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] })
-    : spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
-  const child = stubOnly ? headlessNvimLaunch(bin, sock, launch) : launch();
+    ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe', ownership.fd] })
+    : spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: launchEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe', ownership.fd] });
+  let child: ChildProcess;
+  try {
+    child = stubOnly ? headlessNvimLaunch(bin, sock, launch) : launch();
+    if (child.pid !== undefined) ownership.bind(child.pid);
+  } catch (error) { ownership.remove(); throw error; }
+  finally { ownership.close(); }
   if (stubOnly) ownStubClient(t, child, native?.beforeDirectories);
   else native!.ownProcess(t, child.pid);
+  (native?.beforeDirectories ?? beforeDirectories)(t, ownership.remove);
   let stderr = '';
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (c: string) => (stderr += c));

@@ -94,7 +94,7 @@ export async function initialised(t: TestContext, env: Record<string, string>, o
 // These are command replies, not harness adapters. The matrix exercises production
 // lookup, argument selection, parsing, version/auth policy and rendering without executables.
 export const probeCalls: Array<{ bin: string; args: readonly string[]; database?: string }> = [];
-const probeTools: typeof import('../src/doctor/report.ts').run = async (bin, args, env) => {
+export const probeTools: typeof import('../src/doctor/report.ts').run = async (bin, args, env) => {
   probeCalls.push({ bin, args: [...args], ...(env.OPENCODE_DB ? { database: env.OPENCODE_DB } : {}) });
   let stdout = '';
   let code = 0;

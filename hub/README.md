@@ -3330,6 +3330,17 @@ with whitespace), inaccessible files and unknown user identities are preserved.
 This is the supported cleanup for future orphan bridges; manual process killing
 is unnecessary.
 
+Fixture clients, stdio stubs and explicitly test-launched hubs also hold a private
+PID-bound ownership receipt open outside their disposable directories. The receipt
+names both the fixture cwd and its source checkout. Startup and doctor discover
+these fixtures when either root has disappeared; `doctor --fix` requires the open
+receipt, its private same-user file metadata, the process UID and fresh PID/start-time
+checks before termination. Old fixtures without receipts appear as ambiguous
+candidates and are preserved. Command lines and environments are never printed or
+used alone to authorize signals. Task pruning, creation rollback and merge-batch
+checkout removal stop receipt-bearing fixtures associated with that worktree and
+observe completion before Git removes it; incomplete cleanup keeps the worktree.
+
 `cland doctor [dir]` reports orphan servers, names their recorded session and status, and recommends `cland doctor --fix`. The fix ends verified orphan harness servers while preserving running sessions and unverifiable identities. An unpublished server is preserved while another live hub holds the project lock, because doctor cannot see that hub’s in-flight launch reservations; stop that hub before retrying cleanup. Doctor also reports cland hub daemons whose project directories were deleted, using their OS cwd and open project files to prove ownership, and `--fix` ends those daemons. Doctor tests scope deleted-project discovery to their fixture root with `CLAND_TEST_ORPHAN_ROOT`, so parallel fixtures cannot end each other’s hubs. If the OS cannot supply ownership evidence, inspect the candidate manually. On Linux the sweep reads `/proc`; on macOS it uses bounded asynchronous `lsof` calls. Every session start-time probe and termination probe uses asynchronous `ps`, keeping process inspection off the hub’s synchronous request path. Concurrent start-time reads with the same timeout and timezone share one `ps -p a,b,c` per event-loop turn; callers for an already in-flight PID share that read. Results are removed before callers resume, so a later read still detects PID reuse.
 
 ### The item’s review and QA loop

@@ -49,7 +49,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     const lifecycle = readJournal(journalPath(join(root, '.cland')), { kinds: ['hub-started', 'orphan-ended'] });
     const latestStart = lifecycle.findLastIndex(entry => entry.event === 'hub-started');
     orphanChecks.push(...lifecycle.slice(latestStart + 1).filter(entry => entry.event === 'orphan-ended').map(entry => ok('orphan cleanup', `ended pid ${entry.pid}: ${entry.reason} (${entry.root})`)));
-    const ended = args.includes('--fix') ? [...await sweepOrphans(root, () => {}, 'harness'), ...await sweepOrphans(root, () => {}, 'hub', hubScopeRoot === undefined ? {} : { hubScopeRoot }), ...await sweepOrphans(root, () => {}, 'bridge', hubScopeRoot === undefined ? {} : { hubScopeRoot })] : [];
+    const ended = args.includes('--fix') ? [...await sweepOrphans(root, () => {}, 'harness'), ...await sweepOrphans(root, () => {}, 'hub', hubScopeRoot === undefined ? {} : { hubScopeRoot }), ...await sweepOrphans(root, () => {}, 'bridge', hubScopeRoot === undefined ? {} : { hubScopeRoot }), ...await sweepOrphans(root, () => {}, 'fixture', hubScopeRoot === undefined ? {} : { hubScopeRoot })] : [];
     orphanChecks.push(...ended.map(p => ok(`orphan ${p.kind}`, `ended pid ${p.process.pid}: ${p.reason} (${p.root})`)));
     const orphans = await findOrphans(root, true, undefined, hubScopeRoot);
     orphanChecks.push(...orphans.map(p => warn(`orphan ${p.kind}`, `pid ${p.process.pid}: ${p.reason} (${p.root})`, p.owned ? 'cland doctor --fix' : 'inspect this process manually; ambiguous candidates are preserved')));

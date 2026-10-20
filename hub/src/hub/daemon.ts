@@ -401,7 +401,8 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
     }
     log({ event: 'orphan-sweep-started' });
     const ended = await sweepOrphans(root, log, 'harness', { pending: () => stopping !== null || adapters!.sessions.lifecyclePending() });
-    log({ event: 'orphan-sweep-completed', ended: ended.map(p => p.process.pid) });
+    const fixtures = await sweepOrphans(root, log, 'fixture', { pending: () => stopping !== null, ...(env.CLAND_TEST_ORPHAN_ROOT ? { hubScopeRoot: env.CLAND_TEST_ORPHAN_ROOT } : {}) });
+    log({ event: 'orphan-sweep-completed', ended: [...ended, ...fixtures].map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
   return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
 }

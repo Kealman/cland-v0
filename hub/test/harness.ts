@@ -324,6 +324,7 @@ export async function clandWithEnv(cwd: string, extra: Record<string, string>, .
   // Doctor normally discovers deleted-project hubs machine-wide. Tests only inspect their own fixture.
   if (args[0] === 'doctor') env.CLAND_TEST_ORPHAN_ROOT = cwd;
   Object.assign(env, extra);
+  if (args[0] === 'hub' && ['start', 'serve'].includes(args[1] ?? '')) env.CLAND_TEST_FIXTURE_ROOT = cwd;
   return new Promise((resolve, reject) => {
     // Merge waits up to 60 s for the hub; the outer process budget must also allow CLI startup.
     const timeout = args[0] === 'merge' ? 65_000 : 30_000;

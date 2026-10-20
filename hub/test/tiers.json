@@ -119,6 +119,8 @@
     "hub/test/executor.test.ts": "T3",
     "hub/test/fake-harness-capabilities.test.ts": "T1",
     "hub/test/fake-harness.test.ts": "T2",
+    "hub/test/fixture-orphans-lifecycle.test.ts": "T3",
+    "hub/test/fixture-orphans.test.ts": "T2",
     "hub/test/fixture-worker-lifecycle.test.ts": "T3",
     "hub/test/follows-native.test.ts": "T3",
     "hub/test/follows.test.ts": "T2",

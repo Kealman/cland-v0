@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
+import { fileURLToPath } from 'node:url';
 // A stub hub for the shell's tests: it speaks the UI's frames (hub/README.md, "The UI's frames" and the
 // `session.*` frames) as JSON lines on stdin and stdout, the way `cland hub serve --stdio` does, from a
 // scripted scenario. The client spawns it through CLAND_COMMAND as `<stub> hub serve --stdio`.
@@ -34,6 +36,9 @@ import { parse as parseToml } from 'smol-toml';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { createScenarioArtifact, changeScenarioArtifact } from './artifact-scenario.ts';
 import { STUB_NOW } from './fixtures/clock.ts';
+
+const fixtureOwner = fixtureOwnership([process.cwd(), fileURLToPath(new URL('../../', import.meta.url))]);
+process.once('exit', () => { fixtureOwner.close(); fixtureOwner.remove(); });
 
 export type Scenario = {
   // T-902: source-shaped account snapshots for the sessions panel.

@@ -1,3 +1,4 @@
+import { removeWorktreeWithFixtures } from './fixture-processes.ts';
 import { testLintPolicy, TestLintError } from './test-lint-policy.ts';
 import { parseItemReference } from './tracker/prefixes.ts';
 // The territory's Git commands live here. Init needs no hub; later hub operations use the same lock and runner.
@@ -480,7 +481,7 @@ async function verifyCreatedWorktree(root: string, path: string, branch: string 
   let removed = false;
   try {
     // Git checks for dirty work; use its registered path, never a resolved recursive delete.
-    await territoryGitAsync(root, ['worktree', 'remove', created.path], undefined, undefined, env);
+    await removeWorktreeWithFixtures(created.path, () => territoryGitAsync(root, ['worktree', 'remove', created.path], undefined, undefined, env));
     await resumed(() => {
       removed = true;
       if (!createdBranch || !creationTip || !branch) return;
@@ -622,7 +623,17 @@ export async function removeTaskWorktree(root: string, item: string, check: Work
       });
     }
     await resumed(() => validate?.());
-    if (found) await territoryGitAsync(root, ['worktree', 'remove', found.path], undefined, undefined, env);
+    if (found) await removeWorktreeWithFixtures(found.path, async () => {
+      // Process cleanup yielded to the OS. Repeat path identity and caller authority before Git.
+      await checkWorktreePath(root, path, resumed);
+      const current = await stat(found.path);
+      const confined = await worktreeConfined(root, found.path, resumed);
+      resumed(() => {
+        if (!identity || current.dev !== identity.dev || current.ino !== identity.ino || !confined) throw new Error(`${item}: worktree identity or confinement changed during cleanup; kept`);
+      });
+      await resumed(() => validate?.());
+      return territoryGitAsync(root, ['worktree', 'remove', found.path], undefined, undefined, env);
+    });
     const validateBranch = await resumed(check);
     await resumed(() => validateBranch?.());
     if (branch !== null && tip !== null) {

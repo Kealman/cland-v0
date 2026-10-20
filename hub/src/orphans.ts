@@ -1,15 +1,17 @@
+import { findFixtureOrphans, sweepFixtureOrphans } from './fixture-processes.ts';
+import { processPaths as pathsOf } from './process-paths.ts';
 // Project-owned servers without a running session. OS paths establish ownership; argv is only a candidate hint.
 import { bridgeHubFile } from './process-table.ts';
 import { run } from './doctor/report.ts';
 import { existsSync, realpathSync, statSync } from 'node:fs';
-import { mkdir, readdir, readlink, stat } from 'node:fs/promises';
+import { mkdir, stat } from 'node:fs/promises';
 import { basename, join, resolve, sep } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { openDatabase } from './database.ts';
 import { acquireLockAsync, HubLocked, readLock } from './hub/lock.ts';
 import { endProcess, systemProcesses, type SystemProcess } from './system-processes.ts';
 
-export type Orphan = { process: SystemProcess; kind: 'harness' | 'hub' | 'bridge'; root: string; owned: boolean; reason: string };
+export type Orphan = { process: SystemProcess; kind: 'harness' | 'hub' | 'bridge' | 'fixture'; root: string; owned: boolean; reason: string };
 type Session = { name: string; pid: number | null; pid_started: string | null; status: string; cwd: string };
 const real = (path: string) => { try { return realpathSync(path); } catch { return resolve(path); } };
 const directoryMissing = (path: string) => {
@@ -67,25 +69,6 @@ function identityProblem(owner: ReturnType<typeof recordedOwner>): string | null
   return owner.session.pid_started !== owner.process.started ? 'PID was reused; the recorded process is gone' : null;
 }
 
-/** Read cwd and open file paths, never the process's environment (which may carry credentials). */
-async function pathsOf(pid: number, deadline?: number): Promise<{ cwd: string | null; files: string[] }> {
-  if (process.platform === 'linux') {
-    const dir = `/proc/${pid}`;
-    const cwd = await readlink(join(dir, 'cwd')).catch(() => null);
-    const fds = await readdir(join(dir, 'fd')).catch(() => []);
-    const files = await Promise.all(fds.map(fd => readlink(join(dir, 'fd', fd)).catch(() => '')));
-    return { cwd: cwd?.replace(/ \(deleted\)$/, '') ?? null, files: files.map(path => path.replace(/ \(deleted\)$/, '')) };
-  }
-  const result = await run('lsof', ['-n', '-P', '-a', '-p', String(pid), '-Ffn'], process.env, remaining(deadline));
-  const output = result.error ? '' : result.stdout;
-  let fd = ''; let cwd: string | null = null; const files: string[] = [];
-  for (const line of output.split('\n')) {
-    if (line.startsWith('f')) fd = line.slice(1);
-    if (line.startsWith('n')) { const path = line.slice(1).replace(/ \(deleted\)$/, ''); if (fd === 'cwd') cwd = path; else files.push(path); }
-  }
-  return { cwd, files };
-}
-
 /** Cwd containment or descent from a pid/start-time-verified project wrapper establishes ownership. */
 async function ownership(row: SystemProcess, table: Session[] | null, rows: SystemProcess[], root: string, cwd: string | null, deadline?: number): Promise<{ owned: boolean; reason: string; wrapper?: SystemProcess }> {
   const owner = recordedOwner(row, table, rows);
@@ -101,7 +84,7 @@ async function ownership(row: SystemProcess, table: Session[] | null, rows: Syst
   return { owned, reason: session + (owned ? 'no running session owns it' : 'ambiguous ownership: cannot verify the process table, project cwd or wrapper'), ...(wrapper ? { wrapper } : {}) };
 }
 
-export async function findOrphans(root: string, includeHubs = false, deadline?: number, hubScopeRoot?: string): Promise<Orphan[]> {
+export async function findOrphans(root: string, includeHubs = false, deadline?: number, hubScopeRoot?: string, includeFixtures = true): Promise<Orphan[]> {
   root = real(root);
   if (hubScopeRoot !== undefined) hubScopeRoot = real(hubScopeRoot);
   let table: Session[] | null;
@@ -141,6 +124,13 @@ export async function findOrphans(root: string, includeHubs = false, deadline?: 
     const proof = await ownership(row, table, rows, root, cwd, deadline);
     out.push({ process: row, kind: 'harness', root, owned: proof.owned, reason: proof.reason });
   });
+  if (includeHubs && includeFixtures) {
+    for (const fixture of await findFixtureOrphans(hubScopeRoot, deadline)) {
+      const previous = out.findIndex(p => p.process.pid === fixture.process.pid);
+      if (previous >= 0) { if (fixture.owned) out[previous] = fixture; }
+      else out.push(fixture);
+    }
+  }
   return out;
 }
 
@@ -163,7 +153,7 @@ export class SweepBusy extends Error {
   constructor() { super('sweep busy: another sweep holds this project’s lock'); }
 }
 /** Startup and external doctors share one crash-recoverable, PID/start-time-verified project lock. */
-export async function sweepOrphans(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' | 'bridge' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
+export async function sweepOrphans(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' | 'bridge' | 'fixture' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
   try {
     const deadline = options.deadline ?? Date.now() + 12_000;
     for (const path of [join(root, '.cland'), join(root, '.cland', 'run')]) {
@@ -190,10 +180,11 @@ export async function sweepOrphans(root: string, log: (entry: Record<string, unk
   }
 }
 /** Recheck current running trees and in-flight reservations in the same stretch as each signal. */
-async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' | 'bridge' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
+async function sweepUnlocked(root: string, log: (entry: Record<string, unknown>) => void, kind: 'harness' | 'hub' | 'bridge' | 'fixture' = 'harness', options: SweepOptions = {}): Promise<Orphan[]> {
   const deadline = options.deadline ?? Date.now() + 12_000;
+  if (kind === 'fixture') return sweepFixtureOrphans(log, options.hubScopeRoot, deadline, undefined, undefined, options.pending);
   const ended: Orphan[] = [];
-  const candidates = (await findOrphans(root, kind !== 'harness', deadline, options.hubScopeRoot)).filter(p => p.kind === kind);
+  const candidates = (await findOrphans(root, kind !== 'harness', deadline, options.hubScopeRoot, false)).filter(p => p.kind === kind);
   const rows = await systemProcesses(undefined, deadline);
   const byPid = new Map(rows.map(row => [row.pid, row]));
   const claims = new Map<number, symbol>();
