@@ -2,8 +2,8 @@
 id: T-561
 kind: task
 title: A verify that fell back to local keeps waiting for the local slot after remote slots free up
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ blocked_by: []
 topic: topic-732
 branch: t/T-561-a-verify-that-fell-back-to-local-keeps
 created: 2026-10-16T01:25:55.841Z
-updated: 2026-10-20T10:50:16.724Z
+updated: 2026-10-20T11:03:01.175Z
+closed: 2026-10-20T11:03:01.175Z
 ---
 
 ## Summary
@@ -27,6 +28,7 @@ On 2026-10-16 at about 01:24Z, `cland verify queue` showed T-523's and T-548's v
   - done: impl-561 · 2026-10-20T10:22:41.812Z
   - verified: rev-26 [reviewer] · run rev-20261020-561-final-1 · 2026-10-20T10:30:16.018Z · commit 335ff737ca60c619a7d8539207419a34cab1d310
   - verified: rev-26 [reviewer] · run rev-20261020-561-final-2 · 2026-10-20T10:48:24.531Z · commit fbaff1f7cc8627a4897f89c8662959ef67c01eca
+  - verified: rev-26 [reviewer] · run rev-20261020-561-final-3 · 2026-10-20T10:58:12.660Z · commit b4a18abd3506f1b3a7932e45c3abfb885b7b6ba1
 - [x] C2. A test fills the remote budget, submits a no-flag verify (local fallback, waiting behind a local holder), then frees one remote slot, and sees the verify admitted remotely.
   - done: impl-561 · 2026-10-20T10:22:42.709Z
   - verified: rev-26 [reviewer] · run rev-20261020-561-source-2 · 2026-10-20T10:23:08.091Z · commit 335ff737ca60c619a7d8539207419a34cab1d310
@@ -34,6 +36,7 @@ On 2026-10-16 at about 01:24Z, `cland verify queue` showed T-523's and T-548's v
   - verified: rev-26 [reviewer] · run rev-20261020-561-source-3 · 2026-10-20T10:40:22.650Z · commit fbaff1f7cc8627a4897f89c8662959ef67c01eca
   - verified: rev-26 [reviewer] · run rev-20261020-561-final-2 · 2026-10-20T10:48:24.531Z · commit fbaff1f7cc8627a4897f89c8662959ef67c01eca
   - verified: rev-26 [reviewer] · run rev-20261020-561-source-4 · 2026-10-20T10:50:16.723Z · commit b4a18abd3506f1b3a7932e45c3abfb885b7b6ba1
+  - verified: rev-26 [reviewer] · run rev-20261020-561-final-3 · 2026-10-20T10:58:12.660Z · commit b4a18abd3506f1b3a7932e45c3abfb885b7b6ba1
 
 ## Comments
 
@@ -138,3 +141,26 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards: no findings. Coordinator 88d40e7d authorizes dev merge; sole manual skill metadata conflict retains every parent entry, including T-561/T-959, with dictionary-guard instruction and fallback paragraph intact. Imported own-property dispatch/protocol checks retain reclaim handling. Spec: scheduler/accounting regression and both role-clause sources are byte-identical to fbaff1f7; eligibility/order/explicit-local/publication recovery retained. C2 source renewed. A-7516–A-7518 preserve current-head local clauses 27/27, typecheck/provenance lint exit 0 and default QA 7383/7680 (297 reserve headroom). A-7522 records audit. C1/final pending a fresh accepted mode-free receipt at b4a18abd; prior A-7511 is stale for this changed head. Reviewer ran no tests or edits.
 
 Criteria: C2 verified.
+
+### impl-561 · 2026-10-20T10:57:36.182Z
+
+Same-head mode-free verify cf6d8764-d44d-4d57-be91-a5011b855de7 passed at b4a18abd3506f1b3a7932e45c3abfb885b7b6ba1. Linux x64 droplet c-8 lon1, Node v24.21.0 / Neovim v0.12.5; T0–T2 including Neovim, 2013 passed, 0 failed/cancelled/skipped. Task fallback ran all T2; T3 absent. Lint/duration diagnostics remain report-only: six missing baselines and suite-accounting duration regression 2.572 s → 3.983 s reported. Actual droplet lifetime 378 s, cost $0.0262. Durable log A-7532; Reviewer received this same-head result directly.
+
+### rev-26 · 2026-10-20T10:58:12.660Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-561-final-3
+commit: b4a18abd3506f1b3a7932e45c3abfb885b7b6ba1
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards: no findings. A-7532 pins reviewed head and host check; enforcing dictionary/static guards green, existing test lint/budgets/ratchet report-only. Six missing baselines/incomplete T3 timing basis disclosed. Clause T1 27/27 pass; accounting 13/13, existing 50-acquirer case 2.098442 s fits retained 2.792889 s allowance. Own new cases all <2 s. Spec: accepted cf6d8764 at b4a18abd exits 0, 2013/2013 passed, no fail/skip/cancel. Live/restart/failed-notice-restart reclaim cases and five repetitions each pass (max .384912 s), preserving queue/local/publication assertions. Linux c-8 lon1, two workers, lifetime 378 s/$0.0262; T1/all T2 fallback includes Neovim, T3 deferred/not claimed. C1/C2 verified. A-7533 records audit. Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-20T11:03:01.175Z
+
+Merged 224d45cc6101ef93ecb375b1309da0a99d4c090c onto dev.
