@@ -33,10 +33,10 @@ export async function sameProcess(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>,
 }
 
 /** Whether the row's process still runs: its pid is alive and, when its start time was recorded, started then. */
-export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env): Promise<boolean> {
+export async function processAlive(p: Pick<HarnessProcess, 'pid' | 'pidStarted'>, resumed: Resumed = work => work(), env: NodeJS.ProcessEnv = process.env, readStarted: (pid: number, resumed: Resumed) => Promise<string | null> = (pid, resumed) => processStarted(pid, undefined, resumed, undefined, env)): Promise<boolean> {
   if (p.pid === null || !pidAlive(p.pid)) return false;
   if (!p.pidStarted) return true;
-  const now = await processStarted(p.pid, undefined, resumed, undefined, env);
+  const now = await readStarted(p.pid, resumed);
   // `ps` failing for a live pid says nothing either way
   return resumed(() => now === null || now === p.pidStarted);
 }

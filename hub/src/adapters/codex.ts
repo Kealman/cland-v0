@@ -1060,7 +1060,7 @@ export class CodexAdapter implements HarnessAdapter {
         this.#tmpRun = yield* wait(tmpRunDir(resumed));
       const socket = p.harnessId ?? this.#socketPath(p.sessionId);
       if (!p.harnessSessionId)
-        return { found: false, reason: 'no thread id recorded' };
+        return { found: false, reason: 'no thread id recorded', alive: yield* wait(processAlive(p, resumed, this.#processEnv)) };
       const live: Live = this.#live.get(p.sessionId) ?? { p, client: null, connecting: null, state: 'unknown', eventSequence: 0, turnId: null, tokens: null, rateLimits: null };
       live.p = p;
       this.#live.set(p.sessionId, live);
@@ -1077,11 +1077,12 @@ export class CodexAdapter implements HarnessAdapter {
         } catch (err) {
           client?.close();
           if (!options.relaunch)
-            return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}` };
+            return { found: false, reason: `the app-server (pid ${p.pid}) does not answer for thread ${p.harnessSessionId}: ${err instanceof Error ? err.message : String(err)}`, alive: yield* wait(processAlive(p, resumed, this.#processEnv)) };
         }
       }
       else if (!options.relaunch) {
-        return { found: false, reason: (yield* wait(processAlive(p, options.resumed, this.#processEnv))) ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone` };
+        const alive = yield* wait(processAlive(p, resumed, this.#processEnv));
+        return { found: false, reason: alive ? `no socket at ${socket}` : p.pid !== null && pidAlive(p.pid) ? `pid ${p.pid} belongs to another process now` : `pid ${p.pid ?? '?'} is gone`, alive };
       }
       yield* wait(this.stop(p, options.resumed));
       this.#live.set(p.sessionId, live);

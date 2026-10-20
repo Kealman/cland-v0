@@ -570,7 +570,7 @@ export type FrameClient = {
   close: () => void;
 };
 
-export function frameClient(write: (line: string) => void, onData: (fn: (chunk: string) => void) => void, close: () => void, root?: string): FrameClient {
+export function frameClient(write: (line: string) => void, onData: (fn: (chunk: string) => void) => void, close: () => void, root?: string, observeProcesses = rememberResultProcesses): FrameClient {
   const frames: Array<Record<string, unknown>> = [];
   const results = new Map<string, (f: Record<string, unknown>) => void>();
   const waiters: Array<{ predicate: (f: Record<string, unknown>) => boolean; resolve: (f: Record<string, unknown>) => void }> = [];
@@ -613,7 +613,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
         }, timeoutMs);
         results.set(id, (f) => {
           clearTimeout(timer);
-          rememberResultProcesses(f, root);
+          observeProcesses(f, root);
           resolve(f as { ok: boolean; value?: unknown; error?: string });
         });
         send({ ...frame, id });
@@ -636,7 +636,7 @@ export function frameClient(write: (line: string) => void, onData: (fn: (chunk: 
 }
 
 /** A UI client on the daemon's Unix socket, welcomed with the project's secret. */
-export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'socket' | 'secret' | 'root'>, client = 'ui'): Promise<FrameClient> {
+export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'socket' | 'secret' | 'root'>, client = 'ui', observeProcesses = rememberResultProcesses): Promise<FrameClient> {
   const socket = createConnection(discovery.socket);
   await new Promise<void>((resolve, reject) => {
     socket.once('connect', resolve);
@@ -649,6 +649,7 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
     (fn) => socket.on('data', fn),
     () => socket.destroy(),
     discovery.root,
+    observeProcesses,
   );
   onCleanup(t, () => ui.close());
   ui.send({ type: 'hello', protocol: 2, secret: discovery.secret, client });

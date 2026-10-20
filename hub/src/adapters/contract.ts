@@ -177,7 +177,13 @@ export type Interpretation = { limitHit?: { reason: string; resetsAt?: string };
 /** The frame an in-session bridge receives: submit this message as a turn, then confirm it. */
 export type InjectFrame = { type: 'inject'; session: string; message: string; text: string };
 
-export type ResumeResult = { found: true; process: HarnessProcess; state: SessionState } | { found: false; reason: string };
+export type ResumeResult = { found: true; process: HarnessProcess; state: SessionState } | {
+  found: false;
+  reason: string;
+  /** Native discovery failed, but the recorded process remains alive. Keep its row and supervision;
+   * this is not proof of native conversation identity and never authorizes a signal. */
+  alive?: boolean;
+};
 
 export interface HarnessAdapter {
   readonly harness: string;

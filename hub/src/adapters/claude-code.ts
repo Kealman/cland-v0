@@ -1,5 +1,6 @@
 import { harnessBinary } from '../doctor/harnesses.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
+import { processAlive } from './processes.ts';
 // The Claude Code adapter (spec 4.3, research `harness-surfaces` §1). Claude Code has no server a host can
 // join; everything comes from inside each session or from its own CLI:
 //
@@ -696,8 +697,14 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
         return { found: true, process, state: stateOfAgent(entry) };
       }
       this.#unwatch(p.sessionId);
-      if (!options.relaunch)
-        return { found: false, reason: entry ? 'listed by claude agents, but its process is gone' : 'not listed by claude agents --json' };
+      if (!options.relaunch) {
+        // A directory miss or an unavailable start probe is not proof of exit. A contradictory native
+        // identity at this PID *is* proof that it is not ours, even with a same-second start stamp.
+        const conflicting = entries.some(e => e.pid === p.pid && e !== entry && (e.sessionId !== undefined || e.id !== undefined));
+        const readStarted = entry && p.pid === pid ? async () => identity : this.#processStarted;
+        const alive = !conflicting && (yield* wait(processAlive(p, resumed, this.#processEnv, readStarted)));
+        return { found: false, reason: entry ? 'listed by claude agents, but its process identity could not be verified' : 'not listed by claude agents --json', alive };
+      }
       yield* wait(this.stop(p, options.resumed));
       const process = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv, name: p.name, harness: p.harness, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null }, true, p.effort ?? null, resumed, undefined, options.authorize ?? (() => {}), options.policy?.permissions ?? null));
       return { found: true, process, state: 'unknown' };

@@ -96,6 +96,8 @@ const pidAlive = (pid: number): boolean => {
 
 /** One watched session: its server's client, the event subscription, and what the stream says. */
 type Watch = { process: HarnessProcess; client: OpenCodeClient; tracker: SessionTracker; children: Map<string, SessionTracker>; abort: AbortController; inbox: Map<string, string[]>; turnMessages: Set<string> };
+/** PID supervision survives missing native connection material. One attempt per session may read it. */
+type WatchTicket = { process: HarnessProcess; pending: boolean; warned: boolean };
 
 export class OpenCodeAdapter implements HarnessAdapter {
   readonly harness = OPENCODE;
@@ -114,7 +116,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
   readonly #processEnv: NodeJS.ProcessEnv;
   readonly #clandDir: string;
   readonly #watched = new Map<string, Watch>();
-  readonly #watching = new Map<string, object>();
+  readonly #watching = new Map<string, WatchTicket>();
   readonly #usage = new Map<string, SessionUsage>();
   #timer: ClockTimer | null = null;
   #closed = false;
@@ -253,6 +255,8 @@ export class OpenCodeAdapter implements HarnessAdapter {
 
   /** The session was renamed: its files (config, password, log) move with it, so attach and resume find them. */
   renamed(p: HarnessProcess, from: string): void {
+    const ticket = this.#watching.get(p.sessionId);
+    if (ticket) ticket.process = { ...ticket.process, name: p.name };
     const source = this.#files(from).dir;
     const target = this.#files(p.name).dir;
     if (!existsSync(source) || existsSync(target)) return;
@@ -327,27 +331,34 @@ export class OpenCodeAdapter implements HarnessAdapter {
   // ---------------------------------------------------------------- watch: the event stream and liveness
 
   watch(p: HarnessProcess): void {
+    if (this.#closed) return;
     this.#unwatch(p.sessionId);
-    const ticket = {};
+    const ticket: WatchTicket = { process: p, pending: false, warned: false };
     this.#watching.set(p.sessionId, ticket);
-    void this.#watch(p, ticket);
-  }
-
-  async #watch(p: HarnessProcess, ticket: object): Promise<void> {
-    if (!p.harnessId || !p.harnessSessionId) return;
-    const password = await readPassword(this.#files(p.name));
-    if (this.#closed || this.#watching.get(p.sessionId) !== ticket) return;
-    if (!password) {
-      this.#host.log({ event: 'opencode-no-password', session: p.name });
-      return;
-    }
-    const w: Watch = { process: p, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children: new Map(), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
-    this.#watched.set(p.sessionId, w);
-    void this.#subscribe(w);
     if (!this.#timer) {
       this.#timer = this.#clock.setInterval(() => this.#checkPids(), this.#pollMs);
       this.#timer.unref();
     }
+    void this.#watch(ticket);
+  }
+
+  async #watch(ticket: WatchTicket): Promise<void> {
+    const p = ticket.process;
+    if (ticket.pending || this.#closed || this.#watching.get(p.sessionId) !== ticket || this.#watched.has(p.sessionId)) return;
+    if (!p.harnessId || !p.harnessSessionId) return;
+    ticket.pending = true;
+    try {
+      const password = await readPassword(this.#files(p.name));
+      if (this.#closed || this.#watching.get(p.sessionId) !== ticket) return;
+      if (!password) {
+        if (!ticket.warned) this.#host.log({ event: 'opencode-no-password', session: ticket.process.name });
+        ticket.warned = true;
+        return;
+      }
+      const w: Watch = { process: ticket.process, client: new OpenCodeClient(p.harnessId, password), tracker: new SessionTracker(p.harnessSessionId), children: new Map(), abort: new AbortController(), inbox: new Map(), turnMessages: new Set() };
+      this.#watched.set(p.sessionId, w);
+      void this.#subscribe(w);
+    } finally { ticket.pending = false; }
   }
 
   #apply(w: Watch, change: Change, at: number): void {
@@ -490,7 +501,14 @@ export class OpenCodeAdapter implements HarnessAdapter {
   }
 
   #checkPids(): void {
-    for (const w of [...this.#watched.values()]) if (w.process.pid !== null && !pidAlive(w.process.pid)) this.#gone(w, `pid ${w.process.pid} is gone`);
+    for (const ticket of [...this.#watching.values()]) {
+      const p = ticket.process;
+      if (this.#stopping.has(p.sessionId)) continue;
+      if (p.pid !== null && !pidAlive(p.pid)) {
+        this.#unwatch(p.sessionId);
+        this.#host.exited(p.sessionId, `pid ${p.pid} is gone`);
+      } else if (!this.#watched.has(p.sessionId)) void this.#watch(ticket);
+    }
   }
 
   #gone(w: Watch, detail: string): void {
@@ -507,7 +525,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
       w.abort.abort();
       this.#watched.delete(sessionId);
     }
-    if (this.#watched.size === 0 && this.#timer) {
+    if (this.#watching.size === 0 && this.#timer) {
       this.#clock.clearInterval(this.#timer);
       this.#timer = null;
     }
@@ -561,7 +579,7 @@ export class OpenCodeAdapter implements HarnessAdapter {
         }
       }
       if (!options.relaunch)
-        return { found: false, reason };
+        return { found: false, reason, alive: yield* wait(processAlive(p, resumed, this.#processEnv)) };
       yield* wait(this.stop(p, options.resumed));
       const process_ = yield* wait(this.#launch({ account: p.account ?? null, accountEnv: p.accountEnv ?? null, name: p.name, role: p.role, model: p.model, cwd: p.cwd, sessionId: p.sessionId, harnessSessionId: p.harnessSessionId, item: p.item ?? null, effort: p.effort ?? null, ...options.policy }, true, resumed, undefined, options.authorize));
       return { found: true, process: process_, state: 'unknown' as SessionState };

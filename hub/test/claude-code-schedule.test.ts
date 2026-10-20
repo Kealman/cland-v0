@@ -58,6 +58,44 @@ function memoryHost(): AdapterHost {
 const request = (name: string) => ({ name, cwd: '/fixture', role: null, model: null });
 const options = (clock: FakeClock) => ({ clock, processStarted: async () => 'fixture-start', bin: 'fixture-claude', env: { HOME: '/fixture/home', CLAUDE_CONFIG_DIR: '/fixture/claude' } });
 
+test('Claude discovery misses retain liveness without accepting a conflicting native or process identity', async t => {
+  const native = cli(t);
+  native.knownPid = true;
+  const clock = new FakeClock();
+  let started: string | null = 'fixture-start';
+  const adapter = new ClaudeCodeAdapter(memoryHost(), { ...options(clock), agentsMs: 1, processStarted: async () => started });
+  t.after(() => adapter.close());
+  const p = await adapter.spawn(request('recover'));
+  assert.equal(p.pid, process.pid, 'only observe the test process; never signal it');
+  assert.equal(p.pidStarted, 'fixture-start');
+  const original = native.sessions[0]!;
+  native.sessions.length = 0;
+  const probe = async () => {
+    await clock.advance(1); // Expire the prior native directory snapshot.
+    const result = adapter.resume(p);
+    await yieldIO();
+    await clock.advance(1);
+    return result;
+  };
+  const missing = await probe();
+  assert.equal(missing.found, false);
+  if (!missing.found) assert.equal(missing.alive, true, 'a missing listing cannot discard a matching live PID');
+  native.sessions.push(original);
+  started = null;
+  const unavailable = await probe();
+  assert.equal(unavailable.found, false);
+  if (!unavailable.found) assert.equal(unavailable.alive, true, 'an unavailable identity probe is not an exit');
+  started = 'different-start';
+  const reused = await probe();
+  assert.equal(reused.found, false);
+  if (!reused.found) assert.equal(reused.alive, false, 'an observed start mismatch is never retained');
+  started = 'fixture-start';
+  native.sessions[0] = { ...original, id: 'other-background', sessionId: 'other-session' };
+  const conflicting = await probe();
+  assert.equal(conflicting.found, false);
+  if (!conflicting.found) assert.equal(conflicting.alive, false, 'another native session at the same PID cannot match by a same-second stamp');
+});
+
 test('Claude discovery and watch share the default schedule across adapter restart; unknown-pid stop ends the watch', async t => {
   const native = cli(t);
   const clock = new FakeClock();

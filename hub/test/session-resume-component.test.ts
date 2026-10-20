@@ -5,9 +5,68 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { connectUi, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { fakeHarness, FAKE_FLAVOURS, type FakeHarness } from './fakes/harness.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
 
 type Resumed = { found: boolean; process: HarnessProcessView; role: string | null; claim: string | null; notes: string[]; reason?: string; fresh?: { brief: string | null } };
+
+test('restart keeps an undiscoverable live harness tracked and stoppable for every flavour', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const fakePids = FAKE_FLAVOURS.map((_, i) => 400 + i);
+  const observedPids = new Set<number>();
+  // These identities belong to the in-process adapter, so ownership observation must use its
+  // synthetic facts too. Native UI clients retain the default OS-backed teardown collector.
+  const observeProcesses = (value: unknown): void => {
+    if (!value || typeof value !== 'object') return;
+    if ('pid' in value && typeof value.pid === 'number') {
+      assert.ok(fakePids.includes(value.pid), `unexpected process identity ${value.pid}`);
+      observedPids.add(value.pid);
+    }
+    for (const child of Object.values(value)) if (typeof child === 'object') observeProcesses(child);
+  };
+  const first = await projectHub(t, root, {}, { clock, adapters: FAKE_FLAVOURS.map((flavour, i) => host => {
+    const fake = fakeHarness(flavour, { host, clock });
+    const spawn = fake.spawn.bind(fake);
+    fake.spawn = async (...args) => ({ ...await spawn(...args), pid: fakePids[i]!, pidStarted: 'fixture-owned-process' });
+    return fake;
+  }) });
+  const ui = await connectUi(t, first.discovery, 'ui', observeProcesses);
+  const launched: HarnessProcessView[] = [];
+  for (const harness of FAKE_FLAVOURS) {
+    const result = await ui.request({ type: 'session.launch', name: harness, harness });
+    assert.equal(result.ok, true, result.error);
+    launched.push((result.value as { process: HarnessProcessView }).process);
+  }
+  ui.close();
+  await first.stop();
+  const fakes: FakeHarness[] = [];
+  const restarted = await projectHub(t, root, {}, { clock, adapters: FAKE_FLAVOURS.map(flavour => host => {
+    const fake = fakeHarness(flavour, { host, clock });
+    // The native directory/socket cannot recover its conversation, but its process survived.
+    fake.resume = async () => ({ found: false, reason: 'native discovery unavailable', alive: true });
+    fakes.push(fake);
+    return fake;
+  }) });
+  const next = await connectUi(t, restarted.discovery, 'ui', observeProcesses);
+  // Serialize with startup recovery before inspecting the persisted rows.
+  for (const before of launched) {
+    const result = await next.request({ type: 'session.resume', session: before.name });
+    assert.equal(result.ok, true, result.error);
+    const after = result.value as Resumed;
+    assert.equal(after.found, false, 'native discovery remains unavailable');
+    assert.equal(after.reason, 'native discovery unavailable');
+    assert.equal(after.process.status, 'running', 'a discovery miss is not a process exit');
+    assert.equal(after.process.sessionId, before.sessionId);
+    assert.equal(after.process.pid, before.pid);
+    assert.ok(after.process.pid, 'the recorded fake PID survives recovery');
+    const stopped = await next.request({ type: 'session.stop', session: before.name });
+    assert.equal(stopped.ok, true, stopped.error);
+    assert.equal((stopped.value as { process: HarnessProcessView }).process.status, 'stopped');
+    assert.equal(fakes.find(f => f.harness === before.harness)!.stops.at(-1)?.sessionId, before.sessionId);
+  }
+  assert.deepEqual([...observedPids].sort(), fakePids, 'all three synthetic ownership facts were observed');
+});
 
 test('Claude resumes take permission policy from the current roles file', { timeout: 2000 }, async t => {
   const root = await tempProject(t);

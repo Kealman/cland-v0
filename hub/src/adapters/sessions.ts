@@ -1213,13 +1213,19 @@ export class Sessions {
     };
     const settled = resumed(() => {
       if (!r.found) {
-        if (p.status === 'running') this.#exited(p.sessionId, r.reason);
+        const current = row();
+        if (!relaunch && r.alive && current.status === 'running') {
+          // A missing native listing/socket is not an OS exit. Keep the original PID identity so
+          // reconnect and explicit stop can recover it; stop still verifies ownership itself.
+          adapter.watch(current);
+          this.#log({ event: 'session-resume-unavailable', session: current.name, harness: current.harness, pid: current.pid, reason: r.reason });
+        } else if (p.status === 'running') this.#exited(p.sessionId, r.reason);
         if (reservation && desiredRole) {
           this.#core.releaseLaunchRole(row().name, desiredRole, reservation.previous, 'resume-failed', p.sessionId, reservation.previousSessionId);
           this.#table.update(row().name, { role: desiredRole });
         }
-        const current = row();
-        return { answer: { found: false, reason: r.reason, process: this.view(current), ...this.#resumeWork(current, desiredRole), ...(relaunch ? { fresh: { brief: current.launchBrief ?? null } } : {}) } };
+        const settled = row();
+        return { answer: { found: false, reason: r.reason, process: this.view(settled), ...this.#resumeWork(settled, desiredRole), ...(relaunch ? { fresh: { brief: settled.launchBrief ?? null } } : {}) } };
       }
       const current = row();
       const cached = r.process.pid === current.pid ? current.pidStarted : null;
@@ -1252,7 +1258,7 @@ export class Sessions {
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }
 
-  /** At the hub's start: every process the table says runs is re-found or marked gone. */
+  /** At startup, recover native connections or retain live recorded processes for reconnect/stop. */
   async resumeAll(): Promise<void> {
     for (const entry of [...this.#pendingStops.values()]) {
       try { await this.#stopFailedLaunch(entry); }

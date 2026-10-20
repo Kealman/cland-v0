@@ -3,11 +3,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { scriptedOpenCode } from './fakes/scripted-opencode.ts';
+import { readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { eventually } from './harness.ts';
 import type { Message, SessionUsage } from '../src/protocol.ts';
 
 const command = 'touch approved && echo done';
 const failure = 'impl [Implementer]: its turn failed: Upstream request failed: Endpoint is unavailable';
+
+test('a missing OpenCode password keeps PID supervision and retries native watch after restoration', { timeout: 2000 }, async t => {
+  const f = await scriptedOpenCode(t);
+  const pid = 424242;
+  let alive = true;
+  const kill = process.kill;
+  t.mock.method(process, 'kill', (target: number, signal?: NodeJS.Signals | number) => {
+    if (target !== pid) return kill(target, signal);
+    assert.equal(signal, 0, 'the fake PID is only observed, never signalled');
+    if (alive) return true;
+    throw Object.assign(new Error('fake process exited'), { code: 'ESRCH' });
+  });
+  const p = { ...f.process, pid };
+  const passwordFile = join(f.root, '.cland/opencode', p.name, 'password');
+  const password = await readFile(passwordFile, 'utf8');
+  await rm(passwordFile);
+  const missing = () => f.log().then(log => log.split('\n').filter(line => line.includes('"event":"opencode-no-password"')).length);
+  const before = await missing();
+  f.adapter.watch(p);
+  await eventually('missing-password lookup completed', async () => await missing() > before || undefined, 500);
+  const subscriptions = f.native.reconnected;
+  await writeFile(passwordFile, password);
+  await f.clock.advance(5000);
+  await eventually('restored password reconnects without an explicit resume', () => f.native.reconnected > subscriptions || undefined, 500);
+  f.markStates(); f.native.start();
+  await f.state('busy');
+  assert.equal((await f.row()).status, 'running');
+
+  await rm(passwordFile);
+  const again = await missing();
+  f.adapter.watch(p);
+  await eventually('second missing-password lookup completed', async () => await missing() > again || undefined, 500);
+  alive = false;
+  await f.clock.advance(5000);
+  assert.equal((await f.row()).status, 'exited', 'PID exit is observed without an HTTP/SSE watcher');
+  const exits = (await f.records()).filter(e => e.event === 'harness-exited').length;
+  await f.clock.advance(5000);
+  assert.equal((await f.records()).filter(e => e.event === 'harness-exited').length, exits, 'the dead PID is unwatched once');
+});
 
 test('new child approval events take precedence over held reconnect snapshots', { timeout: 2000 }, async t => {
   const f = await scriptedOpenCode(t);
