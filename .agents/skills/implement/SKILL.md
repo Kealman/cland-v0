@@ -3,7 +3,7 @@ name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 metadata:
   origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950)"
+  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966)"
 ---
 
 Implement the work described by the user in the spec or tickets.
@@ -27,6 +27,8 @@ Commit your work to the current branch.
 In a hub session, use the claimed item's existing topic; if it has none, open it with `cland topic create "<title>" --item T-<n> --json` or the `topic.create` tool. An Implementer may open only its own item's topic.
 
 In a hub session, mark every acceptance criterion done with `cland task criterion T-<n> done C<n>` before requesting the final review. Read `task view` for the criterion ids. Done marks are separate from Reviewer/QA verification; ready needs both. If only done marks are missing, the hub notices the claimant in the item topic, repeating only when that claimant’s missing set changes. A replacement claimant receives its own first notice.
+
+The `send` tool accepts `to` as one recipient string or an array of strings (`string | string[]`); for review, use `to: "reviewer"` or `to: ["reviewer"]`. Other shapes are validation errors; omitted `to` or `[]` addresses the human.
 
 In a hub session, set your claimed item to `review` and send `review request T-<n>` to `reviewer` in the item's topic with the committed branch/head and criteria. Inspect the send outcomes: `resolvedTo` names the selected Reviewer; a `queued` outcome waiting for the next free verifier means the hub will assign it automatically and send you an assignment or refusal notice. Wait for that notice instead of resending the same request. A refusal names the retry rule. When no verifier is live, report the staffing blocker to `lead T-<n>` so it can launch one; the queued request remains pending.
 

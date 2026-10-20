@@ -1,4 +1,5 @@
 import { PublishError } from '../territory-publish.ts';
+import { sendRecipients } from '../send-input.ts';
 import { defaultConfig } from '../init/config.ts';
 import { DevT3Search } from './dev-t3-search.ts';
 import { DevT3Probes } from './dev-t3-probe.ts';
@@ -452,6 +453,13 @@ export class Dispatcher {
    * a frame that is no tool the table knows goes on to its own "unknown request" answer.
    */
   #permitted(connection: Caller, frame: Record<string, unknown>, peer: Peer, answer = true): boolean {
+    if (frame.type === 'send') {
+      try { frame.to = sendRecipients(frame.to); }
+      catch (error) {
+        if (answer) peer.send(Dispatcher.#failure(String(frame.id), error));
+        return false;
+      }
+    }
     if (frame.type === 'send' && frame.kind !== 'request' && (frame.request !== undefined || frame.subject !== undefined)) {
       const reason = 'request and subject require kind: request; remove them from this send';
       this.#log({ event: 'send-refused', session: connection.name, reason });

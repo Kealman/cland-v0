@@ -16,6 +16,7 @@ import type { Clock } from '../hub/clock.ts';
 //   CLAND_HUB_RECONNECT_MS, CLAND_HUB_KEEPALIVE_MS, CLAND_HUB_REQUEST_TIMEOUT_MS,
 //   CLAND_HUB_WELCOME_TIMEOUT_MS   timings, for tests
 import { subscriptionInput } from '../subscriptions.ts';
+import { sendRecipients, sendToSchema } from '../send-input.ts';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -72,11 +73,11 @@ const TOOLS = [
   {
     name: 'send',
     description:
-      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. Exception: any session may send kind request to the human, with request review, qa or handover and a known subject (item, artifact or session). request and subject are forbidden on other kinds. With `to` it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another). A lead\'s `review request T-<n>` to `reviewer` or `qa request T-<n>` to `qa` in Agents or the item topic reaches one live verifier: the previous verifier, otherwise a free holder. The outcome\'s `resolvedTo` names that session. If none is eligible, `queued` waits for the next free verifier; the hub delivers automatically and sends the lead an assignment or refusal notice. Wait instead of resending. With none live, report the staffing blocker so one can be launched.',
+      'Send a message into a topic. Without `to` it is for the human, in the topic (General unless `topic` names another: reply in the topic an event came from); the Coordinator and Aides write to the human anywhere, another role only in a topic where the latest message of the human mentioned it. Exception: any session may send kind request to the human, with request review, qa or handover and a known subject (item, artifact or session). request and subject are forbidden on other kinds. With `to` (`string | string[]`: one recipient string or an array of strings) it goes to other sessions — session names, `all`, globs over names (`impl-*`), or roles (`reviewer`), exactly as names appear in `from` of inbound events (Aides use names only) — and is recorded in the topic (Agents unless `topic` names another). A lead\'s `review request T-<n>` to `reviewer` or `qa request T-<n>` to `qa` in Agents or the item topic reaches one live verifier: the previous verifier, otherwise a free holder. The outcome\'s `resolvedTo` names that session. If none is eligible, `queued` waits for the next free verifier; the hub delivers automatically and sends the lead an assignment or refusal notice. Wait instead of resending. With none live, report the staffing blocker so one can be launched.',
     inputSchema: {
       type: 'object',
       properties: {
-        to: { type: 'array', items: { type: 'string' }, description: 'Session names, globs, roles, `all` or `lead T-<n>` (the nearest lead up the open item chain, skipping the sender’s own claims, then Coordinator); omit to write to the human' },
+        to: { ...sendToSchema, description: 'string | string[]: one recipient string or an array of strings. Session names, globs, roles, `all` or `lead T-<n>` (the nearest lead up the open item chain, skipping the sender’s own claims, then Coordinator); omit or use [] to write to the human. Malformed values are validation errors.' },
         text: { type: 'string', description: 'The message' },
         kind: { type: 'string', enum: SEND_KINDS, description: 'progress waits for the next turn in a digest; report (default), question and decision start a turn' },
         request: { type: 'string', enum: ['review', 'qa', 'handover'], description: 'Required with kind request, addressed only to the human; any session may send one' },
@@ -404,7 +405,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
         }
         case 'send': {
           if (args.kind !== undefined && !isSendKind(args.kind)) return text({ ok: false, error: 'send kind must be progress, report, question, decision or request' }, true);
-          const to = Array.isArray(args.to) ? args.to.filter((t): t is string => typeof t === 'string') : [];
+          const to = sendRecipients(args.to);
           if (typeof args.text !== 'string') return text({ ok: false, error: 'send needs `text`' }, true);
           const value = (await hub.request({
             type: 'send',

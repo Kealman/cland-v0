@@ -2,8 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { inProcessSpoke, projectHub, tempProject, waitForAbsence } from './harness.ts';
+import { connectUi, inProcessSpoke, projectHub, tempProject, waitForAbsence } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { dispatcherSpoke } from './validation-support.ts';
+import type { Message } from '../src/protocol.ts';
 
 test('MCP initialization reports the root package version served by the project hub', { timeout: 5000 }, async t => {
   const version = (JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string }).version;
@@ -58,4 +60,38 @@ test('closing an in-process channel disposes pending waits without exiting its h
   }
   assert.equal(exit.mock.callCount(), 0);
   assert.deepEqual(['end', 'close'].map(event => process.stdin.rawListeners(event)), stdinListeners);
+});
+
+test('MCP and direct spoke sends validate recipients before human-send permissions', async t => {
+  const root = await tempProject(t);
+  const { discovery, dispatcher } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const coord = await inProcessSpoke(t, { discover: true, cwd: root, name: 'coord', role: 'coordinator', sessionId: 'coord-id' });
+  const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', role: 'implementer', sessionId: 'impl-id' });
+  const direct = await dispatcherSpoke(t, dispatcher, root, 'impl', 'impl-id');
+  const ui = await connectUi(t, discovery);
+  const schema = (await impl.client.listTools()).tools.find(tool => tool.name === 'send')!.inputSchema;
+  assert.deepEqual((schema.properties!.to as { anyOf: unknown }).anyOf, [{ type: 'string' }, { type: 'array', items: { type: 'string' } }]);
+  type Result = { ok: boolean; error?: string; permission?: string; outcomes?: Array<{ outcome: string }> };
+  for (const [path, caller] of [['MCP', impl], ['direct', direct]] as const) {
+    for (const to of ['coordinator', ['coordinator']]) {
+      const text = `${path} ${JSON.stringify(to)}`;
+      const receipt = coord.waitForEvent(event => event.params.content === text);
+      const sent = await caller.call<Result>('send', { to, text });
+      assert.equal(sent.ok, true, JSON.stringify(sent));
+      assert.equal(sent.outcomes?.[0]?.outcome, 'delivered');
+      assert.equal((await receipt).params.meta?.to, 'coord');
+    }
+    for (const to of [42, {}, null, ['coordinator', 42]]) {
+      const result = await caller.call<Result>('send', { to, text: 'invalid recipient must not post' });
+      assert.equal(result.ok, false);
+      assert.equal(result.error, 'to must be a string or an array of strings');
+      assert.equal(result.permission, undefined);
+    }
+    for (const args of [{}, { to: [] }]) {
+      const result = await caller.call<Result>('send', { ...args, text: 'human send still needs permission' });
+      assert.equal(result.permission, 'send:human');
+    }
+  }
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal((history.value as { messages: Message[] }).messages.some(message => message.text === 'invalid recipient must not post'), false);
 });
