@@ -3,17 +3,17 @@ id: T-820
 kind: task
 title: Executor reconcile logs 'lease recovery deferred' every 10 minutes on a healthy hub
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-709
+branch: t/T-820-executor-reconcile-logs-lease-recovery
 created: 2026-10-18T20:24:17.977Z
-updated: 2026-10-19T06:23:22.785Z
+updated: 2026-10-20T09:42:08.690Z
 ---
 
 ## Summary

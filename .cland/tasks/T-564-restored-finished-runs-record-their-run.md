@@ -3,18 +3,18 @@ id: T-564
 kind: task
 title: Restored finished runs record their run time up to recovery, inflating runMs and queue ETAs
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - hub
   - tech-debt
 assignee: null
-parent: C-216
+parent: E-952
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T02:56:19.121Z
-updated: 2026-10-16T02:56:19.121Z
+updated: 2026-10-20T09:41:43.707Z
 ---
 
 ## Summary

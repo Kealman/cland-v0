@@ -3,18 +3,18 @@ id: T-552
 kind: task
 title: doctor's probe runner resolves before a timed-out child's close event
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - hub
   - tech-debt
 assignee: null
-parent: C-216
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-715
+branch: t/T-552-doctor-s-probe-runner-resolves-before-a
 created: 2026-10-16T00:33:56.971Z
-updated: 2026-10-16T00:33:56.971Z
+updated: 2026-10-20T09:42:21.959Z
 ---
 
 ## Summary

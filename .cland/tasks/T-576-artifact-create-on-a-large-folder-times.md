@@ -3,18 +3,18 @@ id: T-576
 kind: task
 title: artifact.create on a large folder times out at 10 s while the hub completes it, losing the result and inviting a duplicate publish
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
   - hub
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-710
+branch: t/T-576-artifact-create-on-a-large-folder-times
 created: 2026-10-16T06:13:36.210Z
-updated: 2026-10-16T06:13:36.210Z
+updated: 2026-10-20T09:42:11.511Z
 ---
 
 ## Summary

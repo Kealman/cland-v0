@@ -3,17 +3,17 @@ id: T-951
 kind: task
 title: The cland CLI has no `topic create`, so a shell-only session cannot open its item topic
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - needs-triage
 assignee: null
-parent: C-326
+parent: E-952
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-951-the-cland-cli-has-no-topic-create-so-a
 created: 2026-10-20T09:21:21.788Z
-updated: 2026-10-20T09:21:21.788Z
+updated: 2026-10-20T09:42:28.891Z
 ---
 
 ## Summary

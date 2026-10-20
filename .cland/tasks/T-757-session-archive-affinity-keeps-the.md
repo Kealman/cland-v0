@@ -3,19 +3,19 @@ id: T-757
 kind: task
 title: Session archive affinity keeps the earlier verifier item when consecutive holds share one heldAt instant
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
   - hub
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-713
+branch: t/T-757-session-archive-affinity-keeps-the
 created: 2026-10-17T22:01:23.815Z
-updated: 2026-10-17T22:01:23.815Z
+updated: 2026-10-20T09:42:20.441Z
 ---
 
 ## Summary

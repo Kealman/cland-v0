@@ -3,18 +3,18 @@ id: T-587
 kind: task
 title: A queued role-addressed QA request isn't delivered when the verifier goes idle
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
   - hub
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-712
+branch: t/T-587-a-queued-role-addressed-qa-request-isn-t
 created: 2026-10-16T10:42:55.641Z
-updated: 2026-10-16T12:11:20.213Z
+updated: 2026-10-20T09:42:14.542Z
 ---
 
 ## Summary

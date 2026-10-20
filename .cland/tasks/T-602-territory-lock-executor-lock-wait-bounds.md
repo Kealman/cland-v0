@@ -3,19 +3,19 @@ id: T-602
 kind: task
 title: territory-lock "executor lock wait bounds contention and names the lock and elapsed wait" passes 4/5 under the load gate on a droplet
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - needs-triage
   - hub
   - flaky
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-602-territory-lock-executor-lock-wait-bounds
 created: 2026-10-16T11:30:28.875Z
-updated: 2026-10-16T11:30:28.875Z
+updated: 2026-10-20T09:42:15.381Z
 ---
 
 ## Summary

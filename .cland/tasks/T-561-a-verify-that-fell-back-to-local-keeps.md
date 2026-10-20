@@ -3,19 +3,19 @@ id: T-561
 kind: task
 title: A verify that fell back to local keeps waiting for the local slot after remote slots free up
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - bug
   - hub
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T01:25:55.841Z
-updated: 2026-10-16T01:25:55.841Z
+updated: 2026-10-20T09:41:43.746Z
 ---
 
 ## Summary

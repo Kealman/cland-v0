@@ -3,17 +3,17 @@ id: T-949
 kind: task
 title: Periodic dev T3 skips a run when only tracker files moved since the last one (compare the verification tree, not the head)
 state: open
-status: backlog
+status: planned
 size: XS
 labels:
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-952
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T08:36:43.941Z
-updated: 2026-10-20T08:36:43.941Z
+updated: 2026-10-20T09:41:43.819Z
 ---
 
 ## Summary

@@ -3,19 +3,19 @@ id: T-768
 kind: task
 title: "Hub CPU under a session burst: cut repeated SQLite statement preparation and per-session presence/visibility queries"
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - hub
   - performance
   - ready-for-agent
 assignee: null
-parent: C-216
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-717
+branch: t/T-768-hub-cpu-under-a-session-burst-cut
 created: 2026-10-18T03:10:12.614Z
-updated: 2026-10-18T03:10:12.614Z
+updated: 2026-10-20T09:42:32.109Z
 ---
 
 ## Summary

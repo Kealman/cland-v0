@@ -3,18 +3,18 @@ id: T-942
 kind: task
 title: Find the process that put the executor credential in argv (T-492 C3)
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
   - security
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
 topic: null
-branch: null
+branch: t/T-942-find-the-process-that-put-the-executor
 created: 2026-10-20T06:21:21.658Z
-updated: 2026-10-20T06:21:21.658Z
+updated: 2026-10-20T09:42:26.679Z
 ---
 
 ## Summary

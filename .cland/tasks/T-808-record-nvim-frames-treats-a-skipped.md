@@ -3,18 +3,18 @@ id: T-808
 kind: task
 title: record-nvim-frames treats a skipped Neovim file as a success and can replace the catalog with zero recordings
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
 regression_of: T-709
-topic: null
-branch: null
+topic: topic-716
+branch: t/T-808-record-nvim-frames-treats-a-skipped
 created: 2026-10-18T14:48:39.460Z
-updated: 2026-10-18T14:48:39.460Z
+updated: 2026-10-20T09:42:25.004Z
 ---
 
 ## Summary

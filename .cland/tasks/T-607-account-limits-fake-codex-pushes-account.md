@@ -3,19 +3,19 @@ id: T-607
 kind: task
 title: account-limits "fake Codex pushes account windows and sparse per-model updates while reads are held" counts 6 where 4 are expected on a loaded Mac
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - needs-triage
   - hub
   - flaky
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-718
+branch: t/T-607-account-limits-fake-codex-pushes-account
 created: 2026-10-16T12:29:35.335Z
-updated: 2026-10-16T12:29:35.335Z
+updated: 2026-10-20T09:42:34.001Z
 ---
 
 ## Summary

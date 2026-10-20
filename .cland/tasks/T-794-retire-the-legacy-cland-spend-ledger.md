@@ -3,17 +3,17 @@ id: T-794
 kind: task
 title: Retire the legacy ~/.cland spend ledger write-through once every project hub runs the new state directory
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-326
+parent: E-952
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T09:36:59.772Z
-updated: 2026-10-18T09:36:59.772Z
+updated: 2026-10-20T09:41:43.513Z
 ---
 
 ## Summary

@@ -3,19 +3,19 @@ id: T-804
 kind: task
 title: "init-next.test.ts (T2) records a report-only execFile trip: its initIn CLI helper lacks the scoped CLI-child exemption"
 state: open
-status: backlog
+status: in progress
 size: XS
 labels:
   - ready-for-agent
 assignee: null
-parent: C-326
+parent: E-952
 blocked_by: []
 regression_of: T-640
 found_by: review
 topic: null
-branch: null
+branch: t/T-804-init-next-test-ts-t2-records-a-report
 created: 2026-10-18T13:33:40.432Z
-updated: 2026-10-18T13:33:40.432Z
+updated: 2026-10-20T09:42:24.175Z
 ---
 
 ## Summary

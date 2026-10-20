@@ -3,20 +3,20 @@ id: T-570
 kind: task
 title: tracker-load 20-session, 200k-event case passes only 4/5 under the load gate on a droplet
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - bug
   - hub
   - flaky
 assignee: null
-parent: C-326
+parent: E-952
 blocked_by: []
 regression_of: T-548
 topic: null
-branch: null
+branch: t/T-570-tracker-load-20-session-200k-event-case
 created: 2026-10-16T04:34:57.365Z
-updated: 2026-10-16T13:23:47.564Z
+updated: 2026-10-20T09:42:19.807Z
 ---
 
 ## Summary

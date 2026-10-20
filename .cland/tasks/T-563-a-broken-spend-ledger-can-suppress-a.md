@@ -3,18 +3,18 @@ id: T-563
 kind: task
 title: A broken spend ledger can suppress a sharded close run's parent receipt after every shard has reported
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - hub
   - tech-debt
 assignee: null
-parent: C-216
+parent: E-952
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T02:49:50.553Z
-updated: 2026-10-16T02:49:50.553Z
+updated: 2026-10-20T09:41:43.783Z
 ---
 
 ## Summary

@@ -3,17 +3,17 @@ id: T-807
 kind: task
 title: Headless Neovim test fixtures and their stub hubs outlive a removed task worktree for hours; doctor should find fixture processes whose worktree is gone
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-216
+parent: E-952
 blocked_by: []
-topic: null
-branch: null
+topic: topic-714
+branch: t/T-807-headless-neovim-test-fixtures-and-their
 created: 2026-10-18T14:25:18.084Z
-updated: 2026-10-18T14:25:18.084Z
+updated: 2026-10-20T09:42:21.036Z
 ---
 
 ## Summary

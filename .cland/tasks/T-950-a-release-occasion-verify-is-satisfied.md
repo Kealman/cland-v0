@@ -3,17 +3,17 @@ id: T-950
 kind: task
 title: A release-occasion verify is satisfied from the cache of a local macOS stage run instead of running sharded on droplets
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-325
+parent: E-952
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T09:17:09.199Z
-updated: 2026-10-20T09:17:09.199Z
+updated: 2026-10-20T09:41:43.857Z
 ---
 
 ## Summary
