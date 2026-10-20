@@ -199,7 +199,7 @@ item, reason and expiry required below still govern manifest additions.
 - Prove persistence by reopening the store or tracker in-process, not by stopping and restarting a hub.
 - Prove a hub rule once through one real frame per tool or refusal family. Its duplicates call the dispatcher or tracker directly. Don't repeat a hub-side rule through each harness's fake.
 - A test proves one behaviour. A title with "and" twice is a finding. Permutations over inputs are a table inside one fixture, not a fixture per cell.
-- A new duration allowance carries a non-TODO reason, an open owner item, and UTC `added`/`expires` dates at most seven days apart; it lands with the test.
+- A new duration allowance carries a non-TODO reason, an open owner item, and UTC `added`/`expires` dates at most seven days apart (31 days for the configured legacy owner under D72); it lands with the test.
 - Before review, run typecheck and the touched files one at a time. Put each file's seconds into the review request.
 
 **When you review a test (Reviewer):**
@@ -895,11 +895,10 @@ total. The log and result show `T3 ratchet (report only): … s vs base … s` a
 T1 and T2 may grow within their wall budgets.
 
 `budget.mode` selects `report` or `enforce`; omission keeps report mode for
-older manifests. D53's report-only period lasts one week after `tiers.json`
-lands. The Coordinator alone commits `enforce`, no earlier than seven days
-after T-679 merges, and seeds remaining exceptions with their open E-677 owner
-tickets and dates expiring within seven days. This implementation leaves the
-live manifest in report mode.
+older manifests. D71 schedules enforcement before the v0.1.4 release build through
+T-915. D72 provides the policy for moving the remaining speed exceptions to the
+open E-880 epic before E-677 closes. T-922 lands that policy first, with the live
+manifest still in report mode and all measured baselines and allowances unchanged.
 
 In enforce mode, every observed test and file must fit its tier's budget or an
 exact allowance covering the measured seconds. A known baseline does not exempt
@@ -960,15 +959,22 @@ needs that time:
 
 These entries go in `allow`; a file exception does not exempt individual tests.
 The working-tree and immutable-candidate manifest lint names missing or TODO
-reasons, missing or closed owner items, invalid dates, expiries more than seven
-days after `added`, and expired allowances (expiry is midnight UTC). Ownership
+reasons, missing or closed owner items, invalid dates, excessive date spans,
+and expired allowances (expiry is midnight UTC). D72 allows at most 31 days
+between `added` and `expires` for dated allowances owned by `budget.legacyOwner`;
+all other owners keep the seven-day maximum. Ownership
 is checked in the live authoritative tracker, including linked worktrees.
 
-By the Coordinator's D53 exception, pre-existing allowances retain every reason
-and second, carry `legacy: true` with owner `E-677`, and have no calendar dates.
-They expire when E-677 closes. New allowances must use the seven-day fields;
-`legacy` is reserved for that one migration. Reports show the legacy allowance
-count and sum of seconds separately, so E-677's progress is visible. Refresh
+By the Coordinator's D53 exception, pre-existing allowances carry `legacy: true`
+and have no calendar dates. D72 makes their owner `budget.legacyOwner` (E-677
+when omitted); T-915 will set E-880. They expire when that owner closes.
+T-915 will convert undersized legacy allowances to dated E-880 allowances, keeping
+their original reason and appending the observed peak and headroom. Every other
+legacy entry retains its reason and seconds through the owner migration.
+New allowances must use dated fields under the span limits above; `legacy` is
+reserved for the original migration, and changing its owner never admits a new
+legacy key. Reports show the legacy count, sum of seconds and configured owner,
+so its progress is visible. Refresh
 preserves ownership, dates, legacy metadata and the T3 allowance without extending
 expiry. Missing manifests disable the budget and its reporter.
 In report mode, known entries never fail the duration budget. Those over budget always produce a

@@ -17,7 +17,7 @@ export const TIER_BUDGETS = {
 export type DurationManifest = {
   version: 1;
   source: { artifacts: string[]; commit: string };
-  budget: { mode?: 'report' | 'enforce'; testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null };
+  budget: { mode?: 'report' | 'enforce'; legacyOwner?: string; testSeconds: number; fileSeconds: number; T1?: TierBudget; T2?: TierBudget; T3?: TierBudget; T4?: null };
   files: Record<string, { seconds: number; tests: number }>;
   tests: Record<string, number>;
   allow: Record<string, { file?: true; seconds: number; reason: string; owner?: string; added?: string; expires?: string; legacy?: true }>;
@@ -80,6 +80,8 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
   const time = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
   if (!object(manifest) || manifest.version !== 1 || !object(manifest.budget) || !time(manifest.budget.testSeconds) || manifest.budget.testSeconds <= 0 || !time(manifest.budget.fileSeconds) || manifest.budget.fileSeconds <= 0 || !object(manifest.files) || !object(manifest.tests) || !object(manifest.allow)) throw new Error(`invalid duration manifest: ${DURATION_MANIFEST}`);
   if (manifest.budget.mode !== undefined && manifest.budget.mode !== 'report' && manifest.budget.mode !== 'enforce') throw new Error('invalid duration budget mode: expected report or enforce');
+  if (manifest.budget.legacyOwner !== undefined && (typeof manifest.budget.legacyOwner !== 'string' || !/^[A-Z]+-[1-9]\d*$/.test(manifest.budget.legacyOwner))) throw new Error('invalid duration legacy owner: expected an item id');
+  const legacyOwner = manifest.budget.legacyOwner ?? 'E-677';
   for (const tier of ['T1', 'T2', 'T3'] as const) {
     const budget = manifest.budget[tier];
     if (budget !== undefined && (!object(budget) || ![budget.testSeconds, budget.fileSeconds, budget.wallSeconds].every(value => time(value) && value > 0))) throw new Error(`invalid duration tier budget: ${tier}`);
@@ -112,10 +114,12 @@ export function lintDurationManifest(manifest: DurationManifest, options: { now?
     if (entry.legacy !== undefined && entry.legacy !== true) throw new Error(`invalid legacy duration allowance: ${key}`);
     if (entry.legacy === true) {
       if (options.legacyKeys && !options.legacyKeys.has(key)) throw new Error(`new duration allowance cannot be legacy: ${key}`);
-      if (entry.owner !== 'E-677' || entry.added !== undefined || entry.expires !== undefined) throw new Error(`legacy duration allowance needs owner E-677 and expires on owner closure: ${key}`);
+      if (entry.owner !== legacyOwner || entry.added !== undefined || entry.expires !== undefined) throw new Error(`legacy duration allowance needs owner ${legacyOwner} and expires on owner closure: ${key}`);
     } else {
       const added = date(entry.added), expires = date(entry.expires);
-      if (!Number.isFinite(added) || !Number.isFinite(expires) || added > now || expires <= added || expires - added > 7 * 86_400_000) throw new Error(`duration allowance needs valid dates at most seven days apart: ${key}`);
+      // D72 gives the legacy migration owner a bounded month; other owners retain seven days.
+      const maxDays = entry.owner === legacyOwner ? 31 : 7;
+      if (!Number.isFinite(added) || !Number.isFinite(expires) || added > now || expires <= added || expires - added > maxDays * 86_400_000) throw new Error(`duration allowance needs valid dates at most ${maxDays === 7 ? 'seven' : '31'} days apart: ${key}`);
       if (now >= expires) throw new Error(`expired duration allowance: ${key}`);
     }
   }

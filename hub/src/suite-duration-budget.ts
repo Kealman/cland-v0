@@ -46,7 +46,7 @@ export function durationBudgetReport(manifest: DurationManifest, tiers: Record<s
     lines.push(`${ratchet}: ${seconds(projected)} s vs base ${seconds(total)} s${projected > total ? allowed ? '; allowed' : '; would refuse growth (needs T3 allowance)' : ''}${missingFiles || unbaselined ? `; incomplete base timings (${missingFiles} files, ${unbaselined} observed existing tests)` : ''}${uncertain ? `; uncertain source identity (${uncertain} observed tests retained)` : ''}`);
   } else lines.push(`${ratchet}: unavailable (no base manifest)`);
   const legacy = Object.values(manifest.allow).filter(entry => entry.legacy);
-  lines.push(`budget legacy allowances: ${legacy.length}; ${seconds(legacy.reduce((sum, entry) => sum + entry.seconds, 0))} s; owner E-677`);
+  lines.push(`budget legacy allowances: ${legacy.length}; ${seconds(legacy.reduce((sum, entry) => sum + entry.seconds, 0))} s; owner ${manifest.budget.legacyOwner ?? 'E-677'}`);
   return [...ranked, ...lines];
 }
 

@@ -97,6 +97,54 @@ test('result summaries cap ranked overages at ten and retain legacy progress sep
   assert.ok(summary.includes('budget legacy allowances: 1; 6 s; owner E-677'));
 });
 
+test('D72 legacy allowances follow the configured owner without admitting new legacy keys', async () => {
+  const { lintDurationManifest } = await import('../src/suite-durations.ts');
+  const head = manifest(), key = 'known::slow';
+  head.budget.legacyOwner = 'E-880';
+  head.allow[key] = { seconds: 6, reason: 'Original process proof.', owner: 'E-880', legacy: true };
+  const owners = { 'E-880': { state: 'open', kind: 'epic' }, 'E-677': { state: 'open', kind: 'epic' } };
+  const options = { owners, legacyKeys: new Set([key]) };
+  assert.doesNotThrow(() => lintDurationManifest(head, options));
+  assert.ok(durationBudgetReport(head, {}, []).includes('budget legacy allowances: 1; 6 s; owner E-880'));
+  assert.throws(() => lintDurationManifest(head, { ...options, legacyKeys: new Set() }), /new duration allowance cannot be legacy/);
+  for (const [state, kind, message] of [['closed', 'epic', /closed owner E-880/], ['open', 'task', /task owner E-880/]] as const) {
+    assert.throws(() => lintDurationManifest(head, { ...options, owners: { 'E-880': { state, kind } } }), message);
+  }
+  assert.throws(() => lintDurationManifest(head, { ...options, owners: {} }), /unknown owner E-880/);
+  head.allow[key]!.owner = 'E-677';
+  assert.throws(() => lintDurationManifest(head, options), /legacy duration allowance needs owner E-880/);
+  delete head.budget.legacyOwner;
+  assert.doesNotThrow(() => lintDurationManifest(head, options), 'omission preserves the historical owner');
+  for (const legacyOwner of ['', 'owner', 880, null]) {
+    Object.assign(head.budget, { legacyOwner });
+    assert.throws(() => lintDurationManifest(head, options), /invalid duration legacy owner/);
+  }
+});
+
+test('D72 dated allowances permit 31 days only for the legacy owner', async () => {
+  const { lintDurationManifest } = await import('../src/suite-durations.ts');
+  const now = Date.parse('2026-10-19'), key = 'known::slow';
+  const owners = { 'E-880': { state: 'open', kind: 'epic' }, 'E-677': { state: 'open', kind: 'epic' }, 'E-482': { state: 'open', kind: 'epic' } };
+  for (const legacyOwner of [undefined, 'E-880']) {
+    const head = manifest();
+    if (legacyOwner) head.budget.legacyOwner = legacyOwner;
+    const owner = legacyOwner ?? 'E-677';
+    head.allow[key] = { seconds: 6, owner, added: '2026-10-19', expires: '2026-11-19', reason: 'D72 bounded migration.' };
+    assert.doesNotThrow(() => lintDurationManifest(head, { now, owners }));
+    for (const expires of ['2026-11-20', '2026-10-19', '2026-02-30']) {
+      head.allow[key]!.expires = expires;
+      assert.throws(() => lintDurationManifest(head, { now, owners }), /valid dates at most 31 days apart/);
+    }
+    head.allow[key]!.expires = '2026-11-19';
+    assert.throws(() => lintDurationManifest(head, { now: Date.parse('2026-11-19'), owners }), /expired duration allowance/);
+    head.allow[key]!.owner = 'E-482';
+    head.allow[key]!.expires = '2026-10-27';
+    assert.throws(() => lintDurationManifest(head, { now, owners }), /valid dates at most seven days apart/);
+    head.allow[key]!.expires = '2026-10-26';
+    assert.doesNotThrow(() => lintDurationManifest(head, { now, owners }));
+  }
+});
+
 test('result summaries count missing baselines without copying per-file diagnostics', async () => {
   const { durationBudgetSummary } = await import('../src/suite-duration-budget.ts');
   const lines = Array.from({ length: 400 }, (_, n) => `budget (report only): missing duration baseline file-${n}; observed 1 s (T2)`);
