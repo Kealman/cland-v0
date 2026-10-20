@@ -31,7 +31,7 @@ export type RoleRecord = {
  *  when the role moved on (`also`: a receiver that never connected), to be re-pointed to the receiver's. */
 export type PendingClaims = { from: string; also?: string[]; to: { name: string; id: string | null; role: string }; item?: string };
 
-export const isRoleRecord = (v: unknown): v is RoleRecord => typeof v === 'object' && v !== null && 'note' in v && 'handover' in v;
+export const isRoleRecord = (v: unknown): v is RoleRecord => typeof v === 'object' && v !== null && Object.hasOwn(v, 'note') && Object.hasOwn(v, 'handover');
 
 /** A handover refused for its note: `missing` names the sections (`goals_now`, …) that are absent or empty. */
 export class NoteIncomplete extends Error {

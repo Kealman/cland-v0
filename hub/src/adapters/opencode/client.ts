@@ -101,7 +101,7 @@ export class OpenCodeClient {
       this.request<{ data: PermissionRequest[] }>('GET', `/api/session/${sid}/permission`),
       this.request<{ data: Array<{ id: string }> }>('GET', `/api/session/${sid}/form`),
     ]);
-    return { running: sessionId in (active.data ?? {}), permissions: permissions.data ?? [], forms: (forms.data ?? []).map((f) => f.id) };
+    return { running: Object.hasOwn(active.data ?? {}, sessionId), permissions: permissions.data ?? [], forms: (forms.data ?? []).map((f) => f.id) };
   }
 
   /** v2 permissions reference an assistant tool part; resources contain parsed fragments, not the full command. */

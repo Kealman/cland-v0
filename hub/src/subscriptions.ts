@@ -35,9 +35,9 @@ export function subscriptionInput(subject: unknown, events: unknown, digest: unk
   if (events.includes('usage')) {
     if (!threshold || typeof threshold !== 'object' || Array.isArray(threshold) || Object.keys(threshold).length !== 1) throw new Error('usage needs a threshold naming cost or tokens');
     const t = threshold as Record<string, unknown>, n = t.cost ?? t.tokens;
-    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0 || ('tokens' in t && !Number.isSafeInteger(n))) throw new Error('usage threshold must be a positive cost or integer token count');
-    if ('cost' in t) usage = { cost: n };
-    else if ('tokens' in t) usage = { tokens: n };
+    if (typeof n !== 'number' || !Number.isFinite(n) || n <= 0 || (Object.hasOwn(t, 'tokens') && !Number.isSafeInteger(n))) throw new Error('usage threshold must be a positive cost or integer token count');
+    if (Object.hasOwn(t, 'cost')) usage = { cost: n };
+    else if (Object.hasOwn(t, 'tokens')) usage = { tokens: n };
     else throw new Error('usage threshold must name cost or tokens');
   } else if (threshold !== undefined) throw new Error('threshold requires the usage event');
   return { subject: parsed, events: [...new Set(events)] as SubscriptionEvent[], digest, ...(usage ? { threshold: usage } : {}) };

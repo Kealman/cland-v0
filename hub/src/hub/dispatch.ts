@@ -558,7 +558,7 @@ export class Dispatcher {
   /** After a task write that set an assignee: the item is bound to the assignee's session id, when the hub knows it
    *  (a rename never moves an assignment; another session taking the name later does not own the item). */
   #bindAssignee(frame: Record<string, unknown>, result: HubFrame): void {
-    if (result.type !== 'result' || !result.ok || (frame.type !== 'task.create' && frame.type !== 'task.edit') || !('assignee' in frame)) return;
+    if (result.type !== 'result' || !result.ok || (frame.type !== 'task.create' && frame.type !== 'task.edit') || !(Object.hasOwn(frame, 'assignee'))) return;
     const item = (result.value as { item?: { id?: string } } | undefined)?.item?.id;
     if (typeof item !== 'string') return;
     const core = this.#options.core;

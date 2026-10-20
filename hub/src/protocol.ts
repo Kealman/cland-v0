@@ -828,8 +828,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'suite.slot':
       if (f.check !== undefined && f.check !== true) return false;
       if (f.check === true) {
-        const lease = f.lease;
-        return lease === undefined || typeof lease === 'object' && lease !== null && 'pid' in lease && Number.isSafeInteger(lease.pid) && Number(lease.pid) > 0 && 'started' in lease && typeof lease.started === 'string' && 'token' in lease && typeof lease.token === 'string' && lease.token.length > 0;
+        const lease = f.lease as Record<string, unknown> | undefined;
+        return lease === undefined || typeof lease === 'object' && lease !== null && Object.hasOwn(lease, 'pid') && Number.isSafeInteger(lease.pid) && Number(lease.pid) > 0 && Object.hasOwn(lease, 'started') && typeof lease.started === 'string' && Object.hasOwn(lease, 'token') && typeof lease.token === 'string' && lease.token.length > 0;
       }
       // Normal package runners reserve their existing human slot.
     case 'suite.forced':

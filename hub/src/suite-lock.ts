@@ -32,8 +32,8 @@ export async function compatibilityHolder(dirs: string[], env: NodeJS.ProcessEnv
 const RECOVERY_GRACE_MS = 1000;
 async function holderAt(path: string): Promise<Holder | null> {
   try {
-    const value: unknown = JSON.parse(await readFile(path, 'utf8'));
-    if (typeof value === 'object' && value !== null && 'pid' in value && 'token' in value && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.token === 'string') {
+    const value = JSON.parse(await readFile(path, 'utf8')) as Record<string, unknown> | null;
+    if (typeof value === 'object' && value !== null && Object.hasOwn(value, 'pid') && Object.hasOwn(value, 'token') && Number.isInteger(value.pid) && Number(value.pid) > 0 && typeof value.token === 'string') {
       const parsed = value as Partial<Holder>;
       return { ...parsed, pid: Number(value.pid), started: typeof parsed.started === 'string' ? parsed.started : null, ...('startedUtc' in parsed ? { startedUtc: typeof parsed.startedUtc === 'string' ? parsed.startedUtc : null } : {}), since: parsed.since ?? parsed.started ?? 'unknown', token: value.token };
     }

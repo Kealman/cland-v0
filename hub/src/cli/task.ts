@@ -320,7 +320,7 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
 export async function runTask(args: string[], cwd: string = process.cwd(), io: Io = stdio, env: NodeJS.ProcessEnv = process.env): Promise<number> {
   const [sub, ...rest] = args;
   if (sub === 'import-github') return runImportGithub(rest, cwd, io, env);
-  if (!sub || !(sub in OPTIONS)) {
+  if (!sub || !Object.hasOwn(OPTIONS, sub)) {
     io.err(`cland: unknown task command "${sub ?? ''}"\n\nusage: cland task <command>\n\n${TASK_USAGE}`);
     return 2;
   }

@@ -469,5 +469,6 @@ export class ArtifactLifecycle {
 }
 
 function hasCode(err: unknown, code: string): boolean {
+  // cland-allow-in: Filesystem error codes may be inherited from an Error subclass.
   return typeof err === 'object' && err !== null && 'code' in err && err.code === code;
 }

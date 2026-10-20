@@ -1929,6 +1929,13 @@ node hub/bin/cland.ts --version
 
 `npm run check` inside `hub/` runs the typecheck and the tests together. `CLAND_TEST_VERBOSE=1` streams every spoke's stderr while the tests run.
 
+At the repository root, `npm run check` runs typechecking and static/test lint.
+Its T0 dictionary membership guard checks `hub/src`: string-indexed records,
+`any`, `unknown`, bare objects and dynamic or undeclared keys use `Object.hasOwn` or `Map.has`.
+Narrowing by a declared finite key stays allowed. Intentional prototype-chain checks
+need `// cland-allow-in: <reason>` on the same or preceding line; diagnostics
+include file and line. See [the testing guide](../docs/agents/tests.md).
+
 `npm run typecheck` uses the native TypeScript 7.0.2 compiler, pinned under the
 `typescript7` npm alias. The root command checks both `hub/tsconfig.json` (bin,
 src and test) and `nvim/tsconfig.json` (bin and test); the hub command checks the

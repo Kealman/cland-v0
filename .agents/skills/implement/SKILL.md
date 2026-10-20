@@ -3,7 +3,7 @@ name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 metadata:
   origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951)"
+  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); repository static membership gate (T-959)"
 ---
 
 Implement the work described by the user in the spec or tickets.
@@ -15,6 +15,10 @@ Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 
 Run typechecking and targeted single test files while implementing. In a hub session, run the full suite only after a clear source review, as described below; outside the hub, run it once at the end.
+
+When changing dictionary membership or prototype checks in this repository's
+`hub/src`, read the T0 dictionary guard scope and exemption rules in
+`docs/agents/tests.md`.
 
 Once done, request the hub Reviewer as described below; outside a hub session, use the "code-review" skill.
 

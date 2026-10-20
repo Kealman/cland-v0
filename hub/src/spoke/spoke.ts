@@ -528,6 +528,7 @@ export async function runSpoke(env: NodeJS.ProcessEnv = process.env, options: Sp
       if (err instanceof Forbidden) return text({ ok: false, error: err.message, code: 'forbidden', permission: err.permission, role: err.role, reason: err.reason }, true);
       if (err instanceof Refused) return text({ ok: false, error: err.message, code: err.code, ...(err.missing ? { missing: err.missing } : {}), ...(err.files ? { files: err.files } : {}) }, true);
       // a hygiene refusal reaches the model typed too
+      // cland-allow-in: Error subclasses may expose a hygiene refusal through their prototype.
       const refusal = err instanceof Error && 'refusal' in err ? (err as Error & { refusal: unknown }).refusal : undefined;
       return text({ ok: false, error: err instanceof Error ? err.message : String(err), ...(refusal ? { refusal } : {}) }, true);
     }

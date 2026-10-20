@@ -49,7 +49,7 @@ function compare(old: Json, next: Json, path: string, response: boolean, errors:
   if (old && next && typeof old === 'object' && typeof next === 'object' && !Array.isArray(old) && !Array.isArray(next)) {
     for (const [key, value] of Object.entries(old)) {
       if ((key === 'required' && (response || Array.isArray(value))) || (response && key === 'additionalProperties' && typeof value === 'boolean')) continue;
-      if (!(key in next)) errors.push(`${path}.${key}: removed`);
+      if (!Object.hasOwn(next, key)) errors.push(`${path}.${key}: removed`);
       else compare(value, next[key]!, `${path}.${key}`, response, errors);
     }
     if (!response) {
@@ -57,7 +57,7 @@ function compare(old: Json, next: Json, path: string, response: boolean, errors:
       for (const key of Array.isArray(next.required) ? next.required : []) if (!before.includes(key)) errors.push(`${path}: new required field ${key}`);
       // New properties/optional parameters are additive. A new pattern, enum, length bound, etc. can
       // narrow an existing request even when none of its old keys changed.
-      for (const key of Object.keys(next)) if (!(key in old) && key !== 'required' && !/\.(properties|parameters)$/.test(path)) errors.push(`${path}.${key}: new request constraint`);
+      for (const key of Object.keys(next)) if (!Object.hasOwn(old, key) && key !== 'required' && !/\.(properties|parameters)$/.test(path)) errors.push(`${path}.${key}: new request constraint`);
     } else {
       const after = Array.isArray(next.required) ? next.required : [];
       for (const key of Array.isArray(old.required) ? old.required : []) {
@@ -86,7 +86,7 @@ export function compareOpenCodeContract(tested: OpenApi, newest: OpenApi): strin
     compare(parameters(old), parameters(next), `${label}.parameters`, false, errors);
     for (const p of Array.isArray(next.parameters) ? next.parameters : []) {
       const key = `${object(p).in}:${object(p).name}`;
-      if (!(key in parameters(old)) && object(p).required === true) errors.push(`${label}: new required parameter ${key}`);
+      if (!Object.hasOwn(parameters(old), key) && object(p).required === true) errors.push(`${label}: new required parameter ${key}`);
     }
     compare(old.requestBody ?? null, next.requestBody ?? null, `${label}.requestBody`, false, errors);
     const success = (op: ObjectValue) => object(op.responses)['200'] ?? object(op.responses)['201'] ?? object(op.responses)['204'] ?? null;

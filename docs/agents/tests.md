@@ -27,6 +27,16 @@ delivery; it never runs during local verification. See
 [Verification commands](../../hub/README.md#verification-commands) for the shell,
 clean-tree and snapshot-key contract.
 
+The T0 dictionary membership guard (`hub/test/lint-dictionary-membership.ts`)
+checks every `in` expression in `hub/src` with the TypeScript compiler API.
+String-indexed dictionaries (including `Record<string, …>`), `any`, `unknown`,
+bare object types and dynamic or undeclared keys require `Object.hasOwn(record, key)`
+or `Map.has(key)`. Structural narrowing by a declared finite key is allowed automatically.
+A genuine prototype-chain check may carry `// cland-allow-in: <reason>` on the
+same or immediately preceding line. The reason is mandatory; strings containing
+the marker do not exempt code. Diagnostics name the source file and line.
+The guard's in-memory compiler cases run as T0 self-checks, without a test worker.
+
 `npm test` enters `hub/test/run-suite.ts auto`. Whole-suite `hub`, `nvim`, `all`,
 coverage-selected runs and close-run shards use that same runner, with the
 admitted selection in `CLAND_SUITE_SELECTION` (or `CLAND_SUITE_SELECTION_FILE`

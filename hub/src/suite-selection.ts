@@ -241,13 +241,13 @@ export function selectionTransport(selection: SuiteSelection | undefined, path: 
 export function selectionFromEnv(env: NodeJS.ProcessEnv = process.env): SuiteSelection | undefined {
   const text = env.CLAND_SUITE_SELECTION_FILE ? readFileSync(env.CLAND_SUITE_SELECTION_FILE, 'utf8') : env.CLAND_SUITE_SELECTION;
   if (!text) return undefined;
-  const value: unknown = JSON.parse(text);
-  if (!value || typeof value !== 'object' || !('mode' in value) || !['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(value.mode)) || !('files' in value) || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !('reason' in value) || typeof value.reason !== 'string') throw new Error('invalid suite selection');
-  if (value.mode === 'hub-selected' && (!('tests' in value) || !Array.isArray(value.tests) || !value.tests.length || !value.tests.every(file => typeof file === 'string' && /^hub\/(?:src|test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected hub tests');
-  if ('nvimTests' in value && (!Array.isArray(value.nvimTests) || !value.nvimTests.length || !value.nvimTests.every(file => typeof file === 'string' && /^nvim\/test\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected Neovim tests');
-  if ('shard' in value) {
-    const shard = value.shard;
-    if (!shard || typeof shard !== 'object' || !('files' in shard) || !Array.isArray(shard.files) || !shard.files.every(file => typeof file === 'string') || !('nvim' in shard) || typeof shard.nvim !== 'boolean') throw new Error('invalid suite shard selection');
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object' || !Object.hasOwn(value, 'mode') || !['full', 'hub-only', 'hub-selected', 'nvim-only'].includes(String(value.mode)) || !Object.hasOwn(value, 'files') || !Array.isArray(value.files) || !value.files.every(path => typeof path === 'string') || !Object.hasOwn(value, 'reason') || typeof value.reason !== 'string') throw new Error('invalid suite selection');
+  if (value.mode === 'hub-selected' && (!Object.hasOwn(value, 'tests') || !Array.isArray(value.tests) || !value.tests.length || !value.tests.every(file => typeof file === 'string' && /^hub\/(?:src|test)\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected hub tests');
+  if (Object.hasOwn(value, 'nvimTests') && (!Array.isArray(value.nvimTests) || !value.nvimTests.length || !value.nvimTests.every(file => typeof file === 'string' && /^nvim\/test\/.+\.test\.ts$/.test(file) && !file.split('/').some(part => part === '..' || part === '.')))) throw new Error('invalid selected Neovim tests');
+  if (Object.hasOwn(value, 'shard')) {
+    const shard = value.shard as Record<string, unknown> | null;
+    if (!shard || typeof shard !== 'object' || !Object.hasOwn(shard, 'files') || !Array.isArray(shard.files) || !shard.files.every(file => typeof file === 'string') || !Object.hasOwn(shard, 'nvim') || typeof shard.nvim !== 'boolean') throw new Error('invalid suite shard selection');
   }
   return value as SuiteSelection;
 }

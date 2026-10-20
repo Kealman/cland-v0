@@ -22,6 +22,7 @@ export async function fetchSuiteDev(cwd: string, git: Git): Promise<string> {
 
 /** Keep useful Git stderr without publishing credentials, URLs or control lines. */
 export function selectionFailure(error: unknown, env: NodeJS.ProcessEnv): string {
+  // cland-allow-in: Git errors may expose stderr through their prototype.
   const stderr = error && typeof error === 'object' && 'stderr' in error ? String(error.stderr).trim() : '';
   let text = stderr || (error instanceof Error ? error.message.split('\n')[0]! : String(error));
   const secrets = Object.entries(env).filter(([key, value]) => value && /token|secret|password|credential|authorization|api.?key/i.test(key)).map(([, value]) => value!).sort((a, b) => b.length - a.length);
