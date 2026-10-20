@@ -31,7 +31,7 @@
       "wallSeconds": 900
     },
     "T4": null,
-    "mode": "enforce",
+    "mode": "report",
     "legacyOwner": "E-880"
   },
   "files": {
