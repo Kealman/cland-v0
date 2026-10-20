@@ -180,3 +180,21 @@ test('interrupted write-through keeps reservations visible to old admission', { 
   await reserveShardSpend('/new-project', ['new-reservation'], 'c-8', 4, 3600000, 10, machine.env, clock, processes);
   assert.equal((await inspectSpend(10, machine.env, clock, processes)).reserved, 10, 'retry imports the old-first publication exactly once');
 });
+
+
+test('recovery settles a batch of interrupted releases without changing final legacy costs', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const leases: DropletLease[] = ['first', 'second', 'settled'].map(id => ({
+    kind: 'droplet', provider: 'digitalocean', lease: id, run: id, name: `cland-${id}`, tags: ['cland'],
+    size: 'c-8', region: 'lon1', priceHourly: 1, keyName: id, keyId: null, state: 'released', resource: null,
+    created: '2026-10-16T10:00:00Z', deadline: '2026-10-16T11:00:00Z', released: '2026-10-16T11:00:00Z', costUsd: 0.5,
+  }));
+  await legacyLedger(machine, [entry('first', null), entry('second', null), entry('settled', 2)]);
+  await settleSpend(leases, machine.env, processes);
+  const expected = [0.5, 0.5, 2];
+  assert.deepEqual((await ledger(machine)).entries.map(entry => entry.cost), expected);
+  assert.deepEqual(JSON.parse(await readFile(join(machine.home, '.cland/executor/spend.json'), 'utf8')).entries.map((entry: SpendEntry) => entry.cost), expected);
+  const bytes = await readFile(spendPath(machine.env), 'utf8');
+  await settleSpend(leases, machine.env, processes);
+  assert.equal(await readFile(spendPath(machine.env), 'utf8'), bytes);
+});

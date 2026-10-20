@@ -2284,18 +2284,22 @@ releases active leases with no run, and re-arms dead watchdogs for live leases.
 
 Release confirms deletion by listing droplets and keys before marking a lease
 released or removing its key files. An unconfirmed deletion stays `releasing`;
-the sweep retries it and its watchdog remains armed. A lost
+lease recovery retries it every minute and its watchdog remains armed. A lost
 create or SSH key import response retains the lease while the resource may still
 appear. Released
 leases stay on disk for their accounting history. Cost uses the size's hourly
 price, from create to the first accepted delete call, with a sixty-second minimum.
 
-At hub start and every ten minutes, an unref'd timer runs lease reconciliation
-and the orphan sweep. Each pass journals `executor-sweep` with lease, reaped
-droplet, reaped key and failure counts. Provider errors are logged and wait for
-the next pass. Reconciliation consumes new watchdog receipts, re-arms a dead
-watchdog for a live lease's remaining lifetime (`executor-watchdog-rearmed`),
-and retries every `releasing` lease.
+At hub start and every ten minutes, the hub runs lease reconciliation and the
+orphan sweep. Each sweep journals `executor-sweep` with lease, reaped droplet,
+reaped key and failure counts. Between sweeps, an unref'd timer retries lease
+recovery every minute so a late provider-side deletion can be confirmed within
+the six-minute recovery bound. Recovery and sweeps run serially; provider errors
+are logged and retried on the next applicable pass. Reconciliation consumes new
+watchdog receipts, re-arms a dead watchdog for a live lease's remaining lifetime
+(`executor-watchdog-rearmed`), and retries every `releasing` lease. It skips
+already-settled accounting history without ledger locks and settles interrupted
+releases in one batch, preserving the recovery deadline for unfinished leases.
 
 Before every create, including a prepare builder, cland reserves the configured
 lifetime times the size's hourly price (at least sixty seconds) in

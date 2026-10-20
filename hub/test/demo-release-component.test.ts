@@ -266,3 +266,34 @@ test('demo release keeps virtual time frozen while provider I/O is held', { time
   assert.deepEqual(f.api.droplets, []);
   assert.deepEqual(f.api.keys, []);
 });
+
+
+test('an unconfirmed demo release confirms provider absence within six minutes without another stop', async t => {
+  const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100' } });
+  const epic = ((await f.ui.request({ type: 'task.create', title: 'Automatically recovered demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
+  const started = await drive(f, f.ui.request({ type: 'demo.start', epic }));
+  assert.equal(started.ok, true, started.error);
+  const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
+  f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER;
+  try {
+    const stopped = await drive(f, f.ui.request({ type: 'demo.stop', epic }));
+    assert.equal(stopped.ok, true, stopped.error);
+    assert.equal((await readLease(dir)).state, 'releasing');
+    const pendingAt = f.clock.now().getTime();
+    f.api.droplets.splice(0); // Provider completes the accepted DELETE after the short attempt.
+    for (let minute = 0; minute < 5; minute++) {
+      await f.clock.advance(60000);
+      await drive(f, f.verificationSettled());
+      if ((await readLease(dir)).state === 'released') break;
+    }
+    assert.equal((await readLease(dir)).state, 'released');
+    assert.ok(f.clock.now().getTime() - pendingAt < 360000, 'D18 bounds recovery to six minutes');
+    assert.equal(f.api.requests.filter(r => r.method === 'DELETE' && r.path.startsWith('/v2/droplets/')).length, 1);
+    const status = await f.ui.request({ type: 'executor.status' });
+    assert.equal(status.ok, true, status.error);
+    assert.equal((status.value as { spend: { reserved: number } }).spend.reserved, 0);
+  } finally {
+    f.api.droplets.splice(0);
+    await drive(f, f.ui.request({ type: 'demo.stop', epic }));
+  }
+});

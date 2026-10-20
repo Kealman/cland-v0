@@ -19,6 +19,12 @@ async function readExisting(path: string): Promise<Ledger | null> {
 }
 const read = async (path: string): Promise<Ledger> => await readExisting(path) ?? { version: 1, entries: [] };
 
+/** Atomically published ledgers can be observed without locking or migration. */
+async function observe(env: NodeJS.ProcessEnv): Promise<Ledger> {
+  const old = legacyPath(env);
+  return reconcile(await read(spendPath(env)), old ? await readExisting(old) ?? { version: 1, entries: [] } : { version: 1, entries: [] });
+}
+
 /** Both files may have been used by live hubs. Keep every lease and the more
  * conservative settlement for duplicates; an empty/stale copy cannot reset spend. */
 function reconcile(current: Ledger, legacy: Ledger): Ledger {
@@ -101,18 +107,26 @@ export async function reserveSpend(project: string, lease: DropletLease, cap: nu
     ledger.entries.push({ project, lease: lease.lease, run: lease.run, size: lease.size, reservation, cost: null, created: lease.created, deadline: lease.deadline });
   }, env, { clock, wait, ...(processes ? { processes } : {}) });
 }
-export async function settleSpend(lease: DropletLease, env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<void> {
-  if (lease.state !== 'released' || lease.costUsd === undefined) return;
+/** Recovery settles retained history in one ledger transaction, independent of
+ * the number of already-settled leases. Missing entries predate spend tracking. */
+export async function settleSpend(input: DropletLease | DropletLease[], env: NodeJS.ProcessEnv = process.env, processes?: LockProcessTable): Promise<void> {
+  const released = new Map((Array.isArray(input) ? input : [input])
+    .filter(lease => lease.state === 'released' && lease.costUsd !== undefined).map(lease => [lease.lease, lease]));
+  if (!released.size) return;
+  // Final costs never become reservations again. Skip settled history without
+  // taking either lock; revalidate pending entries inside the transaction.
+  if (!(await observe(env)).entries.some(entry => entry.cost === null && released.has(entry.lease))) return;
   await locked(ledger => {
-    const entry = ledger.entries.find(e => e.lease === lease.lease);
-    if (entry && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
+    for (const entry of ledger.entries) {
+      const lease = released.get(entry.lease);
+      if (lease && entry.cost === null) { entry.cost = lease.costUsd!; entry.released = lease.released!; }
+    }
   }, env, processes ? { processes } : undefined, 1000);
 }
 export async function inspectSpend(cap: number, env: NodeJS.ProcessEnv = process.env, clock: Clock = realClock, processes?: LockProcessTable, readOnly = false) {
   // Status observes atomically published files. Conservative merging is safe
   // without migration or a lock; only admission needs serialized publication.
-  const old = legacyPath(env);
-  const ledger = readOnly ? reconcile(await read(spendPath(env)), old ? await readExisting(old) ?? { version: 1, entries: [] } : { version: 1, entries: [] }) : await load(env, { clock, ...(processes ? { processes } : {}) });
+  const ledger = readOnly ? await observe(env) : await load(env, { clock, ...(processes ? { processes } : {}) });
   return { path: spendPath(env), ...totals(ledger, clock), cap };
 }
 

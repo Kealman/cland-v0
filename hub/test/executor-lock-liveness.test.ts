@@ -5,6 +5,9 @@ import fs from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { acquireLockAsync } from '../src/hub/lock.ts';
+import { DropletExecutor } from '../src/executor/droplet/droplet.ts';
+import { DigitalOceanApi, DigitalOceanError } from '../src/executor/droplet/api.ts';
+import { writeLease, readLeases, type DropletLease } from '../src/executor/droplet/lease.ts';
 import { rememberProject, reserveShardSpend, spendPath } from '../src/executor/droplet/spend.ts';
 import { scratchMachine, legacyLedger } from './init-machine.ts';
 import { FakeClock } from './fake-clock.ts';
@@ -90,4 +93,51 @@ test('concurrent releases join one unlink while a successor acquires before its 
     fault.mock.restore(); syncBuiltinESMExports();
     await successor?.release();
   }
+});
+
+
+test('settled legacy lease history cannot repeatedly defer a later release', async t => {
+  const machine = await scratchMachine(t, { identity: false });
+  const clock = new FakeClock();
+  const env = { ...machine.env, DIGITALOCEAN_TOKEN: 'fixture' };
+  const created = clock.now().toISOString();
+  const base: DropletLease = { kind: 'droplet', provider: 'digitalocean', lease: 'history', run: 'history',
+    name: 'cland-history', tags: ['cland'], size: 'c-8', region: 'lon1', priceHourly: 1,
+    keyName: 'history-key', keyId: null, resource: null, state: 'released', created,
+    deadline: new Date(clock.now().getTime() + 3600000).toISOString(), released: created, costUsd: 0.5 };
+  // Minimise the 970 released records in A-7125 by scaling publication latency,
+  // not wall time. Both ledgers are already settled, just as on the healthy hub.
+  const history = Array.from({ length: 16 }, (_, i) => ({ ...base, lease: `history-${i}`, run: `history-${i}` }));
+  for (const lease of history) await writeLease(machine.root, lease);
+  const pending: DropletLease = { ...base, lease: 'z-pending', run: 'pending', state: 'releasing', resource: 123 };
+  delete pending.costUsd; delete pending.released;
+  await writeLease(machine.root, pending);
+  await legacyLedger(machine, [...history.map(lease => ({ project: machine.root, lease: lease.lease, run: lease.run, size: lease.size,
+    reservation: 1, cost: 0.5, created, deadline: lease.deadline, released: created })),
+    { project: machine.root, lease: 'z-pending', run: 'pending', size: base.size, reservation: 1, cost: null, created, deadline: base.deadline }]);
+  const rename = fs.rename;
+  const publication = t.mock.method(fs, 'rename', async (...args: Parameters<typeof fs.rename>) => {
+    const result = await rename(...args);
+    if (args[1] === spendPath(env)) clock.block(1000);
+    return result;
+  });
+  syncBuiltinESMExports();
+  const events: Record<string, unknown>[] = [];
+  const api = new DigitalOceanApi(env, clock, async (_method, path) => {
+    if (path === '/droplets/123') throw new DigitalOceanError(404, 'not_found', 'gone');
+    return { droplets: [], ssh_keys: [] };
+  });
+  const executor = new DropletExecutor(machine.root, undefined, event => events.push(event), env, undefined, {
+    api, clock, processes, host: { createKey: async () => {}, armWatchdog: async () => { throw new Error('no live leases'); },
+      stopWatchdog: async () => {}, watchdogAlive: async () => false },
+  });
+  try {
+    await executor.sweep();
+    await executor.sweep();
+    assert.deepEqual(events.filter(event => event.event === 'executor-reconcile-failed'), []);
+    assert.equal((await readLeases(machine.root)).find(lease => lease.lease === 'z-pending')!.state, 'released');
+    const ledger = JSON.parse(await fs.readFile(spendPath(env), 'utf8'));
+    assert.equal(ledger.entries.filter((entry: { cost: number | null }) => entry.cost === null).length, 0);
+    assert.equal(ledger.entries.filter((entry: { cost: number }) => entry.cost === 0.5).length, 16);
+  } finally { publication.mock.restore(); syncBuiltinESMExports(); }
 });

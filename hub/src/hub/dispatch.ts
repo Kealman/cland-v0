@@ -225,10 +225,19 @@ export class Dispatcher {
     }, options.git) : null;
     this.#dropletReady = this.#droplets?.sweep(true).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })) ?? Promise.resolve();
     const retryMs = Number((options.env ?? process.env).CLAND_TEST_EXECUTOR_SWEEP_MS);
+    const sweepMs = retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000;
+    let nextSweep = options.core.clock.now().getTime() + sweepMs;
     this.#dropletTimer = this.#droplets ? options.core.clock.setInterval(() => {
       if (this.#closed || this.#dropletWork) return;
-      this.#dropletWork = this.#dropletReady.then(() => this.#droplets!.sweep()).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
-    }, retryMs > 0 && Number.isFinite(retryMs) ? retryMs : 600000) : null;
+      this.#dropletWork = this.#dropletReady.then(() => {
+        const now = options.core.clock.now().getTime();
+        if (now >= nextSweep) { nextSweep = now + sweepMs; return this.#droplets!.sweep(); }
+        // An accepted deletion can finish just after a short release attempt.
+        // Retry durable lease recovery every minute (D18: within six minutes),
+        // independently of the more expensive ten-minute orphan sweep.
+        return this.#droplets!.reconcile(false);
+      }).then(() => this.#demos?.reconcile()).catch(() => this.#log({ event: 'executor-reconcile-failed', reason: 'lease recovery deferred' })).finally(() => { this.#dropletWork = null; });
+    }, Math.min(sweepMs, 60000)) : null;
     this.#dropletTimer?.unref();
     this.#suites = root ? new Suites(options.core.store, root, (job, checkpointArtifact) => this.#reportSuite(job, checkpointArtifact), { ...options.verification, taskLanding: item => options.tracker?.summary(item)?.state === 'closed' ? options.tracker.mergeReceipt(item) : null, clock: options.core.clock, waitClock: options.core.clock, ...(options.droplet ? { dropletServices: options.droplet } : {}), ...(options.projectConfig ? { projectConfig: options.projectConfig } : {}), ...(options.env ? { env: options.env } : {}), onSoakNotice: (id, text) => { options.core.noticeTo(GENERAL.id, { id, kind: 'report', to: ['coordinator'], text }); }, onAccountingConfirmed: job => this.#reportAccounting(job), onShardingSkipped: (job, text) => options.core.noticeTo(job.topic, { id: `sharding-skipped:${job.id}`, kind: 'report', to: job.to, text, detail: { event: 'verification-sharding-skipped', id: job.id, item: job.item ?? null } }), onFallback: (job, cause) => options.core.noticeTo(job.topic, { id: `executor-fallback:${job.id}`, kind: 'report', to: job.to, text: cause === 'remote budget full' ? `verify ${job.id}: remote budget ${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4}/${options.projectConfig?.().verification.remoteBudget ?? options.verification?.remoteBudget ?? 4} full; running locally` : `verify ${job.id}: droplet unavailable (${cause}); running locally`, detail: { event: 'verification-executor-fallback', id: job.id, item: job.item ?? null, cause } }), log: this.#log, onQueue: queue => options.core.publishVerification({ ...queue, batch: this.#batches?.snapshot() ?? null }), onJob: job => options.tracker?.verifyChanged(job.item ?? null, job.branch), requesterDead: actor => [...(this.#sessions?.list() ?? []), ...(this.#sessions?.list(true) ?? [])].some(p => p.sessionId === actor.sessionId && p.status !== 'running') }) : null;
     const devT3Probes = root && this.#suites ? new DevT3Probes(options.core.store, this.#suites, root, options.env ?? process.env, options.devT3Repository) : null;

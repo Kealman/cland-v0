@@ -333,7 +333,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
     const jobs = JSON.parse(this.store?.meta('suite-jobs') ?? '[]') as OwnedJob[];
     const owned = new Set(jobs.filter(job => !job.reported && !job.outcome && job.state !== 'queued').flatMap(job => [job.id, ...(job.shards ?? []).filter(shard => !shard.reported && !shard.outcome).map(shard => shard.id)]));
     const deadline = this.clock.now().getTime() + 15000;
-    for (const lease of await readLeases(this.root)) {
+    const leases = await readLeases(this.root);
+    await settleSpend(leases, this.#env, this.dependencies.processes);
+    for (const lease of leases) {
       if (this.#closing || this.clock.now().getTime() >= deadline) throw new Error('lease recovery deferred at deadline');
       const dir = leaseDir(this.root, lease);
       let receipt: WatchdogReceipt | undefined;
@@ -346,9 +348,9 @@ export class DropletExecutor implements Pick<Executor, 'acquire' | 'deliver' | '
         await this.#save(lease);
         this.logger({ event: 'executor-watchdog-fired', lease: lease.lease, ...receipt });
         lease.watchdogFired = receipt.fired; await this.#save(lease);
+        await settleSpend(lease, this.#env, this.dependencies.processes);
       }
       if (lease.state === 'released') {
-        await settleSpend(lease, this.#env, this.dependencies.processes);
         await rm(join(dir, 'key'), { force: true }); await rm(join(dir, 'key.pub'), { force: true });
         continue;
       }

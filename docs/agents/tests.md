@@ -813,8 +813,10 @@ or unconfirmed cleanup holds the remote budget; later local requests can proceed
 The hub persists a finished remote run's outcome and collected log before cleanup.
 Its final result waits up to 120 seconds on the hub Clock for confirmed lease
 lifetime and cost. If release stays unconfirmed, the result marks accounting
-"pending confirmation"; the executor sweep retains its remote reservation and
-retries cleanup. Once the durable lease confirms release, the hub posts one
+"pending confirmation"; the executor retains its remote reservation and retries
+lease recovery every minute, independently of the ten-minute orphan sweep. This
+lets a late provider deletion confirm within the six-minute recovery bound. Once
+the durable lease confirms release, the hub posts one
 accounting correction in the same topic. Restart resumes from the saved outcome
 without polling the deleted machine and retains the wait window/correction state.
 `--executor local` and human hand runs use the local slot behind compatibility leases. The queue and its order survive restart; a known dead requester's queued run becomes one hub cancellation note to its original recipients. A disconnected spoke alone is not evidence of death.
