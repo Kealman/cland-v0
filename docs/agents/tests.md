@@ -805,9 +805,10 @@ successful durations for the effective mode and executor. Remote durations
 include acquire time; remote holders do not delay local waiter estimates. Unknown history gives a null ETA.
 
 A green run may be reused for the identical committed candidate tree and effective
-mode. The candidate excludes only `.cland/tasks`, so tracker-only dev merges hit;
-other paths and dirty working changes do not. `--fresh` forces execution, and
-`[verification].cache_max_age_minutes` defaults to 1440 (0 disables reuse). Hits
+mode. The candidate excludes only `.cland/tasks` and `.cland/RULES.md`, so tracker-only
+and rulebook-only dev merges hit; other paths and dirty working changes do not.
+`--fresh` forces execution, and `[verification].cache_max_age_minutes` defaults to
+1440 (0 disables reuse). Hits
 name the requested head, original run/head and tree hash and post once as usual.
 An explicit `--executor droplet` reuses only a green that ran on a droplet. A
 local-only green triggers a fresh remote run, with the reason in the result

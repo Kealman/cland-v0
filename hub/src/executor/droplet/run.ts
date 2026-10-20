@@ -16,7 +16,7 @@ import { DigitalOceanApi, DigitalOceanError } from './api.ts';
 import { readSnapshot } from './prepare.ts';
 import { writeLease, type DropletLease } from './lease.ts';
 import { pause, testTiming } from './watchdog.ts';
-import { candidatePathspec, candidateTree } from '../../verification-tree.ts';
+import { candidatePathspec, candidateTree, excludedPaths } from '../../verification-tree.ts';
 import { selectionTransport } from '../../suite-selection.ts';
 
 const exec = promisify(execFile);
@@ -115,7 +115,7 @@ index_dir=$(mktemp -d) || exit 1
 trap 'rm -rf "$index_dir"' EXIT
 export GIT_INDEX_FILE="$index_dir/index"
 git read-tree HEAD || exit 1
-git rm --quiet -r --cached --ignore-unmatch -- '.cland/tasks' '.cland/RULES.md' || exit 1
+git rm --quiet -r --cached --ignore-unmatch -- ${excludedPaths.map(quote).join(' ')} || exit 1
 git write-tree
 )`;
       return `if ${tree} && test "$checked_tree" = ${quote(gate.tree)}; then\necho ${quote(`typecheck: host gate at ${gate.tree} (not repeated)`)}\nelse\n${fallback}\nfi`;

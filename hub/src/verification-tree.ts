@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
-const excludedPaths = ['.cland/tasks', '.cland/RULES.md'];
+export const excludedPaths = ['.cland/tasks', '.cland/RULES.md'];
 export const candidatePathspec = ['.', ...excludedPaths.map(path => `:(exclude)${path}`)];
 /** Pass undefined for head to identify the current candidate, allowing metadata-only commits. */
 export async function candidateTree(cwd: string, head: string | undefined, env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
