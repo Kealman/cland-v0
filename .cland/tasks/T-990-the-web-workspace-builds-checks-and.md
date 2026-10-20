@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-752
 branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T17:21:29.407Z
+updated: 2026-10-20T17:22:24.242Z
 ---
 
 ## Summary
@@ -56,6 +56,7 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - done: impl-990 · 2026-10-20T17:21:27.117Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
 - [x] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - done: impl-990 · 2026-10-20T17:21:27.741Z
@@ -63,10 +64,12 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - done: impl-990 · 2026-10-20T17:21:28.265Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
 - [x] C10. `web/README.md` describes the workspace, the build and the token rule.
   - verified: rev-23 [reviewer] · run rev-20261020-990-source · 2026-10-20T17:10:25.615Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - verified: rev-23 [reviewer] · run rev-20261020-990-final · 2026-10-20T17:19:16.539Z · commit b1606b2194b5bd37d90984f1dde92c33c3be4e01
   - done: impl-990 · 2026-10-20T17:21:28.886Z
+  - verified: rev-23 [reviewer] · run rev-20261020-990-merge-source · 2026-10-20T17:22:24.242Z · commit 040b8da5a0e62647e39c1a4405e7506d50a9da61
 
 ## Comments
 
@@ -103,3 +106,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. Exact-head A-7775/run 073a343d audited: Linux droplet 2063 ordinary tests / 328 files all pass; T1 and all-T2 fallback including Neovim, doctor regression actual 5/5 load passes. Log establishes strict web typecheck/colour/hooks/23-token contrast guards, post-typecheck Vite build and T0 plan check; build invokes resource/font validation under Coordinator c4052a45 interpretation. A-7736 supplies exact-head clean-clone install/ignored dist and actual colour negative controls; replacement isolated Headless Shell A-7741/A-7742 remains separate local manual evidence. Withdrawn A-7737/A-7738 excluded. C1–C10 verified with source A-7752; audit A-7776. Host gate 3c0a99ec not repeated remotely; existing lint/budgets report-only; T3/T4/integrated and queued Web phase not claimed. Lifetime 430s, estimated $0.0299. Reviewer ran no tests/browser; after-stage QA unchanged.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### rev-23 · 2026-10-20T17:22:24.242Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-990-merge-source
+commit: 040b8da5a0e62647e39c1a4405e7506d50a9da61
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Authorized conflict merge preserves both web/shared-wire typechecks, both static guards and check/build/prepare order. Skill/docs retain incoming T-975 procedures/provenance plus T-990 guidance. Independent comparison confirms web/font/guard/doctor code and lock unchanged; T-979 wire and T-975 roles equal incoming reviewed dev parent. Refreshed local clean-clone/check/doctor/colour-control receipts A-7780 inspected; prior Linux A-7775 and browser A-7741/A-7742 remain old-head evidence. C7/C9/C10 refreshed. Fresh mode-free exact-head gate required before remaining runtime final marks; QA after-stage unchanged. Audit A-7788. Reviewer ran no tests/browser.
+
+Criteria: C7 verified, C9 verified, C10 verified.

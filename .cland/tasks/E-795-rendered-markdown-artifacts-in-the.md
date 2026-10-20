@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T10:14:36.459Z
-updated: 2026-10-20T16:58:47.987Z
+updated: 2026-10-20T17:26:18.548Z
 ---
 
 ## Summary
@@ -38,22 +38,6 @@ stages:
         - T-1003
         - T-1004
         - T-1005
-items:
-  T-796:
-    qa_criteria:
-      - C1
-      - C2
-  T-1003:
-    qa_criteria:
-      - C1
-      - C3
-  T-1004:
-    qa_criteria:
-      - C1
-      - C3
-  T-1005:
-    qa_criteria:
-      - C4
 ```
 
 ## Comments

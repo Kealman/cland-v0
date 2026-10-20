@@ -3,7 +3,7 @@ id: T-973
 kind: task
 title: A test run flipped core.bare=true in the live repository (shared by all worktrees), breaking merge admission
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-749
 branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T17:14:22.482Z
+updated: 2026-10-20T17:22:24.085Z
 ---
 
 ## Summary
@@ -34,12 +34,15 @@ Find the writer and close the class. Every test and fixture child strips GIT_DIR
   - done: impl-973 · 2026-10-20T17:01:58.057Z
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
   - verified: rev-32 [reviewer] · run rev-20261020-973-source-3 · 2026-10-20T17:14:22.482Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
+  - verified: rev-32 [reviewer] · run rev-20261020-973-final-3 · 2026-10-20T17:22:22.315Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
 - [x] C2. A T1 test with a poisoned GIT_DIR/GIT_COMMON_DIR proves the fixture environment strips them, and a native T3 case in territory-cli.test.ts shows a fixture git init --bare / clone --bare leaves the scratch parent repository's config bytes unchanged (targeted local run before review; its Linux receipt is landing evidence).
   - done: impl-973 · 2026-10-20T17:01:43.874Z
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
   - verified: rev-32 [reviewer] · run rev-20261020-973-source-3 · 2026-10-20T17:14:22.482Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
+  - verified: rev-32 [reviewer] · run rev-20261020-973-final-3 · 2026-10-20T17:22:22.315Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
 - [x] C3. Merge admission reports `core.bare=true` in the root as its own clear error instead of a raw rev-parse failure.
   - done: impl-973 · 2026-10-20T17:13:05.295Z
+  - verified: rev-32 [reviewer] · run rev-20261020-973-final-3 · 2026-10-20T17:22:22.315Z · commit 519078b1d8bca275c91076bd4fac628712b019f5
 
 ## Comments
 
@@ -155,3 +158,30 @@ Source clear only, scope full for the corrected probe design. Fresh mode-free ve
 Artifact A-7769: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7769-t-973-corrected-source-review-at-519078b1.md
 
 Criteria: C1 verified, C2 verified.
+
+### rev-32 · 2026-10-20T17:22:22.315Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261020-973-final-3
+commit: 519078b1d8bca275c91076bd4fac628712b019f5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final evidence review clear at 519078b1d8bca275c91076bd4fac628712b019f5 following source verdict rev-20261020-973-source-3 / A-7769. Current branch tip and hub verify head match. No findings. Verify C1–C3.
+
+A-7781, fresh mode-free run 364779dc-179e-45b6-8f3e-c11971217793, exited 0 on Linux x64 6.8.0-142-generic droplet c-8 lon1, Node v24.21.0, Neovim v0.12.5. T1 exit 0 (42s), all-T2 fallback exit 0 (259s), including hub and Neovim. Aggregate 2063/2063 reported passes including load checks. Host typecheck gate a7bb585599ce6aeee0590200b2ebbd9cd9038ecf was reused, not repeated remotely. Lint census 131 findings/59 files, budget and T3 ratchet diagnostics remain report-only; refusal policy enforced.
+
+Confirmed the prior regressions are resolved on Linux: all 15 executor-spend and six executor-lock-liveness cases pass; both project-probes cases pass, preserving the import/teardown zero-child assertions. The bare-project batch refusal passes ordinary execution and a separate 5/5 load receipt. Thus the new root fact is exercised through the injected component boundary without the previous native execFile escape.
+
+C1 remains the source-reviewed candidate-audit alternative in A-7710: the historical writer is unidentified, and no attribution is fabricated. C2 combines same-head T1 poisoned-environment proof with exact-head local macOS targeted native config-byte preservation in A-7761. C3 combines source-reviewed clear merge-bare refusal and same-head component/batch execution with native production admission/batch refusal A-7759 (local macOS 1/1). A-7761 is a supplemental exact-head local direct mixed T1/T2/T3 103/103 receipt, not a Linux T3 pass. Current C2 explicitly makes native Linux territory-cli execution landing evidence.
+
+Both earlier task receipts remain failed on their older heads: A-7725 default-ledger regression and A-7746 probe escape/census duplicate. No failure is reclassified as a flake or reused green. T3/T4 did not execute in this task gate and remain deferred periodic/integrated landing coverage. No Reviewer tests or probes were run.
+
+Standards: 0 findings. Spec: 0 findings.
+
+Artifact A-7786: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7786-t-973-final-same-head-evidence-at-519078b1.md
+
+Criteria: C1 verified, C2 verified, C3 verified.

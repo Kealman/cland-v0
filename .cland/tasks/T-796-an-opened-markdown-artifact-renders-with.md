@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-754
 branch: t/T-796-an-opened-markdown-artifact-renders-with
 created: 2026-10-18T10:14:36.589Z
-updated: 2026-10-20T17:13:30.864Z
+updated: 2026-10-20T17:24:48.511Z
 ---
 
 ## Summary
@@ -34,7 +34,7 @@ Notes, pages, `.md` and `.markdown` files, and folder entry files and children r
 - [x] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
   - done: impl-796 · 2026-10-20T17:11:03.726Z
 - [x] C3. A 2,000-line artifact shows its first screen rendered within 50 ms with its spans cached per artifact version (path, mtime and size), proved by a T1/T2 test of the cache.
-  - done: impl-796 · 2026-10-20T17:11:04.358Z
+  - done: impl-796 · 2026-10-20T17:24:09.165Z
 - [x] C4. The raw toggle is a registered action with its key `␣v` in `␣?` and the palette, and the "Shared artifacts" section of `nvim/README.md` describes the rendered and raw modes.
   - done: impl-796 · 2026-10-20T17:11:04.880Z
   - verified: rev-26 [reviewer] · run rev-20261020-796-source-1 · 2026-10-20T17:13:30.864Z · commit 42d222a4699cba4f7b79049b78de719a2b6f5c85
@@ -65,3 +65,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear: no Standards or Spec findings. A-7762 records the full audit against 57795675. Separate readonly scratch projection uses the shared thread renderer while raw_buffer owns edits/saves; ␣v is registered, mapped in both modes, and documented in Keys/palette/Shared artifacts. C4 verified. Version keys include path/mtime/size and unsaved-buffer changedtick, width and entry guards; tests cover independent key variation, completed-render cache reuse and first 2000-line rendered-screen latency. Browser/Mermaid/prompt routes and their compatibility test bodies remain unchanged. Follow-up T-1003 owns sliced 20000-line responsiveness; T-1004 owns live invalidation/resize/mapping/rebind/restart. A-7756 summarizes local working-tree targeted results; raw stdout was requested without transcription reruns. A-7757 is dirty-base 57795675 manual grid PASS, supplemental only. C1/C2 QA verification remains reserved to E-795 after-stage QA; C3/C5 and final execution settlement await accepted exact-head mode-free task verification. No Reviewer tests or edits.
 
 Criteria: C4 verified.
+
+### rev-26 · 2026-10-20T17:23:06.246Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261020-796-final-1
+commit: 42d222a4699cba4f7b79049b78de719a2b6f5c85
+scope: evidence
+findings: [{"severity":"medium","text":"Linux first-rendered-screen latency is 68.77 ms against the required 50 ms, with the same identity failing all five load repetitions. Improve first-screen behavior while retaining the latency/grid/cache assertions.","file":"nvim/test/artifact-render.test.ts","line":69},{"severity":"medium","text":"Event artifact navigation still expects the raw '# Event artifact content' marker although the actual grid correctly shows the rendered default; update the expectation while preserving identity/routing and subsequent navigation checks.","file":"nvim/test/events.test.ts","line":108}]
+finding_counts: {"high":0,"medium":2,"low":0}
+
+Final not clear at exact 42d222a4. A-7789 audits A-7777/run 00243f5b. C3's latency assertion fails at 68.77ms; 0/5 load repetitions also fail. events.test.ts:108 times out expecting a raw heading marker although the grid shows the correct rendered artifact; this is a task-owned expectation change, not an unrelated flake. Ordinary 2065/2063/2 plus ten repetition passes/five failures explains aggregate2080/2073/7. ARTIFACT-001 rendered/raw and independent cache identities pass ordinary and5/5; artifacts.test.ts compatibility all9 pass, but the overall gate fails. T1 passes; T2 including Neovim fails, T3 deferred. Linux c8 lon1,two workers,358s/$0.0249. C4 stays source-verified; C1/C2 QA marks remain E-795 after-stage; C3 failed. Local A-7770 transcripts/dirty-gridA-7757 do not supersede Linux evidence. Corrected head requires source review before another verify. No Reviewer execution or edits.
+
+Criteria: C3 failed (First rendered 2000-line screen exceeds 50 ms: 68.77 ms ordinary run and 0/5 load repetitions in A-7777.).
