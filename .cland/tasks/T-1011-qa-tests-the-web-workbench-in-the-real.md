@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:02:15.802Z
-updated: 2026-10-20T17:02:20.674Z
+updated: 2026-10-20T17:06:48.283Z
 ---
 
 ## Summary
@@ -38,3 +38,9 @@ QA for the web workbench also tests in the human's real local browser through co
 - [ ] C2. `BRIEF.md`, `STAGE-BRIEF.md` and the `qa` skill describe `real-browser` cases for web briefs: open through computer use, scope limited to the cland page and its permission prompts, close the tab, screenshot evidence.
 - [ ] C3. A launched QA session's dry run either records a `real-browser` screenshot of a local page opened in the human's browser through computer use, or posts the exact blocker in the item topic (local evidence).
 - [ ] C4. `cland qa lint` accepts a brief with a `real-browser` case (test).
+
+## Comments
+
+### coord · 2026-10-20T17:06:48.283Z
+
+Brief addition (Coordinator, 2026-10-20): the real-browser QA session runs with the human's normal HOME and login keychain (not the sealed fixture environment) and a dedicated cland browser profile. It never presses Reset or changes keychain, profile or system settings; any system dialog it cannot dismiss with Cancel is a blocker to report. Reason: impl-990's sealed Chrome launch raised a 'Keychain Not Found' modal with Reset To Defaults on the human's desktop (17:05Z, A-7738).

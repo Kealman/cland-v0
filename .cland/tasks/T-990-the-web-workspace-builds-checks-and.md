@@ -3,8 +3,9 @@ id: T-990
 kind: task
 title: The web workspace builds, checks and holds the tokens
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 10
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-752
 branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T17:00:19.242Z
+updated: 2026-10-20T17:06:25.270Z
 ---
 
 ## Summary
@@ -33,16 +34,26 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
 
 ## Acceptance criteria
 
-- [ ] C1. `npm install` at the root builds `web/dist`, and `git status` shows `web/dist` ignored (local evidence from a clean worktree).
-- [ ] C2. `npm run typecheck` runs the web's typecheck on the hub's strict flags plus the DOM libraries, and fails on a fixture with a hex, `rgb()` or `hsl()` colour under `web/src` outside `tokens.css` (lint test with fixtures).
-- [ ] C3. oxlint with the React hooks rules runs in the web's typecheck script and fails on a fixture that breaks a hooks rule.
-- [ ] C4. The verification pre-step builds `web/dist` after the typecheck (test of the prepare plan, or a local `cland verify` log).
-- [ ] C5. The two fonts are served from `web/public/fonts/` as woff2 with Latin and Cyrillic and their OFL files, and a test finds no absolute external URL in the built `web/dist`.
-- [ ] C6. `tokens.css` carries the canvas tokens with the role colours of `hl.lua`, and a unit test reads every text token at 4.5:1 or better on the ground and on the selection background.
-- [ ] C7. The root `AGENTS.md` has a `web/` section: CSS Modules and `var(--token)` only, no UI library, no new dependency without the human, no explanatory prose, keys only through the one key map, and the reference component to copy.
-- [ ] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
-- [ ] C9. The added dependencies are exactly those the approved plan lists, with no UI library and no Tailwind (diff of `package.json`).
-- [ ] C10. `web/README.md` describes the workspace, the build and the token rule.
+- [x] C1. `npm install` at the root builds `web/dist`, and `git status` shows `web/dist` ignored (local evidence from a clean worktree).
+  - done: impl-990 · 2026-10-20T17:05:59.133Z
+- [x] C2. `npm run typecheck` runs the web's typecheck on the hub's strict flags plus the DOM libraries, and fails on a fixture with a hex, `rgb()` or `hsl()` colour under `web/src` outside `tokens.css` (lint test with fixtures).
+  - done: impl-990 · 2026-10-20T17:05:59.915Z
+- [x] C3. oxlint with the React hooks rules runs in the web's typecheck script and fails on a fixture that breaks a hooks rule.
+  - done: impl-990 · 2026-10-20T17:06:00.742Z
+- [x] C4. The verification pre-step builds `web/dist` after the typecheck (test of the prepare plan, or a local `cland verify` log).
+  - done: impl-990 · 2026-10-20T17:06:01.447Z
+- [x] C5. The two fonts are served from `web/public/fonts/` as woff2 with Latin and Cyrillic and their OFL files, and a test finds no absolute external URL in the built `web/dist`.
+  - done: impl-990 · 2026-10-20T17:06:02.270Z
+- [x] C6. `tokens.css` carries the canvas tokens with the role colours of `hl.lua`, and a unit test reads every text token at 4.5:1 or better on the ground and on the selection background.
+  - done: impl-990 · 2026-10-20T17:06:02.894Z
+- [x] C7. The root `AGENTS.md` has a `web/` section: CSS Modules and `var(--token)` only, no UI library, no new dependency without the human, no explanatory prose, keys only through the one key map, and the reference component to copy.
+  - done: impl-990 · 2026-10-20T17:06:03.636Z
+- [x] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
+  - done: impl-990 · 2026-10-20T17:06:04.399Z
+- [x] C9. The added dependencies are exactly those the approved plan lists, with no UI library and no Tailwind (diff of `package.json`).
+  - done: impl-990 · 2026-10-20T17:06:05.034Z
+- [x] C10. `web/README.md` describes the workspace, the build and the token rule.
+  - done: impl-990 · 2026-10-20T17:06:05.766Z
 
 ## Comments
 

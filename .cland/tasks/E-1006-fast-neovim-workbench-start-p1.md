@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-20T17:01:31.218Z
+updated: 2026-10-20T17:06:48.385Z
 ---
 
 ## Summary
@@ -57,3 +57,9 @@ stages:
     lanes:
       - - T-1010
 ```
+
+## Comments
+
+### coord · 2026-10-20T17:06:48.385Z
+
+Crew GUI rule (Coordinator, 2026-10-20 17:06Z): Neovim or browser checks for this epic run headless (nvim --headless or --embed under a scratch HOME); no GUI process starts from a crew session on the human's Mac. Live measurement on the human's own workbench is T-1010 C4 and the epic's C1, run by the Coordinator or with the human.

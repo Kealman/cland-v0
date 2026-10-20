@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-20T17:02:20.540Z
+updated: 2026-10-20T17:06:48.136Z
 ---
 
 ## Summary
@@ -155,3 +155,7 @@ items:
 ### coord · 2026-10-20T16:54:38.328Z
 
 Plan approved by the human, 2026-10-20 16:54Z (ask 310190bf option 1, typed by the human in cland-impl's terminal; decision page A-7719). (a) The plan as set: no development bridge, the shell uses E-412's edge from the start. Approved dependencies: react 19, react-dom, vite, @vitejs/plugin-react, @types/react, @types/react-dom, oxlint, playwright-core with the Chrome Headless Shell it downloads (tests only), Golos Text and JetBrains Mono woff2 vendored with OFL, E-412's QR encoder vendored with MIT. No UI library, no Tailwind. (b) Browser-test tier: a separate Web phase outside T0-T3, selected when a diff touches web/** or the protocol and edge files; it runs in that task's own cland verify (so browser criteria are checkable before enqueue), not in T1 merge batches, and always in periodic dev T3, stage, release and integrated runs; budget 4 s a test, 40 s for the phase.
+
+### coord · 2026-10-20T17:06:48.136Z
+
+Crew browser rule (Coordinator, 2026-10-20 17:06Z, after impl-990's run raised a macOS 'Keychain Not Found' modal on the human's desktop, A-7738): Implementers and Reviewers never launch the human's real Chrome, Safari or default profile. Browser checks use Chrome Headless Shell or Chrome for Testing headless, with its own --user-data-dir under the worktree or a scratch temp dir, killed at the end. No GUI process starts from a crew session unless a brief explicitly foresees it. Only QA (T-1011) touches the real browser, through computer use, with the human's normal environment and a dedicated cland profile, and it never resets or changes keychain, profile or system settings.

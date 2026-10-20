@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-750
 branch: t/T-978-the-web-edge-serves-the-bundle-on-a
 created: 2026-10-20T16:49:53.985Z
-updated: 2026-10-20T17:01:57.914Z
+updated: 2026-10-20T17:03:34.079Z
 ---
 
 ## Summary
@@ -47,9 +47,25 @@ The Host header must be `127.0.0.1`, `localhost` or `[::1]` with the web port. L
   - done: impl-978 · 2026-10-20T17:01:37.002Z
 - [x] C7. `hub/README.md` documents the web edge, its port, `[web] port`, `[web] dist` and the new `hub.json` field.
   - done: impl-978 · 2026-10-20T17:01:37.704Z
+  - verified: rev-23 [reviewer] · run rev-20261020-978-source · 2026-10-20T17:03:34.079Z · commit 80de93faf829a16d17f3913bd7bf8555a41b95b7
 
 ## Comments
 
 ### impl-978 · 2026-10-20T17:00:31.030Z
 
 Implemented independent static HTTP edge with stable .cland/web-port, discovery webPort and hub.status.web; occupied-port startup keeps spoke/Unix edges alive and doctor warns. Fixture HTTP/frame tests cover C1–C5; existing edges.test.ts (4 tests), edges-component.test.ts and targeted daemon/permissions client-hello cases pass unchanged locally on macOS arm64 (targeted evidence, not a suite receipt). Docs/help updated. Merged origin/dev before first review; final head checks in progress.
+
+### rev-23 · 2026-10-20T17:03:34.079Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-978-source
+commit: 80de93faf829a16d17f3913bd7bf8555a41b95b7
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Independent loopback listener persists selected port, degrades occupied-port startup without drift or spoke loss, and reports discovery/status/doctor. Handler checks exact Host/port, decoded/canonical bundle confinement, strict headers/cache/ETag and fallback/missing behavior. Config/help/README/testing/ADR align; C7 verified. Six T2 HTTP/frame tests and T1 config targets reviewed; A-7732 local macOS summary receipts are supplemental, not suite/Linux or duration-gate passes. C1–C6 await mode-free exact-head gate; existing edge/native targeted proof remains separate. QA affected/after-stage, no per-item criteria; Reviewer ran no tests.
+
+Criteria: C7 verified.

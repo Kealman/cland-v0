@@ -5,6 +5,7 @@ title: The Neovim explorer loads item summaries, open items first
 state: open
 status: in progress
 size: M
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-755
 branch: t/T-1007-the-neovim-explorer-loads-item-summaries
 created: 2026-10-20T17:01:23.939Z
-updated: 2026-10-20T17:01:57.077Z
+updated: 2026-10-20T17:04:53.644Z
 ---
 
 ## Summary
@@ -30,7 +31,7 @@ The Neovim explorer loads item summaries without bodies: open items first, close
 
 ## Acceptance criteria
 
-- [ ] C1. `task.list` with the summary projection returns no body, comments or verdict history, and for a 1,000-item fixture tracker its payload stays under 150 KB (test).
+- [ ] C1. The summary projection returns no body, comments, verdict history, plans or verification, and on a 1,000-item fixture tracker with 100 open items the open-only first payload stays under 60 KB, with the all-items projection bytes recorded in the test output (test).
 - [ ] C2. On start the explorer requests open items only, and closed items are requested when the human expands the closed group or searches (test on recorded frames).
 - [ ] C3. Opening an item's card reads its body with `task.view` and renders it (test).
 - [ ] C4. `task.list` without the projection answers as today, and the CLI's `task list --json` output is unchanged (test).
