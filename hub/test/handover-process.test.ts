@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { clauseAnswered, connectUi, eventually, fakeClaude, spawnSpoke, nativeProjectHub as projectHub, tempProject, type ChannelEvent, type FrameClient, type Session } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
 
 type Audit = { event: 'audit'; session: string; role: string | null; tool: string; args: Record<string, unknown>; outcome: string; permission?: string };
 
@@ -36,7 +37,7 @@ async function setup(t: TestContext, env: Record<string, string> = {}) {
   assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
   const spawn = async (name: string, role: string): Promise<Session> => {
     const s = await spawnSpoke({ discover: true, cwd: root, name, sessionId: `sess-${name}`, role });
-    t.after(() => s.close());
+    onCleanup(t, () => s.close());
     await s.waitForEvent((e) => isRole(e) && e.params.meta?.role === role, 30_000);
     return s;
   };

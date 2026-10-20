@@ -650,7 +650,7 @@ export async function connectUi(t: TestContext, discovery: Pick<Discovery, 'sock
     () => socket.destroy(),
     discovery.root,
   );
-  t.after(() => ui.close());
+  onCleanup(t, () => ui.close());
   ui.send({ type: 'hello', protocol: 2, secret: discovery.secret, client });
   const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
   if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
@@ -695,7 +695,7 @@ export async function connectWsUi(t: TestContext, hub: { url: string }, client =
     (fn) => ws.on('message', (data) => fn(`${data.toString()}\n`)),
     () => ws.terminate(),
   );
-  t.after(() => ui.close());
+  onCleanup(t, () => ui.close());
   ui.send({ type: 'hello', protocol: 2, client });
   const welcome = await ui.waitFor((f) => f.type === 'welcome' || f.type === 'error');
   if (welcome.type !== 'welcome') throw new Error(`the hub refused the UI: ${JSON.stringify(welcome)}`);
@@ -727,7 +727,9 @@ export async function fakeClaude(
 ): Promise<FakeClaude> {
   await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
-  const cleanupHome = ownDirectory(undefined, home);
+  // Adapter polls write calls.jsonl too: remove the home only after hub shutdown,
+  // in the ownership hook that continues disposing fixtures after a failure.
+  ownDirectory(t, home);
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CLAUDE_HOME: home,
@@ -755,9 +757,8 @@ export async function fakeClaude(
       return [];
     }
   };
-  t.after(async () => {
+  onCleanup(t, async () => {
     for (const s of await sessions()) await killDaemon(s.pid);
-    await cleanupHome();
   });
   return {
     env,
@@ -821,7 +822,7 @@ export type FakeCodex = {
 export async function fakeCodex(t: TestContext, options: { pollMs?: number; injectTimeoutMs?: number; turnMs?: number; env?: Record<string, string> } = {}): Promise<FakeCodex> {
   await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-codex-')));
-  const cleanupHome = ownDirectory(undefined, home);
+  ownDirectory(t, home);
   const env = {
     PATH: `${FAKE_CODEX_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CODEX_HOME: home,
@@ -838,9 +839,8 @@ export async function fakeCodex(t: TestContext, options: { pollMs?: number; inje
     rememberResultProcesses(all, home);
     return all.filter((s) => pidAlive(s.pid));
   };
-  t.after(async () => {
+  onCleanup(t, async () => {
     for (const s of await servers()) await killDaemon(s.pid);
-    await cleanupHome();
   });
   return { env, home, servers, log: (pid) => readFile(join(home, 'log', `${pid}.log`), 'utf8').catch(() => '') };
 }
