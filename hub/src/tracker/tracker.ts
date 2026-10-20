@@ -66,7 +66,7 @@ import {
 } from './item.ts';
 import type { LogFn } from '../log.ts';
 import { gitIn, resolveCommit, type Git } from './verdict-git.ts';
-import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts, qaSatisfied } from './gate-verdicts.ts';
+import { gateEpicVerdict, incompleteEpicCriteria, gateVerdicts, missingDoneCriteria, qaSatisfied } from './gate-verdicts.ts';
 import { MergeError, type MergeCode } from '../merge.ts';
 import type { MergeReceipt } from './index-db.ts';
 import { Freshness, pending, type TipSchedule } from './freshness.ts';
@@ -198,6 +198,8 @@ export type LinkInput = {
   branch?: string | null;
 };
 
+export type MissingDoneNotice = { item: string; topic: string; claimant: string; claimantId: string; criteria: Array<{ id: string; text: string }> };
+
 export type VerdictReport = { topic: string | null; text: string; criteria?: MarkedCriterion[] };
 export type VerdictInput = { verdict: VerdictKind; result: VerdictResult; run: string; commit?: string; scope?: ReviewScope; stage?: string; verified?: string; failed?: { criterion: string; note: string }[]; findings?: Finding[] };
 
@@ -288,6 +290,7 @@ export class Tracker {
   readonly #changeListeners = new Set<(change: ItemChange) => void>();
   /** Told when a verdict comment is written through the hub: the inbox notes it (#33). */
   readonly #verdictListeners = new Set<(id: string, author: string, verdict: Verdict, report?: VerdictReport, human?: boolean) => void>();
+  readonly #missingDoneListeners = new Set<(notice: MissingDoneNotice) => void>();
   /** The hub's topic binding; without one (a tracker on its own) the `topic` field is written as given. */
   #topicBinding: TopicBinding | null = null;
   readonly #git: Git;
@@ -440,6 +443,12 @@ export class Tracker {
     if (this.#index.plan(id)) this.#schedulePlanned(id);
   }
 
+  /** A settled ready check found only missing claimant done marks (or none remain). */
+  onMissingDone(listener: (notice: MissingDoneNotice) => void): () => void {
+    this.#missingDoneListeners.add(listener);
+    return () => this.#missingDoneListeners.delete(listener);
+  }
+
   /** One queued pass per affected epic per tick; no tracker-wide file or row hydration. */
   #schedulePlanned(id: string): void {
     if (this.#stopping) return;
@@ -568,6 +577,16 @@ export class Tracker {
       const parsed = this.#parseItem(text, file, this.ladder);
       const prepare = () => {
         const current = this.#viewOf(id, file, parsed);
+        if (current.kind === 'task' && current.state === 'open' && current.branch && current.topic && current.claim) {
+          let missing: ItemView['criteria'] | null = null;
+          try { missing = missingDoneCriteria(this.#mergeViewOf(current)); }
+          catch (err) { if (!(err instanceof MergeError)) throw err; }
+          if (missing !== null && missing.every(c => c.id !== null)) {
+            const notice: MissingDoneNotice = { item: current.id, topic: current.topic, claimant: current.claim.session, claimantId: this.#identityOf(current.claim.sessionId),
+              criteria: missing.map(c => ({ id: c.id!, text: c.text })) };
+            for (const listener of this.#missingDoneListeners) listener(notice);
+          }
+        }
         const desired = this.#readyStatus(current);
         if (!desired || current.status === desired) return;
         return this.#mutate(id, { id: 'hub', name: 'hub', role: null }, 'ready', item => {

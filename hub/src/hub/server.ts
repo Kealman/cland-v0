@@ -89,6 +89,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
     ladder: tracker.ladder,
     sessionHolds: sessionId => tracker.sessionHolds(sessionId),
   } : {}) });
+  const unwatchMissingDone = options.tracker?.onMissingDone(notice => core.publishMissingDone(notice));
   // closing a unit of work closes its topic (spec 4.5)
   const unwatchEvents = options.tracker?.onChange(change => core.publishTask(change));
   const unwatchItems = options.tracker?.onClosed((id) => core.itemClosed(id));
@@ -156,6 +157,7 @@ export function createHubBase(options: HubBaseOptions): HubBase {
       core.close();
       await dispatcher.close();
       await cleanup;
+      unwatchMissingDone?.();
       unwatchEvents?.();
       unwatchItems?.();
       unbindTopics?.();

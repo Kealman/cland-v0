@@ -651,6 +651,24 @@ export class HubCore {
     this.#emit({ type: 'session.cleanup', sessionId, state: pending ? 'pending stop' : 'settled' });
   }
 
+  /** Commit the notice and its last missing set together, including across hub restarts. */
+  publishMissingDone(notice: import('../tracker/tracker.ts').MissingDoneNotice): void {
+    const key = `ready-missing-done:T-${idNumber(notice.item)}`;
+    const signature = JSON.stringify([notice.claimantId, notice.criteria.map(c => c.id).sort()]);
+    this.#store.transaction(() => {
+      if (this.#store.meta(key) === signature) return;
+      if (notice.criteria.length) {
+        const message = this.#recordNotice(notice.topic, {
+          kind: 'report', to: [notice.claimant],
+          text: `${notice.item}: ready is waiting only on your done marks. Mark every criterion done before requesting the final review:\n${notice.criteria.map(c => `${c.id}: ${c.text} — cland task criterion ${notice.item} done ${c.id}`).join('\n')}`,
+        });
+        if (!message) return;
+        this.#afterCommit(() => this.#publishNotice(message));
+      }
+      this.#store.setMeta(key, signature);
+    });
+  }
+
   publishTask(change: ItemChange): void {
     if (change.item) this.#store.heartbeatItemSince(change.item.id, change.item.status ?? change.item.state, Date.parse(change.item.updated), this.#now().getTime());
     if (change.item) this.#itemSnapshots.set(`T-${idNumber(change.id)}`, change.item);

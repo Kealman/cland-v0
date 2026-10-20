@@ -48,6 +48,21 @@ export function gateVerdicts(view: ItemView): { review: IndexedVerdict; qa: Inde
   return { review, qa };
 }
 
+/** The ready gate would pass if the claimant supplied only its missing done marks.
+ * null means other evidence is missing; an empty list means no done marks remain. */
+export function missingDoneCriteria(view: ItemView): ItemView['criteria'] | null {
+  const missing = view.criteria.filter(c => !c.marks.some(m => m.kind === 'done'));
+  try {
+    gateVerdicts({ ...view, criteria: view.criteria.map(c => ({ ...c, marks: [
+      ...c.marks, { kind: 'done', by: 'hub', at: view.updated },
+    ] })) });
+    return missing;
+  } catch (err) {
+    if (err instanceof MergeError) return null;
+    throw err;
+  }
+}
+
 /** Epic demos are QA on dev, not a task merge: no review or Implementer done marks are required. */
 export function incompleteEpicCriteria(view: ItemView, qa?: IndexedVerdict): string[] {
   return view.criteria.flatMap(c => {

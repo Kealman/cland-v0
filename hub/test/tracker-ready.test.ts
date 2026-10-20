@@ -5,7 +5,7 @@ import { parseItem, serializeItem } from '../src/tracker/item.ts';
 import { onCleanup } from './process-cleanup.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import files, { writeFile } from 'node:fs/promises';
+import files, { mkdir, writeFile } from 'node:fs/promises';
 import { connectUi, eventually, inProcessSpoke, projectHub, connectWsUi, startHub, tempProject } from './harness.ts';
 import { manualTips } from './freshness-harness.ts';
 import { join } from 'node:path';
@@ -271,5 +271,116 @@ for (const mode of ['timing', 'timing-parented', 'retry'] as const) {
       assert.equal((await ui.request({ type: 'task.edit', item: item.id, body: 'new item event' })).ok, true);
       await eventually('event restarts ready', async () => tracker.list().find(row => row.id === readyId)?.status === 'ready' ? true : undefined);
     }
+  });
+}
+
+for (const qaRequired of [false, true]) {
+  test(`ready tells the claimant only about changed missing done marks, with per-item QA=${qaRequired}`, async t => {
+    const root = await tempProject(t);
+    await mkdir(join(root, '.cland'), { recursive: true });
+    if (qaRequired) await writeFile(join(root, '.cland/config.toml'), '[plan]\nqa_default = {scope = "affected", when = "per-item"}\n');
+    const sha = 'b'.repeat(40);
+    const tips = manualTips();
+    const options = { clock: new FakeClock(), scheduleTips: tips.scheduleTips,
+      git: async (args: string[]) => {
+        if (args[0] === 'for-each-ref') return `${'a'.repeat(40)} refs/heads/dev\n${sha} refs/heads/t/ready`;
+        if (args[0] === 'rev-parse') return args.at(-1)?.match(/^([0-9a-f]{40})\^/)?.[1] ?? sha;
+        if (args[0] === 'merge-base') return 'a'.repeat(40);
+        if (args[0] === 'diff') return 'reviewed patch';
+        if (args[0] === 'patch-id') return 'stable-patch';
+        return null;
+      }, readBase: async () => 'dev',
+    };
+    let hub = await projectHub(t, root, {}, options);
+    let ui = await connectUi(t, hub.discovery);
+    const impl = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl', sessionId: 'claimant', role: 'implementer' });
+    const rev = await inProcessSpoke(t, { discover: true, cwd: root, name: 'rev', sessionId: 'reviewer', role: 'reviewer' });
+    const qa = await inProcessSpoke(t, { discover: true, cwd: root, name: 'qa-1', sessionId: 'qa', role: 'qa' });
+    const item = ((await ui.request({ size: 'S', type: 'task.create', title: 'Forgotten done marks', assignee: 'impl', branch: 't/ready',
+      body: '## Acceptance criteria\n- [ ] First\n- [ ] Second\n- [ ] Third' })).value as { item: ItemView }).item;
+    const topic = ((await ui.request({ type: 'topic.create', item: item.id, title: 'Done marks' })).value as { topic: { id: string } }).topic;
+    const claimed = await impl.call<{ ok: boolean; error?: string }>('task.claim', { id: item.id });
+    assert.equal(claimed.ok, true, claimed.error);
+    const read = async () => ((await ui.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;
+    const notices = async () => {
+      const history = await ui.request({ type: 'topic.history', topic: topic.id });
+      return (history.value as { messages: Array<{ text: string; from: string; to: string[]; topic: string }> }).messages
+        .filter(m => m.text.includes('ready is waiting only on your done marks'));
+    };
+    const review = async (run: string, verified: string, commit = sha) => {
+      const result = await rev.call<{ ok: boolean; error?: string }>('task.comment', { id: item.id,
+        verdict: 'review', scope: 'full', result: 'clear', run, verified, commit });
+      assert.equal(result.ok, true, result.error);
+      await tips.refresh();
+    };
+    // A clear source verdict with incomplete current verification must stay silent.
+    await review('stale-criteria', 'all', 'c'.repeat(40));
+    await review('partial-criteria', 'C1');
+    await eventually('old criterion verification is stale', async () => (await read()).criteria[1]?.marks
+      .some(m => m.kind === 'verified' && m.current === false) || undefined);
+    assert.deepEqual(await notices(), []);
+    const delivered = impl.waitForEvent(e => JSON.stringify(e).includes('ready is waiting only on your done marks'));
+    await review('all-criteria', 'all');
+    if (qaRequired) {
+      // Required QA must also be clear before a notice can claim done is the only gap.
+      assert.equal((await qa.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'qa', result: 'not clear', run: 'qa-red' })).ok, true);
+      assert.deepEqual(await notices(), []);
+      assert.equal((await qa.call<{ ok: boolean }>('task.comment', { id: item.id, verdict: 'qa', result: 'clear', run: 'qa-green' })).ok, true);
+    }
+    await eventually('durable claimant notice', async () => {
+      await options.clock.advance(100);
+      return (await notices()).length === 1 || undefined;
+    });
+    await delivered;
+    const first = await notices();
+    assert.equal(first.length, 1);
+    assert.equal(first[0]!.from, 'hub');
+    assert.deepEqual(first[0]!.to, ['impl']);
+    assert.equal(first[0]!.topic, topic.id);
+    for (const [id, text] of [['C1', 'First'], ['C2', 'Second'], ['C3', 'Third']]) {
+      assert.ok(first[0]!.text.includes(`${id}: ${text}`));
+      assert.ok(first[0]!.text.includes(`cland task criterion ${item.id} done ${id}`));
+    }
+    assert.notEqual((await read()).status, 'ready');
+    // A new verdict and a tip refresh recheck the unchanged set, without another notice.
+    await review('same-missing-set', 'all');
+    assert.equal((await impl.call<{ ok: boolean }>('task.criterion', { id: item.id, op: 'done', criterion: 'C1' })).ok, true);
+    await eventually('notice for changed missing set', async () => { await options.clock.advance(100); return (await notices()).length === 2 || undefined; });
+    const changed = (await notices()).at(-1)!;
+    assert.ok(!changed.text.includes('done C1'));
+    assert.ok(changed.text.includes('done C2'));
+    assert.ok(changed.text.includes('done C3'));
+    // A replacement claimant must learn about the same blocker independently.
+    assert.equal((await impl.call<{ ok: boolean }>('task.claim', { id: item.id, release: true })).ok, true);
+    assert.equal((await ui.request({ type: 'task.edit', item: item.id, assignee: 'impl-next' })).ok, true);
+    const replacement = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl-next', sessionId: 'replacement-claimant', role: 'implementer' });
+    const handedOver = replacement.waitForEvent(e => JSON.stringify(e).includes('ready is waiting only on your done marks'));
+    assert.equal((await replacement.call<{ ok: boolean }>('task.claim', { id: item.id })).ok, true);
+    await eventually('notice for replacement claimant', async () => {
+      await options.clock.advance(100);
+      return (await notices()).length === 3 || undefined;
+    });
+    await handedOver;
+    const transferred = (await notices()).at(-1)!;
+    assert.deepEqual(transferred.to, ['impl-next']);
+    assert.ok(!transferred.text.includes('done C1'));
+    assert.ok(transferred.text.includes('done C2'));
+    assert.ok(transferred.text.includes('done C3'));
+    // Reopen the store in-process; the same missing set must retain its deduplication.
+    await impl.close(); await rev.close(); await qa.close(); await replacement.close(); await hub.stop();
+    hub = await projectHub(t, root, {}, options);
+    await tips.refresh();
+    ui = await connectUi(t, hub.discovery);
+    const next = await inProcessSpoke(t, { discover: true, cwd: root, name: 'impl-next', sessionId: 'replacement-claimant', role: 'implementer' });
+    assert.equal((await next.call<{ ok: boolean }>('task.criterion', { id: item.id, op: 'done', criterion: 'C2' })).ok, true);
+    await eventually('notice after restart for remaining criterion', async () => { await options.clock.advance(100); return (await notices()).length === 4 || undefined; });
+    const remaining = (await notices()).at(-1)!;
+    assert.ok(!remaining.text.includes('done C1'));
+    assert.ok(!remaining.text.includes('done C2'));
+    assert.ok(remaining.text.includes('done C3'));
+    assert.equal((await next.call<{ ok: boolean }>('task.criterion', { id: item.id, op: 'done', criterion: 'C3' })).ok, true);
+    await eventually('ready after all done marks', async () => { await options.clock.advance(100); return (await read()).status === 'ready' || undefined; });
+    assert.equal((await notices()).length, 4);
+    assert.ok((await read()).criteria.every(c => c.marks.some(m => m.kind === 'done')));
   });
 }

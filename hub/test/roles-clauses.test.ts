@@ -49,6 +49,7 @@ for (const [source, definitions] of sources) {
         assert.doesNotMatch(clause, /batches shard too|per batch of about three merges/);
       }
       if (role === 'implementer') {
+        assert.match(clause, /Mark every criterion done before requesting the final review/);
         assert.match(clause, /Queue-enabled task runs are T0–T2; T3 runs in the merge batch/);
         assert.match(clause, /T3 smoke runs in batches and integrated runs/);
         assert.match(clause, /all T2 in both packages on fallback/);
