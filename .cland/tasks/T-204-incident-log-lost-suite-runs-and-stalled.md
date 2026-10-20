@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-20T00:06:03.905Z
+updated: 2026-10-20T00:13:55.377Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -368,3 +368,7 @@ Incident 2026-10-19 09:24Z: lon1 c-8 droplets showed degraded disks. Batch 549e3
 ### coord · 2026-10-20T00:06:03.904Z
 
 Incident 2026-10-20 00:04Z, restart #25: the old hub pid 37414 (T-913 code, about 70 min up) ignored SIGTERM for 20 s after `hub stop`. The journal wrote hub-stopped at 00:04:36Z; the stand-in's recipe SIGKILLed it at 00:04:52Z; the new hub 91673 served at 00:05:15Z, a 39 s gap. No runs lost; T-670's droplet verify survived (T-864). If hub stop stalls again, file it against the stop path (T-829 class).
+
+### human · 2026-10-20T00:13:55.377Z
+
+Incident: 6th Coordinator harness exit since 2026-10-18, at 2026-10-20 00:12Z (old pid 46036 gone, new harness pid 61982 resumed itself at 00:12:07Z, bridge reconnected 00:12:10Z). The hub released the Coordinator role; every hub call from coord was refused with 'a session with no role has no tools'. Stand-in re-attach at 00:13Z: cland session resume coord (re-found harness 8fb7be60, pid 61982) then cland role set coord coordinator; role back, no relaunch needed, hub 91673 unchanged. Remedy still open: the hub should keep or re-offer the role when the same harness id resumes (T-829 class).

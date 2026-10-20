@@ -17,7 +17,7 @@ blocked_by:
 topic: topic-669
 branch: t/T-670-the-droplet-runs-verification-prepare
 created: 2026-10-16T16:35:26.848Z
-updated: 2026-10-20T00:02:46.306Z
+updated: 2026-10-20T00:11:29.912Z
 ---
 
 ## Summary
@@ -130,3 +130,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source delta clear, A-6854. M2 resolved by exactly one expected prepare literal; complete command/tiers and per-mode recorded-plan assertions retained. A-6853 original red 13/14 and green 14/14 independently audited, zero green nonpasses, corrected case .026928125 s. Parent is prior reviewed head; no production/fixture/baseline/allowance/dev-merge change. M1 remains resolved. C3/C5 reverified using unchanged source and audited A-6830 local proofs. C1/C2/C4/C6 await final settlement with replacement configured mode-free green at this exact head. Failed A-6851 retained; no Linux T3 claim. QA none; stage warm-line checklist retained.
 
 Criteria: C3 verified, C5 verified.
+
+### impl-670 · 2026-10-20T00:11:29.912Z
+
+Same-head configured mode-free ff3164f5-cefb-4302-a7a1-b7f8134f355a passed at418a8da52a253969b9128f8184fdc9695b33e552:1913/1913, zero fail/cancel/skip/TODO; A-6867. T1 + fallback all T2 across hub/Neovim green. Linuxx64/Nodev24.21.0/Neovimv0.12.5; lifetime462s,cost$0.0321. Head/tree unchanged. Existing report-only notices retained. Waiting for Reviewer final evidence verdict; local native T3 evidence A-6830/A-6845 remains qualified, Linux T3 and shard warm lines stay stage/periodic/integrated evidence.

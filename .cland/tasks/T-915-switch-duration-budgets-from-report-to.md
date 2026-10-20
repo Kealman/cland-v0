@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-672
 branch: t/T-915-switch-duration-budgets-from-report-to
 created: 2026-10-19T22:37:49.124Z
-updated: 2026-10-20T00:10:59.111Z
+updated: 2026-10-20T00:11:48.175Z
 ---
 
 ## Summary
