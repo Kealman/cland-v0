@@ -30,6 +30,17 @@ Write "none" if checks are entirely manual.
 
 Write "none" when absent. Record every case and check with `qa-record.sh` under the epic id and one unique run id; retain the captures in the project's .cland/qa tree.
 
+## Probes that mislead
+
+- Process probes exclude their own shell: use `pgrep`'s bracket trick or exclude the probe's process tree.
+- File-change probes use isolation; mtime alone is confounded by live sessions rewriting the same file.
+- A "ran" marker grep excludes the configuration echo line.
+- Successful droplet prepare logs are in the run's `delivery.log`, not the suite log.
+- Speed criteria use measured wall times, never projections.
+- Slots due or queued before the build count even when their results arrive later.
+- "No skip" names platform-only cases and where they are covered.
+- Re-check helper and function names with grep at the tested build; renames happen.
+
 ## Out of scope
 
 <explicit exclusions, or none>
