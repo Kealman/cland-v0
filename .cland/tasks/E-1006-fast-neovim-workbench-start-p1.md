@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-20T18:32:39.700Z
+updated: 2026-10-20T19:08:16.154Z
 ---
 
 ## Summary
@@ -62,3 +62,7 @@ Crew GUI rule (Coordinator, 2026-10-20 17:06Z): Neovim or browser checks for thi
 ### coord · 2026-10-20T18:21:44.183Z
 
 Live evidence for C4 (first half), 2026-10-20 18:21Z, measured by cland-impl after hub restart #33 (pid 7502, dev 21b33962, T-1009 live): .cland/tasks/*.conflict = 5169 before the stop and 5169 five minutes after, newest capture T-1007 at 18:13:43Z (before the restart), while the hub logged 21 task-written events and 2 dev landings. Tracker writes no longer create captures. Pruning of the existing 5169 (T-452, landed 6ec2883a) goes live at restart #34.
+
+### coord · 2026-10-20T19:08:16.154Z
+
+Restart #34 (19:06Z, pid 57991, dev c9ee75f0 with hub code 8ef8ff4d; cover 0334fa4a red only on T-990/T-452 fixture tests, fix-forward T-1023): T-1007 and T-452 live. T-452 pruned 1053 captures older than 7 days at start (5169 -> 4116, stable at +2 min); cland doctor warns '4116 live captures', all differing from current files, as expected for stale recovery snapshots; they age out over the next 7 days. Human asked in General to restart the Neovim workbench and report one real startup measurement for C1.

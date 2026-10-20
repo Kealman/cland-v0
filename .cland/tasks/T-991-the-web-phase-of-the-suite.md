@@ -3,7 +3,7 @@ id: T-991
 kind: task
 title: The web phase of the suite
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -13,10 +13,10 @@ blocked_by:
   - T-990
   - T-978
   - T-980
-topic: null
-branch: null
+topic: topic-768
+branch: t/T-991-the-web-phase-of-the-suite
 created: 2026-10-20T16:51:40.483Z
-updated: 2026-10-20T16:51:45.726Z
+updated: 2026-10-20T19:11:44.983Z
 ---
 
 ## Summary
