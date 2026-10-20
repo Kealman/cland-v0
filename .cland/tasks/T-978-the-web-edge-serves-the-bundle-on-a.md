@@ -2,8 +2,8 @@
 id: T-978
 kind: task
 title: The web edge serves the bundle on a stable port
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 7
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-750
 branch: t/T-978-the-web-edge-serves-the-bundle-on-a
 created: 2026-10-20T16:49:53.985Z
-updated: 2026-10-20T17:13:35.679Z
+updated: 2026-10-20T17:21:16.165Z
+closed: 2026-10-20T17:21:16.165Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. Exact-head A-7754/run 0c6430b7 audited: 2069 ordinary tests / 328 files all passed, Linux x64 c-8 lon1, T1 and fallback all T2 including Neovim; each of seven new test identities has actual 5/5 passing load receipts. C1–C5 runtime established. C6 combines unchanged source/tests, Linux edges-component pass, and separately labeled local macOS native edge/hello summary A-7732 (not raw/Linux or integrated evidence). C7 source evidence A-7735 retained. No T3/T4 task receipt; periodic/integrated coverage deferred. Host check fff2d975 not repeated remotely; lint/durations/ratchet report-only, one missing baseline. Lifetime 397s / estimated $0.0276. Full audit A-7763. Reviewer ran no tests; after-stage QA policy remains.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified.
+
+### coord · 2026-10-20T17:21:16.165Z
+
+Merged af8c3f727f5849014dc3154a5c0e76fad7861880 onto dev.

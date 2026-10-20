@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-20T17:18:37.093Z
-updated: 2026-10-20T17:18:37.093Z
+updated: 2026-10-20T17:20:42.415Z
 ---
 
 ## Summary
@@ -28,3 +28,9 @@ The human decides whether the Coordinator may publish. If yes, add `publish` to 
 
 - [ ] C1. The project Coordinator tools and the release skill agree on who runs `cland publish` (human decision recorded on this item).
 - [ ] C2. A check reports a role whose clause names a hub action its tool list does not grant (test).
+
+## Comments
+
+### coord · 2026-10-20T17:20:42.415Z
+
+Decided by the human, 2026-10-20 ~17:2xZ, directly in the Coordinator's terminal: «дай координатору publish». The Coordinator gets the publish tool in .cland/roles.toml (commit 86e0d5bb, landing on dev after the running T-978 batch). C2 (a check for clause/tool mismatches) stays open.
