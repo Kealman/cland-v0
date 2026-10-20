@@ -148,6 +148,12 @@ test('a role changed while a relaunch is under way stays changed: resume never w
   await presentAs(ui, 'coord', 'idle');
   await f.crash('coord');
   await eventually('exited', async () => ((await processes(ui)).find((p) => p.name === 'coord')?.status === 'exited' ? true : undefined));
+  const history = await ui.request({ type: 'topic.history', topic: 'general' });
+  assert.equal(history.ok, true, history.error);
+  const notices = (history.value as { messages: Array<{ text: string; kind: string }> }).messages.filter(m => m.kind === 'coordinator-exited');
+  assert.equal(notices.length, 1, 'the fake harness exit reaches General after the spoke has disconnected');
+  assert.match(notices[0]!.text, /coord.*harness exited at.*Coordinator role was released/);
+  assert.ok(notices[0]!.text.includes('cland session resume coord --relaunch'));
 
   // the relaunch and the human's assignment race: the assignment lands while the adapter starts the new app-server
   const [resumed, set] = await Promise.all([ui.request({ type: 'session.resume', session: 'coord', relaunch: true }, 30_000), ui.request({ type: 'role.set', session: 'coord', role: 'implementer' })]);

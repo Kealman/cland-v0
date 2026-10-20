@@ -652,6 +652,13 @@ export class ClaudeCodeAdapter implements HarnessAdapter {
   async resume(p: HarnessProcess, options: { relaunch?: boolean; authorize?: () => void; policy?: LaunchPolicy; resumed?: Resumed } = {}): Promise<ResumeResult> {
     return continueWith((function* (this: ClaudeCodeAdapter): Generator<Promise<unknown>, ResumeResult, unknown> {
       const resumed = options.resumed ?? untimed;
+      // Pre-T-603 unpinned rows froze the bookkeeping fallback as an explicit profile,
+      // which Claude treats as separate from the trusted default. Keep named accounts
+      // and richer overlays intact; let a legacy default row inherit today's hub env.
+      if (!p.account && p.accountEnv?.CLAUDE_CONFIG_DIR && Object.keys(p.accountEnv).length === 1
+        && resolve(p.accountEnv.CLAUDE_CONFIG_DIR) === resolve(this.#env.HOME || homedir(), '.claude')) {
+        p.accountEnv = this.#inheritedEnv();
+      }
       p.accountEnv ??= this.#inheritedEnv();
       const d = this.#directory(p);
       this.watch(p);

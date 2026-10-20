@@ -10,7 +10,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code.ts';
-import type { AdapterHost } from '../src/adapters/contract.ts';
+import type { AdapterHost, HarnessProcess } from '../src/adapters/contract.ts';
 import { parseRoles } from '../src/roles/config.ts';
 import { rolesTemplate } from '../src/roles/template.ts';
 import { installedHarnesses } from '../src/doctor/harnesses.ts';
@@ -203,6 +203,53 @@ test('Claude environment composition preserves implicit, pathless, pinned and in
       assert.ok(String(notice.login).includes('claude auth login'));
       assert.equal(String(notice.login).includes('CLAUDE_CONFIG_DIR='), expected !== null);
       if (selection === 'pinned account') assert.ok(String(notice.login).includes("account'\\''s directory"), 'remedies quote apostrophes');
+    } finally { adapter.close(); }
+  }
+});
+
+test('Claude relaunch repairs a pre-T-603 default-directory row without changing explicit account selections', async t => {
+  const calls: Array<{ args: string[]; env: NodeJS.ProcessEnv }> = [];
+  let rejectExplicitDefault = false;
+  t.mock.method(cp, 'execFile', (_bin: string, args: string[], options: cp.ExecFileOptions, callback: (error: { code: number } | null, stdout: string, stderr: string) => void) => {
+    calls.push({ args, env: { ...options.env } });
+    const untrusted = rejectExplicitDefault && args[0] === '--bg' && options.env?.CLAUDE_CONFIG_DIR === '/fixture/home/.claude';
+    queueMicrotask(() => callback(untrusted ? { code: 1 } : null, args[0] === 'agents' ? '[]' : 'claude attach abcdef12', untrusted ? 'Workspace not trusted' : ''));
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+  const host: AdapterHost = { root: '/fixture', discoveryFile: '/fixture/hub.json', node: '/fixture/node', cli: '/fixture/cland', spoke: '/fixture/spoke', log: () => {}, signal: () => {}, recordPid: () => {}, exited: () => {} };
+  const legacy: HarnessProcess = {
+    name: 'coord', harness: 'claude-code', account: null, accountEnv: { CLAUDE_CONFIG_DIR: '/fixture/home/.claude' },
+    role: 'coordinator', model: null, cwd: '/fixture', pid: null, harnessId: 'old-background',
+    sessionId: 'cland-session', harnessSessionId: 'native-conversation', startedAt: '2026-10-01T00:00:00.000Z', status: 'exited',
+  };
+  const cases = [
+    { name: 'legacy default', process: legacy, inherited: undefined, expected: undefined, repair: true },
+    { name: 'normalized default path', process: { ...legacy, accountEnv: { CLAUDE_CONFIG_DIR: '/fixture/home/.claude/.' } }, inherited: undefined, expected: undefined, repair: true },
+    { name: 'named account at default path', process: { ...legacy, account: 'explicit-default' }, inherited: undefined, expected: '/fixture/home/.claude', repair: false },
+    { name: 'other directory', process: { ...legacy, accountEnv: { CLAUDE_CONFIG_DIR: '/fixture/other' } }, inherited: undefined, expected: '/fixture/other', repair: false },
+    { name: 'additional overlay', process: { ...legacy, accountEnv: { ...legacy.accountEnv, CUSTOM: 'kept' } }, inherited: undefined, expected: '/fixture/home/.claude', repair: false },
+    { name: 'inherited directory', process: legacy, inherited: '/fixture/inherited', expected: '/fixture/inherited', repair: true },
+    { name: 'explicit inherited default', process: legacy, inherited: '/fixture/home/.claude', expected: '/fixture/home/.claude', repair: false },
+  ];
+  for (const row of cases) {
+    calls.length = 0;
+    rejectExplicitDefault = row.repair;
+    const adapter = new ClaudeCodeAdapter(host, { clock: new FakeClock(), agentsMs: 0, env: { HOME: '/fixture/home', ...(row.inherited ? { CLAUDE_CONFIG_DIR: row.inherited } : {}) } });
+    try {
+      const resumed = await adapter.resume(structuredClone(row.process), { relaunch: true });
+      assert.equal(resumed.found, true, row.name);
+      if (!resumed.found) continue;
+      assert.equal(resumed.process.status, 'running', row.name);
+      assert.equal(resumed.process.accountEnv?.CLAUDE_CONFIG_DIR, row.expected, row.name);
+      assert.equal(resumed.process.accountEnv?.CUSTOM, row.name === 'additional overlay' ? 'kept' : undefined);
+      assert.equal(resumed.process.account, row.process.account);
+      const bg = calls.filter(c => c.args[0] === '--bg');
+      assert.equal(bg.length, 1, row.name);
+      assert.equal(bg[0]!.args[bg[0]!.args.indexOf('--resume') + 1], 'native-conversation');
+      assert.ok(calls.some(c => c.args[0] === 'agents'), 'discovery reaches the fake CLI');
+      assert.ok(calls.some(c => c.args[0] === 'stop'), 'stale background handle is stopped');
+      assert.ok(calls.every(c => c.env.CLAUDE_CONFIG_DIR === row.expected), row.name);
     } finally { adapter.close(); }
   }
 });

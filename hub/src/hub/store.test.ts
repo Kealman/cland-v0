@@ -53,6 +53,38 @@ test('a sessions table written by an older hub gains the status and role columns
   }
 });
 
+test('a Coordinator harness exit posts one immediate General notice even after its spoke disconnected', () => {
+  for (const disconnected of [false, true]) {
+    const clock = new FakeClock(Date.parse('2026-10-18T17:48:00Z'));
+    const core = new HubCore({ clock });
+    try {
+      const published: Message[] = [];
+      core.subscribe(event => { if (event.type === 'message') published.push(event.message); });
+      const coord = core.hello({ type: 'hello', protocol: 2, sessionId: 'sess-coord', name: 'coord', cwd: '/', role: 'coordinator' }, () => true);
+      assert.ok(coord.ok);
+      if (disconnected) core.disconnect(coord.connection);
+      assert.equal(core.topicHistory('general').messages.length, 0, 'a spoke disconnect alone is not a harness exit');
+      core.vacateRole('coord', 'its harness exited');
+      const notices = core.topicHistory('general').messages;
+      assert.equal(notices.length, 1, 'notice is available without advancing the heartbeat clock');
+      const notice = notices[0]!;
+      assert.equal(notice.fromKind, 'hub');
+      assert.equal(notice.ts, '2026-10-18T17:48:00.000Z');
+      assert.match(notice.text, /coord.*harness exited at 2026-10-18T17:48:00.000Z/);
+      assert.match(notice.text, /Coordinator role was released/);
+      assert.ok(notice.text.includes('cland session resume coord --relaunch'));
+      assert.ok(notice.text.includes('cland session attach coord'));
+      assert.equal(published.filter(m => m.id === notice.id).length, 1, 'the workbench receives the notice');
+      assert.equal(core.holderOf('coordinator'), null);
+      core.vacateRole('coord', 'its harness exited');
+      const worker = core.hello({ type: 'hello', protocol: 2, sessionId: 'sess-worker', name: 'worker', cwd: '/', role: 'implementer' }, () => true);
+      assert.ok(worker.ok);
+      core.vacateRole('worker', 'its harness exited');
+      assert.equal(core.topicHistory('general').messages.length, 1, 'repeated reports and other roles do not duplicate the notice');
+    } finally { core.close(); core.store.close(); }
+  }
+});
+
 test('store-and-forward: a queued delivery is handed over in order until it is acked, and one past the TTL is dropped', () => {
   const store = new Store();
   store.record(message('a', 'alpha', ['beta'], 'first'), [{ session: 'beta', state: 'queued' }], 1_000);

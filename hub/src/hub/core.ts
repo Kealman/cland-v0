@@ -1926,8 +1926,17 @@ export class HubCore {
    *  a relaunch of the session takes it back. Nothing when it held none. */
   vacateRole(name: string, reason: string): void {
     const c = this.#live.get(name);
-    if ((c ? c.role : this.#store.roleOf(name)) === null) return;
+    const previous = c ? c.role : this.#store.roleOf(name);
+    if (previous === null) return;
     this.#vacate(name, reason);
+    // A spoke can disconnect before its harness reports its exit. Announce the
+    // actual role release here rather than treating every UI vacancy as a death.
+    if (previous === COORDINATOR && reason === 'its harness exited') {
+      this.noticeInTopic(GENERAL.id, {
+        kind: 'coordinator-exited',
+        text: `${name}'s harness exited at ${this.#now().toISOString()}; the Coordinator role was released. Resume it with \`cland session resume ${name} --relaunch\`, then use \`cland session attach ${name}\` for its re-attach command.`,
+      });
+    }
   }
 
   #vacate(name: string, reason: string): void {
