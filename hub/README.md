@@ -2969,8 +2969,13 @@ for isolation, budgets, run plans and bisection evidence.
 Reduced integrated/package runs retain a cross-package smoke baseline. Task plans filter out these T3 files. Both lists are named constants
 in `src/suite-selection.ts`:
 
-- `NVIM_SMOKE`: `nvim/test/scenarios/workbench.test.ts`. A hub-only run executes
-  the whole hub phase followed by the real-hub Neovim attach and main-view scenario.
+- `NVIM_SMOKE`: `nvim/test/scenarios/workbench.test.ts` and
+  `nvim/test/startup-budget.test.ts`. A hub-only run executes the whole hub phase
+  followed by real-hub Neovim attach/main views and the generated thousand-item
+  startup budget (3 seconds from welcome to rendered explorer/header/sessions;
+  first task response at most 128 KiB). Both are T3 and stay deferred in queued
+  task plans. Full runs and web-only diffs retain them too. See the
+  [measurement contract and scratch-only macOS probe](../docs/agents/tests.md#neovim-workbench-startup-budget-t-1010).
 - `HUB_SMOKE`: `hub/test/scenarios/message-tracer.test.ts`,
   `hub/test/scenarios/hub-lifecycle.test.ts`, `hub/test/scenarios/startup-smoke.test.ts`.
   A Neovim-only run executes these spoke/daemon

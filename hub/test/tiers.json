@@ -554,6 +554,7 @@
     "nvim/test/sessions.test.ts": "T2",
     "nvim/test/shell-component.test.ts": "T2",
     "nvim/test/shell.test.ts": "T3",
+    "nvim/test/startup-budget.test.ts": "T3",
     "nvim/test/stub-control.test.ts": "T2",
     "nvim/test/thread-oracle-soak.test.ts": "T4",
     "nvim/test/thread.test.ts": "T2",

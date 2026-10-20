@@ -34,7 +34,7 @@ export function tierSuiteSelection(selection: SuiteSelection, tier: NonNullable<
 
 // Cross-package baselines, kept together so widening smoke coverage is one edit.
 export const HUB_SMOKE = ['hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/startup-smoke.test.ts'];
-export const NVIM_SMOKE = ['nvim/test/scenarios/workbench.test.ts'];
+export const NVIM_SMOKE = ['nvim/test/scenarios/workbench.test.ts', 'nvim/test/startup-budget.test.ts'];
 const HUB_TARGETS = ['hub/src/**/*.test.ts', 'hub/test/**/*.test.ts'];
 const NVIM_TARGETS = ['nvim/test/**/*.test.ts'];
 

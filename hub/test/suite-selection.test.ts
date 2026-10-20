@@ -2,7 +2,7 @@
 import { packageShards, serializeTierManifest } from '../src/suite-shards.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sameSuiteSelection, taskSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, selectPackageSuite } from '../src/suite-selection.ts';
+import { sameSuiteSelection, taskSuiteSelection, chooseSuiteMode, importSpecifiers, nvimHubImports, nvimHubImporters, HUB_SMOKE, NVIM_SMOKE, suitePhases, selectPackageSuite } from '../src/suite-selection.ts';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { glob, mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
@@ -13,6 +13,8 @@ import { ownDirectory } from './process-cleanup.ts';
 
 test('hub implementation changes select hub plus Neovim smoke', () => {
   assert.equal(chooseSuiteMode(['hub/src/adapters/codex.ts', 'hub/test/tracker.test.ts']), 'hub-only');
+  assert.ok(suitePhases('hub-only')[1]!.targets.includes('nvim/test/startup-budget.test.ts'), 'reduced hub runs retain the startup budget');
+  assert.equal(chooseSuiteMode(['web/app.ts']), 'hub-only', 'web-only diffs retain Neovim smoke');
 });
 
 test('Neovim implementation changes select Neovim plus hub smoke', () => {
@@ -328,7 +330,7 @@ test(`${mode} integrated package admission retains both locks through smoke and 
   const { root, git } = await gitFixture(t);
   const journal = join(root, 'journal.jsonl');
   const locks = { hub: join(root, 'machine.lock'), nvim: join(root, 'nvim.lock') };
-  const files = ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', 'nvim/test/scenarios/workbench.test.ts'];
+  const files = ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', ...NVIM_SMOKE];
   for (const path of files) {
     await mkdir(join(root, path, '..'), { recursive: true });
     await writeFile(join(root, path), `import test from 'node:test'; import assert from 'node:assert/strict'; import { readFileSync, appendFileSync, existsSync } from 'node:fs'; test('phase', () => {
@@ -351,7 +353,7 @@ test(`${mode} integrated package admission retains both locks through smoke and 
   const code = `import { runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await runPackageSuite('auto', [], ${JSON.stringify({ cwd: root, lockDirs: locks })});`;
   const reduced = await exec(process.execPath, ['--input-type=module', '-e', code], { env });
   const rows = (await readFile(journal, 'utf8')).trim().split('\n').map(line => JSON.parse(line) as { file: string; token: string });
-  assert.deepEqual(rows.map(row => row.file).sort(), mode === 'hub-only' ? ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/scenarios/workbench.test.ts'] : ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', 'nvim/test/scenarios/workbench.test.ts']);
+  assert.deepEqual(rows.map(row => row.file).sort(), mode === 'hub-only' ? ['hub/test/local.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', ...NVIM_SMOKE].sort() : ['hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts', 'nvim/test/other.test.ts', ...NVIM_SMOKE].sort());
   assert.equal(new Set(rows.map(row => row.token)).size, 1, 'one admission spans hub and smoke');
   assert.ok(reduced.stderr.split('\n').some(line => line.startsWith('suite duration ') && line.includes(`mode ${mode}`) && line.includes(changed)), reduced.stderr);
   assert.ok(reduced.stderr.includes(`suite phase ${mode === 'hub-only' ? 'Neovim smoke' : 'hub machine smoke'}; locks held`), reduced.stderr);
