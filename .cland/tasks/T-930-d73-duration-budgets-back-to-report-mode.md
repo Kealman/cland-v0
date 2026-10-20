@@ -2,8 +2,8 @@
 id: T-930
 kind: task
 title: "D73: duration budgets back to report mode until the v0.1.4 release"
-state: open
-status: ready
+state: closed
+status: done
 size: XS
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-915
 topic: topic-685
 branch: t/T-930-d73-duration-budgets-back-to-report-mode
 created: 2026-10-20T02:57:12.479Z
-updated: 2026-10-20T03:06:43.608Z
+updated: 2026-10-20T03:10:50.986Z
+closed: 2026-10-20T03:10:50.986Z
 ---
 
 ## Summary
@@ -79,3 +80,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 A-7014: final clear. Whole A-7013 audit at unchanged reviewed/pushed68a3ad47 confirms1920/1920ordinarypasses,zero nonpasses/loadgroups/durationfailures/resource mismatches. Hostcheck/allT1/fallbackallT2bothpackagesgreen. Actual report-onlyheartbeatbaseline notice and ratchet label retained; no current overage. C1mode-only diff/simulatedreporterpreview and C2D73docs sourceA-7012remaincurrent;C3freshgreen nowestablished. C1–C3verified,no findings. QA none;T3deferred;no Reviewer tests/edits.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T03:10:50.986Z
+
+Merged 65113acc2f35c41070e2447d0ccf591cacde4cd7 onto dev.
