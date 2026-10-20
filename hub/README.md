@@ -2941,17 +2941,31 @@ a file key is its path with `file: true`, `seconds` and `reason`. A file excepti
 does not exempt its tests. Admission (including verify and merge) refuses empty
 or `TODO` reasons through the shard-manifest lint. Missing duration manifests
 disable this check and the timing reporter, preserving fixture/older runner behavior.
+Working-tree and immutable-candidate lint also refuse exact test/allow keys
+with no matching source identity, and file keys naming missing test files.
+Renames and moves must remove stale keys in the same change; a stage cover adds
+the new baseline. Computed titles remain uncertain; literal and template titles
+are matched within their own file.
+This refusal happens during shard planning before a test receipt exists, so a
+merge batch holds as inconclusive rather than bisecting a failing test. The
+Coordinator diagnoses the named manifest key and recovers the batch after cleanup.
 
 At each stage close the Coordinator refreshes on `dev` from the latest green
 integrated full-run log artifact:
 
 ```sh
-npm run test:durations -- /absolute/path/to/A-123-green-integrated.log
+npm run test:durations -- --add-only /absolute/path/to/A-123-green-integrated.log
 # Multiple logs take the median per test; pass the newest log last.
-node hub/test/durations.ts refresh <older-green-log> <latest-green-log>
+node hub/test/durations.ts refresh --add-only <older-green-log> <latest-green-log>
 ```
 
-Refresh preserves reasons, updates timing fields and removes tests absent from
+Until T-931 decides allowance-refresh policy, use `--add-only`: it prints and
+adds missing test/file baselines, preserving all existing entry bytes, number
+formatting and allowances. It creates no TODO allowances; review new
+over-budget identities separately. It retains source artifact ids and updates
+the source head. `refresh --help` describes the option.
+
+Full refresh (without `--add-only`) preserves reasons, updates timing fields and removes tests absent from
 the newest log. Only over-budget identities absent from both their previous
 baseline and `allow` get a new `TODO` exception; known slow entries only update
 their baseline seconds. Resolve every `TODO` before

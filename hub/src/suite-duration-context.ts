@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { DURATION_MANIFEST, type DurationManifest, type TestTiming } from './suite-durations.ts';
 import { TIER_MANIFEST, type Tier, type TierManifest, type DurationHistory } from './suite-shards.ts';
 import type { DurationBudgetContext, SourceTestIdentity } from './suite-duration-budget.ts';
+import { sourceTestIdentities } from './suite-test-identities.ts';
 
 /** An injected snapshot owns allowance provenance; absent injection keeps the Git reader. */
 export function durationHistory(context: DurationBudgetContext | null | undefined): DurationHistory {
@@ -65,25 +66,6 @@ export async function durationBudgetContext(cwd: string, options: { head?: strin
     const retained: string[] = [];
     const sources: Record<string, SourceTestIdentity> = {};
     operation = 'test source parser';
-    const ts = await import('typescript');
-    const identities = (file: string, text: string, topLevel = false): SourceTestIdentity => {
-      const ast = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
-      const patterns: string[] = [];
-      let dynamic = false;
-      const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const visit = (node: import('typescript').Node) => {
-        if (ts.isCallExpression(node) && /^(?:test|it|describe)(?:\.(?:skip|todo|only))?$/.test(node.expression.getText(ast))) {
-          const title = node.arguments[0];
-          if (title && (ts.isStringLiteral(title) || ts.isNoSubstitutionTemplateLiteral(title))) patterns.push(`^${escape(title.text)}$`);
-          else if (title && ts.isTemplateExpression(title)) patterns.push(`^${escape(title.head.text)}${title.templateSpans.map(span => `.*?${escape(span.literal.text)}`).join('')}$`);
-          else dynamic = true;
-          if (topLevel) return; // Nested test times belong to their top-level parent.
-        }
-        ts.forEachChild(node, visit);
-      };
-      visit(ast);
-      return { patterns, dynamic };
-    };
     // Source coverage includes base files absent from the timing manifest.
     // Byte-identical files require no title inference; changed files compare
     // both pinned sources, retaining unresolved dynamic titles conservatively.
@@ -96,9 +78,9 @@ export async function durationBudgetContext(cwd: string, options: { head?: strin
         continue;
       }
       operation = `base source ${file}`;
-      sources[file] = identities(file, await git('show', `${options.base}:${file}`));
+      sources[file] = await sourceTestIdentities(file, await git('show', `${options.base}:${file}`));
       operation = `candidate source ${file}`;
-      const current = identities(file, await source(file));
+      const current = await sourceTestIdentities(file, await source(file));
       retained.push(...keys.filter(key => current.dynamic || current.patterns.some(pattern => new RegExp(pattern, 's').test(key.slice(file.length + 2)))));
     }
     context.base = { manifest: baseManifest, tiers: baseTiers, retained, sources };
@@ -107,7 +89,7 @@ export async function durationBudgetContext(cwd: string, options: { head?: strin
       for (const [file, tier] of Object.entries(tiers)) {
         if (tier !== 'T3' || (baseTiers[file] === 'T3' && !changed.has(file))) continue;
         operation = `candidate source ${file}`;
-        context.candidateSources[file] = identities(file, await source(file), true);
+        context.candidateSources[file] = await sourceTestIdentities(file, await source(file), true);
       }
     }
   } catch {

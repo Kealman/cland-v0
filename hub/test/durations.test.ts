@@ -8,12 +8,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { ownDirectory } from './process-cleanup.ts';
+import { scratchMachine, commandIn } from './init-machine.ts';
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
 
 const exec = promisify(execFile);
 const generator = fileURLToPath(new URL('./durations.ts', import.meta.url));
 test('refresh takes per-test medians, sums file test-time, preserves reasons and removes deleted tests', async t => {
-  const cwd = await mkdtemp(join(tmpdir(), 'cland-durations-'));
-  ownDirectory(t, cwd);
+  const machine = await scratchMachine(t, { identity: false });
+  machine.env = withoutExecutorCredentials(machine.env);
+  const cwd = machine.root;
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   const manifest = join(cwd, 'hub/test/durations.json');
   await writeFile(manifest, JSON.stringify({ version: 1, source: { artifacts: [], commit: 'old' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
@@ -30,7 +33,8 @@ test('refresh takes per-test medians, sums file test-time, preserves reasons and
       { file: 'nvim/test/two.test.ts', name: 'fast', seconds: 1 },
     ].map(record => `suite timing ${JSON.stringify(record)}\n`).join('') + 'Finished: exit 0\n');
   }
-  await exec(process.execPath, [generator, 'refresh', ...logs], { cwd });
+  const refreshed = await commandIn(machine, cwd, process.execPath, [generator, 'refresh', ...logs]);
+  assert.equal(refreshed.code, 0, refreshed.stderr);
   const result = JSON.parse(await readFile(manifest, 'utf8'));
   assert.deepEqual(result.source, { artifacts: ['A-1', 'A-2', 'A-3'], commit: 'abc123' });
   assert.deepEqual(result.files, { 'hub/test/one.test.ts': { seconds: 16, tests: 2 }, 'nvim/test/two.test.ts': { seconds: 1, tests: 1 } });
@@ -39,6 +43,47 @@ test('refresh takes per-test medians, sums file test-time, preserves reasons and
     'hub/test/one.test.ts::new': { seconds: 7, reason: 'TODO' },
     'hub/test/one.test.ts::slow': { seconds: 9, owner: 'E-677', legacy: true, reason: 'Exercises remote teardown through real processes.' },
   });
+  const before = await readFile(manifest, 'utf8');
+  await writeFile(logs[0]!, 'Head abc123\nsuite timing {"file":"hub/test/one.test.ts","name":"another","seconds":1}\nFinished: exit 0\n');
+  const added = await commandIn(machine, cwd, process.execPath, [generator, 'refresh', '--add-only', logs[0]!]);
+  assert.equal(added.code, 0, added.stderr);
+  assert.match(added.stdout, /duration added tests: hub\/test\/one.test.ts::another/);
+  assert.doesNotMatch(added.stdout, /duration added files:/);
+  const after = JSON.parse(await readFile(manifest, 'utf8'));
+  assert.deepEqual(after.tests, { ...JSON.parse(before).tests, 'hub/test/one.test.ts::another': 1 });
+  assert.deepEqual(after.allow, result.allow);
+});
+
+test('immutable duration identity lint reads candidate sources and names stale baseline and allowance keys', async t => {
+  const { lintHubShards, lintHubShardTree } = await import('../src/suite-shards.ts');
+  const machine = await scratchMachine(t, { identity: true });
+  machine.env = withoutExecutorCredentials(machine.env);
+  const cwd = machine.root, file = 'hub/test/identity.test.ts';
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
+  await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Owner\nstate: open\n---\n');
+  const git = async (...args: string[]) => {
+    const result = await commandIn(machine, cwd, 'git', args);
+    assert.equal(result.code, 0, result.stderr);
+  };
+  await git('init', '-qb', 'dev');
+  for (const section of ['tests', 'allow', 'files'] as const) {
+    const key = section === 'files' ? 'hub/test/missing.test.ts' : `${file}::old title`;
+    const entry = section === 'tests' ? 1 : section === 'files' ? { seconds: 1, tests: 1 } : { seconds: 6, owner: 'E-677', legacy: true, reason: 'Fixture allowance.' };
+    const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {}, [section]: { [key]: entry } };
+    await writeFile(join(cwd, file), "test('new title', () => {});");
+    await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify(manifest));
+    await git('add', '.'); await git('commit', '-qm', `stale ${section}`);
+    const namesKey = (error: unknown) => error instanceof Error && error.message.includes(`no matching test identity: ${key}`);
+    await assert.rejects(lintHubShards(cwd, { legacyKeys: new Set([key]) }), namesKey);
+    await assert.rejects(lintHubShardTree(cwd, 'HEAD', machine.env), namesKey);
+    // A dirty checkout cannot repair an immutable candidate.
+    await writeFile(join(cwd, section === 'files' ? key : file), "test('old title', () => {});");
+    await lintHubShards(cwd, { legacyKeys: new Set([key]) });
+    await assert.rejects(lintHubShardTree(cwd, 'HEAD', machine.env), namesKey);
+    await git('add', '.'); await git('commit', '-qm', `repair ${section}`);
+    await lintHubShardTree(cwd, 'HEAD', machine.env);
+  }
 });
 
 test('refresh falls back to top-level spec lines with file identities, excluding nested times and retaining skipped files', async t => {
@@ -103,6 +148,7 @@ test('TODO allowances are refused by working-tree and immutable-tree shard admis
   const manifest = { version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
     'hub/test/one.test.ts::slow': { seconds: 6, owner: 'E-677', legacy: true, reason: 'TODO' },
   } };
+  await writeFile(join(cwd, 'hub/test/one.test.ts'), "test('slow', () => {});");
   await writeFile(path, JSON.stringify(manifest));
   await assert.rejects(lintHubShards(cwd), /duration.*TODO.*hub\/test\/one.test.ts::slow/);
   const git = async (...args: string[]) => (await exec('git', args, { cwd })).stdout.trim();
@@ -127,6 +173,7 @@ test('immutable candidate admission uses the owning Git environment for tree and
     const cwd = await mkdtemp(join(tmpdir(), 'cland-admission-env-'));
     ownDirectory(t, cwd);
     await mkdir(join(cwd, 'hub/test'), { recursive: true });
+    await writeFile(join(cwd, 'hub/test/one.test.ts'), "test('slow', () => {});");
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
   await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
     await writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: {}, tests: {}, allow: {
@@ -156,7 +203,7 @@ test('pre-start-reporter logs map literal and template titles from test sources 
   await assert.rejects(exec(process.execPath, [generator, 'refresh', log], { cwd }), /ambiguous legacy test/);
 });
 
-for (const path of ['hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts']) {
+for (const path of ['hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/src/suite-test-identities.ts', 'hub/test/duration-reporter.ts']) {
   test(`${path} changes require both package phases`, async () => {
     const { chooseSuiteMode } = await import('../src/suite-selection.ts');
     assert.equal(chooseSuiteMode([path]), 'full');

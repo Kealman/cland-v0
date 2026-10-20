@@ -10,6 +10,7 @@ import type { SuiteMode, SuiteSelection } from './suite-selection.ts';
 import { HUB_SMOKE, NVIM_SMOKE } from './suite-selection.ts';
 import { DURATION_MANIFEST, durationOwners, lintDurationManifest, readDurationManifest, type DurationManifest } from './suite-durations.ts';
 import { QUARANTINE_MANIFEST, lintQuarantineManifest, readQuarantineManifest } from './suite-quarantine.ts';
+import { lintDurationIdentities } from './suite-test-identities.ts';
 
 export type Shard = 'free' | 'machine';
 export type SuiteShard = { name: string; targets: string[]; resource: Shard; workers: number };
@@ -153,6 +154,7 @@ export async function lintHubShardTree(cwd: string, tree: string, env: NodeJS.Pr
       const ownerCwd = (await git(['rev-parse', '--show-toplevel'])).trim();
       const legacyKeys = await legacyDurationKeys(git, history.head, history.base);
       lintDurationManifest(manifest, { source: durationSource, owners: await durationOwners(ownerCwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
+      await lintDurationIdentities(manifest, path => paths.includes(path) && PATTERNS.some(pattern => matchesGlob(path, pattern)) ? source(path) : Promise.resolve(undefined));
     }
     catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   }
@@ -174,6 +176,13 @@ async function lintDurations(cwd: string, history: DurationHistory): Promise<voi
       const git = async (args: string[]) => (await promisify(execFile)('git', args, { cwd, timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })).stdout;
       const legacyKeys = history.legacyKeys ?? await legacyDurationKeys(git);
       lintDurationManifest(manifest, { source: await readFile(join(cwd, DURATION_MANIFEST), 'utf8'), owners: await durationOwners(cwd, manifest), ...(legacyKeys ? { legacyKeys } : {}) });
+      const paths = new Set<string>();
+      for await (const path of glob(PATTERNS, { cwd })) paths.add(path);
+      await lintDurationIdentities(manifest, async path => {
+        if (!paths.has(path)) return undefined;
+        try { return await readFile(join(cwd, path), 'utf8'); }
+        catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
+      });
     }
   } catch (error) { throw new ShardManifestError(error instanceof Error ? error.message : String(error), [DURATION_MANIFEST]); }
   try { await readQuarantineManifest(cwd); }

@@ -2,6 +2,7 @@
 import { glob, readFile, writeFile } from 'node:fs/promises';
 import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isMap, isNode, parseDocument } from 'yaml';
 import type { TestProgress } from '../src/suite-progress.ts';
 import { DURATION_MANIFEST, fileTimings, readDurationManifest, timingKey, type DurationManifest, type TestTiming } from '../src/suite-durations.ts';
 
@@ -79,8 +80,33 @@ async function sourceTitles(cwd: string): Promise<(name: string) => string | und
   };
 }
 
-export async function refreshDurations(cwd: string, logs: string[]): Promise<DurationManifest> {
-  if (!logs.length) throw new Error('usage: node hub/test/durations.ts refresh <green integrated log>…');
+const usage = 'usage: node hub/test/durations.ts refresh [--add-only] <green integrated log>…';
+
+// Splice only additions into the JSON maps. Re-serialization would change old
+// number spellings (and hand formatting), even when their values stay equal.
+function addOnlyText(text: string, manifest: DurationManifest, previous: DurationManifest): string {
+  const document = parseDocument(text);
+  const edits: Array<{ start: number; end: number; text: string }> = [];
+  const source = document.get('source', true);
+  if (!isMap(source) || !source.range) throw new Error('invalid duration source');
+  edits.push({ start: source.range[0], end: source.range[1], text: JSON.stringify(manifest.source, null, 2).replaceAll('\n', '\n  ') });
+  for (const section of ['files', 'tests'] as const) {
+    const entries = Object.entries(manifest[section]).filter(([key]) => !Object.hasOwn(previous[section], key));
+    if (!entries.length) continue;
+    const map = document.get(section, true);
+    if (!isMap(map) || !map.range) throw new Error(`invalid duration ${section}`);
+    const last = map.items.at(-1)?.value;
+    const end = isNode(last) ? last.range?.[1] : undefined;
+    const at = end ?? map.range[0] + 1;
+    const added = entries.map(([key, value]) => `    ${JSON.stringify(key)}: ${JSON.stringify(value, null, 2).replaceAll('\n', '\n    ')}`).join(',\n');
+    edits.push({ start: at, end: at, text: `${end === undefined ? '' : ','}\n${added}${end === undefined ? '\n  ' : ''}` });
+  }
+  for (const edit of edits.sort((a, b) => b.start - a.start)) text = text.slice(0, edit.start) + edit.text + text.slice(edit.end);
+  return text;
+}
+
+export async function refreshDurations(cwd: string, logs: string[], options: { addOnly?: boolean } = {}): Promise<DurationManifest> {
+  if (!logs.length) throw new Error(usage);
   const previous = await readDurationManifest(cwd);
   const samples = new Map<string, { test: TestTiming; seconds: number[] }>();
   const artifacts: string[] = [];
@@ -145,14 +171,27 @@ export async function refreshDurations(cwd: string, logs: string[]): Promise<Dur
   const retained = [...Object.keys(previous?.files ?? {}), ...Object.keys(previous?.tests ?? {}), ...Object.keys(previous?.allow ?? {})]
     .some(key => key === 'T3' || !latestByFile.has(key.split('::')[0]!));
   const sources = [...new Set([...(retained ? previous?.source.artifacts ?? [] : []), ...artifacts])];
-  const manifest: DurationManifest = { version: 1, source: { artifacts: sources, commit }, budget,
+  let manifest: DurationManifest = { version: 1, source: { artifacts: sources, commit }, budget,
     files: sorted(Object.entries(files)), tests: sorted(tests.map(test => [timingKey(test), test.seconds])), allow: sorted(Object.entries(allow)) };
-  await writeFile(join(cwd, DURATION_MANIFEST), JSON.stringify(manifest, null, 2) + '\n');
+  if (options.addOnly) manifest = { ...manifest,
+    source: { artifacts: [...new Set([...(previous?.source.artifacts ?? []), ...artifacts])], commit },
+    files: { ...manifest.files, ...previous?.files }, tests: { ...manifest.tests, ...previous?.tests }, allow: previous?.allow ?? {} };
+  const path = join(cwd, DURATION_MANIFEST);
+  const text = options.addOnly && previous ? addOnlyText(await readFile(path, 'utf8'), manifest, previous) : JSON.stringify(manifest, null, 2) + '\n';
+  await writeFile(path, text);
   return manifest;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  if (process.argv[2] !== 'refresh') throw new Error('usage: node hub/test/durations.ts refresh <green integrated log>…');
-  const manifest = await refreshDurations(process.cwd(), process.argv.slice(3));
+  if (process.argv.includes('--help')) { console.log(usage + '\n--add-only adds missing test/file baselines, preserving existing entries and all allowances.'); process.exit(0); }
+  if (process.argv[2] !== 'refresh') throw new Error(usage);
+  const args = process.argv.slice(3);
+  if (args.some(arg => arg.startsWith('--') && arg !== '--add-only')) throw new Error(usage);
+  const addOnly = args.includes('--add-only');
+  const previous = addOnly ? await readDurationManifest(process.cwd()) : null;
+  const manifest = await refreshDurations(process.cwd(), args.filter(arg => arg !== '--add-only'), { addOnly });
+  if (addOnly) for (const section of ['files', 'tests'] as const) for (const key of Object.keys(manifest[section])) {
+    if (!Object.hasOwn(previous?.[section] ?? {}, key)) console.log(`duration added ${section}: ${key}`);
+  }
   console.log(`duration manifest: ${Object.keys(manifest.files).length} files, ${Object.keys(manifest.tests).length} tests, ${Object.keys(manifest.allow).length} allowances; replace TODO reasons before admission`);
 }

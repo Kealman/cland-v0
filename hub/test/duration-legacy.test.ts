@@ -20,6 +20,7 @@ async function history(cwd: string) {
   await mkdir(join(cwd, '.cland/tasks'), { recursive: true });
   await writeFile(join(cwd, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
   const key = 'hub/test/old.test.ts::old';
+  await writeFile(join(cwd, 'hub/test/old.test.ts'), "test('old', () => {});");
   const entry = { seconds: 6, owner: 'E-677', legacy: true as const, reason: 'Existing process lifecycle.' };
   const manifest: DurationManifest = { version: 1, source: { artifacts: [], commit: 'base' }, budget: { testSeconds: 5, fileSeconds: 60, T1: { testSeconds: 0.5, fileSeconds: 10, wallSeconds: 120 } }, files: {}, tests: {}, allow: { [key]: entry } };
   const write = () => writeFile(join(cwd, 'hub/test/durations.json'), JSON.stringify(manifest));

@@ -20,7 +20,7 @@ test('occasions keep T4 load tests in the base phase without parallel repetition
   const tiers = { [component]: 'T2', [tracker]: 'T4', [editor]: 'T4' };
   for (const file of Object.keys(tiers)) {
     await mkdir(join(f.root, file, '..'), { recursive: true });
-    await writeFile(join(f.root, file), '');
+    await writeFile(join(f.root, file), "test('load', () => {});");
   }
   await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: tiers }));
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
@@ -155,7 +155,7 @@ test('nightly trims repetitions to the manifest projection before creating its m
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   const file = 'hub/test/example.test.ts';
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
-  await writeFile(join(f.root, file), '');
+  await writeFile(join(f.root, file), "test('first', () => {}); test('second', () => {});");
   const unmeasured = 'hub/test/unmeasured.test.ts';
   await writeFile(join(f.root, unmeasured), '');
   await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T2', [unmeasured]: 'T2' } }));
@@ -183,7 +183,7 @@ test('nightly refuses a base run beyond the deadline before reserving a droplet'
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   const file = 'hub/test/example.test.ts';
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
-  await writeFile(join(f.root, file), '');
+  await writeFile(join(f.root, file), "test('slow', () => {});");
   await writeFile(join(f.root, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { [file]: 'T4' } }));
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1,
     source: { artifacts: [], commit: f.candidate.head }, budget: { testSeconds: 5, fileSeconds: 60 },

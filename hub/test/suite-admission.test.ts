@@ -162,7 +162,8 @@ test('admission refuses unclassified sources without consuming queue slots', asy
   assert.match(legacyResult.text, /exit 0/);
   // Duration admission uses the candidate's history after dev retires a legacy key.
   const durations = join(f.root, 'hub/test/durations.json');
-  const baseline = durationFixture();
+  const baseline = durationFixture('hub/src/new.test.ts');
+  await writeFile(join(f.root, 'hub/src/new.test.ts'), "// T3: native process startup\ntest('old', () => {}); test('expiring', () => {});\n");
   await writeFile(join(f.root, '.cland/tasks/E-677-fixture.md'), durationOwner);
   await writeFile(durations, JSON.stringify(baseline.manifest));
   // The candidate's merge-base manifest owns allowance provenance, even after

@@ -1,8 +1,8 @@
 import type { DurationManifest } from '../src/suite-durations.ts';
 
 /** A migrated baseline with one grandfathered and one expiring allowance. */
-export function durationFixture() {
-  const legacyKey = 'hub/test/old.test.ts::old', expiringKey = 'hub/test/expiring.test.ts::expiring';
+export function durationFixture(file?: string) {
+  const legacyKey = `${file ?? 'hub/test/old.test.ts'}::old`, expiringKey = `${file ?? 'hub/test/expiring.test.ts'}::expiring`;
   const legacy = { seconds: 6, owner: 'E-677', legacy: true as const, reason: 'Existing process lifecycle.' };
   const today = new Date(), expires = new Date(today);
   expires.setUTCDate(expires.getUTCDate() + 6);

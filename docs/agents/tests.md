@@ -1068,6 +1068,14 @@ and expired allowances (expiry is midnight UTC). D72 allows at most 31 days
 between `added` and `expires` for dated allowances owned by `budget.legacyOwner`;
 all other owners keep the seven-day maximum. Ownership
 is checked in the live authoritative tracker, including linked worktrees.
+Both paths also refuse duration test/allow keys with no matching source test
+identity, and file baselines/allowances naming a missing test file. Literal and
+template titles are checked in their own file; computed titles remain uncertain.
+Renaming or moving a test therefore requires removing its stale manifest keys
+in the same change. A later stage cover supplies the new identity's baseline.
+An unmatched key refuses during shard planning, before any test receipt exists.
+A merge batch therefore holds as inconclusive with nothing to bisect; the
+Coordinator diagnoses the named key, arranges cleanup and recovers the batch.
 
 By the Coordinator's D53 exception, pre-existing allowances carry `legacy: true`
 and have no calendar dates. D72 makes their owner `budget.legacyOwner` (E-677
@@ -1089,8 +1097,16 @@ The suite result includes these notices, budget failures, and `suite budget over
 the runner's self-measured loading, bookkeeping, checking and reporting work.
 
 At each stage close the Coordinator runs
-`npm run test:durations -- <latest-green-integrated-log-artifact-path>` on `dev`
-and commits the refreshed manifest. `node hub/test/durations.ts refresh <log>…`
+`npm run test:durations -- --add-only <latest-green-integrated-log-artifact-path>` on `dev`
+and commits the added baselines. Until T-931 decides allowance-refresh policy,
+use `node hub/test/durations.ts refresh --add-only <log>…`: it adds only missing
+test and file baselines, prints each addition, preserves existing entry bytes
+and number formatting, and leaves every allowance unchanged (including omitted
+identities and over-budget new tests). Review any new over-budget identity's
+allowance separately. Source artifact ids are retained and the source head is
+updated. Repeating the same refresh adds nothing.
+
+The full `node hub/test/durations.ts refresh <log>…` mode
 accepts several logs (newest last), takes per-test medians, sums file test-time,
 preserves reasons and retains baseline entries for files absent from every supplied
 log. For each observed file, it drops tests absent from the newest supplied log

@@ -13,13 +13,15 @@ export async function integrated(t: Parameters<typeof fixture>[0], config = '', 
     f.candidate.selection = { mode: 'full', files: [], reason: 'integrated scripted dev', fetchedDev: f.candidate.head };
   } else await f.git('checkout', 'dev');
   await mkdir(join(f.root, 'hub/test'), { recursive: true });
+  await mkdir(join(f.root, 'nvim/test'), { recursive: true });
+  await writeFile(join(f.root, 'nvim/test/editor.test.ts'), "// T3: native Neovim process contract fixture\nimport test from 'node:test'; test('fixture', () => {});\n");
   for (const file of ['one', 'two']) await writeFile(join(f.root, `hub/test/${file}.test.ts`), "import test from 'node:test'; test('fixture', () => {});\n");
-  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T1' } }));
+  await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T1', 'nvim/test/editor.test.ts': 'T3' } }));
   await writeFile(join(f.root, 'hub/test/durations.json'), JSON.stringify({ version: 1, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 }, files: { 'hub/test/one.test.ts': { seconds: 8, tests: 1 }, 'hub/test/two.test.ts': { seconds: 6, tests: 1 }, 'nvim/test/editor.test.ts': { seconds: 2, tests: 1 } }, tests: {}, allow: {} }));
   if (options.machine === 'scripted') {
     const manifest = JSON.parse(await readFile(join(f.root, 'hub/test/durations.json'), 'utf8')) as typeof f.durationContext.manifest;
     f.durationContext.manifest = manifest;
-    f.durationContext.tiers = { 'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T1' };
+    f.durationContext.tiers = { 'hub/test/one.test.ts': 'T1', 'hub/test/two.test.ts': 'T1', 'nvim/test/editor.test.ts': 'T3' };
     f.durationContext.base = { manifest: structuredClone(manifest), tiers: { ...f.durationContext.tiers }, retained: [], sources: {} };
     return f;
   }

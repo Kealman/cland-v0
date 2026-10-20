@@ -16,7 +16,7 @@ import { durationFixture, durationOwner } from './duration-fixture.ts';
 test('merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications', async t => {
   // T2 behaviour: the in-process hub checks an immutable scratch-repository merge.
   const { root, ui, rev } = await project(t);
-  const baseline = durationFixture();
+  const baseline = durationFixture('hub/test/base.test.ts');
   await mkdir(join(root, 'hub/test'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), durationOwner);
   await writeFile(join(root, 'hub/test/durations.json'), JSON.stringify(baseline.manifest, null, 2));
@@ -25,7 +25,7 @@ test('merge refuses every unclassified hub test in the merged candidate, then ac
   const work = await task(root);
   // This task predates the manifest. Only dev has it, so checking the task tree misses the gap.
   await mkdir(join(root, 'hub/test'), { recursive: true });
-  await writeFile(join(root, 'hub/test/base.test.ts'), '// hermetic base test\n');
+  await writeFile(join(root, 'hub/test/base.test.ts'), "test('old', () => {}); test('expiring', () => {});\n");
   await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { 'hub/test/base.test.ts': 'T1' } }));
   git(root, 'add', 'hub'); git(root, 'commit', '-qm', 'Introduce shards on dev');
   ok(await cland(root, 'push'));

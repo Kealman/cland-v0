@@ -187,6 +187,7 @@ test('a package without either manifest keeps its existing Neovim-only plan', as
 
 test('duration lint uses supplied legacy keys for package planning and rejects unrecorded allowances', async t => {
   const { root, write } = await fixture(t);
+  await writeFile(join(root, 'hub/test/a.test.ts'), "test('recorded', () => {});");
   await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   await writeFile(join(root, '.cland/tasks/E-677-fixture.md'), '---\nid: E-677\nkind: epic\ntitle: Allowance owner\nstate: open\n---\n');
@@ -235,6 +236,7 @@ test('test:tiers refuses an open task allowance with its line and open epic repl
 
 test('duration owners follow container state through the E-677 to E-482 transition', async t => {
   const { root, write } = await fixture(t);
+  await writeFile(join(root, 'hub/test/a.test.ts'), "test('temporary migration', () => {});");
   await write({ 'hub/test/a.test.ts': 'T1', 'nvim/test/z.test.ts': 'T3' });
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
   const item = (id: string, kind: string, state = 'open') => writeFile(join(root, `.cland/tasks/${id}-fixture.md`), `---\nid: ${id}\nkind: ${kind}\ntitle: Allowance owner\nstate: ${state}\n---\n`);
@@ -259,4 +261,28 @@ test('duration owners follow container state through the E-677 to E-482 transiti
   allowance.owner = 'E-482';
   await save();
   await assert.doesNotReject(lintHubShards(root, { legacyKeys: new Set() }));
+});
+
+test('working manifest lint names unmatched test, allowance and file keys', async t => {
+  const { root } = await fixture(t);
+  const path = join(root, 'hub/test/durations.json');
+  const file = 'hub/test/a.test.ts';
+  await writeFile(join(root, file), "test('literal [.*]', () => {}); test.skip(`case ${kind} succeeds`, () => {});");
+  const manifest = { version: 1 as const, source: { artifacts: [], commit: 'fixture' }, budget: { testSeconds: 5, fileSeconds: 60 },
+    files: { [file]: { seconds: 1, tests: 2 } }, tests: { [`${file}::literal [.*]`]: 0.5, [`${file}::case alpha succeeds`]: 0.5 }, allow: {} };
+  await writeFile(path, JSON.stringify(manifest));
+  await lintHubShards(root, { legacyKeys: new Set() });
+  for (const bad of [
+    { tests: { [`${file}::literal anything`]: 1 } },
+    { tests: { [file]: 1 } },
+    { files: { 'hub/test/missing.test.ts': { seconds: 1, tests: 1 } } },
+  ]) {
+    await writeFile(path, JSON.stringify({ ...manifest, ...bad }));
+    const key = Object.keys(bad.tests ?? bad.files!)[0]!;
+    await assert.rejects(lintHubShards(root, { legacyKeys: new Set() }), error => error instanceof Error && error.message.includes(`no matching test identity: ${key}`));
+  }
+  const { lintDurationIdentities } = await import('../src/suite-test-identities.ts');
+  const key = `${file}::absent allowance`;
+  await assert.rejects(lintDurationIdentities({ ...manifest, allow: { [key]: { seconds: 6, reason: 'Fixture.' } } }, async () => "test('literal [.*]', () => {}); test(`case ${kind} succeeds`, () => {});"), error => error instanceof Error && error.message.endsWith(key));
+  await assert.doesNotReject(lintDurationIdentities({ ...manifest, tests: { [`${file}::computed title`]: 1 } }, async () => 'test(titleFromTable, () => {});'), 'computed titles remain uncertain, not proven absent');
 });

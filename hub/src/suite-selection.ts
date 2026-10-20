@@ -90,7 +90,7 @@ function chooseSuite(paths: readonly string[], nvimHubImports: readonly string[]
     if (['hub/src/test-lint-policy.ts', 'hub/src/hub/suite-candidate.ts'].includes(path)) return full(`suite infrastructure ${path}`);
     if (/^(?:hub\/src\/cli\/(?:crew|roles?)\.ts|hub\/src\/adapters\/contract\.ts|nvim\/lua\/cland\/(?:hub|state)\.lua|hub\/src\/protocol\.ts)$/.test(path)) return full(`shared contract ${path}`);
     if (/(?:^|\/)(?:package(?:-lock)?\.json|tsconfig[^/]*\.json)$/.test(path)) return full(`package configuration ${path}`);
-    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-load-diagnostics.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-dev-fetch.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
+    if (['hub/test/harness.ts', 'hub/test/process-cleanup.ts', 'hub/test/run-suite.ts', 'hub/test/load-gate.ts', 'hub/test/load-gate-reporter.ts', 'hub/src/suite-load-diagnostics.ts', 'hub/src/suite-selection.ts', 'hub/src/suite-dev-fetch.ts', 'hub/src/suite-shards.ts', 'hub/src/suite-durations.ts', 'hub/src/suite-duration-budget.ts', 'hub/src/suite-duration-context.ts', 'hub/src/suite-test-identities.ts', 'hub/test/duration-reporter.ts'].includes(path)) return full(`suite infrastructure ${path}`);
   }
   const nvim = paths.filter(path => path.startsWith('nvim/')).length;
   if (nvim && nvim !== paths.length) return full('mixed nvim and non-nvim paths');

@@ -2494,7 +2494,6 @@
     "hub/test/demo-release-component.test.ts::demo identity mismatch preserves the resource and exposes operator attention with an alert": 0.275046,
     "hub/test/demo-release-component.test.ts::demo release keeps virtual time frozen while provider I/O is held": 0.234491,
     "hub/test/demo-release-component.test.ts::demo stop clears persistent mismatch attention after provider absence": 0.350772,
-    "hub/test/demo-release-component.test.ts::demo stop confirms an earlier delete whose active droplet has lost its tags": 0.160161,
     "hub/test/demo-release-component.test.ts::demo stop confirms provider absence on retry after an accepted delete": 0.195222,
     "hub/test/demo-release-component.test.ts::demo stop keeps an accepted active deletion pending beyond two seconds and confirms a later 404": 0.521423,
     "hub/test/demo-release-component.test.ts::demo stop refuses changed resource identities after accepted deletion": 0.321209,
@@ -3202,10 +3201,6 @@
     "hub/test/opencode-check.test.ts::release event check covers adapter subscriptions and state cases against both upstream versions": 0.00046,
     "hub/test/opencode-database.test.ts::OpenCode service sweeps its default database without resuming a cland session (P3)": 0.001732,
     "hub/test/opencode-launch-policy.test.ts::OpenCode effort selects a catalog variant with explicit model variants taking precedence": 0.024206,
-    "hub/test/opencode-launch-policy.test.ts::OpenCode launch policy rows survive authenticated session readback": 0.06408,
-    "hub/test/opencode-launch-policy.test.ts::read-only OpenCode launches deny the edit permission used by write and patch": 0.066756,
-    "hub/test/opencode-launch-policy.test.ts::roles.toml policy reaches the native session through a launch frame": 0.152176,
-    "hub/test/opencode-launch-policy.test.ts::the item rule overrides skip and external writable roots": 0.032211,
     "hub/test/opencode-native.test.ts::a known child approval is restored from its own reconnect snapshot": 0.16457,
     "hub/test/opencode-native.test.ts::a late command lookup cannot describe the next approval episode": 0.177043,
     "hub/test/opencode-native.test.ts::a reconnect permission snapshot restores only the referenced shell command": 0.206888,
@@ -3515,8 +3510,6 @@
     "hub/test/roles-template.test.ts::new crew policy gives the Aide sub-agents": 0.043034,
     "hub/test/roles-template.test.ts::no installed harness is reported while edited role and crew policy remain byte-identical": 0.061908,
     "hub/test/roles-timing.test.ts::150 ms of malformed parsing plus 150 ms of failure logging counts as one 300 ms roles continuation": 0.186083,
-    "hub/test/roles.test.ts::defaults clause snapshots describe review before verification, account-limited routing, the human queue and stopped-session lifecycle": 2.498672,
-    "hub/test/roles.test.ts::project clause snapshots describe review before verification, account-limited routing, the human queue and stopped-session lifecycle": 2.302102,
     "hub/test/roles.test.ts::roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults": 5.058688,
     "hub/test/roles.test.ts::the holder leaving raises the vacancy; a launched Coordinator gets its clause as its first turn": 2.071902,
     "hub/test/routing.test.ts::@all and a glob reach the connected and the known-offline sessions, never the sender": 0.118607,
@@ -3895,7 +3888,6 @@
     "hub/test/suite-check.test.ts::startup cancellation reaps an unregistered detached writer before root removal": 0.349248,
     "hub/test/suite-close-component.test.ts::a Coordinator integrated batch reserves two shards without stage provenance": 0.4062,
     "hub/test/suite-close-component.test.ts::a batch sharding fallback publishes one warning frame and one whole-run result": 0.298146,
-    "hub/test/suite-close-component.test.ts::a failed shard fails one merged result with its label and no automatic rerun": 0.41169,
     "hub/test/suite-close-component.test.ts::another project stage close skips sharding and runs once without a check": 0.242452,
     "hub/test/suite-close-component.test.ts::cancelling while provider sizes are held joins reservation before reporting and leaves zero reserved spend": 0.27578,
     "hub/test/suite-close-component.test.ts::task heads and non-Coordinator batches keep one remote slot": 0.483808,
@@ -4254,7 +4246,6 @@
     "hub/test/suite.test.ts::verify inherits root commands in a task worktree without command keys": 2.17541,
     "hub/test/suite.test.ts::verify runs test when check is unset": 2.15471,
     "hub/test/suite.test.ts::verify stops on the configured check exit": 2.209236,
-    "hub/test/surface.test.ts::role clauses keep decision questions with the Coordinator and allow explicit human action requests": 0.015311,
     "hub/test/surface.test.ts::the spoke declares the channel capability, the documented tools and its instructions": 0.501024,
     "hub/test/surface.test.ts::who() lists every connected session with its session id, role, status and connect time": 0.919695,
     "hub/test/system-processes.test.ts::a captured stopped pid is resumed even when every later process inspection fails": 0.140396,
@@ -5692,48 +5683,12 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/follows.test.ts::a clear hub demo verdict releases the merge hold": {
-      "seconds": 0.899122,
-      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a clear hub demo verdict, then proves the follower can land; the sibling not-clear case is allowed at 5.297 s.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/follows.test.ts::a not clear hub demo verdict releases the merge hold": {
-      "seconds": 0.932643,
-      "reason": "Lands a predecessor through real Git, proves the overlapping follower is held, records a not-clear hub demo verdict, then proves the follower can land.",
-      "owner": "E-880",
-      "legacy": true
-    },
     "hub/test/follows.test.ts::CLI and in-process MCP maintain canonical follows independently of blockers": {
       "seconds": 2.7,
       "owner": "E-880",
       "added": "2026-10-19",
       "expires": "2026-11-19",
       "reason": "Runs real task CLI create/view/list/link subprocesses plus the in-process MCP boundary to prove canonical follows independently of blockers. D71/D72 enforce migration: observed peak 2.0907486439999996 s in A-6792; cap 2.7 s provides 25% headroom rounded up to 0.1 s."
-    },
-    "hub/test/follows.test.ts::closing the predecessor releases the merge hold and an empty closed epic is met": {
-      "seconds": 1.013946,
-      "reason": "Closes an empty epic and exercises predecessor landing, overlap refusal, epic closure and follower landing through real tracker and Git lifecycle boundaries.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/follows.test.ts::final surface lookup revalidates a concurrent follows change before publication": {
-      "seconds": 1.304938,
-      "reason": "Lands two predecessor tasks with real Git, pauses the final follower surface read in an external Git process, links a new predecessor and proves refusal plus the retry hold.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/follows.test.ts::follow becomes met on the last merge and blocks only overlapping follower merges": {
-      "seconds": 1.235969,
-      "reason": "Exercises two real Git squash landings plus two overlap refusals and proves dev stays unchanged while the demo is pending.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/follows.test.ts::plain task view shows follows met after the last merge across a hub restart": {
-      "seconds": 1.694156,
-      "reason": "Lands a predecessor through real Git, restarts a real hub and checks the plain task view reports the follow as met; the merge and restart dominate. Linux c-8 run 5d2063ce (A-3210).",
-      "owner": "E-880",
-      "legacy": true
     },
     "hub/test/handover-process.test.ts::revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it": {
       "seconds": 7.576559,
@@ -5992,18 +5947,6 @@
       "expires": "2026-10-26",
       "reason": "T-896–T-903 process-helper migration moves the native Git retry proof while retaining staged deletion and reversion assertions. A-6763/A-6767 observed up to 5.789 s; allow 20% headroom."
     },
-    "hub/test/merge-recovery.test.ts::deferred cleanup preserves a worktree switched onto an unrelated branch and can finish once restored": {
-      "seconds": 4.520955,
-      "reason": "Runs a real merge and deferred worktree cleanup, switches to an unrelated branch, then retries cleanup after restoration to prove unrelated work survives.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/merge-recovery.test.ts::release, topic closure and cleanup failures remain merged and retry the remaining steps": {
-      "seconds": 2.582777,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
-      "owner": "E-880",
-      "legacy": true
-    },
     "hub/test/merge.test.ts": {
       "file": true,
       "seconds": 38.129357,
@@ -6137,12 +6080,6 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
     },
-    "hub/test/plan-approval.test.ts::draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives restart": {
-      "seconds": 6.78549,
-      "reason": "Builds and approves a multi-lane plan through real hub/harness deliveries, then restarts to prove durable launch authority.",
-      "owner": "E-880",
-      "legacy": true
-    },
     "hub/test/plan-approval.test.ts::draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives store reopen (in-process)": {
       "seconds": 2.684595,
       "owner": "E-880",
@@ -6157,30 +6094,12 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
     },
-    "hub/test/planned-stage.test.ts::landing stage one advances stage two": {
-      "seconds": 3.366643,
-      "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA": {
-      "seconds": 5.84233,
-      "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking.",
-      "owner": "E-880",
-      "legacy": true
-    },
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA (in-process)": {
       "seconds": 1.884131,
       "owner": "E-880",
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
-    },
-    "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA with platform receipts bound after startup checks": {
-      "seconds": 3.828962,
-      "reason": "Real Git landing, reviewer/QA spokes, hub stop and late restored-receipt binding prove restart advancement after startup tree checks have settled. Quiet Mac focused measurement 3.200989 s; allowance ahead of the 5 s line for the same process/Git lifecycle under package load.",
-      "owner": "E-880",
-      "legacy": true
     },
     "hub/test/planned-stage.test.ts::stage landing and ten close frames keep a fixed query budget with unrelated items and plans (in-process)": {
       "seconds": 3.585297,
@@ -6721,18 +6640,6 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/suite-admission.test.ts::verify card follows branch jobs through finish and cache, updates the UI silently and survives restart": {
-      "seconds": 5.168928,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
-      "owner": "E-880",
-      "legacy": true
-    },
-    "hub/test/suite-cache-recovery.test.ts::cache survives hub restart, separates effective modes, and never reuses a failed run": {
-      "seconds": 14.769652,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
-      "owner": "E-880",
-      "legacy": true
-    },
     "hub/test/suite-cancel.test.ts::a worker killed while the hub is down is reported after restart and its package children are cleaned": {
       "seconds": 10.342078,
       "owner": "E-880",
@@ -6957,12 +6864,6 @@
       "added": "2026-10-19",
       "expires": "2026-11-19",
       "reason": "Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation. D71/D72 enforce migration: observed peak 11.196478198000001 s in A-6792; cap 14 s provides 25% headroom rounded up to 0.1 s."
-    },
-    "hub/test/suite-selection-report.test.ts::auto suite reports the fetched diff decision and transports it to the package; --all forces full": {
-      "seconds": 5.378583,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
-      "owner": "E-880",
-      "legacy": true
     },
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": {
       "seconds": 11.407945,

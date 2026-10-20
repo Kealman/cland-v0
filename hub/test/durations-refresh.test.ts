@@ -1,11 +1,44 @@
 // T1: refreshDurations preserves partial-tier baselines directly, with no CLI process.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { refreshDurations } from './durations.ts';
 import type { DurationManifest } from '../src/suite-durations.ts';
+
+test('add-only adds missing baselines while preserving old entry bytes and every allowance', async t => {
+  const cwd = await mkdtemp(join(tmpdir(), 'duration-add-only-'));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  const path = join(cwd, 'hub/test/durations.json');
+  const original = `{
+  "version": 1,
+  "source": {"artifacts": ["A-1"], "commit": "old"},
+  "budget": {"testSeconds": 5, "fileSeconds": 60},
+  "files": {"hub/test/one.test.ts": { "seconds": 1.2300, "tests": 2 }},
+  "tests": {"hub/test/one.test.ts::keep": 0.000042, "hub/test/one.test.ts::gone": 1e-7},
+  "allow": {"hub/test/one.test.ts::keep": {"seconds": 12.500, "owner": "E-1", "legacy": true, "reason": "Headroom."}, "T3": {"seconds": 1000.00, "reason": "Ratchet."}}
+}\n`;
+  await writeFile(path, original);
+  const log = join(cwd, 'A-2-green.log');
+  await writeFile(log, 'Head new\n' + [
+    { file: 'hub/test/one.test.ts', name: 'keep', seconds: 1 },
+    { file: 'hub/test/one.test.ts', name: 'new', seconds: 10 },
+    { file: 'nvim/test/new.test.ts', name: 'new', seconds: 70 },
+  ].map(row => `suite timing ${JSON.stringify(row)}\n`).join('') + 'Finished: exit 0\n');
+  const result = await refreshDurations(cwd, [log], { addOnly: true });
+  const old = JSON.parse(original);
+  assert.deepEqual(result.files, { ...old.files, 'nvim/test/new.test.ts': { seconds: 70, tests: 1 } });
+  assert.deepEqual(result.tests, { ...old.tests, 'hub/test/one.test.ts::new': 10, 'nvim/test/new.test.ts::new': 70 });
+  assert.deepEqual(result.allow, old.allow, 'no allowance updates, deletions or TODO additions');
+  assert.deepEqual(result.source, { artifacts: ['A-1', 'A-2'], commit: 'new' });
+  const text = await readFile(path, 'utf8');
+  for (const entry of ['"hub/test/one.test.ts": { "seconds": 1.2300, "tests": 2 }', '"hub/test/one.test.ts::keep": 0.000042', '"hub/test/one.test.ts::gone": 1e-7', original.split('  "allow": ')[1]!.split('\n')[0]!]) assert.ok(text.includes(entry), entry);
+  assert.deepEqual(JSON.parse(text), result);
+  await refreshDurations(cwd, [log], { addOnly: true });
+  assert.equal(await readFile(path, 'utf8'), text, 'repeating add-only is byte-identical');
+});
 
 test('partial logs refresh each observed file without erasing other tiers', async t => {
   const cwd = await mkdtemp(join(tmpdir(), 'duration-refresh-'));
@@ -31,6 +64,23 @@ test('partial logs refresh each observed file without erasing other tiers', asyn
   assert.deepEqual(refreshed.tests, { [`${t1}::keep`]: 3, [`${t2}::keep`]: 2, [`${t3}::keep`]: 8 });
   assert.deepEqual(refreshed.files, { [t1]: { seconds: 3, tests: 1 }, [t2]: { seconds: 2, tests: 1 }, [t3]: previous.files[t3] });
   assert.deepEqual(refreshed.allow, previous.allow);
+});
+
+test('add-only initializes missing and empty baseline maps without adding allowances', async t => {
+  const cwd = await mkdtemp(join(tmpdir(), 'duration-add-empty-'));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  await mkdir(join(cwd, 'hub/test'), { recursive: true });
+  const path = join(cwd, 'hub/test/durations.json'), log = join(cwd, 'A-3-green.log');
+  await writeFile(log, 'Head new\nsuite timing {"file":"hub/test/new.test.ts","name":"slow","seconds":70}\nFinished: exit 0\n');
+  const expected = { files: { 'hub/test/new.test.ts': { seconds: 70, tests: 1 } }, tests: { 'hub/test/new.test.ts::slow': 70 } };
+  for (const empty of [false, true]) {
+    if (empty) await writeFile(path, '{"version":1,"source":{"artifacts":[],"commit":"old"},"budget":{"testSeconds":5,"fileSeconds":60},"files":{},"tests":{},"allow":{}}');
+    const result = await refreshDurations(cwd, [log], { addOnly: true });
+    assert.deepEqual(result.files, expected.files);
+    assert.deepEqual(result.tests, expected.tests);
+    assert.deepEqual(result.allow, {});
+    assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), result);
+  }
 });
 
 test('ordinary empty-file completions prune the last baseline identity', async t => {
