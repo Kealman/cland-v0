@@ -16,7 +16,9 @@ nvim/bin/cland-nvim [project-dir] [nvim args…]
 - **The `cland` CLI** is run as `node hub/bin/cland.ts` from this repository; `CLAND_NODE` names another `node`, and `CLAND_COMMAND` (a JSON array) replaces the whole command (the tests' stub hub).
 - **The opening session** can be named with `CLAND_OPEN_SESSION` (setup uses `aide-1`). Once the hub lists it, the client opens its terminal in the centre in Terminal mode, once. The variable is removed at startup before any child inherits it; an unknown name waits quietly, and a saved restart view takes precedence.
 
-The launcher runs `NVIM_APPNAME=cland nvim --clean -u nvim/init.lua`, in that order. `NVIM_APPNAME` renames every `stdpath()`; `--clean` then `-u` skips the user's init, `plugin/` and `pack/` directories and sources only cland's `init.lua`. `:scriptnames` lists the bundled runtime and `nvim/init.lua`, nothing else.
+The launcher runs `NVIM_APPNAME=cland-nvim nvim --clean -u nvim/init.lua`, in that order. `NVIM_APPNAME` renames every `stdpath()`; `--clean` then `-u` skips the user's init, `plugin/` and `pack/` directories and sources only cland's `init.lua`. `:scriptnames` lists the bundled runtime and `nvim/init.lua`, nothing else.
+
+Neovim's state and `nvim.log` live in `${XDG_STATE_HOME:-~/.local/state}/cland-nvim`, separately from the hub's `cland` directory; its data and configuration paths also use `cland-nvim`. The launcher clears an inherited `NVIM_LOG_FILE` so a parent Neovim cannot redirect this log back to its own directory. On first start, the workbench moves only legacy `cland/ui.json` and regular `cland/restart/*.json` files to the corresponding new state paths, logging one line to stderr listing what moved. Existing destinations win; hub files, unknown files, symlinks and old Neovim logs stay untouched. A `.legacy-state-migrated` marker in the new state directory prevents replay. A failed migration is reported on stderr and retried on a later start. Current UI preferences remain in the project's `.cland/ui.json`.
 
 ## The shell
 
@@ -456,6 +458,7 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 | `lua/cland/ask_card.lua` | An ask as a card (the question, the numbered options, its state) and the `1`–`9` and `i` keys on a buffer's ask rows, shared by the thread and the inbox. |
 | `lua/cland/motions.lua` | `gi`, `gI`, `gt`, `gs`: the reference under the cursor, the row, or the view, then the dispatch. |
 | `lua/cland/restart.lua` | The restart snapshot file. |
+| `lua/cland/storage.lua` | The one-time migration of workbench-owned legacy state into `cland-nvim`. |
 | `lua/cland/thread_md.lua` | Cached per-body Markdown spans and compact link/table projections; no whole-thread parser. |
 | `lua/cland/topic_view.lua` | One topic's thread and composer, wired to the client (history merged on every connect). |
 | `lua/cland/thread.lua` | The thread buffer: `sender [Role]` (the role's label) and local time on each message's header. The human's own messages show their delivery stage right-aligned (`⌁ queued`, `✓ delivered`, `✓✓ injected`), changed in place on `delivery` events. A one-line notice under the messages tells about the hub connection or a failed send. A cursor away from the tail stays where it is. |
@@ -470,7 +473,7 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 npm run test:nvim          # from the repository root; `npm test` runs it after the hub's tests
 ```
 
-Every test starts the real client headless as `nvim --clean -u nvim/init.lua --headless --listen <socket>`, under `NVIM_APPNAME=cland`, attaches a 160x45 UI over msgpack-RPC (`test/rpc.ts`), drives it with `nvim_input` and reads the screen back with `screenstring()` (`test/harness.ts`). When a test runs `:restart`, the harness follows the UI's `restart` event to the new server, as a terminal UI does.
+Every test starts the real client headless as `nvim --clean -u nvim/init.lua --headless --listen <socket>`, under `NVIM_APPNAME=cland-nvim`, attaches a 160x45 UI over msgpack-RPC (`test/rpc.ts`), drives it with `nvim_input` and reads the screen back with `screenstring()` (`test/harness.ts`). The client component tests also exercise the real launcher with scratch XDG directories to prove state isolation and one-time migration without changing hub files. When a test runs `:restart`, the harness follows the UI's `restart` event to the new server, as a terminal UI does.
 
 - `test/client.test.ts` runs against a real hub (`cland hub start`) in a temporary project and connects real spokes over MCP: sending, delivery stages, Shift+Enter in the composer, the stdio transport, a clean configuration, autostart (also over a stale `hub.json`), following a hub restart.
 - `test/items.test.ts` runs against a real hub with item files written by hand (and a claim through `cland task claim`): the tree, the map grouping, the item view and the board; a hand-written file shows in the panel within a second; `e` opens the file and a save re-indexes it.

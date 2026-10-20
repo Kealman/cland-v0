@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { NVIM_DIR } from '../bin/nvim-path.ts';
 import { centreOf, nvimOrSkip, startClient } from './stub-client.ts';
 import { tempProject } from './fixture.ts';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 
 const nvim = await nvimOrSkip();
 
@@ -34,7 +34,10 @@ test('Shift+Enter inserts a newline in the composer; Enter sends both lines as o
 
 test('nothing loads from the user configuration: every sourced script is the bundled runtime or nvim/', { skip }, async (t) => {
   const root = await tempProject(t);
-  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]) });
+  const state = join(root, 'state');
+  await mkdir(join(state, 'cland'), { recursive: true });
+  await writeFile(join(state, 'cland/spend.json'), 'hub spend');
+  const c = await startClient(t, bin, root, { XDG_STATE_HOME: state, CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]) }, { launcher: true });
   await c.waitScreen((s) => s.includes('General'), 'the client');
   const out = await c.rpc.request<{ output: string }>('nvim_exec2', 'scriptnames', { output: true });
   const runtime = realpathSync(await c.lua<string>('return vim.env.VIMRUNTIME'));
@@ -52,12 +55,61 @@ test('nothing loads from the user configuration: every sourced script is the bun
   });
   assert.deepEqual(foreign, [], `scripts from outside the runtime and nvim/:\n${out.output}`);
   const appname = await c.lua<string>('return vim.env.NVIM_APPNAME');
-  assert.equal(appname, 'cland');
+  assert.equal(appname, 'cland-nvim');
+  assert.equal(await c.lua("return vim.fn.stdpath('state')"), join(state, 'cland-nvim'));
+  assert.deepEqual(await readdir(join(state, 'cland')), ['spend.json'], 'opening the workbench leaves only hub files in the hub state directory');
+  assert.equal(await readFile(join(state, 'cland/spend.json'), 'utf8'), 'hub spend');
   // the ADR 0005 mitigations are in force
   assert.equal(await c.lua('return vim.o.termpastefilter'), 'BS,ESC,DEL');
   assert.equal(await c.lua('return vim.o.scrollback'), 10000);
   assert.equal(await c.lua('return vim.o.cmdheight'), 1);
   assert.equal(await c.lua("return vim.fn.maparg('<S-CR>', 't', false, true).desc"), 'cland: Send Shift+Enter to harness');
+});
+
+test('the workbench launcher isolates Neovim state and migrates only its legacy files once', { skip }, async t => {
+  const root = await tempProject(t);
+  const state = join(root, 'state');
+  const old = join(state, 'cland');
+  const current = join(state, 'cland-nvim');
+  await mkdir(join(old, 'restart'), { recursive: true });
+  await mkdir(join(current, 'restart'), { recursive: true });
+  await writeFile(join(old, 'spend.json'), 'hub spend');
+  await writeFile(join(old, 'accounts.json'), 'hub accounts');
+  await writeFile(join(old, 'nvim.log'), 'old Neovim log');
+  await writeFile(join(old, 'ui.json'), 'legacy UI');
+  await writeFile(join(old, 'restart/project.json'), 'legacy restart');
+  await writeFile(join(old, 'restart/existing.json'), 'older restart');
+  await writeFile(join(current, 'restart/existing.json'), 'newer restart');
+  await writeFile(join(old, 'restart/unknown.txt'), 'unowned');
+  const env = {
+    CLAND_HUB_TRANSPORT: 'stdio',
+    CLAND_COMMAND: JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]),
+    XDG_STATE_HOME: state, XDG_DATA_HOME: join(root, 'data'), XDG_CONFIG_HOME: join(root, 'config'),
+    NVIM_LOG_FILE: join(old, 'nvim.log'), NVIM_APPNAME: 'cland',
+  };
+  const c = await startClient(t, bin, root, env, { launcher: true });
+  const paths = await c.lua<{ state: string; data: string; config: string; log: string }>(`
+    return { state = vim.fn.stdpath('state'), data = vim.fn.stdpath('data'),
+      config = vim.fn.stdpath('config'), log = vim.env.NVIM_LOG_FILE }
+  `);
+  assert.deepEqual(paths, { state: current, data: join(root, 'data/cland-nvim'), config: join(root, 'config/cland-nvim'), log: join(current, 'nvim.log') });
+  await c.lua("vim.fn.writefile({'new Neovim log'}, vim.env.NVIM_LOG_FILE)");
+  assert.equal(await readFile(join(current, 'ui.json'), 'utf8'), 'legacy UI');
+  assert.equal(await readFile(join(current, 'restart/project.json'), 'utf8'), 'legacy restart');
+  assert.equal(await readFile(join(current, 'restart/existing.json'), 'utf8'), 'newer restart');
+  assert.deepEqual((await readdir(old)).sort(), ['accounts.json', 'nvim.log', 'restart', 'spend.json']);
+  assert.deepEqual((await readdir(join(old, 'restart'))).sort(), ['existing.json', 'unknown.txt']);
+  assert.equal(await readFile(join(old, 'spend.json'), 'utf8'), 'hub spend');
+  assert.equal(await readFile(join(old, 'accounts.json'), 'utf8'), 'hub accounts');
+  assert.equal(await readFile(join(old, 'nvim.log'), 'utf8'), 'old Neovim log');
+  assert.match(c.stderr(), /cland-nvim: migrated .*ui.json.*restart\/project.json/);
+  assert.equal(c.stderr().split('\n').filter(line => line.startsWith('cland-nvim: migrated ')).length, 1);
+  // Even a subsequently recreated legacy file must never overwrite the migrated preference.
+  await writeFile(join(old, 'ui.json'), 'recreated legacy UI');
+  const again = await startClient(t, bin, root, env, { launcher: true });
+  assert.equal(await readFile(join(current, 'ui.json'), 'utf8'), 'legacy UI');
+  assert.equal(await readFile(join(old, 'ui.json'), 'utf8'), 'recreated legacy UI');
+  assert.doesNotMatch(again.stderr(), /cland-nvim: migrated/);
 });
 
 

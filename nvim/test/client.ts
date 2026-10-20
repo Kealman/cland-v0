@@ -104,10 +104,10 @@ end
 return rows`;
 
 /**
- * Start the client in `root` as cland-nvim would (NVIM_APPNAME=cland, --clean -u init.lua), headless, and
+ * Start the client in `root` as cland-nvim would (NVIM_APPNAME=cland-nvim, --clean -u init.lua), headless, and
  * attach a UI of COLUMNS×LINES over the RPC channel, as a terminal UI would (redraws are ignored).
  */
-export async function createClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer'; screenPollMs?: number } = {}, native?: { isolateVerification: (root: string) => Promise<void>; ownProcess: (t: TestContext, pid: number | undefined) => unknown; ownDirectory: (t: TestContext, path: string) => unknown; beforeDirectories: typeof beforeDirectories }): Promise<Client> {
+export async function createClient(t: TestContext, bin: string, root: string, env: Record<string, string> = {}, opts: { centre?: 'general' | 'explorer'; screenPollMs?: number; launcher?: boolean } = {}, native?: { isolateVerification: (root: string) => Promise<void>; ownProcess: (t: TestContext, pid: number | undefined) => unknown; ownDirectory: (t: TestContext, path: string) => unknown; beforeDirectories: typeof beforeDirectories }): Promise<Client> {
   await ensureFixtureAdmission();
   const stubOnly = env.CLAND_HUB_TRANSPORT === 'stdio'
     && env.CLAND_COMMAND === JSON.stringify([process.execPath, fileURLToPath(new URL('./stub-hub.ts', import.meta.url))]);
@@ -119,13 +119,16 @@ export async function createClient(t: TestContext, bin: string, root: string, en
   const childEnv: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined && !k.startsWith('CLAND_') && !k.startsWith('NVIM')) childEnv[k] = v;
   // the restart snapshot lives under stdpath('state'): one per test
-  Object.assign(childEnv, { NVIM_APPNAME: 'cland', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
+  Object.assign(childEnv, { NVIM_APPNAME: 'cland-nvim', CLAND_ROOT: root, XDG_STATE_HOME: join(dir, 'state') }, env);
   if (stubOnly) childEnv.CLAND_STUB_FRAME_FIXTURES = frameFixturesForTest(process.argv[1]);
   // Replay stress belongs to the Neovim stub, never to real hubs or production.
   for (const key of ['CLAND_STUB_SNAPSHOT_DELAY_MS', 'CLAND_STUB_ROLE_DELAY_MS']) {
     if (env.CLAND_COMMAND && process.env[key]) childEnv[key] = process.env[key];
   }
-  const launch = () => spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  if (opts.launcher) childEnv.CLAND_NVIM = bin;
+  const launch = () => opts.launcher
+    ? spawn(join(NVIM_DIR, 'bin/cland-nvim'), ['--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] })
+    : spawn(bin, ['--clean', '-u', INIT_LUA, '--headless', '--listen', sock], { cwd: root, env: childEnv, detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
   const child = stubOnly ? headlessNvimLaunch(bin, sock, launch) : launch();
   if (stubOnly) ownStubClient(t, child, native?.beforeDirectories);
   else native!.ownProcess(t, child.pid);

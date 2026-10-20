@@ -1,7 +1,7 @@
 -- What survives `:restart` (ADR 0005). Neovim's terminals die with it, but the sessions live in the hub's
 -- adapters: the shell writes its layout and the names of the attached sessions before it goes
 -- (ExitPre with v:exitreason "restart"), and the new instance reads them back and runs the attach
--- commands again. The file lives under stdpath('state') (NVIM_APPNAME=cland), one per project.
+-- commands again. The file lives under stdpath('state') (NVIM_APPNAME=cland-nvim), one per project.
 local M = {}
 
 M.MAX_AGE_S = 120

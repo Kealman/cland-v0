@@ -31,4 +31,5 @@ nvim_bin="$(node "$NVIM_DIR/bin/nvim-path.ts")"
 cd "$root"
 # NVIM_APPNAME renames every stdpath(); --clean then -u (this order) skips the user's init, plugin/ and
 # pack/ directories and still sources cland's init.lua.
-exec env NVIM_APPNAME=cland CLAND_ROOT="$root" "$nvim_bin" --clean -u "$NVIM_DIR/init.lua" "$@"
+# A parent Neovim exports its own log path; let this instance derive its isolated log path instead.
+exec env -u NVIM_LOG_FILE NVIM_APPNAME=cland-nvim CLAND_ROOT="$root" "$nvim_bin" --clean -u "$NVIM_DIR/init.lua" "$@"

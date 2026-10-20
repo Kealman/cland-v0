@@ -1,5 +1,5 @@
 -- cland's Neovim entry point (spec 4.1, ADR 0005). Started by `nvim/bin/cland-nvim` as
---   NVIM_APPNAME=cland nvim --clean -u nvim/init.lua
+--   NVIM_APPNAME=cland-nvim nvim --clean -u nvim/init.lua
 -- in that order, so nothing from the user's own configuration loads: only the bundled runtime and the
 -- files under nvim/. CLAND_ROOT names the project (default: the current directory); CLAND_HUB_TRANSPORT
 -- is `socket` (the project's hub over `.cland/hub.json`, the default) or `stdio` (a hub spawned as a child).
@@ -8,6 +8,7 @@
 -- CLAND_QA_CASE names a QA case to run instead (`cland --headless --qa`, lua/cland/qa.lua).
 local here = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h')
 vim.opt.runtimepath:prepend(here)
+require('cland.storage').migrate()
 
 -- The ADR 0005 mitigations ------------------------------------------------------------------------
 
