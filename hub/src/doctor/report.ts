@@ -48,6 +48,7 @@ export function render(checks: readonly Check[], header: string, colour: boolean
 // ------------------------------------------------------------------ running what is checked
 
 export type RunResult = { code: number | null; stdout: string; stderr: string; error?: string };
+const PROBE_CLOSE_TIMEOUT_MS = 1000;
 
 /** A probe's deadline: `fallbackMs`, or `CLAND_DOCTOR_PROBE_TIMEOUT_MS` (tests that fake a tool that never answers). */
 export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number => {
@@ -60,18 +61,24 @@ export const probeTimeout = (env: NodeJS.ProcessEnv, fallbackMs: number): number
  * Stdin is closed unless explicitly inherited for a tty inspection.
  * The child leads its own process group: past the deadline the whole group is killed and the pipes are closed, so a
  * grandchild holding stdout open (a wrapper script's real tool) neither outlives the check nor keeps it waiting.
+ * Await close and native cleanup after termination. If close never arrives, report incomplete cleanup after 1 s.
  */
 export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv, timeoutMs = probeTimeout(env, 20_000), inheritStdin = false): Promise<RunResult> {
   return new Promise((done) => {
     let stdout = '';
     let stderr = '';
+    let error: string | undefined;
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
     const finish = (r: RunResult) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      done(r);
+      clearTimeout(cleanupTimer);
+      // ChildProcess close (or a thrown spawn) can precede libuv's native close callbacks.
+      // Cross a complete loop turn so they drain too, without a wall-clock grace period.
+      setImmediate(() => setImmediate(() => done(r)));
     };
     let child;
     try {
@@ -80,7 +87,13 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       finish({ code: null, stdout, stderr, error: err instanceof Error ? err.message : String(err) });
       return;
     }
-    timer = setTimeout(() => {
+    const terminate = () => {
+      if (settled || cleanupTimer !== undefined) return;
+      clearTimeout(timer);
+      cleanupTimer = setTimeout(() => finish({
+        code: null, stdout, stderr,
+        error: `${error}; cleanup incomplete: child did not close within ${PROBE_CLOSE_TIMEOUT_MS / 1000} s of SIGKILL`,
+      }), PROBE_CLOSE_TIMEOUT_MS);
       try {
         if (child.pid !== undefined) process.kill(-child.pid, 'SIGKILL');
       } catch {
@@ -88,12 +101,15 @@ export function run(bin: string, args: readonly string[], env: NodeJS.ProcessEnv
       }
       child.stdout?.destroy();
       child.stderr?.destroy();
-      finish({ code: null, stdout, stderr, error: `no answer within ${timeoutMs / 1000} s` });
+    };
+    timer = setTimeout(() => {
+      error ??= `no answer within ${timeoutMs / 1000} s`;
+      terminate();
     }, timeoutMs);
     child.stdout?.setEncoding('utf8').on('data', (c: string) => (stdout += c));
     child.stderr?.setEncoding('utf8').on('data', (c: string) => (stderr += c));
-    child.on('error', (err) => finish({ code: null, stdout, stderr, error: err.message }));
-    child.on('close', (code) => finish({ code, stdout, stderr }));
+    child.on('error', (err) => { error ??= err.message; terminate(); });
+    child.once('close', (code) => finish({ code: error === undefined ? code : null, stdout, stderr, ...(error === undefined ? {} : { error }) }));
   });
 }
 

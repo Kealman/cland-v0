@@ -1,11 +1,18 @@
 // T3: process lifecycle: doctor kills a hanging probe's whole process group at its deadline.
 // Real doctor commands also prove text/JSON rendering, stdout schema and healthy/no-hub exit codes.
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { createHook } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
+import cp from 'node:child_process';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
+import { dirname, join } from 'node:path';
 import { clandWithEnv, eventually, nativeProjectHub as projectHub, tempProject } from './harness.ts';
 import { initialised, toolchain, check, notOk, NVIM_VERSION } from './doctor-fixture.ts';
+import { run, type RunResult } from '../src/doctor/report.ts';
+import { withoutExecutorCredentials } from '../../shared/executor-credentials.ts';
+import { beforeDirectories, ownProcess } from './process-cleanup.ts';
 const doctor = (root: string, env: Record<string, string>, ...args: string[]) => clandWithEnv(root, env, 'doctor', ...args);
 const report = async (root: string, env: Record<string, string>) => {
   const result = await doctor(root, env, '--json');
@@ -77,6 +84,80 @@ const alive = (pid: number): boolean => {
     return false;
   }
 };
+
+/** Observe the native handles created synchronously by the probe's spawn, excluding the test runner's own pipes.
+ * These probes never unref their handles: hasRef() becomes falsy when the native handle closes,
+ * before async_hooks delivers its deferred destroy notification. */
+async function probeResources(t: TestContext, start: (env: NodeJS.ProcessEnv) => Promise<RunResult>) {
+  const root = await tempProject(t, 'cland-doctor-probe-');
+  // Start from an allowlist, with no provider/account variables or inherited Git configuration.
+  const env = withoutExecutorCredentials({
+    PATH: '/usr/bin:/bin', HOME: root, TMPDIR: root,
+    XDG_CONFIG_HOME: join(root, 'config'), XDG_DATA_HOME: join(root, 'data'),
+    XDG_STATE_HOME: join(root, 'state'), XDG_CACHE_HOME: join(root, 'cache'),
+    GIT_CONFIG_GLOBAL: join(root, '.gitconfig'), GIT_CONFIG_NOSYSTEM: '1',
+  });
+  await Promise.all([env.XDG_CONFIG_HOME, env.XDG_DATA_HOME, env.XDG_STATE_HOME, env.XDG_CACHE_HOME].map(dir => mkdir(dir)));
+  await writeFile(env.GIT_CONFIG_GLOBAL, '');
+  const nativeSpawn = cp.spawn;
+  const launch = t.mock.method(cp, 'spawn', (bin: string, args: readonly string[], options: cp.SpawnOptions) => {
+    const child = nativeSpawn(bin, [...args], { ...options, cwd: root, env: withoutExecutorCredentials(options.env ?? {}), signal: t.signal, killSignal: 'SIGKILL' });
+    let closed = false;
+    child.once('close', () => { closed = true; });
+    const stop = ownProcess(t, child.pid);
+    beforeDirectories(t, async () => {
+      await stop();
+      await eventually('the owned probe closes before its fixture is removed', () => closed || undefined, 5000);
+      assert.equal(closed, true);
+    });
+    return child;
+  });
+  syncBuiltinESMExports();
+  const handles: Array<{ type: string; resource: { hasRef(): boolean } }> = [];
+  const hook = createHook({
+    init(_id, type, _trigger, resource) {
+      if (type === 'PROCESSWRAP' || type === 'PIPEWRAP') handles.push({ type, resource: resource as { hasRef(): boolean } });
+    },
+  });
+  hook.enable();
+  let pending: Promise<RunResult>;
+  try { pending = start(env); }
+  finally { hook.disable(); launch.mock.restore(); syncBuiltinESMExports(); }
+  const result = await pending;
+  return { result, created: handles.map(h => h.type), open: handles.filter(h => h.resource.hasRef()).map(h => h.type) };
+}
+
+test('a probe timeout closes its native process and pipes before settling even when the child ignores SIGTERM', { timeout: 5000 }, async t => {
+  const { result, created, open } = await probeResources(t, env => run(process.execPath, ['-e', `
+    process.on('SIGTERM', () => {});
+    process.stdout.write('ready');
+    process.stderr.write('diagnostic');
+    setInterval(() => {}, 1000);
+  `], env, 1000));
+  assert.deepEqual(result, { code: null, stdout: 'ready', stderr: 'diagnostic', error: 'no answer within 1 s' });
+  assert.ok(created.includes('PROCESSWRAP'));
+  assert.equal(created.filter(type => type === 'PIPEWRAP').length, 2);
+  assert.deepEqual(open, [], 'probe-owned native handles are closed at promise settlement, without waiting afterwards');
+});
+
+test('a probe spawn error closes its native process and pipes before settling', { timeout: 5000 }, async t => {
+  const { result, created, open } = await probeResources(t, env => run(join(dirname(process.execPath), `missing-probe-${randomUUID()}`), [], env, 1000));
+  assert.equal(result.code, null);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr, '');
+  assert.match(result.error!, /ENOENT/);
+  assert.ok(created.includes('PROCESSWRAP'));
+  assert.equal(created.filter(type => type === 'PIPEWRAP').length, 2);
+  assert.deepEqual(open, [], 'spawn failure also waits for native handle cleanup');
+});
+
+test('a synchronous probe spawn error drains any allocated native handle before settling', { timeout: 5000 }, async t => {
+  // ENOTDIR throws from spawn after allocating a native process handle, without returning a ChildProcess.
+  const { result, created, open } = await probeResources(t, env => run(join(process.execPath, 'missing-probe'), [], env, 1000));
+  assert.match(result.error!, /ENOTDIR/);
+  assert.ok(created.includes('PROCESSWRAP'));
+  assert.deepEqual(open, [], 'a thrown spawn error also drains its native handle');
+});
 
 test('a probe that never answers is cut at its deadline: the lock probe and a harness both, and their whole process group is killed', { timeout: 15_000 }, async (t) => {
   const tools = await toolchain(t, true);
