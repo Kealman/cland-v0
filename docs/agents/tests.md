@@ -1270,6 +1270,13 @@ death before removing the root. Linux `ps lstart` truncation needs the one-secon
 lower birth margin already used by self receipts; fd inheritance alone is not
 the complete ownership proof.
 
+Read-only QA stub runs keep serving inline scenarios when receipt creation fails
+with EACCES, EPERM or EROFS. Without a receipt they have no ownership authority:
+doctor may report a missing-root hint as unowned, but never signals it. Other
+receipt errors still fail startup. The RPC client fixture still requires a
+writable temporary directory before creating its receipt; read-only QA launches
+Neovim directly rather than through that fixture.
+
 ## Cover-quiet
 
 Before fixture setup, the hub and Neovim test harnesses ask the project hub for

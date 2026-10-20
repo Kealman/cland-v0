@@ -37,8 +37,15 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { createScenarioArtifact, changeScenarioArtifact } from './artifact-scenario.ts';
 import { STUB_NOW } from './fixtures/clock.ts';
 
-const fixtureOwner = fixtureOwnership([process.cwd(), fileURLToPath(new URL('../../', import.meta.url))]);
-process.once('exit', () => { fixtureOwner.close(); fixtureOwner.remove(); });
+// Read-only QA uses an inline scenario and needs no files. An unavailable
+// receipt leaves this stub unowned for orphan sweeping, without blocking frames.
+let fixtureOwner: ReturnType<typeof fixtureOwnership> | undefined;
+try {
+  fixtureOwner = fixtureOwnership([process.cwd(), fileURLToPath(new URL('../../', import.meta.url))]);
+} catch (error) {
+  if (!['EACCES', 'EPERM', 'EROFS'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+}
+process.once('exit', () => { fixtureOwner?.close(); fixtureOwner?.remove(); });
 
 export type Scenario = {
   // T-902: source-shaped account snapshots for the sessions panel.
