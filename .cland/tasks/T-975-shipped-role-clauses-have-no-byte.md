@@ -3,7 +3,7 @@ id: T-975
 kind: task
 title: "Shipped role clauses have no byte headroom: trim them to pointers (or re-derive the reserve) before v0.2 adds clause lines"
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-748
 branch: t/T-975-shipped-role-clauses-have-no-byte
 created: 2026-10-20T15:38:57.185Z
-updated: 2026-10-20T16:55:08.584Z
+updated: 2026-10-20T16:59:02.381Z
 ---
 
 ## Summary
@@ -30,8 +30,9 @@ Move procedural detail out of the shipped clauses into the skills and docs they 
 
 - [x] C1. Every shipped clause (defaults and project) has at least 15 % headroom under its reserve in roles-clauses.test.ts, or the reserve change is reasoned and tested against the send cap.
   - done: impl-975 · 2026-10-20T16:47:49.792Z
-- [ ] C2. Each removed line is either a pointer kept in the clause or text moved verbatim into the skill or doc it now lives in (assertion map in the evidence).
-  - failed: rev-23 [reviewer] · 2026-10-20T16:55:08.584Z · note Two existing QA source-contract tests still require relocated procedures inline; same-head T1 gate fails before T2/Neovim.
+- [x] C2. Each removed line is either a pointer kept in the clause or text moved verbatim into the skill or doc it now lives in (assertion map in the evidence).
+  - done: impl-975 · 2026-10-20T16:57:34.919Z
+  - verified: rev-23 [reviewer] · run rev-20261020-975-source-contract-corrected · 2026-10-20T16:59:02.381Z · commit 268f6fe15930d2c05f3755cc926ecc5e6485a9ee
 
 ## Comments
 
@@ -91,3 +92,22 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Standards: medium review-qa-component.ts:16 and skills-qa-catalogue.ts:37 source assertions incomplete after relocation. A-7722 actual failures: 'qa: the verdict header' expected /verdict: qa/, and 'the coordinator clause names the brief'. Adapt all affected assertions to inline summaries/pointers plus verbatim destination content, preserving original semantic checks. Spec source correction intact; roles-clauses 27/27 passes. Gate ordinary 639 pass/2 fail, Linux T1 exit 1; T2/Neovim not run, T3/T4 deferred. C2 failed. New-head source review required; not an unchanged-head retry. Host check 794f64c9 not repeated; diagnostics report-only. Reviewer ran no tests.
 
 Criteria: C2 failed (Two existing QA source-contract tests still require relocated procedures inline; same-head T1 gate fails before T2/Neovim.).
+
+### impl-975 · 2026-10-20T16:58:08.115Z
+
+Contract-test correction pushed at 268f6fe15930d2c05f3755cc926ecc5e6485a9ee, only four test files changed since reviewed 7c36ab4a. Actual red failures were 'qa: the verdict header' and 'the coordinator clause names the brief'. Retained original procedural assertions in their verbatim skill destinations with separate inline rule/pointer checks; also fixed T2 category snapshot and T3 native QA first-turn expectations found by search. Local Darwin arm64 targeted passes: T1 failed files 6/6, T1 roles-clauses 27/27, T2 roles-snapshot 11/11, T3 native contract file 1/1; hub typecheck exit 0. No full-suite pass claim. Old droplet c304fa87 failed T1; T2 did not complete. A-7726 contains final full byte/assertion map and evidence history. C1/C2 done; corrected-head source review requested before new mode-free verify.
+
+### rev-23 · 2026-10-20T16:59:02.381Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-975-source-contract-corrected
+commit: 268f6fe15930d2c05f3755cc926ecc5e6485a9ee
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no remaining findings. Four test-only corrections retain original QA/request/verdict/report/rescue/UI/brief contracts across inline normative pointers and their verbatim skill destinations. T2 category and native T3 first-turn assertions adapted without weakening actual transport/storage checks. Clauses, all 41 moves, byte ceilings and permissions unchanged; C2 source verified. A-7726 local T1 6+27, T2 11 and targeted T3 1 pass plus typecheck are supplemental summary evidence. C1 awaits new-head mode-free gate. Red c304fa87/A-7722 and A-7723 retained, no flaky retry claim. QA none; Reviewer ran no tests.
+
+Criteria: C2 verified.

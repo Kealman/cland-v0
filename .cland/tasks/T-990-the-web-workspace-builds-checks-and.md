@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-752
 branch: t/T-990-the-web-workspace-builds-checks-and
 created: 2026-10-20T16:51:40.352Z
-updated: 2026-10-20T16:55:07.292Z
+updated: 2026-10-20T17:00:19.242Z
 ---
 
 ## Summary
@@ -43,3 +43,9 @@ A `web/` workspace in React 19, Vite and TypeScript strict on the hub's flags bu
 - [ ] C8. `cland doctor` shows a row comparing the bundle's build stamp with the web sources, which reads stale when a source is newer (doctor test).
 - [ ] C9. The added dependencies are exactly those the approved plan lists, with no UI library and no Tailwind (diff of `package.json`).
 - [ ] C10. `web/README.md` describes the workspace, the build and the token rule.
+
+## Comments
+
+### impl-990 · 2026-10-20T17:00:19.242Z
+
+Colour guard and AGENTS web rule committed first (a56bf505), before any component. Implementing the static prototype frame only; approved E-415 comment removes the development bridge. Root check now plans typecheck → web build → static/test lint, so the required verification build also occurs locally (remote verification.prepare is not run locally). Added a deterministic T1 installed-bundle doctor test and T0 colour/hooks/contrast/build-plan fixtures. Local implementation checks are in progress; no suite receipt claimed.

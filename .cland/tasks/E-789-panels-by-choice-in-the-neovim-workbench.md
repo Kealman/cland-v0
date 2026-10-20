@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T09:12:36.923Z
-updated: 2026-10-20T16:54:38.443Z
+updated: 2026-10-20T16:58:42.476Z
 ---
 
 ## Summary
@@ -30,6 +30,40 @@ The human asked on 2026-10-18 (General, ask 03c2a877, answered 09:12Z) to let th
 - [ ] D1. Opening Sessions on the left and Items on the right from the palette works, and both keep their keys and live updates.
 - [ ] D2. The layout survives a workbench restart, and a reset command restores the default.
 - [ ] D3. Existing layout, width and focus tests stay green, and new headless-grid cases cover both sides.
+
+## Plan
+
+```yaml
+stages:
+  - name: panels on either side
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-999
+        - T-1000
+        - T-1001
+        - T-1002
+items:
+  T-999:
+    qa_criteria:
+      - C2
+      - C3
+      - C8
+  T-1000:
+    qa_criteria:
+      - C2
+      - C6
+  T-1001:
+    qa_criteria:
+      - C1
+      - C6
+  T-1002:
+    qa_criteria:
+      - C2
+      - C3
+      - C5
+```
 
 ## Comments
 

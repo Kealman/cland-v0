@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-749
 branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T16:53:29.775Z
+updated: 2026-10-20T17:02:19.405Z
 ---
 
 ## Summary
@@ -30,11 +30,12 @@ Find the writer and close the class. Every test and fixture child strips GIT_DIR
 ## Acceptance criteria
 
 - [x] C1. The writer is identified (test, command or session) from a reproduction in a scratch repository, or the evidence lists every candidate checked.
-  - done: impl-973 · 2026-10-20T16:48:12.002Z
   - verified: rev-26 [reviewer] · run rev-20261020-973-source-1 · 2026-10-20T16:53:29.775Z · commit f52a9182afc9a97b838ee90c9d64a08aab9cb302
+  - done: impl-973 · 2026-10-20T17:01:58.057Z
+  - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
 - [x] C2. A T1 test with a poisoned GIT_DIR/GIT_COMMON_DIR proves the fixture environment strips them, and a native T3 case in territory-cli.test.ts shows a fixture git init --bare / clone --bare leaves the scratch parent repository's config bytes unchanged (targeted local run before review; its Linux receipt is landing evidence).
-  - done: impl-973 · 2026-10-20T16:48:12.596Z
-  - verified: rev-26 [reviewer] · run rev-20261020-973-source-1 · 2026-10-20T16:53:29.775Z · commit f52a9182afc9a97b838ee90c9d64a08aab9cb302
+  - done: impl-973 · 2026-10-20T17:01:43.874Z
+  - verified: rev-26 [reviewer] · run rev-20261020-973-source-2 · 2026-10-20T17:02:19.405Z · commit 8e9593c0cf32f0440f716d17c394a06c9009c541
 - [x] C3. Merge admission reports `core.bare=true` in the root as its own clear error instead of a raw rev-parse failure.
   - done: impl-973 · 2026-10-20T16:48:13.215Z
 
@@ -64,5 +65,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear at f52a9182; no remaining findings across Standards and Spec. A-7720 records the full read-only audit. M1 is resolved: default/project Coordinator and Lead clauses now cover merge-bare, with unchanged wording/reserve guards passing 27/27 at this head (A-7716). The sealed shell/machine builders strip repository-location Git variables after overlays; root bare admission refuses before worktree-dependent Git and names inspect/owner repair without editing config. C1 uses A-7710's enumerated-candidate alternative: historical writer remains unidentified. C2 uses source plus original focused macOS T1/T3 4/4 receipt A-7713 at c888e8e2, whose implementation/tests are unchanged at f52a9182, and actual mutation red A-7712. Native Linux T3 is landing evidence under amended C2. Earlier 82/82 is qualified pre-final tree evidence; reported later 52/52 is not relied on without its raw receipt. C3 remains unverified pending accepted same-head mode-free task verification and final evidence review. A-7715 was interim superseded material; no old-head formal verdict was recorded.
+
+Criteria: C1 verified, C2 verified.
+
+### rev-26 · 2026-10-20T16:58:32.326Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261020-973-final-1
+commit: f52a9182afc9a97b838ee90c9d64a08aab9cb302
+scope: evidence
+findings: [{"severity":"medium","text":"fixtureEnvironment adds CLAND_EXECUTOR_STATE, changing scratchMachine's default XDG/legacy-ledger contract and causing 16 task-owned T1 failures in executor-spend and executor-lock-liveness. Preserve the sealed Git filtering while restoring this helper's default-ledger behavior.","file":"hub/test/init-machine.ts","line":22}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not clear: A-7725/run 7ac3c6f9 at exact reviewed f52a9182 exits 1. A-7728 records actual failures and the source-attributed helper regression. executor-spend.test.ts:103 receives <scratch>/executor-state/spend.json instead of scratch HOME/.local/state/cland/spend.json; retirement reports that CLAND_EXECUTOR_STATE must be absent. The changed scratchMachine uses fixtureEnvironment's synthetic explicit ledger default, so legacy migration/lock contracts are bypassed. Base T1: 642 tests, 626 pass/16 fail; the 647/631/16 interruption aggregate additionally counts five passing load-gate repetitions. T2/Neovim/native T3 did not execute. Poisoned Git isolation and the new bare-batch identity pass, including 5/5 batch load repetitions, but do not cure the regression. Linux c-8 lon1, two configured workers, lifetime 129s/$0.0089. C1 audit remains valid; C2 failed for the helper regression and C3 remains unverified. Fix needs fresh source review before another task verification; no Reviewer rerun performed.
+
+Criteria: C2 failed (Shared fixture environment now supplies an explicit executor ledger, breaking existing default-ledger/migration and legacy-lock assertions (16 T1 failures in A-7725).).
+
+### impl-973 · 2026-10-20T17:01:44.623Z
+
+Corrected own default-ledger regression in pushed head 8e9593c0cf32f0440f716d17c394a06c9009c541: scratchMachine removes only the shared builder's injected CLAND_EXECUTOR_STATE default, preserving isolated HOME/XDG product defaults and all Git/credential filtering. Existing executor-spend and executor-lock-liveness tests reproduce the old failures (A-7729); corrected-head complete run of both plus fixture-environment and territory-cli passed 51/51 on local macOS, direct T1/T3 without suite/tripwire gate mode, exit 0, no signal. The earlier interrupted wrapper run A-7731 is partial and not counted as a pass. Hub typecheck and diff check passed on this unchanged correction tree. C2 done restored; fresh source review requested before any new mode-free verification. Old run 7ac3c6f9 remains failed T1 with T2/Neovim absent.
+
+### rev-26 · 2026-10-20T17:02:19.405Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-973-source-2
+commit: 8e9593c0cf32f0440f716d17c394a06c9009c541
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; M1 from final-1 is resolved. A-7734 audits the entire two-file delta from f52a9182: scratchMachine deletes only the shared builder's synthetic CLAND_EXECUTOR_STATE, preserving the Git/credential seal and restoring scratch HOME/XDG default-ledger migration/lock semantics; docs name that contract. Existing assertions/tiers remain unchanged. A-7733 is complete local macOS direct targeted T1/T3 at this head: 51/51 pass, exit 0/signal null, no skips/cancellations, total 85.249877833s. Previously failing spend and lock contracts pass; native bare fixture/config-preservation case passes 0.294967333s. This direct run had no suite/tripwire gate, and two existing ledger/lock timings exceed 2s; no enforced-budget or Linux proof is claimed. A-7729 preserves the old-head 16-failure red; interrupted A-7731 is not passing evidence. C1 retains the candidate-audit alternative, with historical writer unidentified. Renew C1/C2; C2 done is restored. C3/final settlement awaits fresh mode-free verification at 8e9593c0. Failed A-7725 is not reused; native Linux T3 remains landing evidence under amended C2.
 
 Criteria: C1 verified, C2 verified.

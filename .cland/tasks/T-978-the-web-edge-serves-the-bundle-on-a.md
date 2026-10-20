@@ -3,8 +3,9 @@ id: T-978
 kind: task
 title: The web edge serves the bundle on a stable port
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 7
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-750
 branch: t/T-978-the-web-edge-serves-the-bundle-on-a
 created: 2026-10-20T16:49:53.985Z
-updated: 2026-10-20T16:50:46.477Z
+updated: 2026-10-20T17:01:57.914Z
 ---
 
 ## Summary
@@ -32,10 +33,23 @@ The Host header must be `127.0.0.1`, `localhost` or `[::1]` with the web port. L
 
 ## Acceptance criteria
 
-- [ ] C1. A frame-seam test starts a scratch project's hub twice and reads the same web port in `hub.json` both times, and `[web] port` overrides the kept port.
-- [ ] C2. With the web port held by another listener, the hub still starts and serves its spokes, never listens on a different web port, logs the taken port, and `hub.status` and `cland doctor` report the web edge unavailable with that reason (test).
-- [ ] C3. `/` serves the bundle with a CSP holding `frame-ancestors 'none'`, plus `nosniff` and `no-referrer`; `index.html` is `no-cache` with an ETag and answers 304 to a matching `If-None-Match`; `/assets/*` is `immutable` (test).
-- [ ] C4. A path that escapes the bundle, plain or percent-encoded, is refused; a path without an extension returns `index.html`; a missing `web/dist/index.html` returns the plain page naming `npm run build --workspace web` (test).
-- [ ] C5. A request on the web port with a Host other than 127.0.0.1, localhost or [::1] is refused (test).
-- [ ] C6. The spokes' WebSocket edge, its port and its refusal of client hellos are unchanged, and the existing edge tests pass without edits.
-- [ ] C7. `hub/README.md` documents the web edge, its port, `[web] port`, `[web] dist` and the new `hub.json` field.
+- [x] C1. A frame-seam test starts a scratch project's hub twice and reads the same web port in `hub.json` both times, and `[web] port` overrides the kept port.
+  - done: impl-978 · 2026-10-20T17:01:32.963Z
+- [x] C2. With the web port held by another listener, the hub still starts and serves its spokes, never listens on a different web port, logs the taken port, and `hub.status` and `cland doctor` report the web edge unavailable with that reason (test).
+  - done: impl-978 · 2026-10-20T17:01:33.751Z
+- [x] C3. `/` serves the bundle with a CSP holding `frame-ancestors 'none'`, plus `nosniff` and `no-referrer`; `index.html` is `no-cache` with an ETag and answers 304 to a matching `If-None-Match`; `/assets/*` is `immutable` (test).
+  - done: impl-978 · 2026-10-20T17:01:34.597Z
+- [x] C4. A path that escapes the bundle, plain or percent-encoded, is refused; a path without an extension returns `index.html`; a missing `web/dist/index.html` returns the plain page naming `npm run build --workspace web` (test).
+  - done: impl-978 · 2026-10-20T17:01:35.302Z
+- [x] C5. A request on the web port with a Host other than 127.0.0.1, localhost or [::1] is refused (test).
+  - done: impl-978 · 2026-10-20T17:01:36.138Z
+- [x] C6. The spokes' WebSocket edge, its port and its refusal of client hellos are unchanged, and the existing edge tests pass without edits.
+  - done: impl-978 · 2026-10-20T17:01:37.002Z
+- [x] C7. `hub/README.md` documents the web edge, its port, `[web] port`, `[web] dist` and the new `hub.json` field.
+  - done: impl-978 · 2026-10-20T17:01:37.704Z
+
+## Comments
+
+### impl-978 · 2026-10-20T17:00:31.030Z
+
+Implemented independent static HTTP edge with stable .cland/web-port, discovery webPort and hub.status.web; occupied-port startup keeps spoke/Unix edges alive and doctor warns. Fixture HTTP/frame tests cover C1–C5; existing edges.test.ts (4 tests), edges-component.test.ts and targeted daemon/permissions client-hello cases pass unchanged locally on macOS arm64 (targeted evidence, not a suite receipt). Docs/help updated. Merged origin/dev before first review; final head checks in progress.

@@ -3,17 +3,18 @@ id: T-452
 kind: task
 title: "Tracker conflict captures pile up: 1,661 .conflict files in .cland/tasks with no pruning"
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - needs-triage
 assignee: null
-parent: C-216
-blocked_by: []
+parent: E-1006
+blocked_by:
+  - T-1009
 topic: null
 branch: null
 created: 2026-10-15T05:56:39.354Z
-updated: 2026-10-15T05:56:39.354Z
+updated: 2026-10-20T17:01:31.871Z
 ---
 
 ## Summary

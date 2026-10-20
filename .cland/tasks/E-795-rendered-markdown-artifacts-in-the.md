@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T10:14:36.459Z
-updated: 2026-10-20T16:54:38.548Z
+updated: 2026-10-20T16:58:47.987Z
 ---
 
 ## Summary
@@ -24,6 +24,37 @@ The human, 2026-10-18 10:14Z in General: an opened artifact shows raw Markdown a
 - [ ] D1. A Markdown artifact opened in the workbench renders like a thread message (headings, emphasis, inline and fenced code, lists, links, quotes, tables readable), with a key that toggles the raw source.
 - [ ] D2. Long artifacts open and scroll without a visible delay. Rendering is cached per artifact version and never blocks the UI.
 - [ ] D3. Headless-grid cases cover a rendered artifact and the raw toggle.
+
+## Plan
+
+```yaml
+stages:
+  - name: rendered artifacts
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-796
+        - T-1003
+        - T-1004
+        - T-1005
+items:
+  T-796:
+    qa_criteria:
+      - C1
+      - C2
+  T-1003:
+    qa_criteria:
+      - C1
+      - C3
+  T-1004:
+    qa_criteria:
+      - C1
+      - C3
+  T-1005:
+    qa_criteria:
+      - C4
+```
 
 ## Comments
 

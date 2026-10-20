@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-20T16:54:38.328Z
+updated: 2026-10-20T17:02:20.540Z
 ---
 
 ## Summary
@@ -117,6 +117,7 @@ stages:
     lanes:
       - - T-990
         - T-991
+      - - T-1011
   - name: the connection, the rail and the droplets
     qa:
       scope: affected
