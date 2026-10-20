@@ -3,7 +3,7 @@ id: T-796
 kind: task
 title: An opened Markdown artifact renders with the thread's Markdown decorations, with a raw toggle
 state: open
-status: review
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-754
 branch: t/T-796-an-opened-markdown-artifact-renders-with
 created: 2026-10-18T10:14:36.589Z
-updated: 2026-10-20T17:24:48.511Z
+updated: 2026-10-20T17:27:01.894Z
 ---
 
 ## Summary
@@ -31,8 +31,8 @@ Notes, pages, `.md` and `.markdown` files, and folder entry files and children r
 
 - [x] C1. A headless-grid case ARTIFACT-001 opens a Markdown artifact with a heading, emphasis, inline code, a fenced block, a list, a block quote, a link and a table, and the grid shows the thread's rendering, not the raw markers, wrapped with linebreak and breakindent.
   - done: impl-796 · 2026-10-20T17:11:03.194Z
-- [x] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
-  - done: impl-796 · 2026-10-20T17:11:03.726Z
+- [ ] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
+  - failed: rev-23 [reviewer] · 2026-10-20T17:27:01.894Z · note Lazy default ignores an already loaded modified file buffer unless this artifact id owns its cache entry; rendered and first raw toggle can show different source.
 - [x] C3. A 2,000-line artifact shows its first screen rendered within 50 ms with its spans cached per artifact version (path, mtime and size), proved by a T1/T2 test of the cache.
   - done: impl-796 · 2026-10-20T17:24:09.165Z
 - [x] C4. The raw toggle is a registered action with its key `␣v` in `␣?` and the palette, and the "Shared artifacts" section of `nvim/README.md` describes the rendered and raw modes.
@@ -80,3 +80,18 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Final not clear at exact 42d222a4. A-7789 audits A-7777/run 00243f5b. C3's latency assertion fails at 68.77ms; 0/5 load repetitions also fail. events.test.ts:108 times out expecting a raw heading marker although the grid shows the correct rendered artifact; this is a task-owned expectation change, not an unrelated flake. Ordinary 2065/2063/2 plus ten repetition passes/five failures explains aggregate2080/2073/7. ARTIFACT-001 rendered/raw and independent cache identities pass ordinary and5/5; artifacts.test.ts compatibility all9 pass, but the overall gate fails. T1 passes; T2 including Neovim fails, T3 deferred. Linux c8 lon1,two workers,358s/$0.0249. C4 stays source-verified; C1/C2 QA marks remain E-795 after-stage; C3 failed. Local A-7770 transcripts/dirty-gridA-7757 do not supersede Linux evidence. Corrected head requires source review before another verify. No Reviewer execution or edits.
 
 Criteria: C3 failed (First rendered 2000-line screen exceeds 50 ms: 68.77 ms ordinary run and 0/5 load repetitions in A-7777.).
+
+### rev-23 · 2026-10-20T17:27:01.894Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-source-2
+commit: 98957dd51aa62b323a486e15d90cd89d1f133b29
+scope: full
+findings: [{"severity":"medium","text":"Lazy source lookup only checks artifact-owned raw caches. An existing modified :edit buffer or same-path artifact alias is absent there, so default rendering reads disk; first raw toggle discovers the edited buffer via bufadd and disagrees. Locate an already loaded file buffer without eager creation/loading and add an unsaved-before-artifact-open regression.","file":"nvim/lua/cland/artifacts.lua","line":217}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Spec medium at artifacts.lua:217: already loaded modified buffers outside M.bufs/M.file_bufs are missed by lazy rendering; disk projection can disagree with the first raw toggle. C2 failed. No other Standards/Spec findings. Lazy ownership/cache design, unchanged 50 ms/grid/cache assertions, wrapped-list proof and Events rendered expectation reviewed. A-7803 original local working-tree stdout/exits inspected; no current-head Linux/load pass, prior A-7777/A-7789 red retained. C1/C2 after-stage QA unchanged. Audit A-7804. Reviewer performed static trace only, no reproduction/tests/edits.
+
+Criteria: C2 failed (Lazy default ignores an already loaded modified file buffer unless this artifact id owns its cache entry; rendered and first raw toggle can show different source.).
