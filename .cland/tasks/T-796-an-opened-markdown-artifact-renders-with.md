@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-754
 branch: t/T-796-an-opened-markdown-artifact-renders-with
 created: 2026-10-18T10:14:36.589Z
-updated: 2026-10-20T17:45:45.380Z
+updated: 2026-10-20T18:10:40.965Z
 ---
 
 ## Summary
@@ -32,21 +32,27 @@ Notes, pages, `.md` and `.markdown` files, and folder entry files and children r
 - [x] C1. A headless-grid case ARTIFACT-001 opens a Markdown artifact with a heading, emphasis, inline code, a fenced block, a list, a block quote, a link and a table, and the grid shows the thread's rendering, not the raw markers, wrapped with linebreak and breakindent.
   - done: impl-796 · 2026-10-20T17:11:03.194Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+  - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
 - [x] C2. The raw toggle shows the exact source in the editable buffer and toggles back to the rendered view, which is the default on every open, proved by a case.
   - done: impl-796 · 2026-10-20T17:28:12.247Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+  - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
 - [x] C3. A 2,000-line artifact shows its first screen rendered within 50 ms with its spans cached per artifact version (path, mtime and size), proved by a T1/T2 test of the cache.
-  - done: impl-796 · 2026-10-20T17:24:09.165Z
-  - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+  - done: impl-796 · 2026-10-20T17:58:26.215Z
+  - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
 - [x] C4. The raw toggle is a registered action with its key `␣v` in `␣?` and the palette, and the "Shared artifacts" section of `nvim/README.md` describes the rendered and raw modes.
   - done: impl-796 · 2026-10-20T17:11:04.880Z
   - verified: rev-26 [reviewer] · run rev-20261020-796-source-1 · 2026-10-20T17:13:30.864Z · commit 42d222a4699cba4f7b79049b78de719a2b6f5c85
   - verified: rev-23 [reviewer] · run rev-20261020-796-source-3 · 2026-10-20T17:29:04.059Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
   - verified: rev-23 [reviewer] · run rev-20261020-796-merge-source · 2026-10-20T17:45:45.380Z · commit dde71452eb89bbe2e66df9bb0dcbb0db4aad3243
+  - verified: rev-23 [reviewer] · run rev-20261020-796-source-structural · 2026-10-20T17:59:39.270Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
+  - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
+  - verified: rev-23 [reviewer] · run rev-20261020-796-panel-merge-source · 2026-10-20T18:10:40.965Z · commit 04067ab75d171980dc7196c80ec73277084a7d95
 - [x] C5. Mermaid, HTML and the other browser artifacts, and prompt drafts, open exactly as before, proved by the existing `artifacts.test.ts` cases passing unchanged.
   - done: impl-796 · 2026-10-20T17:11:05.496Z
   - verified: rev-23 [reviewer] · run rev-20261020-796-final-2 · 2026-10-20T17:37:00.202Z · commit 4f6418ba9b6e3755c8174d267f99b1739fdf248b
+  - verified: rev-23 [reviewer] · run rev-20261020-796-structural-final · 2026-10-20T18:07:22.557Z · commit b03ae378c916d3307921a684d4e926dc24394b3a
 
 ## Comments
 
@@ -149,5 +155,69 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Standards and Spec: no findings. Authorized merge retains both tests.md sections, artifact README/tier/help/action/layout additions and inherited dev changes. Independent comparison confirms artifact implementation/shared renderer/render tests/ARTIFACT-001 unchanged from final-clear4f6418ba. Exact-head local A-7840 targeted exits/stdout inspected, including typecheck and requested files; no Linux/load/new suite claim. C4 refreshed; fresh mode-free exact-head result required for runtime final marks. Old A-7826 green and A-7777/A-7789 red remain historical. Audit A-7843; Reviewer read only, after-stage QA unchanged.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-20T17:54:45.016Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-merge-final-red
+commit: dde71452eb89bbe2e66df9bb0dcbb0db4aad3243
+scope: evidence
+findings: [{"severity":"medium","text":"Merged-head load repetitions 3 and 4 fail the unchanged <50 ms first-rendered-screen assertion (one retained message is redacted as 5[redacted].48 ms; the other is 56.33 ms). Only 3/5 repetitions pass, so C3 is not established under the gate despite ordinary 35.55 ms success. Improve first-screen work while retaining the latency/grid/cache assertions.","file":"nvim/test/artifact-render.test.ts","line":69}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-7857/run4d1a9745 is overall red at exact reviewed merged head. Own latency assertion fails repetitions3/4: exact message56.33ms plus partially redacted5[redacted].48ms; only3/5 pass. Ordinary35.55ms does not establish C3 under load. Ordinary2085/2085 plus18 load passes/2 failures explain aggregate2105/2103/2. Other render identities each5/5; unsaved-buffer and Events cases pass. T1 passes; all-T2 including Neovim executes but exits1. Linux c-8 lon1,430s/$0.0298; host9db0368b not repeated, lint/budgets report-only. Retain old green A-7826/A-7827 and prior red A-7777/A-7789 separately. Preserve50ms/grid/cache assertions; fresh source review required for changed head. Audit A-7860. No Reviewer execution; after-stage QA unchanged.
+
+Criteria: C3 failed (First rendered screen fails two load repetitions, including 56.33 ms against <50 ms; only 3/5 pass despite ordinary 35.55 ms.).
+
+### impl-796 · 2026-10-20T17:58:27.079Z
+
+Coordinator decision f3b3fb34 splits C3 evidence after loaded-droplet timing noise: deterministic T2 prefix/deferred-remainder proof plus 200 ms gross guard, and a separately measured quiet local macOS median against 50 ms. Implemented/pushed b03ae378c916d3307921a684d4e926dc24394b3a. First paint parses 46/2000 lines; five fresh-client timings 15.71,11.92,12.00,12.19,12.29 ms, median 12.19 ms. No local suite/stress; CPU idle 76.8%, 1m load 3.02 on 10 CPUs. Original receipts attached in topic. C1–C5 done and fresh source review requested; prior Linux failures remain historical.
+
+### rev-23 · 2026-10-20T17:59:39.270Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-source-structural
+commit: b03ae378c916d3307921a684d4e926dc24394b3a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings under direct Coordinator f3b3fb34. Actual centre-height+4 prefix parse, anchored rendered grid/counter proof, deferred final-screen completion and cache assertions reviewed;200ms gross T2 guard replaces50ms load assertion exactly as directed.50ms target remains separate quiet-Mac measured median: A-7864 five exact-head fresh-client samples15.71/11.92/12.00/12.19/12.29ms, median12.19ms, idle76.78%,load3.02/10CPUs,no local suite/stress. A-7865 targeted precommit matching-source4/4/T4identity1/check0, labeled separately. C4 refreshed; fresh mode-free exact-head gate required for final runtime marks. Docs align; lazy/unsaved source safety retained. A-7857/A-7777 reds stay historical, not reclassified. Audit A-7868. No Reviewer execution; after-stage QA unchanged.
+
+Criteria: C4 verified.
+
+### rev-23 · 2026-10-20T18:07:22.557Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-structural-final
+commit: b03ae378c916d3307921a684d4e926dc24394b3a
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings under Coordinator f3b3fb34 proof split. A-7879/e2268aa0 exact-head audit:2085 ordinary tests/329 files all pass, Linux T1/all-T2 including Neovim; all four render identities actual5/5 load passes. C3 structural proof records46/2000 rows, deferred completion/cache assertions and200ms gross guard;50ms target separately established by quiet exact-head Mac median12.19ms in A-7864 (five original samples). No50ms load guarantee claimed. C1–C5 review marks verified with source A-7868/local ARTIFACT evidence separate. Retain A-7857/A-7777 prior reds and old-head A-7826 green. Hostc7968aea not repeated remotely; lint/budgets report-only. Lifetime366s/$0.0254. No T3/T4/integrated task or after-stage QA verdict. Audit A-7880; Reviewer ran no tests/measurements.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-23 · 2026-10-20T18:10:40.965Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-796-panel-merge-source
+commit: 04067ab75d171980dc7196c80ec73277084a7d95
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Authorized dev merge retains ARTIFACT-001/PANELS-017 and all shipped cases, artifact help/layout/registry/docs/tier additions. Artifact implementation/shared renderer/tests/case independently byte-equal to b03 prior clear. A-7881 exact-head local original stdout/exits inspected: shipped27/27 and requested T2/T3/typecheck; no suite claim. A-7882 refreshed quiet Mac median12.14ms over five fresh clients,84%idle/load2.74/10CPUs, each46/2000prefixrows. Proof split f3b3fb34 unchanged. C4 refreshed; fresh mode-free exact-head runtime receipt required. Audit A-7883; old green/red histories and after-stage QA remain separate. No Reviewer execution.
 
 Criteria: C4 verified.

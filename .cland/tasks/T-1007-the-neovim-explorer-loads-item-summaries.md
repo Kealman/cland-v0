@@ -3,7 +3,7 @@ id: T-1007
 kind: task
 title: The Neovim explorer loads item summaries, open items first
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-755
 branch: t/T-1007-the-neovim-explorer-loads-item-summaries
 created: 2026-10-20T17:01:23.939Z
-updated: 2026-10-20T17:42:58.526Z
+updated: 2026-10-20T18:14:16.443Z
 ---
 
 ## Summary
@@ -33,20 +33,35 @@ The Neovim explorer loads item summaries without bodies: open items first, close
 
 - [x] C1. The summary projection returns no body, comments, verdict history, plans or verification, and on a 1,000-item fixture tracker with 100 open items the open-only first payload stays under 60 KB, with the all-items projection bytes recorded in the test output (test).
   - done: impl-1007 · 2026-10-20T17:42:15.626Z
+  - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
 - [x] C2. On start the explorer requests open items only, and closed items are requested when the human expands the closed group or searches (test on recorded frames).
-  - done: impl-1007 · 2026-10-20T17:24:35.687Z
+  - done: impl-1007 · 2026-10-20T18:05:48.209Z
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
 - [x] C3. Opening an item's card reads its body with `task.view` and renders it (test).
   - done: impl-1007 · 2026-10-20T17:24:36.312Z
+  - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
 - [x] C4. `task.list` without the projection answers as today, and the CLI's `task list --json` output is unchanged (test).
   - done: impl-1007 · 2026-10-20T17:18:27.625Z
+  - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
 - [x] C5. The projection's bytes and compose time on a copy of the live tracker are posted in the item topic (local evidence).
   - done: impl-1007 · 2026-10-20T17:18:28.165Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-source-3 · 2026-10-20T17:29:57.397Z · commit bb35e1b0a0dae4e1618b6daf51b789bbd6c2e50a
   - verified: rev-26 [reviewer] · run rev-20261020-1007-source-4 · 2026-10-20T17:42:58.526Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-source · 2026-10-20T17:55:04.662Z · commit e760ca6b0c3e8848ff37fca6c7603b61dc83c82c
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-carrier-source · 2026-10-20T18:06:23.227Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
 - [x] C6. `hub/README.md` documents the projection, and `nvim/README.md` documents lazy loading of closed items.
   - done: impl-1007 · 2026-10-20T17:18:28.791Z
   - verified: rev-26 [reviewer] · run rev-20261020-1007-source-3 · 2026-10-20T17:29:57.398Z · commit bb35e1b0a0dae4e1618b6daf51b789bbd6c2e50a
   - verified: rev-26 [reviewer] · run rev-20261020-1007-source-4 · 2026-10-20T17:42:58.526Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-26 [reviewer] · run rev-20261020-1007-final-2 · 2026-10-20T17:51:16.890Z · commit 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-source · 2026-10-20T17:55:04.662Z · commit e760ca6b0c3e8848ff37fca6c7603b61dc83c82c
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-carrier-source · 2026-10-20T18:06:23.227Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+  - verified: rev-31 [reviewer] · run rev-20261020-1007-integration-final-2 · 2026-10-20T18:14:13.290Z · commit 94b59069597edd6e967b98a90ad6c4775ab3bf4e
 
 ## Comments
 
@@ -132,3 +147,80 @@ Source clear; A-7838 records separate Standards/Spec audit of the complete allow
 C5 qualified copied-tracker measurements and C6 matching docs carry forward unchanged; verified at this head. C1–C4 and final verdict await mode-free exact-head verification. A-7831 remains bb35e1b0 evidence, not a 9370939d pass: Linux x64 droplet T1/all-T2, 2067 ordinary passes plus five 5/5 groups, report-only diagnostics; T3/T4 not executed. No remaining Standards/Spec findings or Reviewer test execution.
 
 Criteria: C5 verified, C6 verified.
+
+### rev-26 · 2026-10-20T17:51:16.890Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-1007-final-2
+commit: 9370939d0e9dcbbd243ee8cb86359c518bf5218b
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no remaining findings. A-7850/run8e5b4b9e audited at exact reviewed unchanged9370939d:2067 ordinary passes, no failure/cancel/skip, plus25 passing load records across five new identities (all5/5). New T1 fixture2.664503094s ordinary/max2.718882284s repetition fits exact4s reviewed allowance. Payload open42303/all423905bytes; open below60KB. Open-first/closed expansion/search/task.view rendering, held-snapshot reopen and historical-round regressions all pass5/5. Default CLI JSON equality case passes0.320548503s. C1–C4 established; qualified copied-tracker C5 and matching-docs C6 source evidence retained. All criteria verified. Audit A-7851.
+
+Linux x64 c-8 lon1 droplet,two workers,Node24.21/Neovim0.12.5; T1exit0(command55s/package51.85s) and fallback allT2 across both packages exit0(command261s/package257.91s). Finished exit0; actual execution, no cache/projection claim. Host check output/refac946b46 not repeated remotely; budgets/lint/ratchet report-only. T3/T4 not executed, deferred periodic/integrated. Lifetime394s/cost$0.0274. Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### rev-31 · 2026-10-20T17:55:04.662Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-1007-integration-source
+commit: e760ca6b0c3e8848ff37fca6c7603b61dc83c82c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7861: authorized integration delta source clear. Both prior summary test bodies and dev's recovery/watcher cases retained; projection/index/request and Neovim lazy-loading/card source unchanged. T-1008 settling and matching T-1017/T-973 wire changes coexist; matching docs retained. A-7854–A-7856 exact-head local macOS tracker9/9, explorer19/19 and card15/15 ordinary replay receipts audited. A-7853 typecheck stdout lacks its own command/head/exit header; original attribution requested, no rerun. C5 qualified original copied-tracker measurements retained with original attribution; C6 source refreshed. C1–C4 and final settlement await mode-free verification at this head. A-7850 is old9370939d evidence only. No findings or merge enqueue.
+
+Criteria: C5 verified, C6 verified.
+
+### rev-31 · 2026-10-20T18:03:15.347Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261020-1007-integration-final-1
+commit: e760ca6b0c3e8848ff37fca6c7603b61dc83c82c
+scope: evidence
+findings: [{"severity":"medium","text":"Integrated reconnect carrier presses zR after its task event, which now legitimately requests closed summaries, then asserts task.list remains1; A-7869 observes2. Separate the explicit archive-fetch boundary from the retained event-only no-read assertion and obtain a new reviewed-head green gate.","file":"nvim/test/shell-component.test.ts","line":1576}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-7870 audits failed exact-head A-7869/fb65dad6:2086ordinarypass/1fail plus25passing repetitions; host/T1exit0, fallbackT2exit1. Failure actual task.list2 vs expected1 at shell-component1578; source maps zR to fold_all(true)→load_closed_items, so this is a deterministic task-owned integration carrier mismatch, not evidence of an automatic refresh regression or timing noise. Keep startup/reconnect/fake-idle/rendered-row and event-only no-read assertions while separating deliberate human loading. Five new identities pass5/5; fixture2.683s within exact4s allowance. C5/C6 source evidence retained; no final clear or T3/T4 claim. A-7862 closes original typecheck provenance gap. Changed head requires fresh source review.
+
+Criteria: C2 failed (Integrated mode-free gate fails the reconnect/settling carrier: zR deliberately fetches closed summaries but its following assertion still expects no additional task.list.).
+
+### rev-31 · 2026-10-20T18:06:23.227Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-1007-carrier-source
+commit: 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7878 corrective source clear. Only reconnect carrier changes: explicit zR closed fetch now has bounded installed-state receipt, exactly one extra list and exact open/closed summary frames before task event; rendered-row/event-no-read assertion and initial startup/ten-fake-minute checks retained, plus ten more fake idle minutes. No runtime/fixture/tier/allowance changes; prior medium finding resolved. A-7876 exact-head local typecheck exit0; A-7877 whole shell60/60 ordinary replay exit0, correctedcase0.372s, no recorder. C5 qualified original measurement and C6unchangeddocs refreshed; C1–C4/final require replacement mode-free gate at this head. A-7869 remains failed oldhead evidence. No findings or Reviewer tests.
+
+Criteria: C5 verified, C6 verified.
+
+### rev-31 · 2026-10-20T18:14:13.290Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261020-1007-integration-final-2
+commit: 94b59069597edd6e967b98a90ad6c4775ab3bf4e
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+A-7888 final evidence clear at unchanged 94b59069. A-7886 exact-head replacement ffca1b45 has 2087 ordinary passes plus 25 passing repetitions, host check/T1/full fallback T2 including Neovim exit 0. All five new identities have distinct actual 5/5 receipts. Corrected reconnect carrier passes 0.595936790 s, preserving independent human-demand receipt, event no-read and both fake-idle assertions; prior failure resolved. Summary ordinary 2.548 s/repeat max 2.490 s fits unchanged 4 s exact allowance; open payload 42303 bytes. C1–C6 checked across source and qualified evidence; all claimant done marks present. Report-only duration regressions/missing baseline/lint/ratchet retain their stated limits; original C5 measurements retain original attribution. No T3/T4, integrated or real-ten-minute claim, no remaining findings or merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

@@ -2,8 +2,8 @@
 id: T-999
 kind: task
 title: Any of the four panels opens on either side from the palette
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 10
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-753
 branch: t/T-999-any-of-the-four-panels-opens-on-either
 created: 2026-10-20T16:57:43.127Z
-updated: 2026-10-20T17:45:34.959Z
+updated: 2026-10-20T17:58:34.543Z
+closed: 2026-10-20T17:58:34.543Z
 ---
 
 ## Summary
@@ -34,35 +35,47 @@ This slice removes the hard-coded "left = Items" from the layout and from its ca
 - [x] C1. The palette offers "<Panel> on the left" and "<Panel> on the right" for Items, Inbox, Sessions and Topics, and `:Cland panel <kind> left|right` does the same, proved by a T2 component test on the stub hub.
   - done: impl-999 · 2026-10-20T17:12:52.135Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C2. With Sessions on the left and Items on the right, both panels render and follow hub events (a `session.state` frame and a `task` frame change the visible rows), proved by a T2 stub-hub test.
   - done: impl-999 · 2026-10-20T17:12:52.766Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C3. With the panels swapped, each panel's keys still work (Enter opens the row in the centre; `x` and `c` on Sessions; `1`-`6` and `za` on Items; a digit on an Inbox ask; `n` on Topics), proved by a T2 stub-hub test.
   - done: impl-999 · 2026-10-20T17:12:53.395Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C4. Asking for a panel on the other side moves it there, closes it on the old side and makes the new side its home, so a panel is never shown twice, proved by a T2 test.
   - done: impl-999 · 2026-10-20T17:12:53.918Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C5. When two panels share a home side, opening one replaces the other on that side and the replaced panel keeps its home, proved by a T2 test.
   - done: impl-999 · 2026-10-20T17:12:54.546Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C6. Closing either panel with `:q` or `CTRL-W c` clears only that side's state, and the centre is re-made when it was the sole column, proved by a T2 test.
   - done: impl-999 · 2026-10-20T17:12:55.146Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C7. `qa.state().panels` reports which panel each side shows, and the shipped PANELS-005 to PANELS-016 and ITEMS-001/002 cases pass unchanged under `cland --headless --qa`.
   - done: impl-999 · 2026-10-20T17:12:55.806Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-source · 2026-10-20T17:15:39.642Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-source-delta-1 · 2026-10-20T17:46:44.587Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C8. A new headless-grid case PANELS-017 opens Sessions on the left and Items on the right from the palette, then reads both panels' headers and one live row change from the grid.
   - done: impl-999 · 2026-10-20T17:12:56.426Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.356Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C9. With no side chosen, the workbench opens as today (General in the centre, Sessions on the right, Items on the left when opened), and the existing T2 panel-key and preset tests in `shell-component.test.ts` pass unchanged.
   - done: impl-999 · 2026-10-20T17:12:56.973Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.357Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 - [x] C10. `ui.test.ts` and `shell.test.ts` pass as targeted local runs on the branch, since their layout cases are T3 and batches run T1 only.
   - done: impl-999 · 2026-10-20T17:12:57.595Z
   - verified: rev-23 [reviewer] · run rev-20261020-999-source · 2026-10-20T17:15:39.642Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
   - verified: rev-23 [reviewer] · run rev-20261020-999-final · 2026-10-20T17:24:15.939Z · commit 2d8f5db4468bfa23b9f71fe84e3a11b53127dc7f
+  - verified: rev-26 [reviewer] · run rev-20261020-999-source-delta-1 · 2026-10-20T17:46:44.587Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
+  - verified: rev-26 [reviewer] · run rev-20261020-999-final-delta-1 · 2026-10-20T17:54:03.357Z · commit cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
 
 ## Comments
 
@@ -111,3 +124,53 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Standards and Spec: no findings. A-7796/run9a56dd9b audited at exact reviewed head: Linux T1/all-T2 fallback, 2068 ordinary tests / 328 files all pass, including panel6/6, shell-component56/56, palette-component13/13; each of six new panel identities has actual5/5 load passes. C1–C6/C9 runtime review established; C7/C8/C10 retain separately attributed source/local headless/UI/shell receipts A-7760/A-7773. All review criteria verified. This is not full QA: E-789 dev-stage QA after T-1002 still owns C2/C3/C8 under daf8922a. No T3/T4/integrated or QA gate claimed. Host37a4894f not repeated remotely; lint/budgets report-only. Lifetime428s/estimated$0.0297. Audit A-7800. Reviewer ran no tests.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### rev-26 · 2026-10-20T17:46:44.587Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-999-source-delta-1
+commit: cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings in the Coordinator-authorized merge integration from prior reviewed 2d8f5db4 and incoming dev248a9eeb. Combined diff preserves both placement and startup snapshot/settling paragraphs in docs/agents/tests.md and hub/README.md. Placement runtime, action registration, QA shape and cases are unchanged; incoming T-1008 transport changes update state independently of side rendering. Task diff against dev stays19files/681+/70-. Read-only diff check clean. Audit A-7846.
+
+A-7841 refreshed logs independently show133 targeted passes, no failures/cancel/skips: local Darwin arm64, T2panels6/shell60/palette13; T3palette5/ui9/shell25; selected headless14 plus ITEMS-0011. Exact-head/platform/isolated-launch and exit attribution are retained in its README, not embedded suite headers; direct runs carry no suite/load/duration gate or cache. C7/C10 verified. Other runtime criteria/final settlement await mode-free verification at this head; earlier A-7796 belongs only to2d8f5db4. Typecheck output includes hub+nvim+shared/wire, lead exit0.
+
+Coordinator daf8922a/ab605d1b directly retain full E-789 after-stage dev QA after T-1002 and remove per-item qaCriteria; current qaCriteria[]. This is source clearance, not completion of that QA obligation. Reviewer ran no tests or edits.
+
+Criteria: C7 verified, C10 verified.
+
+### impl-999 · 2026-10-20T17:47:04.185Z
+
+Post-merge refresh: merged origin/dev 248a9eeb at cf96ae5e9b6293ebe2647f3939e02fe49367c4bf with both doc paragraphs kept; targeted local Darwin arm64 133/133 and npm run typecheck passed (A-7841). Fresh source delta clear rev-20261020-999-source-delta-1 (A-7846). Submitted mode-free verify 9d1ea100-2db3-4321-99c5-c8dd085021ed at that exact head, receipt to Reviewer and Implementer. Waiting for hub result; old 2d8f5db4 verification is historical only. Stage QA remains after T-1002.
+
+### impl-999 · 2026-10-20T17:53:31.634Z
+
+Refreshed same-head verification 9d1ea100-2db3-4321-99c5-c8dd085021ed passed at cf96ae5e9b6293ebe2647f3939e02fe49367c4bf: T0–T2, fallback all T2, 2087/2087 tests with zero failures/cancellations/skips. Linux x64 droplet c-8 lon1, Node v24.21.0/Neovim v0.12.5, 2 workers; lifetime 350 s, cost $0.0243. Log A-7852. Duration/test-lint report-only: 131 lint findings, two missing duration baselines. Local targeted T3/headless receipts at the refreshed head are separately in A-7841 (133 local tests); no Linux T3/integrated pass claimed. Awaiting Reviewer final settlement.
+
+### rev-26 · 2026-10-20T17:54:03.357Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261020-999-final-delta-1
+commit: cf96ae5e9b6293ebe2647f3939e02fe49367c4bf
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Standards and Spec: no findings. Audited A-7852 / run 9d1ea100 at exact reviewed unchanged cf96ae5e: 2,087 ordinary passes and 30 passing load records, no fail/cancel/skip. All six new panel identities have actual 5/5 passes; maximum panel test 0.818203 s fits T2. Panel 6/6, shell-component 60/60 and palette-component 13/13 establish C1–C6/C9. C7/C8/C10 retain separately inspected same-head A-7841 local Darwin arm64 headless cases and targeted ui 9/9 / shell 25/25. All ten review criteria verified. Audit A-7858.
+
+Linux x64 c-8 lon1 droplet, two workers, Node v24.21.0 / Neovim v0.12.5; T1 exit 0 (command 39 s / package 36.10 s), fallback all T2 in both packages exit 0 (command 244 s / package 240.94 s). Actual execution, no cache/projection claim. Host check reference a32382db not repeated remotely; lint/budgets/ratchet report-only. T3/T4 absent from task receipt; local targeted T3 evidence remains separate. Lifetime 350 s / $0.0243.
+
+Full E-789 after-stage QA on dev after T-1002 still owns C2/C3/C8 under Coordinator daf8922a/ab605d1b. Current per-item qaCriteria is empty; this is final review clearance, not that stage QA. Reviewer ran no tests or edits.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified, C9 verified, C10 verified.
+
+### coord · 2026-10-20T17:58:34.543Z
+
+Merged b1bb588cdfb03483c011758ae2489dda04488e6a onto dev.
