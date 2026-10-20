@@ -5095,12 +5095,26 @@
     "hub/test/verify-prepare.test.ts::prepare uses installed snapshot inputs and rebuilds changed or missing installs": 0.776026333
   },
   "allow": {
+    "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
+      "seconds": 9.859054,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/account-limits.test.ts::fake Codex pushes account windows and sparse per-model updates while reads are held": {
       "seconds": 12.092415,
       "owner": "E-880",
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/accounts.test.ts::OpenCode data_home and db reach serve and attach; another harness ignores the role account": {
+      "seconds": 9.183603,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/agents-filters.test.ts::Agents item history searches before the latest window and includes claims, releases and bound-topic traffic": {
       "seconds": 3.092119,
@@ -5123,6 +5137,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/artifact-cli.test.ts::the shell with an in-process hub keeps, releases, moves and archives artifacts through the hub": {
+      "seconds": 2.344686,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/artifacts.test.ts::promotion rejects existing, escaped, absolute, private and symlinked destinations without copying": {
       "seconds": 2.520219,
       "owner": "E-880",
@@ -5136,6 +5157,13 @@
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/claude-code-adapter.test.ts::a crashed Claude Code process: the state turns unknown and the hub logs it once; launched again under its name, it works": {
+      "seconds": 10.233797,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/claude-code-adapter.test.ts::after a hub restart, resume re-finds the running session through the process table and state reporting continues": {
       "seconds": 14.336738,
@@ -5151,6 +5179,34 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/claude-code-adapter.test.ts::Claude Code mod confirmation timeout leaves delivery retryable at the next turn": {
+      "seconds": 9.410359,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/claude-code-adapter.test.ts::Claude Code StopFailure hook reports its turn failure to Agents, events and sender": {
+      "seconds": 11.165094,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/claude-code-adapter.test.ts::Claude unpinned binary launch, native relaunch and remedies preserve an unset CLAUDE_CONFIG_DIR (T-603)": {
+      "seconds": 11.883957,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/cli.test.ts::task view headings include release versions once, including in a child ancestry": {
+      "seconds": 2.684853,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/codex-adapter.test.ts::after a hub restart, resume re-finds the app-server and its thread through the process table; state and inject continue": {
       "seconds": 12.243693,
       "owner": "E-880",
@@ -5165,6 +5221,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/config-reload-component.test.ts::hub reload publishes config and roles together and retains both after either file fails": {
+      "seconds": 2.129789,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/config-reload-component.test.ts::missing config retains the loaded policy and permits role refresh with a warning": {
       "seconds": 2.76994,
       "owner": "E-880",
@@ -5172,12 +5235,26 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/config-reload-component.test.ts::role auto-refresh applies the pair only when valid, and running launches retain their defaults": {
+      "seconds": 2.023454,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/config-set.test.ts::config set enforces shell roles at the frame boundary and posts refusals in Agents": {
       "seconds": 2.929262,
       "owner": "E-880",
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/config-set.test.ts::config set keeps verification command arguments verbatim and applies them now": {
+      "seconds": 2.330413,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/config-set.test.ts::config set parses numbers and lists, applies reloadable values now and reports pending startup edits": {
       "seconds": 2.676542,
@@ -5193,12 +5270,40 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/crew-launch.test.ts::Reviewer pool handoffs enforce admission and retention policy across flavours": {
+      "seconds": 2.059736,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/crew.test.ts::crew CLI and protocol validate changes, reload hand edits, and retain the last good policy with a notice": {
+      "seconds": 2.260852,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/crew.test.ts::idle categories are set through the CLI and delivered in order to the Coordinator": {
+      "seconds": 1.937989,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/dev-t3-search-component.test.ts::red periodic run files one Bug with live last-claimant delivery": {
       "seconds": 2.797752,
       "owner": "E-880",
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/epic-close.test.ts::epic close names missing QA and criteria, and succeeds with all verified in the current QA run (in-process)": {
+      "seconds": 2.276619,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/events.test.ts::events.list reads the tail and pages without repeats or gaps while a real spoke appends events": {
       "seconds": 3.156866,
@@ -5207,6 +5312,34 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/executor-health.test.ts::remote worker completes with a capped tmpfs temp root": {
+      "seconds": 11.343475,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/executor-health.test.ts::remote worker completes with an explicit disk fallback": {
+      "seconds": 11.908608,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/executor-prepare-component.test.ts::a timed-out accepted retirement keeps the replacement while old is listed, then completes the late deletion": {
+      "seconds": 2.165812,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/executor-prepare-component.test.ts::acquire needs a prepared image, uses its regions without user data and refuses unready or mismatched machines": {
+      "seconds": 1.808475,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/executor-prepare-component.test.ts::failed replacement releases its builder, deletes a partial image and keeps the previous snapshot": {
       "seconds": 3.130568,
       "owner": "E-880",
@@ -5214,12 +5347,26 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/executor-prepare-component.test.ts::lost successful retirement and an unavailable catalogue preserve the replacement through restart": {
+      "seconds": 1.952874,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/executor-prepare-retry.test.ts::prepare retries transient builder deletion failures within its release window": {
       "seconds": 2.55643,
       "owner": "E-880",
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/executor-run.test.ts::droplet delivery uses recorded shell lines after the project config changes": {
+      "seconds": 9.775639,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/executor-run.test.ts::shell project prepares its snapshot before rebuilding ignored outputs": {
       "seconds": 10,
@@ -5236,10 +5383,11 @@
       "reason": "Proves tool and inherited-shell authority with real Aide, Coordinator, Lead and Implementer fake harness processes, including two stop/resume cycles and per-call audit identity. D71/D72 enforce migration: observed peak 18.002115878 s in A-6792; cap 22.6 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/ask-chain.test.ts::a question climbs an epic and release one level per forward, reaching each fake harness": {
-      "seconds": 0.32991,
-      "reason": "Delivers a question across multiple claimed hierarchy levels and fake harnesses over live hub/spoke connections.",
+      "seconds": 0.722887,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Delivers a question across multiple claimed hierarchy levels and fake harnesses over live hub/spoke connections. raised for load headroom (T-929)"
     },
     "hub/test/claude-code-accounts.test.ts::discovery, watch and restart share each live directory schedule; saved directories survive registry and hub environment edits": {
       "seconds": 12.7,
@@ -5262,52 +5410,53 @@
       "legacy": true
     },
     "hub/test/cover-quiet.test.ts::an integrated local worker protects its cover while admitting its own targeted harness": {
-      "seconds": 5.029538,
-      "reason": "Runs a fixture hub, git-backed integrated dev admission and real local worker; waits for its inherited harness entry, checks an unrelated subprocess refusal, then observes completion and the downstream report separately before proving admission reopens.",
+      "seconds": 11.937844,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a fixture hub, git-backed integrated dev admission and real local worker; waits for its inherited harness entry, checks an unrelated subprocess refusal, then observes completion and the downstream report separately before proving admission reopens. raised for load headroom (T-929)"
     },
     "hub/test/crew-launch.test.ts::Implementer handoff retains or resets native context across flavours": {
-      "seconds": 0.635889,
-      "reason": "Runs the six flavour/keep-context handoffs through the in-process adapter and real task-worktree admission; retains each context/identity/brief assertion. Measured 5.044089440 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. This measurement predates the T-719 fake-probe correction; current zero-child fixtures retain the same policy/attribution assertions, and the allowance remains bounded pending the new-head Linux receipt and E-677 refresh.",
+      "seconds": 1.329824,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs the six flavour/keep-context handoffs through the in-process adapter and real task-worktree admission; retains each context/identity/brief assertion. Measured 5.044089440 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. This measurement predates the T-719 fake-probe correction; current zero-child fixtures retain the same policy/attribution assertions, and the allowance remains bounded pending the new-head Linux receipt and E-677 refresh. raised for load headroom (T-929)"
     },
     "hub/test/default-subscriptions-lifecycle.test.ts::a lead death while the hub is down reaches the offline Coordinator once after restart": {
-      "seconds": 5.406137,
+      "seconds": 12.978254,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Native Claude PID death while the hub process is down, followed by two real daemon recovery starts, proves one durable offline death."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Native Claude PID death while the hub process is down, followed by two real daemon recovery starts, proves one durable offline death. raised for load headroom (T-929)"
     },
     "hub/test/default-subscriptions-lifecycle.test.ts::a stopped pooled Reviewer reaches its item lead; a killed lead reaches the Coordinator with warning events": {
-      "seconds": 4.451882,
+      "seconds": 11.341083,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Native Claude Reviewer stop and Implementer SIGKILL prove real PID lifecycle routing and injected warning delivery; observed 7.126 s on Linux in run 28b82998 (A-4813). Timer and routing permutations run separately at T2."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Native Claude Reviewer stop and Implementer SIGKILL prove real PID lifecycle routing and injected warning delivery; observed 7.126 s on Linux in run 28b82998 (A-4813). Timer and routing permutations run separately at T2. raised for load headroom (T-929)"
     },
     "hub/test/default-subscriptions-lifecycle.test.ts::terminal recovery routes an older pooled Reviewer death past its already-dead lead": {
-      "seconds": 6.781859,
+      "seconds": 14.649142,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Two native Claude processes are killed while the daemon is down; two daemon starts prove terminal ordering and no replay."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Two native Claude processes are killed while the daemon is down; two daemon starts prove terminal ordering and no replay. raised for load headroom (T-929)"
     },
     "hub/test/default-subscriptions-lifecycle.test.ts::terminal recovery routes an older pooled Reviewer death past its verified-stopped lead with pending cleanup": {
-      "seconds": 6.719285,
+      "seconds": 14.243436,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Two native Claude deaths plus durable pending-stop recovery require two daemon starts to prove no duplicate final event."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Two native Claude deaths plus durable pending-stop recovery require two daemon starts to prove no duplicate final event. raised for load headroom (T-929)"
     },
     "hub/test/default-subscriptions-workflow.test.ts::the item lead runs not-clear, re-review and QA; only ready starts the Coordinator (connected)": {
-      "seconds": 3.132612,
+      "seconds": 5.308507,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Real Git worktree creation, two committed heads and authenticated review/QA provenance are the native ready-event frame proof; routing rules run separately at T2."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Real Git worktree creation, two committed heads and authenticated review/QA provenance are the native ready-event frame proof; routing rules run separately at T2. raised for load headroom (T-929)"
     },
     "hub/test/demo.test.ts::demo frames deliver a named dev commit, preserve command results and stop after restart": {
       "seconds": 13.5,
@@ -5317,17 +5466,18 @@
       "reason": "Starts a real fixture hub and fake SSH machine, delivers Git objects, executes commands, restarts the hub, then proves a successive explicit-commit lease preserves exit 255 and newest-lease teardown. T-700 Mac whole-file median is recorded in its evidence. D71/D72 enforce migration: observed peak 10.756058193000001 s in A-6792; cap 13.5 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/demo.test.ts::demo recorder failures persist diagnostics and keep remote captures for recovery": {
-      "seconds": 5.926577,
-      "reason": "Delivers a committed fixture through the demo lease and runs three real shell-recorder failures, checking persisted diagnostics and remote capture recovery after each. Measured on macOS in T-551.",
+      "seconds": 11.258496,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Delivers a committed fixture through the demo lease and runs three real shell-recorder failures, checking persisted diagnostics and remote capture recovery after each. Measured on macOS in T-551. raised for load headroom (T-929)"
     },
     "hub/test/durations-runner.test.ts::an outer repetition deadline reaps a failed worker with a live socket before continuing": {
-      "seconds": 4.40724,
-      "reason": "Real Node lifecycle proof runs an ordinary phase and ten fresh repetitions, waits for the subject's unchanged 1 s + 250 ms outer deadline, and verifies exact-worker reaping plus remaining repetitions and the next identity. Slow Linux A-4318 measured 7.734 s and one repetition exceeded the former 8 s enclosing watchdog. Allow startup/teardown margin under load, separately from the 30 s enclosing watchdog; direct runSuite avoids unrelated package admission and phase planning. E-676 owns this until stage-close duration refresh.",
+      "seconds": 7.736951,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Real Node lifecycle proof runs an ordinary phase and ten fresh repetitions, waits for the subject's unchanged 1 s + 250 ms outer deadline, and verifies exact-worker reaping plus remaining repetitions and the next identity. Slow Linux A-4318 measured 7.734 s and one repetition exceeded the former 8 s enclosing watchdog. Allow startup/teardown margin under load, separately from the 30 s enclosing watchdog; direct runSuite avoids unrelated package admission and phase planning. E-676 owns this until stage-close duration refresh. raised for load headroom (T-929)"
     },
     "hub/test/durations-runner.test.ts::one load-gate fixture distinguishes all seven prerequisite receipt shapes": {
       "seconds": 13.6,
@@ -5344,17 +5494,19 @@
       "reason": "Runs eight new identities through the real package runner and forty fresh repetition processes on two lanes, checking bounded concurrency and all receipts. Targeted macOS T-557 probe measured 5.701s at peak 1m load 3.12; optional slow acceptance probe is excluded from routine runs. D71/D72 enforce migration: observed peak 10.839714131000001 s in A-6792; cap 13.6 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/executor-prepare.test.ts::prepare builds a reusable snapshot, reports its key and replaces it after the committed lock changes": {
-      "seconds": 5.587707,
-      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion.",
+      "seconds": 12.630363,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises snapshot replacement and retirement end to end through the fake provider/SSH boundary, including lost replies and confirmed deletion. raised for load headroom (T-929)"
     },
     "hub/test/executor-run.test.ts": {
       "file": true,
-      "seconds": 68.548969,
-      "reason": "File budget: Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery.",
+      "seconds": 162.44925,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery. raised for load headroom (T-929)"
     },
     "hub/test/executor-run.test.ts::a restored launching suite reuses only an existing ref at the same head": {
       "seconds": 19.7,
@@ -5385,10 +5537,11 @@
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery. D71/D72 enforce migration: observed peak 11.665681333 s in A-6792/A-6795; cap 14.6 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/executor-run.test.ts::remote delivery bundles committed tracker state despite later tracker writes": {
-      "seconds": 6.057949,
-      "reason": "Runs the complete fake-provider delivery and remote suite lifecycle, then checks the remote checkout contains only committed tracker bytes despite staged host writes.",
+      "seconds": 11.910365,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs the complete fake-provider delivery and remote suite lifecycle, then checks the remote checkout contains only committed tracker bytes despite staged host writes. raised for load headroom (T-929)"
     },
     "hub/test/executor-run.test.ts::restart reloads the lease after admission and never redelivers or cleans the live checkout": {
       "seconds": 14.1,
@@ -5396,6 +5549,27 @@
       "added": "2026-10-19",
       "expires": "2026-11-19",
       "reason": "Runs nested verification workers through fake provider/SSH processes, logs, cancellation and restart to prove durable executor recovery. D71/D72 enforce migration: observed peak 11.208742625000001 s in A-6792/A-6795; cap 14.1 s provides 25% headroom rounded up to 0.1 s."
+    },
+    "hub/test/executor-run.test.ts::shell project reports a planted test failure": {
+      "seconds": 9.665316,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/executor-safety-component.test.ts::a pre-start assertion failure drains both same-name acquisitions without start receipts": {
+      "seconds": 2.126022,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/executor-safety-component.test.ts::a short-lived hub preserves a foreign live lease beyond its own lifetime threshold": {
+      "seconds": 1.811718,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/executor-safety-component.test.ts::provider list awaits cannot turn a concurrently acquired droplet or key into an orphan": {
       "seconds": 3.088829,
@@ -5411,6 +5585,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/executor-safety-component.test.ts::two protocol projects reserve against one cap and confirmed release replaces the reservation": {
+      "seconds": 2.156397,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/executor-safety.test.ts::prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel nowhere": {
       "seconds": 23.6,
       "owner": "E-880",
@@ -5419,10 +5600,11 @@
       "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive. D71/D72 enforce migration: observed peak 18.862803334 s in A-6792/A-6795; cap 23.6 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/executor-safety.test.ts::the periodic sweep reaps strays, re-arms a killed watchdog and retries failed provider cleanup": {
-      "seconds": 4.913598,
-      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive.",
+      "seconds": 11.559278,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Drives fake provider/SSH and real watchdog processes through lease, cancellation and cleanup transitions; waits establish that owned processes are gone and foreign ones survive. raised for load headroom (T-929)"
     },
     "hub/test/executor-safety.test.ts::the remote shell and the host deadline both end a timed-out run once and release": {
       "seconds": 21,
@@ -5482,53 +5664,81 @@
       "legacy": true
     },
     "hub/test/handover-process.test.ts::revocation mid-turn: the human reassigns while the launched Coordinator is busy; its next call is refused and the revocation reaches it": {
-      "seconds": 4.436982,
+      "seconds": 7.576559,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains a real busy harness turn, mid-turn role revocation, refused native reply, and delivery of the revocation."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains a real busy harness turn, mid-turn role revocation, refused native reply, and delivery of the revocation. raised for load headroom (T-929)"
+    },
+    "hub/test/handover.test.ts::the Coordinator hands over with a note: B gets clause and note in one event, A the revocation, Agents both; the claims move; B pulls the role state": {
+      "seconds": 2.096861,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/heartbeat.test.ts::a missed heartbeat survives hub restart and fires once rather than replaying missed intervals": {
-      "seconds": 0.032791,
-      "reason": "Restarts a real hub across a missed heartbeat interval and waits for exactly one fire; 4.89 s on Linux under load (A-3109), allowed ahead of the 5 s line. Its flaky timing assertion is T-514.",
+      "seconds": 0.102188,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Restarts a real hub across a missed heartbeat interval and waits for exactly one fire; 4.89 s on Linux under load (A-3109), allowed ahead of the 5 s line. Its flaky timing assertion is T-514. raised for load headroom (T-929)"
     },
     "hub/test/heartbeat.test.ts::an idle Coordinator wakes for a heartbeat with a digest, without adding a needs-you": {
-      "seconds": 0.232787,
-      "reason": "Starts a real hub with a fake Coordinator, waits one full heartbeat interval for the idle session to wake, then checks the digest and that no needs-you was added. The interval wait dominates. Measured on Linux droplet run a3fe0258 (A-3001).",
+      "seconds": 0.462115,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Starts a real hub with a fake Coordinator, waits one full heartbeat interval for the idle session to wake, then checks the digest and that no needs-you was added. The interval wait dominates. Measured on Linux droplet run a3fe0258 (A-3001). raised for load headroom (T-929)"
     },
     "hub/test/heartbeat.test.ts::busy and approval-waiting Coordinators coalesce heartbeats into the next turn without steering": {
-      "seconds": 0.14136,
-      "reason": "Holds a busy and then an approval-waiting fake Coordinator across a full heartbeat interval through a real hub, and checks the heartbeat folds into the next turn without a steer. The interval wait dominates. Measured on Linux droplet run 44712045 (A-3109).",
+      "seconds": 0.362504,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Holds a busy and then an approval-waiting fake Coordinator across a full heartbeat interval through a real hub, and checks the heartbeat folds into the next turn without a steer. The interval wait dominates. Measured on Linux droplet run 44712045 (A-3109). raised for load headroom (T-929)"
     },
     "hub/test/heartbeat.test.ts::live remote leases appear in the heartbeat beside their verification run": {
-      "seconds": 0.024396,
-      "reason": "T-454 observes a live lease through a real hub and the fake DigitalOcean/SSH machine, then waits for the verification run to finish and the lease to be released. The end-to-end executor lifecycle exceeds five seconds.",
+      "seconds": 0.060582,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "T-454 observes a live lease through a real hub and the fake DigitalOcean/SSH machine, then waits for the verification run to finish and the lease to be released. The end-to-end executor lifecycle exceeds five seconds. raised for load headroom (T-929)"
     },
     "hub/test/heartbeat.test.ts::the digest ages review and ready items and open asks, caps both sections, and includes claimed sessions": {
-      "seconds": 0.550385,
-      "reason": "Builds review, ready, ask and claim state through a real hub and waits for a heartbeat digest that ages and caps each section; 4.96 s on Linux under load (A-3101), allowed ahead of the 5 s line.",
+      "seconds": 1.283154,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Builds review, ready, ask and claim state through a real hub and waits for a heartbeat digest that ages and caps each section; 4.96 s on Linux under load (A-3101), allowed ahead of the 5 s line. raised for load headroom (T-929)"
     },
     "hub/test/heartbeat.test.ts::the digest includes running and queued runs and ages timeouts and ended runs without results": {
-      "seconds": 0.035426,
-      "reason": "Drives running, queued, timed-out and ended verification runs through a real hub and waits for the heartbeat digests that age each of them. Measured on Linux droplet run a3fe0258 (A-3001).",
+      "seconds": 0.09007,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Drives running, queued, timed-out and ended verification runs through a real hub and waits for the heartbeat digests that age each of them. Measured on Linux droplet run a3fe0258 (A-3001). raised for load headroom (T-929)"
     },
     "hub/test/hook-bridge-doctor.test.ts::doctor lists and ends only own bridges with missing hub files, preserving existing and ambiguous paths": {
-      "seconds": 2.85847,
-      "reason": "Starts real hook bridges for several temporary projects, deletes some hub files, and runs doctor --fix to prove it ends only its own orphaned bridges while existing and ambiguous paths survive.",
+      "seconds": 6.894281,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Starts real hook bridges for several temporary projects, deletes some hub files, and runs doctor --fix to prove it ends only its own orphaned bridges while existing and ambiguous paths survive. raised for load headroom (T-929)"
+    },
+    "hub/test/import-github.test.ts::import-github preserves imported structure and updates through an in-process hub": {
+      "seconds": 2.497637,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/inbox-requests-component.test.ts::pending valid plans count only with human approval, and approval, invalidation and closure record departures": {
+      "seconds": 1.820308,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/inbox-workload-soak.test.ts::archive startup and event bursts retain bounded work at large-seed scale": {
       "seconds": 25.943296,
@@ -5544,11 +5754,54 @@
       "expires": "2026-10-24",
       "reason": "T4 retains the original 256-process, 300-message-pair, 100-request seed and two 100-event bursts with real indexed SQLite queries. Its pre-move Linux receipt A-4846 measured 5.166 s; the representative T2 seed is reduced with the same query-plan/coalescing assertions."
     },
-    "hub/test/inbox-workload.test.ts::durable wait capture retains the original timestamp and archives a request resolved within its publication window": {
-      "seconds": 0.098938,
-      "reason": "Checks original wait timestamps and single durable departures across coalesced publication on a real scratch project hub; measured 16.24 s including project setup and teardown on the Mac.",
+    "hub/test/inbox-workload.test.ts::a protocol stop burst does bounded indexed work despite unrelated retained task items": {
+      "seconds": 1.860722,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/inbox-workload.test.ts::durable wait capture retains the original timestamp and archives a request resolved within its publication window": {
+      "seconds": 0.228076,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Checks original wait timestamps and single durable departures across coalesced publication on a real scratch project hub; measured 16.24 s including project setup and teardown on the Mac. raised for load headroom (T-929)"
+    },
+    "hub/test/init-machine.test.ts::init machine self-tests keep the inherited HOME untouched": {
+      "seconds": 10.495778,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/init.test.ts::provisioning never writes through a symlink: a managed file, AGENTS.md or a parent folder that is a link is kept, its target untouched": {
+      "seconds": 9.256555,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/inject-stalled.test.ts::sustained unconfirmed injection raises one routed notice per session episode": {
+      "seconds": 2.18218,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/launch-recovery.test.ts::a failed relaunch retains its conversation and refuses resume across restart until file cleanup settles": {
+      "seconds": 10.901115,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/launch-recovery.test.ts::a failed spawn keeps its files and launch fence across restart until its child is confirmed dead (captured start identity)": {
+      "seconds": 10.921809,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/launch-recovery.test.ts::a failed spawn keeps its files and launch fence across restart until its child is confirmed dead (unknown start identity)": {
       "seconds": 11.061844,
@@ -5571,10 +5824,11 @@
       "reason": "Retains real own/foreign worker launches, Lead CLI stop authority, and confirmed OS disappearance of the stopped worker PID. D71/D72 enforce migration: observed peak 13.335144045 s in A-6792; cap 16.7 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/lead-permissions.test.ts::lead-1 requests verifiers and merges its scheduled item through the ordinary gate; other levels refuse": {
-      "seconds": 2.510055,
-      "reason": "Preserves real Git preparation, landing rollback, and interrupted close recovery while the Lead subtree changes across gated callbacks.",
+      "seconds": 11.696307,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Preserves real Git preparation, landing rollback, and interrupted close recovery while the Lead subtree changes across gated callbacks. raised for load headroom (T-929)"
     },
     "hub/test/lead-routing-process.test.ts::long idle and death climb from item to epic to release; stopped Leads leave inherited routing": {
       "seconds": 13.3,
@@ -5597,6 +5851,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/merge-batches.test.ts::three queued heads run once on a single candidate before landing FIFO": {
+      "seconds": 0.53785,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/merge-checkout-lifecycle.test.ts::a crash before the integration ref moves retains checkout recovery and can merge after restart": {
       "seconds": 7.812,
       "owner": "E-880",
@@ -5611,16 +5872,18 @@
       "legacy": true
     },
     "hub/test/merge-checkout.test.ts::an index lock during post-checkout write-tree restores the staged tree, file bytes and status before refusing": {
-      "seconds": 3.891762,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "seconds": 7.385931,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion. raised for load headroom (T-929)"
     },
     "hub/test/merge-gate.test.ts::criterion verification follows the exact branch head even when the review patch is unchanged": {
-      "seconds": 5.894626,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "seconds": 9.764973,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion. raised for load headroom (T-929)"
     },
     "hub/test/merge-gate.test.ts::merge refuses every unclassified hub test in the merged candidate, then accepts explicit classifications": {
       "seconds": 14.207685,
@@ -5628,6 +5891,20 @@
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/merge-queue.test.ts::merge CLI renders queue replies, ordered entries and task positions": {
+      "seconds": 1.980852,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/merge-queue.test.ts::queued merged-tree budget refusal moves no ref or checkout": {
+      "seconds": 1.804364,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/merge-recovery-native.test.ts::a close write failure reports merged follow-up failure; retry closes and prunes without a second commit": {
       "seconds": 6.1788,
@@ -5657,16 +5934,18 @@
     },
     "hub/test/merge.test.ts": {
       "file": true,
-      "seconds": 23.011686,
-      "reason": "File budget: Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "seconds": 38.129357,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion. raised for load headroom (T-929)"
     },
     "hub/test/merge.test.ts::a current hub review lands one squash commit in the root and territory, closes the item and topic, and removes its worktree and branch": {
-      "seconds": 2.759017,
-      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion.",
+      "seconds": 5.726139,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real git repositories, nested verification and recovery faults to prove the merge gate preserves refs, checkout state and tracker completion. raised for load headroom (T-929)"
     },
     "hub/test/merge.test.ts::discussion after a completed merge never blocks CLI push or recreates its worktree": {
       "seconds": 4.480974,
@@ -5675,29 +5954,54 @@
       "legacy": true
     },
     "hub/test/models.test.ts::models account probes use launch environments and have independent caches, also readable by sessions": {
-      "seconds": 5.056242,
-      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load.",
+      "seconds": 8.779275,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Checks three named account selections through real CLI calls and a hub: Codex home, OpenCode data_home and explicit db, each with independent default/cache receipts. The OpenCode probes each wait for the native fake catalog to load. raised for load headroom (T-929)"
     },
     "hub/test/models.test.ts::models CLI lists native catalogs, waits for OpenCode and caches each harness until refresh": {
-      "seconds": 3.085703,
-      "reason": "Runs initial, cached and refreshed model discovery through the real CLI for both native transports, including OpenCode empty-catalog retry and confirmed short-lived child teardown. Measured on the Linux droplet in A-4175; assertions and timeout bounds are retained.",
+      "seconds": 5.773652,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs initial, cached and refreshed model discovery through the real CLI for both native transports, including OpenCode empty-catalog retry and confirmed short-lived child teardown. Measured on the Linux droplet in A-4175; assertions and timeout bounds are retained. raised for load headroom (T-929)"
     },
     "hub/test/models.test.ts::models failed refresh keeps the cached list and original age; no cache returns the native probe error": {
-      "seconds": 3.976524,
-      "reason": "Exercises successful native discovery, repeated failed refreshes with unchanged cached timestamps, and no-cache account errors through real CLI calls for both Codex and OpenCode. Multiple short-lived app/server processes retain cleanup and failure assertions under droplet load (A-4045).",
+      "seconds": 7.720341,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises successful native discovery, repeated failed refreshes with unchanged cached timestamps, and no-cache account errors through real CLI calls for both Codex and OpenCode. Multiple short-lived app/server processes retain cleanup and failure assertions under droplet load (A-4045). raised for load headroom (T-929)"
+    },
+    "hub/test/nvim-inbox-requests-rules.test.ts::the chip equals cland inbox before and after an Aide review request is replied to": {
+      "seconds": 2.06516,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/nvim-items-rules.test.ts::the tracker indexes hand-written files and saved titles within one second": {
+      "seconds": 2.079091,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/opencode-adapter.test.ts": {
       "file": true,
-      "seconds": 35.176798,
-      "reason": "File budget: OpenCode real-binary contract retains native launch/attach, delivery, signals and hub-process restart; approval and attribution permutations moved to T2 (T-693).",
+      "seconds": 69.338595,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: OpenCode real-binary contract retains native launch/attach, delivery, signals and hub-process restart; approval and attribution permutations moved to T2 (T-693). raised for load headroom (T-929)"
+    },
+    "hub/test/opencode-adapter.test.ts::after a hub restart, resume re-finds the OpenCode server and session through the process table and the event stream goes on": {
+      "seconds": 11.186468,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/orphan-servers-perf.test.ts::hub start opens its socket promptly while sixteen TERM-resistant orphans are swept in parallel": {
       "seconds": 6.210659,
@@ -5727,11 +6031,19 @@
       "expires": "2026-11-19",
       "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup. D71/D72 enforce migration: observed peak 10.543263504 s in A-6792; cap 13.2 s provides 25% headroom rounded up to 0.1 s."
     },
-    "hub/test/orphan-servers.test.ts::hub start preserves the server child of a verified running wrapper session": {
-      "seconds": 7.419834,
-      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup.",
+    "hub/test/orphan-servers.test.ts::doctor names an exited session’s leftover app-server; hub start sweeps it and says which PID ended": {
+      "seconds": 9.027564,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/orphan-servers.test.ts::hub start preserves the server child of a verified running wrapper session": {
+      "seconds": 11.509203,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Starts real wrappers and hub server children, including TERM-resistant orphans, to prove ownership-aware startup and doctor cleanup. raised for load headroom (T-929)"
     },
     "hub/test/orphan-servers.test.ts::stop and relaunch await server death across the harness adapters": {
       "seconds": 10.394449,
@@ -5746,6 +6058,13 @@
       "owner": "E-880",
       "legacy": true
     },
+    "hub/test/plan-approval-reload.test.ts::config set gates plans created before or after a live approval change": {
+      "seconds": 1.929237,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/plan-approval.test.ts::draft chains into per-group lanes, holds launches for approval, authorizes human/Aide and survives restart": {
       "seconds": 6.78549,
       "reason": "Builds and approves a multi-lane plan through real hub/harness deliveries, then restarts to prove durable launch authority.",
@@ -5759,6 +6078,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/planned-stage.test.ts::CLI plan sets only current backlog tasks, preserves hand statuses, and remembers moves across store reopen (in-process)": {
+      "seconds": 2.575401,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/planned-stage.test.ts::landing stage one advances stage two": {
       "seconds": 3.366643,
       "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking.",
@@ -5770,6 +6096,13 @@
       "reason": "Lands task branches through real git/verification gates and proves stage advancement and stage-QA blocking.",
       "owner": "E-880",
       "legacy": true
+    },
+    "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA (in-process)": {
+      "seconds": 1.884131,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/planned-stage.test.ts::landing stage one advances stage two only after clear stage QA with platform receipts bound after startup checks": {
       "seconds": 3.828962,
@@ -5786,40 +6119,53 @@
     },
     "hub/test/release.test.ts": {
       "file": true,
-      "seconds": 48.196802,
-      "reason": "File budget: Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "seconds": 121.638712,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs. raised for load headroom (T-929)"
     },
     "hub/test/release.test.ts::a fully rolled-back merge preparation does not prevent sync or a later merge": {
-      "seconds": 2.729288,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "seconds": 5.292025,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs. raised for load headroom (T-929)"
     },
     "hub/test/release.test.ts::a release success-record failure retains its same-version recovery receipt": {
-      "seconds": 2.949266,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "seconds": 6.488049,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs. raised for load headroom (T-929)"
+    },
+    "hub/test/release.test.ts::only the human and the Coordinator shell release; Implementer, Reviewer and QA shells cannot impersonate them": {
+      "seconds": 9.585322,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/release.test.ts::release refusals and dry-run keep every local, territory and GitHub ref, with named GitHub commits": {
-      "seconds": 3.877361,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "seconds": 11.121143,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs. raised for load headroom (T-929)"
     },
     "hub/test/release.test.ts::sync refuses a landed merge with pending tracker completion, preserving its retry identity": {
-      "seconds": 2.47763,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "seconds": 6.170551,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs. raised for load headroom (T-929)"
     },
     "hub/test/release.test.ts::sync success-record failure prevents a later merge until its same-replay retry completes": {
-      "seconds": 4.254443,
-      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs.",
+      "seconds": 8.151778,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates atomic git publication, sync and fault-recovery scenarios against fixture remotes; every failed step must preserve or recover refs. raised for load headroom (T-929)"
     },
     "hub/test/remote-fixture-lifecycle.test.ts::remote fixture cleans up after owner timeout": {
       "seconds": 11.539703,
@@ -5846,11 +6192,19 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/role-integrity.test.ts::a hub that dies between a launch reserving the Coordinator and its spawn gives the role back at its next start": {
-      "seconds": 8.21519,
-      "reason": "Kills a real hub between Coordinator reservation and process spawn, then restarts to prove the role becomes available.",
+    "hub/test/review-qa.test.ts::a review request from the Coordinator reaches the Codex session holding Reviewer; its verdict lands on the item with the header and the report comes back; the same for QA": {
+      "seconds": 11.834418,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/role-integrity.test.ts::a hub that dies between a launch reserving the Coordinator and its spawn gives the role back at its next start": {
+      "seconds": 14.079459,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Kills a real hub between Coordinator reservation and process spawn, then restarts to prove the role becomes available. raised for load headroom (T-929)"
     },
     "hub/test/role-launch.test.ts::role launch enforces shell roles and records refusals in Agents": {
       "seconds": 2.531773,
@@ -5859,6 +6213,20 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/roles-component.test.ts::Coordinator is exclusive: a second assignment is refused with the reason; clearing the only holder raises the vacancy in one event": {
+      "seconds": 2.06091,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/roles-editor.test.ts::role harness round trips preserve every explicit sandbox choice (T-872)": {
+      "seconds": 0.56325,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/roles-editor.test.ts::switching Claude-only roles to Codex writes their sandbox defaults (T-872)": {
       "seconds": 1.802492,
       "owner": "E-880",
@@ -5866,23 +6234,33 @@
       "expires": "2026-11-19",
       "reason": "Six role launch edits rewrite and reparse sandbox defaults on disk in one pure policy test; the Linux sample exceeds the T1 half-second budget. D71/D72 enforce migration: observed peak 0.840143112 s in A-6792; cap 1.1 s provides 25% headroom rounded up to 0.1 s. raised for load headroom (T-923)"
     },
-    "hub/test/rule-sessions.test.ts::launch clause and brief end with the same ordered active rules": {
-      "seconds": 2.148667,
-      "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139).",
+    "hub/test/roles.test.ts::roles.toml is written at the first start, and an edit changes the next launch: a role launch takes its defaults": {
+      "seconds": 10.45594,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/rule-sessions.test.ts::launch clause and brief end with the same ordered active rules": {
+      "seconds": 4.371913,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Launches role spokes against a real hub with a populated rulebook and compares each launch clause and brief for the same ordered active rules; the real launch round-trips dominate. Measured on Linux droplet run 8cd57b4d (A-3139). raised for load headroom (T-929)"
     },
     "hub/test/rule-sessions.test.ts::shell rule changes reach fake Implementer turns, never steer, and show one event row without needs-you": {
-      "seconds": 6.292769,
-      "reason": "Real hub plus fake Claude Coordinator and Codex Implementer exercise shell add/edit/retire across turn and approval boundaries, with process teardown; Linux c-8 run 9d3032d2 (A-3050).",
+      "seconds": 12.231396,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Real hub plus fake Claude Coordinator and Codex Implementer exercise shell add/edit/retire across turn and approval boundaries, with process teardown; Linux c-8 run 9d3032d2 (A-3050). raised for load headroom (T-929)"
     },
     "hub/test/rule-sessions.test.ts::stopped processes receive no rule deliveries while live sessions still do": {
-      "seconds": 2.141078,
-      "reason": "Stops one fake session and keeps another live against a real hub, then proves a rule change reaches only the live one; process stop and the delivery round-trip dominate. Linux c-8 run fb064818 (A-3184).",
+      "seconds": 4.442968,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Stops one fake session and keeps another live against a real hub, then proves a rule change reaches only the live one; process stop and the delivery round-trip dominate. Linux c-8 run fb064818 (A-3184). raised for load headroom (T-929)"
     },
     "hub/test/scenarios/crew-launch.test.ts::Coordinator launches the three harnesses with clauses and a correlated native reply": {
       "seconds": 15.136129,
@@ -5906,25 +6284,25 @@
       "reason": "Observed 5.965037–8.855992 s across serial Mac whole-file receipts in A-4778 and the post-dev-merge receipts in A-4793; allowance equals the observed maximum rounded up to 1 microsecond. The real HTTP fake provider and process machines deliver/run/collect the worker and release keys and droplets; the watchdog case also suspends and reaps a real watchdog across both start faults. D71/D72 enforce migration: observed peak 10.175884737 s in A-6792; cap 12.8 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/scenarios/hub-lifecycle.test.ts::fixture startup skips orphan inspection by default; opt-in and production startup still sweep": {
-      "seconds": 3.703264,
+      "seconds": 8.202992,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 2.729968–5.117698 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Four sequential real daemon startups prove fixture, opt-in, production and override orphan-sweep decisions and stop each owned PID."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Observed 2.729968–5.117698 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Four sequential real daemon startups prove fixture, opt-in, production and override orphan-sweep decisions and stop each owned PID. raised for load headroom (T-929)"
     },
     "hub/test/scenarios/release.test.ts::release atomically publishes dev and an annotated tag with item titles, then advances local and territory main": {
-      "seconds": 2.834615,
+      "seconds": 9.189144,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 6.817013–8.877118 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Observed 6.817013–8.877118 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion. raised for load headroom (T-929)"
     },
     "hub/test/scenarios/release.test.ts::sync imports GitHub main and replays unreleased dev commits, updating the root and territory without a GitHub push": {
-      "seconds": 1.576038,
+      "seconds": 5.071373,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 3.986329–5.157981 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Observed 3.986329–5.157981 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real Git repositories, CLI subprocesses, task merges and a bare GitHub remote prove atomic annotated release publication or sync/replay with every ref and file assertion. raised for load headroom (T-929)"
     },
     "hub/test/scenarios/setup.test.ts::setup provisions a scratch machine, reuses its hub and Aide, and remembers declined installs": {
       "seconds": 27.4,
@@ -5934,11 +6312,11 @@
       "reason": "Named setup process scenario: real CLI/PTY install and login, short-lived Codex trust server, one detached hub/Aide, two idempotent reruns, and a second scratch machine for remembered installer declines. Corrected teardown proves current scratch-root ownership, including before discovery; Mac observed 11.265835125 s including confirmed process teardown. D71/D72 enforce migration: observed peak 21.916121033 s in A-6792/A-6795/A-6796; cap 27.4 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/scenarios/stage-close.test.ts::three review-only merges, one stage QA on dev, not-clear/retry, restart and separate epic demo": {
-      "seconds": 5.676241,
+      "seconds": 12.676761,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 8.436448–12.124692 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Three native Git merges, real verifier spokes, stage-cover fixture reopening, QA retry and the separate epic demo cross the stage-close seams."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Observed 8.436448–12.124692 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Three native Git merges, real verifier spokes, stage-cover fixture reopening, QA retry and the separate epic demo cross the stage-close seams. raised for load headroom (T-929)"
     },
     "hub/test/scenarios/ticket-flow.test.ts::a cached green suite at a new identical tree never revives a stale criterion mark": {
       "seconds": 14.5,
@@ -5948,35 +6326,39 @@
       "reason": "Observed 8.740475–11.960485 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow. D71/D72 enforce migration: observed peak 11.581775208 s in A-6795; cap 14.5 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/scenarios/ticket-flow.test.ts::an in-flight legacy item reaches ready and merge only after every criterion is done and verified": {
-      "seconds": 5.194142,
+      "seconds": 12.934038,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Observed 6.276371–9.477424 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Observed 6.276371–9.477424 s across serial Mac whole-file receipts in A-4778; allowance equals the observed maximum rounded up to 1 microsecond. Real CLI claims, criteria/refusal frames, Git worktrees, verification/cache receipts and the final merge preserve the complete exact-head verdict-gate flow. raised for load headroom (T-929)"
     },
     "hub/test/session-archive.test.ts::archive refuses live and unlaunched rows, hides stopped rows, retains their journal, and resume restores them": {
-      "seconds": 0.817589,
-      "reason": "Exercises live, unlaunched, stopped, archived and resumed session transitions through a real hub and fake harness, verifying retained journal history.",
+      "seconds": 1.687541,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises live, unlaunched, stopped, archived and resumed session transitions through a real hub and fake harness, verifying retained journal history. raised for load headroom (T-929)"
     },
     "hub/test/session-archive.test.ts::item windows follow launch items and the latest verifier work even after holds release; reopening cancels the item clock": {
-      "seconds": 0.663124,
-      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning.",
+      "seconds": 1.364569,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning. raised for load headroom (T-929)"
     },
     "hub/test/session-archive.test.ts::prune CLI and Coordinator tool delete only old archived records and retain the journal": {
-      "seconds": 0.575385,
-      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning.",
+      "seconds": 1.222707,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Drives live item/verifier windows and archived session lifecycles, including restart and CLI pruning. raised for load headroom (T-929)"
     },
     "hub/test/session-brief.test.ts::a brief cancellation error cannot skip the owned-process stop after a watch refusal": {
-      "seconds": 5.073413,
-      "reason": "Exercises a failing cancellation after a brief/watch refusal while proving the owned real process is stopped.",
+      "seconds": 7.630068,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises a failing cancellation after a brief/watch refusal while proving the owned real process is stopped. raised for load headroom (T-929)"
     },
     "hub/test/session-events.test.ts::process rows publish launch, model, role, rename, exit and stop; usage bursts publish latest totals per session": {
       "seconds": 14.6,
@@ -5994,18 +6376,18 @@
     },
     "hub/test/session-native-lifecycle.test.ts": {
       "file": true,
-      "seconds": 43.999211,
-      "reason": "Retains nine native lifecycle cases for child parsing, pool cwd/thread/history migration, merge process stops and real-hub restart usage/progress persistence pending T-707/T-708. Measured 65.366899003 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation.",
+      "seconds": 89.563063,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains nine native lifecycle cases for child parsing, pool cwd/thread/history migration, merge process stops and real-hub restart usage/progress persistence pending T-707/T-708. Measured 65.366899003 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=false)": {
-      "seconds": 6.070288,
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 6.502511 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh.",
+      "seconds": 14.240521,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 6.502511 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (claude-code, keep_context=true)": {
       "seconds": 12.7,
@@ -6015,60 +6397,67 @@
       "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 7.010713 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. D71/D72 enforce migration: observed peak 10.136178817 s in A-6792; cap 12.7 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=false)": {
-      "seconds": 3.723055,
-      "reason": "Retains real OpenCode server, reset native session, moved cwd, merge cleanup and artifact-brief delivery proofs pending T-708. Measured 5.906562081 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation.",
+      "seconds": 7.880564,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains real OpenCode server, reset native session, moved cwd, merge cleanup and artifact-brief delivery proofs pending T-708. Measured 5.906562081 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::an Implementer pool moves to the next task worktree after merge (opencode, keep_context=true)": {
-      "seconds": 4.195333,
-      "reason": "Retains real OpenCode server, native-session cwd, history retention, merge cleanup and brief delivery proofs pending T-708. Measured 6.967526643 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation.",
+      "seconds": 9.222696,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains real OpenCode server, native-session cwd, history retention, merge cleanup and brief delivery proofs pending T-708. Measured 6.967526643 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::codex: three progress notes start no turn, one ordered digest reaches the next report, including across restart": {
-      "seconds": 6.533034,
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 7.107240 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh.",
+      "seconds": 11.536899,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 7.107240 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::merge stops per-item implementers before cleanup, while stop_after never and pools remain running": {
-      "seconds": 4.649303,
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 5.551552 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh.",
+      "seconds": 8.878186,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 5.551552 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. raised for load headroom (T-929)"
     },
     "hub/test/session-native-lifecycle.test.ts::the first publication after hub restart is recorded again without replaying history": {
-      "seconds": 4.069287,
-      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 5.240974 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh.",
+      "seconds": 9.016118,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains the real process lifecycle assertions pending T-707/T-708. Same native proof at its former path measured 5.240974 s on Linux c-8, workers 2, integrated run A-4565 at 42ebe8a; Mac 5/5 after migration is below 5 s per test. Bounded allowance preserves Linux startup/cleanup coverage until exact-head verification and stage refresh. raised for load headroom (T-929)"
+    },
+    "hub/test/session-resume-component.test.ts::native and fresh resumes report unavailable claims, closed work, exclusive roles and holds": {
+      "seconds": 2.309824,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/session-resume-lifecycle.test.ts::a stopped Claude Implementer resumes its conversation, role and item claim and receives its clause again": {
-      "seconds": 8.1996,
+      "seconds": 13.339699,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-896–T-903 process-helper migration isolates the real Claude stop/resume lifecycle with conversation, role, claim and clause delivery assertions. A-6763/A-6767 observed up to 6.833 s; allow 20% headroom."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "T-896–T-903 process-helper migration isolates the real Claude stop/resume lifecycle with conversation, role, claim and clause delivery assertions. A-6763/A-6767 observed up to 6.833 s; allow 20% headroom. raised for load headroom (T-929)"
     },
     "hub/test/session-stop-races-cleanup.test.ts::held stop cleanup survives assertion failure and test-runner cancellation": {
-      "seconds": 3.077361,
+      "seconds": 5.778425,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Linux c-8 workers=2 measured 5.118139835 s in A-4572 / run 46d9eea8; retains real Node assertion-failure and cancellation fixtures, including cancellation before body finally and confirmed stop/close/result joins before directory removal. Limit 6.5 s gives 1.382 s headroom over the measured Linux run."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Linux c-8 workers=2 measured 5.118139835 s in A-4572 / run 46d9eea8; retains real Node assertion-failure and cancellation fixtures, including cancellation before body finally and confirmed stop/close/result joins before directory removal. Limit 6.5 s gives 1.382 s headroom over the measured Linux run. raised for load headroom (T-929)"
     },
     "hub/test/session-usage.test.ts::final totals and cost aggregate by launch item despite a changed verifier hold across flavours": {
-      "seconds": 0.659157,
-      "reason": "Runs all three flavour tables through real task attribution, changed verifier holds, publication and canonical documented final-record aggregation. Measured 5.114194657 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. This measurement predates the T-719 fake-probe correction; current zero-child fixtures retain the same policy/attribution assertions, and the allowance remains bounded pending the new-head Linux receipt and E-677 refresh.",
+      "seconds": 1.364456,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs all three flavour tables through real task attribution, changed verifier holds, publication and canonical documented final-record aggregation. Measured 5.114194657 s on Linux c-8 lon1, Node 24.21.0, workers 2, exact-head run e9bd92a9 at 09f1b18c (A-4644); bounded headroom covers native I/O and concurrent-run variation. This measurement predates the T-719 fake-probe correction; current zero-child fixtures retain the same policy/attribution assertions, and the allowance remains bounded pending the new-head Linux receipt and E-677 refresh. raised for load headroom (T-929)"
     },
     "hub/test/setup-favourite.test.ts::choosing Codex preserves every explicit aide sandbox choice": {
       "seconds": 1.030373,
@@ -6085,59 +6474,131 @@
       "reason": "Runs the installer, profile-login and Codex EOF self-tests in a poisoned-HOME child so no harness account from the host is read; includes three real cland init processes and bounded, owned subprocess teardown. Initial Mac measurement 8.30 s. D71/D72 enforce migration: observed peak 17.892537758 s in A-6792/A-6796; cap 22.4 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/shared-defects-report.test.ts::only distinct task branches raise one shared-defect notice with both logs and dev file history": {
-      "seconds": 8.421923,
-      "reason": "Runs four real CLI/package verifications on three task branches and observes durable reports and Coordinator notice deduplication.",
+      "seconds": 14.440036,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs four real CLI/package verifications on three task branches and observes durable reports and Coordinator notice deduplication. raised for load headroom (T-929)"
+    },
+    "hub/test/skills-onboarding.test.ts::the onboarding Aide plans imported open GitHub issues in its first release": {
+      "seconds": 2.296846,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/skills-onboarding.test.ts::the onboarding Aide records launch fields through the role CLI": {
+      "seconds": 1.804298,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/skills-onboarding.test.ts::the onboarding Aide records staffing through the crew CLI": {
+      "seconds": 1.837067,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/skills-qa.test.ts::QA recorder preserves two case receipts and publishes their blocked verdict": {
+      "seconds": 2.377323,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/skills-qa.test.ts::QA verdict retry preserves recorded cases without rerunning them": {
+      "seconds": 2.005811,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/stage-qa.test.ts": {
       "file": true,
-      "seconds": 52.464876,
-      "reason": "File budget: Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "seconds": 91.795995,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan. raised for load headroom (T-929)"
     },
     "hub/test/stage-qa.test.ts::a transient ancestry failure retries and recovers at the same dev SHA without erasing its verdict": {
-      "seconds": 6.006269,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "seconds": 9.404479,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan. raised for load headroom (T-929)"
     },
     "hub/test/stage-qa.test.ts::changed stage plans, hand-reopened items and altered verdict headers cannot retain stage closure": {
-      "seconds": 4.957351,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "seconds": 10.450489,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan. raised for load headroom (T-929)"
     },
     "hub/test/stage-qa.test.ts::publication rechecks dev changes during a queued stage verdict": {
-      "seconds": 5.089153,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "seconds": 8.596262,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan. raised for load headroom (T-929)"
     },
     "hub/test/stage-qa.test.ts::publication rechecks item changes during a queued stage verdict": {
-      "seconds": 4.0974,
-      "reason": "Queues a real stage verdict while mutating tracker items, then waits for publication revalidation to prove stale item state cannot close a stage.",
+      "seconds": 9.656335,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Queues a real stage verdict while mutating tracker items, then waits for publication revalidation to prove stale item state cannot close a stage. raised for load headroom (T-929)"
     },
     "hub/test/stage-qa.test.ts::publication rechecks plan changes during a queued stage verdict": {
-      "seconds": 4.974978,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "seconds": 9.513936,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan. raised for load headroom (T-929)"
+    },
+    "hub/test/stage-qa.test.ts::stage closure follows dev ancestry: later descendants stay closed, rollback opens, restoration closes": {
+      "seconds": 9.189953,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/stage-qa.test.ts::stage receipt hashes remain compatible with legacy parent ids": {
+      "seconds": 10.984719,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/stage-qa.test.ts::stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks": {
-      "seconds": 5.354405,
-      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan.",
+      "seconds": 11.194478,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates real stage merges and QA publication/restart races to prove closure only at the tested build and unchanged plan. raised for load headroom (T-929)"
+    },
+    "hub/test/startup-smoke.test.ts::a planted listening startup hang fails the smoke within its bound and names the last log event": {
+      "seconds": 9.780662,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/subscription-hygiene.test.ts::restart reconciles a committed stop once and retains role and ancestor subtree subscriptions": {
+      "seconds": 1.90378,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/subscription-hygiene.test.ts::usage thresholds name cost or tokens, deduplicate overlapping subjects and survive restart": {
-      "seconds": 0.333497,
-      "reason": "Exercises live harness steering and durable usage-threshold deliveries across restart.",
+      "seconds": 1.116193,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises live harness steering and durable usage-threshold deliveries across restart. raised for load headroom (T-929)"
     },
     "hub/test/subscriptions.test.ts::events and progress keep one ordered digest across flavour restarts": {
       "seconds": 2.734407,
@@ -6161,11 +6622,18 @@
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
     "hub/test/suite-admission-cost.test.ts::suite.start admission over a repository-sized manifest": {
-      "seconds": 2.9,
+      "seconds": 4.78623,
       "owner": "E-880",
-      "added": "2026-10-19",
+      "added": "2026-10-20",
       "expires": "2026-11-19",
-      "reason": "Exercises foreground admission and background warming over a repository-sized synthetic Git/manifest fixture through the in-process hub; keeps the modeled CLI deadline assertions. D71/D72 enforce migration: observed peak 2.2834721399999998 s in A-6792; cap 2.9 s provides 25% headroom rounded up to 0.1 s."
+      "reason": "Exercises foreground admission and background warming over a repository-sized synthetic Git/manifest fixture through the in-process hub; keeps the modeled CLI deadline assertions. D71/D72 enforce migration: observed peak 2.2834721399999998 s in A-6792; cap 2.9 s provides 25% headroom rounded up to 0.1 s. raised for load headroom (T-929)"
+    },
+    "hub/test/suite-admission.test.ts::admission refuses unclassified sources without consuming queue slots": {
+      "seconds": 1.901492,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/suite-admission.test.ts::item verification cards survive completion, cache reuse and store reopen": {
       "seconds": 2.429511,
@@ -6186,53 +6654,68 @@
       "owner": "E-880",
       "legacy": true
     },
-    "hub/test/suite-candidate-remote.test.ts::integrated remote delivery keeps the submitted bundle across tracker and rulebook commits": {
-      "seconds": 5.204411,
-      "reason": "Runs an integrated fixture through host typecheck, fake provider acquisition, real bundle/SSH delivery and shell execution, then confirms release and advanced-head cache reuse. The administrative commit occurs during acquisition; measured on macOS for T-379.",
+    "hub/test/suite-cancel.test.ts::a worker killed while the hub is down is reported after restart and its package children are cleaned": {
+      "seconds": 10.342078,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/suite-candidate-remote.test.ts::integrated remote delivery keeps the submitted bundle across tracker and rulebook commits": {
+      "seconds": 10.612877,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs an integrated fixture through host typecheck, fake provider acquisition, real bundle/SSH delivery and shell execution, then confirms release and advanced-head cache reuse. The administrative commit occurs during acquisition; measured on macOS for T-379. raised for load headroom (T-929)"
     },
     "hub/test/suite-candidate.test.ts::integrated queued run covers a new head after committing .cland/RULES.md": {
-      "seconds": 2.474466,
-      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a rulebook commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379.",
+      "seconds": 6.09451,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a rulebook commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379. raised for load headroom (T-929)"
     },
     "hub/test/suite-candidate.test.ts::integrated queued run covers a new head after committing .cland/tasks/note.md": {
-      "seconds": 3.557573,
-      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a tracker commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379.",
+      "seconds": 5.969706,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a fixture hub and real CLI/local worker through locked queue admission, a tracker commit, package completion and a second verification request proving cache reuse at the new head. Measured on macOS for T-379. raised for load headroom (T-929)"
     },
     "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/RULES.md": {
-      "seconds": 2.533264,
-      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits rulebook state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 6.789s and all five load-gate repetitions passed.",
+      "seconds": 5.43166,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits rulebook state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 6.789s and all five load-gate repetitions passed. raised for load headroom (T-929)"
     },
     "hub/test/suite-candidate.test.ts::integrated running run covers a new head after committing .cland/tasks/note.md": {
-      "seconds": 2.695614,
-      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits tracker state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 5.714s and all five load-gate repetitions passed.",
+      "seconds": 5.798166,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a real fixture hub, CLI and local worker; waits for package entry, commits tracker state during execution, observes worker completion and verifies advanced-head cache reuse. Linux c-8 run e30632fd (A-4013) measured 5.714s and all five load-gate repetitions passed. raised for load headroom (T-929)"
     },
     "hub/test/suite-candidate.test.ts::integrated running run rejects a source commit after package completion": {
-      "seconds": 2.186433,
-      "reason": "Runs a real fixture hub, CLI and local worker; commits source after observed package entry, waits separately for completion and the downstream cancellation report, and retains the cancel-head assertion. Linux c-8 run e30632fd (A-4013) measured 5.022s and all five load-gate repetitions passed.",
+      "seconds": 4.92318,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a real fixture hub, CLI and local worker; commits source after observed package entry, waits separately for completion and the downstream cancellation report, and retains the cancel-head assertion. Linux c-8 run e30632fd (A-4013) measured 5.022s and all five load-gate repetitions passed. raised for load headroom (T-929)"
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles cancel with one result and confirmed cleanup": {
-      "seconds": 6.999059,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
+      "seconds": 13.93467,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation. raised for load headroom (T-929)"
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles lost with one result and confirmed cleanup": {
-      "seconds": 7.829168,
-      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation.",
+      "seconds": 11.864306,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation. raised for load headroom (T-929)"
     },
     "hub/test/suite-close-recovery.test.ts::a sharded close handles restart with one result and confirmed cleanup": {
       "seconds": 15.102356,
@@ -6242,22 +6725,32 @@
       "reason": "Exercises two real detached fake-provider machine runners and real hub collection/cleanup across failure, loss, restart or cancellation. raised for load headroom (T-923)"
     },
     "hub/test/suite-close.test.ts::integrated remote close collects each map before release and publishes their function union": {
-      "seconds": 6.41923,
-      "reason": "Runs two fixture droplets through delivery, collection and confirmed release, then checks one artifact merges both function-to-test maps.",
+      "seconds": 13.345362,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs two fixture droplets through delivery, collection and confirmed release, then checks one artifact merges both function-to-test maps. raised for load headroom (T-929)"
     },
     "hub/test/suite-close.test.ts::occasion refuses implementers and task heads; an integrated Coordinator close uses two droplets and one merged result": {
-      "seconds": 6.070346,
-      "reason": "Exercises real hub/CLI admission and concurrent fake-provider droplet lifecycles through confirmed deletion and one artifact-backed report.",
+      "seconds": 14.591294,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Exercises real hub/CLI admission and concurrent fake-provider droplet lifecycles through confirmed deletion and one artifact-backed report. raised for load headroom (T-929)"
     },
     "hub/test/suite-coverage.test.ts::package capture retains real process coverage and a successful exit beside truncated JSON": {
-      "seconds": 5.088375,
-      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map beside a planted truncated coverage file (T-604); startup and coverage serialization dominate. Renamed by T-604 from \"package capture attributes real CLI, daemon, spoke and fake processes to their test file\". Measured 6.631 s on Linux c-8 in release run 7d9819c9 (A-3915).",
+      "seconds": 11.389407,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs a copied real CLI, daemon, spoke and fake process with V8 recording, then reduces their receipts into the owning test-file map beside a planted truncated coverage file (T-604); startup and coverage serialization dominate. Renamed by T-604 from \"package capture attributes real CLI, daemon, spoke and fake processes to their test file\". Measured 6.631 s on Linux c-8 in release run 7d9819c9 (A-3915). raised for load headroom (T-929)"
+    },
+    "hub/test/suite-duration-context.test.ts::enforce snapshots reject failed required inspections instead of disabling merge budgets": {
+      "seconds": 0.662887,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/suite-log-backfill.test.ts::cached and stage admissions share derived evidence from several 20 MB logs": {
       "seconds": 2.884757,
@@ -6273,6 +6766,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/suite-persistence.test.ts::930 finished jobs migrate out of the hot snapshot and survive reopening": {
+      "seconds": 0.637429,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/suite-progress.test.ts::a recovered report retains the durable partial result after machine deletion": {
       "seconds": 0.674443,
       "owner": "E-880",
@@ -6280,18 +6780,40 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/suite-recovery.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": {
-      "seconds": 7.156416,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+    "hub/test/suite-protocol.test.ts::cover CLI enforces role permissions, journals classifications and renders persisted incident status": {
+      "seconds": 2.124927,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/suite-recovery.test.ts::admission recovers a borrowed planned root after the worker dies during package mkdir": {
+      "seconds": 10.831811,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/suite-recovery.test.ts::admission stays responsive and bounds a held ps probe for a stale compatibility holder": {
+      "seconds": 12.251362,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
     },
     "hub/test/suite-recovery.test.ts::hub restart preserves the submitted command lines while its worker finishes": {
-      "seconds": 4.312767,
+      "seconds": 8.476316,
       "owner": "E-880",
-      "added": "2026-10-19",
-      "expires": "2026-10-26",
-      "reason": "T-666: actual hub restart with a detached command worker and separate completion/report receipts. Linux landing batch A-6124 measured 5.036 s against the legacy 5 s new-identity gate; allow native lifecycle and host-load variance within the T3 per-test budget."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "T-666: actual hub restart with a detached command worker and separate completion/report receipts. Linux landing batch A-6124 measured 5.036 s against the legacy 5 s new-identity gate; allow native lifecycle and host-load variance within the T3 per-test budget. raised for load headroom (T-929)"
+    },
+    "hub/test/suite-recovery.test.ts::worker cleanup removes a borrowed root when its package runner dies during mkdir": {
+      "seconds": 9.903365,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/suite-remote-process.test.ts::finished remote runs free both budget slots despite failed spend settlement": {
       "seconds": 16.7,
@@ -6301,53 +6823,54 @@
       "reason": "Unchanged remote process proof holds provider creation and corrupts spend settlement until both terminal receipts and waiter admissions are observed; focused Mac 11.514 s. D71/D72 enforce migration: observed peak 13.356579506 s in A-6792/A-6795; cap 16.7 s provides 25% headroom rounded up to 0.1 s."
     },
     "hub/test/suite-runner-contract.test.ts::a hand-run package holding the old lock occupies admission until it exits": {
-      "seconds": 3.172797,
-      "reason": "Retained native compatibility proof holds an old-format package lock in a real hand runner, asserts verification cannot start, then observes admission and its report after the holder exits. Exact-head Linux run e08d5116 at 5139daac measured 6.510349738 s at workers 2; keep every process assertion with a bounded native allowance.",
+      "seconds": 4.816527,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained native compatibility proof holds an old-format package lock in a real hand runner, asserts verification cannot start, then observes admission and its report after the holder exits. Exact-head Linux run e08d5116 at 5139daac measured 6.510349738 s at workers 2; keep every process assertion with a bounded native allowance. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner-contract.test.ts::a worker lease retains phase place and publishes recovery metadata for both package phases": {
-      "seconds": 3.170492,
-      "reason": "Unchanged native lease contract: two real package phases retain worker lease PID/runner/root metadata while a hand runner waits across both phases. Exact-head Linux run 98ee3395 measured 5.617244231 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
+      "seconds": 6.289684,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Unchanged native lease contract: two real package phases retain worker lease PID/runner/root metadata while a hand runner waits across both phases. Exact-head Linux run 98ee3395 measured 5.617244231 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner-contract.test.ts::pre-V1 package runners acquire their own compatibility locks without a self-deadlock": {
-      "seconds": 2.178466,
-      "reason": "Retained native compatibility proof executes a pre-V1 real package runner without inherited worker lease and observes successful lock acquisition and completion. Exact-head Linux run e08d5116 at 5139daac measured 5.401820478 s at workers 2; keep every process assertion with a bounded native allowance.",
+      "seconds": 4.824942,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained native compatibility proof executes a pre-V1 real package runner without inherited worker lease and observes successful lock acquisition and completion. Exact-head Linux run e08d5116 at 5139daac measured 5.401820478 s at workers 2; keep every process assertion with a bounded native allowance. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner-contract.test.ts::the compatibility lease spans typecheck and tests, so a hand runner waits for both": {
-      "seconds": 2.837124,
-      "reason": "Retained native compatibility proof runs a verification worker through separately held typecheck and test phases while a real hand runner waits across both. Exact-head Linux run e08d5116 at 5139daac measured 5.319881623 s at workers 2; keep every process assertion with a bounded native allowance.",
+      "seconds": 4.688557,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained native compatibility proof runs a verification worker through separately held typecheck and test phases while a real hand runner waits across both. Exact-head Linux run e08d5116 at 5139daac measured 5.319881623 s at workers 2; keep every process assertion with a bounded native allowance. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner-contract.test.ts::verify queue preserves a live legacy package holder across observer timezones": {
-      "seconds": 4.141182,
-      "reason": "Unchanged native lease contract: a live real package PID and legacy owner records without startedUtc remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.527962421 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
+      "seconds": 7.820885,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Unchanged native lease contract: a live real package PID and legacy owner records without startedUtc remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.527962421 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner-contract.test.ts::verify queue preserves a live UTC package holder across observer timezones": {
-      "seconds": 4.150982,
-      "reason": "Unchanged native lease contract: a live real package PID and UTC owner record remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.59139393 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions.",
+      "seconds": 6.264792,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24"
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Unchanged native lease contract: a live real package PID and UTC owner record remain authoritative across observer timezones through CLI JSON/text and subscription checks. Exact-head Linux run 98ee3395 measured 5.59139393 s at workers 2; Mac 5/5 is green. Preserve this process proof with bounded allowance rather than dropping its cross-process assertions. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner.test.ts": {
       "file": true,
-      "seconds": 81.809829,
-      "reason": "File budget: Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation.",
+      "seconds": 125.596116,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: Exercises actual process/lease crash recovery and serialized runner admission; ownership tests include the one-second stale grace and TERM escalation. raised for load headroom (T-929)"
     },
     "hub/test/suite-runner.test.ts::takeover reaps a child paused before its identity is published": {
       "seconds": 14,
@@ -6363,10 +6886,18 @@
       "legacy": true
     },
     "hub/test/suite-selection-report.test.ts::integrated dev verify publishes a portable function map once; task verify never captures": {
-      "seconds": 7.283681,
-      "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing.",
+      "seconds": 11.407945,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs two real fixture verifications through the queue and package runner, publishes an integrated V8 map, and proves the selected task run catches a regression without recapturing. raised for load headroom (T-929)"
+    },
+    "hub/test/suite-selection.test.ts::a remote fixture diff retains the T4 harness self-tests": {
+      "seconds": 9.19928,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/suite-stage-cover.test.ts::after-stage gates require Mac and sharded Linux at one tree, retain history and advance the next stage": {
       "seconds": 25.2,
@@ -6375,12 +6906,26 @@
       "expires": "2026-11-19",
       "reason": "Quiet Mac whole-file measurement: real local full workers, two fake-provider droplets, Git landing, cache separation, report-delivery recovery, QA and bounded rollback/restoration prove the two-platform stage gate end to end. D71/D72 enforce migration: observed peak 20.104583625 s in A-6792/A-6795; cap 25.2 s provides 25% headroom rounded up to 0.1 s."
     },
+    "hub/test/suite-task-selection.test.ts::hosting project queue policy protects admission from a candidate-local opt-in": {
+      "seconds": 0.494745,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/suite-task-selection.test.ts::task cadence plans all T1 plus selected T2 from the repository manifest": {
       "seconds": 0.678191,
       "owner": "E-880",
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/suite-tier-report.test.ts::tier planning enforces supplied legacy allowance history without a repository": {
+      "seconds": 0.484876,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/suite-tiers.test.ts::occasions preserve their tier and load policies": {
       "seconds": 0.616473,
@@ -6390,22 +6935,25 @@
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
     "hub/test/suite-timeouts.test.ts::verify keeps a slow command alive while partial stderr output continues": {
-      "seconds": 7.148564,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "seconds": 12.430842,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
     },
     "hub/test/suite-timeouts.test.ts::verify kills a silent test tree and spoke, names the last started test and frees admission": {
-      "seconds": 9.226287,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "seconds": 15.377562,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
     },
     "hub/test/suite-timeouts.test.ts::verify reaps a captured detached pipe holder after npm exits and preserves an unrelated process": {
-      "seconds": 11.252768,
-      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "seconds": 17.065796,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
     },
     "hub/test/suite-timeouts.test.ts::verify reports unverified fast-exit pipe cleanup once, preserves unrelated processes and admits its successor": {
       "seconds": 16.939424,
@@ -6414,12 +6962,41 @@
       "expires": "2026-11-19",
       "reason": "Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-923)"
     },
+    "hub/test/suite-wait-metrics.test.ts::verify queue and hub status expose matching windows, configured target, and cache counts": {
+      "seconds": 2.296081,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/suite.test.ts": {
       "file": true,
-      "seconds": 45.545561,
-      "reason": "File budget: Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries.",
+      "seconds": 89.953989,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "File budget: Aggregates nested verification workers, queues, cache expiry, silence watchdogs and crash recovery against real git/process boundaries. raised for load headroom (T-929)"
+    },
+    "hub/test/suite.test.ts::a muted named recipient keeps the single result pending across restart until all recipients can receive it": {
+      "seconds": 10.227971,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/suite.test.ts::hub restart recovers a worker that outlives it, without replaying the result": {
+      "seconds": 11.046151,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/suite.test.ts::restart recognizes a committed result even if its run receipt did not settle": {
+      "seconds": 10.107919,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/task-attribution.test.ts::CLI and tools persist, index, edit and journal regression discovery": {
       "seconds": 2.62385,
@@ -6429,22 +7006,25 @@
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
     "hub/test/task-migrate.test.ts::an older task branch lands after migration (container edit: false)": {
-      "seconds": 4.138534,
-      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive.",
+      "seconds": 8.066501,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive. raised for load headroom (T-929)"
     },
     "hub/test/task-migrate.test.ts::an older task branch lands after migration (container edit: true)": {
-      "seconds": 4.346591,
-      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive.",
+      "seconds": 7.149412,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive. raised for load headroom (T-929)"
     },
     "hub/test/task-migrate.test.ts::offline closed backfill previews receipt, journal and commit sources and changes only closed lines once": {
-      "seconds": 0.731066,
-      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive.",
+      "seconds": 2.593012,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Invokes migration/backfill and real task-branch merge gates over legacy tracker trees, proving receipts and unrelated closed records survive. raised for load headroom (T-929)"
     },
     "hub/test/task-plan.test.ts::a two-stage plan is written by CLI, shown by MCP and view JSON, changed and journalled": {
       "seconds": 2.462439,
@@ -6459,6 +7039,13 @@
       "added": "2026-10-20",
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
+    },
+    "hub/test/task-prefixes.test.ts::task publication lookup work stays bounded with two thousand unrelated items": {
+      "seconds": 2.141843,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/task-size.test.ts::real spoke and CLI validate regression targets and publish indexed task fields": {
       "seconds": 2.450808,
@@ -6489,22 +7076,74 @@
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
     "hub/test/territory-cli.test.ts::dirty roots and other branches stay in place, with a reason in the init report": {
-      "seconds": 1.218068,
-      "reason": "Invokes territory initialization against dirty roots and alternate branches, checking that both filesystem and git state stay intact.",
+      "seconds": 8.442675,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Invokes territory initialization against dirty roots and alternate branches, checking that both filesystem and git state stay intact. raised for load headroom (T-929)"
     },
     "hub/test/territory-cli.test.ts::undo refuses unique work under every custom origin fetch destination before mutation": {
-      "seconds": 0.898265,
-      "reason": "Creates fixture git remotes with several custom fetch destinations and invokes undo for each to prove unique work is protected before refs change.",
+      "seconds": 7.937762,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Creates fixture git remotes with several custom fetch destinations and invokes undo for each to prove unique work is protected before refs change. raised for load headroom (T-929)"
+    },
+    "hub/test/test-lint.test.ts::direct facts keep source, path and tier separate from caller mutations": {
+      "seconds": 0.459578,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/tracker-async.test.ts::a six-second tracker write warns, completes and leaves the hub serving": {
-      "seconds": 7.355444,
-      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting.",
+      "seconds": 11.371188,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "T-483 regression holds real tracker I/O for six seconds to cross the production five-second warning threshold and prove the serving hub recovers without exiting. raised for load headroom (T-929)"
+    },
+    "hub/test/tracker-component.test.ts::a claim belongs to the session, not its name: a rename keeps it, and whoever takes the old name gets none of it": {
+      "seconds": 2.019762,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/tracker-component.test.ts::a subscribed UI hears a `task` event on every index change; task.list carries the verdicts": {
+      "seconds": 2.067466,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/tracker-component.test.ts::task create writes an item file with the frontmatter and sequential ids": {
+      "seconds": 1.922628,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/tracker-hierarchy.test.ts::an unversioned release can be planned later; invalid version edits preserve the previous file": {
+      "seconds": 2.134649,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/tracker-levels.test.ts::category roots work through CLI, spoke and frames without release metadata or QA": {
+      "seconds": 2.210493,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/tracker-levels.test.ts::configured containers work through CLI, MCP and the hub and enforce adjacent levels": {
+      "seconds": 1.885827,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "hub/test/tracker-load.test.ts::tracker requests stay within 5 s with 20 sessions and 200000 retained events": {
       "seconds": 2.877387,
@@ -6519,6 +7158,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
+    "hub/test/tracker-rank.test.ts::rank handles safe integer endpoints without overflow and refuses a fractional disk rank": {
+      "seconds": 2.194828,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "hub/test/tracker-rank.test.ts::sparse rank moves persist, are idempotent, and CLI and MCP share rank then id order": {
       "seconds": 2.41497,
       "owner": "E-880",
@@ -6526,46 +7172,54 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/tracker-ready-native.test.ts::ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=false": {
-      "seconds": 2.321417,
+    "hub/test/tracker-rank.test.ts::the high migration refuses multiple labelled siblings before any writes, counting closed items": {
+      "seconds": 2.413344,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retained T3 Git contract creates a worktree, changes/rebases its reviewed patch and lands it through the real merge gate."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/tracker-ready-native.test.ts::ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=false": {
+      "seconds": 6.66635,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained T3 Git contract creates a worktree, changes/rebases its reviewed patch and lands it through the real merge gate. raised for load headroom (T-929)"
     },
     "hub/test/tracker-ready-native.test.ts::ready and the merge gate agree on one fixture: stale patch, unchanged rebase, qa_default per-item=true": {
-      "seconds": 2.634561,
+      "seconds": 6.098532,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retained T3 Git contract also proves per-item QA evidence through real worktree rebase and merge."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained T3 Git contract also proves per-item QA evidence through real worktree rebase and merge. raised for load headroom (T-929)"
     },
     "hub/test/tracker-ready-native.test.ts::restart rebuilds failed-adoption fences before real-id CLI releases or verdicts (legacy claim=false)": {
-      "seconds": 1.505869,
+      "seconds": 2.973603,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retained T3 persistence contract creates real Git evidence, restarts the hub and exercises real-id CLI releases/verdicts without a fresh spoke hello."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained T3 persistence contract creates real Git evidence, restarts the hub and exercises real-id CLI releases/verdicts without a fresh spoke hello. raised for load headroom (T-929)"
     },
     "hub/test/tracker-ready-native.test.ts::restart rebuilds failed-adoption fences before real-id CLI releases or verdicts (legacy claim=true)": {
-      "seconds": 2.065328,
+      "seconds": 3.686375,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retained T3 persistence contract includes a legacy claim, real Git evidence, hub restart and five real-id CLI operations; allow platform/load variance around its 4.7 s Mac observation."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained T3 persistence contract includes a legacy claim, real Git evidence, hub restart and five real-id CLI operations; allow platform/load variance around its 4.7 s Mac observation. raised for load headroom (T-929)"
     },
     "hub/test/tracker-ready-native.test.ts::restart reconciles a stop recorded before queued hold cleanup, preserving claims, status and direct holds": {
-      "seconds": 8.874783,
+      "seconds": 14.628867,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retained T3 crash boundary starts a real hub and harness, crashes after the stop row and proves recovery on restart."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retained T3 crash boundary starts a real hub and harness, crashes after the stop row and proves recovery on restart. raised for load headroom (T-929)"
     },
     "hub/test/tracker-ready.test.ts::ready retries invalidated preparations with bounded backoff": {
-      "seconds": 0.755166,
-      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree.",
+      "seconds": 1.133729,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs merge/readiness preparation and restart races through real hubs and git trees to prove stale evidence and stop recovery agree. raised for load headroom (T-929)"
     },
     "hub/test/tracker-status-component.test.ts::legacy tasks gain status on index, preserve claims through restart, and re-index hand-edited status and state": {
       "seconds": 2.955345,
@@ -6574,23 +7228,33 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
-    "hub/test/typecheck.test.ts::typecheck resolves pinned compilers in roots and linked worktrees": {
-      "seconds": 2.919684,
-      "reason": "Copies the complete hub/Neovim projects into a real Git worktree and runs three full root typechecks plus the pinned-compiler version and retained API checks across inherited and local dependency layouts.",
+    "hub/test/tracker-status-component.test.ts::startup preserves offline state edits, and migration removes an old hand-edited ID": {
+      "seconds": 2.006485,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/typecheck.test.ts::typecheck resolves pinned compilers in roots and linked worktrees": {
+      "seconds": 5.710086,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Copies the complete hub/Neovim projects into a real Git worktree and runs three full root typechecks plus the pinned-compiler version and retained API checks across inherited and local dependency layouts. raised for load headroom (T-929)"
     },
     "hub/test/verification-workers.test.ts::remote completion waits for its timestamp before reporting, settling cost and caching": {
-      "seconds": 5.131005,
-      "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing.",
+      "seconds": 10.448479,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "T-567: real hub and fake remote machine hold and release the completion timestamp, then observe final reporting, settled lease accounting and a same-head cache hit; Linux A-3717 measured 7.635 s, with 5/5 load-gate repetitions passing. raised for load headroom (T-929)"
     },
     "hub/test/verification-workers.test.ts::requested size reserves its own price before create and fallback restores local configured workers": {
-      "seconds": 2.42177,
-      "reason": "Drives a requested-size droplet reservation through a real hub and fake provider, then the cap-fallback path back to local configured workers; two executor round-trips dominate. Mac cover 38b71e4c at peak load 16.6.",
+      "seconds": 5.792831,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Drives a requested-size droplet reservation through a real hub and fake provider, then the cap-fallback path back to local configured workers; two executor round-trips dominate. Mac cover 38b71e4c at peak load 16.6. raised for load headroom (T-929)"
     },
     "hub/test/verification-workers.test.ts::verify persists overrides, delivers remote workers, prices requested size and separates cached measurements": {
       "seconds": 22.4,
@@ -6599,12 +7263,19 @@
       "expires": "2026-11-19",
       "reason": "T-396: serial real CLI/frame runs cover remote and local worker delivery, c-16 pricing, cache separation and durable settings after hub restart; measured 12.034 s on the Mac at starting load 3.54. D71/D72 enforce migration: observed peak 17.877493208 s in A-6792/A-6795; cap 22.4 s provides 25% headroom rounded up to 0.1 s."
     },
-    "hub/test/verifier-routing-process.test.ts::Codex relaunch injects an early accepted clause and frees the queued QA request without a nudge": {
-      "seconds": 3.707025,
+    "hub/test/verifier-resolver.test.ts::three live Reviewers resolve one request with affinity, fallback and queued assignment": {
+      "seconds": 0.497562,
       "owner": "E-880",
-      "added": "2026-10-17",
-      "expires": "2026-10-24",
-      "reason": "Retains real Codex process launch and PID relaunch, early role-clause acknowledgement before native resume publication, and exactly-once queued QA delivery. Integrated Linux droplet runs measured 5.04–5.35 s (A-4467, A-4470, A-4472); allow startup and teardown headroom."
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "hub/test/verifier-routing-process.test.ts::Codex relaunch injects an early accepted clause and frees the queued QA request without a nudge": {
+      "seconds": 8.488382,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Retains real Codex process launch and PID relaunch, early role-clause acknowledgement before native resume publication, and exactly-once queued QA delivery. Integrated Linux droplet runs measured 5.04–5.35 s (A-4467, A-4470, A-4472); allow startup and teardown headroom. raised for load headroom (T-929)"
     },
     "hub/test/visibility-volume.test.ts::hundreds of default verdict, death and idle events leave needsYou zero": {
       "seconds": 7.105165,
@@ -6613,12 +7284,54 @@
       "expires": "2026-10-25",
       "reason": "T4 retains the existing 200-verdict visibility volume claim through the same assertions as the representative T2 case. A-5000 observed 6.263449173 seconds for these assertions; Coordinator disposition 85d1b1c3-5f15-45b3-abad-5a1f091939f7 moves the volume out of T2. E-677 owns this temporary allowance."
     },
+    "nvim/test/client.test.ts::the client follows its hub through a restart and keeps the thread": {
+      "seconds": 9.160867,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
     "nvim/test/events-quiet.test.ts::events keys, warning/dim presentation, independent mutes, last look and cold persistence": {
       "seconds": 3,
       "owner": "E-880",
       "added": "2026-10-19",
       "expires": "2026-11-19",
       "reason": "Exercises independent event mutes, keys, presentation, last-look state and cold persistence through the T2 stub client with a 205-row frame fixture. D71/D72 enforce migration: observed peak 2.331966294 s in A-6792; cap 3 s provides 25% headroom rounded up to 0.1 s."
+    },
+    "nvim/test/events.test.ts::Enter opens each event subject, gI/gt/gs use the row references and the palette opens Events": {
+      "seconds": 2.022067,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "nvim/test/events.test.ts::Events view opens through the registry, groups days, pages, folds and follows live rows without losing selection": {
+      "seconds": 2.352918,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "nvim/test/explorer-card-component.test.ts::card widths use the centre formula, manual resize persists separately, and other views close it": {
+      "seconds": 2.082326,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "nvim/test/explorer-card-component.test.ts::gi reveals the thread reference without changing folds, keeps containing scope and gI/palette open v0.1": {
+      "seconds": 2.079645,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "nvim/test/explorer-component.test.ts::bench reports build and buffer medians for 300 items fully unfolded and restores the human view": {
+      "seconds": 2.271561,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "nvim/test/shell-component.test.ts": {
       "file": true,
@@ -6643,10 +7356,25 @@
       "reason": "load-variance headroom near the tier budget (T-923)"
     },
     "nvim/test/shell.test.ts::the workbench reads sessions and presence once per connect; events update the panel without polling (T-71)": {
-      "seconds": 6.30856,
-      "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling.",
+      "seconds": 9.487645,
       "owner": "E-880",
-      "legacy": true
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling. raised for load headroom (T-929)"
+    },
+    "nvim/test/thread.test.ts::200 message rewrites and steady-state appends retain cached parsing and incremental cost": {
+      "seconds": 2.128674,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
+    },
+    "nvim/test/thread.test.ts::generated live appends, ask evictions and delivery changes equal a full render": {
+      "seconds": 2.195126,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-11-19",
+      "reason": "load-variance headroom near the tier budget (T-929)"
     },
     "T3": {
       "seconds": 2115,
