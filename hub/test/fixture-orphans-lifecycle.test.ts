@@ -26,10 +26,8 @@ test('worktree removal reaps the receipt-bearing headless client and stub before
   const pid = client.process.pid!;
   // Separate OS descriptor evidence from PID/birth matching: a classifier miss
   // does not establish that exec closed the descriptor. /proc on Linux, lsof on macOS.
-  const receipts = (await processPaths(pid)).files.flatMap(path => {
-    const receipt = readFixtureReceipt(path);
-    return receipt?.pid === pid ? [receipt] : [];
-  });
+  const receipts = (await Promise.all((await processPaths(pid)).files.map(readFixtureReceipt)))
+    .filter(receipt => receipt?.pid === pid);
   assert.equal(receipts.length, 1, 'Neovim retains its inherited private ownership descriptor');
   const row = (await systemProcesses(undefined, undefined, [pid])).find(row => row.pid === pid);
   assert.ok(row, 'Neovim still has its native process identity');

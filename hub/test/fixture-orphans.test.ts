@@ -2,6 +2,8 @@
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, writeFileSync } from 'node:fs';
+import fs from 'node:fs';
+import { syncBuiltinESMExports } from 'node:module';
 import { fixtureOwnership } from '../../shared/fixture-ownership.ts';
 import { findFixtureOrphans, removeWorktreeWithFixtures, sweepFixtureOrphans, type FixtureProcesses } from '../src/fixture-processes.ts';
 import { initialised, toolchain, probeTools } from './doctor-fixture.ts';
@@ -124,6 +126,22 @@ test('failed fixture termination keeps the worktree', async t => {
   const f = fixture(t);
   f.readers.end = async () => false;
   await assert.rejects(removeWorktreeWithFixtures(checkout, async () => assert.fail('removed live fixture root'), f.readers), /could not be stopped/);
+});
+
+test('worktree cleanup with private receipts crosses no synchronous filesystem boundary', async t => {
+  const f = fixture(t);
+  const saved = Object.fromEntries(Object.entries(fs).filter(([key, value]) => key.endsWith('Sync') && typeof value === 'function'));
+  const calls: string[] = [];
+  try {
+    for (const key of Object.keys(saved)) Object.assign(fs, { [key]: () => { calls.push(key); throw new Error(`synchronous ${key} on cleanup path`); } });
+    syncBuiltinESMExports();
+    await removeWorktreeWithFixtures(checkout, async () => assert.deepEqual(f.ended, [101, 102, 103]), f.readers);
+    for (const receipt of f.receipts) await assert.rejects(fs.promises.access(receipt.path), { code: 'ENOENT' });
+    assert.deepEqual(calls, [], 'no synchronous filesystem call, including caught receipt errors');
+  } finally {
+    Object.assign(fs, saved);
+    syncBuiltinESMExports();
+  }
 });
 
 

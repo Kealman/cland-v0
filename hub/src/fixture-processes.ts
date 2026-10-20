@@ -1,5 +1,6 @@
 // Fixture authority comes from a private open receipt, never from argv or a scratch directory name.
-import { realpathSync, statSync, unlinkSync } from 'node:fs';
+import { statSync } from 'node:fs';
+import { realpath, unlink } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { readFixtureReceipt } from '../../shared/fixture-ownership.ts';
@@ -30,7 +31,13 @@ const candidate = (row: SystemProcess) => /(?:^|\/)nvim\s+(?:.*\s)?--headless(?:
 async function ownedRoots(row: SystemProcess, readers: FixtureProcesses, deadline?: number): Promise<string[]> {
   if (!candidate(row) || !await readers.sameUser(row.pid)) return [];
   const paths = await readers.paths(row.pid, deadline);
-  return paths.files.flatMap(path => { const receipt = readFixtureReceipt(path); const birth = Math.floor(Date.parse(row.started) / 1000); return receipt?.pid === row.pid && birth >= receipt.born.min && birth <= receipt.born.max ? receipt.roots : []; });
+  const roots: string[] = [];
+  for (const path of paths.files) {
+    const receipt = await readFixtureReceipt(path);
+    const birth = Math.floor(Date.parse(row.started) / 1000);
+    if (receipt?.pid === row.pid && birth >= receipt.born.min && birth <= receipt.born.max) roots.push(...receipt.roots);
+  }
+  return roots;
 }
 /** scope limits machine discovery in fixture tests; worktree selects live roots during removal. */
 export async function findFixtureOrphans(scope?: string, deadline?: number, readers: FixtureProcesses = native(deadline), worktree?: string): Promise<FixtureOrphan[]> {
@@ -43,7 +50,7 @@ export async function findFixtureOrphans(scope?: string, deadline?: number, read
       // Old fixtures have no receipt. Report removed cland roots, but never authorize a signal.
       const cwd = (await readers.paths(row.pid, deadline)).cwd;
       const checkout = /(?:^|\s)(\/[^\s]*\/\.cland\/worktrees\/[^/\s]+)\//.exec(row.command)?.[1];
-      const scratch = cwd && within(cwd, realpathSync(tmpdir())) && /(?:^|\/)cland-[^/]+(?:\/|$)/.test(cwd) ? cwd : undefined;
+      const scratch = cwd && within(cwd, await realpath(tmpdir())) && /(?:^|\/)cland-[^/]+(?:\/|$)/.test(cwd) ? cwd : undefined;
       const hint = [checkout, scratch].find(path => path && (scope === undefined || within(path, resolve(scope))) && readers.missing(path));
       if (hint) out.push({ process: row, kind: 'fixture', root: hint, owned: false, reason: 'its fixture root no longer exists; private ownership receipt unavailable' });
     }
@@ -65,13 +72,16 @@ export async function sweepFixtureOrphans(log: (entry: Record<string, unknown>) 
       const leader = rows.find(row => row.pid === current.pid);
       return !pending?.() && (!leader || leader.started === current.started) && (worktree !== undefined || readers.missing(orphan.root));
     };
-    const receipts = (await readers.paths(current.pid, deadline)).files.filter(path => readFixtureReceipt(path)?.pid === current.pid);
+    const receipts: string[] = [];
+    for (const path of (await readers.paths(current.pid, deadline)).files) {
+      if ((await readFixtureReceipt(path))?.pid === current.pid) receipts.push(path);
+    }
     let authorized = false;
     const beforeSignal = async () => { authorized = (await ownedRoots(current, readers, deadline)).includes(orphan.root); };
     if (await readers.end({ pid: current.pid, pidStarted: current.started }, () => {}, /cland\.ts\s+hub\s+serve/.test(current.command) ? 5000 : 1000, beforeSignal, { deadline, canSignal: rows => authorized && canSignal(rows) })) {
       for (const path of receipts) {
-        if (readFixtureReceipt(path)?.pid !== current.pid) continue;
-        try { unlinkSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+        if ((await readFixtureReceipt(path))?.pid !== current.pid) continue;
+        try { await unlink(path); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
       }
       ended.push(orphan);
       log({ event: 'orphan-ended', kind: 'fixture', pid: current.pid, root: orphan.root, reason: orphan.reason });

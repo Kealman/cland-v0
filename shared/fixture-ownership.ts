@@ -1,5 +1,6 @@
 // An open private receipt proves a fixture's ownership without inspecting its environment.
-import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, unlinkSync, writeSync, ftruncateSync } from 'node:fs';
+import { closeSync, constants, lstatSync, mkdirSync, openSync, realpathSync, unlinkSync, writeSync, ftruncateSync } from 'node:fs';
+import { lstat, open, realpath, type FileHandle } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -30,17 +31,20 @@ export function fixtureOwnership(roots: string[]): { path: string; fd: number; b
 }
 
 /** Only paths in our private receipt directory are read; symlinks and loose files fail closed. */
-export function readFixtureReceipt(path: string): FixtureReceipt | null {
-  if (dirname(path) !== fixtureReceiptDirectory() || !/^[0-9a-f-]{36}\.json$/.test(path.slice(path.lastIndexOf('/') + 1))) return null;
-  let fd: number | undefined;
+export async function readFixtureReceipt(path: string): Promise<FixtureReceipt | null> {
+  if (!/^[0-9a-f-]{36}\.json$/.test(path.slice(path.lastIndexOf('/') + 1))) return null;
+  const scratch = await realpath(tmpdir()).catch(() => resolve(tmpdir()));
+  const directory = join(scratch, `cland-fixture-owners-${process.getuid?.() ?? 'unknown'}`);
+  if (dirname(path) !== directory) return null;
+  let file: FileHandle | undefined;
   try {
-    const dir = lstatSync(dirname(path));
+    const dir = await lstat(dirname(path));
     if (!dir.isDirectory() || dir.uid !== process.getuid?.() || (dir.mode & 0o077) !== 0) return null;
-    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
-    const info = fstatSync(fd);
+    file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const info = await file.stat();
     if (!info.isFile() || info.uid !== process.getuid?.() || (info.mode & 0o077) !== 0 || info.size > 16_384) return null;
-    const value = JSON.parse(readFileSync(fd, 'utf8'));
+    const value = JSON.parse(await file.readFile('utf8'));
     return value.version === 1 && Number.isSafeInteger(value.pid) && value.pid > 1 && Number.isSafeInteger(value.born?.min) && Number.isSafeInteger(value.born?.max) && value.born.min <= value.born.max && Array.isArray(value.roots) && value.roots.length > 0 && value.roots.every((root: unknown) => typeof root === 'string' && root.startsWith('/')) ? value : null;
   } catch { return null; }
-  finally { if (fd !== undefined) closeSync(fd); }
+  finally { await file?.close(); }
 }
