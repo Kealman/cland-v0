@@ -36,13 +36,24 @@ export function heartbeatDigest(store: Store, items: ItemSummary[], interval: nu
   for (const run of [queue?.holder, ...(queue?.remote ?? []), ...(queue?.waiters ?? [])]) {
     if (run?.kind === 'hand run') flight.push(`run ${run.id ?? 'human'} ${'since' in run ? 'running' : 'queued'} · ${run.session ?? 'human'}`);
   }
-  const jobs: SuiteJob[] = [...store.suiteJobHistory().map(text => (JSON.parse(text) as { job: SuiteJob }).job).filter(job => !job.reported), ...JSON.parse(store.meta('suite-jobs') ?? '[]')];
+  const jobs: SuiteJob[] = [...store.suiteJobHistory().map(text => {
+    const { position, job } = JSON.parse(text) as { position: number; job: SuiteJob };
+    return { ...job, sequence: job.sequence ?? position };
+  }), ...JSON.parse(store.meta('suite-jobs') ?? '[]')];
+  const closed = new Set(items.filter(item => item.state === 'closed').map(item => item.id));
+  const posted = new Map<string, number>();
+  for (const job of jobs) {
+    // Admission order survives cached execution timestamps and out-of-order completion.
+    if (job.item && job.reported && job.outcome && job.sequence !== undefined) posted.set(job.item, Math.max(posted.get(job.item) ?? -1, job.sequence));
+  }
   const leases = new Map<string, DropletLease>();
   for (const job of jobs) {
+    if (job.reported) continue;
     if (!job.outcome && !job.reported) flight.push(`run ${job.id} ${job.state ?? 'running'} · ${job.actor?.name ?? 'human'}${job.item ? ` · ${job.item}` : ''}`);
     const started = Date.parse(job.started ?? job.admittedAt ?? '');
     if (!job.outcome && !job.reported && Number.isFinite(started) && now - started > runTimeoutMs) stale.push(`run ${job.id} past its timeout · age ${age(started)}`);
-    if (job.outcome && !job.reported) stale.push(`run ${job.id} ended without a posted result · age ${age(Date.parse(job.finished ?? job.completedAt ?? job.started ?? job.queued ?? new Date(now).toISOString()))}`);
+    const resolved = job.item && (closed.has(job.item) || job.sequence !== undefined && (posted.get(job.item) ?? -1) > job.sequence);
+    if (job.outcome && !job.reported && !resolved) stale.push(`run ${job.id} ended without a posted result · age ${age(Date.parse(job.finished ?? job.completedAt ?? job.started ?? job.queued ?? new Date(now).toISOString()))}`);
     const lease = job.lease as DropletLease | undefined;
     if (lease?.kind === 'droplet') leases.set(lease.lease, lease);
   }
