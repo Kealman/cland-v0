@@ -7,8 +7,8 @@ name = "v0"
 [merge]
 # D67: task receipts cover T0–T2; batches run T1 and periodic dev runs cover T3.
 queue = true
-# D64 (2026-10-19 15:20Z): 4 per batch until the v0.1.4 release; back to 3 (the default) if two batches in a row go red.
-batch = 4
+# D64 (2026-10-19 15:20Z) held 4 per batch until the v0.1.4 release; back to 3 (the default) after it shipped (2026-10-20).
+batch = 3
 batch_tiers = ["T1"]
 # D69 (2026-10-19 19:48Z): T1-only batches take about 2 min, so the default 10 min wait for a full batch dominated landing; start after 2 min.
 batch_wait = "2m"
