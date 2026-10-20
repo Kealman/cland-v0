@@ -37,6 +37,7 @@ import { quarantineResults, quarantineSummary, suiteTestFailures } from '../suit
 import { suiteAdmissionTimeouts } from '../test-admission-outcome.ts';
 import { machineHealthFromLog, type MachineHealth, type ShardMachineHealth } from '../executor/droplet/health.ts';
 import { occasionSelection } from '../verification-occasion.ts';
+import { receiptExecutionMatches } from '../verification-tree.ts';
 
 export type SuiteActor = { name: string; sessionId: string; shell: true };
 export type SuiteJob = {
@@ -67,7 +68,7 @@ export type SuiteJob = {
   accountingWaitStarted?: string; accountingPending?: boolean;
   cancelled?: boolean; interruptedAt?: string; progressReported?: boolean;
   tree?: string | null; finished?: string;
-  cached?: { run: string; head: string; tree: string };
+  cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: ExecutorKind };
   cacheBypass?: string;
   admittedAt?: string; completedAt?: string; collectedAt?: string; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
@@ -477,7 +478,7 @@ export class Suites {
     const existing = this.#existingSubmission(input, head, authorize);
     if (existing) return existing;
     await mkdir(dir, { recursive: true, mode: 0o700 });
-    const cacheExecutor = input.occasion === 'stage' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
+    const cacheExecutor = input.occasion === 'stage' || input.occasion === 'release' ? executor : input.executor === 'droplet' ? 'droplet' : undefined;
     const cached = !input.fresh && tree ? this.#cached(tree, selection, workers, commands, input.size, cacheExecutor, input.occasion) : undefined;
     const cacheBypass = !input.fresh && tree && input.executor === 'droplet' && !cached && this.#cached(tree, selection, workers, commands, input.size)?.executor === 'local'
       ? 'explicit --executor droplet requires a droplet green; cached green ran locally' : undefined;
@@ -503,10 +504,10 @@ export class Suites {
         if (cached.machine) job.machine = { ...cached.machine };
         if (cached.health) job.health = structuredClone(cached.health);
         if (cached.shardHealth) job.shardHealth = structuredClone(cached.shardHealth);
-        job.cached = { run: cached.id, head: cached.head, tree: tree! };
+        job.cached = { run: cached.id, head: cached.head, tree: tree!, occasion: cached.occasion ?? null, executor: cached.executor };
         job.finished = cached.finished!;
         job.outcome = { code: 0, cause: 'cached' }; job.state = 'finished';
-        await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nRequested head ${head}\n`);
+        await appendFile(job.log + '.cache.tmp', `\nCached candidate ${tree}\nOriginal run ${cached.id} · head ${cached.head}\nOriginal occasion ${cached.occasion ?? 'none'} · executor ${cached.executor}\nRequested head ${head}\n`);
         await rename(job.log + '.cache.tmp', job.log);
       } else await rm(job.log + '.cache.tmp', { force: true });
     }
@@ -636,6 +637,7 @@ export class Suites {
     const job = this.#jobs.findLast(j => JSON.stringify(j.commands) === JSON.stringify(commands) && !j.batch?.diagnostic && !j.devT3Probe && (!requiredExecutor || j.executor === requiredExecutor) && !j.cached && !j.cancelled && !j.requesterDied && !j.outcome?.cause.startsWith('cancelled: queued head changed') && j.tree === tree && sameSuiteSelection(j.selection, selection) && (j.workers ?? 4) === workers && j.size === size
       && (occasion !== 'stage' || requiredExecutor === 'local' || j.occasion === 'stage'));
     if (!job || job.outcome?.code !== 0 || !job.reported || !job.finished || !job.artifact) return undefined;
+    if (!receiptExecutionMatches(job, { occasion, executor: requiredExecutor })) return undefined;
     // Choose the newest compatible attempt before checking platform/success;
     // otherwise a failed or unreported fresh stage run resurrects an older green.
     if (occasion === 'stage' && !this.stageCovers().some(cover => cover.id === job.id && cover.platform === (requiredExecutor === 'local' ? 'macOS' : 'Linux droplet'))) return undefined;

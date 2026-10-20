@@ -5,6 +5,16 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import type { ExecutorKind } from './executor/executor.ts';
+import type { VerifyOccasion } from './protocol.ts';
+
+/** Release reuse preserves the admitted machine boundary, including configured defaults.
+ * Commands and selection still prove full tier/occasion coverage at admission.
+ */
+export function receiptExecutionMatches(receipt: { executor: ExecutorKind; platform?: { os: string } }, request: { occasion?: VerifyOccasion | undefined; executor?: ExecutorKind | undefined }): boolean {
+  if (request.executor && receipt.executor !== request.executor) return false;
+  return request.occasion !== 'release' || receipt.platform?.os === (request.executor === 'droplet' ? 'linux' : process.platform);
+}
 
 const exec = promisify(execFile);
 export const excludedPaths = ['.cland/tasks', '.cland/RULES.md'];

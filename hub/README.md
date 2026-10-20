@@ -1990,6 +1990,8 @@ Verification identity and tree exclusions have one definition in
 `verification-tree.ts`; admission owns selection policy and pins the command
 plan, tiers and base for execution, cache lookup and reports. Reuse a receipt only
 when command, tree, tier and occasion coverage, and execution overrides all match.
+Release requests also require the effective executor and OS (Linux for droplets,
+the host OS for local runs), including when the executor comes from configuration.
 Persist stage and schedule state in durable records rather than reconstructing
 it from transient history or message text.
 
@@ -2071,7 +2073,7 @@ size, duration and cost, total cost, and wall from admission to final collection
 The merged log and one log per shard are durable artifacts. Leases and child
 receipts survive hub restart, and confirmed deletion precedes slot release.
 An identical green tree/mode cache entry with matching soak coverage serves a later occasion request. Ordinary batch greens cannot satisfy occasions. Stage
-requests also match the requested executor/platform; a stage's Linux cache must
+and release requests also match the effective executor/platform; a stage's Linux cache must
 itself cover a stage close.
 Two c-8 machines with ten-minute lifetimes estimate $0.0833 total at $0.25/hour;
 provisioning and cleanup add to billed lifetime. Read measured costs in each run.
@@ -2598,10 +2600,15 @@ again before and after execution; changes to suite inputs still fail verificatio
 
 `--fresh` bypasses reuse. `[verification].cache_max_age_minutes` defaults to 1440
 (one day); 0 disables caching. Age starts at the original successful completion,
-not at subsequent hits. An explicit `--executor droplet` reuses only a green that
+not at subsequent hits. A release occasion reuses only a full receipt with matching
+commands and tier/occasion coverage on the effective executor and OS: Linux on a
+droplet, or the current host OS locally. This applies to configured defaults too;
+a macOS stage or release receipt cannot satisfy a droplet release request. Missing
+platform evidence is a cache miss. A compatible full stage receipt on Linux
+droplets can satisfy a droplet release request. An explicit `--executor droplet` reuses only a green that
 ran on a droplet. If only a local green qualifies, it starts a fresh remote run
 and names that cache bypass in the result header and log. With no executor flag,
-reuse stays cross-executor, including when the configured default is droplet;
+ordinary reuse stays cross-executor, including when the configured default is droplet;
 `--executor local` also keeps cross-executor reuse. Hits retain the original
 executor and platform. Only successful completed, reported runs with an available
 log artifact qualify; old pre-cache jobs, failures and cancelled runs do not. A
@@ -2615,6 +2622,8 @@ project. Requests from a repository subdirectory bypass caching, since their npm
 scripts can differ from those at the worktree root. A hit creates its own durable request and posts once to the usual topic
 and recipients, with the requested head, `cached`, original run/head and identical
 canonical tree hash. Its log artifact carries the original log and provenance.
+Cache notices and logs name the original occasion and executor separately from
+the requested occasion; older cached records without an occasion say `unknown`.
 
 The merge gate and T-209 criterion freshness remain exact-head: a cache hit alone
 never refreshes a stale mark. The Reviewer must verify the new head using the posted

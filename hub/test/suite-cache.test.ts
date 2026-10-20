@@ -26,7 +26,7 @@ test('verify reuses a green candidate tree after a tracker-only commit and repor
   const tracker = await f.launch(); assert.equal(tracker.cached?.run, original.id); assert.equal(tracker.cached?.tree, originalTree);
   await f.result(tracker.id);
   assert.equal(f.status(tracker.id).head, f.candidate.head);
-  assert.deepEqual(tracker.cached, { run: original.id, head, tree: originalTree });
+  assert.deepEqual(tracker.cached, { run: original.id, head, tree: originalTree, occasion: null, executor: 'local' });
   assert.match(await f.log(tracker.id), new RegExp(`Original run ${original.id} · head ${head}`));
   assert.match(await f.log(tracker.id), new RegExp(`Requested head ${f.candidate.head}`));
   f.candidate.tree = 'e'.repeat(40);

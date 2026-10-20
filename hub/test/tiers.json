@@ -413,6 +413,7 @@
     "hub/test/suite-queue-policy.test.ts": "T2",
     "hub/test/suite-queue.test.ts": "T1",
     "hub/test/suite-recovery.test.ts": "T3",
+    "hub/test/suite-release-cache.test.ts": "T2",
     "hub/test/suite-remote-budget.test.ts": "T1",
     "hub/test/suite-remote-log.test.ts": "T1",
     "hub/test/suite-remote-process.test.ts": "T3",

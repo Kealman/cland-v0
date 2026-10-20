@@ -72,13 +72,13 @@ export async function runSuiteCommand(args: string[], cwd = process.cwd(), optio
     const err = options.err ?? ((text: string) => { process.stderr.write(text); });
     err(`cland: submission sent; no reply within ${error.timeoutMs / 1000} s; check \`cland verify queue\` before resubmitting\n`);
     return null;
-  }) as { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: { run: string; head: string; tree: string } } | import('../suite-tier-report.ts').SuiteDryRun | null;
+  }) as { id: string; pid: number | null; topic: string; position: number; reused?: true; cached?: import('../hub/suites.ts').SuiteJob['cached'] } | import('../suite-tier-report.ts').SuiteDryRun | null;
   // Like AdmissionTimeout, this temporary infrastructure outcome is not a failed run.
   if (result === null) return 75;
   if ('dryRun' in result) {
     out((values.json ? JSON.stringify(result) : `verification dry-run · head ${result.head} · ${result.executor} · ${result.workers} workers\n${result.lines.join('\n')}`) + '\n');
     return 0;
   }
-  out((values.json ? JSON.stringify(result) : result.reused ? `already queued/running: ${result.id}; no new run` : `suite ${result.id}${result.cached ? ` cached from ${result.cached.run} at ${result.cached.head} tree ${result.cached.tree};` : ' submitted;'} worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
+  out((values.json ? JSON.stringify(result) : result.reused ? `already queued/running: ${result.id}; no new run` : `suite ${result.id}${result.cached ? ` cached from ${result.cached.run} at ${result.cached.head} tree ${result.cached.tree}; original occasion ${result.cached.occasion === undefined ? 'unknown' : result.cached.occasion ?? 'none'} executor ${result.cached.executor ?? 'unknown'};` : ' submitted;'} worker pid ${result.pid}; project queue position ${result.position}; result in ${result.topic}`) + '\n');
   return 0;
 }

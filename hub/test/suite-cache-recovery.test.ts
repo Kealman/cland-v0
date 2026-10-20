@@ -57,6 +57,7 @@ test('cached report preserves both heads and its original candidate provenance',
   assert.ok(result.text.includes('cached') && result.text.includes(head) && result.text.includes(original.id) && result.text.includes(hit.cached!.head) && result.text.includes(hit.cached!.tree));
   assert.equal(result.artifacts.length, 1);
   assert.match(result.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
+  assert.match(result.text, /Original occasion none · executor local/);
   await eventually('bounded cache settled', async () => {
     const status = await f.ui.request({ type: 'hub.status' });
     return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(j => j.reported) ? true : undefined;

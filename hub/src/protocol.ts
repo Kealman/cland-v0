@@ -681,7 +681,7 @@ export type SuiteStatus = {
   state?: 'queued' | 'launching' | 'running' | 'finished'; queued?: string | null;
   priority?: number | null; item?: string | null; head?: string; branch?: string; integrated?: boolean;
   selection?: import('./suite-selection.ts').SuiteSelection;
-  tree?: string | null; finished?: string | null; cached?: { run: string; head: string; tree: string };
+  tree?: string | null; finished?: string | null; cached?: { run: string; head: string; tree: string; occasion?: VerifyOccasion | null; executor?: import('./executor/executor.ts').ExecutorKind };
   admittedAt?: string | null; completedAt?: string | null; waitMs?: number | null; runMs?: number | null;
   timingEstimated?: boolean;
 };
