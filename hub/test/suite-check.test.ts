@@ -151,11 +151,20 @@ test('check runs the report lint once after typecheck and preserves a green exit
   await mkdir(join(cwd, 'hub/test'), { recursive: true });
   await writeFile(join(cwd, 'hub/test/a.test.ts'), 'sleep(25);');
   await writeFile(join(cwd, 'hub/test/tiers.json'), JSON.stringify({ version: 1, tests: { 'hub/test/a.test.ts': 'T2' } }));
-  const original = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { scripts: Record<string, string> };
+  const original = JSON.parse(await readFile(new URL('../../package.json', import.meta.url), 'utf8')) as { workspaces: string[]; scripts: Record<string, string> };
+  // Retain the shipped workspace build routing; only replace its leaf work.
+  for (const workspace of original.workspaces) {
+    const manifest = JSON.parse(await readFile(new URL(`../../${workspace}/package.json`, import.meta.url), 'utf8'));
+    await mkdir(join(cwd, workspace), { recursive: true });
+    await writeFile(join(cwd, workspace, 'package.json'), JSON.stringify({ ...manifest, scripts: {
+      ...manifest.scripts, build: `node -e "console.log('BUILD-COMPLETE:${workspace}')"`,
+    } }));
+  }
   const script = fileURLToPath(new URL('./lint-tests.ts', import.meta.url));
   await verificationFixture(cwd);
-  await writeFile(join(cwd, 'package.json'), JSON.stringify({ scripts: {
+  await writeFile(join(cwd, 'package.json'), JSON.stringify({ private: true, workspaces: original.workspaces, scripts: {
     check: original.scripts.check,
+    build: original.scripts.build,
     typecheck: 'node -e "console.log(\'TYPECHECK-COMPLETE\')"',
     'test:lint': `node ${JSON.stringify(script)} ${JSON.stringify(cwd)}`,
   } }));
@@ -171,7 +180,10 @@ test('check runs the report lint once after typecheck and preserves a green exit
   assert.equal(code, 0, stderr);
   await command.stop();
   assert.equal(stdout.split('test lint (report only):').length - 1, 1);
-  assert.ok(stdout.indexOf('TYPECHECK-COMPLETE') < stdout.indexOf('test lint (report only):'));
+  const built = stdout.indexOf('BUILD-COMPLETE:');
+  assert.ok(built >= 0, stdout);
+  assert.ok(stdout.indexOf('TYPECHECK-COMPLETE') < built);
+  assert.ok(built < stdout.indexOf('test lint (report only):'));
   assert.match(stdout, /test lint \(report only\): 1 findings in 1 files/);
   assert.match(stdout, /test lint finding kinds: wall-clock-wait 1/);
   assert.match(stdout, /test lint refusals: 0/);
