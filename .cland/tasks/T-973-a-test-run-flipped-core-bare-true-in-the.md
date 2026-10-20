@@ -3,7 +3,7 @@ id: T-973
 kind: task
 title: A test run flipped core.bare=true in the live repository (shared by all worktrees), breaking merge admission
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 3
 labels:
@@ -16,7 +16,7 @@ blocked_by: []
 topic: topic-749
 branch: t/T-973-a-test-run-flipped-core-bare-true-in-the
 created: 2026-10-20T13:44:18.343Z
-updated: 2026-10-20T17:22:24.085Z
+updated: 2026-10-20T17:27:13.595Z
 ---
 
 ## Summary
