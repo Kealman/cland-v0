@@ -13,7 +13,9 @@ import { cland, connectUi, eventually, inProcessSpoke, tempProject } from './har
 
 type List = { processes: HarnessProcessView[]; archived: number };
 
-test('item windows follow launch items and the latest verifier work even after holds release; reopening cancels the item clock', async t => {
+for (const equalHeldAt of [false, true]) test(equalHeldAt
+  ? 'equal heldAt instants archive Reviewer and QA with the latest held item'
+  : 'item windows follow launch items and the latest verifier work even after holds release; reopening cancels the item clock', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'), { recursive: true });
   await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "2s"\narchive_after_stop = "1d"\n');
@@ -30,11 +32,14 @@ test('item windows follow launch items and the latest verifier work even after h
       const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name, role, sessionId: p.sessionId });
       t.after(() => spoke.close());
       await spoke.waitForPresence([name]);
+      const heldAt = clock.now().toISOString();
       for (const id of ['T-2', 'T-3']) {
-        // Archive-affinity bug: equal heldAt instants keep the earlier verifier item.
-        await clock.advance(1);
-        assert.equal((await spoke.call<{ ok: boolean }>('task.hold', { id })).ok, true);
+        if (!equalHeldAt) await clock.advance(1);
+        const held = await spoke.call<{ ok: boolean; holds: Array<{ heldAt: string }> }>('task.hold', { id });
+        assert.equal(held.ok, true);
+        if (equalHeldAt) assert.deepEqual(held.holds.map(hold => hold.heldAt), [heldAt]);
       }
+      if (equalHeldAt) assert.equal((await ui.request({ type: 'task.comment', item: 'T-2', text: 'Unrelated edit must not replay the earlier hold' })).ok, true);
       assert.equal((await spoke.call<{ ok: boolean }>('task.hold', { id: 'T-3', release: true })).ok, true);
     }
 

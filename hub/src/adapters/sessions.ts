@@ -131,6 +131,8 @@ export class Sessions {
   readonly #crewAdmissions = new Map<string, string>();
   readonly #reusing = new Set<string>();
   readonly #tracker: Tracker | undefined;
+  /** Last observed live holds, so item snapshot replays cannot change equal-time affinity. */
+  readonly #verifierHolds = new Map<string, Map<string, string>>();
   readonly #cleanup: ProjectConfig['sessions'];
   #archiveTimer: ClockTimer | null = null;
   #archiveTick: ReturnType<typeof setImmediate> | null = null;
@@ -288,12 +290,21 @@ export class Sessions {
     this.#usageEventMs = Number.isFinite(usageEventMs) && usageEventMs > 0 ? usageEventMs : USAGE_EVENT_MS;
     this.#tracker = options.tracker;
     this.#cleanup = options.cleanup ?? { archiveAfterItemMs: 3600000, archiveAfterStopMs: 86400000 };
+    for (const item of this.#tracker?.list() ?? []) {
+      if (item.holds.length) this.#verifierHolds.set(item.id, new Map(item.holds.map(hold => [hold.sessionId, hold.heldAt])));
+    }
     this.#untracker = this.#tracker?.onChange(change => {
       // Remember verifier work when it is held, before stop/verdict releases erase it.
-      for (const hold of change.item?.holds ?? []) {
+      const holds = change.item?.holds ?? [];
+      const previous = this.#verifierHolds.get(change.id);
+      if (holds.length) this.#verifierHolds.set(change.id, new Map(holds.map(hold => [hold.sessionId, hold.heldAt])));
+      else this.#verifierHolds.delete(change.id);
+      for (const hold of holds) {
         const row = this.#table.bySessionId(hold.sessionId);
         if (!row || row.status !== 'running' || (row.role !== 'reviewer' && row.role !== 'qa')) continue;
-        if (!row.cleanupHeldAt || hold.heldAt > row.cleanupHeldAt) this.#table.update(row.name, { cleanupItem: change.id, cleanupHeldAt: hold.heldAt });
+        // Only a new acquisition wins a tie; unrelated edits replay existing holds.
+        const acquired = previous?.get(hold.sessionId) !== hold.heldAt;
+        if (!row.cleanupHeldAt || hold.heldAt > row.cleanupHeldAt || (hold.heldAt === row.cleanupHeldAt && acquired)) this.#table.update(row.name, { cleanupItem: change.id, cleanupHeldAt: hold.heldAt });
       }
       const claim = change.item?.claim;
       const claimant = claim && this.#table.bySessionId(claim.sessionId);
