@@ -8,9 +8,11 @@
       "A-6795",
       "A-6848",
       "A-6845",
-      "A-6830"
+      "A-6830",
+      "A-7703",
+      "A-7699"
     ],
-    "commit": "1d81bd6e7457f83699249bd3d13f6d604fa50de7"
+    "commit": "9ae9a20b1579bf2e47268e3e8e33f2cae20bde59"
   },
   "budget": {
     "testSeconds": 5,
@@ -2034,6 +2036,58 @@
     "nvim/test/thread-oracle-soak.test.ts": {
       "seconds": 3.206815,
       "tests": 1
+    },
+    "hub/test/doctor-run.test.ts": {
+      "seconds": 0.006707,
+      "tests": 2
+    },
+    "hub/test/executor-retirement-component.test.ts": {
+      "seconds": 0.794037,
+      "tests": 2
+    },
+    "hub/test/fixture-environment.test.ts": {
+      "seconds": 0.004651,
+      "tests": 4
+    },
+    "hub/test/fixture-orphans-lifecycle.test.ts": {
+      "seconds": 2.211699,
+      "tests": 2
+    },
+    "hub/test/fixture-orphans.test.ts": {
+      "seconds": 0.245147,
+      "tests": 10
+    },
+    "hub/test/nvim-frame-refresh.test.ts": {
+      "seconds": 0.006348,
+      "tests": 4
+    },
+    "hub/test/opencode-client-membership.test.ts": {
+      "seconds": 0.002851,
+      "tests": 1
+    },
+    "hub/test/qa-lint-cli.test.ts": {
+      "seconds": 1.252256,
+      "tests": 2
+    },
+    "hub/test/qa-lint.test.ts": {
+      "seconds": 0.012925,
+      "tests": 18
+    },
+    "hub/test/roles-clauses.test.ts": {
+      "seconds": 0.025345,
+      "tests": 27
+    },
+    "hub/test/send-input.test.ts": {
+      "seconds": 0.021176,
+      "tests": 2
+    },
+    "hub/test/spoke-artifact-budget.test.ts": {
+      "seconds": 0.091828,
+      "tests": 2
+    },
+    "hub/test/suite-release-cache.test.ts": {
+      "seconds": 0.820141,
+      "tests": 6
     }
   },
   "tests": {
@@ -5155,7 +5209,133 @@
     "hub/test/suite-duration-budget.test.ts::D72 legacy allowances follow the configured owner without admitting new legacy keys": 0.000778,
     "nvim/test/client-component.test.ts::the workbench launcher isolates Neovim state and migrates only its legacy files once": 0.430778,
     "nvim/test/thread-oracle-soak.test.ts::extended generated thread oracle retains four seeds and 25 differential renders": 3.206815,
-    "nvim/test/vboard.test.ts::release versions appear once in settled scope, all-tree, top-bar and item-header frames": 0.560914
+    "nvim/test/vboard.test.ts::release versions appear once in settled scope, all-tree, top-bar and item-header frames": 0.560914,
+    "hub/src/hub/store.test.ts::store reuses prepared SQL with fresh bindings and keeps connections and rollback isolated": 0.017686,
+    "hub/test/account-fixture-env.test.ts::CLI child environment rejects poisoned HOME, Git config and credential overlays": 0.141861,
+    "hub/test/accounts-registry.test.ts::account attach shell argv excludes executor credentials while retaining account selection": 0.001787,
+    "hub/test/asks-cli.test.ts::cland topic create binds an Implementer topic to its claimed item and refuses another item": 0.656641,
+    "hub/test/asks-cli.test.ts::cland topic create opens an unbound human topic and rejects malformed arguments": 0.827665,
+    "hub/test/demo-release-component.test.ts::an unconfirmed demo release confirms provider absence within six minutes without another stop": 0.197243,
+    "hub/test/doctor-cli.test.ts::a probe spawn error closes its native process and pipes before settling": 0.009152,
+    "hub/test/doctor-cli.test.ts::a probe timeout closes its native process and pipes before settling even when the child ignores SIGTERM": 1.15585,
+    "hub/test/doctor-cli.test.ts::a synchronous probe spawn error drains any allocated native handle before settling": 0.006277,
+    "hub/test/doctor-run.test.ts::a probe error starts its own close bound without waiting for the answer deadline": 0.001123,
+    "hub/test/doctor-run.test.ts::a probe whose close never arrives reports bounded incomplete cleanup after SIGKILL": 0.005584,
+    "hub/test/durations-refresh.test.ts::add-only adds missing baselines while preserving old entry bytes and every allowance": 0.035676,
+    "hub/test/durations-refresh.test.ts::add-only initializes missing and empty baseline maps without adding allowances": 0.003927,
+    "hub/test/durations.test.ts::hub/src/suite-test-identities.ts changes require both package phases": 0.000104,
+    "hub/test/durations.test.ts::immutable duration identity lint reads candidate sources and names stale baseline and allowance keys": 0.829096,
+    "hub/test/executor-contract.test.ts::machine command and copy argv never serialize the executor environment": 0.00097,
+    "hub/test/executor-lock-liveness.test.ts::settled legacy lease history cannot repeatedly defer a later release": 0.050932,
+    "hub/test/executor-retirement-component.test.ts::retirement checks authenticated live status on registered hubs and refuses an unavailable project": 0.198985,
+    "hub/test/executor-retirement-component.test.ts::retirement control routes confirmation from the CLI and is reserved for the human and Coordinator": 0.595052,
+    "hub/test/executor-spend.test.ts::interrupted retirement activation retains mixed-version admission and safely retries its snapshot": 0.024291,
+    "hub/test/executor-spend.test.ts::recovery settles a batch of interrupted releases without changing final legacy costs": 0.009077,
+    "hub/test/executor-spend.test.ts::retirement refuses aliased ledgers before changing the legacy bytes": 0.003555,
+    "hub/test/executor-spend.test.ts::retirement requires explicit confirmation and every registered live hub on the same new path": 0.038791,
+    "hub/test/executor-spend.test.ts::retirement retains legacy bytes and its archive snapshot while the shared cap still holds after restart": 0.016805,
+    "hub/test/fixture-environment.test.ts::deliberate account paths stay under the disposable project without opening credential overlays": 0.000952,
+    "hub/test/fixture-environment.test.ts::deliberate Git excludes stay under the disposable project without opening config overlays": 0.000462,
+    "hub/test/fixture-environment.test.ts::shared fixture environments seal poisoned parent and overlay credentials and Git config": 0.002562,
+    "hub/test/fixture-environment.test.ts::synthetic provider credentials require a sentinel and an isolated transport": 0.000675,
+    "hub/test/fixture-orphans-lifecycle.test.ts::worktree removal reaps the receipt-bearing headless client and stub before deleting their root": 0.677808,
+    "hub/test/fixture-orphans-lifecycle.test.ts::worktree removal stops an explicitly owned fixture hub before deleting its project": 1.533891,
+    "hub/test/fixture-orphans.test.ts::deleted-root discovery requires an open private receipt, including stub and fixture hubs": 0.017172,
+    "hub/test/fixture-orphans.test.ts::doctor lists missing fixture roots and --fix ends only proven fixtures with PID-only diagnostics": 0.148582,
+    "hub/test/fixture-orphans.test.ts::failed fixture termination keeps the worktree": 0.00883,
+    "hub/test/fixture-orphans.test.ts::live roots and other projects are outside deleted-root sweeping": 0.00496,
+    "hub/test/fixture-orphans.test.ts::PID reuse between discovery and termination never acquires fixture authority": 0.001625,
+    "hub/test/fixture-orphans.test.ts::receipt PID binding, private permissions, same user and open descriptor are required": 0.011454,
+    "hub/test/fixture-orphans.test.ts::receipt withdrawal, root recreation and a pending launch prevent signals": 0.015296,
+    "hub/test/fixture-orphans.test.ts::worktree cleanup finishes captured descendants after their owning leader exits on TERM": 0.004856,
+    "hub/test/fixture-orphans.test.ts::worktree cleanup with private receipts crosses no synchronous filesystem boundary": 0.023367,
+    "hub/test/fixture-orphans.test.ts::worktree removal observes owned fixture completion before Git and preserves human processes": 0.009005,
+    "hub/test/in-process-spoke.test.ts::MCP and direct spoke sends validate recipients before human-send permissions": 0.095572,
+    "hub/test/nvim-frame-refresh.test.ts::full refresh refuses a smaller catalog even without existing file slices": 0.000428,
+    "hub/test/nvim-frame-refresh.test.ts::recording requires a successful complete test receipt": 0.000499,
+    "hub/test/nvim-frame-refresh.test.ts::unavailable binary skips abort the whole refresh before any fixture is replaced": 0.00445,
+    "hub/test/nvim-frame-refresh.test.ts::zero or reduced file captures preserve catalog and slices in full and retained refreshes": 0.000971,
+    "hub/test/opencode-client-membership.test.ts::OpenCode snapshots refuse inherited prototype keys as active sessions": 0.002851,
+    "hub/test/qa-lint-cli.test.ts::qa lint exits nonzero with file and line findings before any QA run": 0.366201,
+    "hub/test/qa-lint-cli.test.ts::qa lint help and read errors do not need a running hub": 0.886055,
+    "hub/test/qa-lint.test.ts::assigned roles use the built-in permission checks across brief sections": 0.000873,
+    "hub/test/qa-lint.test.ts::brief command findings name the source line and offending command": 0.005099,
+    "hub/test/qa-lint.test.ts::brief records reject duplicate ids, invalid surfaces and variable cleanup": 0.000476,
+    "hub/test/qa-lint.test.ts::brief role assignments reject Implementer reports to General": 0.000591,
+    "hub/test/qa-lint.test.ts::cleanup checks cover fenced scripts and retain literal operands": 0.000253,
+    "hub/test/qa-lint.test.ts::command tables without ids still check commands against the build": 0.000239,
+    "hub/test/qa-lint.test.ts::equals-form verdict options use the same role boundary as separate options": 0.000479,
+    "hub/test/qa-lint.test.ts::help-declared Neovim argv forwarding leaves forwarded flags unchecked": 0.000513,
+    "hub/test/qa-lint.test.ts::Implementer topic creation requires a nonempty item option rather than a title": 0.000813,
+    "hub/test/qa-lint.test.ts::literal dollar cleanup and narrative mentions do not become commands": 0.000368,
+    "hub/test/qa-lint.test.ts::quoted prose does not turn embedded flag names into flags": 0.00017,
+    "hub/test/qa-lint.test.ts::role columns check reserved commands and scoped verdicts": 0.000614,
+    "hub/test/qa-lint.test.ts::role normalization handles equals-form actors and the last verdict option": 0.000331,
+    "hub/test/qa-lint.test.ts::root commands do not treat help description columns as subcommands": 0.000388,
+    "hub/test/qa-lint.test.ts::shell quoting cannot hide a role-mismatched report target": 0.000368,
+    "hub/test/qa-lint.test.ts::table parsing separates pipelines and shell substitution from cland argv": 0.000393,
+    "hub/test/qa-lint.test.ts::unknown short flags fail while help aliases and forwarded flags remain valid": 0.000281,
+    "hub/test/qa-lint.test.ts::valid brief accepts quoted values, command aliases and forwarded arguments": 0.000676,
+    "hub/test/roles-clauses.test.ts::defaults aide: clause reply keeps the byte reserve": 0.000104,
+    "hub/test/roles-clauses.test.ts::defaults aide: shipped clause wording": 0.000183,
+    "hub/test/roles-clauses.test.ts::defaults Coordinator grants session archive and prune": 0.00171,
+    "hub/test/roles-clauses.test.ts::defaults coordinator: clause reply keeps the byte reserve": 0.000515,
+    "hub/test/roles-clauses.test.ts::defaults coordinator: shipped clause wording": 0.000927,
+    "hub/test/roles-clauses.test.ts::defaults implementer: clause reply keeps the byte reserve": 0.00017,
+    "hub/test/roles-clauses.test.ts::defaults implementer: shipped clause wording": 0.000328,
+    "hub/test/roles-clauses.test.ts::defaults lead: clause reply keeps the byte reserve": 0.000152,
+    "hub/test/roles-clauses.test.ts::defaults lead: shipped clause wording": 0.000195,
+    "hub/test/roles-clauses.test.ts::defaults qa: clause reply keeps the byte reserve": 0.000126,
+    "hub/test/roles-clauses.test.ts::defaults qa: shipped clause wording": 0.000136,
+    "hub/test/roles-clauses.test.ts::defaults reviewer: clause reply keeps the byte reserve": 0.000143,
+    "hub/test/roles-clauses.test.ts::defaults reviewer: shipped clause wording": 0.000152,
+    "hub/test/roles-clauses.test.ts::project aide: clause reply keeps the byte reserve": 0.000105,
+    "hub/test/roles-clauses.test.ts::project aide: shipped clause wording": 0.000076,
+    "hub/test/roles-clauses.test.ts::project Coordinator grants session archive and prune": 0.000108,
+    "hub/test/roles-clauses.test.ts::project coordinator: clause reply keeps the byte reserve": 0.000103,
+    "hub/test/roles-clauses.test.ts::project coordinator: shipped clause wording": 0.000167,
+    "hub/test/roles-clauses.test.ts::project implementer: clause reply keeps the byte reserve": 0.000097,
+    "hub/test/roles-clauses.test.ts::project implementer: shipped clause wording": 0.000114,
+    "hub/test/roles-clauses.test.ts::project lead: clause reply keeps the byte reserve": 0.000119,
+    "hub/test/roles-clauses.test.ts::project lead: shipped clause wording": 0.000145,
+    "hub/test/roles-clauses.test.ts::project qa: clause reply keeps the byte reserve": 0.000096,
+    "hub/test/roles-clauses.test.ts::project qa: shipped clause wording": 0.000086,
+    "hub/test/roles-clauses.test.ts::project reviewer: clause reply keeps the byte reserve": 0.000138,
+    "hub/test/roles-clauses.test.ts::project reviewer: shipped clause wording": 0.000118,
+    "hub/test/roles-clauses.test.ts::role clauses keep decision questions with the Coordinator and allow explicit human action requests": 0.019032,
+    "hub/test/roles.test.ts::defaults shipped clauses and rule guidance reach each assigned role": 3.52479,
+    "hub/test/roles.test.ts::project shipped clauses and rule guidance reach each assigned role": 3.250012,
+    "hub/test/send-input.test.ts::malformed recipient shapes fail validation rather than becoming a human send": 0.00031,
+    "hub/test/send-input.test.ts::MCP single-string and array recipients deliver to the same Coordinator": 0.020866,
+    "hub/test/session-archive.test.ts::equal heldAt instants archive Reviewer and QA with the latest held item": 0.488054,
+    "hub/test/spoke-artifact-budget.test.ts::artifact.create has a bounded 120 s wait while artifact.list retains its 10 s deadline": 0.014294,
+    "hub/test/spoke-artifact-budget.test.ts::artifact.create returns one folder id after copying exceeds the ordinary 10 s deadline": 0.077534,
+    "hub/test/suite-accounting.test.ts::a local fallback waiter returns to the freed remote budget in queue order (failed notice restart)": 0.188399,
+    "hub/test/suite-accounting.test.ts::a local fallback waiter returns to the freed remote budget in queue order (live)": 0.255307,
+    "hub/test/suite-accounting.test.ts::a local fallback waiter returns to the freed remote budget in queue order (restart)": 0.191116,
+    "hub/test/suite-close-component.test.ts::live and restored shards separate remote execution from collection in one failed merged result": 0.498827,
+    "hub/test/suite-close-component.test.ts::pre-lease shard failures retain reservation release through executor restart": 0.257568,
+    "hub/test/suite-close-component.test.ts::two-shard close reports despite a corrupt spend ledger and the executor sweep retries accounting": 0.491026,
+    "hub/test/suite-queue.test.ts::restored finished remote run excludes restart downtime from run timing and queue duration statistics": 0.030389,
+    "hub/test/suite-release-cache.test.ts::release cache admission: release droplet linux receipt": 0.12182,
+    "hub/test/suite-release-cache.test.ts::release cache admission: release droplet unknown receipt": 0.072197,
+    "hub/test/suite-release-cache.test.ts::release cache admission: release local darwin receipt": 0.083303,
+    "hub/test/suite-release-cache.test.ts::release cache admission: stage droplet darwin receipt": 0.082265,
+    "hub/test/suite-release-cache.test.ts::release cache admission: stage droplet linux receipt": 0.26153,
+    "hub/test/suite-release-cache.test.ts::release cache admission: stage local darwin receipt": 0.199026,
+    "hub/test/suite-soak-component.test.ts::periodic dev T3 skips tracker-only commits and runs a changed verification tree": 0.33009,
+    "hub/test/suite-tiers.test.ts::working manifest lint names unmatched test, allowance and file keys": 0.013419,
+    "hub/test/test-lint.test.ts::summary counts finding kinds without repeating resource paths": 0.000661,
+    "hub/test/tracker-ready.test.ts::ready tells the claimant only about changed missing done marks, with per-item QA=false": 0.655243,
+    "hub/test/tracker-ready.test.ts::ready tells the claimant only about changed missing done marks, with per-item QA=true": 0.536098,
+    "hub/test/verifier-resolver.test.ts::an uncertain tracker outage notice does not reserve an idle Reviewer": 0.024548,
+    "hub/test/verifier-routing.test.ts::an uncertain unheld review reserves its verifier for role routing and pool reuse": 0.204461,
+    "hub/test/verifier-routing.test.ts::idle before an inject becomes uncertain dispatches queued review": 0.235732,
+    "hub/test/verifier-routing.test.ts::idle before an inject becomes uncertain preserves verification reservations": 0.287559,
+    "hub/test/verifier-routing.test.ts::queued qa reaches idle after verdict and hold release despite uncertain traffic": 0.192526,
+    "hub/test/verifier-routing.test.ts::queued qa reaches idle after verdict and hold release despite uncertain traffic across restart": 0.27152,
+    "hub/test/verifier-routing.test.ts::queued review reaches idle after verdict and hold release despite uncertain traffic": 0.191728,
+    "hub/test/verifier-routing.test.ts::queued review reaches idle after verdict and hold release despite uncertain traffic across restart": 0.378391
   },
   "allow": {
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
