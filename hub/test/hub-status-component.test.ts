@@ -72,6 +72,22 @@ test('status preserves liveness when full status collection times out', async t 
   }
 });
 
+test('status keeps available and unavailable web details in the hub block before sessions', async t => {
+  const f = await fixture(t);
+  for (const web of [{ available: true, port: 4321 }, { available: false, port: 4321, reason: 'address in use' }]) {
+    f.control.status = () => ({
+      ...f.base, web,
+      priority: { warning: { detail: 'priority unavailable', fix: 'check permissions' } },
+    });
+    let out = '', err = '';
+    assert.equal(await runHub(['status'], f.root, { out: s => { out += s; }, err: s => { err += s; } }), 0, err);
+    assert.equal(err, '');
+    const detail = web.available ? 'http://127.0.0.1:4321/' : 'unavailable on 127.0.0.1:4321: address in use';
+    assert.ok(out.includes(`  version  test\n  web      ${detail}\n`), out);
+    assert.match(out, /warning: priority unavailable; fix: check permissions\nsessions: 0\n/);
+  }
+});
+
 test('full status retains a large fragmented response', async t => {
   const f = await fixture(t);
   // Historical suite selections produced a 13 MB reply in the incident. The

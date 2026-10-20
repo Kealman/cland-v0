@@ -773,6 +773,11 @@ missing-bundle cases use a missing fixture directory/index, so building the real
 spoke and Unix-socket edges available; inspect the `web-unavailable` log and
 `cland doctor` warning rather than expecting a hub startup failure. Set
 `[web] port` or `[web] dist` before startup; both require a restart to apply.
+The T2 `hub-status-component.test.ts` checks available and unavailable web details
+in the CLI's hub block, before `sessions: N`. The T3 hub-lifecycle scenario keeps
+the discovery `webPort` contract and checks that session rows follow that heading
+directly. The compiler contract fixture in `typecheck.test.ts` includes each root
+typecheck project, including `shared/wire/tsconfig.json` and a browser-safe source.
 
 Hub scheduling tests pass one complete clock at the fixture boundary:
 `projectHub(t, root, env, { clock: new FakeClock() })` (`hub/test/fake-clock.ts`).

@@ -70,7 +70,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
                   --autostart: honor the deliberate-stop grace period; --client cli|nvim|other identifies the starter
   hub subscriptions list every session's event subscriptions (--json for JSON)
   hub reload      validate and reload config.toml and roles.toml (also SIGHUP)
-  hub status      show the running hub, web edge availability and connected sessions (--json for JSON)
+  hub status      show the running hub (including web edge availability), then connected sessions (--json for JSON)
   hub stop        stop the project's hub
   hub serve       run the hub in the foreground (what start runs)
                   --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;

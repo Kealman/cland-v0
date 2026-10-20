@@ -14,7 +14,7 @@ test('cland hub start creates the .cland skeleton and the discovery file', async
   const { result, discovery } = await startDaemon(t, root, {}, { sweep: true });
   assert.match(result.stdout, new RegExp(`hub started for ${root}`));
 
-  assert.deepEqual(Object.keys(discovery).sort(), ['pid', 'port', 'root', 'secret', 'socket', 'version']);
+  assert.deepEqual(Object.keys(discovery).sort(), ['pid', 'port', 'root', 'secret', 'socket', 'version', 'webPort']);
   assert.equal(discovery.root, root);
   assert.equal(typeof discovery.port, 'number');
   assert.match(discovery.secret, /^[0-9a-f]{64}$/);
@@ -57,6 +57,7 @@ test('a spoke started in the project with no hub environment connects through th
   assert.match(human.stdout, new RegExp(`^hub running for ${root}\\n`));
   assert.match(human.stdout, new RegExp(`pid +${status.pid}\\n`));
   assert.match(human.stdout, /uptime +\d+s/);
+  assert.match(human.stdout, /version +[^\n]+\n {2}web +http:\/\/127\.0\.0\.1:\d+\/\nsessions: 1\n/);
   // the name shows with its role, as everywhere (spec 4.4)
   assert.match(human.stdout, /sessions: 1\n {2}alpha \[Implementer\] {2}\[unknown\]\n/);
   assert.match(human.stdout, /\nno coordinator\n/);

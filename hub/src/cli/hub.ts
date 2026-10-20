@@ -39,9 +39,10 @@ const duration = (ms: number): string => {
 };
 
 function describe(s: HubStatus): string {
-  const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`, `sessions: ${s.sessions.length}`];
+  const lines = [`  pid      ${s.pid}`, `  port     ${s.port} (127.0.0.1)`, `  socket   ${s.socket}`, `  uptime   ${duration(s.uptimeMs)}`, `  version  ${s.version}`];
   if (s.web) lines.push(s.web.available ? `  web      http://127.0.0.1:${s.web.port}/` : `  web      unavailable on 127.0.0.1:${s.web.port}: ${s.web.reason ?? 'unknown reason'}`);
   if (s.priority?.warning) lines.push(`warning: ${s.priority.warning.detail}; fix: ${s.priority.warning.fix}`);
+  lines.push(`sessions: ${s.sessions.length}`);
   for (const p of s.sessions) lines.push(`  ${withRole(p.name, p.role)}  [${p.state ?? 'unknown'}]${p.status ? `  — ${p.status}` : ''}`);
   if (s.config) lines.push(`config: loaded ${s.config.loadedAt} · source commit ${s.config.sourceCommit ?? 'uncommitted / no Git history'}`);
   if (s.coordinator !== undefined) lines.push(s.coordinator ? `coordinator: ${s.coordinator}` : 'no coordinator');

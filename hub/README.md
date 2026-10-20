@@ -166,7 +166,8 @@ in the volatile, ignored `.cland/web-port` file across restarts. An explicit
 port. A taken port never causes a move to another origin: the hub starts with
 its spoke and Unix-socket edges, logs `web-unavailable` with the port and reason,
 and reports `{ port, available: false, reason }` as `hub.status.web`.
-`cland hub status` shows that reason and `cland doctor` warns. Free the port or
+`cland hub status` shows the web URL or that reason in its hub block, before
+`sessions: N` and the connected session rows; `cland doctor` warns. Free the port or
 change the setting and restart the hub. A running edge reports
 `hub.status.web = { port, available: true }`; stdio-only hubs omit it.
 
