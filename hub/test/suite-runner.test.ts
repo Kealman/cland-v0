@@ -26,7 +26,9 @@ function run(t: TestContext, dir: string, file: string, mode?: 'hub' | 'nvim' | 
   // An external SIGSTOP immediately after ticket publication can strand a .break guard.
   const stop = stopWhenQueued ? `const write = process.stderr.write.bind(process.stderr);
 process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args); if (String(chunk).includes('waiting for the suite lock')) { process.stderr.write = write; process.kill(process.pid, 'SIGSTOP'); } return result; };` : '';
-  const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lockPath(dir))} })`};`;
+  // Pin the fixture project as well as its lock: the caller's duration/tier
+  // manifests must never apply to generated tests in this temporary project.
+  const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir) })})`};`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
@@ -129,7 +131,7 @@ async function crash(root) { await fs.writeFile(${JSON.stringify(marker)}, root)
 fs.mkdir = async (...args) => { const result = await mkdir(...args); if (String(args[0]).split('/').at(-1).startsWith('cland-suite-')) await crash(String(args[0])); return result; };
 fs.mkdtemp = async (...args) => { const result = await mkdtemp(...args); if (String(args[0]).split('/').at(-1).startsWith('cland-suite-')) await crash(result); return result; };
 syncBuiltinESMExports();
-const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([], { lockDir: ${JSON.stringify(join(dir, 'lock'))} });`;
+const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir) })});`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
   const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
   const { ownProcess } = await import('./process-cleanup.ts');
@@ -161,7 +163,7 @@ fs.rename = async (from, to) => {
   return rename(from, to);
 };
 syncBuiltinESMExports();
-const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lock)} });`;
+const { runSuite } = await import(${JSON.stringify(runner)}); await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lock })});`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
   const exited = new Promise<void>(resolve => child.once('exit', () => resolve()));
   const { ownProcess, cleanupOwnedProcesses } = await import('./process-cleanup.ts');
@@ -196,7 +198,7 @@ fs.writeFile = async (...args) => {
   return writeFile(...args);
 };
 syncBuiltinESMExports();
-const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], { lockDir: ${JSON.stringify(lock)} });`;
+const { runSuite } = await import(${JSON.stringify(runner)}); process.exitCode = await runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lock })});`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, CLAND_TEST_SKIP_LOCK: '0' }, stdio: 'ignore' });
   const done = new Promise<number | null>(resolve => child.once('close', resolve));
   const { ownProcess } = await import('./process-cleanup.ts');
@@ -418,8 +420,9 @@ test('the final sweep reports and kills an orphan even when its test passed', as
   const marker = join(dir, 'orphan.json');
   const file = join(dir, 'orphan.mjs');
   await writeFile(file, `
-import test from 'node:test'; import { spawn } from 'node:child_process'; import { mkdtemp, writeFile } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
+import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn } from 'node:child_process'; import { mkdtemp, writeFile } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
 test('leaks a detached child deliberately', async () => {
+  assert.equal(process.cwd(), ${JSON.stringify(await realpath(dir))}, 'runner fixtures execute in their own project');
   const root = await mkdtemp(join(tmpdir(), 'orphan-'));
   const child = spawn(process.execPath, ['-e', 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)'], { cwd: root, detached: true, stdio: 'ignore' });
   child.unref();
