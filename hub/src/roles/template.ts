@@ -1,4 +1,4 @@
-// New-project role policy. Parsing omitted keys continues to use the machine-independent shipped defaults.
+// New-project role policy. Omitted keys use shipped defaults, except OpenCode keeps its own policy.
 import type { HarnessId } from '../doctor/ranges.ts';
 import { DEFAULT_ROLES_TOML } from './default-roles.ts';
 

@@ -17,8 +17,11 @@ function describe(v: RoleList): string {
     const box = r.launch.sandbox;
     const details = box && box.mode !== 'danger-full-access' ? [box.writableRoots.length ? `writable: ${box.writableRoots.join(' ')}` : '', `network: ${box.network}`].filter(Boolean).join('; ') : '';
     const sandbox = box && `sandbox ${box.mode}${details ? ` (${details})` : ''}`;
-    const launch = [r.launch.harness, `model ${r.launch.model ?? 'harness default'}`, `effort ${r.launch.effort ?? 'harness default'}`, `account ${r.launch.account ?? 'harness default'}`, `permissions ${r.launch.permissions ?? 'harness default'}`, `approval ${r.launch.approval ?? 'harness default'}`, sandbox || 'sandbox harness default'].join(', ');
+    const guard = r.launch.harness === 'opencode' ? ["guard: OpenCode's own"]
+      : [`permissions ${r.launch.permissions ?? 'harness default'}`, `approval ${r.launch.approval ?? 'harness default'}`, sandbox || 'sandbox harness default'];
+    const launch = [r.launch.harness, `model ${r.launch.model ?? 'harness default'}`, `effort ${r.launch.effort ?? 'harness default'}`, `account ${r.launch.account ?? 'harness default'}`, ...guard].join(', ');
     lines.push(`${r.label}${r.exclusive ? ' (one holder)' : ''}  launch: ${launch || 'harness default'}`);
+    for (const warning of r.warnings ?? []) lines.push(`  warning: ${warning}`);
     lines.push(r.holders.length ? r.holders.map((h) => `  ${holderLine(h)}`).join('\n') : '  no holder');
   }
   lines.push(v.coordinator ? `coordinator: ${v.coordinator}` : 'no coordinator');

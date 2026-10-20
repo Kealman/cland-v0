@@ -8,7 +8,7 @@ import { DEFAULT_ROLES_TOML } from '../src/roles/default-roles.ts';
 import { decide } from '../src/roles/permissions.ts';
 import { createHubBase } from '../src/hub/server.ts';
 import { RequestGuard } from '../src/hub/budget.ts';
-import { eventually, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, projectHub, tempProject } from './harness.ts';
 
 const rolesText = (tools: string[]) => `[implementer.launch]\nharness = "codex"\n[implementer.permissions]\ntools = ${JSON.stringify(tools)}\n`;
 
@@ -257,4 +257,31 @@ test('roles refresh publication and failure logging are each timed as resumed ba
   t.mock.timers.tick(ROLES_REFRESH_MS);
   await eventually('publication timed', () => guard.counters.slow === 2 ? true : undefined);
   assert.deepEqual(records.filter(entry => entry.event === 'slow-request').map(entry => [entry.tool, entry.phase, entry.ms]), [['roles.refresh', 'resumed', 400], ['roles.refresh', 'resumed', 400]]);
+});
+
+
+test('OpenCode role snapshots warn once for ignored keys in validation and role list', { timeout: 2000 }, async t => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root);
+  const path = join(root, '.cland/roles.toml');
+  await writeFile(path, '[implementer.launch]\nharness = "opencode"\napproval = "never"\nsandbox = "read-only"\npermissions = "skip"\n');
+  const ui = await connectUi(t, discovery);
+  const reload = await ui.request({ type: 'hub.reload' });
+  assert.equal(reload.ok, true, reload.error);
+  const warning = "implementer.launch: OpenCode ignores approval, sandbox, permissions; OpenCode's own configuration governs";
+  assert.deepEqual((reload.value as { warnings: string[] }).warnings, [warning]);
+  const list = await cland(root, 'role', 'list');
+  assert.equal(list.code, 0, list.stderr);
+  assert.match(list.stdout, /Implementer  launch: opencode, .*guard: OpenCode's own\n/);
+  assert.equal(list.stdout.split(warning).length - 1, 1);
+  const records: Array<Record<string, unknown>> = [];
+  const file = new RolesFile(path, entry => records.push(entry));
+  t.after(() => file.stop());
+  await file.start();
+  await file.fresh();
+  await file.fresh();
+  assert.deepEqual(records.filter(row => row.event === 'roles-warning').map(row => row.warning), [warning]);
+  const launch = file.get().get('implementer')!.launch;
+  assert.deepEqual([launch.approval, launch.sandbox, launch.permissions], [null, null, null]);
 });

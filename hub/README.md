@@ -1466,33 +1466,31 @@ The adapter speaks OpenCode's v2 API. Doctor reports every harness version for i
 
 Doctor reports warnings for each role configured on OpenCode: free model selection (including the default) may train on the code it sees, and OpenCode has no OS sandbox. Permission rules do not isolate host processes. These warnings never refuse a launch. The shipped role clauses keep a session in its item's worktree and forbid using `session_move` or `worktree_create` to leave it; request a handover from the item lead instead.
 
-The adapter declares `launchPolicy: "rules, not a sandbox"`. The following table maps
-`roles.toml` policy onto the ordered `permissions` array of `POST /api/session`.
+The adapter declares `launchPolicy: "rules, not a sandbox"`. OpenCode keeps its
+own permission settings (v0.1.4 §3.5): cland ignores `approval`, `sandbox`,
+`writable_roots`, `network` and `permissions`, whether inherited or explicitly
+written in `roles.toml`. An explicit ignored choice produces one warning per role
+in configuration validation and `cland role list`, which shows `guard: OpenCode's own`.
+Claude Code and Codex retain their per-role inherited policy.
+
+Only item worktree confinement (D8) contributes ordered `permissions` rules to
+`POST /api/session`. Without an item, cland leaves session permissions unset.
 V2 rules have `{action, resource, effect}` fields; the last matching rule wins.
 The `edit` action covers edit, write and patch tools. These rules do not isolate
 shell processes or provide network controls.
 
-| Launch field | OpenCode session rules |
+| Launch field | OpenCode behavior |
 | --- | --- |
-| `approval = "never"` | Allow the sandbox's permitted actions and deny its external-directory remainder; no permission prompt. |
-| `approval = "on-request"` | Allow permitted actions; ask for the external-directory remainder of `workspace-write`. Explicit read-only edit denials remain denials. |
-| `approval = "untrusted"` | As on-request, with every `shell` resource set to `ask`. |
-| `sandbox = "read-only"` | Start with allow-all, then deny `edit` on `*`. This covers edit/write/patch tools; shell authority is unchanged. |
-| `sandbox = "workspace-write"` | Start with allow-all, then deny (or ask, per approval above) `external_directory` on `*`; allow `<cwd>/*` and each absolute `writable_roots` directory followed by `/*`. |
-| `sandbox = "danger-full-access"` | Allow all actions and resources, subject to untrusted shell approvals and the item rule. |
-| `sandbox = ""` | Leave OpenCode's sandbox rules alone; explicit approval, permissions and item rules still apply. |
-| `network` | No counterpart. The launch record names the requested setting and missing network isolation. |
-| `permissions = "skip"` | Allow all actions and resources, overriding approval and sandbox rules; the item rule still applies. Claude Code's `auto` setting has no OpenCode counterpart. |
-| item (D8) | Append external-directory denials outside the item's cwd, plus edit denials for canonical absolute paths and parent-relative paths outside it. Roots outside the item stay denied even with skip. These directory rules also restrict external reads. |
+| item (D8) | Append external-directory denials outside the item's cwd, plus edit denials for canonical absolute paths and parent-relative paths outside it. These directory rules also restrict external reads. Internal relative paths retain native policy. |
 | `effort` | Select the matching variant id from that model's `GET /api/model` entry. If absent or the catalog is unavailable, select no variant and warn in the launch record. |
 | `provider/model#variant` | Send `{providerID: "provider", id: "model", variant: "variant"}`. An explicit variant wins over effort without a catalog lookup. |
 
 Both the adapter's `harness-launched` log and the durable `session-launched`
 journal record carry `policy.rules`, `policy.unsupported` (each field and reason)
-and `policy.warnings`. Sandbox isolation, network, Claude Code auto permissions
-and Code Mode's item-rule gap are recorded where requested. Retained native
-conversations keep their existing rules and model variant; their launch record
-reads those rules back instead of claiming a new policy was applied.
+and `policy.warnings`. Direct adapter requests record ignored policy fields as
+unsupported. Code Mode's item-rule gap is recorded for item-bound sessions.
+Retained native conversations keep their existing rules and model variant;
+their launch record reads those rules back instead of claiming a new policy was applied.
 
 `session.moved` is watched for item-bound sessions. A destination outside the
 item's original cwd (including a sibling with the same prefix) produces a

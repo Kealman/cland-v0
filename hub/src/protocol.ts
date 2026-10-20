@@ -656,7 +656,7 @@ export type RoleLaunch = {
 };
 
 export type RoleList = {
-  roles: Array<{ role: string; label: string; exclusive: boolean; skills: string[]; launch: RoleLaunch; holders: RoleHolder[] }>;
+  roles: Array<{ role: string; label: string; exclusive: boolean; skills: string[]; launch: RoleLaunch; warnings?: string[]; holders: RoleHolder[] }>;
   /** The live Coordinator's name, or null: "no coordinator". */
   coordinator: string | null;
 };

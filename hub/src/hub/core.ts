@@ -2087,6 +2087,7 @@ export class HubCore {
           exclusive: d?.exclusive ?? false,
           skills: d?.skills ?? [],
           launch: d?.launch ?? { harness: '', account: null, permissions: null, model: null, effort: null, approval: null, sandbox: null },
+          ...(d?.warnings?.length ? { warnings: d.warnings } : {}),
           holders: [...names].sort().map((n) => this.#holder(n)),
         };
       }),

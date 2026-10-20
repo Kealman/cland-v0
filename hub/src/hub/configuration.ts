@@ -92,6 +92,9 @@ export class ProjectConfiguration implements RolesSource {
     }
     this.#stamp = await this.#fileStamp(this.layout.roles);
     this.#attemptStamp = this.#stamp;
+    for (const definition of this.#roles.values()) for (const warning of definition.warnings ?? []) {
+      this.log({ event: 'roles-warning', path: this.layout.roles, role: definition.role, warning });
+    }
     this.log({ event: 'roles-loaded', path: this.layout.roles, launch: Object.fromEntries([...this.#roles].map(([role, definition]) => [role, definition.launch])) });
     this.#status.sourceCommit = await this.#sourceCommit();
     this.#timer = setInterval(() => { void this.fresh(); }, ROLES_REFRESH_MS);
@@ -177,6 +180,7 @@ export class ProjectConfiguration implements RolesSource {
       const stamp = await this.#fileStamp(this.layout.roles);
       const rolesText = await readFile(file, 'utf8');
       const roles = resumed(() => parseRoles(rolesText));
+      warnings.push(...[...roles.values()].flatMap(definition => definition.warnings ?? []));
       if (stamp !== await this.#fileStamp(this.layout.roles)) throw new Error('roles.toml changed during reload; retry');
       const sourceCommit = configText === null ? this.#status.sourceCommit : await this.#sourceCommit();
       const [lastConfigStamp, lastRoleStamp] = await Promise.all([this.#fileStamp(this.layout.config), this.#fileStamp(this.layout.roles)]);

@@ -35,7 +35,7 @@ test('projectHub drives fake harness lifecycle and delivery outcomes across flav
     assert.equal(launched.ok, true, launched.error);
     const request = fake.spawns[0]!;
     assert.equal(request.cwd, root);
-    assert.equal(request.approval, 'never');
+    assert.equal(request.approval, flavour === 'opencode' ? undefined : 'never', `${flavour}: only OpenCode keeps its own approval policy`);
     assert.match(request.clause!, new RegExp(`Work carefully ${i}`));
     assert.match(request.brief!.text, /One-time brief/);
     const process = await list(name);

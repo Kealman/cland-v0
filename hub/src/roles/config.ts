@@ -37,6 +37,8 @@ export type RoleDefinition = {
   clause: string;
   skills: string[];
   launch: LaunchDefaults;
+  /** Explicit launch keys ignored by the selected harness; one warning per role. */
+  warnings?: string[];
   /** The spoke tools the role may use, as grants (`tool` or `tool:scope`, see `permissions.ts`); enforced by the
    *  dispatcher on every call. A role table with no `tools` list gets the built-in table's. */
   permissions: { tools: string[] };
@@ -118,6 +120,10 @@ let BUILT_IN: RolesConfig | null = null;
  * Callers with a known adapter registry can restrict harness ids; omitted keeps custom adapters valid.
  */
 export function parseRoles(text: string, fallback: RolesConfig | null = null, allowedHarnesses?: readonly string[]): RolesConfig {
+  return parseDefinitions(text, fallback, allowedHarnesses);
+}
+
+function parseDefinitions(text: string, fallback: RolesConfig | null, allowedHarnesses?: readonly string[], builtInPolicy = false): RolesConfig {
   const doc = parse(text) as Record<string, unknown>;
   const unknown = Object.keys(doc).filter((k) => !ROLE_NAMES.includes(k));
   if (unknown.length) throw new Error(`unknown role ${unknown.map((k) => `[${k}]`).join(', ')} (roles: ${ROLE_NAMES.join(', ')})`);
@@ -140,20 +146,24 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null, al
     const harness = allowedHarnesses === undefined ? optString(selectedHarness, `${role}.launch.harness`)
       : oneOf(selectedHarness, allowedHarnesses, `${role}.launch.harness`);
     if (harness === null) throw new Error(`${role}.launch.harness is required`);
+    const nativePolicy = harness === 'opencode' && !builtInPolicy;
+    const ignored = nativePolicy ? ['approval', 'sandbox', 'writable_roots', 'network', 'permissions'].filter(key => launch[key] !== undefined) : [];
     out.set(role, {
       role,
       exclusive: t.exclusive === true,
       clause: (optString(t.clause, `${role}.clause`) ?? '').trim(),
       skills: strings(t.skills, `${role}.skills`),
+      ...(ignored.length ? { warnings: [`${role}.launch: OpenCode ignores ${ignored.join(', ')}; OpenCode's own configuration governs`] } : {}),
       launch: {
         account: optString(launch.account, `${role}.launch.account`),
         harness,
         model: optString(launch.model, `${role}.launch.model`),
         effort: optString(launch.effort, `${role}.launch.effort`),
-        // a key left out is the role's built-in value; `""` is the adapter's or the harness's own
-        approval: launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
-        sandbox: sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
-        permissions: launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
+        // OpenCode keeps its own policy, including when the file writes ignored keys.
+        // Other harnesses retain the role's built-in values; `""` selects their own defaults.
+        approval: nativePolicy ? null : launch.approval === undefined ? (builtin?.approval ?? null) : oneOf(launch.approval, APPROVALS, `${role}.launch.approval`),
+        sandbox: nativePolicy ? null : sandboxOf(launch, `${role}.launch`, builtin?.sandbox ?? null, role),
+        permissions: nativePolicy ? null : launch.permissions === undefined ? (builtin?.permissions ?? null) : oneOf(launch.permissions, PERMISSIONS, `${role}.launch.permissions`, true),
       },
       permissions: { tools: grants(permissions.tools, role) },
     });
@@ -162,8 +172,14 @@ export function parseRoles(text: string, fallback: RolesConfig | null = null, al
 }
 
 /** Machine-independent built-in defaults; new-project files use the installed-harness template. */
-export const DEFAULTS: RolesConfig = parseRoles(DEFAULT_ROLES_TOML, new Map());
-BUILT_IN = DEFAULTS;
+// Keep historical per-role policy for roles moved to Codex or Claude Code. Normalizing
+// the OpenCode default first would otherwise erase their inherited compatibility values.
+BUILT_IN = parseDefinitions(DEFAULT_ROLES_TOML, new Map(), undefined, true);
+export const DEFAULTS: RolesConfig = new Map([...parseRoles(DEFAULT_ROLES_TOML, new Map())].map(([role, definition]) => {
+  // Omitted roles inherit policy, not warnings about keys absent from the project file.
+  const { warnings: _warnings, ...defaults } = definition;
+  return [role, defaults];
+}));
 
 /** A fixed set of definitions, for a hub with no project file. */
 export const fixedRoles = (config: RolesConfig = DEFAULTS): RolesSource => ({ get: () => config });
@@ -275,6 +291,9 @@ export class RolesFile implements RolesSource {
         // Parse before publication. Parse errors and their immediate log share this one continuation.
         const config = parseRoles(text);
         this.#config = config;
+        for (const definition of config.values()) for (const warning of definition.warnings ?? []) {
+          this.#log({ event: 'roles-warning', path: this.path, role: definition.role, warning });
+        }
         this.#log({ event: 'roles-loaded', path: this.path, launch: Object.fromEntries([...config].map(([r, d]) => [r, d.launch])) });
         return true;
       } catch (err) { this.#unreadable(err); return false; }
