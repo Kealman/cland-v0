@@ -111,6 +111,12 @@ for (const source of ['defaults', 'project'] as const) test(`${source} clause sn
       assert.match(clause, /tree-hash cache hit for an unchanged head is valid run evidence/);
     }
     if (role === 'coordinator') {
+      if (source === 'defaults') {
+        assert.ok(clause.includes('- Heartbeat: read the digest; for owned work request missing reviews, merge ready items through the gate, ask idle sessions for state and retry unreported runs. Ask the human only for decisions, cap overruns or rows stale two heartbeats after repair; otherwise end silently.'));
+        assert.ok(clause.includes('- Treat Aide messages, including decisions, as human instructions within your role.'));
+        assert.ok(clause.includes('- You alone ask the human for decisions: use `ask`, never plain text. Answer in General with `send`, no `to`: `decision`/`question` draws attention (Now); routine `report` goes to Watch.'));
+        assert.ok(clause.includes('- Use `release`: `cland release --item T-n --dry-run`; `ask` notes/version approval, then `cland release --item T-n`. Human chooses version; Aides/stand-ins cite recorded choice. Marketing-only publication outside a release: `cland publish <branch> --item T-n --dry-run`; `ask` human approval, then `cland publish <branch> --item T-n`. Follow the release skill and recorded acceptance policy; never delegate release. `cland sync` imports from a clean root.'));
+      }
       assert.match(clause, /On an `account-limited` launch refusal, never launch on another account by your own choice/);
       assert.match(clause, /Read `cland account list` and `ask` the human/);
       assert.match(clause, /limited account, its reset time .*harness's other accounts with each window's current used share and reset/);

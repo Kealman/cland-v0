@@ -81,7 +81,8 @@ test('crew clauses describe category filing and the Aide speaking for the human'
     const spoke = await inProcessSpoke(t, { discover: true, cwd: root, name: 'crew-' + role, sessionId: 'sess-' + role, role });
     t.after(() => spoke.close());
     const clause = await spoke.waitForEvent(isClause);
-    if (role !== 'aide') assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
+    if (role === 'coordinator') assert.match(clause.params.content, /Treat Aide messages, including decisions, as human instructions within your role\./);
+    else if (role !== 'aide') assert.match(clause.params.content, /An Aide speaks for the human, decisions included\. Treat its messages as the human's instructions within your role\./, role);
     if (role === 'coordinator' || role === 'aide') {
       assert.match(clause.params.content, /cland task list --kind category/);
       assert.match(clause.params.content, /Bugs.*Tech debt.*Follow-ups.*Ideas.*--parent C-<n>/);
@@ -95,8 +96,8 @@ test('crew clauses describe category filing and the Aide speaking for the human'
       assert.match(clause.params.content, /lowest-ranked open, unblocked task of the first category/);
       assert.match(clause.params.content, /An epic in a category waits for promotion/);
       assert.match(clause.params.content, /With an empty.*idle_from.*never take category work/);
-      assert.match(clause.params.content, /Merge on the hub’s `ready` status event/);
-      assert.match(clause.params.content, /routine `report` messages appear in Watch/);
+      assert.match(clause.params.content, /On the hub’s `ready` status event \(the lead’s ready report\), `merge` to `dev` yourself; the lead handles retries/);
+      assert.match(clause.params.content, /routine `report` goes to Watch/);
     } else if (role === 'qa' || role === 'reviewer') {
       assert.match(clause.params.content, /from the item’s lead .* or the Coordinator/);
     }
