@@ -158,7 +158,7 @@ test('qa.state() holds the stub scenario: the sessions with their states, the ro
   assert.equal(state.project, 'qa-state');
   assert.equal(state.hub.state, 'connected');
   assert.deepEqual(state.view, { kind: 'thread', id: 'general' });
-  assert.deepEqual(state.panels, { left: true, right: 'inbox', dock: false });
+  assert.deepEqual(state.panels, { left: true, right: 'inbox', dock: false, kinds: { left: 'items', right: 'inbox' } });
   assert.deepEqual(
     state.sessions.map((s) => [s.name, s.role, s.label, s.harness, s.model, s.state, s.live, s.item ?? null]),
     [
@@ -182,7 +182,7 @@ test('qa.state() holds the stub scenario: the sessions with their states, the ro
   assert.deepEqual(Object.keys(evidence.dumps), ['sessions']);
   assert.match(evidence.dumps.sessions?.screen ?? '', /impl-1 \[Implementer\]/);
   assert.match(evidence.dumps.sessions?.screen ?? '', /WAITING · 1/);
-  assert.deepEqual(evidence.dumps.sessions?.state.panels, { left: false, right: 'sessions', dock: false });
+  assert.deepEqual(evidence.dumps.sessions?.state.panels, { left: false, right: 'sessions', dock: false, kinds: { right: 'sessions' } });
 });
 
 test('ITEMS-001 passes against its own stdio hub, and against the stub hub with --hub stub', { skip }, async (t) => {
@@ -223,10 +223,13 @@ test('fixture values YAML would read as structure reach the client whole, the sa
     const run = await qa(t, [`${CASES}LABELS-001.lua`, '--hub', hub]);
     assert.equal(run.line.result, 'PASS', JSON.stringify(run.line));
     const { items } = (run.line.evidence as { state: { items: Array<Record<string, unknown>> } }).state;
-    const fields = (i: Record<string, unknown> | undefined) => [i?.id, i?.kind, i?.title, i?.state, i?.labels, i?.assignee ?? null, i?.parent ?? null, i?.blocked_by, i?.branch ?? null];
-    assert.deepEqual(fields(items[0]), ['T-1', 'task', 'Labels: "quoted", with a comma [and brackets] # and a hash', 'open', ['priority, high', 'ui: shell'], 'impl-1', null, [], 't/1-labels'], hub);
-    assert.deepEqual(fields(items[1]), ['Q-2', 'question', 'Blocked', 'closed', [], null, 'T-1', ['T-1'], null], hub);
+    const fields = (i: Record<string, unknown> | undefined) => [i?.id, i?.kind, i?.title, i?.state, i?.labels, i?.parent ?? null, i?.blocked_by];
+    assert.deepEqual(fields(items[0]), ['T-1', 'task', 'Labels: "quoted", with a comma [and brackets] # and a hash', 'open', ['priority, high', 'ui: shell'], null, []], hub);
+    assert.deepEqual(fields(items[1]), ['Q-2', 'question', 'Blocked', 'closed', [], 'T-1', ['T-1']], hub);
     const screen = (run.line.evidence as { screen: string }).screen;
+    // Assignee and branch are detail fields, fetched when the item view opens.
+    assert.match(screen, /assignee +impl-1/, hub);
+    assert.match(screen, /branch +t\/1-labels/, hub);
     // the fields column is narrow: the labels start there, whole in the state above
     assert.match(screen, /kind +task · priority,/, hub);
     assert.match(screen, /With a rule in it\./, hub);
@@ -339,7 +342,7 @@ test(':Cland qa dump <path> writes the grid and the state in an ordinary run', {
   assert.equal(state.project, 'proj-dump');
   assert.equal(state.hub.state, 'connected');
   assert.deepEqual(state.view, { kind: 'thread', id: 'general' });
-  assert.deepEqual(state.panels, { left: false, right: 'sessions', dock: false });
+  assert.deepEqual(state.panels, { left: false, right: 'sessions', dock: false, kinds: { right: 'sessions' } });
 });
 
 // ------------------------------------------------------------------ under sandbox-exec

@@ -16,6 +16,12 @@ return {
     },
   },
   run = function(qa)
+    -- Startup loads open summaries; unfold the explorer to fetch the closed fixture too.
+    qa.keys('<Esc><Space>e')
+    qa.wait_for(function()
+      return qa.screen():find('Closed items', 1, true)
+    end, 10000, 'the explorer')
+    qa.keys('zR')
     qa.wait_for(function()
       return #qa.state().items == 2
     end, 10000, 'the two fixture items')

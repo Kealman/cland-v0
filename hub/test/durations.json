@@ -7537,6 +7537,27 @@
       "expires": "2026-11-19",
       "reason": "Runs the Neovim workbench against a real hub and event bursts, proving the session panel updates without polling. raised for load headroom (T-929)"
     },
+    "nvim/test/startup-budget.test.ts::a slowed task.list trips the rendered startup time budget": {
+      "seconds": 9.286204391,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-10-27",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an intentional slow task.list to prove the 3 s startup guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 9.286204391 s (A-8003)."
+    },
+    "nvim/test/startup-budget.test.ts::bodies added to the first task.list trip the payload byte budget": {
+      "seconds": 5.791998113,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-10-27",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with body inflation to prove the first-payload guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 5.791998113 s (A-8003)."
+    },
+    "nvim/test/startup-budget.test.ts::thousand-item workbench startup fits the time and first-payload budgets": {
+      "seconds": 5.550433302,
+      "owner": "E-880",
+      "added": "2026-10-20",
+      "expires": "2026-10-27",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup through the rendered welcome, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 5.550433302 s (A-8003)."
+    },
     "nvim/test/thread.test.ts::200 message rewrites and steady-state appends retain cached parsing and incremental cost": {
       "seconds": 2.128674,
       "owner": "E-880",
