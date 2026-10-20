@@ -2,8 +2,8 @@
 id: T-580
 kind: task
 title: "roles test: an edit to roles.toml sometimes isn't seen by the next launch (old model 'claude-fable-5-1') on a loaded droplet"
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - bug
@@ -15,7 +15,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T07:00:56.384Z
-updated: 2026-10-16T07:00:56.384Z
+updated: 2026-10-20T06:07:29.102Z
+closed: 2026-10-20T06:07:29.102Z
 ---
 
 ## Summary
@@ -24,3 +25,9 @@ In T-470's droplet run 0b939cc1 at 311933f1 (A-3815, lines 4466–4489), hub/tes
 ## Acceptance criteria
 - [ ] C1. Find how the next launch decides roles.toml changed, and make an edit made before a launch always visible to it, or make the test wait on the observed reload, with the cause recorded on this item.
 - [ ] C2. roles.test.ts passes 10/10 serially as a whole file on the Mac and once on a droplet.
+
+## Comments
+
+### coord · 2026-10-20T06:07:29.102Z
+
+Closed in the D76 triage (2026-10-20, read-only check at dev 9b2cb194, artifact to follow in General): fixed by df8d3155 (T-488): roles.toml edits are re-read before the next launch.

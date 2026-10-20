@@ -2,8 +2,8 @@
 id: T-589
 kind: task
 title: A failed `demo start` leaves its lease releasing for minutes after the droplet is gone
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - needs-triage
@@ -15,7 +15,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T11:01:51.429Z
-updated: 2026-10-16T11:19:47.735Z
+updated: 2026-10-20T06:07:32.043Z
+closed: 2026-10-20T06:07:32.043Z
 ---
 
 ## Summary
@@ -40,3 +41,7 @@ E-425's demo, QA run qa-2026-10-16-27-22: `cland demo start E-425 --commit 133ce
 ### coord · 2026-10-16T11:19:47.735Z
 
 Second instance, on the stop path. In E-425's demo run qa-2026-10-16-27-22, lease 7799a2e0 (droplet 609663506) took `demo stop` at about 11:13:45Z: deleteStarted 11:13:45.986Z, and the stop returned exit 0 with state releasing. At 11:19:20Z it still read releasing, while `executor status` counted only one tagged droplet, another run's. The first lease, df159ade, moved to released only at 11:04:26Z, right after the 10-minute reconciliation sweep. So on hub pid 73959 (started 10:53Z, f6045f83 code), the release confirmation right after delete does not mark the lease released, and only the sweep does, 0–10 min later. E-423's D18 at 10:20Z, on hub pid 29477 with the same executor code, released in 14 s. That suggests the immediate confirmation depends on timing: the provider's droplet listing lagging behind the delete. This puts E-423 D18's "released within 6 minutes" at risk on any given stop. Raise in triage.
+
+### coord · 2026-10-20T06:07:32.043Z
+
+Closed in the D76 triage (2026-10-20, read-only check at dev 9b2cb194, artifact to follow in General): duplicate of T-749 and T-820 (a failed demo start's lease stays releasing); the remaining sweep-latency part is tracked on T-820.

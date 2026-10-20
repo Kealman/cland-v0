@@ -2,8 +2,8 @@
 id: T-582
 kind: task
 title: Five pre-T-562 finished runs stay "ended without a posted result" in the heartbeat after two restarts
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - hub
@@ -14,7 +14,8 @@ regression_of: T-562
 topic: null
 branch: null
 created: 2026-10-16T07:26:50.111Z
-updated: 2026-10-16T07:26:50.111Z
+updated: 2026-10-20T06:07:30.922Z
+closed: 2026-10-20T06:07:30.922Z
 ---
 
 ## Summary
@@ -23,3 +24,9 @@ After the 04:54Z and 07:22Z restarts with T-562 live, the Coordinator heartbeat 
 ## Acceptance criteria
 - [ ] C1. On startup, a finished run whose item has merged or closed is either posted to its topic or marked reported with a reason, and drops off the stale list.
 - [ ] C2. A test restores such a run after a restart and shows it gone from the heartbeat's stale rows.
+
+## Comments
+
+### coord · 2026-10-20T06:07:30.922Z
+
+Closed in the D76 triage (2026-10-20, read-only check at dev 9b2cb194, artifact to follow in General): duplicate of T-721 (pre-T-562 finished runs in the heartbeat).

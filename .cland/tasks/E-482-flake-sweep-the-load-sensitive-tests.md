@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-661
 branch: null
 created: 2026-10-15T09:14:14.206Z
-updated: 2026-10-20T05:10:57.407Z
+updated: 2026-10-20T05:53:14.801Z
 ---
 
 ## Goal
@@ -176,3 +176,7 @@ Criteria: C1 failed (INCONCLUSIVE: only four of five main load rounds and one of
 ### hub · 2026-10-20T05:10:57.407Z
 
 demo a606ddb6-3708-4466-8d58-4dc64e5bcee8 destroyed: lifetime 4368199 ms; cost $0.3033.
+
+### hub · 2026-10-20T05:53:14.801Z
+
+demo ef55ad44-fb42-491d-aae9-2c16cc9dc2f9 created: droplet cland-v0-ef55ad44, commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b, deadline 2026-10-20T07:07:13.395Z.

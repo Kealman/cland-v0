@@ -23,7 +23,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-16T15:34:18.937Z
-updated: 2026-10-16T15:34:26.168Z
+updated: 2026-10-20T06:13:16.791Z
 ---
 
 ## Summary
@@ -94,3 +94,26 @@ After the close, the Coordinator shows the dry run in an ask and runs `cland rel
 - Items: R-577, the release item; Q-601 (the cut, the lanes and the definition of done); E-426, the v0.1.3 release epic and the model for this one; E-424, E-482, E-578 and E-579, the carried-over epics; T-609 and T-610, R-577's own tasks.
 - Skills: `release`, `retro`, `qa`.
 - GLOSSARY: Release, Verdict.
+
+## Plan
+
+```yaml
+stages:
+  - name: release readiness
+    qa:
+      scope: none
+      when: after-stage
+    lanes:
+      - - T-798
+      - - T-940
+      - - T-941
+```
+
+## Comments
+
+### coord · 2026-10-20T05:55:41.133Z
+
+Disposition D75 (stand-in under D24, ask 9b54b5fa, 2026-10-20 ~05:58Z; the stand-in proposed numbering it D74, which E-677 C7 already holds). Applying D71's reasoning, C2 and C3 are demonstrated end to end on fake harnesses:
+- C2: a fresh folder → `cland init` → `cland setup` → onboarding of an empty project → the Coordinator takes the first task to a merge on `dev`.
+- C3: a clone of a public repository → `cland init` → `cland setup` → onboarding → issue import → a first release filed from "what next".
+QA plays the human through the terminal, the CLI and a headless workbench, with the fake Claude, Codex and OpenCode binaries in an isolated HOME. No real model calls; nothing added to the human's own harness configs or trust lists. The live newcomer demos on the human's logins stay the human's choice after the release, offered in the release ask. C1, C4, C5 and C6 are judged as written.

@@ -2,8 +2,8 @@
 id: T-760
 kind: task
 title: The verify tool's advertised schema accepts {dryRun:true}, but the hub answers "invalid verify request"
-state: open
-status: backlog
+state: closed
+status: done
 size: XS
 labels:
   - bug
@@ -15,7 +15,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-17T22:27:11.035Z
-updated: 2026-10-17T22:27:11.035Z
+updated: 2026-10-20T06:07:27.708Z
+closed: 2026-10-20T06:07:27.708Z
 ---
 
 ## Summary
@@ -29,3 +30,9 @@ The advertised schema and the hub's validation agree. Either a bare `{dryRun: tr
 ## Acceptance criteria
 
 - [ ] C1. A T2 test calls the verify tool with exactly the advertised minimal dry-run payload, gets the selection plan or a refusal that names the offending field, and fails before the fix.
+
+## Comments
+
+### coord · 2026-10-20T06:07:27.708Z
+
+Closed in the D76 triage (2026-10-20, read-only check at dev 9b2cb194, artifact to follow in General): fixed by fc46edb1 (T-793): the verify tool's dryRun schema and the hub agree.

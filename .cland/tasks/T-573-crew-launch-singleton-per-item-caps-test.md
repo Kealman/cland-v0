@@ -2,8 +2,8 @@
 id: T-573
 kind: task
 title: "crew-launch singleton/per-item caps test: Sessions.#inject reads the process table after the database is closed (ERR_INVALID_STATE)"
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - bug
@@ -15,7 +15,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T05:11:35.666Z
-updated: 2026-10-16T05:11:35.666Z
+updated: 2026-10-20T06:07:29.779Z
+closed: 2026-10-20T06:07:29.779Z
 ---
 
 ## Summary
@@ -24,3 +25,9 @@ Seen on 2026-10-16 at 05:11Z in T-523's merged-head Mac proof at df98b29b (A-373
 ## Acceptance criteria
 - [ ] C1. Hub shutdown waits for or cancels in-flight session injections before closing the store, or #inject treats a closed store as a stopped hub and returns quietly, with the cause recorded on this item.
 - [ ] C2. A test stops the hub while an injection is pending and sees no ERR_INVALID_STATE; crew-launch.test.ts passes 10/10 serially as a whole file on the Mac.
+
+## Comments
+
+### coord · 2026-10-20T06:07:29.779Z
+
+Closed in the D76 triage (2026-10-20, read-only check at dev 9b2cb194, artifact to follow in General): duplicate of T-769 (crew-launch caps reading the process table).

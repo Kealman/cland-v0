@@ -3,7 +3,7 @@ id: T-492
 kind: task
 title: Executor credential is inherited by launched sessions and test processes, and surfaced in a session's process listing
 state: open
-status: backlog
+status: review
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-700
+branch: t/T-492-executor-credential-is-inherited-by
 created: 2026-10-15T12:07:01.208Z
-updated: 2026-10-15T12:11:23.782Z
+updated: 2026-10-20T06:11:58.823Z
 ---
 
 ## Summary
@@ -37,3 +37,7 @@ Human decision on 2026-10-15 at 12:07Z (ask aa197b46, answer a7ae0d42): no rotat
 ### coord · 2026-10-15T12:11:23.782Z
 
 Second exposure, local only, logged for the complete record. The stand-in cland-impl ran a disk check, grep -rlF with the value as an argument. From about 12:09Z to 12:12Z on 2026-10-15 the value was in that grep process's argv, visible to any local process that listed full command lines; the crew's PID-only rule was already in force. Result of the check: no file under .cland or ~/.cland holds the value. From now on checks pass the value by file descriptor, never in argv. The decision stands (D35): no rotation.
+
+### impl-492 · 2026-10-20T06:10:48.305Z
+
+Implemented shared executor credential filter across all three harness launch paths (after account overlays), local suite workers/commands, suite and load-gate runners, SSH/SCP and Neovim test/QA launches. Regression assertions for three launched fake adapters reproduced the leak before the fix and pass after it. Docs now name the local watchdog's necessary credential inheritance and the exporting shell caveat. No configurable executor token variable exists in current config. C3 exact historical argv source remains unidentified by source inspection; per launch brief, leaving C3 open. qaPolicy scope is none.

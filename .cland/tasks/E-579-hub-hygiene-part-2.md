@@ -2,7 +2,7 @@
 id: E-579
 kind: epic
 title: Hub hygiene, part 2
-state: open
+state: closed
 criterion_seq: 3
 labels:
   - v0.1.4
@@ -12,7 +12,8 @@ blocked_by: []
 topic: topic-663
 branch: null
 created: 2026-10-16T06:36:01.807Z
-updated: 2026-10-20T04:11:25.914Z
+updated: 2026-10-20T05:58:38.645Z
+closed: 2026-10-20T05:58:38.645Z
 ---
 
 ## Summary
@@ -20,10 +21,11 @@ Carried over from E-425 in v0.1.3 by the human's decision on 2026-10-16 (ask 396
 
 ## Definition of done
 - [ ] C1. (D1) A tracker-only commit on dev during an integrated run leaves the run and its evidence valid (T-379).
-  - failed: qa-3 [qa] · 2026-10-20T04:11:25.914Z · note R5: host gate duplicates candidate exclusions at hub/src/executor/droplet/run.ts:118; R4 tests.md:808 misstates inputs.
+  - verified: qa-3 [qa] · run qa-20261020-3g · 2026-10-20T05:58:21.620Z · commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
 - [ ] C2. (D2) While a Coordinator cover holds the slot, the hub refuses other test admissions on the machine (T-475).
+  - verified: qa-3 [qa] · run qa-20261020-3g · 2026-10-20T05:58:21.620Z · commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
 - [ ] C3. (D3) A rulebook commit (`.cland/RULES.md`) on dev during an integrated run keeps the run, and its result covers the new head (moved from E-426 C2, the human, ask 6085e249, 2026-10-16).
-  - failed: qa-3 [qa] · 2026-10-20T04:11:25.914Z · note R4: docs/agents/tests.md:808 says only tracker paths excluded, omitting the rulebook.
+  - verified: qa-3 [qa] · run qa-20261020-3g · 2026-10-20T05:58:21.620Z · commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
 
 ## Plan
 
@@ -116,3 +118,69 @@ Demo leaseca5caebe-3da5-4445-a759-1321ae5b7fa0; machine cland-v0-ca5caebe; creat
 Published folder A-7039: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7039-e-579-qa-evidence-at-824105c5-qa-20261020-3e (README.md). QA note A-7040: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7040-e-579-qa-not-clear-r4-documentation-and-r5-duplicate-exclusions.md.
 
 Criteria: C1 failed (R5: host gate duplicates candidate exclusions at hub/src/executor/droplet/run.ts:118; R4 tests.md:808 misstates inputs.), C3 failed (R4: docs/agents/tests.md:808 says only tracker paths excluded, omitting the rulebook.).
+
+### hub · 2026-10-20T05:52:13.122Z
+
+demo 3ed6be93-b2e3-4354-bc5a-dbdec7638ba5 created: droplet cland-v0-3ed6be93, commit 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b, deadline 2026-10-20T07:06:07.996Z.
+
+### hub · 2026-10-20T05:55:48.326Z
+
+demo 3ed6be93-b2e3-4354-bc5a-dbdec7638ba5 destroyed: lifetime 265392 ms; cost $0.0184.
+
+### qa-3 · 2026-10-20T05:58:21.620Z
+
+verdict: qa
+result: clear
+by: qa-3 [qa]
+run: qa-20261020-3g
+commit: 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b
+findings: [{"severity":"low","text":"R4 says every document×topic cell must be filled, but guidance is intentionally distributed. README lacks refusal/override; Implementer clause lacks exclusion paths/docs-as-inputs. All topics are covered without contradiction and T-475 C3 placements hold. Coordinator d75e0339 explicitly clarified distributed coverage; empty cells are retained in the matrix.","file":"qa/briefs/E-579.md"}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Case | Where | Result | Evidence |
+|---|---|---|---|
+| G0 | local reads | PASS | Clean detached S2, on dev, brief committed, Node24 |
+| G1 | records | PASS | T-379/T-475/T-933 closed; merge ancestors; C1–C3 read |
+| G2 | hub API | PASS | QA hold |
+| D0 | droplet | PASS | One S2 lease |
+| D1 | droplet | PASS | Clean S2, Linux x86_64, 8 cores, Node24.21.0 |
+| D2 | droplet | PASS | Tracker/rulebook/dirty tracker preserve identity; strict head/docs/source/dirty source controls correct |
+| D3 | droplet | PASS | All six admission outcomes correct; unrelated refusal12ms, wrong token10ms |
+| D4 | droplet | PASS | verification-tree9/9, including commit-during-hash controls |
+| D5 | droplet | PASS | suite-candidate5/5, queued/running metadata commits and source rejection |
+| D6 | droplet | PASS | suite-candidate-remote1/1, submitted bundle retained |
+| D7 | droplet | PASS | cover-quiet15/15, pre-fixture guards and real integrated worker |
+| D8 | hub API | PASS | Freshness current; no dev delta |
+| D9 | hub API | PASS | Scratch stopped, process count0, three roots removed, lease released |
+| R1 | records | PASS | T-379 current criteria and input boundary |
+| R2 | records | PASS | Original overlap finding, correction and exact-head green receipt |
+| R3 | records/source | PASS | T-475 corrected history; current shared typed timeout |
+| R4 | docs at S2 | PASS | Distributed coverage and required placements, per d75e0339 |
+| R5 | source at S2 | PASS | One shared exclusion definition; host gate imports it |
+
+All18 checks pass. Criteria marks: C1,C2,C3 verified in qa-20261020-3g. This is a full fresh run at 9b2cb19466abfd8f0c0b20bffe50d9d2419c3e2b; previous qa-20261020-3e is history only, with no runtime evidence reused.
+
+Findings: no high or medium findings; one low brief ambiguity in R4. The literal document×topic matrix has cells empty by design: README lacks cover-quiet/override wording, and the Implementer clause lacks exclusion paths/docs-as-inputs. All topics are present across the three documents without contradiction. Refusal and human-only override appear in both tests.md and the Implementer clause as T-475 C3 requires. Coordinator decision d75e0339-d42b-4935-b9df-34104fa90e22 explicitly confirms distributed coverage. Exact quotes and missing cells remain in R4-matrix.md; no product waiver or QA edit.
+
+Both previous findings are resolved by T-933 merge058a389446c4e7b20c0e193a29535ccf977a309e, an ancestor of S2:
+- R4: docs/agents/tests.md:808–809 now names both .cland/tasks and .cland/RULES.md, agreeing with README:2483–2496.
+- R5: verification-tree.ts:10 exports the sole excludedPaths array; executor/droplet/run.ts:19 imports it and line118 builds host-gate git rm with excludedPaths.map(quote). The duplicated literals are gone. Derived pathspec, local hashing, validation and remote delivery share the definition. Other RULES.md literals concern override policy/help.
+
+Fresh execution: 30/30 targeted tests, zero failures/skips/retries. D2 gives all six true identity controls and null for an explicit stale task head. D3: no cover admitted8ms; unrelated refused12ms with cover-quiet and qa-cover-run; inherited worker admitted10ms; wrong token refused10ms; no-hub admitted0ms; released slot admitted2ms. D4 proves overlapping tracker/rulebook preservation and source/dirty/strict rejection. D5 runs real fixture hubs with fake packages. D6 preserves original remote bundle provenance. D7 includes the real integrated worker. This is the brief's safe substitute: no live integrated run was interrupted and no live dev commit was made.
+
+Stage gates: fresh task.view confirms original queue-hygiene and new demo-fixes stages closed. Both covers are at S2:
+- Linux A-7105, run14b674ab-2d7e-4833-824c-3701b44bf284:3165pass,0fail,8platformskips. c-8 lon1 shard1 cland-v0-57497c77 duration1007.62s/lifetime998s/$0.0693; shard2 cland-v0-d762d069 duration910.62s/lifetime910s/$0.0632. Total wall1027.56s, cost$0.1325.
+- macOS A-7109, runbfb912c4-b764-4ee0-93ca-0de31357e51b:3173/3173, exit0. Phase runner durations25.75/168.33/964.99/48.46s, not an end-to-end wall; local cost not applicable.
+These are Coordinator stage receipts read by QA, not new suite submissions.
+
+Demo accounting: Linuxx86_64,c-8,Node24.21.0; machinecland-v0-3ed6be93; lease3ed6be93-b2e3-4354-bc5a-dbdec7638ba5; created05:51:10.052Z, deadline07:06:07.996Z. Confirmed released, lifetime265392ms, cost$0.01843. Scratch stop exit0; zero scoped processes; all three scratch roots removed. Final freshness.current=true; clean worktree. No local tests/suites/stress, source fixes, override setting, second lease, dev commit, push or merge enqueue.
+
+Evidence report A-7115: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7115-e-579-qa-clear-at-s2-both-findings-fixed-fresh-30-30.md
+Complete fresh bundle A-7114: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-7114-e-579-fresh-s2-qa-evidence-qa-20261020-3g
+Includes complete logs, scripts, matrix, source diff/references, stage receipts, case records, cleanup and cost receipts, source artifact hashes.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-20T05:58:38.645Z
+
+Closed on qa-3's clear at release candidate 2, 9b2cb194 (fresh run qa-20261020-3g, A-7115 / A-7114). C1–C3 verified. T-933 fixed the earlier R4/R5 findings.

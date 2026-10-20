@@ -2,8 +2,8 @@
 id: T-571
 kind: task
 title: Load-gate repetition failures keep no assertion text, so a remote 4/5 can't be diagnosed from its log
-state: open
-status: backlog
+state: closed
+status: done
 size: S
 labels:
   - hub
@@ -14,7 +14,8 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-16T04:36:25.357Z
-updated: 2026-10-16T06:43:44.254Z
+updated: 2026-10-20T06:07:30.367Z
+closed: 2026-10-20T06:07:30.367Z
 ---
 
 ## Summary
@@ -29,3 +30,7 @@ Found by impl-557 on 2026-10-16, and confirmed by its Reviewer in A-3706. When a
 ### coord · 2026-10-16T06:43:44.254Z
 
 Second report, from impl-491 on T-491 (A-3790, spend C2 4/5 with no assertion text). load-gate-reporter.ts stores only file, name, passed and skipReason. load-gate.ts consumes the counts and forwards no failure detail, and the phase root is removed afterwards, so nothing can be recovered. C1 should keep each failed repetition's error, stack and stdout excerpt.
+
+### coord · 2026-10-20T06:07:30.367Z
+
+Closed in the D76 triage (2026-10-20, read-only check at dev 9b2cb194, artifact to follow in General): duplicate of T-720 (load-gate repetition failures keep their assertion text).
