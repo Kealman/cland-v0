@@ -3866,15 +3866,21 @@ carry Web with Neovim once. Tier commands infer Web only for candidates declarin
 retain its coverage. Root check builds the browser bundle; hand-run package suites
 check its source receipt and build once before workers if needed.
 
-T-991 supplies the browser dependency, installation commands and first Web file.
-A candidate with no Web files keeps its current phases. The runner's
-`--tier Web` selects only browser files; the phase's 4 s/test and 40 s/phase budgets
-follow duration report/enforce mode. A separate 60 s gross guard reaps hangs; Web
-gets no load-gate repetitions. Browser fixtures use isolated Headless Shell
-profiles and scratch environments. See [the Web phase](../docs/agents/tests.md#web-phase).
+`npm install` prepares the bundle and pinned Chrome Headless Shell in node_modules.
+`npm run test:web:install -- --with-deps` repairs the shell and Linux libraries.
+`npm run test:web` queues selected Web files; `node --test web/test/smoke.test.ts`
+runs one browser file after a build. Fixtures use isolated Headless Shell profiles,
+scratch HOME/XDG/Git and a `web.link` frame on a scratch `projectHub`. They retain
+CSP, poll through page evaluation, close each context, save failure traces and
+prove the browser process group and hub edges are gone before deleting roots.
+The 4 s/test and 40 s/phase budgets follow duration report/enforce mode; a separate
+60 s gross guard reaps hangs. Web gets no load-gate repetitions. See
+[the Web phase](../docs/agents/tests.md#web-phase) and
+[browser fixture usage](../web/README.md#browser-tests).
 
 Missing browser executables or libraries produce "Web unavailable on this machine"
 with the reason and `webPhase: {status: "not-run", reason}` in the durable job and
 result receipt. Other phases continue. This supplies no passing Web receipt and
-is ineligible for cache reuse. The candidate prerequisite module is supplied by
-T-991; T-993 supplies Linux browser libraries. A broken probe remains an error.
+is ineligible for cache reuse. The candidate prerequisite module resolves the pinned Headless Shell and checks
+Linux shared libraries without launching a browser. T-993 supplies Linux browser
+libraries. A broken probe remains an error.

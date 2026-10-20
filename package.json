@@ -28,6 +28,11 @@
     "test:static": "node hub/test/lint-dictionary-membership.ts && node hub/test/lint-tracker-container-source.ts && node hub/test/lint-repository-tier-plan.ts && node hub/test/lint-version-source.ts && node hub/test/lint-skill-provenance.ts && node hub/test/lint-web-workspace.ts && node hub/test/lint-wire-imports.ts",
     "test:nvim-fixtures": "node hub/test/record-nvim-frames.ts",
     "build": "npm run build --workspace web",
-    "prepare": "npm run build"
+    "prepare": "npm run build && npm run test:web:install",
+    "test:web:install": "node web/test/install-browser.ts",
+    "test:web": "node hub/test/run-suite.ts --tier Web"
+  },
+  "devDependencies": {
+    "playwright-core": "1.64.1"
   }
 }

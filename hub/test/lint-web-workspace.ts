@@ -18,7 +18,7 @@ assert.equal(webConfig.compilerOptions.jsx, 'react-jsx');
 assert.deepEqual(root.workspaces, ['hub', 'web']);
 assert.equal(web.devDependencies.typescript, undefined, 'reuse the root compiler');
 assert.match(root.scripts.typecheck, /npm run typecheck --workspace web/);
-assert.equal(root.scripts.prepare, 'npm run build');
+assert.equal(root.scripts.prepare, 'npm run build && npm run test:web:install');
 assert.equal(root.scripts.build, 'npm run build --workspace web');
 assert.match(root.scripts.check, /^npm run typecheck && npm run build && /, 'verification builds the bundle after typecheck on local and remote executors');
 console.log('web workspace: strict flags, shared compiler and post-typecheck build plan');

@@ -12,7 +12,9 @@
       "A-7703",
       "A-7699",
       "A-8040",
-      "A-8038"
+      "A-8038",
+      "A-8008",
+      "A-8009"
     ],
     "commit": "44097bad32444c7db96492ef15d182c819166f99"
   },
@@ -2127,6 +2129,10 @@
     "nvim/test/startup-budget.test.ts": {
       "seconds": 13.721553,
       "tests": 3
+    },
+    "web/test/smoke.test.ts": {
+      "seconds": 0.965907,
+      "tests": 1
     }
   },
   "tests": {
@@ -5470,7 +5476,8 @@
     "nvim/test/startup-budget.test.ts::a slowed task.list trips the rendered startup time budget": 6.382719,
     "nvim/test/startup-budget.test.ts::bodies added to the first task.list trip the payload byte budget": 3.528401,
     "nvim/test/startup-budget.test.ts::thousand-item workbench startup fits the time and first-payload budgets": 3.810433,
-    "nvim/test/ui.test.ts::a cold Neovim restart restores Sessions left and Items right from version-2 preferences": 0.678077
+    "nvim/test/ui.test.ts::a cold Neovim restart restores Sessions left and Items right from version-2 preferences": 0.678077,
+    "web/test/smoke.test.ts::the web shell uses a one-time edge link, strict CSP and isolated browser fixtures": 0.965907
   },
   "allow": {
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {

@@ -13,23 +13,23 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { FakeClock } from './fake-clock.ts';
-import type { TierManifest } from '../src/suite-shards.ts';
+import { serializeTierManifest, type TierManifest } from '../src/suite-shards.ts';
 import type { HubStatus, VerificationQueue } from '../src/protocol.ts';
 
 async function fixture(t: TestContext, coldViolation = false) {
   const clock = new FakeClock();
   const head = 'a'.repeat(40), base = 'b'.repeat(40);
   const repository: TierManifest = JSON.parse(await readFile(new URL('./tiers.json', import.meta.url), 'utf8'));
-  const paths = Array.from({ length: Object.keys(repository.tests).length }, (_, n) => `hub/test/case-${String(n).padStart(4, '0')}.test.ts`);
+  const paths = Object.keys(repository.tests).map((path, n) => `${path.startsWith('web/') ? 'web' : 'hub'}/test/case-${String(n).padStart(4, '0')}.test.ts`);
   const files = new Map(paths.map(path => [path, '// component fixture\n']));
   const tiers = Object.values(repository.tests).map(entry => typeof entry === 'string' ? entry : entry.tier);
-  files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: Object.fromEntries(paths.map((path, n) => [path, tiers[n]])) }));
+  files.set('hub/test/tiers.json', serializeTierManifest({ version: 1, tests: Object.fromEntries(paths.map((path, n) => [path, tiers[n]!])) }));
   files.set('hub/test/lint-baseline.json', JSON.stringify({ version: 1, files: Object.fromEntries(paths.map(path => [path, {}])) }));
   const previous = new Map(files);
   const planted = 'hub/test/new-violation.test.ts';
   if (coldViolation) {
     files.set(planted, 'sleep(10);\n');
-    files.set('hub/test/tiers.json', JSON.stringify({ version: 1, tests: { ...JSON.parse(files.get('hub/test/tiers.json')!).tests, [planted]: 'T2' } }));
+    files.set('hub/test/tiers.json', serializeTierManifest({ version: 1, tests: { ...JSON.parse(files.get('hub/test/tiers.json')!).tests, [planted]: 'T2' } }));
   }
   const snapshots = new Map([[head, files], [base, previous]]);
   let dev = base;
@@ -105,6 +105,7 @@ async function fixture(t: TestContext, coldViolation = false) {
   // Bounded fixture writes avoid flooding the native I/O pool with one worker
   // per manifest path before the admission request under test.
   mkdirSync(join(root, 'hub/test'), { recursive: true });
+  mkdirSync(join(root, 'web/test'), { recursive: true });
   for (const [path, text] of files) writeFileSync(join(root, path), text);
   const commandConfig = await verificationFixture(root, { typecheck: 'true', testScript: 'true' });
   await mkdir(join(root, '.cland'), { recursive: true });

@@ -1,0 +1,122 @@
+// Web: one scratch projectHub and Headless Shell per file; a context per case.
+import assert from 'node:assert/strict';
+import type { TestContext } from 'node:test';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { once } from 'node:events';
+import { mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { Page } from 'playwright-core';
+import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
+import { projectHub, tempProject } from '../../hub/test/harness.ts';
+import { onCleanup, ownProcess, captureProcess } from '../../hub/test/process-cleanup.ts';
+import { until } from '../../hub/test/until.ts';
+import { browserCache, webPrerequisite } from './prerequisite.ts';
+import { askHubFrame } from '../../hub/src/cli/socket-client.ts';
+
+const traces = fileURLToPath(new URL('../test-results/', import.meta.url));
+
+/** Poll in Playwright's isolated evaluation world; never inject a script tag or eval. */
+export async function pageUntil(page: Page, predicate: () => boolean, what: string): Promise<void> {
+  await until(() => page.evaluate(predicate), { what, timeoutMs: 3000 });
+  assert.equal(await page.evaluate(predicate), true, what);
+}
+
+export async function webFixture(t: TestContext) {
+  const root = await tempProject(t, 'w-');
+  // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
+  // Keep it short and owned, including the browser's artifacts and crash paths.
+  const previousTmp = process.env.TMPDIR;
+  process.env.TMPDIR = root;
+  onCleanup(t, () => { if (previousTmp === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = previousTmp; });
+  process.env.PLAYWRIGHT_BROWSERS_PATH = browserCache;
+  const env = await accountFixtureEnvironment({ TMPDIR: root, TMP: root, TEMP: root, PLAYWRIGHT_BROWSERS_PATH: browserCache });
+  const hub = await projectHub(t, root);
+  const prerequisite = await webPrerequisite();
+  if (!prerequisite.available) throw new Error(prerequisite.reason);
+  const { chromium } = await import('playwright-core');
+  const server = await chromium.launchServer({ executablePath: prerequisite.executablePath, headless: true, env, timeout: 15_000 });
+  const child = server.process();
+  const exited = once(child, 'exit'); // Armed before any shutdown, including assertion failure.
+  const identity = captureProcess(child.pid);
+  const census = async () => {
+    const result = await promisify(execFile)('ps', ['-e', '-o', 'pid=,pgid='], { cwd: root, env });
+    return result.stdout.split('\n').map(line => line.trim().split(/\s+/).map(Number)).filter(([, group]) => group === child.pid).map(([pid]) => pid!);
+  };
+  const cleanupProcess = ownProcess(undefined, child.pid);
+  let browser: Awaited<ReturnType<typeof chromium.connect>> | undefined;
+  let closing: Promise<void> | undefined;
+  const close = () => closing ??= (async () => {
+    let before: number[] = [];
+    try { before = await census(); } finally {
+      const killGuard = setTimeout(() => { void server.kill().catch(() => {}); }, 5000);
+      try { await browser?.close(); } finally {
+        try { await server.close(); await exited; } finally {
+          clearTimeout(killGuard);
+          try { await cleanupProcess(); } finally { await hub.stop(); await hub.stopped; }
+        }
+      }
+    }
+    await until(() => captureProcess(child.pid) === null, { what: 'Headless Shell PID reaped', timeoutMs: 5000 });
+    assert.equal(captureProcess(child.pid), null);
+    await until(async () => (await census()).length === 0, { what: 'browser process-group census empty', timeoutMs: 5000 });
+    assert.deepEqual(await census(), [], 'no browser descendant outlives cleanup');
+    t.diagnostic(`Web fixture census: browser group ${child.pid}; before ${before.length}; after 0; scratch hub stopped`);
+    // A stopped receipt alone is not closed sockets/discovery: prove both edges refuse.
+    await assert.rejects(askHubFrame(hub.discovery, { type: 'web.link' }, 500, {}));
+  })();
+  onCleanup(t, close);
+  assert.equal(identity?.group, child.pid, 'Headless Shell owns its process group');
+  assert.match(child.spawnfile, /(?:chrome-headless-shell|headless_shell)/);
+  const profile = child.spawnargs.find(arg => arg.startsWith('--user-data-dir='));
+  assert.ok(profile?.startsWith(`--user-data-dir=${root}/`), 'profile belongs to the scratch root');
+  browser = await chromium.connect(server.wsEndpoint(), { timeout: 15_000 });
+  let serial = 0;
+  const tracePaths: string[] = [];
+  const contexts = new Set<unknown>();
+  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>) {
+    const context = await browser!.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
+    assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
+    context.setDefaultTimeout(3000);
+    let passed = false;
+    let tracing = false;
+    try {
+      await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+      tracing = true;
+      await context.addInitScript(() => {
+        class StubNotification {
+          static permission = 'granted';
+          static async requestPermission() { return 'granted'; }
+          close() {}
+        }
+        Object.defineProperty(globalThis, 'Notification', { value: StubNotification, configurable: true });
+      });
+      const { url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+      const origin = new URL(url).origin;
+      const requests: string[] = [];
+      context.on('request', request => requests.push(request.url()));
+      const page = await context.newPage();
+      await page.goto(url, { waitUntil: 'load' });
+      await pageUntil(page, () => document.querySelector('nav[aria-label="Areas"]')?.children.length === 7, 'seven rendered rail areas');
+      assert.equal(page.url(), `${origin}/`);
+      assert.ok((await context.cookies()).some(cookie => /^cland_[a-f0-9]{12}$/.test(cookie.name) && cookie.httpOnly));
+      assert.equal((await context.request.get(url)).status(), 401, 'one-time frame link was spent');
+      await body(page, origin, requests);
+      passed = true;
+    } finally {
+      try {
+        if (tracing && passed) await context.tracing.stop();
+        else if (tracing) {
+          await mkdir(traces, { recursive: true });
+          const path = join(traces, `${process.pid}-${serial++}.zip`);
+          await context.tracing.stop({ path });
+          tracePaths.push(path);
+          t.diagnostic(`Web failure trace: ${path}`);
+        }
+      } finally { await context.close(); }
+    }
+    assert.equal(browser!.contexts().length, 0, 'context explicitly closed');
+  }
+  return { root, hub, browser, server, close, pageCase, tracePaths };
+}

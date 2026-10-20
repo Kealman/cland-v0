@@ -1577,13 +1577,28 @@ The candidate's `supportsWebPhase` runner capability adds a recorded Web command
 to tier-based verification; other projects and older candidates retain their
 commands. Close shards place Web with the shard that owns Neovim so it runs once.
 
-The browser fixture/dependency slice (T-991) supplies the first Web test file and
-installation commands. Until it lands, a manifest without Web files retains its
-existing phases. `node hub/test/run-suite.ts --tier Web` selects only the candidate's
-Web files; the root check builds the browser bundle, and a hand-run package suite
-checks its source receipt or builds once before workers when needed. Browser
-fixtures must use isolated Chrome Headless Shell profiles and scratch environments;
-see the Web workspace's browser-test documentation when T-991 lands.
+`npm install` builds the bundle and installs the lockfile-pinned Headless Shell
+in `node_modules/playwright-core/.local-browsers`. Use `npm run test:web:install`
+to repair it (`-- --with-deps` for Linux system libraries). Never launch the
+human's installed browser or normal profile. `npm run test:web` runs the selected
+Web files through suite admission; `node --test web/test/smoke.test.ts` is a free
+targeted file after `npm run build`. Crew full suites still go through mode-free
+`cland verify` after source review. The root check builds once before verification;
+the package runner checks the source receipt and builds once before workers only
+when a hand run lacks a current bundle.
+
+Use `web/test/harness.ts`: one scratch `projectHub` and Headless Shell per file,
+one fresh context per sequential case. The fixture mints a test-client `web.link`
+frame, trades it through `/auth`, stubs `Notification` in an init script and keeps
+CSP enabled. Poll with `pageUntil`/`page.evaluate`; retain the final DOM assertion.
+Fixture setup and behavioural waits have separate bounds. All homes, profiles,
+TMPDIR and Git state are scratch-owned, with filtered child environments.
+Failures save trace ZIPs in ignored `web/test-results/`; publish them through
+`artifact.create`. Teardown observes browser exit and an empty process-group
+census, closes the scratch hub and its edges, then removes directories. The smoke
+also proves context isolation, one-time links, same-origin fonts/requests, strict
+inline-script CSP and trace/cleanup on a planted failure. See
+[web/README.md](../../web/README.md#browser-tests).
 
 The candidate's `web/test/prerequisite.ts` exports `webPrerequisite()` and returns
 `{available: true, executablePath}` or `{available: false, reason}` without
@@ -1593,4 +1608,7 @@ with `status: "not-run"` and the reason. It skips browser workers and continues
 the other phases. Results retain `webPhase` in the durable job and result JSON;
 an unavailable phase supplies no passing Web evidence and cannot be reused as a
 green cache receipt. A broken or missing probe with Web selected is an error.
-T-991 supplies this probe; T-993 installs the Linux browser libraries.
+The probe checks the pinned executable and, on Linux, the shell and bundled shared
+libraries with bounded `ldd` calls in a sealed scratch environment. It launches
+no browser; the fixture launches exactly its returned executable. T-993 supplies
+the Linux browser libraries.

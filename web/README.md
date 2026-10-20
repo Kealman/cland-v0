@@ -59,3 +59,54 @@ WOFF2 signatures, licences, no absolute external resource URL in HTML/CSS and no
 external literal import/fetch/XHR/WebSocket/EventSource target in JS. React's diagnostic links,
 namespace strings and OFL licence links are metadata, not network requests.
 Browser request observation belongs to T-991's Web phase.
+
+## Browser tests
+
+The separate **Web** phase uses `node:test`, the pinned `playwright-core` and its
+Chrome Headless Shell. `npm install` builds the bundle and installs only the
+headless shell under `node_modules/playwright-core/.local-browsers`; no installed
+Chrome, Safari, human profile or GUI browser is used. To repair the test binary,
+run `npm run test:web:install`; on a Linux executor, pass `-- --with-deps` to install
+the shell's OS libraries too. Executor snapshots must be refreshed after a lockfile
+change; the preparation step's `npm ci` installs the pinned shell on a cold image.
+
+```sh
+npm run test:web                     # just Web, under the normal suite queue
+node --test web/test/smoke.test.ts    # targeted file; build first with npm run build
+```
+
+Full runs place Web after the hub phases, with resource `machine`, two local
+workers and four droplet workers. Web is outside T0–T3. A `web/**` diff selects
+`web-only`: Web plus hub and Neovim smoke. Other package selections retain
+`web/test/smoke.test.ts`. Protocol, shared wire, edge and mixed web/package diffs
+force full. Task verification includes Web even with the T0–T2 cap; merge batches
+exclude it. Periodic dev, integrated, stage, epic, release and soak runs include it.
+The root check builds `web/dist` once; a hand-run package suite reuses that source
+receipt or builds once before workers if it is missing/stale.
+
+`test/harness.ts` creates one scratch `projectHub` and one Headless Shell per file.
+Use `webFixture(t)` and `fixture.pageCase(t, body)` in sequential cases. Each case
+gets a fresh context, a one-time `web.link` minted by a local test-client frame,
+a real `/auth` cookie trade and a `Notification` init stub. HOME/XDG/Git and child
+environments use the shared credential filter. Browser profiles and TMPDIR paths
+belong to short scratch roots. Keep CSP enabled; `pageUntil` polls with
+`page.evaluate`, retaining the final assertion. Observe the exact DOM/event
+boundary before asserting a result, with setup bounded separately.
+
+A failed case writes a Playwright trace ZIP under ignored `web/test-results/` and
+closes its context. Publish the file with `artifact.create` when reporting a
+failure. Teardown explicitly closes the browser, observes its process exit and
+an empty process-group census, then stops the scratch hub before removing roots.
+The smoke includes a planted failure to prove trace writing and context disposal.
+The budgets are 4 seconds per top-level test and 40 seconds for the phase, currently
+reported under the repository's duration report mode. A 60-second gross hang
+guard reaps a stuck phase. Web never receives load-gate repetitions; browser
+assertions use deterministic facts and bounded waits, not latency assertions.
+
+The runner calls `test/prerequisite.ts` before a selected Web phase. It resolves
+the pinned package's Headless Shell revision and checkout-local executable; Linux
+also checks the shell and bundled shared libraries with bounded `ldd` calls in a
+sealed scratch environment. It launches no browser. Until T-993 supplies Linux
+libraries, an incapable droplet reports Web unavailable, with no passing Web
+receipt, while preserving other phase results. The fixture uses the probe's exact
+executable path, with no fallback to an installed browser.
