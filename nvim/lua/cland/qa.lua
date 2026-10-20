@@ -104,13 +104,15 @@ function M.state()
     sessions[#sessions + 1] = { name = s.name, role = s.role, label = s.label, harness = s.harness, model = s.model, state = s.state, status = s.status, live = s.live, launched = s.launched, item = s.item }
   end
   local coordinator = state.coordinator()
+  local kinds = vim.empty_dict()
+  kinds.left, kinds.right = require('cland.layout').panel_kind('left'), require('cland.layout').panel_kind('right')
   return vim.deepcopy({
     project = S.project,
     root = S.root,
     hub = { state = S.hub.state, detail = S.hub.detail },
     mode = api.nvim_get_mode().mode,
     view = S.ui.view,
-    panels = { left = S.ui.left, right = S.ui.right, dock = S.ui.dock },
+    panels = { left = S.ui.left, right = S.ui.right, dock = S.ui.dock, kinds = kinds },
     sessions = sessions,
     coordinator = coordinator and coordinator.name or nil,
     roles = S.roles,

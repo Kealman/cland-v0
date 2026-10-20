@@ -107,7 +107,8 @@ function M.open(id)
   id = M.owner(id or require('cland.motions').item_of(require('cland.motions').subject()))
   if not id then return state.say('gp: select an epic or an item in an epic') end
   M.stale[id] = true
-  if not state.S.ui.left then require('cland.layout').toggle_left() end
+  local layout = require('cland.layout')
+  if not layout.panel_window('items') then layout.place_panel('items', layout.panel_home('items')) end
   require('cland.layout').show({ kind = 'plan', id = id }, { insert = false })
 end
 

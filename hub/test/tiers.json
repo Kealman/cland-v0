@@ -534,6 +534,7 @@
     "nvim/test/nvim-path.test.ts": "T3",
     "nvim/test/palette-component.test.ts": "T2",
     "nvim/test/palette.test.ts": "T3",
+    "nvim/test/panel-placement-component.test.ts": "T2",
     "nvim/test/plan-component.test.ts": "T2",
     "nvim/test/plan.test.ts": "T3",
     "nvim/test/qa-shipped.test.ts": "T4",

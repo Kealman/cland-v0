@@ -40,7 +40,7 @@ local function build(key)
   local out = {}
   if key == 'actions' then
     for _, a in ipairs(require('cland.actions').all()) do
-      out[#out+1] = {glyph='›', ghl='ClandBlue', text=first_line(a.title) .. (a.command and ('  ' .. a.command) or ''),
+      out[#out+1] = {glyph='›', ghl='ClandBlue', title=first_line(a.title), text=first_line(a.title) .. (a.command and ('  ' .. a.command) or ''),
         keyhint=a.key, run=a.run, value=a.id}
     end
   else
@@ -83,6 +83,13 @@ function M.parse(query)
   return nil, vim.trim(query)
 end
 
+local function better(a, b)
+  if not b then return true end
+  if a.literal and not b.literal then return true end
+  if b.literal and not a.literal then return false end
+  return (a.score or 0) > (b.score or 0)
+end
+
 local function match(entries, text)
   local out = {}
   if text == '' then
@@ -97,8 +104,16 @@ local function match(entries, text)
   end
   local res = vim.fn.matchfuzzypos(keys, text, { key = 'text' })
   for i, k in ipairs(res[1]) do
-    out[i] = { e = entries[k.idx], pos = res[2][i], score = res[3] and res[3][i] or 0 }
+    local e = entries[k.idx]
+    -- Existing title queries (e.g. "sessions panel") must keep selecting their
+    -- action when a new command path also happens to contain those words.
+    local literal = e.title and e.title:lower():find(text:lower(), 1, true) ~= nil
+    out[i] = { e = e, pos = res[2][i], score = res[3] and res[3][i] or 0, literal = literal, rank = i }
   end
+  table.sort(out, function(a, b)
+    if better(a, b) then return true end
+    return not better(b, a) and a.rank < b.rank
+  end)
   return out
 end
 
@@ -152,7 +167,7 @@ local function render(p)
     end
   end
   local lines, marks, shown, at = {}, {}, {}, {}
-  local best_score, best_sel = -math.huge, 1
+  local best, best_sel = nil, 1
   for _, grp in ipairs(groups) do
     local n = #grp.matched
     lines[#lines + 1] = ' ' .. grp.def.label:upper() .. ' · ' .. n
@@ -180,7 +195,7 @@ local function render(p)
       local row = #lines - 1
       shown[#shown + 1] = e
       at[#shown] = #lines
-      if (m.score or 0) > best_score then best_score, best_sel = m.score or 0, #shown end
+      if better(m, best) then best, best_sel = m, #shown end
       marks[#marks + 1] = { row, 1, { end_col = 1 + #e.glyph, hl_group = e.dim and 'ClandDim' or e.ghl } }
       if e.dim then
         marks[#marks+1] = {row, 0, {end_col=#lines[#lines], hl_group='ClandDim'}}

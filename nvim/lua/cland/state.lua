@@ -35,7 +35,9 @@ function M.reset(opts)
       view = { kind = 'thread', id = 'general' },
       hist = {},
       left = false,
-      right = nil, -- 'inbox' | 'sessions' | 'topics'
+      left_kind = 'items', -- left stays a visibility boolean for existing QA/preferences readers
+      right = nil, -- 'items' | 'inbox' | 'sessions' | 'topics'
+      panel_homes = { items = 'left', inbox = 'right', sessions = 'right', topics = 'right' },
       dock = false,
       preset = nil,
       sizes = vim.empty_dict(), -- manual left/right widths and dock height; absent means use the formula

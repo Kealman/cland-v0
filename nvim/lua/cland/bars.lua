@@ -150,17 +150,16 @@ end
 function _G.ClandTopClick(minwid)
   vim.schedule(function()
     local layout = require('cland.layout')
-    local ui = state.S.ui
     if minwid == 1 then
       local coord = state.coordinator()
       if coord then
         layout.show({ kind = 'session', id = coord.name }, { insert = true })
-      elseif ui.right ~= 'sessions' then
+      elseif not layout.panel_window('sessions') then
         layout.right_panel('sessions')
       end
-    elseif minwid == 2 and ui.right ~= 'inbox' then
+    elseif minwid == 2 and not layout.panel_window('inbox') then
       layout.right_panel('inbox')
-    elseif minwid == 3 and ui.right ~= 'sessions' then
+    elseif minwid == 3 and not layout.panel_window('sessions') then
       layout.right_panel('sessions')
     end
   end)

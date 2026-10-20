@@ -148,33 +148,61 @@ end
 
 -- Panels -------------------------------------------------------------------------------------------
 
-function M.open_left()
-  if valid(M.win.left) then
-    return
+--- The panel occupying a side, independent of its default home. A hidden side has no kind.
+function M.panel_kind(side)
+  local ui = state.S.ui
+  if side == 'left' then return ui.left and ui.left_kind or nil end
+  if side == 'right' then return ui.right end
+end
+
+function M.panel_home(kind)
+  return state.S.ui.panel_homes[kind]
+end
+
+--- Find the physical window for a panel; the explorer may temporarily cover the right side.
+function M.panel_window(kind)
+  for _, side in ipairs({ 'left', 'right' }) do
+    if M.panel_kind(side) == kind and valid(M.win[side]) then return M.win[side] end
   end
+  if kind == 'topics' and valid(M.win.dock) then return M.win.dock end
+end
+
+local function set_panel(side, kind)
+  local ui = state.S.ui
+  if side == 'left' then
+    ui.left = kind ~= nil
+    if kind then ui.left_kind = kind end
+  else
+    ui.right = kind
+  end
+end
+
+--- Build a physical side window from its chosen kind. This does not change homes or visibility.
+function M.open_side(side, kind)
   local panels = mods()
-  M.win.left = api.nvim_open_win(panels.buf('items'), false, { split = 'left', win = -1, width = (M.widths()) })
-  panel_opts(M.win.left)
-  panels.render('items', M.win.left)
+  local opening_sessions = kind == 'sessions' and (not valid(M.win[side]) or api.nvim_win_get_buf(M.win[side]) ~= panels.buf('sessions'))
+  local b = panels.buf(kind)
+  if valid(M.win[side]) then
+    api.nvim_win_set_buf(M.win[side], b)
+  else
+    local lw, rw = M.widths()
+    if side == 'right' and valid(M.win.dock) then
+      M.win[side] = api.nvim_open_win(b, false, { split = 'below', win = M.win.dock })
+    else
+      M.win[side] = api.nvim_open_win(b, false, { split = side, win = -1, width = side == 'left' and lw or rw })
+    end
+  end
+  panel_opts(M.win[side])
+  panels.render(kind, M.win[side])
+  if opening_sessions then require('cland.sessions').poll_accounts() end
+end
+
+function M.open_left()
+  M.open_side('left', M.panel_kind('left') or 'items')
 end
 
 function M.open_right(kind)
-  local panels = mods()
-  local opening_sessions = kind == 'sessions' and (not valid(M.win.right) or api.nvim_win_get_buf(M.win.right) ~= panels.buf('sessions'))
-  local b = panels.buf(kind)
-  if valid(M.win.right) then
-    api.nvim_win_set_buf(M.win.right, b)
-  else
-    local _, rw = M.widths()
-    if valid(M.win.dock) then
-      M.win.right = api.nvim_open_win(b, false, { split = 'below', win = M.win.dock })
-    else
-      M.win.right = api.nvim_open_win(b, false, { split = 'right', win = -1, width = rw })
-    end
-  end
-  panel_opts(M.win.right)
-  panels.render(kind, M.win.right)
-  if opening_sessions then require('cland.sessions').poll_accounts() end
+  M.open_side('right', kind)
 end
 
 local function dock_height()
@@ -223,39 +251,48 @@ function M.fix()
   end
 end
 
-function M.toggle_left()
+--- Explicit placement is idempotent: move the panel and remember its home for this workbench.
+function M.place_panel(kind, side)
+  if not M.panel_home(kind) or (side ~= 'left' and side ~= 'right') then
+    return state.say(':Cland panel items|inbox|sessions|topics left|right', 'ClandRedBar')
+  end
   local ui = state.S.ui
   ui.preset = nil
-  ui.left = not ui.left
-  if ui.left then
-    M.open_left()
-    M.fix()
-    focus(M.win.left)
-  else
-    close_panel('left')
+  for _, other in ipairs({ 'left', 'right' }) do
+    if other ~= side and M.panel_kind(other) == kind then
+      set_panel(other, nil)
+      close(other)
+    end
   end
+  ui.panel_homes[kind] = side
+  set_panel(side, kind)
+  if kind == 'topics' and ui.dock then ui.dock = false; close('dock') end
+  M.open_side(side, kind)
+  M.fix()
+  focus(M.win[side])
   state.changed()
 end
 
---- ␣n / ␣s / ␣t: one right panel; pressing the active key hides it.
-function M.right_panel(kind)
+--- Panel keys toggle on the panel's home side, replacing another occupant without moving its home.
+function M.toggle_panel(kind)
+  local side = M.panel_home(kind)
   local ui = state.S.ui
   ui.preset = nil
-  if ui.right == kind then
-    ui.right = nil
-    close_panel('right')
+  if M.panel_kind(side) == kind then
+    set_panel(side, nil)
+    close_panel(side)
     state.changed()
     return
   end
-  ui.right = kind
-  if kind == 'topics' and ui.dock then
-    ui.dock = false
-    close('dock')
-  end
-  M.open_right(kind)
-  M.fix()
-  focus(M.win.right)
-  state.changed()
+  M.place_panel(kind, side)
+end
+
+function M.toggle_left()
+  M.toggle_panel('items')
+end
+
+function M.right_panel(kind)
+  M.toggle_panel(kind)
 end
 
 --- ␣T: topics docked above the right panel (the Watch layout); the panel below shows the inbox.
@@ -264,7 +301,10 @@ function M.toggle_dock()
   ui.preset = nil
   ui.dock = not ui.dock
   if ui.dock then
-    if ui.right == nil or ui.right == 'topics' then
+    for _, side in ipairs({ 'left', 'right' }) do
+      if M.panel_kind(side) == 'topics' then set_panel(side, nil); close(side) end
+    end
+    if ui.right == nil and not M.panel_window('inbox') then
       ui.right = 'inbox'
       M.open_right('inbox')
     end
@@ -510,6 +550,7 @@ function M.preset(name)
   close('dock')
   close('right')
   close('left')
+  ui.left_kind = 'items'
   ui.left, ui.right, ui.dock = p.left, p.right, p.dock
   if p.left then
     M.open_left()
@@ -590,11 +631,9 @@ end
 function M.render()
   local panels = mods()
   local ui = state.S.ui
-  if valid(M.win.left) then
-    panels.render('items', M.win.left)
-  end
-  if valid(M.win.right) and ui.right then
-    panels.render(ui.right, M.win.right)
+  for _, side in ipairs({ 'left', 'right' }) do
+    local kind = M.panel_kind(side)
+    if valid(M.win[side]) and kind then panels.render(kind, M.win[side]) end
   end
   if valid(M.win.dock) then
     panels.render('topics', M.win.dock)
@@ -615,7 +654,7 @@ end
 
 -- Flush a pending human resize before a layout operation; pending closes exclude redistribution.
 -- Programmatic changes then establish the new automatic baseline.
-for _, name in ipairs({ 'centre', 'open_left', 'open_right', 'open_dock', 'fix', 'toggle_left', 'right_panel', 'toggle_dock', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'show_split_view', 'preset', 'build' }) do
+for _, name in ipairs({ 'centre', 'open_side', 'open_left', 'open_right', 'open_dock', 'fix', 'place_panel', 'toggle_panel', 'toggle_left', 'right_panel', 'toggle_dock', 'apply_view', 'show', 'back', 'toggle_view', 'show_split', 'show_split_view', 'preset', 'build' }) do
   local operation = M[name]
   M[name] = function(...)
     if changing then return operation(...) end

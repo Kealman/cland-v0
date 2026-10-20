@@ -1,5 +1,5 @@
--- The panels (spec section 5, Main.dc.html): items on the left (␣i); inbox (␣n), sessions (␣s) or topics
--- (␣t) on the right, topics also docked above it (␣T). Each panel is a scratch buffer drawn from the
+-- The four panels (spec section 5, Main.dc.html) can occupy either side; topics can also dock above
+-- the right side (␣T). Each panel is a scratch buffer drawn from the
 -- state; a row knows what it shows (item, session, topic), which Enter and the motions read.
 --
 -- Items from `task.list` and the `task` event (the tree, filters and badges: items.lua); sessions from

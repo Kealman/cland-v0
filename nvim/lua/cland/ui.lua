@@ -25,7 +25,9 @@ local function snapshot()
     plan_seen = vim.deepcopy(ui.plan_seen or vim.empty_dict()),
     events = vim.deepcopy(ui.events or { filter = vim.empty_dict(), muted = {} }),
     preset = ui.preset or vim.NIL,
-    panels = { left = ui.left, right = ui.right or vim.NIL, dock = ui.dock },
+    -- Side choices are runtime-only until T-1001 adds their optional v2 fields.
+    -- Keep the legacy projection readable: Items was never a legacy right panel.
+    panels = { left = ui.left, right = ui.right ~= 'items' and ui.right or vim.NIL, dock = ui.dock },
     sizes = vim.deepcopy(ui.sizes),
     items_filter = ui.items_filter,
     accounts_folded = ui.accounts_folded,
@@ -102,6 +104,8 @@ function M.load(root)
   ui.accounts_folded = false
   ui.explorer = M.explorer_defaults()
   ui.preset, ui.left, ui.right, ui.dock = nil, false, 'sessions', false
+  ui.left_kind = 'items'
+  ui.panel_homes = { items = 'left', inbox = 'right', sessions = 'right', topics = 'right' }
   ui.sizes, ui.items_filter, ui.current_release = vim.empty_dict(), 'board', nil
   local _, _, stat_code = uv.fs_stat(path)
   local ok, data = pcall(function()

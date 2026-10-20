@@ -206,8 +206,7 @@ local function focus(scope)
     end
   end
   local layout = require('cland.layout')
-  if scope == 'items' then layout.toggle_left()
-  elseif scope == 'sessions' or scope == 'topics' or scope == 'inbox' then layout.right_panel(scope)
+  if layout.panel_home(scope) then layout.place_panel(scope, layout.panel_home(scope))
   elseif scope == 'board' or scope == 'log' or scope == 'inbox_full' then layout.show({kind=scope == 'inbox_full' and 'inbox' or scope}, {insert=false})
   elseif scope == 'thread' or scope == 'composer' then layout.show({kind='thread', id=require('cland.views').current_topic() or 'general'}, {insert=false})
   elseif scope == 'rulebook' then require('cland.rulebook').open()
@@ -329,11 +328,19 @@ for _, preset in ipairs({'charting','watch','steady'}) do
 end
 for _, panel in ipairs({'items','inbox','sessions','topics','dock'}) do
   local mapped = ({items='i', inbox='n', sessions='s', topics='t', dock='T'})[panel]
-  command('panel ' .. panel, 'Toggle ' .. panel .. ' panel', function()
+  command('panel ' .. panel, 'Toggle ' .. panel .. ' panel', function(args)
+    if #args > 0 then return require('cland.state').say(':Cland panel items|inbox|sessions|topics left|right', 'ClandRedBar') end
     if panel == 'items' then layout().toggle_left()
     elseif panel == 'dock' then layout().toggle_dock()
     else layout().right_panel(panel) end
   end, 'global:<leader>' .. mapped)
+  if panel ~= 'dock' then
+    for _, side in ipairs({'left', 'right'}) do
+      command('panel ' .. panel .. ' ' .. side, panel:sub(1, 1):upper() .. panel:sub(2) .. ' on the ' .. side, function()
+        layout().place_panel(panel, side)
+      end)
+    end
+  end
 end
 for _, kind in ipairs({'thread','session','item','board','log','inbox','artifacts','artifact'}) do
   command('view ' .. kind, 'Open ' .. kind .. ' view', function(args)

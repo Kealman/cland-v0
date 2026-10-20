@@ -461,6 +461,8 @@ identity-based cleanup and belongs at T3.
 
 ### Neovim recorded frames
 
+Panel placement is covered by `nvim/test/panel-placement-component.test.ts` at T2, using the palette, `:Cland panel <kind> left|right`, native closes, buffer keys and committed stub frames. `qa.state().panels` retains `left` as a visibility boolean, `right` as a kind and `dock` as a visibility boolean; its additive `kinds.left` and `kinds.right` fields identify either side's visible panel. Use these fields for side-neutral QA. `qa/cases/PANELS-017.lua` reads the swapped headers and a live session-row change from their physical grid columns. The local targeted T3 `ui.test.ts` and `shell.test.ts` runs cover native resize/close ordering and cold starts; T1-only merge batches supply no T3 evidence.
+
 Workbench settling tests count outbound frames after completed startup and reconnect snapshots, advance
 a client-local fake deadline clock ten minutes, and retain the final no-list-read assertion. Delayed-read
 cases release the oldest original answer after its retry deadline and observe installed state, then verify
