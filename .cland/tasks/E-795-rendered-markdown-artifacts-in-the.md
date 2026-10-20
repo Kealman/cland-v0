@@ -4,14 +4,15 @@ kind: epic
 title: Rendered Markdown artifacts in the Neovim workbench
 state: open
 labels:
-  - needs-triage
+  - epic
+  - v0.2
 assignee: null
 parent: R-377
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-18T10:14:36.459Z
-updated: 2026-10-18T10:14:36.459Z
+updated: 2026-10-20T16:51:49.891Z
 ---
 
 ## Summary

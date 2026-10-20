@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-14T15:59:58.544Z
+updated: 2026-10-20T16:51:45.530Z
 ---
 
 ## Summary
@@ -105,3 +105,46 @@ The human opens the shell from its first slice beside Neovim, through the bridge
 - Prototype: `prototype/web-shell` (`web/PROTOTYPE.md`; `web/proto/bridge.ts`; `web/src/App.tsx`, `Palette.tsx`, `KeysHelp.tsx`, `keys.ts`, `ui.ts`, `tokens.css`, `Shell.module.css`).
 - Mockups: `docs/design/web/README.md` and `Main.dc.html` (P1 to P9), `Thread.dc.html` (P10, P11); `screens/v02-main.png`; the canvas https://claude.ai/artifact/Cqc3KRR8tXG1yd395B6vf6 (version 9).
 - GLOSSARY: Web workbench, Rail, Drawer, Palette.
+
+## Plan
+
+```yaml
+stages:
+  - name: the ground
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-990
+        - T-991
+  - name: the connection, the rail and the droplets
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-992
+        - T-994
+      - - T-993
+  - name: split, palette and folds
+    qa:
+      scope: full
+      when: after-stage
+    lanes:
+      - - T-995
+        - T-996
+        - T-997
+items:
+  T-994:
+    qa_criteria:
+      - C1
+      - C2
+      - C4
+  T-995:
+    qa_criteria:
+      - C1
+      - C3
+  T-996:
+    qa_criteria:
+      - C1
+      - C2
+```

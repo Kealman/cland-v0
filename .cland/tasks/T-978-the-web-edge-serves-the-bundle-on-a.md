@@ -3,17 +3,17 @@ id: T-978
 kind: task
 title: The web edge serves the bundle on a stable port
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
 assignee: null
 parent: E-412
 blocked_by: []
-topic: null
-branch: null
+topic: topic-750
+branch: t/T-978-the-web-edge-serves-the-bundle-on-a
 created: 2026-10-20T16:49:53.985Z
-updated: 2026-10-20T16:50:14.672Z
+updated: 2026-10-20T16:50:46.477Z
 ---
 
 ## Summary

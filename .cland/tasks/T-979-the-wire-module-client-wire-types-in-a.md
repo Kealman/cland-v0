@@ -3,17 +3,17 @@ id: T-979
 kind: task
 title: "The wire module: client wire types in a leaf module"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
 assignee: null
 parent: E-412
 blocked_by: []
-topic: null
-branch: null
+topic: topic-751
+branch: t/T-979-the-wire-module-client-wire-types-in-a
 created: 2026-10-20T16:49:59.811Z
-updated: 2026-10-20T16:50:14.762Z
+updated: 2026-10-20T16:50:47.508Z
 ---
 
 ## Summary
