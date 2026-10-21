@@ -2,8 +2,8 @@
 id: T-983
 kind: task
 title: The snapshot at connection
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-780
 branch: t/T-983-the-snapshot-at-connection
 created: 2026-10-20T16:50:00.282Z
-updated: 2026-10-21T03:19:06.649Z
+updated: 2026-10-21T06:04:49.867Z
+closed: 2026-10-21T06:04:49.867Z
 ---
 
 ## Summary
@@ -93,3 +94,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear; evidence audit A-8127 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8127-t-983-final-evidence-review-at-ac463d7f.md). Exact-head 7642ad7c/A-8126 completes Linux T1/all-T2 fallback: 2,206 ordinary passes/339 files plus 12 new identities each 5/5 load passes separately. Framing T1 8/8 and connection snapshot T2 4/4 prove negotiation/legacy behavior, all seven domains/compact history, byte limits/atomic fallback and no interleaved raced model frame before end. C5 copied local measurement/posting and C6 docs remain source-established. Web NOT RUN for missing Linux libraries; no browser/T3/T4/integrated/QA claim or new compose benchmark. Host check eb58e837 not repeated remotely; lint/duration/ratchet report-only, four missing baselines. No findings; verify C1–C6.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-21T06:04:49.867Z
+
+Merged 60b08f57e94b4303f9d67f9975a8d12eeb3015ba onto dev.
