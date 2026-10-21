@@ -2,8 +2,8 @@
 id: T-1039
 kind: task
 title: A hub on a copy of the live project takes 39 s to start serving, and hub.status takes 310 ms to compose
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-788
 branch: t/T-1039-a-hub-on-a-copy-of-the-live-project
 created: 2026-10-21T06:41:50.480Z
-updated: 2026-10-21T11:31:48.810Z
+updated: 2026-10-21T11:36:28.902Z
+closed: 2026-10-21T11:36:28.902Z
 ---
 
 ## Summary
@@ -136,3 +137,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final corrected-head clear; no findings. A-8337 audits exact-head A-8336 / Coordinator full run e842844f: Linux x64 c-8 lon1 T1/T2/T3 exit0, 3450 ordinary test passes,8 skips,520 passing files. Startup scale test line16059 passes enforcing15s first-status and exact byte/plan assertions; whole-test6.080706s/file6.774287s are not first-status latency, whose numeric success value is unreported. Separate A-8320 task receipt establishes2232 ordinary passes and three identities5/5 load passes. C2 retains Coordinator a6b632c3's explicitly accepted historical local A-8258 CLI4951.431ms (<5s;48.569ms margin) on unchanged production source, not new-head/Linux timing; C3 compose9.999ms and C1 phase profile retain their labelled provenance. Corrected head only changes generated guard/docs; prior full A-8306 remains red (5275.8ms>5000). All done marks refreshed. Lint/duration/ratchet report-only: startup exceeds nominal5s and T3 shard1050.24s exceeds900s; removed C-325 allowance is not a budget pass. Host e60b1450 not repeated remotely. Web NOT RUN/T-993 under Coordinator acceptance; no T4/browser/stage/QA/Reviewer runtime claim. Lifetime1480s, reportedcost$0.1028. All C1–C3 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T11:36:28.902Z
+
+Merged 1fc2aca2398213453795edfa8793298f9dd94123 onto dev.

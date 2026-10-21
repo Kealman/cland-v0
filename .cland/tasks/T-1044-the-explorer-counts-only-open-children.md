@@ -16,7 +16,7 @@ regression_of: T-1007
 topic: topic-796
 branch: t/T-1044-the-explorer-counts-only-open-children
 created: 2026-10-21T11:16:47.594Z
-updated: 2026-10-21T11:29:11.045Z
+updated: 2026-10-21T11:36:13.868Z
 ---
 
 ## Summary
