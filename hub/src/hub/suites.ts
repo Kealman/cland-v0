@@ -61,6 +61,8 @@ export type SuiteJob = {
   workers?: number; fallbackWorkers?: number; size?: string;
   executor: ExecutorKind; requestedExecutor?: ExecutorKind; requireRemote?: boolean; fallback?: string; fallbackLogged?: boolean; remoteReclaimPending?: boolean; remoteAcquireAttempted?: boolean; timedOut?: boolean; platform?: Platform; lease?: Lease; remoteLogStart?: number; nextPoll?: number;
   machine?: { name?: string; size?: string; region?: string; lifetimeMs: number | null; costUsd: number | null };
+  remoteOutputAt?: number;
+  remoteOutputOffset?: number;
   submissionKey?: string;
   id: string; mode: string; cwd: string; topic: string; to: string[]; actor: SuiteActor | null;
   head: string; branch: string; log: string; result: string; gate: string;
@@ -1119,16 +1121,35 @@ export class Suites {
         job.timedOut = true; job.outcome = { code: 124, cause: `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` }; this.#save(job);
       }
       const receipt = !restored && job.lease ? remote ? await this.#droplet.status(job.lease as DropletLease) : await this.#local.status(job.lease) : null;
+      let logError: unknown;
       if (!restored && remote && job.lease && job.remoteLogStart !== undefined) {
         try { await this.#collectLog(job); }
-        catch (error) { if (receipt?.state !== 'lost' && !job.cancelled && !job.timedOut) throw error; }
-        if (receipt?.state === 'done' || receipt?.state === 'lost') await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
+        catch (error) { logError = error; }
+        if (!logError && (receipt?.state === 'done' || receipt?.state === 'lost')) await writeFile(job.result, JSON.stringify({ code: receipt.code ?? 1, cause: receipt.cause ?? '', finished: receipt.finished ?? this.#clock.now().toISOString(), ...(receipt.platform ? { platform: receipt.platform } : {}) }));
       }
       if (receipt?.platform) job.platform = receipt.platform;
       if (receipt?.finished) job.finished = receipt.finished;
       if (receipt && (receipt.finished || !job.outcome) && (receipt.state === 'done' || receipt.state === 'lost') && !job.cancelled && !job.requesterDied && !job.timedOut) {
         job.outcome = { code: receipt.code ?? 1, cause: receipt.code === 124 ? `run timeout ${job.config?.verification.runTimeout ?? this.#options.runTimeout ?? '75m'}` : receipt.cause ?? '' };
       }
+      // Status replies prove transport liveness, not test progress. Only new
+      // stdout/stderr bytes reset the silence bound, including across restart.
+      const executionStartedAt = (job.lease as DropletLease | undefined)?.execution?.startedAt;
+      const outputAt = job.remoteOutputAt ?? (executionStartedAt ? Date.parse(executionStartedAt) : undefined);
+      const stallTimeoutMs = job.limits?.stallTimeoutMs ?? job.config?.verification.stallTimeoutMs;
+      if (remote && !job.outcome && outputAt !== undefined && stallTimeoutMs !== undefined && this.#clock.now().getTime() - outputAt >= stallTimeoutMs) {
+        job.timedOut = true;
+        job.outcome = { code: 124, cause: `stalled: no output for ${Number((stallTimeoutMs / 60000).toFixed(3))} min` };
+        this.#save(job);
+      }
+      if (remote && !job.outcome && outputAt !== undefined && stallTimeoutMs !== undefined) {
+        // A non-multiple of the transport interval still expires at its silence
+        // deadline, rather than paying for a second full polling interval.
+        job.nextPoll = Math.min(job.nextPoll!, outputAt + stallTimeoutMs);
+      }
+      // Collection may retry, but cannot hide an expired silence deadline. A
+      // valid completion outcome above also prevents a later stall classification.
+      if (logError && receipt?.state !== 'lost' && !job.cancelled && !job.timedOut) throw logError;
       if (job.outcome && job.outcome.code !== 0) job.interruptedAt ??= job.finished ?? this.#clock.now().toISOString();
       if (job.cached && !this.#store.message(`suite:${job.id}`) && await this.#candidate.tree(job.cwd, job.integrated ? undefined : job.head) !== job.tree) {
         delete job.cached; job.outcome = { code: 1, cause: 'cached candidate changed; submit verification again' };
@@ -1276,6 +1297,14 @@ export class Suites {
       const offset = (await stat(job.log)).size - job.remoteLogStart;
       const chunk = await this.#droplet.log(job.lease as DropletLease, offset);
       if (chunk.next === offset) return;
+      if (chunk.next > (job.remoteOutputOffset ?? 0)) {
+        job.remoteOutputAt = this.#clock.now().getTime();
+        job.remoteOutputOffset = chunk.next;
+      }
+      // Checkpoint observed progress before committing mirror bytes. After a
+      // crash, the local size still owns replay, while this high-water mark
+      // keeps replayed bytes from renewing the original silence boundary.
+      this.#save(job);
       await appendFile(job.log, chunk.bytes);
       if (chunk.next - offset < 262144) return;
     }

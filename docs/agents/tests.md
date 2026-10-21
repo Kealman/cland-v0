@@ -907,6 +907,16 @@ or stderr (`[verification].stall_timeout`), reports the last started tests, and
 reaps the verified process tree before releasing its leases. Both settings accept
 positive durations such as `"120s"` and `"10m"`; explicit test-level timeouts
 override Node's default. Droplet runs also have their enforced total `run_timeout`.
+Droplet verification uses the same admitted `stall_timeout` (default `10m`). The
+hub watches new stdout/stderr bytes in the mirrored suite log; status replies
+and failed log reads do not renew it. Collection normally polls every 10 seconds and checks
+earlier when the silence deadline falls between polls. With a responsive
+transport, detection is bounded by `stall_timeout` plus that 10-second progress
+interval. The hub checkpoints observed output before appending mirror bytes;
+replaying bytes after restart retains that original silence boundary. It reports a
+`timeout` with in-flight file/test receipts, cancels the run and releases its
+droplet through the ordinary confirmed-release path. Cleanup/accounting can take
+additional time after detection. Each shard has its own silence bound.
 A deadline interruption reports `timeout: N tests completed, M failed` before
 in-flight diagnostics, preserving completed pass/fail/skip counts. An unfinished
 test is labelled `in flight`; `hung` requires an observed native `testTimeoutFailure` receipt for that
@@ -1631,6 +1641,12 @@ the live file; report copy size, row count, startup duration, writes, head/tree 
 platform separately from suite evidence.
 
 ## Implementer test selection
+
+For remote watchdog regressions, use the executor fake with a shared fake clock:
+emit an in-flight receipt, observe its mirrored bytes, stop output, then assert
+the terminal timeout receipt and released resource. Exercise status replies
+without bytes, failed log reads, new-byte renewal, and restart at both sides of
+the output-checkpoint/append boundary without resetting the admitted limit.
 
 For hub shutdown, `daemon.test.ts` runs a real `hub serve` with the web edge
 enabled and a scratch epic-demo freshness Git command held at `diff-tree`.

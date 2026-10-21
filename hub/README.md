@@ -2961,6 +2961,16 @@ including known parent/pipe evidence. The hub posts one warning in Agents and
 the human's inbox and journals it. It preserves unverified processes and releases
 admission so the next run can proceed.
 Droplet runs retain their separate enforced `run_timeout` and machine lifetime.
+They also enforce the admitted `stall_timeout` against new bytes in the mirrored
+stdout/stderr log. Status replies and failed log reads do not renew the timer.
+Observed output is checkpointed before mirror append, and replay after restart
+keeps that original silence boundary. With a responsive transport, detection
+takes at most the same stall limit plus the 10-second progress polling interval;
+the next poll moves earlier for a silence deadline between polls. The result
+retains in-flight file/test receipts and classifies as `timeout`. The hub cancels
+the worker and releases its droplet, including each timed-out shard; confirmed
+cleanup/accounting can finish later than detection. See
+[`docs/agents/tests.md`](../docs/agents/tests.md) for fake-executor regression guidance.
 
 `hub/test/prepared-project.ts` supplies `preparedProject(t)` (a repository after
 file provisioning, with its territory and an intentionally empty tracker), `preparedProject(t, 'repository')` (main with
