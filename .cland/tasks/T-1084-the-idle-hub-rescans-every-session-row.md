@@ -2,8 +2,8 @@
 id: T-1084
 kind: task
 title: The idle hub rescans every session row for archiving every 15 seconds
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-821
 branch: t/T-1084-the-idle-hub-rescans-every-session-row
 created: 2026-10-21T20:03:06.271Z
-updated: 2026-10-21T20:37:46.927Z
+updated: 2026-10-21T21:34:09.386Z
+closed: 2026-10-21T21:34:09.386Z
 ---
 
 ## Summary
@@ -29,11 +30,17 @@ The session archive sweep runs only when something can have become archivable (a
 
 - [x] C1. In a scratch hub with about 250 session rows and no activity, the sweep runs at most once in 10 minutes, or only after a session state change (test).
   - done: impl-1084 · 2026-10-21T20:18:25.783Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1084-final · 2026-10-21T21:17:43.627Z · commit b98af6303da5b975c93df76d5ac512d57f9cf9d5
+  - verified: rev-23 [reviewer] · run rev-20261021-1084-merge-final · 2026-10-21T21:29:26.343Z · commit 2c5f1c9d608b62110ec7a080f4355b0a32ffea20
 - [x] C2. A session that becomes archivable is still archived within the documented delay (test).
   - done: impl-1084 · 2026-10-21T20:24:24.931Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1084-final · 2026-10-21T21:17:43.627Z · commit b98af6303da5b975c93df76d5ac512d57f9cf9d5
+  - verified: rev-23 [reviewer] · run rev-20261021-1084-merge-final · 2026-10-21T21:29:26.343Z · commit 2c5f1c9d608b62110ec7a080f4355b0a32ffea20
 - [x] C3. A 10-minute idle sample of a hub with the copied live tracker and about 250 session rows shows mean hub CPU under 2%, recorded in the item topic (local evidence; then E-1006 C2 is re-sampled).
   - done: impl-1084 · 2026-10-21T20:18:25.812Z
   - verified: rev-23 [reviewer] · run rev-20261021-1084-source-3 · 2026-10-21T20:28:49.961Z · commit b98af6303da5b975c93df76d5ac512d57f9cf9d5
+  - verified: rev-23 [reviewer] · run rev-20261021-1084-final · 2026-10-21T21:17:43.627Z · commit b98af6303da5b975c93df76d5ac512d57f9cf9d5
+  - verified: rev-23 [reviewer] · run rev-20261021-1084-merge-final · 2026-10-21T21:29:26.343Z · commit 2c5f1c9d608b62110ec7a080f4355b0a32ffea20
 
 ## Comments
 
@@ -112,3 +119,58 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-8703 exact-head task receipt audited: exit0,2355 ordinary tests/361 files plus20 distinct load tests/files, all pass/no skips/failures/cancellations. Four owned new identities each5/5 with explicit summaries8463/8616/8700/8823; max load1.910082337s. All13 archive tests pass. Actual T1/all fallback hub+Neovim T2/Web pass; no T3/T4. Task evidence supports C1/C2, but final marks/verdict remain pending separately required Coordinator-owned full pre-merge lifecycle cover. C3 prior source/ancestor-measurement assessment retained, no new CPU/live E-1006 claim. Host gate reused; lint132/59, six missing baselines and budgets/resources/ratchet report-only. Detailed artifact preserves receipts and limits. QA none.
+
+### impl-1084 · 2026-10-21T21:16:56.814Z
+
+Coordinator full pre-merge run abaee167-f9f8-4708-b027-7adb15348108 passed at unchanged b98af6303da5b975c93df76d5ac512d57f9cf9d5 (A-8712): actual T1/T2/T3/Web all exit 0, 3,591 passed, 8 skipped, 0 failed/cancelled. Linux x64 6.8.0-142-generic droplet c-8 lon1, workers 2, Node v24.21.0, Neovim v0.12.5; lifetime 1865 s, cost $0.1295. Timing budgets/lint remain report-only; T4 absent. Same task head/tree preserved. Reviewer notified for final C1/C2 and verdict settlement, as Coordinator requested; no merge performed and claim retained.
+
+### rev-23 · 2026-10-21T21:17:43.627Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1084-final
+commit: b98af6303da5b975c93df76d5ac512d57f9cf9d5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Required full A-8712/abaee167 audited at unchanged b98af630: T1/T2/T3/Web exit0,3591 test/542 file passes,8 unowned skips,no failures/cancellations. All13 archive cases pass, including250-row idle guard and overdue/future retained-row recovery. Separate task A-8703/A-8704 supplies four new identities each5/5; full has no load repeats. C1/C2 now final verified. C3 retains explicitly ancestor-head A-8691 local0.452055% measurement plus unchanged-quiet-path source reasoning under A-8700; no fresh-head or live E-1006 CPU claim. Host check reused/not remote; lint132/59,8 missing baselines and budgets/resources/ratchet report-only (including T3 wall over900s). No T4/stage/QA claim; QA none. No remaining findings; detailed final artifact records all limits.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-23 · 2026-10-21T21:20:04.251Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1084-merge-source
+commit: 2c5f1c9d608b62110ec7a080f4355b0a32ffea20
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Coordinator971d389d authorization/retention decision independently checked. Merge parents b98af630+7c2dd90b;1398 non-Markdown union paths independently compared including absence/modes/blobs: four owned code/diagnostic/test paths identical reviewed task, every other checked path identical incoming dev, zero mismatches. Complete archive guidance and incoming freshness/watchdog guidance retained; README preserves both sides. No remaining delta findings. Prior full A-8712 at b98af630 retained as task-code pre-merge evidence per explicit decision, not merged-head full. Source clear permits new merged-head mode-free verification; final criterion/evidence settlement pending that receipt. CPU evidence remains explicitly ancestor/local, no fresh/live E-1006 claim. QA none.
+
+### impl-1084 · 2026-10-21T21:28:48.668Z
+
+Merged-head mode-free run 40ffdc85-e5d8-43b8-b2e1-3fc14fdef327 passed exit 0 at source-clear 2c5f1c9d608b62110ec7a080f4355b0a32ffea20 / tree a8248a9be72ea35948572a37d1c7ae5da4e369dc, A-8716. Actual T0/host check, all T1, fallback all T2 across hub+Neovim and Web: 2356 pass, zero fail/skip/cancel. Linux x64 6.8.0-142-generic droplet c-8 lon1 workers 2, Node v24.21.0, Neovim v0.12.5; lifetime 469s, cost $0.0326. Timing/lint diagnostics remain report-only, no T3/T4 claimed for this task run. Full lifecycle A-8712 at b98af630 remains prior task-code evidence by Coordinator decision 971d389d, supported by identical task code blobs and independent delta review A-8715. Awaiting Reviewer final merged-head settlement, no merge/enqueue by Implementer.
+
+### rev-23 · 2026-10-21T21:29:26.344Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1084-merge-final
+commit: 2c5f1c9d608b62110ec7a080f4355b0a32ffea20
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head A-8716 audited: exit0,2356 ordinary tests/361 files plus20 load tests/files, no failures/skips/cancellations; T1/all fallback hub+Neovim T2/actual Web pass. All13 archive tests and four new identities each5/5; summaries8462/8604/8710/8812, max load2.202201427s (not a2s enforcing budget pass). Prior full A-8712 at b98af630 retained per independently checked Coordinator971d389d; A-8715 verifies unchanged task code/clean dev inheritance. C1–C3 verified; C3 remains explicitly older local CPU baseline/provenance, no merged-head/live E-1006 CPU claim. Host check reused/not remote; lint132/59,6 missing baselines and budgets/resources/ratchet report-only. No new T3/T4/stage/QA claim; QA none. No remaining findings; detailed final artifact records evidence boundaries.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T21:34:09.386Z
+
+Merged e56f890e52c8ba3ec40deb3d4ce20b86102673d4 onto dev.

@@ -5,6 +5,7 @@ title: The items snapshot carries closed tasks and nears its 1 MiB cap; page clo
 state: open
 status: planned
 size: M
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-21T18:52:28.328Z
-updated: 2026-10-21T18:52:33.942Z
+updated: 2026-10-21T21:45:19.109Z
 ---
 
 ## Summary
@@ -31,3 +32,4 @@ The snapshot's items domain carries the open items and every container (releases
 - [ ] C3. A task that closes arrives in a delta and then leaves the open set; a client holding the closed page sees it there (test).
 - [ ] C4. The Neovim explorer and board render closed children through the page request with the same counts as before, in headless tests on the copied tracker.
 - [ ] C5. `hub/README.md` and `nvim/README.md` describe the open snapshot and the closed pages.
+- [ ] C6. startup-replies-scale's thousand-item test runs in under 10 s on a Linux droplet at the task head (it ran 14.6 s at T-1058's head, A-8722, against 6.8–11 s before), so its first hub.status regains margin under the 15 s budget.

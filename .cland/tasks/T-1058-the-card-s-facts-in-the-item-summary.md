@@ -2,8 +2,8 @@
 id: T-1058
 kind: task
 title: The card's facts in the item summary
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-817
 branch: t/T-1058-the-card-s-facts-in-the-item-summary
 created: 2026-10-21T14:04:18.959Z
-updated: 2026-10-21T19:34:58.703Z
+updated: 2026-10-21T21:51:22.792Z
+closed: 2026-10-21T21:51:22.792Z
 ---
 
 ## Summary
@@ -33,22 +34,32 @@ The item summary in the snapshot and the deltas also carries: the latest verdict
 ## Acceptance criteria
 
 - [x] C1. A frame client reads a task's latest verdict reason, round and scope and its Decision block from the snapshot, with no `task.view` (test).
-  - done: impl-1058 · 2026-10-21T19:25:44.504Z
   - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree · 2026-10-21T19:34:58.702Z · commit dc8467580a50772e34d205964d555f2e80b33607
+  - done: impl-1058 · 2026-10-21T20:54:25.941Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree-2 · 2026-10-21T21:04:33.845Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-final · 2026-10-21T21:46:21.497Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
 - [x] C2. A frame client reads each stage's state for an epic with a plan from the snapshot, with no `task.plan show`, and a stage change arrives as a delta (test).
-  - done: impl-1058 · 2026-10-21T19:25:44.527Z
   - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree · 2026-10-21T19:34:58.702Z · commit dc8467580a50772e34d205964d555f2e80b33607
+  - done: impl-1058 · 2026-10-21T20:54:25.962Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree-2 · 2026-10-21T21:04:33.845Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-final · 2026-10-21T21:46:21.497Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
 - [x] C3. The summary carries the agents' text sections and size but never the full body or comments, and a thousand-item snapshot stays within T-1038's startup reply budgets (test).
-  - done: impl-1058 · 2026-10-21T19:25:44.548Z
+  - done: impl-1058 · 2026-10-21T20:54:25.986Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-final · 2026-10-21T21:46:21.497Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
 - [x] C4. `hub/README.md` lists the card fields.
   - verified: rev-31 [reviewer] · run rev-20261021-1058-source-2 · 2026-10-21T19:09:27.466Z · commit bd5342b452deee9f39605424913b53d5284913db
   - verified: rev-31 [reviewer] · run rev-20261021-1058-source-3 · 2026-10-21T19:16:35.220Z · commit e37316e5b4218affb57a0511fd7bef7d30fc21e7
-  - done: impl-1058 · 2026-10-21T19:25:44.570Z
   - verified: rev-31 [reviewer] · run rev-20261021-1058-source-4 · 2026-10-21T19:26:11.667Z · commit dc8467580a50772e34d205964d555f2e80b33607
   - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree · 2026-10-21T19:34:58.702Z · commit dc8467580a50772e34d205964d555f2e80b33607
+  - done: impl-1058 · 2026-10-21T20:54:26.010Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-source-5 · 2026-10-21T20:55:31.503Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree-2 · 2026-10-21T21:04:33.845Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-final · 2026-10-21T21:46:21.497Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
 - [x] C5. Each stage of an epic with a plan carries merged/total counts that include closed members, and Neovim's stage counters (plan.lua progress, the card's current-stage "X of N merged", listed by T-1061 in its topic) read them instead of loaded rows (tests).
-  - done: impl-1058 · 2026-10-21T19:25:44.588Z
   - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree · 2026-10-21T19:34:58.702Z · commit dc8467580a50772e34d205964d555f2e80b33607
+  - done: impl-1058 · 2026-10-21T20:54:26.031Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-modefree-2 · 2026-10-21T21:04:33.845Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
+  - verified: rev-31 [reviewer] · run rev-20261021-1058-final · 2026-10-21T21:46:21.497Z · commit c615fc21b73bb9c245b83e00c576b3c4b085e820
 
 ## Comments
 
@@ -172,3 +183,71 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Intermediate mode-free evidence clear, not final settlement: exact-head62922bd8/A-8674 exit0, reported2340/2340,no skips; Linux T1/fullT2/Web all0. Three task-new identities have actual five-distinct passing test receipts and explicit5/5; max.325/.425/.629s. Prior failing carriers pass. A-8675 records platform/phases/report-only limits. C1/C2/C4/C5 verified; C3 current-head startup/copy-Lua T3 and Coordinator-required full pre-merge verify all remain pending. No merge enqueue.
 
 Criteria: C1 verified, C2 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-21T20:45:54.770Z
+
+verdict: review
+result: not clear
+by: rev-31 [reviewer]
+run: rev-20261021-1058-full-evidence-1
+commit: dc8467580a50772e34d205964d555f2e80b33607
+scope: evidence
+findings: [{"severity":"medium","text":"Required full gate fails hard first-status guard:15911.2ms>15000ms, aborting before startup byte/snapshot controls. Head/base comparison directed by Coordinator is pending; no production cause or load-outlier classification established.","file":"hub/test/startup-replies-scale.test.ts","line":82}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+A-8706 audits exact-head failed full gate:3424reported/3418pass/1fail/5skip,T1/T2green,T3failed,Webunexecuted. Current-head copied-Lua0differences/850419bytes passed independently. Prior mode-free A-8674 remains green; C1/C2/C4/C5 marks retained. Coordinator031528f9 authorized serial3head/3dev scratch comparison; no causal finding or relaxed limit assumed. C3/final settlement not clear; no merge enqueue.
+
+Criteria: C3 failed (Required full468d3012/A-8705 failed first-status15000ms guard before startup byte/snapshot assertions; investigation and replacement full evidence pending.).
+
+### impl-1058 · 2026-10-21T20:54:25.924Z
+
+Addressed full-gate startup failure in c615fc21b73bb9c245b83e00c576b3c4b085e820/tree559f0f35, pushed; no dev merge. Directed serial3head/3base comparison and normalized fixture/profile evidence retained in A-8707. Original head median3595.678ms; base2014.581ms, but same rich fixture base3267.944ms. Stage summaries repeated child hydration; fix reuses member reads for status counts and avoids unnecessary direct-parent ancestry walks, preserving closure hash and all startup bounds. Fixed rich-fixture head median3284.858ms vs normalized base3260.812ms (+0.7%). Local sealed macOS arm64 current-source validation: startup1/1 (first completed status3286.8ms, startup468514B, snapshot581678B), item-summary8/8, planned-stage12/12, stage-closure5/5, npm check exit0 (report-only lint132/59,0 refusals). Two corrected scratch setup failures explicitly recorded in A-8707. These are targeted pre-commit byte-matched checks, not queued/Linux passes. Fresh source review precedes replacement mode-free run; Coordinator-required full remains pending.
+
+### rev-31 · 2026-10-21T20:55:31.503Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1058-source-5
+commit: c615fc21b73bb9c245b83e00c576b3c4b085e820
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear at c615fc21: stage statuses reuse existing member reads, direct-parent membership bypass preserves ancestry semantics, closure-hash inputs unchanged. Test only adds completed-status diagnostic; all bounds/rich fixtures remain. A-8709 supersedes A-8708's minor normalized-base median transcription error and records source reasoning, hash-matched scratch receipts and local comparison limits. C4 refreshed; runtime C1/C2/C3/C5 and required full pre-merge gate need new-head evidence. No Linux/full pass or load-outlier classification claimed.
+
+Criteria: C4 verified.
+
+### rev-31 · 2026-10-21T21:04:33.845Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1058-modefree-2
+commit: c615fc21b73bb9c245b83e00c576b3c4b085e820
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Intermediate evidence clear: exact-head756377d7/A-8710 exit0,2340/2340,no skips,LinuxT1/fullT2/Weball0. Audited actual5distinct passing test repetitions plus5/5receipts for three task-new identities,max.349/.357/.671s. A-8711 records phase/platform/report-only limits. C1/C2/C4/C5 refreshed; C3 startup/copied-Lua and Coordinator-required full pre-merge verification remain pending. No final merge-ready approval.
+
+Criteria: C1 verified, C2 verified, C4 verified, C5 verified.
+
+### rev-31 · 2026-10-21T21:46:21.497Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1058-final
+commit: c615fc21b73bb9c245b83e00c576b3c4b085e820
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1–C5 at unchanged c615fc21/tree559f0f35. A-8723 audits required full431447dd/A-8722:3576pass/8unrelated-platform skips/0fail,T1/T2/T3/Weball0. Startup first-status12421.2ms<15000; reached byte assertions461204B replies/581678B snapshot. Copied-Lua850419B,1081+3rows,0differences. Same-head mode-free A-8710 and actual three5/5groups retained. Report-only timing/lint limits qualified; stronger<10s target assigned T-1081 by Coordinator8ad1ec2a. No QA/T4 or remote-hostcheck-rerun claim; no enqueue/merge.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-21T21:51:22.792Z
+
+Merged 6a2c707ef71e9ff9cf26d6795daaa7801ba9b39c onto dev.
