@@ -18,9 +18,11 @@
       "A-8205",
       "A-8202",
       "A-8211",
-      "A-8207"
+      "A-8207",
+      "A-8379",
+      "A-8376"
     ],
-    "commit": "479178b25c78ccbb54f908ef7cc7c05c18426cd0"
+    "commit": "e6c401b1574f0a968093abf09b06b06252e1a1af"
   },
   "budget": {
     "testSeconds": 5,
@@ -2169,6 +2171,38 @@
     "nvim/test/hub-read-component.test.ts": {
       "seconds": 0.159896,
       "tests": 2
+    },
+    "hub/test/connection-resume.test.ts": {
+      "seconds": 0.406778,
+      "tests": 3
+    },
+    "hub/test/connection-resync.test.ts": {
+      "seconds": 3.575657,
+      "tests": 4
+    },
+    "hub/test/model-output.test.ts": {
+      "seconds": 0.000976,
+      "tests": 2
+    },
+    "hub/test/model-ring.test.ts": {
+      "seconds": 0.00659,
+      "tests": 3
+    },
+    "hub/test/web-keymap.test.ts": {
+      "seconds": 0.000463,
+      "tests": 1
+    },
+    "hub/test/web-network-unit.test.ts": {
+      "seconds": 0.017235,
+      "tests": 4
+    },
+    "web/test/connection.test.ts": {
+      "seconds": 2.159572,
+      "tests": 1
+    },
+    "web/test/shell.test.ts": {
+      "seconds": 2.414737,
+      "tests": 1
     }
   },
   "tests": {
@@ -5600,9 +5634,65 @@
     "nvim/test/hub-read-component.test.ts::a 20 MiB frame in 64 KiB chunks decodes once within 2 s and bounded allocation": 0.111546,
     "nvim/test/hub-read-component.test.ts::split, coalesced and partial lines preserve frame order and drop malformed lines": 0.04835,
     "nvim/test/qa-shipped.test.ts::ARTIFACT-002 passes through the headless QA runner": 0.359402,
-    "nvim/test/startup-budget.test.ts::an oversized non-item startup reply trips the per-reply byte budget": 1.800434
+    "nvim/test/startup-budget.test.ts::an oversized non-item startup reply trips the per-reply byte budget": 1.800434,
+    "hub/test/connection-resume.test.ts::atomic resume replays exactly five missed item deltas before the next live change": 0.206524,
+    "hub/test/connection-resume.test.ts::expired and foreign-epoch cursors fall back to a current snapshot; explicit resume excludes non-model frames": 0.091565,
+    "hub/test/connection-resume.test.ts::two hub starts produce distinct epochs and a resume across them gets a new snapshot": 0.108689,
+    "hub/test/connection-resync.test.ts::a paused real socket reader receives resync, drains and resumes its model": 3.277987,
+    "hub/test/connection-resync.test.ts::a resynced model resumes from its applied number without duplicates and keeps requests usable": 0.16733,
+    "hub/test/connection-resync.test.ts::a synchronous action during replay cannot insert a live delta before the remaining missed deltas": 0.071198,
+    "hub/test/connection-resync.test.ts::explicit resume invalidates an existing subscriber captured by in-flight and queued publications": 0.059142,
+    "hub/test/connection-snapshot.test.ts::a synchronous client action cannot invert delta order for another client": 0.086595,
+    "hub/test/connection-snapshot.test.ts::artifact placement re-projects retained older messages in bounded frames without unrelated history": 0.337735,
+    "hub/test/connection-snapshot.test.ts::hello negotiates model features and legacy clients keep their existing welcome": 0.15835,
+    "hub/test/connection-snapshot.test.ts::numbered model deltas continue the snapshot without gaps across tracker, topics, sessions and inbox": 0.088491,
+    "hub/test/connection-snapshot.test.ts::pin and mute push re-projected topic and message rows to featured clients": 0.088659,
+    "hub/test/connection-snapshot.test.ts::slim task frames carry only changed layers, including changes to other items": 0.112286,
+    "hub/test/connection-snapshot.test.ts::three clients serialize a model frame only once per negotiated feature set": 0.059805,
+    "hub/test/connection-snapshot.test.ts::topic placement re-projects old-thread creation chips after an artifact moves across topics": 0.117756,
+    "hub/test/inbox-requests-component.test.ts::status reuses current inbox counts and refreshes them after writes and message aging": 0.138586,
+    "hub/test/init-config.test.ts::web bind and HTTPS tunnel origin validate and round-trip": 0.003494,
+    "hub/test/journal-subagents.test.ts::a supplied durable prefix restores subagents without rereading the startup journal": 0.003808,
+    "hub/test/journal-subagents.test.ts::startup journal selection retains plan, subagent and checkpoint records including escaped JSON keys": 0.014746,
+    "hub/test/model-output.test.ts::passing four MiB of unsent bytes sends one resync and holds model writes until resume": 0.000878,
+    "hub/test/model-output.test.ts::transport framing bytes crossing the limit after a write also resync the model": 0.000098,
+    "hub/test/model-ring.test.ts::a resume retains exactly fifteen minutes and accepts the last evicted number": 0.001345,
+    "hub/test/model-ring.test.ts::close is terminal when a late disconnect publication appends another model delta": 0.000096,
+    "hub/test/model-ring.test.ts::the ring caps UTF-8 wire bytes at four MiB including both negotiated shapes": 0.005149,
+    "hub/test/prepare-key.test.ts::a lock-only change invalidates the prepared browser snapshot": 0.00015,
+    "hub/test/prepare-key.test.ts::prepared Ubuntu images install the Headless Shell Linux libraries before runner setup": 0.002271,
+    "hub/test/prepare-key.test.ts::snapshot dependency installation includes the lockfile-pinned Headless Shell": 0.00152,
+    "hub/test/skills-qa.test.ts::QA recorder records real-browser notes with screenshot evidence without launching a browser": 0.053619,
+    "hub/test/suite-queue.test.ts::verification queue pushes holder and waiter changes without ticking elapsed time": 0.032782,
+    "hub/test/web-auth.test.ts::a protocol-refused web hello tells the page to restart the hub": 0.06144,
+    "hub/test/web-auth.test.ts::a web client reads the terminal capability of every adapter": 0.066353,
+    "hub/test/web-auth.test.ts::binary web frames are reserved for streams and close with their dedicated code": 0.068542,
+    "hub/test/web-auth.test.ts::even an empty binary web frame is reserved": 0.058942,
+    "hub/test/web-auth.test.ts::JSON web frames accept exactly 1 MiB and refuse the next byte, including multibyte text": 0.118516,
+    "hub/test/web-auth.test.ts::tunnel Host and exact Origin admit a web client and set Secure without trusting forwarded headers": 0.066985,
+    "hub/test/web-auth.test.ts::web --qr draws the LAN link from a recorded Unix frame fixture with scratch config only": 0.141754,
+    "hub/test/web-auth.test.ts::web --qr prints a decodable tunnel link without opening the browser": 0.205138,
+    "hub/test/web-auth.test.ts::web --qr refuses loopback alone with a reason and never opens a browser": 0.178049,
+    "hub/test/web-auth.test.ts::web traffic refreshes the silence deadline even without automatic pongs": 0.10239,
+    "hub/test/web-auth.test.ts::web welcome reports negotiated features and the current served bundle stamp": 0.064419,
+    "hub/test/web-edge.test.ts::configured web bind is independent of the spoke loopback listener": 0.066309,
+    "hub/test/web-edge.test.ts::doctor warns about plain HTTP on a network bind without a tunnel, including a stopped hub": 0.029214,
+    "hub/test/web-keymap.test.ts::browser tab/window chords remain unbound and area shortcuts require exact modifiers": 0.000463,
+    "hub/test/web-network-unit.test.ts::doctor network warnings cover wildcard, IPv4 and IPv6 binds, and tunnel/loopback exceptions": 0.000173,
+    "hub/test/web-network-unit.test.ts::half-block QR vectors decode to their exact LAN, IPv6 and tunnel links": 0.015605,
+    "hub/test/web-network-unit.test.ts::the phone link prefers the tunnel, otherwise the concrete LAN interface": 0.001275,
+    "hub/test/web-network-unit.test.ts::wildcard phone links skip scope-dependent IPv6 addresses and preserve tunnel precedence": 0.000182,
+    "web/test/connection.test.ts::the printed web link connects the shell and reconnects with backoff after a hub restart": 2.159572,
+    "web/test/shell.test.ts::the shell rail, top strip and physical-code navigation": 2.414737
   },
   "allow": {
+    "hub/test/connection-resync.test.ts::a paused real socket reader receives resync, drains and resumes its model": {
+      "seconds": 9,
+      "owner": "E-880",
+      "added": "2026-10-21",
+      "expires": "2026-10-28",
+      "reason": "Streams more than 4 MiB of model deltas into a paused real socket until the hub sends resync, then drains and resumes (T-986 C5); Linux stage 693096b3 at e6c401b1 measured 7.162 s (A-8376), macOS stage 32bfe28d 3.278 s (A-8379)."
+    },
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
       "seconds": 9.859054,
       "owner": "E-880",
