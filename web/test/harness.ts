@@ -84,7 +84,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean } 
   let serial = 0;
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
-  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void) {
+  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void | Promise<void>) {
     const context = await browser!.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
     assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
     context.setDefaultTimeout(3000);
@@ -114,7 +114,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean } 
       const requests: string[] = [];
       context.on('request', request => requests.push(request.url()));
       const page = await context.newPage();
-      beforeNavigate?.(page);
+      await beforeNavigate?.(page);
       await page.goto(url, { waitUntil: 'load' });
       await pageUntil(page, () => document.querySelector('nav[aria-label="Areas"]')?.children.length === 7, 'seven rendered rail areas');
       assert.equal(page.url(), `${origin}/`);

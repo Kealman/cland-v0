@@ -509,6 +509,7 @@
     "hub/test/web-authority.test.ts": "T2",
     "hub/test/web-bundle.test.ts": "T1",
     "hub/test/web-edge.test.ts": "T2",
+    "hub/test/web-keymap.test.ts": "T1",
     "hub/test/web-network-unit.test.ts": "T1",
     "hub/test/web-phase.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
@@ -575,6 +576,7 @@
     "nvim/test/verification-queue.test.ts": "T2",
     "nvim/test/verification-view.test.ts": "T2",
     "web/test/connection.test.ts": "Web",
+    "web/test/shell.test.ts": "Web",
     "web/test/smoke.test.ts": "Web"
   }
 }

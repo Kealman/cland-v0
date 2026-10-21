@@ -36,9 +36,11 @@ changed, added, deleted or newer sources warn as stale. Run `npm run build` to r
 Watch builds use the same stamp hook. Inputs changing during a build refuse a stamp.
 
 The development loop uses a build and reload, with E-412's same-origin web edge.
-There is no Vite dev server or development bridge. The frame has the seven area
-names, top strip and main area, with the drawer closed. Dashes represent
-unavailable facts; navigation, area data and keys land in the later shell slices.
+There is no Vite dev server or development bridge. The shell navigates the seven
+areas through the rail or physical `Digit1`–`Digit7` keys. The main area has its
+heading; area contents and the split/drawer land in later slices. Dashes represent
+unavailable facts. The palette and help buttons are the controls for the later
+palette/key-help slice.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
 slice, following spec v0.2 before prototype behaviour before the accepted boards.
 
@@ -57,8 +59,40 @@ All 23 normal foreground tokens, including every role, reach 4.5:1 on ground and
 selection. The two dark ink tokens are inverse badge text checked on their bright
 badge surfaces. Surface/line tokens are not text. Role colours match
 `nvim/lua/cland/hl.lua`, including the raised hub grey. Names, counts and facts
-belong on screen; explanations belong in help, tooltips and docs. All future
-keyboard actions use the one physical-code key map introduced by the key slice.
+belong on screen; explanations belong in help, tooltips and docs. All keyboard actions use `src/keymap.ts`: its single code/modifier table resolves
+actions and supplies their displayed keys. `src/keyboard.ts` owns the only
+raw keyboard listener; components receive actions. Fields, composition and
+prevented events keep their keys, and reserved browser chords stay unbound.
+
+## Rail and top strip
+
+The rail shows Inbox, Items, Sessions, Topics, Events, Artifacts and Accounts.
+Badges report attention: Inbox uses the hub's needs-you count, Items pending
+plans, Sessions approval waits and Topics human waits without an ask. Busy
+sessions and ordinary inventory totals do not produce badges. The top strip
+shows the project directory name, open-release picker, Coordinator name,
+needs-you count (a green check at zero) and connection state. A nonzero
+needs-you count prefixes the tab title. The Coordinator and needs-you controls
+navigate to Sessions and Inbox respectively.
+
+Until the snapshot client lands, the connection subscribes to ordinary hub
+frames and reads `hub.status`, `inbox.list` and summary `task.list` for open
+releases. Inbox pushes update attention immediately; presence/Coordinator
+changes refresh status, and release changes refresh the picker. Reconnection
+reads those facts again, retaining the previous display while offline.
+
+The button collapses the rail to a 60 px icon column; below 1280 px CSS forces
+that width without overwriting the button choice. Icons keep native tooltips,
+accessible names and attention badges. Keyboard focus has a 2 px blue ring on
+the selection surface; hover only lightens a row. IDs use non-wrapping
+JetBrains Mono.
+
+Browser preferences use `src/interface-state.ts`, one `cland.ui.<area>.v1` key
+per area. The shell's rail choice, selected area and release ID share
+`cland.ui.shell.v1`. Reads, parsing and writes (including access to the storage
+property) are guarded; invalid fields fall back independently and denied
+storage leaves navigation working. This state is local to the browser and
+never writes the hub's or Neovim's interface state.
 
 ## Fonts and asset checks
 
@@ -85,6 +119,8 @@ change; the preparation step's `npm ci` installs the pinned shell on a cold imag
 npm run test:web                     # just Web, under the normal suite queue
 node --test web/test/smoke.test.ts    # targeted file; build first with npm run build
 node --test web/test/connection.test.ts # sign-in, connection and hub restart
+node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
+node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
 
 Full runs place Web after the hub phases, with resource `machine`, two local
