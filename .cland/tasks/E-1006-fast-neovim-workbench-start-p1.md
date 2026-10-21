@@ -2,7 +2,8 @@
 id: E-1006
 kind: epic
 title: Fast Neovim workbench start (P1)
-state: open
+state: closed
+criterion_seq: 4
 labels:
   - epic
   - v0.2
@@ -12,7 +13,8 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T22:39:31.630Z
+updated: 2026-10-21T23:01:40.033Z
+closed: 2026-10-21T23:01:40.033Z
 ---
 
 ## Summary
@@ -33,9 +35,13 @@ The epic takes priority over every other v0.2 launch and over E-412 stage 2.
 ## Definition of done
 
 - [ ] C1. On a copy of the live tracker (about 1,000 items), the Neovim workbench shows the open items, the sessions and the Coordinator within 3 s of the hub connection, measured on the human's Mac and recorded as local evidence.
+  - verified: qa-676 [qa] · run qa-2026-10-22-1 · 2026-10-21T23:01:21.560Z · commit 5c9f87bad4c7434ca3048287e294d1fc981b7482
 - [ ] C2. With the workbench idle for 10 minutes, no full re-read of the item list or any other whole-state list happens, and the hub's CPU stays near idle (local evidence).
+  - verified: qa-676 [qa] · run qa-2026-10-22-1 · 2026-10-21T23:01:21.560Z · commit 5c9f87bad4c7434ca3048287e294d1fc981b7482
 - [ ] C3. A Neovim smoke test with a 1,000-item fixture tracker fails when startup exceeds its budget or when the explorer's first payload exceeds its byte budget.
+  - verified: qa-676 [qa] · run qa-2026-10-22-1 · 2026-10-21T23:01:21.560Z · commit 5c9f87bad4c7434ca3048287e294d1fc981b7482
 - [ ] C4. Tracker writes from the hub and the CLI create no `.conflict` capture unless a real concurrent edit happened, and old captures are pruned by a documented retention rule (with T-452).
+  - verified: qa-676 [qa] · run qa-2026-10-22-1 · 2026-10-21T23:01:21.560Z · commit 5c9f87bad4c7434ca3048287e294d1fc981b7482
 
 ## Plan
 
@@ -207,3 +213,133 @@ Setup: hub pid 39496 at 008fc731; the human's live workbench nvim --embed 45730,
 - Workbench half met again: zero nvim-spoke requests in 10 minutes, nvim RSS flat at 47–50 MB, CPU 0% in 8 of 10 samples.
 - Hub half met: per-minute CPU 2.9, 1.3, 1.9, 3.0, 3.6, 0.9, 1.6, 91.0, 1.5, 1.6%. The single 91% reading coincides with an executor sweep and a message burst at 22:27:30Z, and the readings right after were 1–4%. RSS fell from 1,015 to 869 MB. session-archive-sweep fired 2 times (41 before T-1084). The residual 1.5–3% is crew message and droplet traffic from two running verifies (T-1081, T-1073), not idle work.
 Before (dbb1604f): steady 9–12%.
+
+### hub · 2026-10-21T22:41:54.718Z
+
+demo 7e756c3c-acf2-436f-abc4-711308ff4654 created: droplet cland-v0-7e756c3c, commit 5c9f87bad4c7434ca3048287e294d1fc981b7482, deadline 2026-10-21T23:55:36.792Z.
+
+### hub · 2026-10-21T22:57:09.470Z
+
+demo 7e756c3c-acf2-436f-abc4-711308ff4654 destroyed: lifetime 977731 ms; cost $0.0679.
+
+### qa-676 · 2026-10-21T23:01:21.560Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-22-1
+commit: 5c9f87bad4c7434ca3048287e294d1fc981b7482
+findings: [{"severity":"low","text":"DOD-03/04/06: demo status reported active before start completed; exec returned 'no active demo lease'. No test executed in those attempts. Completed start changed capability and Coordinator5d717fbe authorized same-lease continuation; passed afterward. Original outputs retained. Bugs/S found aside; Coordinator filing."},{"severity":"low","text":"DOD-23: BSD find rejected ISO UTC cutoff ('Can't parse date/time'). Original empty output is not zero evidence. Coordinator-approved equivalent Python UTC st_mtime comparison found0new/3584total; original and correction retained.","file":"qa/briefs/E-1006.md"},{"severity":"low","text":"DOD-15: grep-A12 truncates expanded docs section before budget paragraph at tests.md:386. Full-section read proves3000ms/131072byte limits; original short-window and corrected read retained as brief probe correction.","file":"qa/briefs/E-1006.md"}]
+finding_counts: {"high":0,"medium":0,"low":3}
+
+| Check | Surface / execution | Result | Evidence |
+| --- | --- | --- | --- |
+| E1006-DOD-01 | hub-api / local macOS | PASS | [E1006-DOD-01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-01.txt) |
+| E1006-DOD-02 | hub-api / records | PASS | [E1006-DOD-02-epic.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-02-epic.json), [E1006-DOD-02-children.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-02-children.json), [E1006-DOD-02-plan.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-02-plan.txt) |
+| E1006-DOD-03 | hub-api / droplet | PASS | [E1006-DOD-03.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-03.json) |
+| E1006-DOD-04 | hub-api / droplet | PASS | [E1006-DOD-04.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-04.txt), [E1006-DOD-04.txt.before-ready](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-04.txt.before-ready), [request-rulings.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/request-rulings.txt) |
+| E1006-DOD-05 | hub-api / records | PASS | [E1006-DOD-05.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-05.txt) |
+| E1006-DOD-06 | hub-api / droplet | PASS | [E1006-DOD-06.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-06.log), [E1006-DOD-06.log.before-ready](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-06.log.before-ready), [request-rulings.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/request-rulings.txt) |
+| E1006-DOD-07 | hub-api / local macOS | PASS | [E1006-DOD-07.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-07.log), [E1006-DOD-07-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-07-queue.json) |
+| E1006-DOD-08 | hub-api / records | PASS | [E1006-DOD-08.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-08.txt) |
+| E1006-DOD-09 | hub-api / droplet | PASS | [E1006-DOD-09.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-09.log) |
+| E1006-DOD-10 | hub-api / droplet | PASS | [E1006-DOD-10.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-10.log), [E1006-DOD-10-start.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-10-start.txt) |
+| E1006-DOD-11 | hub-api / droplet | PASS | [E1006-DOD-11.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-11.log) |
+| E1006-DOD-12 | hub-api / local macOS | PASS | [E1006-DOD-12.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-12.log), [E1006-DOD-12-build.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-12-build.txt), [E1006-DOD-12-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-12-queue.json) |
+| E1006-DOD-13 | hub-api / local macOS | PASS | [E1006-DOD-13.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-13.log), [E1006-DOD-13-plant.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-13-plant.txt), [E1006-DOD-13-restored.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-13-restored.txt), [E1006-DOD-13-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-13-queue.json) |
+| E1006-DOD-14 | hub-api / local macOS | PASS | [E1006-DOD-14.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-14.log), [E1006-DOD-14-plant.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-14-plant.txt), [E1006-DOD-14-restored.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-14-restored.txt), [E1006-DOD-14-queue.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-14-queue.json) |
+| E1006-DOD-15 | hub-api / droplet | PASS | [E1006-DOD-15.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-15.txt), [E1006-DOD-15-original.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-15-original.txt), [E1006-DOD-15-probe-note.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-15-probe-note.txt) |
+| E1006-DOD-16 | hub-api / droplet | PASS | [E1006-DOD-16.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-16.log) |
+| E1006-DOD-17 | hub-api / droplet | PASS | [E1006-DOD-17.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-17.log) |
+| E1006-DOD-18 | hub-api / droplet | PASS | [E1006-DOD-18a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-18a.log), [E1006-DOD-18b.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-18b.log) |
+| E1006-DOD-19 | hub-api / droplet | PASS | [E1006-DOD-19.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-19.log) |
+| E1006-DOD-20 | hub-api / droplet | PASS | [E1006-DOD-20a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-20a.log), [E1006-DOD-20b.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-20b.log) |
+| E1006-DOD-21 | hub-api / droplet | PASS | [E1006-DOD-21.sh](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-21.sh), [E1006-DOD-21.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-21.txt) |
+| E1006-DOD-22 | hub-api / records | PASS | [E1006-DOD-22.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-22.txt) |
+| E1006-DOD-23 | hub-api / records | PASS | [E1006-DOD-23.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-23.txt), [E1006-DOD-23-counts.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-23-counts.txt), [E1006-DOD-23-records.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-23-records.txt), [E1006-DOD-23-probe-error.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-23-probe-error.txt) |
+| E1006-DOD-24 | hub-api / records | PASS | [E1006-DOD-24.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-24.txt), [A-8771-suite-bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f-all-at-2a3f485.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/A-8771-suite-bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f-all-at-2a3f485.log), [A-8772-suite-bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f-shard-1-at-2a3f485.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/A-8772-suite-bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f-shard-1-at-2a3f485.log), [A-8773-suite-bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f-shard-2-at-2a3f485.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/A-8773-suite-bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f-shard-2-at-2a3f485.log), [epic-skips.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/epic-skips.json), [epic-skips-historical-coverage.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/epic-skips-historical-coverage.json), [request-rulings.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/request-rulings.txt) |
+| E1006-DOD-25 | hub-api / records | PASS | [E1006-DOD-25.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-25.json), [E1006-DOD-25-dev.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-25-dev.txt), [final-build.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/final-build.txt), [epic-build-diff.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/epic-build-diff.txt) |
+| E1006-DOD-26 | hub-api / records | PASS | [E1006-DOD-26.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-26.json), [E1006-DOD-26-after.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-26-after.json) |
+| E1006-DOD-27 | hub-api / local macOS | PASS | [E1006-DOD-27-worktrees.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-27-worktrees.txt), [E1006-DOD-27-processes.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/E1006-DOD-27-processes.json), [local-cleanup.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/local-cleanup.txt) |
+
+Clear: every scoped check passed. Run **qa-2026-10-22-1**, tested source **5c9f87bad4c7434ca3048287e294d1fc981b7482** (S). C1, C2, C3 and C4 are verified in this run. Final freshness is **current: true**, and the demo is released. This is the epic DoD verdict, not a stage verdict.
+
+The actual executions and their limits:
+
+| Receipt | Build / machine / scope | Result | Wall / lifetime / cost |
+| --- | --- | --- | --- |
+| Demo lease 7e756c3c-acf2-436f-abc4-711308ff4654 | S; cland-v0-7e756c3c, Linux x64, Node24.21.0, pinned Neovim0.12.5 | 110/110 targeted records, no skips; scratch CLI/retention checks; separate real-clock idle diagnostic1/1 | Provider lifetime977731ms, cost **$0.06789798611111111**; deadline2026-10-21T23:55:36.792Z; destruction confirmed22:57:09.470Z |
+| Local copied-tracker probe and unplanted control | S; Darwin arm64, Node24.21.0, Neovim0.12.5; sealed scratch environment | Probe1/1, smoke4/4, no skips; two deliberate plants proved required failures | Local cost not applicable. Probe connection-to-render24.90825ms; overall probe test wall3124.547125ms includes setup |
+| EPIC_RUN bbfc8bcc-ca07-43f3-8132-fdd56bec4b1f, A-8771 | Clean root dev **2a3f4858a3b35d5796da49a88cc2e05c5612340f**; Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5; 2 droplet shards, occasion epic | Full exit0,3652tests: **3644pass,0fail,8skipped**,0cancelled,0todo | **1089.43s measured overall wall** from admission through collection; **$0.1434** total provider cost |
+| Epic shard1, A-8772 | cland-v0-8dcf88ea, c-8 lon1 | Assigned shard green | Admission→remote finish1066.72s; collection22.34s; lifetime1057s; cost$0.0734 |
+| Epic shard2, A-8773 | cland-v0-1802a242, c-8 lon1 | Assigned shard green | Admission→remote finish1019.72s; collection19.88s; lifetime1007s; cost$0.0700 |
+
+Reported remote spend for demo plus suite is approximately **$0.211298**, with suite component figures rounded in the receipt. Work overlapped across machines, so component durations are not added into a fabricated total wall. Tier projections are not measured wall times.
+
+The hold dirtied E-1006's tracker file. Coordinator decision4c069b14 committed/pushed that sole tracker change and authorized the epic suite at2a3f4858 while the detached/demo build stayed S. `epic-build-diff.txt` shows only `.cland/tasks/E-1006-fast-neovim-workbench-start-p1.md`; no product/test change. Requestdab20c7a also superseded the brief's Coordinator-only submission wording. Both SHAs are stated explicitly; the suite is not represented as having run at S itself.
+
+The full suite executed T1 (122files/716tests), T2 (232/1566), T3 (181/1208), T4 (10/48) and Web (7/8top-level tests). T4 repetitions were skipped by the load gate: ten files ran in base phase only, not a soak. Lint132findings/59files, duration budgets, and T3 ratchet are **report-only**, with8missing duration baselines. Report-only budget warnings include startup-replies-scale15.518s, tracker-summary4.482s and session-archive2.431s. No enforced lint/budget pass is claimed. The hard startup/payload assertions in the targeted tests did execute and pass.
+
+Eight suite skips, not counted as passes:
+
+- `hub/test/executor-droplet.test.ts` — macOS inhibits idle sleep while the lease lives and drops the inhibitor after release
+- `hub/test/spawn-census.test.ts` — a sandbox denying census log writes preserves child stdout, exit and spawns
+- `nvim/test/qa.test.ts` — with the network denied (no socket to bind or reach), both cases pass
+- `nvim/test/qa.test.ts` — with file writes also denied outside the temp dir, both cases pass and dump their evidence there
+- `nvim/test/qa.test.ts` — with every file write denied, as in a read-only rescue run, a stub-hub case without --out passes; one that needs the stdio hub is BLOCKED and says why
+- `hub/test/edges.test.ts` — in a sandbox that forbids listening, `serve --stdio` still serves the UI over stdio, holding the lock and writing no hub.json
+- `hub/test/opencode-database.test.ts` — OpenCode service sweeps its default database without resuming a cland session (P3)
+- `hub/test/orphan-servers.test.ts` — real OpenCode serve left behind is swept by hub start
+
+Six skips require macOS/sandbox-exec; two require a real OpenCode install. All eight have actual historical `outcome: pass` records in **A-8211**, macOS stage suite baaf13ec-e3bf-47a4-b310-db8c446d6902 at **479178b25c78ccbb54f908ef7cc7c05c18426cd0**. Exact matches are in epic-skips-historical-coverage.json. This is historical supporting coverage, not same-head or newly executed coverage; this run's local commands were only the E-1006-specific probe and budget tests.
+
+C1 and C2 local evidence (quoted from the item at START):
+
+> coord 2026-10-21T09:42:05.926Z
+> C1 live evidence: the human's Mac, 2026-10-21 09:40:37Z, dev 7c5e4028 (hub pid 92080 with T-1038, Neovim with T-1037), relayed by the stand-in cland-impl.
+> - The human's words: «О, запустился почти сразу». Exact seconds will follow if they measured.
+> - `nvim --embed` peaked at 46 MB RSS and 7.6 % CPU. On the failed 06:26Z run it reached 8.4 GB at 100 % and ran out of memory.
+> - Hub RSS was 678 MB, with one CPU spike to 28 % for under 5 s and no macOS memory pressure.
+> - Hub audit of the Neovim spoke, 09:40:37–09:41:24Z: the startup set was issued exactly once, against three times each in the failed run. The calls were subscribe, topic.list, hub.status, role.list, inbox.list, rule.list, session.list, artifact.list, task.list, account.list and events.list once each; topic.history, account.poll, task.view and topic.read twice each; task.plan 12 times; topic.send once.
+> - C2: cland-impl's 10-minute idle sampler is running on this Neovim, and its figures follow.
+
+> coord 2026-10-21T09:43:08.904Z
+> C1 figure from the human, relayed by the stand-in cland-impl at 09:4xZ on 2026-10-21: «Ну он запустился меньше чем за 3с, точнее посчитать не успеваю». The workbench was usable in under 3 s on the human's Mac with the live tracker (1,036 items), too fast to time more precisely. Together with the 09:40Z samples above, I consider C1 met. The epic's QA demo verifies C1 from this local evidence; C2 waits for the 10-minute idle sampler.
+
+> coord 2026-10-21T20:03:06.364Z
+> C2 quiet sample, 2026-10-21 19:51:24–20:01:24Z, taken by cland-impl, read-only, on the human's live workbench (nvim --embed 45730) and hub 63790.
+> - Workbench half met: zero nvim-spoke requests in 10 minutes, so no whole-state re-reads. nvim RSS stayed flat at 47–48 MB, and CPU was 0% in 8 of 10 samples.
+> - Hub half not met: steady hub CPU was about 9–12%, with spikes of 67.7% and 42%. The cause is the hub's own idle work, chiefly `session-archive-sweep` scanning 248 rows about every 15 s (41 events), plus the hourly P90 computation. T-1084 fixes it, and C2 is re-sampled afterwards.
+
+> coord 2026-10-21T22:30:54.650Z
+> C2 re-sample after T-1084 and hub restart #40, 2026-10-21 22:19:37–22:29:37Z, taken by cland-impl, read-only.
+> Setup: hub pid 39496 at 008fc731; the human's live workbench nvim --embed 45730, which reconnected to the new hub by itself at 22:17:39Z.
+> - Workbench half met again: zero nvim-spoke requests in 10 minutes, nvim RSS flat at 47–50 MB, CPU 0% in 8 of 10 samples.
+> - Hub half met: per-minute CPU 2.9, 1.3, 1.9, 3.0, 3.6, 0.9, 1.6, 91.0, 1.5, 1.6%. The single 91% reading coincides with an executor sweep and a message burst at 22:27:30Z, and the readings right after were 1–4%. RSS fell from 1,015 to 869 MB. session-archive-sweep fired 2 times (41 before T-1084). The residual 1.5–3% is crew message and droplet traffic from two running verifies (T-1081, T-1073), not idle work.
+> Before (dbb1604f): steady 9–12%.
+
+
+These are recorded human/stand-in measurements, not new sampling of the live workbench. The91% C2 reading is retained and attributed exactly as the source records it; the sample was not uniformly near-idle. The before-fix dbb1604f failure is not replaced or omitted.
+
+Fresh criterion evidence:
+
+- **C1:** Linux normal1000/200-open smoke rendered in41.023345ms with121531-byte first payload. Local copied committed tracker1085/109-open rendered in24.90825ms with113870bytes. All per-reply and aggregate budgets passed. Scale test reports458421bytes across startup replies; 20MiB read-loop/order tests pass. These support the separately quoted local live evidence.
+- **C2:** shell-component settling and header cases pass;250-row archive-threshold tests pass. The dedicated idle diagnostic used1085committed items/250stopped sessions, no other workload on its lease, and a real clock from22:46:07.940Z to22:56:07.939Z: **elapsed599998.755959ms, mean process CPU0.397759991%, sweepCountIncludingStartup1**. Ten samples all under0.6%. The scratch hub stopped. This measures the embedded fixture hub/test worker, not the human's live hub.
+- **C3:** unplanted Mac smoke4/4. The3500ms product delay made the unchanged first test fail with **`startup budget: 3523.0 ms > 3000 ms`**. The full-item plant failed with **`first item payload budget: 151552 bytes > 131072 bytes`**, not the time assertion. Each planted file run exited1 with1pass/3fail; these expected failures prove detection, not ordinary green tests. Both edits restored and plant worktree removed. T3/NVIM_SMOKE membership and documented3000ms/131072-byte limits confirmed.
+- **C4:** uncontested CLI/hub write, racing-save recovery, crash recovery, capture-watcher and retention tests all pass. Scratch init/start/create/edit/comment/criterion returned0; conflict0/temp0. Fresh capture survives restart; doctor reports0then1/missing-item without pruning. Doctor overall exit1 is explicitly allowed for missing scratch harnesses. Both scratch hubs stopped and scratch removed. Read-only live inventory found0new captures since2026-10-20T18:21Z and3584total. Retention uses latestmtime/ctime/birthtime; the new-capture inventory's mtime filter is not an age-pruning calculation. Historical records retained:21writes without growth, then1053old captures pruned5169→4116.
+
+No high or medium findings. Low findings and probe corrections:
+
+1. **Demo readiness, DOD-03/04/06 (bug found aside, Bugs/S, Coordinator filing).** While the original `demo start` was pending, `demo status` returned `active`, but two `demo exec` attempts returned **`cland: no active demo lease; start a demo or run locally at the same commit`**. Neither test executed. Original outputs are retained as `.before-ready`; DOD-03's early recorder timestamp is disclosed, with the completed start response captured at22:41:55Z. Coordinator decision5d717fbe explicitly authorized same-lease continuation after start completed; no new lease or alternate path was used. The later cases passed.
+2. **Brief probe, DOD-23, qa/briefs/E-1006.md.** `find ... -newermt 2026-10-20T18:21:00Z` returned **`find: Can't parse date/time: 2026-10-20T18:21:00Z`** on macOS. Its empty redirected file and zero line count are invalid evidence, retained as probe error. The accepted equivalent read-only Python UTC `st_mtime` comparison found0new/3584total; Coordinator5d717fbe confirmed the correction.
+3. **Brief probe, DOD-15, qa/briefs/E-1006.md.** `grep -A12` ended before the expanded section's budget paragraph at docs/agents/tests.md:386. The tier/smoke lines printed, but the budget grep had no match. Full-section read shows both required limits. Original short-window capture and corrected read are retained separately; this is not missing product documentation.
+
+The current committed brief's suite-submitter/build expectations were explicitly superseded by the request and Coordinator's tracker-only-build ruling, recorded in request-rulings.txt. No implementation or brief was fixed by QA.
+
+All fixture launches used the shared credential filter with scratch HOME/XDG/Git/account paths, preserving PATH/SHELL/TERM and system TMPDIR. Local tests ran serially with no queue holder. No live workbench was started, attached or sampled; no real browser was opened; no live tracker writes were made beyond the allowed hold/verdict. No provider operation or manual machine lock was used.
+
+Cleanup: demo destroyed; scratch hub/browser/test processes gone; scratch HOME/XDG/Git root removed; both plants restored and plant worktree removed without force; process census excludes the probe's ancestry and reports0. Detached source worktree remains only until this verdict is recorded, then is removed. A-8767 is the immutable partial bundle; this report supersedes its pending status.
+
+Final durable evidence A-8778: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8778-e-1006-epic-dod-at-5c9f87ba-27-pass-c1-c4-idle-0-398-and-epic-suite-green/report.md
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.

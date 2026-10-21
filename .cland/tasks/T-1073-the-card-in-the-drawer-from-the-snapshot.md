@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-822
 branch: t/T-1073-the-card-in-the-drawer-from-the-snapshot
 created: 2026-10-21T17:32:16.525Z
-updated: 2026-10-21T22:32:33.737Z
+updated: 2026-10-21T23:00:40.848Z
 ---
 
 ## Summary
@@ -143,3 +143,33 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 A-8762 / 8d1856ae matches source-clear head/tree and exits 0: T1, fallback all hub/Neovim T2 and actual Linux Web; parsed 2364 ordinary test passes / 362 file passes plus five scoped load test/file passes, no failed/cancelled/skipped finishes. All five card Web cases and corrected palette help case pass; new compact transport T1 has unique explicit 5/5 load receipts. Host gate reused, not repeated remotely; lint/duration/resource/ratchet report-only, including owned ten-row card 4.108 s > Web 4 s report budget. No T3/T4/QA claim. Task evidence is clear; final C1–C3 settlement remains pending Coordinator-required same-head full cover 89bfbcaa. No final landing clearance; after-stage QA separate. Detailed audit A-8764.
+
+### impl-1073 · 2026-10-21T22:59:21.773Z
+
+A-8770 full3318a609 failed native first-payload134531>131072B; Web never ran, no full pass. Coordinator-directed fix pushed79a84551b28b01eea433786df7394c43a3bf02b3/tree51b624a505ead947e4d8ff2f140834aaef80ede8: ordinary listSummaries omits new card-only transport fields; composeSnapshot opts in, by-id pages unchanged. Native startup reproduced same134531B locally, then passes4/4 at121531B; new≤120KiB122880 margin assertion retains128KiB enforcement. Negative time/body/oversized-rule controls still trip intended bounds. T1 lean-summary assertion reproduced red before fix. Final local Darwin arm64/Node24.21 targeted tracker12/12, protocol8/8, Web cards5/5 and npm check all pass; duration/test-lint report mode132/59. Retained logs published, no rerun for transcription. No dev merge; fresh source review then mode-free + Coordinator full retry required.
+
+### rev-23 · 2026-10-21T23:00:29.457Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261021-1073-full-red
+commit: 3318a609f3dbc3b7d1719d5a5d353831d42bb5fe
+scope: evidence
+findings: [{"severity":"medium","text":"M5 compatibility: Full A-8770 fails native first task.list payload 134531 > unchanged 131072 bytes; two further startup negative controls fail consequentially. Card transport extras on every open summary list row exceed the native startup budget. Keep budgets intact and isolate the transport as Coordinator directed.","file":"hub/src/tracker/tracker.ts","line":2128}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Historical required full run 89bfbcaa at 3318a609 exits 1, not clear: T1/T2 pass, T3 startup-budget has three failures, Web not run; 3557 passing tests, 3 failures, 8 skips. Source-local reproductions confirm the owned payload cause. Current correction 79a84551 is reviewed separately; no C1–C3 functional failure fabricated. Detailed historical failure and correction audit A-8776.
+
+### rev-23 · 2026-10-21T23:00:40.848Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1073-source-5
+commit: 79a84551b28b01eea433786df7394c43a3bf02b3
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+M5 resolved: ordinary listSummaries defaults lean; composeSnapshot explicitly opts into unchanged card transport. Existing by-id page accounting and full task deltas remain unchanged. Coordinator-directed independent fix, no T-1081/dev merge or budget increase. T1 assertions prove lean/default and opt-in card fields; native T3 adds 120 KiB margin before original 128 KiB final guard, preserving negative controls. Docs/kept skill metadata match. Retained A-8775 local Darwin final-source native 4/4 at 121531 bytes, tracker 12/12, protocol 8/8, card Web 5/5, check 0; not configured/full proof. No remaining Standards/Spec findings, detailed A-8776. Fresh exact-head mode-free then Coordinator full pre-merge rerun required; C1–C3 final settlement pending; after-stage QA separate. Prior A-8770 remains failed historical full and A-8762 historical task proof.

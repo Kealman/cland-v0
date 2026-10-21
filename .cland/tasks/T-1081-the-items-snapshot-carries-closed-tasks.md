@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-823
 branch: t/T-1081-the-items-snapshot-carries-closed-tasks
 created: 2026-10-21T18:52:28.328Z
-updated: 2026-10-21T22:32:11.374Z
+updated: 2026-10-21T22:41:24.848Z
 ---
 
 ## Summary
@@ -31,8 +31,10 @@ The snapshot's items domain carries the open items and every container (releases
   - done: impl-1081 · 2026-10-21T22:08:04.815Z
 - [x] C2. A frame client unfolding a closed epic, or turning on `D`, receives its closed tasks through bounded pages, and their counts match the container's roll-up (test).
   - done: impl-1081 · 2026-10-21T22:31:36.693Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1081-task-evidence · 2026-10-21T22:41:24.848Z · commit 7abc0af7e431f28e4674e3b6e325d69e94257ba9
 - [x] C3. A task that closes arrives in a delta and then leaves the open set; a client holding the closed page sees it there (test).
   - done: impl-1081 · 2026-10-21T22:08:04.846Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1081-task-evidence · 2026-10-21T22:41:24.848Z · commit 7abc0af7e431f28e4674e3b6e325d69e94257ba9
 - [x] C4. The Neovim explorer and board render closed children through the page request with the same counts as before, in headless tests on the copied tracker.
   - done: impl-1081 · 2026-10-21T22:08:04.861Z
 - [x] C5. `hub/README.md` and `nvim/README.md` describe the open snapshot and the closed pages.
@@ -106,3 +108,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Source clear; audit A-8763 incorporates A-8753 and resolves M3. Exact deletion event assertion now includes done_items:0 while preserving id/item:null. A new never-paged client observes an unloaded closed task's removal/count and compares a fresh snapshot; docs specify removal semantics. No production algorithm changes. Standards 0; Spec 0. Local precommit dirty-tree A-8760/A-8761 targets passed 11/11 and 9/9, explicitly not exact-head Linux/suite evidence. C5 source-verified at this head; C1–C4 and C6 await same-head configured/full receipts. C2 needs claimant done mark restored. Historical A-8758 stays failed; Coordinator owns required full pre-merge evidence.
 
 Criteria: C5 verified.
+
+### rev-26 · 2026-10-21T22:41:24.848Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1081-task-evidence
+commit: 7abc0af7e431f28e4674e3b6e325d69e94257ba9
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Task evidence clear for C2/C3, audit A-8766. Same-head 93db283b/A-8765 exited 0: T1/all hub+Neovim T2/Web, 2362 ordinary passes plus 10 separate load passes. Parent-page/closed-delta/removal test and readiness test each have explicit 5/5; Web page/reconnect and hidden-count regressions passed ordinarily, no Web 5/5 claimed. Former exact deletion-frame failure is green. Linux x64 c-8 lon1, lifetime 471 s/$0.0327; host gate 4f7272db reused, lint/budget/ratchet report-only. T3/T4 absent: C1 copied size, C4 real copied Neovim and C6 whole-test Linux <10 s remain pending separate required full pre-merge receipt. C5 remains source-verified. No final-ready or after-stage QA claim; historical A-8758 stays failed.
+
+Criteria: C2 verified, C3 verified.
