@@ -2,7 +2,8 @@
 id: E-412
 kind: epic
 title: The web edge and the protocol extension
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.2
@@ -13,7 +14,8 @@ blocked_by: []
 topic: topic-773
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-21T12:49:19.040Z
+updated: 2026-10-21T14:02:51.811Z
+closed: 2026-10-21T14:02:51.811Z
 ---
 
 ## Summary
@@ -82,13 +84,21 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project holding a copy of the live tracker and the fake harnesses, QA starts the hub, reads the web port in `hub.json`, restarts the hub and reads the same port. `cland web --no-open` prints a link; headless Chromium opens it, receives `cland_<port>` with HttpOnly and SameSite=Strict, and the page connects; the link used again answers 401. An upgrade from another origin, with a `null` Origin or with a foreign Host is refused, and a spoke hello on the web edge is refused. A frame client with the cookie takes the snapshot and reads the levels, items, sessions, topics, inbox, the first page of events and the accounts with an epoch and a number, and no suite history. QA changes items through the CLI and reads numbered deltas carrying only the changes; it drops the client, makes five changes and resumes to exactly the five missed deltas; it restarts the hub and receives a fresh snapshot with a new epoch. The client reads a long thread in pages by message number and opens an HTML artifact's capability URL, which answers with the sandbox policy. `hub.stop`, `release` and `artifact.create` with a path are refused on the web edge and work from the CLI. With `[web] bind` set, `cland web --qr` prints the LAN link as a QR code and `cland doctor` warns about plain HTTP. QA searches the bundle, the browser's storage and the edge's responses for the hub's secret and finds nothing.
 
 - [ ] C1. The web edge is a separate listener on a stable loopback port recorded in `hub.json`, serving `/`, `/auth` and `/ws` with the static headers, and the spokes' edge is unchanged.
-- [ ] C2. `cland web` and `cland web --qr` print a one-time link spent on first use; `/auth` sets an HttpOnly, SameSite=Strict cookie named per port that lives 30 days and survives hub restarts; cookie sessions are listed and revoked from the CLI.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
+- [ ] C2. `cland web` and `cland web --qr` print a one-time link spent on first use; `/auth` sets an HttpOnly, SameSite=Strict cookie named per project (`cland_<12 hex of the project root's SHA-256>`, decided 2026-10-20 with ask 310190bf: cookies are not isolated by port) that lives 30 days and survives hub restarts; cookie sessions are listed and revoked from the CLI.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 - [ ] C3. Every upgrade checks Host and Origin, only a client hello is accepted, `as` is refused, and stopping or restarting the hub, releasing and creating artifacts from paths are refused on the web edge; the hub's secret reaches no browser.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 - [ ] C4. A client that asks for it receives one snapshot (levels, items, sessions, topics, inbox, the first page of events, accounts; no suite history) with an epoch and a sequence number, then deltas numbered in sequence that carry only changes; the verification queue is pushed only when it changes.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 - [ ] C5. `resume` replays the missed deltas from the ring, or sends a fresh snapshot when the ring no longer covers them or the epoch changed, and a connection past its queue limit resyncs.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 - [ ] C6. Threads page by message number in both directions, and artifact files are served under capability URLs, HTML with a sandbox policy.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 - [ ] C7. The wire types live in a module that imports nothing from the hub; binary frames are refused, the hello and the welcome carry a feature list, and every adapter declares its `terminal` capability; `[web] bind` works and ADR 0003 records its amendment.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 - [ ] C8. `hub/README.md` describes the web edge, `cland web`, `[web]`, the snapshot, the deltas, resume and the history pages, and Neovim's frames are unchanged.
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T14:02:29.986Z · commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238
 
 ## Dogfooding
 
@@ -308,3 +318,70 @@ S0 used a clean detached worktree, shared node_modules and an exact-source web b
 Final HEAD and dev both cb231eeb, worktree clean. Both scratch hubs stopped; own process scan empty; scratch root and detached worktree removed. M21 found zero hub-secret matches before cleanup. Scratch auth tokens, cookies, capability values and QR rows are redacted from published evidence; status, response headers, assertions, digest comparisons and decoder result remain. The trace message in the intentional smoke failure is a passing trace-capture test, not a product failure.
 
 Durable evidence A-8387: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8387-e-412-stage-3-27-checks-pass-at-cb231eeb/report.md
+
+### hub · 2026-10-21T13:25:20.807Z
+
+demo 181e606e-063d-4e9b-8aa6-b0e89ba5bbba created: droplet cland-v0-181e606e, commit 5f120a4766e3c60bcb5e0775ad19c5338afc2238, deadline 2026-10-21T14:39:15.934Z.
+
+### hub · 2026-10-21T13:35:38.707Z
+
+demo 181e606e-063d-4e9b-8aa6-b0e89ba5bbba destroyed: lifetime 668426 ms; cost $0.0464.
+
+### qa-676 · 2026-10-21T14:02:29.986Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-3
+commit: 5f120a4766e3c60bcb5e0775ad19c5338afc2238
+findings: [{"severity":"medium","text":"First epic suite c5e57fb0 failed fake-Claude cleanup ENOTEMPTY, known T-1035 per Coordinator77241095. Authorized same-head retry fb839f15 passes; both receipts retained.","file":"hub/test/claude-code-adapter.test.ts","line":247},{"severity":"low","text":"C2 per-port cookie-name wording was stale; Coordinator aeddb027 amended it to approved per-project SHA256-root naming. Fresh auth checks pass amended contract."},{"severity":"low","text":"QA probe attempt1 used nonexistent discovery.webBind and expected a network warning on loopback. Original outputs retained; corrected status-field/stopped-config probe and spoke hello pass."}]
+finding_counts: {"high":0,"medium":1,"low":2}
+
+| Case | Result | Actual command / observation |
+| --- | --- | --- |
+| BUILD | PASS | Delivered clean exact SHA; `npm run build --workspace web` succeeded from tested sources. Linux x86_64, Node v24.21.0, pinned Chrome Headless Shell 1248. |
+| D0 | PASS | `node --test .cland/qa-epic/dod.test.ts` copied all 1,050 committed tracker files to a disposable project, started fake Claude harness, and observed separate web 33713/spoke 40059 ports. |
+| D1 | PASS | Real `cland web --no-open` link opened by isolated Headless Shell; rendered shell Live; spent link 401; cookie HttpOnly, SameSite=Strict, 30 days, unreadable via document.cookie. |
+| D2 | PASS | Cookie-authenticated upgrade with foreign/null Origin or foreign Host 403; actual spoke-shaped hello closes 4000. |
+| D3 | PASS | Seven ordered snapshot domains at epoch 50a61e75…/seq 82, 1,050 items, fake session, no suite history; all frames within caps. Items 603,533 bytes. |
+| D4 | PASS | Actual CLI create/edit yields slim layers: {} and no items key. Drop at 84; five CLI edits; resume yields precisely task deltas 85–89, no snapshot or duplicates. |
+| D5 | PASS | Web hub.stop/release/path artifact creation each cli-neovim-only. Scratch CLI `release --item R-999999 --dry-run --json` reaches release logic, exit 1 `cland: no item T-999999`; it is not a release/publication PASS. Coordinator 8adedd94 authorizes this authority-boundary receipt. |
+| D6 | PASS | Actual CLI folder artifact creation, web capability HTML 200 with `sandbox allow-scripts`; 406 rows page 200/200/6 with no gap/repeat, last 200 matched backward page. |
+| D7 | PASS | CLI stops fake session and hub, restart retains port 33713/cookie; browser reconnects Live; old epoch resume receives seven fresh domains at new epoch f3bee8a8…. |
+| D8 | PASS | Scan 11 served bundle files, 497 browser frames, 6 browser responses, cookie storage/localStorage/sessionStorage and frame-client responses: 0 hub-secret matches. No bearer values printed in evidence. |
+| D9 | PASS | Headless Shell process-group census before 5/after 0; contexts closed; scratch hub stopped; fixture directories removed by ownership cleanup. |
+| N1 | PASS | Separate web 127.0.0.2/spoke 127.0.0.1; loopback-only QR refuses; configured HTTPS tunnel QR decodes exact link. Doctor plain-HTTP warning tested on stopped documentation-address config, never listening outside loopback. LAN QR construction additionally passes fresh AUTH recorded-Unix-frame fixture. |
+| SNAPSHOT | PASS | Fresh `node --test hub/test/connection-snapshot.test.ts`: 11/11, 0 skips; races, changed layers, legacy welcome, feature negotiation and serialization per feature set. |
+| AUTH | PASS | Fresh `node --test hub/test/web-auth.test.ts`: 28/28, 0 skips; cookie root-hash name/flags/expiry/restart, actual CLI session list/revoke, secret scan, binary/size/liveness/stamp/terminal/network/QR. |
+| MEASURE | PASS | `node hub/scripts/measure-snapshot.ts …/.cland/tasks`:1,050 copied items,8 frames,594,794 total bytes; items 590,846 bytes (56.35% cap). Five warm Linux compose samples 477.063,468.080,473.550,458.514,459.061ms. Other domains empty/default; excludes setup/copy/transport; not live-session latency or suite wall. |
+| WIRE | PASS | `node hub/test/lint-wire-imports.ts`: 1 source stays inside shared/wire. |
+| REUSE | PASS | Read all three stage-to-S patches. Stage 3-to-S core edge/auth/authority/artifact/ring/model-output/snapshot/dispatch/socket/server/suites/CLI-web/doctor-web/QR/Neovim-client diff is empty (`unchanged-core.json`). Reuse only exact claims below. |
+| DOCS | PASS | Read S's hub README web, model, history sections and ADR 0003; bind, auth, limits, snapshots, numbered deltas, resume, queue, history and leaf wire contract present. |
+| CLEAN | PASS | Delivered source tree clean after removing QA scripts; exact SHA retained. Freshness current:true. Lease released, 668,426 ms / $0.0464184722. |
+| SUITE-1 | FAIL | c5e57fb0 at S: Claude adapter cleanup ENOTEMPTY. Known T-1035 per Coordinator 77241095. Retained, never counted as a green suite. |
+| SUITE-2 | PASS | Authorized retry fb839f15 at S, full epic run exit 0: 3,570 tests, 3,562 pass, 8 skipped, 0 failed/cancelled/todo. A-8437/A-8438/A-8439. This receipt settles the suite gate. |
+
+
+Findings, ranked:
+- Medium, found aside (known T-1035): SUITE-1, hub/test/claude-code-adapter.test.ts:247, epic run c5e57fb0. Actual error: `ENOTEMPTY: directory not empty, rmdir '/tmp/cland-suite-ovlTXPKMqhmMJw/fake-claude-sBhUtB'` in “Claude Code mod confirmation timeout leaves delivery retryable at the next turn”. Coordinator 77241095 identified known cleanup flake and authorized one same-head retry. SUITE-2 fb839f15 passed. The failed receipt is retained, not reclassified as a pass; final suite gate is settled by the authorized retry.
+- Low, criterion correction: C2 originally said per-port cookie name; Coordinator aeddb027 amended it to the human-approved per-project SHA256-root name (ask310190bf). Fresh web-auth test asserts that exact name plus flags, 30-day expiry, restart and revocation. Judged amended C2.
+- Low, QA-probe correction: attempt1 incorrectly read discovery.webBind and expected a plain-HTTP warning for loopback127.0.0.2. Actual outputs were undefined versus127.0.0.1 and “ok web network loopback127.0.0.2”. Corrected to hub.status.web.bind and a stopped documentation-address config; also corrected spoke-shaped hello/4000 versus binary4003 before rerun. Both probe versions and original failures retained. Attempt2 passed; these are probe defects, not product failures.
+
+Run qa-2026-10-21-3; tested full dev SHA 5f120a4766e3c60bcb5e0775ad19c5338afc2238. All final scoped checks pass. Marks: C1,C2,C3,C4,C5,C6,C7,C8 verified in this run; no failed marks.
+
+Fresh targeted execution: 41/41 tests, zero skips, on Linux x64 demo, Node v24.21.0, Headless Shell1248. Shared credential filter, disposable HOME/XDG/Git and copied tracker/fake harnesses; browser group ends0, hubs stopped, source clean. Reused actual macOS stage evidence A-8056 at44097bad, A-8219 at479178b2 and A-8387 atcb231eeb only after stage-to-S diff review. Core edge/auth/authority/artifact/ring/queue/snapshot implementations unchanged from stage3; changed tracker/browser reads covered fresh. C4 queue-on-change, C5 ring/queue-limit cases and C8 Neovim compatibility map explicitly to A-8387 M22/M25; full criterion map and complete SHAs in A-8442.
+
+Final epic suite fb839f15 at the same full SHA: full exit0, 3,570 tests, 3,562 pass, 8 skipped, 0 fail/cancelled/todo; A-8437 merged, A-8438/A-8439 shards, coverage A-8440. Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, workers2, T1–T4 base plus Web completed. T4 repetitions skipped; Web3 files/3 top-level tests executed. Test lint132 findings, duration budgets and ratchet are report-only; incomplete ratchet base is not zero or passing performance evidence. Projected T3 wall is not measured wall.
+
+First suite c5e57fb0: A-8429/A-8430/A-8431 retained, exit1 with interruption receipt. Hub completed-before-interruption aggregate3588/3579pass/1fail/8skip differs from normal aggregate3568/3559pass/1fail/8skip; neither is a green run. Shard2 T4 lacked successful completion.
+
+Costs and actual durations:
+- First suite shard1 cland-v0-d34607cd c-8 lon1: admission-to-remote-finish1015.61s, lifetime1005s, cost$0.0698, collection23.83s. Shard2 cland-v0-2aa4be79:984.61s, lifetime968s, $0.0672, collection18.14s. Overall1039.51s/$0.1370.
+- Retry shard1 cland-v0-919ba7f8 c-8 lon1:1075.91s, lifetime1066s, $0.0740, collection20.91s. Shard2 cland-v0-eb0d1c9c:887.91s, lifetime878s, $0.0610, collection21.08s. Overall1097.06s/$0.1350.
+- Demo lease181e606e-063d-4e9b-8aa6-b0e89ba5bbba, deadline14:39:15.934Z, confirmed released668426ms/$0.04641847. Freshness current:true after retry.
+- Total reported cost$0.31841847 including failed attempt/retry/demo; suite wall windows total2136.57s. Demo overlaps first suite, so not added as elapsed wall; derived admission-to-final-result span approximately2176s.
+
+Durable final evidence A-8442: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8442-e-412-epic-dod-at-5f120a47-clear-c1-c8-with-green-same-head-retry/report.md
+It contains exact commands, corrected and original probes, 18 recorder rows, diff audit, case/criterion map, timing qualifications, and every merged/shard receipt reference. Pending artifact A-8432 remains historical.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.

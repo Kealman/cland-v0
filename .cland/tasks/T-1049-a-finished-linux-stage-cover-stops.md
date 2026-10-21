@@ -3,7 +3,7 @@ id: T-1049
 kind: task
 title: A finished Linux stage cover stops counting after a hub restart
 state: open
-status: in progress
+status: ready
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-799
 branch: t/T-1049-a-finished-linux-stage-cover-stops
 created: 2026-10-21T12:50:24.466Z
-updated: 2026-10-21T13:21:55.297Z
+updated: 2026-10-21T13:34:35.737Z
 ---
 
 ## Summary
@@ -28,11 +28,14 @@ A Linux droplet cover restored from the suite history after a hub restart still 
 
 ## Acceptance criteria
 
-- [ ] C1. A two-shard Linux droplet stage cover recorded before a hub restart still counts as the stage's Linux cover after the restart (test across a real restart of a projectHub).
-  - failed: rev-31 [reviewer] · 2026-10-21T13:21:55.297Z · note Final evidence blocked: same-head configured run failed three missing-web/dist prerequisite tests; retained native restart pass does not clear this failed gate. No new stage-logic regression inferred.
+- [x] C1. A two-shard Linux droplet stage cover recorded before a hub restart still counts as the stage's Linux cover after the restart (test across a real restart of a projectHub).
+  - done: impl-1049 · 2026-10-21T13:24:54.374Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1049-final · 2026-10-21T13:34:35.663Z · commit dad349c086f3acb41a00f58b02ac4cc1c6d3af47
 - [x] C2. The cause is named in the item topic: the field and the code path.
   - done: impl-1049 · 2026-10-21T13:06:41.863Z
   - verified: rev-31 [reviewer] · run rev-20261021-1049-source-2 · 2026-10-21T13:12:52.285Z · commit 14176bd2b4afbefcfe21d7d3612165a9eba6314f
+  - verified: rev-31 [reviewer] · run rev-20261021-1049-merge-source · 2026-10-21T13:25:51.183Z · commit dad349c086f3acb41a00f58b02ac4cc1c6d3af47
+  - verified: rev-31 [reviewer] · run rev-20261021-1049-final · 2026-10-21T13:34:35.663Z · commit dad349c086f3acb41a00f58b02ac4cc1c6d3af47
 
 ## Comments
 
@@ -88,3 +91,33 @@ finding_counts: {"high":0,"medium":1,"low":0}
 A-8416 quotes exact failures before diagnosis. Linux droplet run 81165225: host gate/T1 green, interrupted T2 exit 1, ordinary 1963 pass/3 fail plus 15 successful task load repetitions. All three new identities passed 5/5. C2 remains established; C1 final evidence blocked, not disproven behavior. Coordinator decision 8c93f2a9 confirms shared T-1031 and authorizes one merge only after it lands, then delta review and fresh mode-free run. Web/T3/T4 did not execute. The earlier malformed empty failed-list submission was rejected before recording a verdict; this supplies the required nonempty final-evidence note.
 
 Criteria: C1 failed (Final evidence blocked: same-head configured run failed three missing-web/dist prerequisite tests; retained native restart pass does not clear this failed gate. No new stage-logic regression inferred.).
+
+### rev-31 · 2026-10-21T13:25:51.183Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1049-merge-source
+commit: dad349c086f3acb41a00f58b02ac4cc1c6d3af47
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized conflict-free shared-fix merge delta clear, A-8421. T-1049 production and corrected tests unchanged; inspected landed T-1031's pre-worker/standalone bundle prerequisite and doctor fixture boundary for failed A-8414. Exact merged-head local targeted T2 5/5, native T3 restart 1/1 and hub typecheck retained in A-8420 with gate/platform limits. C2 reverified; C1 final awaits fresh mode-free same-head receipt. Coordinator owns enqueue/E-412 epic-demo hold. No merge enqueue.
+
+Criteria: C2 verified.
+
+### rev-31 · 2026-10-21T13:34:35.663Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1049-final
+commit: dad349c086f3acb41a00f58b02ac4cc1c6d3af47
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear C1/C2: A-8425 audits same-head A-8424/e8974efe Linux droplet host-gated T0/T1/full fallback T2/Web success, 2298 ordinary passes plus three distinct 5/5 load groups. Missing-bundle M2 recovered: raw build-before-workers receipt and all three prior failure identities pass. C1 native restart evidence remains exact-head targeted local Darwin T3 A-8420, separate from task gate; C2 named cause established. Both claimant done marks present. Inherited shell Web 6.331s>4s report-only overage separately routed S Follow-ups E-880, not a budget pass. No task T3/T4/performance/stage-QA or merge-enqueue claim.
+
+Criteria: C1 verified, C2 verified.

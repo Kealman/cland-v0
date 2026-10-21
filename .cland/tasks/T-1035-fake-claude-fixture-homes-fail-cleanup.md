@@ -3,18 +3,19 @@ id: T-1035
 kind: task
 title: Fake Claude fixture homes fail cleanup with ENOTEMPTY while a fake process still writes
 state: open
-status: backlog
+status: review
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
   - flaky
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-803
+branch: t/T-1035-fake-claude-fixture-homes-fail-cleanup
 created: 2026-10-21T06:00:35.827Z
-updated: 2026-10-21T06:00:35.827Z
+updated: 2026-10-21T13:59:23.264Z
 ---
 
 ## Summary
@@ -32,6 +33,46 @@ Evidence:
 
 ## Acceptance criteria
 
-- [ ] C1. A test that leaves a late writer in a fake Claude home passes its cleanup once the writer exits, and the cleanup waits for it within a bounded time (test with a deliberate late write).
-- [ ] C2. When the home still cannot be removed after the bound, the cleanup error names the late file (test).
-- [ ] C3. `roles.test.ts` and `aide.test.ts` pass 20 sequential repetitions each on a droplet under load gate workers 2 (evidence in the item topic).
+- [x] C1. A test that leaves a late writer in a fake Claude home passes its cleanup once the writer exits, and the cleanup waits for it within a bounded time (test with a deliberate late write).
+  - done: impl-1035 · 2026-10-21T13:58:04.759Z
+- [x] C2. When the home still cannot be removed after the bound, the cleanup error names the late file (test).
+  - done: impl-1035 · 2026-10-21T13:50:43.442Z
+- [ ] C3. roles.test.ts, aide.test.ts and claude-code-adapter.test.ts pass 20 sequential repetitions each at the task head, in a scratch clone with workers 2 under the load gate (evidence in the item topic).
+
+## Comments
+
+### coord · 2026-10-21T13:41:37.866Z
+
+Third occurrence, and the first that stalls an epic gate. `hub/test/claude-code-adapter.test.ts` "Claude Code mod confirmation timeout leaves delivery retryable at the next turn" failed with `ENOTEMPTY: directory not empty, rmdir '/tmp/cland-suite-…/fake-claude-…'` in the E-412 epic suite c5e57fb0 at 5f120a47, shard-2, Linux droplet (A-8429 line 20191). It was the only failure out of 3,588 tests. Flaky rerun rule: one resubmit, fb839f15. Raising this ticket's priority: it is now the most frequent red cause on integrated covers.
+
+### impl-1035 · 2026-10-21T13:48:41.821Z
+
+TDD at fakeClaude ownership seam in a disposable scratch clone, scratch HOME/XDG/Git/config, shared credential filter, system TMPDIR, macOS/local. C1 red: 0/1, Error: directory not empty, code ENOTEMPTY at process-cleanup.ts directory removal. C1 green after writer admission/identity registry/drain: 1/1. C2 red: /jobs\/late-hook\.log/ did not match 'Error: directory busy'. C2 green with 1,000 ms bounded ENOTEMPTY/EBUSY retries: fixture lifecycle file 3/3 (includes orphan-hook exit and stale-CLI fence), existing process-cleanup file 29/29. These are targeted development checks, not suite/C3 receipts.
+
+### rev-23 · 2026-10-21T13:54:32.674Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261021-1035-source
+commit: 2df1181aa4c2d67c73496881b2e6a0a4f575943b
+scope: full
+findings: [{"severity":"medium","text":"The held child starts before the try/finally at45, while fakeClaude ownership is captured only in a synthetic context with no real t.after registration. A setup receipt timeout/rejection therefore leaves the held child and fake home undisposed. Even inside finally, await poll at54 can reject before removal/ownership cleanup. Register guaranteed real-test cleanup immediately after fixture allocation, preserve errors while always settling/reaping writers and invoking ownership cleanup, and cover setup/child failure without weakening the final exit/no-live-removal assertions.","file":"hub/test/fake-claude-cleanup.test.ts","line":29}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not clear at corrected manifest head2df1181a; A-8434 records full seven-file Standards/Spec audit. Standards M1 medium: new held-poll regression can leak exactly the live writer/home it is meant to protect on setup or child error. Synthetic captured hooks are never registered with real t.after; setup awaits before try/finally, and await poll in finally can skip remaining disposal. This is source-derived, not an executed failure. No additional implementation findings: registry/admission, session groups, bounded poll drain, removal diagnostics and signal seam reviewed; manifest order correction confirmed. C1 failed; C2 execution-dependent/unverified. C3 deliberately pending is not a source failure; Coordinator4cdddaa3 approved sequential scratch workers2/load<15/runner-lock repetitions with no overlap. Correct source and request re-review before verification/C3. A-8433 contains development summaries only; no queued or C3 pass claimed, no Reviewer runtime.
+
+Criteria: C1 failed (The held-poll regression has no real after hook and starts its finally after setup; setup rejection or a rejected poll bypasses owned cleanup and can leave the writer/home alive.).
+
+### rev-23 · 2026-10-21T13:59:23.264Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1035-source-2
+commit: 72c117c1c08fbc630fd6a5f877234e92fdc5ccf8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-8436 extends full audit A-8434. Standards0/Spec0. M1 resolved: captured ownership registers immediately with real t.after, restores filesystem mocks before disposal, and no rejected poll can skip that hook; release armed before launch. Added actual child-test scope setup-rejection/CLI-error coverage retains final PID-gone/home-absent assertions; held-poll no-live-removal and all original lifecycle assertions retained. Implementation/docs unchanged. C1/C2 still runtime-unverified; C1 done refreshed, C3 deliberately pending. A-8435 is development red/green summary, not queued/C3 proof; retain original targeted stdout/exit and execution head/tree for final evidence. Proceed mode-free verify and authorized sequential C3 at this unchanged head, respecting Coordinator4cdddaa3 load<15/workers2/runner-lock/cover-quiet/no-overlap conditions. Final verdict waits for same-head run plus lifecycle/C3 receipts. No Reviewer execution; QA none.
