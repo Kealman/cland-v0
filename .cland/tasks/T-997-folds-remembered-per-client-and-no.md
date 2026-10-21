@@ -2,8 +2,8 @@
 id: T-997
 kind: task
 title: Folds remembered per client, and no explanatory prose
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-809
 branch: t/T-997-folds-remembered-per-client-and-no
 created: 2026-10-20T16:51:41.075Z
-updated: 2026-10-21T14:37:53.497Z
+updated: 2026-10-21T14:54:01.838Z
+closed: 2026-10-21T14:54:01.838Z
 ---
 
 ## Summary
@@ -30,13 +31,19 @@ One fold component with a chevron and keys from the key map, its state stored un
 
 - [x] C1. A group folded with its chevron and with the keyboard stays folded across a reload (browser test).
   - done: impl-997 · 2026-10-21T14:37:38.391Z
+  - verified: rev-26 [reviewer] · run rev-20261021-997-final-1 · 2026-10-21T14:50:48.025Z · commit dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
 - [x] C2. Folding sends no frame to the hub (browser test counts outgoing frames).
   - done: impl-997 · 2026-10-21T14:37:38.416Z
+  - verified: rev-26 [reviewer] · run rev-20261021-997-final-1 · 2026-10-21T14:50:48.025Z · commit dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
 - [x] C3. A mechanical browser check (a visible text node outside `title` attributes, tooltips and the `?` panel that ends with a full stop or holds more than six words) fails on a fixture that adds an explanatory sentence to a header and passes on the shell.
   - done: impl-997 · 2026-10-21T14:37:38.441Z
+  - verified: rev-26 [reviewer] · run rev-20261021-997-final-1 · 2026-10-21T14:50:48.025Z · commit dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
 - [x] C4. The reference component named in `AGENTS.md` uses the fold component.
   - verified: rev-26 [reviewer] · run rev-20261021-997-source-1 · 2026-10-21T14:28:10.829Z · commit 1c0ecf2a0a87376bbae8ef8ff27304b1ff34fcc4
   - done: impl-997 · 2026-10-21T14:37:38.466Z
+  - verified: rev-26 [reviewer] · run rev-20261021-997-source-2 · 2026-10-21T14:38:38.541Z · commit 13371c6692d89451c08b995385eaf330565163f1
+  - verified: rev-26 [reviewer] · run rev-20261021-997-source-delta-1 · 2026-10-21T14:41:49.602Z · commit dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
+  - verified: rev-26 [reviewer] · run rev-20261021-997-final-1 · 2026-10-21T14:50:48.025Z · commit dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
 
 ## Comments
 
@@ -77,3 +84,52 @@ finding_counts: {"high":0,"medium":1,"low":0}
 Configured run 6d7447cc/A-8473 exited 1 at unchanged source-reviewed head; evidence audit A-8474. Actual gate failures: folds parent 5.772 s >5 s and palette parent 7.098 s >5 s. All 2312 ordinary functional finishes passed, including actual Web fold/reload/no-frame/prose cases, but the enforcing missing-baseline guard failed. T1/T2 succeeded; Web exited1; no load finishes, T3/T4/QA absent. Four-second Web tier/lint/other budget diagnostics remain report-only, not timing passes. Host typecheck was not repeated on droplet. Resolve under the documented allowance policy and request fresh source review at any changed head before another verification. C4 source mark remains current; no run-dependent verification granted.
 
 Criteria: C1 failed (Required configured browser gate exited1 on folds/palette duration bounds despite passing functional assertions; A-8473.).
+
+### rev-26 · 2026-10-21T14:38:38.542Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-997-source-2
+commit: 13371c6692d89451c08b995385eaf330565163f1
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Duration-only correction source clear; A-8479. Only two exact allow entries added, matching A-8473 Linux folds5.772334855s/palette7.098176623s measurements with explicit lifecycle reasons and caps7.3s/8.9s, open E-880 owner and valid2026-10-21→28 dates. No baseline, assertion, product or fixture change; no dev merge. The documented policy permits these dated exceptions. This is not a four-second Web target pass; failed A-8473 remains failed historical evidence. C4 source reverified; C1/C2/C3 await a new configured same-head receipt. No findings. Mode-free verification may proceed at13371c66.
+
+Criteria: C4 verified.
+
+### rev-26 · 2026-10-21T14:41:49.602Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-997-source-delta-1
+commit: dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Posted shared correction/reconciliation source clear; A-8487. Only durations.json differs from13371c66: exact posted palette12s entry retained once, own8.9s duplicate removed, folds9s per direct Coordinator e8ae9c2d. Owner/dates valid, candidate JSON has no duplicate keys, source/assertions/fixtures/baselines unchanged. Direct decisions b5dcb1e3/2fea5675/e8ae9c2d authorize this delta; no findings. C4 reverified. C1/C2/C3 await new same-head configured result. Superseded795b1fab/A-8483 failed before bundling on changedHEAD and supplies no passing test receipt; refused cancel was not bypassed. Mode-free verification may proceed at dc4091f6. No reviewer execution.
+
+Criteria: C4 verified.
+
+### rev-26 · 2026-10-21T14:50:48.025Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-997-final-1
+commit: dc4091f6c2a1d2cd7967c023e3b4f55d9ae86ae6
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-8495 audits original A-8493/run2a64f0f5 at source-reviewed dc4091f6. Auto exit0,2312 ordinary passes and no load-gate finishes; actual T1/allT2 hub+Neovim/Web completed. Browser fold chevron/physical keys/reload/no-outgoing-frame, pane/area ownership, denied/malformed storage and mechanical prose plants all pass. C1–C4 verified across source and execution. Folds parent6.196397782s<dated9s, palette7.771516860s<shared12s; no4s Web-target pass claimed. Linux x64 c-8 droplet433s/$0.0301; two hub/Neovim/four Web workers. Host typecheckf8d1defb not repeated remotely; report-only lint/duration/ratchet warnings retained. T3 deferred, T4 absent; E-415 stage3QA remains after landing, not covered by this verdict. Prior failed/superseded receipts retain their limits. No findings.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-21T14:54:01.838Z
+
+Merged c9063d0659910c0504ad7b602ff8c4f48128645e onto dev.

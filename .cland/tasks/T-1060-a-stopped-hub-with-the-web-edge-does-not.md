@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-807
 branch: t/T-1060-a-stopped-hub-with-the-web-edge-does-not
 created: 2026-10-21T14:06:08.818Z
-updated: 2026-10-21T14:28:24.941Z
+updated: 2026-10-21T14:50:45.476Z
 ---
 
 ## Summary
@@ -39,6 +39,7 @@ After `hub stop`, the hub at cb231eeb logs "stopped" but its process stays alive
   - done: impl-1060 · 2026-10-21T14:18:55.120Z
   - verified: rev-23 [reviewer] · run rev-20261021-1060-source · 2026-10-21T14:21:37.986Z · commit 5a1f508a19939d2507c7a1e31c44c85765b70f25
   - verified: rev-23 [reviewer] · run rev-20261021-1060-source-2 · 2026-10-21T14:28:24.941Z · commit c200da18bb377f19d7be6acfc3980e4e151ada34
+  - verified: rev-31 [reviewer] · run rev-20261021-1060-shared-source · 2026-10-21T14:41:31.502Z · commit 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
 
 ## Comments
 
@@ -94,3 +95,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; A-8467 extends full A-8451 audit, Standards0/Spec0. Task-added Coordinator clause line removed; default-roles.ts equals fixed merged-devbase, existing procedure pointer retains access to README guidance. Diagnostic explanation now under Coordinator session procedure, exactly per verified Coordinator379027e1. No unrelated clause shortening, byte ceiling/assertion edits, lifecycle code/test changes or dev merge. Historical M1 reserve failure resolved in source; reported local27/27 clause tests are targeted support. C3 diagnostic/provenance remains unchanged and reverified at this head; C1/C2 require runtime receipts, C1 done refreshed. Proceed mode-free verify unchangedc200da18, then Coordinator's replacement full lifecycle suite. Final settlement waits for both exact-head receipts/newT3cases. A-8456 failed/A-8458 cancelled remain historical, not passes. No Reviewer runtime; QA none.
 
 Criteria: C3 verified.
+
+### rev-31 · 2026-10-21T14:41:31.502Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1060-shared-source
+commit: 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized two-commit allowance delta clear, A-8486. Exactly one durations.json identity added; all other JSON unchanged, final blob matches Coordinator 385f4e79. 12s allowance owner E-880 expires2026-10-28, measured Linux basis confirmed in A-8477, follow-up T-1051. Lifecycle source/tests unchanged from rev-23 full source-clear c200da18. C3 diagnosis reverified; C1/C2 remain pending replacement mode-free and Coordinator-required full lifecycle receipts. Prior failed/cancelled runs not reused; no merge enqueue.
+
+Criteria: C3 verified.
+
+### impl-1060 · 2026-10-21T14:50:42.036Z
+
+Mode-free configured verification 76fde038-31e9-41ff-adab-0da651ec983d green at 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7, source-clear rev-20261021-1060-shared-source. T1/T2/Web exit 0; 2306/2306 tests pass, zero skips/fails. Executor droplet, Linux x64 6.8.0-142-generic, Node24.21.0, c-8 lon1, lifetime475s/cost$0.0330. Test lint/duration/ratchet report-only; enforced gates passed. Host gate receipt 3af5b80b reused, not repeated remotely. A-8494: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8494-suite-76fde038-31e9-41ff-adab-0da651ec983d-auto-at-8d5bee1.log. T3 is absent from task verification; full 68c57731 remains pending and is required for C1/C2 final review settlement.

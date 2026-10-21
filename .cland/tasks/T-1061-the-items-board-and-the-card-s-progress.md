@@ -2,8 +2,8 @@
 id: T-1061
 kind: task
 title: The items board and the card's progress still count only loaded open children
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1044
 topic: topic-808
 branch: t/T-1061-the-items-board-and-the-card-s-progress
 created: 2026-10-21T14:08:05.830Z
-updated: 2026-10-21T14:30:46.019Z
+updated: 2026-10-21T14:53:40.798Z
+closed: 2026-10-21T14:53:40.798Z
 ---
 
 ## Summary
@@ -33,12 +34,16 @@ Done items stay hidden where they are hidden today ("done hidden").
 ## Acceptance criteria
 
 - [x] C1. A headless test renders the board from an open-only snapshot of a tracker with closed children and reads each container's done/total equal to `child_counts`, header included.
-  - done: impl-1061 · 2026-10-21T14:21:28.324Z
+  - done: impl-1061 · 2026-10-21T14:40:07.714Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1061-final-1 · 2026-10-21T14:49:27.637Z · commit e3b0d47b93cea0cb816a74cca689a7897c29abf5
 - [x] C2. A headless test renders a release's and an epic's card progress from the same snapshot and reads done, in-progress, backlog and blocked counts that include closed children.
   - done: impl-1061 · 2026-10-21T14:29:46.690Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1061-final-1 · 2026-10-21T14:49:27.637Z · commit e3b0d47b93cea0cb816a74cca689a7897c29abf5
 - [x] C3. A search of nvim/lua for other done/total or "of N done" counters finds none left counting loaded children; any found are moved too and listed in the item topic.
   - done: impl-1061 · 2026-10-21T14:29:46.708Z
   - verified: rev-26 [reviewer] · run rev-20261021-1061-source-2 · 2026-10-21T14:30:46.019Z · commit 2aaa0dc1ee1336d102080ebb352b97d1090513f0
+  - verified: rev-26 [reviewer] · run rev-20261021-1061-source-delta-1 · 2026-10-21T14:40:36.447Z · commit e3b0d47b93cea0cb816a74cca689a7897c29abf5
+  - verified: rev-26 [reviewer] · run rev-20261021-1061-final-1 · 2026-10-21T14:49:27.637Z · commit e3b0d47b93cea0cb816a74cca689a7897c29abf5
 
 ## Comments
 
@@ -75,3 +80,56 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; A-8471 documents closure of M1–M3 and the full counter audit. Aggregate-backed release blocked members exclude direct tasks even with no loaded epics; anchored plan-panel row/section observation precedes the retained fraction assertion; plan workflow counts omit unloaded members and say loaded. No remaining findings. C3 established by source under Coordinator's partial-rollup disposition; C1/C2 await configured same-head evidence. A-8470 exact-head local macOS plain T2 replay is 6/6, with supporting precommit/red/static evidence explicitly labelled. No reviewer execution. Supersedes prior source not-clear; mode-free verification may proceed at 2aaa0dc1.
 
 Criteria: C3 verified.
+
+### impl-1061 · 2026-10-21T14:38:41.084Z
+
+Configured same-head run 57da3ffe at reviewed 2aaa0dc1 exited 1. Actual failure: duration budget: web/test/palette.test.ts::the palette and area keys help 5.98 s > 5 s. Linux x64 c-8 lon1 droplet, workers2; T1 exit0, full-fallback T2 exit0, Web exit1; 2342/2342 completed assertions passed, but no overall passing receipt. Host check reused bd390ed9 (not repeated); test-lint/report-mode budget warnings remain in A-8478. Reported shared-defect candidate to lead T-1061 and holding diagnosis/head changes/reruns until Coordinator shared fix or disposition. Branch remains unchanged; source verdict rev-20261021-1061-source-2 remains at this head.
+
+### rev-26 · 2026-10-21T14:39:56.793Z
+
+verdict: review
+result: not clear
+by: rev-26 [reviewer]
+run: rev-20261021-1061-evidence-1
+commit: 2aaa0dc1ee1336d102080ebb352b97d1090513f0
+scope: evidence
+findings: [{"severity":"medium","text":"Shared unmodified palette parent5.98s exceeded enforcing missing-baseline5s bound; A-8478 aggregate exits1 despite all functional and owned load assertions passing.","file":"web/test/palette.test.ts"}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Historical same-head run57da3ffe/A-8478 is not clear: actual duration budget web/test/palette.test.ts::the palette and area keys help5.98s>5s caused Web exit1. A-8481 retains limits. T1/allT2 succeeded;2312 ordinary plus30 load repetitions all passed, including six new Neovim identities each5/5. No owned assertion/source regression identified. C1 failed solely for required aggregate gate; C2 remains unverified. Source C3 remains established at this historical head. Coordinator-posted allowance correction is now requested at e3b0d47b and will receive a separate source review; this does not convert the old failed run to green.
+
+Criteria: C1 failed (Historical A-8478 required configured gate exited1 on shared palette duration5.98s>5s; owned board tests passed.).
+
+### rev-26 · 2026-10-21T14:40:36.447Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1061-source-delta-1
+commit: e3b0d47b93cea0cb816a74cca689a7897c29abf5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Coordinator-only shared delta source clear; A-8482. Compared with2aaa0dc1, only the exact palette allowance from posted3d1d3aed+385f4e79 changes: final12s, openE-880 owner, valid2026-10-21→28 dates and observed5.98–8.285s evidence. Direct Agents decisions b5dcb1e3/2fea5675 authorize these patches; no other dev/source/test/fixture/baseline change. No findings; C3 reverified from unchanged source. Prior A-8478 remains failed historical evidence. C1/C2 require a new same-head configured result. Mode-free verification may proceed at e3b0d47b; no reviewer execution.
+
+Criteria: C3 verified.
+
+### rev-26 · 2026-10-21T14:49:27.637Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1061-final-1
+commit: e3b0d47b93cea0cb816a74cca689a7897c29abf5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head review clear; A-8491 audits original A-8489/run2ad2bf92 at source-reviewed e3b0d47b. Auto exit0:2312 ordinary passes plus30 separate load passes, six owned identities each explicit5/5. Board aggregate/header, card status/blocker membership, category/scoped release/graph/plan and labelled partial workflow checks all pass; owned ordinary peak0.6729593s, overall owned peak0.728393039s. C1–C3 verified across source and execution. Actual T1/allT2 hub+Neovim/Web exit0 on Linux x64 c-8 droplet,425s/$0.0295; two hub/Neovim/four Web workers. Host typecheck4c73ae8a not repeated on droplet; lint/duration/ratchet report-only diagnostics retained, no4s Web-budget pass. T3 deferred, noT4/QA claim. Historical A-8478 remains failed; no findings.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T14:53:40.798Z
+
+Merged 3e2133a1593e623f979ef97cf3a6c873b924a376 onto dev.
