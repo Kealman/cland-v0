@@ -1731,6 +1731,15 @@ projects, homes, Git configuration and account environments come from the sealed
 fixture. These tests add no hub child process. Clients resume from their last
 applied cursor; a completed request after replay/drain fences preceding writes.
 
+`hub/test/computed-sessions.test.ts` exercises the same disposable T2 frame seam
+for authoritative unread/last-message values, `topic.read`, merged session
+snapshots and row replacements. Fake time proves waiting age without timer-only
+updates; the row carries approval command, account, usage, newest verifier hold
+and +N, or accepted requested work. A later snapshot is compared with each
+presence/process/rename/disconnect delta, and an ordered request fences the
+single-row assertion. Snapshot-only subscribers also receive unmanaged rows and
+removals; unknown identities remain separate by name. No new process is used.
+
 `hub/test/connection-snapshot.test.ts` uses a disposable `projectHub` at T2 for
 feature negotiation, the seven domain frames and end marker, legacy compatibility,
 UTF-8 overflow fallback, and a model change raced against the first snapshot

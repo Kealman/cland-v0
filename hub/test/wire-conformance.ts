@@ -46,6 +46,7 @@ export type WireConformance = [
   Assert<Equal<import('../src/protocol.ts').SessionHold, Wire.SessionHold>>,
   Assert<Equal<import('../src/protocol.ts').PendingVerification, Wire.PendingVerification>>,
   Assert<Equal<import('../src/protocol.ts').Presence, Wire.Presence>>,
+  Assert<Equal<import('../src/protocol.ts').SessionRow, Wire.SessionRow>>,
   Assert<Equal<import('../src/hub/visibility.ts').Layer, Wire.Layer>>,
   Assert<Equal<import('../src/protocol.ts').SessionState, Wire.SessionState>>,
   Assert<Equal<import('../src/protocol.ts').ArtifactKind, Wire.ArtifactKind>>,

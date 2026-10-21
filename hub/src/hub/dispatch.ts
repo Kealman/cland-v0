@@ -393,6 +393,7 @@ export class Dispatcher {
 
   useSessions(sessions: Sessions | undefined): void {
     this.#sessions = sessions;
+    this.core.useSessionRows(() => this.#sessions?.list() ?? []);
     this.#processWork.clear();
     for (const process of sessions?.list() ?? []) this.#processWork.set(process.sessionId, JSON.stringify([process.holds ?? [], process.pending ?? null]));
     this.#options.tracker?.reconcileSessionIdentities();

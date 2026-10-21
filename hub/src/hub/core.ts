@@ -36,6 +36,7 @@ import {
   type ClientFeature,
   type HarnessProcessView,
   type SessionUsage,
+  type SessionRow,
   type HygieneRefusal,
   type Message,
   type Presence,
@@ -262,7 +263,7 @@ export class HubCore {
       const page = resumed(() => this.#store.visibilityMessages(choice, after, through));
       resumed(() => {
         for (const message of page) {
-          const projected = this.visibility.frame({ type: 'message', topic: this.topicRef(message.topic)!, message: this.#resolveAttachments(message) });
+          const projected = this.visibility.frame({ type: 'message', topic: this.#messageTopic(message.topic)!, message: this.#resolveAttachments(message) });
           add('messages', projected.message);
         }
       });
@@ -545,6 +546,8 @@ export class HubCore {
     this.#unsubscribeRules?.();
     if (this.#presenceImmediate) clearImmediate(this.#presenceImmediate);
     this.#presenceImmediate = null;
+    if (this.#rowsImmediate) clearImmediate(this.#rowsImmediate);
+    this.#rowsImmediate = null;
     if (this.#journalImmediate) clearImmediate(this.#journalImmediate);
     this.#journalImmediate = null;
     this.#journalRows = [];
@@ -628,7 +631,72 @@ export class HubCore {
   #verificationQueue: VerificationQueue | undefined;
   publishVerification(queue: VerificationQueue): void { this.#verificationQueue = queue; this.#emit({ type: 'verification.queue', queue }); }
 
+  #processRows: () => HarnessProcessView[] = () => [...this.#heartbeatProcesses.values()].filter(p => !p.archived);
+  #rowsImmediate: NodeJS.Immediate | null = null;
+  readonly #publishedRows = new Map<string, string>();
+
+  useSessionRows(read: () => HarnessProcessView[]): void { this.#processRows = read; }
+
+  /** Compose from the same loaded process/presence facts used by compatibility reads. */
+  sessionRows(processes = this.#processRows()): SessionRow[] {
+    const presence = this.presence();
+    const key = (s: { sessionId: string; name: string }) => s.sessionId === UNKNOWN_SESSION ? `name:${s.name}` : s.sessionId;
+    const connected = new Map(presence.map(s => [key(s), s]));
+    const entries: Array<{ process?: HarnessProcessView; presence?: Presence }> = processes.map(process => {
+      const live = connected.get(key(process));
+      connected.delete(key(process));
+      return { process, ...(live ? { presence: live } : {}) };
+    });
+    for (const live of connected.values()) entries.push({ presence: live });
+    return entries.map(({ process: p, presence: live }) => {
+      const identity = live ?? p!;
+      const running = p ? p.status === 'running' : true;
+      const holds = this.sessionHolds(identity);
+      const pending = running ? this.sessionPending(identity) : undefined;
+      const held = holds[0];
+      const state = p?.stateReason || !running ? 'unknown' : this.sessionState(identity.sessionId);
+      const saved = this.#store.meta(`heartbeat-state:${identity.sessionId}`);
+      const transition = saved ? JSON.parse(saved) as { state: SessionState; since: number } : null;
+      const command = running ? this.sessionApprovalCommand(identity.sessionId) : undefined;
+      const row: SessionRow = {
+        ...p, key: key(identity), name: identity.name, sessionId: identity.sessionId,
+        role: identity.role, label: withRole(identity.name, identity.role), cwd: identity.cwd,
+        harness: p?.harness ?? null, status: p?.status ?? 'connected',
+        launched: !!p, live: running, presence: live ?? null,
+        state, stateSince: transition?.state === state ? new Date(transition.since).toISOString() : null,
+        holds, item: held?.item ?? pending?.item ?? p?.item ?? null,
+        itemKind: held?.role ?? pending?.kind ?? null, itemRequested: !held && !!pending,
+        additionalHolds: Math.max(0, holds.length - 1),
+      };
+      delete row.pending;
+      delete row.approvalCommand;
+      if (pending) row.pending = pending;
+      if (command !== undefined) row.approvalCommand = command;
+      return this.visibility.place('sessions', row);
+    });
+  }
+
+  #scheduleSessionRows(): void {
+    if (this.#closed || this.#rowsImmediate) return;
+    this.#rowsImmediate = setImmediate(() => {
+      this.#rowsImmediate = null;
+      const rows = this.sessionRows();
+      const keys = new Set(rows.map(row => row.key));
+      for (const key of this.#publishedRows.keys()) if (!keys.has(key)) {
+        this.#publishedRows.delete(key);
+        this.#emit({ type: 'session.row', key, row: null }, undefined, false);
+      }
+      for (const row of rows) {
+        const signature = JSON.stringify(row);
+        if (this.#publishedRows.get(row.key) === signature) continue;
+        this.#publishedRows.set(row.key, signature);
+        this.#emit({ type: 'session.row', key: row.key, row }, undefined, false);
+      }
+    });
+  }
+
   #emit(event: HubEvent, featured?: import('../protocol.ts').ModelEvent, legacy = true): void {
+    if (['presence', 'session.process', 'session.state', 'session.role', 'session.usage', 'sessions.pruned', 'visibility'].includes(event.type)) this.#scheduleSessionRows();
     if (legacy) for (const listener of [...this.#listeners]) {
       try {
         listener(event);
@@ -658,7 +726,7 @@ export class HubCore {
     this.#modelPublications.push(() => {
       const variants = new Map<string, { frame: HubFrame; json?: string }>();
       for (const client of clients) {
-        if (!legacy && !client.features.includes('numbered-deltas') && !client.features.includes('slim-frames')) continue;
+        if (!legacy && !client.features.includes('numbered-deltas') && !client.features.includes('slim-frames') && !(event.type === 'session.row' && client.features.includes('snapshot'))) continue;
         try {
           let variant = variants.get(client.key);
           if (!variant) {
@@ -684,7 +752,7 @@ export class HubCore {
   /** A recorded topic message reaches the subscribers, with its stage as stored. */
   #emitMessage(message: Message): void {
     if (message.topic === undefined) return;
-    const topic = this.topicRef(message.topic);
+    const topic = this.#messageTopic(message.topic);
     if (!topic) return;
     const stage = this.#store.stage(message.id);
     const ask = this.asks.card(message.id);
@@ -2546,6 +2614,11 @@ export class HubCore {
       const waitingFor = this.asks.waitingFor(topic.id);
       return waitingFor.length ? { ...topic, waitingFor } : topic;
     });
+  }
+
+  #messageTopic(id: string): (TopicRef & Pick<Topic, 'unread' | 'lastMessageAt'>) | null {
+    const topic = this.#store.topic(id);
+    return topic ? { id: topic.id, title: topic.title, ...(topic.item !== null ? { item: topic.item } : {}), unread: topic.unread, lastMessageAt: topic.lastMessageAt } : null;
   }
 
   topicRef(id: string): TopicRef | null {

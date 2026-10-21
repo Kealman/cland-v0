@@ -78,8 +78,8 @@ test('a message from the UI is queued while no session holds the coordinator rol
   const before = await ui.request({ type: 'topic.history', topic: 'general', before: message.seq + 1 });
   assert.equal((before.value as { messages: TopicMessage[] }).messages[0]?.seq, message.seq);
 
-  const event = (await ui.waitFor((f) => f.type === 'message')) as { topic: { id: string; title: string }; message: TopicMessage };
-  assert.deepEqual(event.topic, { id: 'general', title: 'General' });
+  const event = (await ui.waitFor((f) => f.type === 'message')) as { topic: { id: string; title: string; unread: number; lastMessageAt: string }; message: TopicMessage };
+  assert.deepEqual(event.topic, { id: 'general', title: 'General', unread: 0, lastMessageAt: message.ts });
   assert.equal(event.message.id, message.id);
   assert.equal(event.message.seq, message.seq);
   assert.equal(event.message.from, 'human');

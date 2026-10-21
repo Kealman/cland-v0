@@ -28,10 +28,11 @@ export function composeSnapshot({ core, tracker, sessions, verification, events,
 }): SnapshotValues {
   const crew = core.crew?.get() ?? defaultCrew();
   const cutoff = core.clock.now().getTime() - 7 * 24 * 60 * 60 * 1000;
+  const processes = sessions?.list() ?? [];
   return {
     tracker: { levels: tracker?.ladder.flat ?? [], ladder: tracker?.ladder.levels.map(level => [...level]) ?? [], prefixes: tracker ? Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])) : {} },
     items: { items: tracker?.listSummaries() ?? [] },
-    sessions: { processes: sessions?.list() ?? [], presence: core.presence(), archived: sessions?.archivedCount() ?? 0, roles: core.roleList(), crew: { config: crew, summary: crewSummary(crew) }, coordinator: core.coordinator(), verification },
+    sessions: { rows: core.sessionRows(processes), processes, presence: core.presence(), archived: sessions?.archivedCount() ?? 0, roles: core.roleList(), crew: { config: crew, summary: crewSummary(crew) }, coordinator: core.coordinator(), verification },
     topics: { topics: core.topics().filter(topic => topic.status !== 'closed' || Date.parse(topic.updatedAt) >= cutoff) },
     inbox: core.inbox.list(), events, accounts: core.accountLimits.list(registry),
   };

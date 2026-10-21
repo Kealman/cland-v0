@@ -273,6 +273,8 @@ export type HubEvent =
   | { type: 'presence'; sessions: Presence[] }
   /** A process-table row changed: the same view as session.list, replaced by stable session id or name. */
   | { type: 'session.process'; process: HarnessProcessView; archived?: number }
+  /** One complete replacement row, or a removal by stable key. Featured model clients only. */
+  | { type: 'session.row'; key: string; row: SessionRow | null }
   | { type: 'sessions.pruned'; sessionIds: string[]; archived: number }
   /** Failed launch supervision changed; no accepted process row is implied. */
   | { type: 'session.cleanup'; sessionId: string; state: 'pending stop' | 'settled' }
@@ -282,7 +284,7 @@ export type HubEvent =
   | { type: 'account'; account: AccountView }
   | { type: 'session.usage'; session: string; sessionId: string; usage: SessionUsage }
   /** A new message in a topic: the human's, an agent's. */
-  | { type: 'message'; topic: TopicRef; message: TopicMessage }
+  | { type: 'message'; topic: TopicRef & Pick<Topic, 'unread' | 'lastMessageAt'>; message: TopicMessage }
   /** A message's stage changed. */
   | { type: 'delivery'; topic: string; message: string; stage: DeliveryStage }
   /** A session's state changed (spec 4.2), from its adapter: `source` names the signal (`hook`, `mod`, `poll`, `process`). */
@@ -366,6 +368,29 @@ export type CrewRole = { policy: CrewPolicy; size: number | null; keep_context: 
 export type CrewPolicy = 'per-item' | 'per-group' | 'pool' | 'singleton';
 
 // hub/src/protocol.ts
+/** Complete workbench row. `key` is stable across rename; unknown identities use the name. */
+export type SessionRow = Omit<Partial<HarnessProcessView>, 'harness' | 'status' | 'holds'> & {
+  key: string;
+  name: string;
+  sessionId: string;
+  role: string | null;
+  label: string;
+  cwd: string;
+  harness: string | null;
+  status: HarnessProcessView['status'] | 'connected';
+  state: SessionState;
+  /** Transition timestamp, so age advances without timer-only deltas. Null means unknown. */
+  stateSince: string | null;
+  launched: boolean;
+  live: boolean;
+  presence: Presence | null;
+  holds: SessionHold[];
+  item: string | null;
+  itemKind: SessionHold['role'] | null;
+  itemRequested: boolean;
+  additionalHolds: number;
+};
+
 export type HarnessProcessView = {
   account?: string | null;
   stateReason?: string;
@@ -702,7 +727,7 @@ export const SNAPSHOT_LIMITS = {
 export type SnapshotValues = {
   tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
   items: { items: ExplorerSummary[] };
-  sessions: { processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
+  sessions: { rows: SessionRow[]; processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
   topics: { topics: Topic[] };
   inbox: Inbox & { needsYou: number };
   events: EventsPage;
