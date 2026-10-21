@@ -20,9 +20,11 @@
       "A-8211",
       "A-8207",
       "A-8379",
-      "A-8376"
+      "A-8376",
+      "A-8570",
+      "A-8574"
     ],
-    "commit": "e6c401b1574f0a968093abf09b06b06252e1a1af"
+    "commit": "dbb1604fd8ab9f21a4f1a5858117d99e9e4932ac"
   },
   "budget": {
     "testSeconds": 5,
@@ -2202,6 +2204,26 @@
     },
     "web/test/shell.test.ts": {
       "seconds": 2.414737,
+      "tests": 1
+    },
+    "hub/test/computed-sessions.test.ts": {
+      "seconds": 0.492774,
+      "tests": 4
+    },
+    "hub/test/fake-claude-cleanup.test.ts": {
+      "seconds": 3.60802,
+      "tests": 6
+    },
+    "nvim/test/progress-counts-component.test.ts": {
+      "seconds": 2.034588,
+      "tests": 6
+    },
+    "web/test/folds.test.ts": {
+      "seconds": 4.110278,
+      "tests": 1
+    },
+    "web/test/palette.test.ts": {
+      "seconds": 5.081626,
       "tests": 1
     }
   },
@@ -5683,7 +5705,38 @@
     "hub/test/web-network-unit.test.ts::the phone link prefers the tunnel, otherwise the concrete LAN interface": 0.001275,
     "hub/test/web-network-unit.test.ts::wildcard phone links skip scope-dependent IPv6 addresses and preserve tunnel precedence": 0.000182,
     "web/test/connection.test.ts::the printed web link connects the shell and reconnects with backoff after a hub restart": 2.159572,
-    "web/test/shell.test.ts::the shell rail, top strip and physical-code navigation": 2.414737
+    "web/test/shell.test.ts::the shell rail, top strip and physical-code navigation": 2.414737,
+    "hub/test/computed-sessions.test.ts::merged session rows carry newest verifier work with +N, requested work, waiting age, account and usage": 0.15424,
+    "hub/test/computed-sessions.test.ts::message deltas carry authoritative unread counts and last message times, and topic.read resets them": 0.171986,
+    "hub/test/computed-sessions.test.ts::presence and process changes each publish one complete merged row matching a fresh snapshot": 0.085223,
+    "hub/test/computed-sessions.test.ts::snapshot-only subscribers receive unmanaged rows and removals with distinct unknown identities": 0.081325,
+    "hub/test/connection-snapshot.test.ts::changing an events subscription filters pages, snapshots, live rows and replay on the same connection": 0.080862,
+    "hub/test/daemon.test.ts::hub serve exits fatally after abandoning a background drain with no pending operations": 0.825642,
+    "hub/test/daemon.test.ts::hub serve with the web edge exits within two seconds of its stopped receipt": 0.770943,
+    "hub/test/daemon.test.ts::hub stop identifies its acknowledged hub after lock release while the process is still alive": 1.075315,
+    "hub/test/events.test.ts::subscription warning filter covers its first page and live rows without affecting other clients": 0.111984,
+    "hub/test/fake-claude-cleanup.test.ts::captured fake Claude teardown survives setup rejection and child error": 0.602102,
+    "hub/test/fake-claude-cleanup.test.ts::fake Claude cleanup names the late file when directory removal stays busy": 1.005208,
+    "hub/test/fake-claude-cleanup.test.ts::fake Claude cleanup retains a delayed writer and its home at the drain deadline": 0.357757,
+    "hub/test/fake-claude-cleanup.test.ts::fake Claude cleanup retries transient ENOTEMPTY and EBUSY": 0.053509,
+    "hub/test/fake-claude-cleanup.test.ts::fake Claude cleanup stops a hook after its session exits and fences later CLIs": 1.240147,
+    "hub/test/fake-claude-cleanup.test.ts::fake Claude cleanup waits for a poll that writes after hub shutdown": 0.349297,
+    "hub/test/stage-closure-component.test.ts::a pending stage build tree keeps QA currency unknown until a mismatching tree is observed": 0.153301,
+    "hub/test/stage-closure-component.test.ts::pending landing ancestry holds advancement until it resolves false": 0.060175,
+    "hub/test/stage-closure-component.test.ts::pending landing ancestry holds advancement until it resolves true": 0.073514,
+    "hub/test/stage-qa.test.ts::a two-shard Linux stage cover is pending then counts across projectHub restart": 3.434242,
+    "hub/test/suite-runner.test.ts::a hub-only shard builds the bundle before its secret-scan worker starts": 0.652613,
+    "hub/test/tracker-summary.test.ts::open summaries count closed children in mixed and completed epics": 0.0471,
+    "hub/test/tracker-summary.test.ts::task events refresh both container paths when a child changes state or parent": 0.039017,
+    "nvim/test/explorer-component.test.ts::container progress includes unloaded closed children and follows parent task events": 0.251475,
+    "nvim/test/progress-counts-component.test.ts::a release with only unloaded closed epics does not count blocked direct tasks as progress members": 0.339514,
+    "nvim/test/progress-counts-component.test.ts::board fractions and header include closed children before loading closed rows": 0.259165,
+    "nvim/test/progress-counts-component.test.ts::graph container badges and plan panel fractions include unloaded closed children": 0.275387,
+    "nvim/test/progress-counts-component.test.ts::release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes": 0.647774,
+    "nvim/test/progress-counts-component.test.ts::scoped release details and category rows count the aggregate child level": 0.249982,
+    "nvim/test/progress-counts-component.test.ts::the plan workflow summary labels loaded counts and omits unloaded closed stage members": 0.262766,
+    "web/test/folds.test.ts::browser folds and the prose guard": 4.110278,
+    "web/test/palette.test.ts::the palette and area keys help": 5.081626
   },
   "allow": {
     "hub/test/connection-resync.test.ts::a paused real socket reader receives resync, drains and resumes its model": {
