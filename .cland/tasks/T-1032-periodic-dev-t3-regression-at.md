@@ -17,7 +17,7 @@ found_by: droplet
 topic: topic-779
 branch: t/T-1032-periodic-dev-t3-regression-at
 created: 2026-10-20T23:58:31.284Z
-updated: 2026-10-21T03:04:06.264Z
+updated: 2026-10-21T03:36:50.254Z
 closed: 2026-10-21T03:04:06.264Z
 ---
 
@@ -79,3 +79,15 @@ Criteria: C1 verified.
 ### coord · 2026-10-21T03:04:06.264Z
 
 Merged 22a0cbf0c1f92bff9c0df4f4e280fbf0795d9d3f onto dev.
+
+### hub · 2026-10-21T03:36:50.254Z
+
+Periodic run 20455ecc-0b41-4cde-93cc-3be96b14aff6; red head 6a87abb88771f8ca9cae2c97d8188baf69fc8dd9; tree 0c5050cc48d68484e9116c32bea7ae7948a69ce7
+Last green run 92354758-ca83-4dd2-8748-7dd63f292b68; head 0c6616845a568eeaf5a48f876a85d47f1fa1a6ba
+Original log A-8130: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8130-suite-20455ecc-0b41-4cde-93cc-3be96b14aff6-all-at-6a87abb.log
+hub/test/typecheck.test.ts: culprit at 07eeff96cb31d8e1cc391a95edd3408d9f0edf4d The web phase of the suite (T-991)
+Run 227df774-42db-4b5b-9da0-12841ad80b71; head 6a87abb88771f8ca9cae2c97d8188baf69fc8dd9; red; log A-8131: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8131-suite-227df774-42db-4b5b-9da0-12841ad80b71-all-at-6a87abb.log
+Run 17cc4c96-1413-4959-be3f-e1dedae740bf; head 0c6616845a568eeaf5a48f876a85d47f1fa1a6ba; green; log A-8133: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8133-suite-17cc4c96-1413-4959-be3f-e1dedae740bf-all-at-0c66168.log
+Run 5f9bb78c-28a2-403d-8a17-ff2e9c438b08; head 07eeff96cb31d8e1cc391a95edd3408d9f0edf4d; red; log A-8139: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8139-suite-5f9bb78c-28a2-403d-8a17-ff2e9c438b08-all-at-07eeff9.log
+Run d5961e70-cd29-4e47-a727-bfe644317296; head 101e0b33a250bedb40229ccfbdfc5c7ef2fc5d1f; green; log A-8140: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8140-suite-d5961e70-cd29-4e47-a727-bfe644317296-all-at-101e0b3.log
+Run 93daae83-441b-4b05-a0eb-b89710733ec6; head d8a7781c5fd15e379bc9261248bc482b96311d0c; green; log A-8141: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8141-suite-93daae83-441b-4b05-a0eb-b89710733ec6-all-at-d8a7781.log
