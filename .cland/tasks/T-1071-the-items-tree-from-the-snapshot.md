@@ -11,10 +11,10 @@ assignee: null
 parent: E-416
 blocked_by:
   - T-1052
-topic: null
+topic: topic-818
 branch: t/T-1071-the-items-tree-from-the-snapshot
 created: 2026-10-21T17:32:16.253Z
-updated: 2026-10-21T18:41:19.838Z
+updated: 2026-10-21T18:47:42.264Z
 ---
 
 ## Summary
@@ -36,3 +36,9 @@ The current release at the root, with its epics by rank and the done ones after 
 - [ ] C3. `D`, `A`, the folds and the category rows behave as described and the folds persist per client across a reload (Web test).
 - [ ] C4. Rebuilding the tree for 300 items after one delta stays under 15 ms, measured in the test.
 - [ ] C5. `web/README.md` and `?` list the Items area's tree keys.
+
+## Comments
+
+### impl-1071 · 2026-10-21T18:47:42.264Z
+
+Test-first C1: Headless Shell on a scratch project copied from .cland/tasks reached the expected red (Items tree locator absent). Initial tree now passes that targeted Web assertion on macOS arm64; no suite receipt yet. Extending the same public seams for CLI deltas, local preferences and the 300-item rebuild bound.

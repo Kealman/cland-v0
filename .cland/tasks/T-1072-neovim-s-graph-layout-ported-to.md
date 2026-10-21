@@ -2,8 +2,8 @@
 id: T-1072
 kind: task
 title: Neovim's graph layout ported to TypeScript under a differential test
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-815
 branch: t/T-1072-neovim-s-graph-layout-ported-to
 created: 2026-10-21T17:32:16.423Z
-updated: 2026-10-21T18:39:04.510Z
+updated: 2026-10-21T18:52:08.786Z
+closed: 2026-10-21T18:52:08.786Z
 ---
 
 ## Summary
@@ -34,15 +35,18 @@ A pure TypeScript layout module in `web/` with no layout library. It produces th
 - [x] C1. The differential test reports zero differences between the TypeScript and Lua layouts on `qa/cases/GRAPH-001.items.json` (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1072-final · 2026-10-21T18:37:29.807Z · commit 2650632c699e894c5df4e12c5851ea095d51d758
   - done: impl-1072 · 2026-10-21T18:39:04.474Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1072-merge-final · 2026-10-21T18:47:10.131Z · commit 8815a4b9857f969afa3e88bc907d43354b9f7cf0
 - [x] C2. The same test reports zero differences on every epic and release of a copy of the live tracker (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1072-final · 2026-10-21T18:37:29.807Z · commit 2650632c699e894c5df4e12c5851ea095d51d758
   - done: impl-1072 · 2026-10-21T18:39:04.510Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1072-merge-final · 2026-10-21T18:47:10.131Z · commit 8815a4b9857f969afa3e88bc907d43354b9f7cf0
 - [x] C3. The module has no new dependency and no DOM access (lint or test).
   - done: impl-1072 · 2026-10-21T18:13:17.225Z
   - verified: rev-23 [reviewer] · run rev-20261021-1072-source · 2026-10-21T18:16:14.807Z · commit d2c0f908d4c74eb46b9bdc7d8dc21c3300726564
   - verified: rev-23 [reviewer] · run rev-20261021-1072-source-3 · 2026-10-21T18:27:57.389Z · commit 2650632c699e894c5df4e12c5851ea095d51d758
   - verified: rev-23 [reviewer] · run rev-20261021-1072-final · 2026-10-21T18:37:29.807Z · commit 2650632c699e894c5df4e12c5851ea095d51d758
   - verified: rev-23 [reviewer] · run rev-20261021-1072-merge-source · 2026-10-21T18:38:56.926Z · commit 8815a4b9857f969afa3e88bc907d43354b9f7cf0
+  - verified: rev-23 [reviewer] · run rev-20261021-1072-merge-final · 2026-10-21T18:47:10.131Z · commit 8815a4b9857f969afa3e88bc907d43354b9f7cf0
 
 ## Comments
 
@@ -130,3 +134,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear; A-8619, Standards0/Spec0. Exact origin8815a4b9/tree4dbe7ba1, parents accepted2650632c/incoming6e1a68e5; Coordinator5249110e independently confirmed authorizes merge. Entire delta two docs6add/5delete: incoming AGENTS keymap pointer and verbatim T-1080 Browser tests paragraph, then unchanged Graph geometry guidance; combined diff/check clean. Every production/oracle/test/config/admission/dependency blob unchanged. C3 source reverified; previous source/final A-8613/A-8617 and local targeted oracleA-8612 cover unchanged dependencies, no documentation-only T3 rerun requested. A-8616 remains prior-head receipt; no merged-head runtime claimed. Refresh stale C1/C2 claimant marks and submit unchanged-head mode-free as Coordinator requested; final evidence awaits result. Afterstage affected QA separate; no Reviewer runtime.
 
 Criteria: C3 verified.
+
+### rev-23 · 2026-10-21T18:47:10.132Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1072-merge-final
+commit: 8815a4b9857f969afa3e88bc907d43354b9f7cf0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merge-head clear; A-8623, Standards0/Spec0, C1–C3 verified at unchanged origin8815a4b9/tree4dbe7ba1. A-8619 proves only two docs changed; production/oracle/assertion/corpus/admission/config/dependency blobs unchanged from2650632c. C1/C2 retain A-8612 original local Darwin targeted T3 4/4 GRAPH-001/all67epic-release graphs from1080copieditems equality, explicitly prior-head dependency-equivalent proof, not merged/LinuxT3. C3 source proof retained. A-8622/9d2b5fd0 actual merged-head Linuxx64c8lon1 T1/allfallbackT2hub+nvim/Web5files exit0:2331ordinarytest/357filepasses+15loadtest/filepasses, all3newT1identities5distinctpasses+explicit5/5, nofail/skip/cancel. Hosta8576ec9 reusednotremote,T2workers2/Web4,life403s/$0.0280estimated. Lint132/59,2missingbaselines,duration/resource/ratchet report-only; Web4s-budget overages retained. No remoteT3/T4/integrated/stage/QA claim; affected afterstageQA separate. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T18:52:08.786Z
+
+Merged f897d0af15a134c989d189b8c491602a1576d655 onto dev.
