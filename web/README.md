@@ -258,3 +258,49 @@ droplets; prepared Ubuntu 24.04 snapshots include the shell's runtime libraries.
 A machine missing the shell or required libraries reports Web unavailable, with
 no passing Web receipt, while preserving other phase results. The fixture uses
 the probe's exact executable path, with no fallback to an installed browser.
+
+## Graph geometry
+
+`src/graph-layout.ts` ports the geometry in
+`nvim/lua/cland/graph_layout.lua`: cycle removal, transitive reduction, ASAP or
+supplied layers, dummy chains, barycentre sweeps, transpose, weighted placement,
+source-block track ordering and vertical-band fitting. It uses no layout library
+or DOM; `tsconfig.graph.json` checks it with only ECMAScript types as part of the
+normal typecheck. Keep changes to this algorithm paired with the Lua differential
+oracle. The SVG view supplies token colours and scales the returned geometry.
+
+`fromItems(children, options)` takes siblings in tracker order; external blockers
+are reported separately and unlinked siblings go to `tray`. `layout(nodes, edges,
+options)` accepts blocker-first edge pairs. `reduce: false` keeps shortcuts;
+`rank`, `keep_order` and `include` support planned stages. Layers and chain ids
+stay **1-based** for Lua parity; positions and route coordinates are **0-based**
+display units. IDs beginning with `~` are reserved for generated dummy vertices.
+
+`rows(layout, size, extraGap, pack)` places vertices along their layers. A dummy
+uses one unit and every vertex has a one-unit trailing gap. Supply a real node's
+height for horizontal layout, or its width plus port/gap allowance for vertical
+layout. `fitWindow` returns a fitted layout, label width and the original layer
+of each continued band; use packed rows when drawing these continued bands.
+
+`route(layout, positions, options)` returns bounds and orthogonal segments carrying
+their chain id. `h` tuples contain row, start column, end column and chain; `v`
+tuples contain column, start row, end row and chain. `p` tuples contain row,
+column, direction bits and chain, representing coincident vertical ports
+(`3` means up and down). Segment direction is preserved, so endpoints may decrease.
+Routes through dummies belong to the same original chain. Keep crossing ownership
+when drawing SVG; a crossing does not join its two edges. Labels and tray drawing
+belong to the view; Neovim's text canvas and Unicode clipping are not browser APIs.
+
+The targeted oracle command is:
+
+```sh
+node --test nvim/test/web-graph-layout.test.ts
+```
+
+It requires the pinned Neovim prepared by verification, runs it headless in sealed
+scratch state and compares exact layers, within-layer order, diagnostics, positions
+and route segments in both orientations. Inputs include `GRAPH-001.items.json`,
+every epic/release in a scratch copy of `.cland/tasks`, seeded cyclic/ranked/dense
+graphs and narrow-band wrapping. It is T3 because the oracle is a real binary;
+task T0–T2 verification defers it to integrated/stage process occasions. Small
+literal geometry contracts run in T1 (`hub/test/web-graph-layout.test.ts`).

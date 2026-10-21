@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "typecheck": "node ../hub/bin/typecheck.ts -p tsconfig.json && node ../hub/bin/typecheck.ts -p tsconfig.tools.json && node check-colours.ts && node check-tokens.ts && oxlint -c .oxlintrc.json src && node check-hooks.ts",
+    "typecheck": "node ../hub/bin/typecheck.ts -p tsconfig.json && node ../hub/bin/typecheck.ts -p tsconfig.graph.json && node ../hub/bin/typecheck.ts -p tsconfig.tools.json && node check-colours.ts && node check-tokens.ts && oxlint -c .oxlintrc.json src && node check-hooks.ts",
     "build": "node build.ts",
     "watch": "vite build --watch"
   },
