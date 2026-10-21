@@ -3,7 +3,7 @@ id: T-1044
 kind: task
 title: The explorer counts only open children, so closed epics show 0/0 and live epics undercount
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,7 @@ regression_of: T-1007
 topic: topic-796
 branch: t/T-1044-the-explorer-counts-only-open-children
 created: 2026-10-21T11:16:47.594Z
-updated: 2026-10-21T11:50:18.018Z
+updated: 2026-10-21T11:50:50.834Z
 ---
 
 ## Summary
@@ -34,14 +34,18 @@ Container rows show correct done and total counts without loading every closed i
 - [x] C1. On a fixture with an epic of 13 tasks, 9 of them closed, and a fully closed epic of 5 tasks, the explorer's first render shows "9/13" and "5/5" (or the established format with those numbers) before any closed item is loaded (T2 test).
   - done: impl-1044 · 2026-10-21T11:26:42.272Z
   - verified: rev-23 [reviewer] · run rev-20261021-1044-task-evidence · 2026-10-21T11:50:04.219Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
+  - verified: rev-23 [reviewer] · run rev-20261021-1044-final · 2026-10-21T11:50:50.804Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
 - [x] C2. The summary projection carries per-container child counts by state, and `task.list projection=summary state=open` stays within the startup byte budget on the 1,000-item fixture (test, guard from T-1038).
   - done: impl-1044 · 2026-10-21T11:26:42.299Z
   - verified: rev-23 [reviewer] · run rev-20261021-1044-task-evidence · 2026-10-21T11:50:04.219Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
+  - verified: rev-23 [reviewer] · run rev-20261021-1044-final · 2026-10-21T11:50:50.805Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
 - [x] C3. A task changing state updates its container's counts through the existing task events, with no full re-read (test).
   - done: impl-1044 · 2026-10-21T11:38:56.497Z
   - verified: rev-23 [reviewer] · run rev-20261021-1044-task-evidence · 2026-10-21T11:50:04.219Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
+  - verified: rev-23 [reviewer] · run rev-20261021-1044-final · 2026-10-21T11:50:50.805Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
 - [x] C4. The existing explorer, explorer-card and startup-budget Neovim tests pass.
   - done: impl-1044 · 2026-10-21T11:26:42.324Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1044-final · 2026-10-21T11:50:50.805Z · commit d2997d4b4695cc737a86c19122bf90102dc8e9c0
 
 ## Comments
 
@@ -112,3 +116,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Intermediate evidence clear, not final readiness. A-8365 audits exact-head A-8363/run ea06bdba Linux x64 c-8 T1/all-T2 both packages exit0:2263 ordinary test passes/344 files+15 separate load passes; three owned identities5/5. C1 first-render9/13,5/5 before archive, C2 complete-index counts/byte guard, C3 live parent updates/no reread and corrected slim layers all pass. A-8355 local Darwin targeted startupT3 4/4 supplies current hard startup proof38.511ms/67813bytes, accepted by Coordinator f0b6d2fc. C4 still needs current-head explorer.test.ts/explorer-card.test.ts T3 receipts or Coordinator interpretation; old ca876d13 receipts supporting only, component T2 files already passed. No new findings; earlier A-8341 remains red. Hostc503a2dd not repeated remotely; lint132/59,durations/ratchet report-only, existing large-summary5.067s exceeds nominal0.5s (not a timing-budget pass). Web NOT RUN/T-993 accepted by Coordinator; no integratedT3/T4/browser/stage/QA/Reviewer runtime claim.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### rev-23 · 2026-10-21T11:50:50.805Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1044-final
+commit: d2997d4b4695cc737a86c19122bf90102dc8e9c0
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; no findings. A-8370 completes A-8365's C1–C3 audit with A-8366 current-head local Darwin arm64 explorer.test.ts2/2 and explorer-card.test.ts1/1, no failures/skips. A-8355 startup-budget T3 4/4 passes hard startup/byte limits plus negative guards (38.511ms/67813bytes normal). Combined with exact-head A-8363 Linux T1/all-T2 both packages2263 ordinary passes/344 files+three owned identities5/5 load, all named C4 files are covered. This is targeted T3 plus Linux task evidence, not integratedT3/T4. Prior A-8341 remains red history; M1 fixed at reviewed source. Web NOT RUN/T-993 accepted by Coordinator f0b6d2fc; no browser/stage/QA/Reviewer runtime. Hostc503a2dd not repeated remotely; lint132/59,durations/ratchet report-only, existing large-summary5.067s over nominal0.5s retained. Head unchanged. All C1–C4 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
