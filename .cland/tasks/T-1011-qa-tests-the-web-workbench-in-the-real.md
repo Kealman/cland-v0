@@ -2,8 +2,8 @@
 id: T-1011
 kind: task
 title: QA tests the web workbench in the real browser through computer use
-state: open
-status: qa
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-765
 branch: t/T-1011-qa-tests-the-web-workbench-in-the-real
 created: 2026-10-20T17:02:15.802Z
-updated: 2026-10-21T10:12:38.933Z
+updated: 2026-10-21T10:26:11.553Z
+closed: 2026-10-21T10:26:11.553Z
 ---
 
 ## Summary
@@ -38,11 +39,13 @@ QA for the web workbench also tests in the human's real local browser through co
 - [x] C1. `qa-record.sh note … real-browser …` records a line, and the surface check accepts `real-browser` (test).
   - done: impl-1011 · 2026-10-20T18:41:27.064Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.767Z · commit d1acaacc51510bf13df49561434913fb27838712
+  - verified: rev-26 [reviewer] · run rev-20261021-1011-final-1 · 2026-10-21T10:21:02.027Z · commit be011de3a4145b3399ab547317581e90880bdb55
 - [x] C2. `BRIEF.md`, `STAGE-BRIEF.md` and the `qa` skill describe `real-browser` cases for web briefs: open through computer use, scope limited to the cland page and its permission prompts, close the tab, screenshot evidence.
   - done: impl-1011 · 2026-10-20T18:41:27.583Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-source-1 · 2026-10-20T18:43:13.655Z · commit d1acaacc51510bf13df49561434913fb27838712
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
   - verified: rev-26 [reviewer] · run rev-20261021-1011-source-delta-1 · 2026-10-21T10:11:38.106Z · commit be011de3a4145b3399ab547317581e90880bdb55
+  - verified: rev-26 [reviewer] · run rev-20261021-1011-final-1 · 2026-10-21T10:21:02.027Z · commit be011de3a4145b3399ab547317581e90880bdb55
 - [x] C3. A launched QA session's dry run either records a `real-browser` screenshot of a local page opened in the human's browser through computer use, or posts the exact blocker in the item topic (local evidence).
   - done: impl-1011 · 2026-10-21T06:38:55.414Z
   - verified: qa-676 [qa] · run qa-2026-10-21-1 · 2026-10-21T06:39:33.694Z · commit d1acaacc51510bf13df49561434913fb27838712
@@ -51,6 +54,7 @@ QA for the web workbench also tests in the human's real local browser through co
 - [x] C4. `cland qa lint` accepts a brief with a `real-browser` case (test).
   - done: impl-1011 · 2026-10-20T18:41:28.218Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
+  - verified: rev-26 [reviewer] · run rev-20261021-1011-final-1 · 2026-10-21T10:21:02.027Z · commit be011de3a4145b3399ab547317581e90880bdb55
 
 ## Comments
 
@@ -244,3 +248,22 @@ Reused evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8233-
 Evidence audit A-8261: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8261-t-1011-run-4-three-reuse-checks-pass-at-be011de3.md
 
 Criteria: C3 verified.
+
+### rev-26 · 2026-10-21T10:21:02.027Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1011-final-1
+commit: be011de3a4145b3399ab547317581e90880bdb55
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final review evidence clear at unchanged be011de3. Audited A-8271/run6c1258df: actual Linux x64 c-8 lon1 T1/all-T2 fallback, 2230 ordinary passes/342 files plus five passing recorder load reps, no fail/skip/cancel. C1 recorder0.027941517 s, max load0.044311044 s; C4 CLI lint acceptance0.279298619 s; roles27/27 including both Implementer reserves pass, source C2 retained. C3 independently current through qa-676 qa-2026-10-21-4/A-8261 with Coordinator-authorized reuse of actual Chrome evidence A-8233; no Reviewer GUI claim. Web explicitly NOT RUN for T-993 Linux library gap; no browser phase/T3/T4 pass inferred. Host check reference acde91b9 not repeated remotely; lint/budgets/ratchet report-only. Lifetime453s/$0.0315. Full criterion/receipt audit A-8272 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8272-t-1011-final-review-clear-at-be011de3-recorder-lint-and-current-qa-evidence.md. No findings.
+
+Criteria: C1 verified, C2 verified, C4 verified.
+
+### coord · 2026-10-21T10:26:11.553Z
+
+Merged 102d592dadffabda064f3af376ed7cd9739acb36 onto dev.
