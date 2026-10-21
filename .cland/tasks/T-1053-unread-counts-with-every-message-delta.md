@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-806
 branch: t/T-1053-unread-counts-with-every-message-delta
 created: 2026-10-21T14:04:14.662Z
-updated: 2026-10-21T14:28:55.867Z
+updated: 2026-10-21T14:37:50.453Z
 ---
 
 ## Summary
@@ -40,6 +40,7 @@ A topic's `unread` (per human) and `lastMessageAt` travel with every message del
 - [x] C4. `hub/README.md` describes `unread`, `lastMessageAt` and the sessions projection.
   - done: impl-1053 · 2026-10-21T14:14:58.169Z
   - verified: rev-23 [reviewer] · run rev-20261021-1053-source · 2026-10-21T14:18:27.267Z · commit b3ce2e336adb07c23ed33143e65a2314f1128f70
+  - verified: rev-23 [reviewer] · run rev-20261021-1053-source-2 · 2026-10-21T14:29:31.602Z · commit 3e2fc1659637c1593df179480ae85670585b210a
 
 ## Comments
 
@@ -80,3 +81,22 @@ finding_counts: {"high":0,"medium":2,"low":0}
 Historical failed evidence, not clear atb3ce2e33; A-8463 details A-8457/117424cc. Actual expected bare{id,title},actual includesunread0/lastMessageAt at11076–11094; new named-account fixture also emits report-only T2 native-spawn violation. Linux T1pass/interruptedT2fail,ordinary1969pass1fail plus20loadpasses,Webabsent. C1/C2failed; no final C3verification; C4docssource remains historical. Hostcheck809d055e reused; lint132/59,duration/ratchet/tripwire report-only,M1assertionenforced. Lead already submitted corrected3e2fc165; reviewing it next. No source/runtime pass atnewhead claimed; no Reviewer execution.
 
 Criteria: C1 failed (A-8457 fails existing topics-component exact TopicRef contract at82 after required unread/lastMessageAt additions.), C2 failed (The new named-account T2 fixture launches native account polling (tier tripwire accounts/poller.ts:208); use existing accountReader seam.).
+
+### rev-23 · 2026-10-21T14:29:31.602Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1053-source-2
+commit: 3e2fc1659637c1593df179480ae85670585b210a
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-8468 extends full A-8450 audit, Standards0/Spec0. Only2testfiles/3insertions3deletions, no production/doc change or devmerge. M1 exact topic assertion retains id/title plusunread0/lastMessageAt message.ts and message/stage/ack assertions. M2 named-account fixture injects existing accountReader, preserving registry/account/fake usage/state/hold scheduling at T2 without native probe; no policy suppression. Requested cross-client audit now complete per4fdda143, independently checked exact topic comparisons: deliver/send reply TopicRef intentionally unchanged. C1/C2 done refreshed; unchanged README C4 reverified. C1–C3 require replacement exact-head queued result/owned load receipts. OldA-8457 is failed/interrupted, not green despite20loadpasses. Proceed mode-free configured verification unchanged3e2fc165. No Reviewer runtime; affected after-stage QA separate.
+
+Criteria: C4 verified.
+
+### impl-1053 · 2026-10-21T14:37:50.453Z
+
+Replacement run 8c9946b8 (A-8475) at reviewed 3e2fc165 completed 2330/2330 assertions successfully including all four new identities 5/5 under load, with no computed-sessions tier mismatch. Linux x64 droplet: T1 exit 0, all-T2 fallback exit 0, Web exit 1 solely on enforced new-test duration gate for merged T-996 web/test/palette.test.ts::the palette and area keys help (6.441 s > 5 s). Overall verification remains failed. Reported shared duration-gate candidate to lead T-1053; holding head unchanged until the Coordinator posts the shared fix/disposition.

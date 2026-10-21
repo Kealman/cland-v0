@@ -3,7 +3,7 @@ id: T-1061
 kind: task
 title: The items board and the card's progress still count only loaded open children
 state: open
-status: in progress
+status: review
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ regression_of: T-1044
 topic: topic-808
 branch: t/T-1061-the-items-board-and-the-card-s-progress
 created: 2026-10-21T14:08:05.830Z
-updated: 2026-10-21T14:26:15.736Z
+updated: 2026-10-21T14:30:46.019Z
 ---
 
 ## Summary
@@ -34,10 +34,11 @@ Done items stay hidden where they are hidden today ("done hidden").
 
 - [x] C1. A headless test renders the board from an open-only snapshot of a tracker with closed children and reads each container's done/total equal to `child_counts`, header included.
   - done: impl-1061 · 2026-10-21T14:21:28.324Z
-- [ ] C2. A headless test renders a release's and an epic's card progress from the same snapshot and reads done, in-progress, backlog and blocked counts that include closed children.
-  - failed: rev-26 [reviewer] · 2026-10-21T14:26:15.736Z · note Release blocked progress counts direct tasks when all epic progress members are closed and unloaded.
-- [ ] C3. A search of nvim/lua for other done/total or "of N done" counters finds none left counting loaded children; any found are moved too and listed in the item topic.
-  - failed: rev-26 [reviewer] · 2026-10-21T14:26:15.736Z · note Plan PROGRESS summary still reports unqualified loaded-only done/status counts; plan-panel regression also lacks its exact render receipt.
+- [x] C2. A headless test renders a release's and an epic's card progress from the same snapshot and reads done, in-progress, backlog and blocked counts that include closed children.
+  - done: impl-1061 · 2026-10-21T14:29:46.690Z
+- [x] C3. A search of nvim/lua for other done/total or "of N done" counters finds none left counting loaded children; any found are moved too and listed in the item topic.
+  - done: impl-1061 · 2026-10-21T14:29:46.708Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1061-source-2 · 2026-10-21T14:30:46.019Z · commit 2aaa0dc1ee1336d102080ebb352b97d1090513f0
 
 ## Comments
 
@@ -59,3 +60,18 @@ finding_counts: {"high":0,"medium":3,"low":0}
 Source review not clear; A-8460 records both axes and exact diff/tree. M1: release card blocked membership changes when its closed epics are unloaded, mixing direct tasks into aggregate epic progress. M2: new plan-panel test observes a centre title rather than the separately rendered panel, which can still contain the prior board's same fraction. M3: plan PROGRESS status summary remains an unlabelled loaded-only count. Coordinator's direct-child and explicitly-loaded partial-counter dispositions are accepted; no hub or Web expansion required. No reviewer execution. Correct the source and request fresh review before verification.
 
 Criteria: C2 failed (Release blocked progress counts direct tasks when all epic progress members are closed and unloaded.), C3 failed (Plan PROGRESS summary still reports unqualified loaded-only done/status counts; plan-panel regression also lacks its exact render receipt.).
+
+### rev-26 · 2026-10-21T14:30:46.019Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1061-source-2
+commit: 2aaa0dc1ee1336d102080ebb352b97d1090513f0
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-8471 documents closure of M1–M3 and the full counter audit. Aggregate-backed release blocked members exclude direct tasks even with no loaded epics; anchored plan-panel row/section observation precedes the retained fraction assertion; plan workflow counts omit unloaded members and say loaded. No remaining findings. C3 established by source under Coordinator's partial-rollup disposition; C1/C2 await configured same-head evidence. A-8470 exact-head local macOS plain T2 replay is 6/6, with supporting precommit/red/static evidence explicitly labelled. No reviewer execution. Supersedes prior source not-clear; mode-free verification may proceed at 2aaa0dc1.
+
+Criteria: C3 verified.

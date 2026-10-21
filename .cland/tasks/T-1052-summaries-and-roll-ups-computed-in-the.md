@@ -3,8 +3,9 @@ id: T-1052
 kind: task
 title: Summaries and roll-ups computed in the hub, equal to the Lua's
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T14:04:57.951Z
+updated: 2026-10-21T14:35:39.353Z
 ---
 
 ## Summary
@@ -30,8 +31,19 @@ Each item summary in the snapshot and the deltas carries the summary text with i
 
 ## Acceptance criteria
 
-- [ ] C1. A differential test runs the hub's summary rule and roll-ups and the Lua's (`explorer_summary.lua` and the Lua roll-ups, through headless Neovim) over every body of a copy of the live tracker and reports zero differences (test).
-- [ ] C2. A frame client reads an item's summary with its provenance, a container's roll-ups, `blocked` and `next` from the snapshot, with no `task.view` (test).
-- [ ] C3. A change to one task produces a delta that carries only that task and its ancestors whose fields changed, and the recomputation touches only that chain (test).
-- [ ] C4. On a thousand-item fixture, recomputing after one task change stays under a measured bound recorded in the test, and the startup reply budgets of T-1038 still hold (test).
-- [ ] C5. `hub/README.md` describes the new summary fields, their provenance and the incremental rule.
+- [x] C1. A differential test runs the hub's summary rule and roll-ups and the Lua's (`explorer_summary.lua` and the Lua roll-ups, through headless Neovim) over every body of a copy of the live tracker and reports zero differences (test).
+  - done: impl-1052 · 2026-10-21T14:35:08.279Z
+- [x] C2. A frame client reads an item's summary with its provenance, a container's roll-ups, `blocked` and `next` from the snapshot, with no `task.view` (test).
+  - done: impl-1052 · 2026-10-21T14:35:08.299Z
+- [x] C3. A change to one task produces a delta that carries only that task and its ancestors whose fields changed, and the recomputation touches only that chain (test).
+  - done: impl-1052 · 2026-10-21T14:35:08.320Z
+- [x] C4. On a thousand-item fixture, recomputing after one task change stays under a measured bound recorded in the test, and the startup reply budgets of T-1038 still hold (test).
+  - done: impl-1052 · 2026-10-21T14:35:08.349Z
+- [x] C5. `hub/README.md` describes the new summary fields, their provenance and the incremental rule.
+  - done: impl-1052 · 2026-10-21T14:35:08.381Z
+
+## Comments
+
+### impl-1052 · 2026-10-21T14:31:49.829Z
+
+Implemented the Lua-guarded cached summary/roll-up projection and bounded closed-summary by-id reads under the Coordinator's 2026-10-21 decision. Local Darwin arm64 targeted evidence on the working tree: C1 compared 1,051 copied tracker bodies, zero differences; items snapshot 822,111 bytes within 1 MiB. C3 frame mutations send only changed task/ancestors, with unchanged ancestor rows omitted. C4 1,000-row fixture recomputed only the three-row chain in 0.259 ms against 100 ms; existing eight startup reply guards pass. Root npm run check passes (test lint report mode, zero refusals). Source review and mode-free verification remain pending.
