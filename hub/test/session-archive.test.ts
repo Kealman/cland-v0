@@ -8,8 +8,13 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ProcessTable } from '../src/adapters/processes.ts';
+import { LaunchRecoveryPending } from '../src/adapters/launch-files.ts';
+import { fakeHarness } from './fakes/harness.ts';
+import { Sessions } from '../src/adapters/sessions.ts';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { onCleanup } from './process-cleanup.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { cland, connectUi, eventually, inProcessSpoke, tempProject } from './harness.ts';
+import { cland, connectUi, eventually, inProcessSpoke, tempProject, startHub, dispatcherUi } from './harness.ts';
 
 type List = { processes: HarnessProcessView[]; archived: number };
 
@@ -68,6 +73,132 @@ for (const equalHeldAt of [false, true]) test(equalHeldAt
   assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
   const records = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as Record<string, unknown>);
   assert.deepEqual(records.filter(r => r.event === 'session-archived').map(r => [r.session, r.by, r.rule]).sort(), [['impl', 'rule', 'item'], ['rev', 'rule', 'item'], ['tester', 'rule', 'item']]);
+});
+
+test('250 idle session rows settle for ten minutes and archive at their dated threshold', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_stop = "11m"\n');
+  const clock = new FakeClock();
+  const table = new ProcessTable(join(root, '.cland', 'hub.db'));
+  for (let i = 0; i < 250; i++) table.put({ name: `crew-${i}`, role: null,
+    stoppedAt: clock.now().toISOString(), harness: 'codex', model: null, cwd: root,
+    pid: null, harnessId: null, sessionId: `crew-id-${i}`, harnessSessionId: null,
+    startedAt: clock.now().toISOString(), status: 'stopped' });
+  table.close();
+  const records: Array<Record<string, unknown>> = [];
+  const { discovery } = await componentHub(t, root, {}, { clock, log: entry => records.push(entry) });
+  const ui = await connectUi(t, discovery);
+  const sweeps = () => records.filter(r => r.event === 'session-archive-sweep');
+  assert.equal(sweeps().length, 1, 'startup sweep completed');
+  assert.equal(sweeps()[0]!.rows, 250);
+  await clock.advance(600_000);
+  assert.equal(((await ui.request({ type: 'session.list' })).value as List).processes.length, 250);
+  assert.equal(sweeps().length, 1, 'no full scan during ten idle minutes');
+  await clock.advance(59_999);
+  assert.equal(((await ui.request({ type: 'session.list', archived: true })).value as List).archived, 0);
+  await clock.advance(1);
+  const archived = await eventually('dated threshold archive receipt', async () => {
+    const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
+    return list.archived === 250 ? list : undefined;
+  });
+  assert.equal(archived.processes.length, 250);
+  assert.ok(archived.processes.every(p => p.archivedBy === 'rule' && p.archivedAt === clock.now().toISOString()));
+  assert.equal(sweeps().length, 2, 'one sweep at the eligibility threshold');
+  await clock.advance(600_000);
+  assert.equal(((await ui.request({ type: 'session.list', archived: true })).value as List).archived, 250);
+  assert.equal(sweeps().length, 2, 'archived rows need no further polling');
+});
+
+test('only a changed item close time wakes stopped sessions, and lifecycle stops set a new deadline', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'config.toml'), '[sessions]\narchive_after_item = "2s"\narchive_after_stop = "1d"\n');
+  const records: Array<Record<string, unknown>> = [];
+  const { discovery, clock } = await componentHub(t, root, {}, { log: entry => records.push(entry) });
+  const ui = await connectUi(t, discovery);
+  const sweeps = () => records.filter(r => r.event === 'session-archive-sweep').length;
+  assert.equal((await ui.request({ size: 'S', type: 'task.create', title: 'Stopped work' })).ok, true);
+  const launched = await ui.request({ type: 'session.launch', name: 'worker', role: 'implementer', item: 'T-1', harness: 'codex' });
+  assert.equal(launched.ok, true, launched.error);
+  assert.equal((await ui.request({ type: 'session.stop', session: 'worker' })).ok, true);
+  await clock.advance(0);
+  assert.equal(((await ui.request({ type: 'session.list' })).value as List).processes[0]!.status, 'stopped');
+  const before = sweeps();
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await ui.request({ type: 'task.comment', item: 'T-1', text: `Unrelated note ${i}` })).ok, true);
+    await clock.advance(15_000);
+  }
+  assert.equal(sweeps(), before, 'unchanged eligibility does not rescan on item events');
+  assert.equal((await ui.request({ type: 'task.close', item: 'T-1' })).ok, true);
+  await clock.advance(0);
+  const closedSweeps = sweeps();
+  assert.equal(closedSweeps, before + 1, 'close schedules the earlier item deadline');
+  await clock.advance(1999);
+  assert.equal(((await ui.request({ type: 'session.list', archived: true })).value as List).archived, 0);
+  await clock.advance(1);
+  const archive = await eventually('new item threshold archive receipt', async () => {
+    const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
+    return list.archived === 1 ? list : undefined;
+  });
+  assert.equal(archive.processes[0]!.name, 'worker');
+  assert.equal(archive.processes[0]!.archivedBy, 'rule');
+});
+
+for (const stopWindow of ['1s', '11s']) test(`failed resume cleanup wakes a preserved stopped row with a ${stopWindow} archive deadline`, async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland', 'config.toml'), `[sessions]\narchive_after_stop = "${stopWindow}"\n`);
+  const clock = new FakeClock();
+  const env = await accountFixtureEnvironment();
+  const table = new ProcessTable(join(root, '.cland/hub.db'), clock);
+  table.put({ name: 'retained', role: null, stoppedAt: clock.now().toISOString(), harness: 'codex', model: null, cwd: root,
+    pid: null, harnessId: null, sessionId: 'retained-id', harnessSessionId: 'conversation', startedAt: clock.now().toISOString(), status: 'stopped' });
+  const undoFile = join(root, 'deferred-undo');
+  const records: Array<Record<string, unknown>> = [];
+  // This smaller fixture owns Sessions' native recovery schedule without replacing global I/O timers.
+  const hub = await startHub({ clock, env });
+  const sessions = new Sessions({ core: hub.core, table, root, env, recoveryClock: clock,
+    cleanup: { archiveAfterItemMs: 3600000, archiveAfterStopMs: stopWindow === '1s' ? 1000 : 11000 },
+    log: entry => records.push(entry) });
+  onCleanup(t, async () => { sessions.close(); table.close(); await hub.close(); });
+  const host = sessions.host({ discoveryFile: '', node: '', cli: '', spoke: '' });
+  const adapter = fakeHarness('codex', { host, clock });
+  // File rollback cannot finish until this scratch file is made available.
+  adapter.resume = async process => { throw new LaunchRecoveryPending(process.sessionId,
+    { children: [], undo: [{ kind: 'truncate', path: undoFile, size: 0 }] }, () => {}, new Error('deferred resume cleanup')); };
+  sessions.register(adapter);
+  hub.dispatcher.useSessions(sessions);
+  sessions.sweepArchive();
+  const ui = await dispatcherUi(t, hub.dispatcher, root);
+  const failed = await ui.request({ type: 'session.resume', session: 'retained', relaunch: true });
+  assert.equal(failed.ok, false);
+  assert.match(failed.error!, /cleanup is pending/);
+  await clock.advance(2000);
+  const pending = (await ui.request({ type: 'session.list' })).value as List & { pendingStops: unknown[] };
+  assert.equal(pending.pendingStops.length, 1, 'failed cleanup survives normal lifecycle release');
+  assert.equal(pending.archived, 0);
+  const before = records.filter(r => r.event === 'session-archive-sweep').length;
+  await writeFile(undoFile, 'pending rollback');
+  await clock.advance(5000);
+  await eventually('durable cleanup settled without an unrelated event', async () => {
+    const list = (await ui.request({ type: 'session.list' })).value as List & { pendingStops: unknown[] };
+    return list.pendingStops.length === 0 || undefined;
+  });
+  assert.equal(await readFile(undoFile, 'utf8'), '', 'rollback actually completed');
+  await clock.advance(0);
+  assert.equal(records.filter(r => r.event === 'session-archive-sweep').length, before + 1, 'recovery settlement wakes the archive sweep');
+  if (stopWindow === '11s') {
+    await clock.advance(3999);
+    assert.equal(((await ui.request({ type: 'session.list', archived: true })).value as List).archived, 0);
+    await clock.advance(1);
+  }
+  const archived = await eventually('preserved row archives at the recovery or dated boundary', async () => {
+    const list = (await ui.request({ type: 'session.list', archived: true })).value as List;
+    return list.archived === 1 ? list : undefined;
+  });
+  assert.equal(archived.processes[0]!.sessionId, 'retained-id');
+  assert.equal(archived.processes[0]!.archivedBy, 'rule');
 });
 
 test('configured stop window archives crew at startup and on the timer, never Aides', async t => {

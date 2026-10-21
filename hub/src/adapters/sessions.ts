@@ -1,4 +1,4 @@
-import { realClock, type ClockTimer } from '../hub/clock.ts';
+import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { AccountLimited, codexWindows, type AccountReading } from '../accounts/limits.ts';
 import { artifactEntry } from '../hub/artifact-folder.ts';
 // The hub's side of the adapters: launching sessions, the process table, each session's state, and the
@@ -58,6 +58,8 @@ function launchIdentityRefusal(launch: LaunchOwnership, id: string, currentIds: 
 }
 
 export type SessionsOptions = {
+  /** Native cleanup retries use real time by default; isolated fixtures can own their schedule. */
+  recoveryClock?: Clock;
   processStarted?: (pid: number, resumed?: Resumed) => Promise<string | null>;
   processRows?: (resumed: Resumed) => ReturnType<typeof systemProcesses>;
   env?: NodeJS.ProcessEnv;
@@ -83,6 +85,7 @@ const untimed: Resumed = (work) => work();
 export const DEFAULT_HARNESS = 'claude-code';
 
 export class Sessions {
+  readonly #recoveryClock: Clock;
   readonly #processStarted: NonNullable<SessionsOptions['processStarted']>;
   readonly #processRows: NonNullable<SessionsOptions['processRows']>;
   readonly #env: NodeJS.ProcessEnv;
@@ -137,6 +140,7 @@ export class Sessions {
   #archiveTimer: ClockTimer | null = null;
   #archiveTick: ReturnType<typeof setImmediate> | null = null;
   #sweeping = false;
+  readonly #archiveItems = new Map<string, string | null>();
   #untracker: (() => void) | undefined;
 
   retainedPool(role: string | null | undefined): boolean {
@@ -272,6 +276,7 @@ export class Sessions {
     return { ready, release: () => {
       if (this.#lifecycle.get(identity) === tail) this.#lifecycle.delete(identity);
       done();
+      this.#scheduleArchive();
     } };
   }
 
@@ -279,6 +284,7 @@ export class Sessions {
   lifecyclePending(): boolean { return this.#launching.size > 0 || this.#resuming > 0 || this.#lifecycle.size > 0 || this.#pendingStops.size > 0; }
 
   constructor(options: SessionsOptions) {
+    this.#recoveryClock = options.recoveryClock ?? realClock;
     this.#env = options.env ?? process.env;
     this.#processStarted = options.processStarted ?? ((pid, resumed) => processStarted(pid, undefined, resumed, undefined, this.#env));
     this.#processRows = options.processRows ?? (resumed => systemProcesses(resumed, undefined, undefined, undefined, this.#env));
@@ -310,7 +316,7 @@ export class Sessions {
       const claim = change.item?.claim;
       const claimant = claim && this.#table.bySessionId(claim.sessionId);
       if (claimant?.status === 'running' && claimant.role === 'implementer' && claimant.cleanupItem !== change.id) this.#table.update(claimant.name, { cleanupItem: change.id });
-      this.#scheduleArchive();
+      if (this.#archiveItems.has(change.id) && this.#archiveItems.get(change.id) !== (this.#tracker?.closedAt(change.id) ?? null)) this.#scheduleArchive();
     });
     // Recovery must select the persisted recipient's delivery mode before recording its final event.
     this.#core.eventSteering(id => { const p = this.#table.bySessionId(id); return p?.harness === 'codex' || p?.harness === 'opencode'; });
@@ -585,10 +591,11 @@ export class Sessions {
     this.#sweeping = true;
     try {
       const now = this.#core.clock.now().getTime(), at = new Date(now).toISOString();
-      let next = now + 60000;
+      let next = Infinity;
       const dated: string[] = [];
       const due: Array<{ process: HarnessProcess; rule: string }> = [];
-      const times = new Map<string, string | null>();
+      const times = this.#archiveItems;
+      times.clear();
       const rows = this.#table.all();
       for (const p of rows) {
         if (p.status === 'running' || this.#pendingStops.has(p.sessionId)) continue;
@@ -599,14 +606,19 @@ export class Sessions {
         const closed = item ? times.get(item) : null;
         const rule = closed ? 'item' : 'stop';
         const deadline = closed ? Date.parse(closed) + this.#cleanup.archiveAfterItemMs : Date.parse(p.stoppedAt ?? at) + this.#cleanup.archiveAfterStopMs;
-        if (deadline <= now && !this.#lifecycle.has(p.sessionId)) due.push({ process: p, rule });
-        else next = Math.min(next, Math.max(now + 100, deadline));
+        // Lifecycle completion schedules another pass; never poll a held overdue row.
+        if (this.#lifecycle.has(p.sessionId)) continue;
+        if (deadline <= now) due.push({ process: p, rule });
+        else next = Math.min(next, deadline);
       }
       if (dated.length || due.length) this.#table.archiveBatch(dated, due.map(d => d.process.name), at);
       for (const { process: p, rule } of due) this.#log({ event: 'session-archived', session: p.name, sessionId: p.sessionId, by: 'rule', rule });
       this.#log({ event: 'session-archive-sweep', rows: rows.length, dated: dated.length, archived: due.length, batches: dated.length || due.length ? 1 : 0 });
-      this.#archiveTimer = this.#core.clock.setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.max(1, next - now));
-      this.#archiveTimer.unref();
+      if (Number.isFinite(next)) {
+        // Node clamps delays beyond its signed 32-bit range to 1 ms.
+        this.#archiveTimer = this.#core.clock.setTimeout(() => { this.#archiveTimer = null; this.#scheduleArchive(); }, Math.min(2 ** 31 - 1, Math.max(1, next - now)));
+        this.#archiveTimer.unref();
+      }
     } finally { this.#sweeping = false; }
   }
 
@@ -647,7 +659,7 @@ export class Sessions {
   #retryStops(): void {
     if (this.#stopRetry || !this.#pendingStops.size || this.#closed) return;
     // Retrying native process cleanup is I/O, independent of hub time.
-    this.#stopRetry = realClock.setInterval(() => {
+    this.#stopRetry = this.#recoveryClock.setInterval(() => {
       for (const entry of this.#pendingStops.values()) void this.#stopFailedLaunch(entry).catch(() => {});
     }, 5000);
     this.#stopRetry.unref();
@@ -690,9 +702,11 @@ export class Sessions {
     for (const id of rollbackIds) this.#core.store.clearMeta(`launch-role-rollback:${checkpoint(id)}`);
     this.#pendingStops.delete(process.sessionId);
     this.#recoveryObservers.delete(process.sessionId);
+    // Preserved/restored terminal rows were hidden behind the pending-stop fence.
+    this.#scheduleArchive();
     if (entry.files) this.#log({ event: 'launch-recovered', session: process.name, sessionId: process.sessionId });
     this.#core.publishCleanup(process.sessionId, false);
-    if (!this.#pendingStops.size && this.#stopRetry) { realClock.clearInterval(this.#stopRetry); this.#stopRetry = null; }
+    if (!this.#pendingStops.size && this.#stopRetry) { this.#recoveryClock.clearInterval(this.#stopRetry); this.#stopRetry = null; }
   }
 
   async #stopFailedLaunch(entry: PendingStop, resumed: Resumed = untimed): Promise<void> {
@@ -1645,7 +1659,7 @@ export class Sessions {
     if (this.#archiveTimer) this.#core.clock.clearTimeout(this.#archiveTimer);
     if (this.#archiveTick) clearImmediate(this.#archiveTick);
     this.#untracker?.();
-    if (this.#stopRetry) realClock.clearInterval(this.#stopRetry);
+    if (this.#stopRetry) this.#recoveryClock.clearInterval(this.#stopRetry);
     this.#stopRetry = null;
     const failures: unknown[] = [];
     for (const adapter of this.#adapters.values()) {

@@ -103,7 +103,7 @@ export async function archiveWorkload(t: import('node:test').TestContext, scale:
   verifier.batch(Array.from({ length: scale.events }, (_, i) => ({ type: 'task.hold', id: `hold-${i}`, item: `T-${i + 1}`, release: true })));
   await eventually('all protocol holds committed', () => verifier.frames.filter(f => f.type === 'result' && String(f.id).startsWith('hold-')).length === scale.events || undefined);
   await tick();
-  assert.equal(records.filter(r => r.event === 'session-archive-sweep').length - before, 1, 'all item events in one input chunk coalesce into one sweep');
+  assert.equal(records.filter(r => r.event === 'session-archive-sweep').length - before, 0, 'unrelated item events do not wake archived sessions');
   // Fixtures represent live, unconnected harness rows with no OS process, so stop needs no external process.
   const live = new ProcessTable(db);
   for (let i = 0; i < 8; i++) live.put({ name: `new-${i}`, harness: 'codex', role: null, model: null, cwd: root, pid: null, harnessId: null, sessionId: `new-id-${i}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' });
