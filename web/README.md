@@ -34,6 +34,11 @@ Verification's `npm run check` typechecks, builds `web/dist`, then runs static/t
 lint. This build runs locally as well as remotely; remote prepare remains the
 installation/Neovim step. `web/dist` is generated and ignored. Never commit it.
 Install with development dependencies included: prepare needs Vite.
+`hub/test/web-auth.test.ts` uses the shared build helper before standalone tests;
+suite shards build before its worker even when Web is absent or unavailable.
+This is required after remote delivery cleans ignored files while reusing
+installed dependencies and the host check. Build failures name
+`npm run build --workspace web`.
 Vite checks local resource references and the fonts, then writes
 `dist/build-stamp.json` with the input digest and build time. Doctor compares that
 stamp with the installation's sources, including filenames and modification times;

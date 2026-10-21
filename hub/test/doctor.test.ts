@@ -18,6 +18,7 @@ test('a Claude-only project succeeds without other harnesses or GitHub tooling',
   const good = await report(root, env, ['origin']);
   assert.equal(good.code, 0, notOk(good.report).join('\n'));
   assert.deepEqual(Object.keys(good.report), ['root', 'version', 'checks', 'summary']);
+  assert.deepEqual(check(good.report, 'web bundle'), { name: 'web bundle', verdict: 'ok', detail: 'fixture bundle current' });
   for (const name of ['codex', 'opencode']) assert.deepEqual(check(good.report, name), { name, verdict: 'ok', detail: 'not installed; no role uses it' });
   assert.deepEqual(check(good.report, 'gh'), { name: 'gh', verdict: 'ok', detail: 'not needed: no github remote' });
   assert.ok(!probeCalls.some(c => /\/gh$/.test(c.bin)), 'no gh version or auth probe without the github remote');

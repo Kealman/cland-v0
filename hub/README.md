@@ -4167,6 +4167,13 @@ carry Web with Neovim once. Tier commands infer Web only for candidates declarin
 retain its coverage. Root check builds the browser bundle; hand-run package suites
 check its source receipt and build once before workers if needed.
 
+Shards containing `hub/test/web-auth.test.ts` also build before workers, even
+without Web or an available browser. Standalone runs of that file use the same
+helper. Delivery cleans ignored `web/dist`; matching prepared dependencies skip
+`npm ci`, and a matching host gate skips the remote check. A warm image therefore
+does not guarantee a bundle. Cold installs and the Web-owning shard can mask this.
+Build failures name `npm run build --workspace web` as the prerequisite command.
+
 `npm install` prepares the bundle and pinned Chrome Headless Shell in node_modules.
 `npm run test:web:install -- --with-deps` repairs the shell and Linux libraries.
 `npm run test:web` queues selected Web files; `node --test web/test/smoke.test.ts`

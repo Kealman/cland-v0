@@ -3,7 +3,7 @@ import { parseConfig } from '../src/init/config.ts';
 import { phoneOrigin } from '../src/web-address.ts';
 import { decodeTerminalQr } from './qr-decode.ts';
 // T2: the executable CLI and HTTP authentication against an in-process project hub.
-import { test, type TestContext } from 'node:test';
+import { before, test, type TestContext } from 'node:test';
 import { once } from 'node:events';
 import { createHash } from 'node:crypto';
 import { WebSocket } from 'ws';
@@ -14,6 +14,11 @@ import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { frameClient, clandWithEnv, projectHub, tempProject } from './harness.ts';
 import { FakeClock } from './fake-clock.ts';
+import { fileURLToPath } from 'node:url';
+import { ensureWebBuild } from './web-build.ts';
+
+// Suites build outside workers; standalone runs need the same prerequisite.
+before(() => ensureWebBuild(fileURLToPath(new URL('../../', import.meta.url))));
 
 function get(url: string, headers: Record<string, string> = {}): Promise<{ status: number; headers: IncomingHttpHeaders; body: string }> {
   return new Promise((resolve, reject) => {
@@ -149,7 +154,7 @@ test("the served bundle, auth responses and every browser frame contain no hub s
   const { hub, origin, cookie, url } = await signIn(t);
   const secret = hub.discovery.secret;
   const scan = (value: unknown) => assert.ok(!JSON.stringify(value).includes(secret), 'hub secret crossed the web edge');
-  // Verification builds the installed bundle before tests. Scan all of its files
+  // The shared prerequisite builds the installed bundle before tests. Scan all files
   // over HTTP, including assets and build metadata, rather than only index.html.
   const files = await readdir(new URL('../../web/dist/', import.meta.url), { recursive: true, withFileTypes: true });
   assert.ok(files.length > 0);

@@ -1560,9 +1560,13 @@ Its executable `web --sessions`/`--revoke` tests count sockets, arm close observ
 before revoking, assert the server `web-session-socket-closed` receipts by CLI
 return, and separately bound client closure plus cookie refusal. It also
 covers HTTP upgrade checks, client/spoke admission and secret leakage at T2
-with an in-process project hub. Run `npm run build` before that targeted file: the leak
-scan requests every file of the actual installed bundle. The root check already
-builds it before suite tests. The tests use scratch HOME/XDG/Git configuration
+with an in-process project hub. Its standalone prerequisite uses the shared
+web-build helper to build a missing or stale bundle once before tests; the leak
+scan requests every file of the actual installed bundle. Suite shards containing
+this file build before workers, even without a Web phase or an available browser.
+Doctor component fixtures inject the installation bundle check; the separate
+`web-bundle.test.ts` retains missing/stale/current diagnosis on scratch files.
+The tests use scratch HOME/XDG/Git configuration
 and filtered environments through the shared fixtures. Both `open` and
 `xdg-open` are stubbed on scratch PATH even for `--no-open`, so a regression
 cannot launch the human's browser or touch its keychain. Real browser checks

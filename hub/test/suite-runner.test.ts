@@ -9,6 +9,7 @@ import test, { type TestContext } from 'node:test';
 import { ownDirectory } from './process-cleanup.ts';
 import { fileURLToPath } from 'node:url';
 import { suiteSummary } from '../src/hub/suites.ts';
+import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 
 const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
 // Admission retries every 250 ms, including when the competing waiter is paused.
@@ -29,7 +30,7 @@ process.stderr.write = (chunk, ...args) => { const result = write(chunk, ...args
   // Pin the fixture project as well as its lock: the caller's duration/tier
   // manifests must never apply to generated tests in this temporary project.
   const code = `${stop} import { runSuite, runPackageSuite } from ${JSON.stringify(runner)}; process.exitCode = await ${mode ? `runPackageSuite(${JSON.stringify(mode)}, [${JSON.stringify(file)}], ${JSON.stringify(options)})` : `runSuite([['--test', ${JSON.stringify(file)}]], ${JSON.stringify({ cwd: dir, lockDir: lockPath(dir) })})`};`;
-  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { env: { ...process.env, NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, ['--input-type=module', '-e', code], { cwd: dir, env: fixtureEnvironment(dir, process.env, { NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '0', ...extraEnv }), stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null && child.signalCode === null) { child.kill('SIGCONT'); child.kill('SIGTERM'); } if (child.signalCode !== 'SIGKILL') await done; });
   let output = '';
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString(); });
@@ -41,6 +42,21 @@ async function until(check: () => boolean | Promise<boolean>) {
   for (let n = 0; n < 800; n++) { if (await check()) return; await delay(25); }
   throw new Error('runner did not reach the expected state');
 }
+
+test('a hub-only shard builds the bundle before its secret-scan worker starts', async t => {
+  const dir = await fixture(t);
+  await mkdir(join(dir, 'web'), { recursive: true });
+  await mkdir(join(dir, 'hub/test'), { recursive: true });
+  await writeFile(join(dir, 'web/build.ts'), `import { mkdir, writeFile } from 'node:fs/promises';
+await mkdir('dist'); await writeFile('dist/index.html', 'built bundle');`);
+  const file = 'hub/test/web-auth.test.ts';
+  await writeFile(join(dir, file), `import test from 'node:test'; import assert from 'node:assert/strict'; import { readFile } from 'node:fs/promises';
+test('bundle scan prerequisite', async () => { assert.equal(await readFile('web/dist/index.html', 'utf8'), 'built bundle'); });`);
+  const suite = run(t, dir, file);
+  assert.equal(await suite.done, 0, suite.output());
+  assert.equal(await readFile(join(dir, 'web/dist/index.html'), 'utf8'), 'built bundle');
+  assert.match(suite.output(), /Web bundle: built once/);
+});
 
 test('the runner lists static and runtime skips by file, name and reason without changing suite counts', async t => {
   const dir = await fixture(t);

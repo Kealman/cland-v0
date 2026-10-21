@@ -19,6 +19,7 @@ export type DoctorReaders = {
   project?: import('../doctor/project.ts').ProjectReaders;
   findOrphans?: typeof import('../orphans.ts').findOrphans;
   sweepOrphans?: typeof import('../orphans.ts').sweepOrphans;
+  webBundle?: typeof checkWebBundle;
 };
 
 /** Local output/probe boundaries let embedders inspect the same report without replacing process globals. */
@@ -58,7 +59,7 @@ export async function runDoctor(args: string[], cwd: string = process.cwd(), env
     if (err instanceof SweepBusy) orphanChecks.push(warn('orphan sweep', err.message, 'wait for the active sweep, then rerun cland doctor --fix'));
     else orphanChecks.push(warn('orphan sweep', 'OS process inspection failed; unverified candidates were preserved', 'check that ps and process cwd inspection are available, then rerun cland doctor'));
   }
-  const checks = [...toolchain, ...requirementChecks, ...project, ...keys, await checkWebBundle(), ...orphanChecks];
+  const checks = [...toolchain, ...requirementChecks, ...project, ...keys, await (readers.webBundle ?? checkWebBundle)(), ...orphanChecks];
   const summary = summarise(checks);
   if (json) write(`${JSON.stringify({ root, version: VERSION, checks, summary })}\n`);
   else {

@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, realpath, stat, writeFile, rm } from 'node:fs/promises';
 import { loadavg } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, matchesGlob } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { captureProcess, cleanupOwnedProcesses, pause, type ProcessIdentity } from './process-cleanup.ts';
 import { processStarted } from '../src/hub/lock.ts';
@@ -107,7 +107,8 @@ export async function runSuite(suites: string[][], options: { lockDir?: string; 
       const prerequisite = await import(pathToFileURL(join(holder.worktree!, 'web/test/prerequisite.ts')).href) as { webPrerequisite: () => Promise<WebPrerequisite> };
       return prerequisite.webPrerequisite();
     }, line => process.stdout.write(line + '\n'));
-    if (webAvailable && existsSync(join(holder.worktree!, 'web/build.ts'))) {
+    const bundleScan = suites.some(args => args.some(arg => matchesGlob(join(holder.worktree!, 'hub/test/web-auth.test.ts'), resolve(holder.worktree!, arg))));
+    if ((webAvailable || bundleScan) && existsSync(join(holder.worktree!, 'web/build.ts'))) {
       const { ensureWebBuild } = await import('./web-build.ts');
       await ensureWebBuild(holder.worktree!);
     }
