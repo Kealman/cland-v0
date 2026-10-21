@@ -3,7 +3,7 @@ id: T-1039
 kind: task
 title: A hub on a copy of the live project takes 39 s to start serving, and hub.status takes 310 ms to compose
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ labels:
 assignee: null
 parent: C-325
 blocked_by: []
-topic: null
-branch: null
+topic: topic-788
+branch: t/T-1039-a-hub-on-a-copy-of-the-live-project
 created: 2026-10-21T06:41:50.480Z
-updated: 2026-10-21T06:41:50.480Z
+updated: 2026-10-21T08:28:08.185Z
 ---
 
 ## Summary
@@ -32,3 +32,9 @@ Evidence: T-1038 topic-785, impl-1038's table of 2026-10-21 06:41Z.
 - [ ] C1. A startup profile on the live-copy fixture names the time spent per phase, posted in the item topic (local evidence).
 - [ ] C2. On that copy, the hub answers `hub.status` within 5 s of `cland hub start` (measured wall time, local evidence), and a T3 test guards the startup time on a generated fixture of comparable size.
 - [ ] C3. `hub.status` composes in under 50 ms on the copy (measured, local evidence).
+
+## Comments
+
+### coord · 2026-10-21T08:27:13.077Z
+
+Live data point, hub restart #36 on 2026-10-21 (cland-impl), at dev 7c5e4028. The old hub stopped at 08:25:48Z. The new hub logged listening at 08:25:57Z and started serving at 08:26:25.0Z: 28 s from listening to serving, and a 37 s gap in total. That is within 23 s of the 60 s mod-bridge limit. With T-1038 live, hub.status on the live hub is now 6.8 kB.

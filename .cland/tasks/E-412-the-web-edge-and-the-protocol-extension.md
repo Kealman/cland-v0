@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-773
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-21T03:05:39.421Z
+updated: 2026-10-21T08:10:13.529Z
 ---
 
 ## Summary
@@ -135,6 +135,7 @@ stages:
       - - T-984
         - T-982
         - T-987
+        - T-1042
   - name: deltas, resume, the network and the door
     qa:
       scope: full
