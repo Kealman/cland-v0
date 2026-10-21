@@ -1621,6 +1621,15 @@ platform separately from suite evidence.
 
 ## Implementer test selection
 
+For hub shutdown, `daemon.test.ts` runs a real `hub serve` with the web edge
+enabled and a scratch epic-demo freshness Git command held at `diff-tree`.
+It arms the durable `stopped` log observer before stopping, then separately
+bounds process exit to two seconds and asserts both hub and Git PIDs are gone.
+The CLI diagnostic case keeps a fully stopped process alive deliberately and
+advances only its stop deadline after the shutdown receipt. It expects exit 1
+and `stopped, lock released, process still alive`, with no signal after lock
+release; the unrelated-PID case retains its separate safety assertion.
+
 Clause procedure (defaults implementer, project implementer):
 
 - `hub-selected` names changed functions, covering tests and the map artifact. Queue-enabled tasks run all T1 and selected T2, with all T2 in both packages on fallback. T3 smoke runs in batches and integrated runs. Coverage maps come from green integrated runs; ancestry, mapping and fallback rules are in docs/agents/tests.md.

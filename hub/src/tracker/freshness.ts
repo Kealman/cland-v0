@@ -58,6 +58,7 @@ export type FreshnessOptions = {
 
 export class Freshness {
   readonly #git: Git;
+  readonly #gitStop = new AbortController();
   readonly #readBase: (tips: ReadonlyMap<string, string>) => Promise<string | null>;
   #base: string | null = null;
   readonly #log: LogFn;
@@ -91,7 +92,10 @@ export class Freshness {
   #failureReset: NodeJS.Timeout | null = null;
 
   constructor(options: FreshnessOptions) {
-    this.#git = options.git;
+    this.#git = (args, input) => {
+      this.#gitStop.signal.throwIfAborted();
+      return options.git(args, input, this.#gitStop.signal);
+    };
     this.#readBase = options.readBase ?? (async (tips) => verdictBaseOf(tips));
     this.#log = options.log ?? (() => {});
     this.#intervalMs = options.intervalMs ?? TIP_CHECK_MS;
@@ -110,6 +114,9 @@ export class Freshness {
 
   stop(): Promise<void> {
     this.#stopped = true;
+    // Cancel the current native command and fence every later command in a
+    // multi-command patch/demo scan before waiting for its close receipt.
+    this.#gitStop.abort();
     this.#workSoon = false;
     if (this.#workImmediate) clearImmediate(this.#workImmediate);
     this.#workImmediate = null;

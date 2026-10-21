@@ -3,7 +3,7 @@ name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 metadata:
   origin: "mattpocock/skills skills/engineering/implement at 6d6a5b90; MIT, Copyright (c) 2026 Matt Pocock"
-  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); web build/check flow (T-990); clause procedure reference (T-975); browser sign-in fixtures (T-980); separate Web phase planning (T-1025); persistent browser sessions (T-982); web authority conformance and fixtures (T-981); isolated browser fixture/install flow (T-991); artifact capabilities (T-987); network/QR fixtures (T-988); prepared browser image recovery (T-993); bundle scan prerequisites (T-1031)"
+  changes: "model-invocable (Init); hub review request (T-226); review before verify (D25, T-322); Codex invocation follows frontmatter (T-621); test levels (D53); shell item topic creation (T-951); claimant done marks (T-958); repository static membership gate (T-959); queued budget fallback reclaim (T-561); release receipt identity/provenance (T-950); send recipient shape (T-966); web build/check flow (T-990); clause procedure reference (T-975); browser sign-in fixtures (T-980); separate Web phase planning (T-1025); persistent browser sessions (T-982); web authority conformance and fixtures (T-981); isolated browser fixture/install flow (T-991); artifact capabilities (T-987); network/QR fixtures (T-988); prepared browser image recovery (T-993); bundle scan prerequisites (T-1031); hub shutdown receipts and diagnostic (T-1060)"
 ---
 
 Implement the work described by the user in the spec or tickets.
@@ -11,6 +11,8 @@ Implement the work described by the user in the spec or tickets.
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
 
 Call the Skill tool with "tdd" where possible, at pre-agreed seams.
+
+For hub shutdown changes, use the real-process receipt tests described in `docs/agents/tests.md#implementer-test-selection`; interpret `hub stop`'s released-lock/live-PID diagnostic through `hub/README.md`.
 
 Before writing or changing a test, read "Test levels" in `docs/agents/tests.md` and put each test at the lowest tier that proves its behaviour: no new real process without a lifecycle reason, and no wall-clock waits.
 

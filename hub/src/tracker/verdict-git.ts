@@ -7,16 +7,23 @@ import { execFile } from 'node:child_process';
  * or null when git said no (a non-zero exit). It rejects when git
  * could not answer at all (not started, timed out, killed): that is no fact to keep. Tests inject one to count spawns.
  */
-export type Git = (args: string[], input?: string) => Promise<string | null>;
+export type Git = (args: string[], input?: string, signal?: AbortSignal) => Promise<string | null>;
 
 export function gitIn(root: string, env: NodeJS.ProcessEnv = process.env): Git {
-  return (args, input) =>
+  return (args, input, signal) =>
     new Promise((resolve, reject) => {
+      signal?.throwIfAborted();
       const child = execFile('git', args, { cwd: root, env, encoding: 'utf8', timeout: 5000, maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
-        if (!err) resolve(args.includes('-z') || args.includes('--null') ? stdout : stdout.trim());
+        signal?.removeEventListener('abort', abort);
+        if (signal?.aborted) reject(signal.reason);
+        else if (!err) resolve(args.includes('-z') || args.includes('--null') ? stdout : stdout.trim());
         else if (typeof err.code === 'number' && !err.killed) resolve(null);
         else reject(err);
       });
+      // execFile's callback observes child close, unlike its AbortSignal error
+      // callback, which can run before the PID and pipes have been reaped.
+      const abort = () => { child.kill('SIGTERM'); };
+      signal?.addEventListener('abort', abort, { once: true });
       child.stdin?.on('error', () => {});
       child.stdin?.end(input ?? '');
     });

@@ -14,6 +14,91 @@ import WebSocket from 'ws';
 import { PROTOCOL_VERSION } from '../src/protocol.ts';
 import { assignRole, cland, clandWithEnv, CLI_ENTRY, connectSocket, killDaemon, pidAlive, projectHub, readDiscovery, eventually, sleep, startDaemon, tempProject } from './harness.ts';
 import { NO_PS } from './native-process.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
+import { askHubFrame } from '../src/cli/socket-client.ts';
+
+test('hub serve with the web edge exits within two seconds of its stopped receipt', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  const env = fixtureEnvironment(root, process.env, {
+    TMPDIR: tmpdir(), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_FIXTURE_ROOT: root,
+  });
+  const git = (...args: string[]) => {
+    const result = spawnSync('git', args, { cwd: root, env, encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  git('init', '-b', 'dev');
+  git('commit', '--allow-empty', '-m', 'base');
+  const base = git('rev-parse', 'HEAD');
+  git('commit', '--allow-empty', '-m', 'land task', '-m', 'Item: T-2');
+  await writeFile(join(root, '.cland/tasks/E-1.md'), `---
+id: E-1
+kind: epic
+title: Demo
+state: open
+---
+
+## Comments
+
+### qa · 2026-10-20T00:00:00.000Z
+
+verdict: qa
+result: clear
+by: qa [qa]
+run: fixture-demo
+commit: ${base}
+
+Demo checked.
+`);
+  await writeFile(join(root, '.cland/tasks/T-2.md'), '---\nid: T-2\nkind: task\ntitle: Landed\nstate: closed\nstatus: done\nparent: E-1\n---\n');
+  const gitPidFile = join(root, 'freshness-git.pid');
+  const preload = join(root, 'slow-freshness.mjs');
+  // Hold the exact native Git boundary observed in the incident, with its usual
+  // 5 s execFile deadline. Shutdown must cancel it rather than abandon its pipes.
+  await writeFile(preload, `
+    import cp from 'node:child_process';
+    import { syncBuiltinESMExports } from 'node:module';
+    const execFile = cp.execFile;
+    cp.execFile = function(file, args, options, callback) {
+      if (file === 'git' && args[0] === 'diff-tree') {
+        return execFile(process.execPath, ['-e', ${JSON.stringify(`require('node:fs').writeFileSync(${JSON.stringify(gitPidFile)}, String(process.pid)); setInterval(() => {}, 1000);`)}], options, callback);
+      }
+      return execFile(file, args, options, callback);
+    };
+    cp.execFile[Symbol.for('nodejs.util.promisify.custom')] = execFile[Symbol.for('nodejs.util.promisify.custom')];
+    syncBuiltinESMExports();
+  `);
+  const launchEnv = fixtureEnvironment(root, env, { ...env, NODE_OPTIONS: `--import=${pathToFileURL(preload).href}` });
+  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], { cwd: root, env: launchEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  const exited = new Promise<number | null>(resolve => child.once('exit', resolve));
+  onCleanup(t, async () => { if (child.exitCode === null) child.kill('SIGKILL'); await exited; });
+  let output = '';
+  child.stdout.on('data', data => { output += data; });
+  child.stderr.on('data', data => { output += data; });
+  await eventually('hub serve startup', () => {
+    assert.equal(child.exitCode, null, output);
+    return output.includes('hub serving') ? true : undefined;
+  }, 10_000);
+  const discovery = JSON.parse(await readFile(join(root, '.cland/hub.json'), 'utf8'));
+  const status = await askHubFrame(discovery, { type: 'hub.status' }, 3000, env) as { web?: { available: boolean } };
+  assert.equal(status.web?.available, true, 'the real web edge is enabled');
+  for (let i = 0; i < 3; i++) await askHubFrame(discovery, { type: 'task.list', projection: 'summary' }, 3000, env);
+  const gitPid = await eventually('native freshness Git entered', async () => Number(await readFile(gitPidFile, 'utf8')), 5000);
+  ownProcess(t, gitPid);
+  const stopped = eventually('durable stopped receipt', async () =>
+    (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).includes('"event":"stopped"') ? true : undefined, 5000);
+  await Promise.all([stopped, askHubFrame(discovery, { type: 'hub.stop' }, 3000, env)]);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    assert.equal(await Promise.race([exited, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`hub serve pid ${child.pid} still alive two seconds after stopped`)), 2000); // lint-allow-wall-clock: C1 bounds real OS process exit after the durable stopped receipt.
+    })]), 0);
+  } finally { clearTimeout(timer); }
+  assert.equal(pidAlive(child.pid!), false, 'the OS has reaped the served hub');
+  assert.equal(pidAlive(gitPid), false, 'the owned freshness Git child is also reaped');
+});
 
 test('a second cland hub start reports the running daemon instead of starting another', async (t) => {
   const root = await tempProject(t);
@@ -23,6 +108,42 @@ test('a second cland hub start reports the running daemon instead of starting an
   assert.match(second.result.stdout, new RegExp(`pid +${first.discovery.pid}\\b`));
   assert.equal(second.discovery.pid, first.discovery.pid);
   assert.equal(second.discovery.port, first.discovery.port);
+});
+
+test('hub stop identifies its acknowledged hub after lock release while the process is still alive', async t => {
+  const root = await tempProject(t);
+  const held = join(root, 'held-after-stop');
+  const hold = join(root, 'hold-after-stop.mjs');
+  await writeFile(hold, `
+    import { writeFileSync } from 'node:fs';
+    if (process.argv[2] === 'hub' && process.argv[3] === 'serve') process.once('beforeExit', () => {
+      writeFileSync(${JSON.stringify(held)}, 'shutdown completed');
+      setInterval(() => {}, 1000);
+    });
+  `);
+  const env = fixtureEnvironment(root, process.env, { TMPDIR: tmpdir() });
+  const { discovery } = await startDaemon(t, root, { ...env, NODE_OPTIONS: `--import=${pathToFileURL(hold).href}` });
+  const deadline = join(root, 'stop-deadline.mjs');
+  await writeFile(deadline, `
+    import { existsSync } from 'node:fs';
+    const now = Date.now, kill = process.kill;
+    let elapsed = 0;
+    Date.now = () => now() + elapsed;
+    process.kill = function(pid, signal) {
+      const result = kill.call(process, pid, signal);
+      // Only advance the CLI exit deadline after its first PID observation and
+      // the fixture's completed-shutdown receipt, without spending ten seconds.
+      if (pid === ${discovery.pid} && signal === 0 && existsSync(${JSON.stringify(held)})) elapsed = 20000;
+      return result;
+    };
+  `);
+  const stopped = await clandWithEnv(root, { ...env, NODE_OPTIONS: `--import=${pathToFileURL(deadline).href}` }, 'hub', 'stop');
+  assert.equal(stopped.code, 1, stopped.stdout + stopped.stderr);
+  assert.match(stopped.stderr, new RegExp(`stopped, lock released, process still alive.*pid ${discovery.pid}`));
+  assert.doesNotMatch(stopped.stdout + stopped.stderr, /not this project's hub/);
+  assert.ok(pidAlive(discovery.pid), 'a released lock never authorizes a signal');
+  await assert.rejects(stat(join(root, '.cland/hub.lock')), { code: 'ENOENT' });
+  assert.match(await readFile(join(root, '.cland/log/hub.log'), 'utf8'), /"event":"stopped"/);
 });
 
 test('a stale hub.json, whose pid is gone, is replaced by a fresh hub', async (t) => {

@@ -203,6 +203,7 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
     return 0;
   }
   if (pidAlive(d.pid)) {
+    const ownedBeforeStop = ownsProject(l.lock, d.pid);
     let asked = true;
     try {
       await askHub(d, 'hub.stop');
@@ -229,6 +230,10 @@ async function stop(l: Layout, rootKnown: boolean, io: Io): Promise<number> {
       // The socket did not take the request, or the hub did not leave in time: the signal's turn — but only
       // for the process that holds the project's lock. Any other is a stranger behind a reused pid.
       if (!ownsProject(l.lock, d.pid)) {
+        if (asked && ownedBeforeStop) {
+          io.err(`cland: hub stopped, lock released, process still alive (pid ${d.pid}); left it running\n`);
+          return 1;
+        }
         removeDiscovery(l.discovery, d.pid);
         io.out(`pid ${d.pid} named by ${l.discovery} is not this project's hub (it does not hold ${l.lock}); left it running and removed the stale ${l.discovery}\n`);
         return 0;
