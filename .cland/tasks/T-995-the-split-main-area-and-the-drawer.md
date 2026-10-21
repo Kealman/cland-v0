@@ -3,7 +3,7 @@ id: T-995
 kind: task
 title: The split main area and the drawer
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-415
 blocked_by:
   - T-994
-topic: null
-branch: null
+topic: topic-800
+branch: t/T-995-the-split-main-area-and-the-drawer
 created: 2026-10-20T16:51:40.862Z
-updated: 2026-10-21T12:56:04.043Z
+updated: 2026-10-21T12:57:04.813Z
 ---
 
 ## Summary

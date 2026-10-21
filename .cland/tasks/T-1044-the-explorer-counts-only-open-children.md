@@ -2,8 +2,8 @@
 id: T-1044
 kind: task
 title: The explorer counts only open children, so closed epics show 0/0 and live epics undercount
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -16,7 +16,8 @@ regression_of: T-1007
 topic: topic-796
 branch: t/T-1044-the-explorer-counts-only-open-children
 created: 2026-10-21T11:16:47.594Z
-updated: 2026-10-21T11:50:50.834Z
+updated: 2026-10-21T13:01:04.063Z
+closed: 2026-10-21T13:01:04.063Z
 ---
 
 ## Summary
@@ -131,3 +132,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; no findings. A-8370 completes A-8365's C1–C3 audit with A-8366 current-head local Darwin arm64 explorer.test.ts2/2 and explorer-card.test.ts1/1, no failures/skips. A-8355 startup-budget T3 4/4 passes hard startup/byte limits plus negative guards (38.511ms/67813bytes normal). Combined with exact-head A-8363 Linux T1/all-T2 both packages2263 ordinary passes/344 files+three owned identities5/5 load, all named C4 files are covered. This is targeted T3 plus Linux task evidence, not integratedT3/T4. Prior A-8341 remains red history; M1 fixed at reviewed source. Web NOT RUN/T-993 accepted by Coordinator f0b6d2fc; no browser/stage/QA/Reviewer runtime. Hostc503a2dd not repeated remotely; lint132/59,durations/ratchet report-only, existing large-summary5.067s over nominal0.5s retained. Head unchanged. All C1–C4 verified.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-21T13:01:04.063Z
+
+Merged d237457cb2c038cfab8ce7287f7d56205c89f78f onto dev.
