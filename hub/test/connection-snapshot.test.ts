@@ -203,8 +203,7 @@ test('three clients serialize a model frame only once per negotiated feature set
   ].map(features => {
     const frames: HubFrame[] = [];
     const conversation = dispatcher.open({
-      send: frame => { frames.push(JSON.parse(JSON.stringify(frame)) as HubFrame); },
-      sendSerialized: line => { frames.push(JSON.parse(line) as HubFrame); },
+      send: (frame, serialized) => { frames.push(JSON.parse(serialized ?? JSON.stringify(frame)) as HubFrame); },
       close: () => {}, isOpen: () => true,
     }, { authenticated: true, edge: 'socket' });
     onCleanup(t, () => conversation.closed());

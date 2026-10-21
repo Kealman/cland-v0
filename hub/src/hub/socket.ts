@@ -27,9 +27,8 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
     const conversation = options.dispatcher.open(
       {
         bufferedBytes: () => socket.writableLength,
-        sendSerialized: json => { if (!socket.destroyed) socket.write(`${json}\n`); },
-        send: (frame) => {
-          if (!socket.destroyed) socket.write(`${JSON.stringify(frame)}\n`);
+        send: (frame, serialized) => {
+          if (!socket.destroyed) socket.write(`${serialized ?? JSON.stringify(frame)}\n`);
         },
         // end, not destroy: the frame written just before (a refusal, a result) still goes out
         close: () => socket.end(),

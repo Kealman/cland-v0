@@ -2,8 +2,7 @@ import type { HubFrame } from '../protocol.ts';
 import { MODEL_BYTES } from './model-ring.ts';
 
 type Sink = {
-  send: (frame: HubFrame) => void;
-  sendSerialized?: (json: string) => void;
+  send: (frame: HubFrame, serialized?: string) => void;
   bufferedBytes?: () => number;
   isOpen: () => boolean;
 };
@@ -30,8 +29,7 @@ export class ModelOutput {
       this.pause('queue-limit');
       return false;
     }
-    if (this.#sink.sendSerialized) this.#sink.sendSerialized(json);
-    else this.#sink.send(frame ?? JSON.parse(json) as HubFrame);
+    this.#sink.send(frame ?? JSON.parse(json) as HubFrame, json);
     // The transport may add framing bytes not present in the shared JSON.
     if ((this.#sink.bufferedBytes?.() ?? 0) > MODEL_BYTES) { this.pause('queue-limit'); return false; }
     return true;

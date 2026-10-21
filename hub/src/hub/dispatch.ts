@@ -95,9 +95,8 @@ import { RequestGuard, type GuardOptions } from './budget.ts';
 
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
-  send: (frame: HubFrame) => void;
-  /** An already serialized model frame, shared across peers of one feature set. */
-  sendSerialized?: (json: string) => void;
+  /** Every frame uses this boundary, including shared model JSON and replay. */
+  send: (frame: HubFrame, serialized?: string) => void;
   /** Bytes accepted by the transport but not yet flushed to its reader. */
   bufferedBytes?: () => number;
   /** End the connection. `code` is a WebSocket close code; a transport without codes ignores it. */
@@ -1003,8 +1002,7 @@ export class Dispatcher {
     const sendModel = (frame: HubFrame, serialized: () => string) => {
       if (done || !peer.isOpen()) return;
       if (features.includes('numbered-deltas')) modelOutput.send(frame, serialized);
-      else if (wire.sendSerialized) wire.sendSerialized(serialized());
-      else wire.send(frame);
+      else wire.send(frame, serialized());
     };
     const subscribeModel = () => {
       if (done || unsubscribe || preparingSnapshot) return;
