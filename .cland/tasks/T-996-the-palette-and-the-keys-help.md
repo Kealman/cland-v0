@@ -2,8 +2,8 @@
 id: T-996
 kind: task
 title: The palette and the keys help
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-802
 branch: t/T-996-the-palette-and-the-keys-help
 created: 2026-10-20T16:51:40.983Z
-updated: 2026-10-21T13:38:55.546Z
+updated: 2026-10-21T14:09:54.986Z
+closed: 2026-10-21T14:09:54.986Z
 ---
 
 ## Summary
@@ -95,3 +96,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; A-8428 audits queued local 6ee29cce/A-8427 against source-clear A-8426. Actual Darwin arm64/Node24.21.0/Neovim0.12.5 check + full T1/fallback all T2 in both packages + actual Web four files exit0: 2303 ordinary test passes,352 passing file finishes,zero failures/cancel/skip/todo. Seven palette cases explicitly pass at12622–12651, covering C1 dismissal/no frame, C2 prefixes/groups/blue Unicode marks, C3 Enter/pane/Tab,C4 current-area physical-code keys, stable leader and focus-transition draft/query preservation. C5 source docs remain verified; C2/C4 claimant done marks refreshed before submission. All C1–C5 verified; no findings. L1 remains withdrawn as my original escaped-output reading error. Check/typecheck/build/static enforced; test lint132/59, duration and ratchet report-only, one missing palette baseline. No load-gate finishes recorded/no browser repetitions claimed. Web shard5.38s is measured phase time, not interaction latency. No T3/T4/Linux browser/stage integration/after-stage QA pass claimed; inherited after-stage QA remains separate. Origin tip unchanged; Reviewer inspected evidence read-only.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-21T14:09:54.986Z
+
+Merged b4264fddcab0990a997f622d612652adcfd09a85 onto dev.

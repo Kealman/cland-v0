@@ -2,8 +2,8 @@
 id: T-1049
 kind: task
 title: A finished Linux stage cover stops counting after a hub restart
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-799
 branch: t/T-1049-a-finished-linux-stage-cover-stops
 created: 2026-10-21T12:50:24.466Z
-updated: 2026-10-21T13:34:35.737Z
+updated: 2026-10-21T14:09:40.389Z
+closed: 2026-10-21T14:09:40.389Z
 ---
 
 ## Summary
@@ -121,3 +122,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear C1/C2: A-8425 audits same-head A-8424/e8974efe Linux droplet host-gated T0/T1/full fallback T2/Web success, 2298 ordinary passes plus three distinct 5/5 load groups. Missing-bundle M2 recovered: raw build-before-workers receipt and all three prior failure identities pass. C1 native restart evidence remains exact-head targeted local Darwin T3 A-8420, separate from task gate; C2 named cause established. Both claimant done marks present. Inherited shell Web 6.331s>4s report-only overage separately routed S Follow-ups E-880, not a budget pass. No task T3/T4/performance/stage-QA or merge-enqueue claim.
 
 Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-21T14:09:40.389Z
+
+Merged 7c153e5105a55029129878b23df408ea6f3d8523 onto dev.

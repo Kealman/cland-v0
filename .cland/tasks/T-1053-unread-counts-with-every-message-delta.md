@@ -3,17 +3,18 @@ id: T-1053
 kind: task
 title: Unread counts with every message delta and one merged sessions projection
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 4
 labels:
   - ready-for-agent
 assignee: null
 parent: E-413
 blocked_by: []
-topic: null
+topic: topic-806
 branch: t/T-1053-unread-counts-with-every-message-delta
 created: 2026-10-21T14:04:14.662Z
-updated: 2026-10-21T14:04:38.377Z
+updated: 2026-10-21T14:15:33.301Z
 ---
 
 ## Summary
@@ -30,7 +31,17 @@ A topic's `unread` (per human) and `lastMessageAt` travel with every message del
 
 ## Acceptance criteria
 
-- [ ] C1. A frame client's unread count and last message time for a topic follow three new messages from the deltas alone, and a `topic.read` resets the count (test).
-- [ ] C2. A verifier's merged session row carries its hold with +N, a waiting row carries its state age and the command it waits on, and a row carries account and usage (test).
-- [ ] C3. A presence or process change produces one merged row delta, not two partial ones (test).
-- [ ] C4. `hub/README.md` describes `unread`, `lastMessageAt` and the sessions projection.
+- [x] C1. A frame client's unread count and last message time for a topic follow three new messages from the deltas alone, and a `topic.read` resets the count (test).
+  - done: impl-1053 · 2026-10-21T14:14:58.077Z
+- [x] C2. A verifier's merged session row carries its hold with +N, a waiting row carries its state age and the command it waits on, and a row carries account and usage (test).
+  - done: impl-1053 · 2026-10-21T14:14:58.105Z
+- [x] C3. A presence or process change produces one merged row delta, not two partial ones (test).
+  - done: impl-1053 · 2026-10-21T14:14:58.135Z
+- [x] C4. `hub/README.md` describes `unread`, `lastMessageAt` and the sessions projection.
+  - done: impl-1053 · 2026-10-21T14:14:58.169Z
+
+## Comments
+
+### impl-1053 · 2026-10-21T14:14:49.358Z
+
+Implemented the additive topic fields and merged session projection. TDD at the agreed T2 frame seam: unread started red (undefined !== 1), merged rows started red (snapshot supplies complete session rows), and snapshot-only subscribers started red (no session.row received), then each passed after implementation. New tests cover authoritative counts/times/read resets; verifier holds/+N and pending work; waiting command/state age; a named account and usage; one complete row per presence/process/hold change; fresh-snapshot equivalence; rename, disconnect and unknown-identity removals. Legacy process and presence reads/events retained. origin/dev merged before first review; reviewed candidate head will be b3ce2e336adb07c23ed33143e65a2314f1128f70. Per-item QA is not required (affected after-stage policy; no QA brief supplied).

@@ -5,6 +5,7 @@ title: The card's facts in the item summary
 state: open
 status: planned
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-21T14:04:18.959Z
-updated: 2026-10-21T14:04:25.976Z
+updated: 2026-10-21T14:13:34.845Z
 ---
 
 ## Summary
@@ -35,3 +36,4 @@ The item summary in the snapshot and the deltas also carries: the latest verdict
 - [ ] C2. A frame client reads each stage's state for an epic with a plan from the snapshot, with no `task.plan show`, and a stage change arrives as a delta (test).
 - [ ] C3. The summary carries the agents' text sections and size but never the full body or comments, and a thousand-item snapshot stays within T-1038's startup reply budgets (test).
 - [ ] C4. `hub/README.md` lists the card fields.
+- [ ] C5. Each stage of an epic with a plan carries merged/total counts that include closed members, and Neovim's stage counters (plan.lua progress, the card's current-stage "X of N merged", listed by T-1061 in its topic) read them instead of loaded rows (tests).

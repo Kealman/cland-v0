@@ -10,10 +10,10 @@ labels:
 assignee: null
 parent: E-413
 blocked_by: []
-topic: null
+topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T14:04:34.661Z
+updated: 2026-10-21T14:04:57.951Z
 ---
 
 ## Summary
