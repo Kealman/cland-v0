@@ -401,7 +401,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     starting = false;
     tracker.resumeReadyChecks();
     lintWarmer.request(devTip);
-    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
+    return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; } };
   }
 
   web = await createWebEdge({ root, store, log, ...(options.artifactOpen ? { artifactOpen: options.artifactOpen } : {}), dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, bind: config.web.bind, origin: config.web.origin, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
@@ -442,5 +442,5 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     const fixtures = await sweepOrphans(root, log, 'fixture', { pending: () => stopping !== null, ...(env.CLAND_TEST_ORPHAN_ROOT ? { hubScopeRoot: env.CLAND_TEST_ORPHAN_ROOT } : {}) });
     log({ event: 'orphan-sweep-completed', ended: [...ended, ...fixtures].map(p => p.process.pid) });
   }).catch(err => log({ event: 'orphan-sweep-failed', reason: err instanceof Error ? err.message : 'OS process inspection failed; unverified candidates were preserved' }));
-  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
+  return { layout: l, discovery, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageAbandoned; } };
 }

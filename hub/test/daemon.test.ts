@@ -17,6 +17,69 @@ import { NO_PS } from './native-process.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 import { askHubFrame } from '../src/cli/socket-client.ts';
 
+test('hub serve exits fatally after abandoning a background drain with no pending operations', async t => {
+  const root = await tempProject(t);
+  const tasks = join(root, '.cland/tasks');
+  await mkdir(tasks, { recursive: true });
+  const capture = join(tasks, 'T-1-fixture.md.12345678-1234-1234-1234-123456789abc.conflict');
+  await writeFile(capture, 'fixture capture');
+  const entered = join(root, 'maintenance-entered');
+  const preload = join(root, 'held-maintenance.mjs');
+  // Conflict retention runs outside the storage operation queue. Hold its native
+  // lstat boundary so stop must abandon background work even with operations: [].
+  await writeFile(preload, `
+    import files from 'node:fs/promises';
+    import { writeFileSync } from 'node:fs';
+    import { syncBuiltinESMExports } from 'node:module';
+    const lstat = files.lstat;
+    files.lstat = async function(path, ...args) {
+      if (String(path) === ${JSON.stringify(capture)}) {
+        writeFileSync(${JSON.stringify(entered)}, 'conflict retention lstat entered');
+        setInterval(() => {}, 1000);
+        return new Promise(() => {});
+      }
+      return lstat(path, ...args);
+    };
+    syncBuiltinESMExports();
+  `);
+  const env = fixtureEnvironment(root, process.env, {
+    TMPDIR: tmpdir(), CLAND_TEST_SKIP_ORPHAN_SWEEP: '1', CLAND_TEST_FIXTURE_ROOT: root,
+    CLAND_TEST_TRACKER_STOP_MS: '100', NODE_OPTIONS: `--import=${pathToFileURL(preload).href}`,
+  });
+  const child = spawn(process.execPath, [CLI_ENTRY, 'hub', 'serve'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  ownProcess(t, child.pid);
+  const exited = new Promise<number | null>(resolve => child.once('exit', resolve));
+  onCleanup(t, async () => { if (child.exitCode === null) child.kill('SIGKILL'); await exited; });
+  let output = '';
+  child.stdout.on('data', data => { output += data; });
+  child.stderr.on('data', data => { output += data; });
+  await eventually('hub serve startup', () => {
+    assert.equal(child.exitCode, null, output);
+    return output.includes('hub serving') ? true : undefined;
+  }, 10_000);
+  await eventually('background native I/O entered', async () => await readFile(entered, 'utf8'), 5000);
+  const discovery = JSON.parse(await readFile(join(root, '.cland/hub.json'), 'utf8'));
+  const status = await askHubFrame(discovery, { type: 'hub.status' }, 3000, env) as {
+    tracker: { storage: { active: unknown; queued: number; abandoned: unknown[] } };
+  };
+  assert.equal(status.tracker.storage.active, null);
+  assert.equal(status.tracker.storage.queued, 0);
+  assert.deepEqual(status.tracker.storage.abandoned, []);
+  const stopped = eventually('durable stopped receipt after abandonment', async () => {
+    const records = (await readFile(join(root, '.cland/log/hub.log'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+    return records.some(record => record.event === 'stopped') ? records : undefined;
+  }, 5000);
+  const [records] = await Promise.all([stopped, askHubFrame(discovery, { type: 'hub.stop' }, 3000, env)]);
+  assert.deepEqual(records.find(record => record.event === 'tracker-storage-abandoned')?.operations, []);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    assert.equal(await Promise.race([exited, new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`hub serve pid ${child.pid} still alive after empty-operation abandonment`)), 2000); // lint-allow-wall-clock: bounds real process exit after its durable stopped receipt.
+    })]), 1, output);
+  } finally { clearTimeout(timer); }
+  assert.equal(pidAlive(child.pid!), false, 'the OS has reaped the abandoned hub');
+});
+
 test('hub serve with the web edge exits within two seconds of its stopped receipt', async t => {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland/tasks'), { recursive: true });
@@ -98,6 +161,7 @@ Demo checked.
   } finally { clearTimeout(timer); }
   assert.equal(pidAlive(child.pid!), false, 'the OS has reaped the served hub');
   assert.equal(pidAlive(gitPid), false, 'the owned freshness Git child is also reaped');
+  assert.doesNotMatch(await readFile(join(root, '.cland/log/hub.log'), 'utf8'), /"event":"tracker-storage-abandoned"/);
 });
 
 test('a second cland hub start reports the running daemon instead of starting another', async (t) => {

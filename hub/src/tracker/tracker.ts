@@ -2118,6 +2118,9 @@ export class Tracker {
     return work();
   }
 
+  /** A bounded drain can abandon background work with no queued storage operations. */
+  get storageAbandoned(): boolean { return this.#storageAbandoned; }
+
   /** Synchronous health snapshot: status must answer even when the storage queue is held. */
   storageStatus(): TrackerStorageStatus {
     const active = [...this.#storageWork].find(work => work.started !== null);

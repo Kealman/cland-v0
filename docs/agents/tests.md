@@ -1636,6 +1636,11 @@ For hub shutdown, `daemon.test.ts` runs a real `hub serve` with the web edge
 enabled and a scratch epic-demo freshness Git command held at `diff-tree`.
 It arms the durable `stopped` log observer before stopping, then separately
 bounds process exit to two seconds and asserts both hub and Git PIDs are gone.
+The background-drain regression holds conflict-retention native I/O outside the
+storage operation queue. After its entry receipt, it requires an idle operation
+queue, an abandonment event with `operations: []`, a durable `stopped` receipt,
+exit code 1 and a reaped hub PID. The normal-stop case retains exit code 0 and
+asserts that no abandonment event was recorded.
 The CLI diagnostic case keeps a fully stopped process alive deliberately and
 advances only its stop deadline after the shutdown receipt. It expects exit 1
 and `stopped, lock released, process still alive`, with no signal after lock
