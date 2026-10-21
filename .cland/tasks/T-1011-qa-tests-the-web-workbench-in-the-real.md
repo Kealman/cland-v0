@@ -3,7 +3,7 @@ id: T-1011
 kind: task
 title: QA tests the web workbench in the real browser through computer use
 state: open
-status: review
+status: ready
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-765
 branch: t/T-1011-qa-tests-the-web-workbench-in-the-real
 created: 2026-10-20T17:02:15.802Z
-updated: 2026-10-20T18:52:07.768Z
+updated: 2026-10-21T06:39:33.712Z
 ---
 
 ## Summary
@@ -42,7 +42,9 @@ QA for the web workbench also tests in the human's real local browser through co
   - done: impl-1011 · 2026-10-20T18:41:27.583Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-source-1 · 2026-10-20T18:43:13.655Z · commit d1acaacc51510bf13df49561434913fb27838712
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
-- [ ] C3. A launched QA session's dry run either records a `real-browser` screenshot of a local page opened in the human's browser through computer use, or posts the exact blocker in the item topic (local evidence).
+- [x] C3. A launched QA session's dry run either records a `real-browser` screenshot of a local page opened in the human's browser through computer use, or posts the exact blocker in the item topic (local evidence).
+  - done: impl-1011 · 2026-10-21T06:38:55.414Z
+  - verified: qa-676 [qa] · run qa-2026-10-21-1 · 2026-10-21T06:39:33.694Z · commit d1acaacc51510bf13df49561434913fb27838712
 - [x] C4. `cland qa lint` accepts a brief with a `real-browser` case (test).
   - done: impl-1011 · 2026-10-20T18:41:28.218Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
@@ -94,3 +96,39 @@ C3 remains unchecked/unverified: this suite and synthetic screenshot do not esta
 Linux x64 c-8 lon1 droplet, two workers, T1 exit 0 (command 51 s/package 46.48 s) and fallback all T2 in both packages exit 0 (command 280 s/package 276.60 s). Actual execution, not cache/projection; lifetime 409 s/$0.0284. Host check reference 93244c17 not repeated remotely. Lint/budgets/ratchet report-only; T3/T4 not executed. A-7946 separately preserves original pre-commit local receipts on 3f74bc05 plus dirty changes/no recorded tree hash, correcting A-7937 attribution; not reused as exact-head execution. No Reviewer tests, edits or GUI launch.
 
 Criteria: C1 verified, C2 verified, C4 verified.
+
+### qa-676 · 2026-10-21T06:39:33.646Z
+
+verdict: qa
+result: not clear
+by: qa-676 [qa]
+run: qa-2026-10-21-1
+commit: d1acaacc51510bf13df49561434913fb27838712
+findings: [{"severity":"medium","text":"WEB-DRY-001 BLOCKED: cua.getBrowser({}) returned 'No browser is available'; current-screen access via cua.getApp(com.mitchellh.ghostty) returned 'Computer Use is not allowed to use the app ... for safety reasons.' No screenshot or navigation. C3's explicit exact-blocker alternative is satisfied; no product defect asserted."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Check | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| M1 | hub-api | PASS | Clean item worktree; HEAD and branch tip both d1acaacc51510bf13df49561434913fb27838712; M1.txt |
+| WEB-DRY-001 | real-browser | BLOCKED | No browser available through computer use; screenshot app access refused; WEB-DRY-001-blocker.txt |
+| M2 | hub-api | PASS | Exactly one real-browser recorder line for this item/run, BLOCKED with the exact blocker capture path; M2.txt. No screenshot was obtainable. |
+
+Medium finding — WEB-DRY-001, environment/tool access blocker. `await cua.getState()` returned `browsers: []` (Arc was listed as a native app, not running; no browser profile was exposed). `await cua.getBrowser({})` returned exactly:
+
+> No browser is available
+
+To obtain screen evidence, `await cua.getApp("com.mitchellh.ghostty")` returned exactly:
+
+> Computer Use is not allowed to use the app 'com.mitchellh.ghostty' for safety reasons.
+
+Stopped after the refusal; no attempt through another app, shell, session or access path. This establishes a computer-use availability/refusal blocker, not that the browser is uninstalled or that a cland QA profile is absent. No screenshot was obtained and no successful browser navigation is claimed.
+
+Attempt verdict: not clear; WEB-DRY-001 BLOCKED. Run qa-2026-10-21-1, tested task SHA d1acaacc51510bf13df49561434913fb27838712, local macOS real-browser computer-use preflight. Brief read from dev commit b96f5fc7:qa/briefs/T-1011.md, separate from the unchanged reviewed task head. No tests or full suite were rerun; no timing/coverage pass is claimed.
+
+Criterion distinction: C3 explicitly accepts either a real-browser screenshot or an exact blocker posted in the item topic. The exact blocker was posted to lead T-1011 in topic-765, and the BLOCKED real-browser line was appended to project runs.jsonl. Therefore C3's evidence alternative is satisfied and is verified separately with this run; it is not failed. C1/C2/C4 remain untouched. This does not convert WEB-DRY-001 into PASS or the QA attempt into clear.
+
+No browser or tab was opened; no tab cleanup was needed. No profile, browser setting, system permission or keychain was created or changed. Computer-use calls used the normal host context; only recorder shell commands used a filtered scratch environment. A local static page was prepared after the availability preflight for the named run but never opened; its disposable directory /tmp/qa-t1011-rel8sjmc was removed non-force. Final worktree status remained empty and HEAD unchanged. Recorder text receipts are retained; screenshots are unavailable due to the tool limitations above.
+
+Scope: WEB-DRY-001, M1, M2 only. Further browser access awaits an authorized capability change; no retry or workaround was attempted.
+
+Evidence A-8162: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8162-t-1011-c3-real-browser-dry-run-exact-computer-use-blocker-no-screenshot/report.md
