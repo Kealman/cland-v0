@@ -3,17 +3,18 @@ id: T-1050
 kind: task
 title: Hub freshness checks run one git diff-tree per commit for old epic demos, starving stage checks for minutes after a restart
 state: open
-status: backlog
+status: review
 size: M
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
 parent: C-216
 blocked_by: []
-topic: null
-branch: null
+topic: topic-820
+branch: t/T-1050-hub-freshness-checks-run-one-git-diff
 created: 2026-10-21T12:59:03.163Z
-updated: 2026-10-21T12:59:03.163Z
+updated: 2026-10-21T19:28:18.010Z
 ---
 
 ## Summary
@@ -29,6 +30,63 @@ Stage and merge-gate freshness facts are answered within seconds after a restart
 
 ## Acceptance criteria
 
-- [ ] C1. On a generated repository with 1,000 commits since an old epic demo, a stage ancestry want issued after start resolves within 2 s, while the demo scan is outstanding (test).
-- [ ] C2. Epic-demo freshness gives the same `current` and conflicting-file results as before, with at most a handful of Git calls per demo (test counting Git invocations).
-- [ ] C3. On a copy of the live project, after a hub start, `task plan show` reports stage covers within 10 s (local evidence).
+- [x] C1. On a generated repository with 1,000 commits since an old epic demo, a stage ancestry want issued after start resolves within 2 s, while the demo scan is outstanding (test).
+  - done: impl-1050 · 2026-10-21T19:17:00.191Z
+- [x] C2. Epic-demo freshness gives the same `current` and conflicting-file results as before, with at most a handful of Git calls per demo (test counting Git invocations).
+  - done: impl-1050 · 2026-10-21T19:12:59.645Z
+- [x] C3. On a copy of the live project, after a hub start, `task plan show` reports stage covers within 10 s (local evidence).
+  - done: impl-1050 · 2026-10-21T19:12:59.664Z
+  - verified: rev-32 [reviewer] · run rev-20261021-1050-task-evidence · 2026-10-21T19:28:18.010Z · commit cc4250265bfaacc8d6c476552eb35e4f40176093
+
+## Comments
+
+### impl-1050 · 2026-10-21T19:04:01.724Z
+
+Diagnosis and test-first progress: native 1,000-commit public Freshness regression was red on stage ancestry pending beyond 2000ms behind an outstanding demo; native side-branch/merge/revert/rename test preserved exact conflicts but failed bounded invocation count (8 calls). Separate owned task/stage and demo workers plus two raw -z history reads turn both green. Closed planning-container reads now consult cached demo currency without enqueuing work, with a T2 restart/reopen regression; pending build trees defer cover ancestry until a tree receipt can qualify candidates. Local Darwin/arm64 targeted native4/4, epic-close15/15, follows9/9, freshness8/8, stage component5/5, and updated native shutdown1/1 have passed in working-tree runs (not same-head suite evidence). Copied-live pre-fix ordinary startup complete6505.5ms; stronger all-closure-recompute baseline still pending after456s/27518 diff-tree calls, final measurement pending. Diagnostics and raw outputs will be published as artifacts before source review. No suite run submitted yet.
+
+### rev-32 · 2026-10-21T19:16:16.031Z
+
+verdict: review
+result: not clear
+by: rev-32 [reviewer]
+run: rev-20261021-1050-source
+commit: 146ba73a539aa0b9f922124f115b0feae465ab52
+scope: full
+findings: [{"severity":"medium","text":"Native Git setup has no finite process timeout; a stall occurs before the demo-entry/foreground bounds are armed, violating rule 9's separate setup bound.","file":"hub/test/follows-native.test.ts","line":52}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Medium — hub/test/follows-native.test.ts:52: New synchronous native Git setup (fast-import and git helper calls) has no finite process timeout; the separately bounded demo-entry wait begins afterward and cannot prevent a setup hang (rule 9). Add finite setup-command timeouts and align the setup documentation. Confirmed by implementer df8256e4; correction underway. No separate production behaviour finding. C2 batching/conflict semantics and C3 ordinary saved-checkpoint diagnostic reviewed; run-dependent acceptance remains unverified. Source review A-8658: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8658-t-1050-full-source-review-at-146ba73a-setup-bound.md. No reviewer tests/suite run; fresh source verdict required on correction before verification.
+
+Criteria: C1 failed (The 1,000-commit regression has unbounded synchronous Git setup before its behaviour deadline; add finite native setup timeouts.).
+
+### rev-32 · 2026-10-21T19:17:47.847Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261021-1050-source-2
+commit: cc4250265bfaacc8d6c476552eb35e4f40176093
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-8658 medium setup finding resolved. New native cases now own direct scratch Git init; each Git setup command and fast-import has a 5000 ms timeout, independent from demo-entry 5000 ms and unscaled foreground 2000 ms observations. Receipt, final cache, demo-outstanding, exact conflicts and call-count assertions remain. Production/diagnostic/shutdown blobs unchanged from full review at 146ba73a, no dev merge. Standards 0 findings; Spec 0 findings. C1–C3 run-dependent marks remain pending. A-8660 targeted/static support and prior-head A-8650 C3 diagnostic retain exact provenance/limitations; neither is configured-suite evidence. Mode-free verify may proceed only at this unchanged head; Coordinator's separately required full pre-merge suite remains outstanding. Review A-8661: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8661-t-1050-source-clear-at-cc425026.md.
+
+### impl-1050 · 2026-10-21T19:27:39.303Z
+
+Source-clear headcc4250265bfaacc8d6c476552eb35e4f40176093: mode-free configured runa15e9074-711c-458f-a293-e7bf0c8545da GREEN, reported2339 tests/pass2339/fail0/skip0, T1/T2/Web exit0 (coverage fallback allT2 in both packages); T3/T4 absent. Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, droplet c-8 lon1, lifetime519s/cost$0.0360. Host gate0ba95d5c reused, not repeated remotely. Lint/duration/ratchet findings report-only; enforced gates passed, zero lint refusals. Raw A-8671 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8671-suite-a15e9074-711c-458f-a293-e7bf0c8545da-auto-at-cc42502.log. Coordinator full pre-merge run remains required/pending (scheduled after T-1067 and T-1058); head fixed, not claiming final readiness or merging.
+
+### rev-32 · 2026-10-21T19:28:18.010Z
+
+verdict: review
+result: clear
+by: rev-32 [reviewer]
+run: rev-20261021-1050-task-evidence
+commit: cc4250265bfaacc8d6c476552eb35e4f40176093
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Task evidence clear, not final pre-merge clearance. Fresh exact-head a15e9074/A-8671 passed Linux x64 c-8 lon1 T1/all fallback hub+Neovim T2/Web: 2339 ordinary tests, plus new closed-demo 5/5 repetitions. Host check 0ba95d5c reused, not repeated remotely. T3/T4 absent; C1/C2 remain unverified pending Coordinator's required full pre-merge run (bd67e5b8). C3 verified from prior-head A-8650 quiet Darwin copied-live process-local projectHub receipt 6646.384 ms to exact complete Linux/macOS cover IDs, no pending/missing; production/diagnostic blobs unchanged at this corrected head. This is prior-head ordinary saved-checkpoint diagnostic support, not a forced-recompute speedup or native-process timing. Lint/tier/duration budgets and ratchet report-only; warnings/missing baselines are not timing-budget passes. No findings. Full evidence audit A-8673: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8673-t-1050-task-evidence-clear-full-run-pending.md.
+
+Criteria: C3 verified.
