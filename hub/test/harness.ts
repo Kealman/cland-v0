@@ -1,6 +1,6 @@
 import type { DropletDependencies } from '../src/executor/droplet/dependencies.ts';
 import { fakeHarness, FAKE_FLAVOURS, type FakeFlavour, type FakeHarness } from './fakes/harness.ts';
-import type { Clock } from '../src/hub/clock.ts';
+import { realClock, type Clock } from '../src/hub/clock.ts';
 import { testWaitMs } from './until.ts';
 export { until, testWaitMs } from './until.ts';
 // The test harness for the two seams:
@@ -34,7 +34,7 @@ import { hubResources } from './hub-resources.ts';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { beforeDirectories, afterCleanup, onCleanup, captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess, pause, recordedProcess, rememberProcess, rememberResultProcesses, type ProcessIdentity } from './process-cleanup.ts';
+import { beforeDirectories, afterCleanup, onCleanup, captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses, type ProcessIdentity } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -743,13 +743,14 @@ export type FakeClaude = {
 
 export async function fakeClaude(
   t: TestContext,
-  timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean } = {},
+  timings: { pollMs?: number; injectTimeoutMs?: number; pushTrustMs?: number; turnMs?: number; awaitSignals?: boolean; stopGraceMs?: number; dropFirst?: boolean; lateBg?: boolean | 'bridged'; stopCrash?: boolean; ignoreTerm?: boolean; writerClock?: Clock } = {},
 ): Promise<FakeClaude> {
   await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
   const writers = join(home, 'writers');
   await mkdir(writers);
   await writeFile(join(home, 'writers-open'), '');
+  const writerClock = timings.writerClock ?? realClock;
   // All resource and hub shutdown hooks precede directory disposal. Only then
   // fence launches, stop session groups (hooks/spokes included), and drain CLIs.
   // Even a drained writer may race the filesystem's directory enumeration on
@@ -758,14 +759,19 @@ export async function fakeClaude(
     await rm(join(home, 'writers-open'), { force: true });
     const identities = async () => Promise.all((await readdir(writers)).filter(file => file.endsWith('.json')).map(async file =>
       JSON.parse(await readFile(join(writers, file), 'utf8')) as ProcessIdentity & { session: boolean }));
-    const deadline = Date.now() + 5000;
+    const deadline = writerClock.now().getTime() + 5000;
     for (;;) {
       const all = await identities();
       await cleanupOwnedProcesses(all.filter(writer => writer.session));
       const pending = all.filter(writer => !writer.session && captureProcess(writer.pid)?.started === writer.started);
       if (!pending.length) break;
-      if (Date.now() >= deadline) { await cleanupOwnedProcesses(pending); break; }
-      await pause(25);
+      // A deadline diagnoses a stuck CLI; it cannot permit removal beneath it.
+      // Keep ownership and its registry intact so cleanup can be retried once
+      // the writer is released/stopped, including during signal recovery.
+      if (writerClock.now().getTime() >= deadline) {
+        throw new Error(`fake Claude writer drain exceeded 5000 ms; home retained: ${home}; pending writers: ${pending.map(writer => `pid ${writer.pid} (started ${writer.started})`).join(', ')}`);
+      }
+      await new Promise<void>(resolve => writerClock.setTimeout(resolve, 25));
     }
   } });
   const env = {

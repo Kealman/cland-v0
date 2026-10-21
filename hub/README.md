@@ -3729,6 +3729,21 @@ A live seed that no longer verifies falls back to the full ownership proof, pres
 its replacement identity. Root cleanup without seeds and the runner’s phase sweep
 retain machine-wide discovery so unregistered leaks are still found.
 
+`fakeClaude` closes writer admission after resource and hub shutdown, reaps
+registered session groups, then drains every registered CLI before removing its
+home. The 5-second drain deadline reports the remaining PID/start identities and
+retains the home; it never authorizes killing a slow poll or removing its files.
+Release or stop the reported writer before retrying cleanup. Removal itself
+retries ENOTEMPTY/EBUSY for 1 second and names remaining files on exhaustion.
+The lifecycle regression injects a complete `writerClock` to cross the drain
+deadline with a deliberately held real poll, without a wall-clock delay.
+
+An OS process identity disappearing and an `execFile` callback arriving are
+different receipts: the callback waits for stdio closure and may arrive later
+under load. Assert the writer's OS identity is gone at the removal boundary;
+await the callback separately to check successful CLI completion. Do not treat
+an undelivered callback as proof that a process can still write.
+
 The machine shards run at concurrency 4 locally and 2 on droplets (D53, measured on c-8); hermetic shards run at 1. Targeted single-file runs are free:
 `node --test hub/test/daemon.test.ts`. If calling the runner directly, use
 `node hub/test/run-suite.ts hub` or `node hub/test/run-suite.ts nvim`; raw

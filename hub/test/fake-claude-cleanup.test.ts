@@ -6,12 +6,13 @@ import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { FakeClock } from './fake-clock.ts';
 import { fakeClaude, FAKE_CLAUDE_DIR, until } from './harness.ts';
 import { beforeDirectories, captureProcess } from './process-cleanup.ts';
 
 // Capture teardown so assertions can invoke it early. The real test must still
 // own it when setup or a child fails before those assertions are reached.
-async function capturedFixture(t: TestContext) {
+async function capturedFixture(t: TestContext, timings?: Parameters<typeof fakeClaude>[1]) {
   const hooks: Array<() => Promise<void>> = [];
   const context = { after: (hook: () => Promise<void>) => {
     hooks.push(hook);
@@ -21,11 +22,15 @@ async function capturedFixture(t: TestContext) {
       await hook();
     });
   } } as TestContext;
-  const fake = await fakeClaude(context);
+  const fake = await fakeClaude(context, timings);
   return { fake, context, cleanup: () => hooks[0]!() };
 }
 
 test('fake Claude cleanup waits for a poll that writes after hub shutdown', { timeout: 15_000 }, async t => {
+  // Deliberately defer callback delivery past removal: a closed OS identity,
+  // rather than execFile's later callback, proves the writer cannot write again.
+  const callbackRelease = Promise.withResolvers<void>();
+  t.after(() => callbackRelease.resolve());
   const { fake, context, cleanup } = await capturedFixture(t);
   const env = await accountFixtureEnvironment(fake.env);
   const config = env.CLAUDE_CONFIG_DIR!;
@@ -33,23 +38,30 @@ test('fake Claude cleanup waits for a poll that writes after hub shutdown', { ti
   await fs.writeFile(join(config, 'usage-hold'), '');
   beforeDirectories(context, () => fs.writeFile(join(config, 'usage-release'), ''));
   let exited = false;
+  let pid: number | undefined;
   const poll = new Promise<void>((resolve, reject) => {
-    execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => {
-      exited = true;
-      if (error) reject(error); else resolve();
+    const child = execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => {
+      void callbackRelease.promise.then(() => {
+        exited = true;
+        if (error) reject(error); else resolve();
+      });
     });
+    pid = child.pid;
   });
   void poll.catch(() => {});
   // Setup observes the exact in-flight CLI, before triggering teardown.
   await until(async () => (await fs.readFile(join(fake.home, 'polls.jsonl'), 'utf8').catch(() => '')).includes('"/usage"'), { what: 'held usage poll' });
+  assert.ok(pid);
+  assert.ok(captureProcess(pid), 'the held writer is alive before teardown');
   const remove = fs.rm;
   let liveRemovals = 0;
   // Force the same late-file/rmdir boundary on every OS, rather than depending
-  // on Linux directory enumeration timing. The CLI's exit is the receipt.
+  // on Linux directory enumeration timing. The OS identity is the receipt.
   t.mock.method(fs, 'rm', async (...args: Parameters<typeof fs.rm>) => {
-    if (args[0] === fake.home && !exited) {
+    if (args[0] === fake.home && captureProcess(pid) !== null) {
       liveRemovals++;
       await fs.writeFile(join(fake.home, 'late-poll.jsonl'), 'poll still running');
+      callbackRelease.resolve();
       await poll;
       throw Object.assign(new Error('directory not empty'), { code: 'ENOTEMPTY', path: fake.home });
     }
@@ -57,10 +69,75 @@ test('fake Claude cleanup waits for a poll that writes after hub shutdown', { ti
   });
   syncBuiltinESMExports();
   await cleanup();
+  assert.equal(captureProcess(pid), null, 'the OS writer is gone before cleanup returns');
+  assert.equal(exited, false, 'callback delivery is deliberately held past directory removal');
+  callbackRelease.resolve();
   await poll;
   assert.equal(await fs.stat(fake.home).catch(() => null), null);
-  assert.equal(exited, true, 'the poll has exited before cleanup returns');
+  assert.equal(exited, true, 'the poll callback completes after its OS exit');
   assert.equal(liveRemovals, 0, 'directory removal starts only after the poll exits');
+});
+
+test('fake Claude cleanup retains a delayed writer and its home at the drain deadline', { timeout: 15_000 }, async t => {
+  const clock = new FakeClock();
+  let release: (() => Promise<void>) | undefined;
+  let poll: Promise<void> | undefined;
+  // Register before the captured ownership hook, including setup-error paths.
+  t.after(async () => {
+    t.mock.restoreAll(); syncBuiltinESMExports();
+    await release?.();
+    await poll?.catch(() => {});
+  });
+  const { fake, cleanup } = await capturedFixture(t, { writerClock: clock });
+  const config = join(fake.home, 'config');
+  await fs.mkdir(config);
+  const env = await accountFixtureEnvironment({ ...fake.env, CLAUDE_CONFIG_DIR: config });
+  await fs.writeFile(join(config, 'usage-report.json'), '{}');
+  await fs.writeFile(join(config, 'usage-hold'), '');
+  release = () => fs.writeFile(join(config, 'usage-release'), '').catch(error => {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  });
+  let pid: number | undefined;
+  poll = new Promise<void>((resolve, reject) => {
+    const child = execFile(join(FAKE_CLAUDE_DIR, 'claude'), ['-p', '/usage'], { env }, error => error ? reject(error) : resolve());
+    pid = child.pid;
+  });
+  void poll.catch(() => {});
+  await until(async () => (await fs.readFile(join(fake.home, 'polls.jsonl'), 'utf8').catch(() => '')).includes('"/usage"'), { what: 'registered delayed usage writer' });
+  assert.ok(pid);
+  const read = fs.readFile;
+  // Advance only the drain's complete clock after it reads the real writer's
+  // registration. The held process remains alive beyond the diagnostic bound.
+  t.mock.method(fs, 'readFile', async (...args: Parameters<typeof fs.readFile>) => {
+    const result = await read(...args);
+    if (args[0] === join(fake.home, 'writers', `${pid}.json`)) clock.block(6000);
+    return result;
+  });
+  const remove = fs.rm;
+  let removals = 0;
+  t.mock.method(fs, 'rm', async (...args: Parameters<typeof fs.rm>) => {
+    if (args[0] === fake.home) removals++;
+    return remove(...args);
+  });
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(cleanup(), error => {
+      assert.match(String(error), /writer.*5000 ms/);
+      assert.match(String(error), new RegExp(`pid ${pid}\\b`));
+      return true;
+    });
+    assert.ok(captureProcess(pid), 'a drain deadline reports rather than kills the delayed writer');
+    assert.ok(await fs.stat(fake.home), 'the writer retains its home');
+    assert.equal(removals, 0, 'no directory removal while the delayed writer is alive');
+  } finally {
+    t.mock.restoreAll(); syncBuiltinESMExports();
+    await release();
+    await poll.catch(() => {});
+    await cleanup();
+  }
+  await poll;
+  assert.equal(captureProcess(pid), null, 'the delayed writer has exited');
+  assert.equal(await fs.stat(fake.home).catch(() => null), null, 'cleanup removes the home after writer exit');
 });
 
 test('fake Claude cleanup stops a hook after its session exits and fences later CLIs', { timeout: 15_000 }, async t => {
