@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-14T16:00:00.313Z
+updated: 2026-10-21T17:32:22.088Z
 ---
 
 ## Summary
@@ -97,3 +97,32 @@ The human studies and plans the rest of the build in the Items area from its fir
 - Prototype: `prototype/web-shell` (`web/PROTOTYPE.md`; `web/src/explorer.ts`, `summary.ts`, `items/ItemsArea.tsx`, `items/Tree.tsx`, `items/Card.tsx`; `web/proto/model.test.ts`, `web/proto/summary-lua.test.ts`).
 - Mockups: `docs/design/web/Main.dc.html` and `screens/v02-main.png`; the v0.1.2 boards in `docs/design/main-screen/` (Explorer, ExplorerEpic, Categories, CardEpic, CardTask) and the v0.1 plan boards (PlanBefore, PlanMidway).
 - GLOSSARY: Explorer, Card, Summary, Category, Unscheduled, Plan, Stage, Criterion.
+
+## Plan
+
+```yaml
+stages:
+  - name: tree, card and layout
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1071
+        - T-1073
+      - - T-1072
+  - name: views and messages
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1074
+      - - T-1075
+        - T-1076
+  - name: plan and edits
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1077
+      - - T-1078
+```
