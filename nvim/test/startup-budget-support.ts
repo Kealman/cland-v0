@@ -6,13 +6,13 @@ import { once } from 'node:events';
 import { join } from 'node:path';
 import type { TestContext } from 'node:test';
 import { serializeItem, parseItem } from '../../hub/src/tracker/item.ts';
-import { projectHub, inProcessSpoke, connectUi, type Discovery } from '../../hub/test/harness.ts';
+import { projectHub, inProcessSpoke, connectUi, until, type Discovery } from '../../hub/test/harness.ts';
 import { onCleanup } from '../../hub/test/process-cleanup.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { startClient } from './harness.ts';
 
-export const STARTUP_MS = 3000;
-export const FIRST_PAYLOAD_BYTES = 128 * 1024;
+import { STARTUP_MS, STARTUP_REQUESTS, type StartupMeasurement } from '../../test-support/startup-budget.ts';
+export { STARTUP_MS, FIRST_PAYLOAD_BYTES, STARTUP_REPLY_BYTES, STARTUP_TOTAL_BYTES, STARTUP_REQUESTS, enforceStartupBudget, type StartupMeasurement } from '../../test-support/startup-budget.ts';
 const SETUP_MS = 10_000;
 export type TrackerFixture = { bodies: Map<string, string>; open: string[]; total: number; row: { id: string; title: string } };
 
@@ -62,7 +62,7 @@ export async function copyStartupTracker(source: string, root: string): Promise<
   return { bodies, open, total: bodies.size, row };
 }
 
-type Fault = 'slow-list' | 'bodies';
+type Fault = 'slow-list' | 'bodies' | 'oversized-reply';
 
 /** Transparent JSON-lines relay: only the named negative fixtures change a task.list response.
  * Hold welcome until the screen observer is armed. This excludes process/RPC setup, not startup work:
@@ -73,6 +73,7 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
   const ready = Promise.withResolvers<() => void>();
   let connectedAt = 0, payloadBytes = 0, payloadIds: string[] = [], lists = 0;
   const requests: Array<Record<string, unknown>> = [];
+  const replies: Record<string, number> = {};
   const server = createServer(down => {
     const up = createConnection(discovery.socket);
     for (const socket of [up, down]) {
@@ -82,6 +83,7 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
       socket.on('close', () => { sockets.delete(socket); up.destroy(); down.destroy(); });
     }
     const taskIds = new Set<string>();
+    const types = new Map<string, string>();
     let welcomed = false;
     const pending: string[] = [];
     const deliver = (line: string) => {
@@ -101,6 +103,7 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
     };
     lines(down, line => {
       const frame = JSON.parse(line);
+      if (typeof frame.id === 'string') types.set(frame.id, frame.type);
       if (frame.type === 'task.list') { taskIds.add(frame.id); requests.push(frame); lists++; }
       up.write(line + '\n');
     });
@@ -115,11 +118,22 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
         });
         return;
       }
+      if (frame.type === 'result') {
+        const type = types.get(frame.id);
+        if (type && replies[type] === undefined) {
+          if (fault === 'oversized-reply' && type === 'rule.list') {
+            frame.value.padding = '🐈'.repeat(70_000);
+            line = JSON.stringify(frame);
+          }
+          replies[type] = Buffer.byteLength(line + '\n');
+        }
+      }
       if (frame.type === 'result' && taskIds.delete(frame.id)) {
         assert.equal(frame.ok, true, frame.error);
         if (fault === 'bodies') {
           for (const item of frame.value.items) item.body = fixture.bodies.get(item.id);
           line = JSON.stringify(frame);
+          replies['task.list'] = Buffer.byteLength(line + '\n');
         }
         if (!payloadBytes) {
           // Count UTF-8 bytes of the exact first response frame, including its JSON envelope and newline.
@@ -147,13 +161,7 @@ async function observeWire(t: TestContext, root: string, discovery: Discovery, f
   server.listen(path);
   await once(server, 'listening');
   await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ ...discovery, socket: path }));
-  return { ready: ready.promise, stats: () => ({ connectedAt, payloadBytes, payloadIds, lists, requests }) };
-}
-
-export type StartupMeasurement = { startupMs: number; payloadBytes: number; total: number; open: number };
-export function enforceStartupBudget(result: StartupMeasurement): void {
-  assert.ok(result.startupMs <= STARTUP_MS, `startup budget: ${result.startupMs.toFixed(1)} ms > ${STARTUP_MS} ms`);
-  assert.ok(result.payloadBytes <= FIRST_PAYLOAD_BYTES, `first item payload budget: ${result.payloadBytes} bytes > ${FIRST_PAYLOAD_BYTES} bytes`);
+  return { ready: ready.promise, stats: () => ({ connectedAt, payloadBytes, payloadIds, lists, requests, replies }) };
 }
 
 export async function measureStartup(t: TestContext, bin: string, root: string, fixture: TrackerFixture, fault?: Fault): Promise<StartupMeasurement> {
@@ -192,13 +200,14 @@ export async function measureStartup(t: TestContext, bin: string, root: string, 
   const screen = await observed;
   const startupMs = performance.now() - wire.stats().connectedAt;
   assert.ok(rendered(screen), 'all startup rows remain rendered');
+  await until(() => STARTUP_REQUESTS.every(type => wire.stats().replies[type] !== undefined), { what: 'all eight startup reply receipts' });
   const stats = wire.stats();
   assert.equal(stats.lists, 1, 'one initial item payload');
   assert.deepEqual(stats.requests.map(({ type, projection, state }) => ({ type, projection, state })), [{ type: 'task.list', projection: 'summary', state: 'open' }]);
   assert.deepEqual([...stats.payloadIds].sort(), [...fixture.open].sort(), 'first wire payload contains every open item and no closed items');
   assert.deepEqual((await c.lua<string[]>("local ids={};for _,it in ipairs(require('cland.state').S.items) do ids[#ids+1]=it.id end;return ids")).sort(), [...fixture.open].sort(), 'all open summaries are installed');
   assert.ok(stats.payloadBytes > 0, 'first task.list response was observed');
-  const result = { startupMs, payloadBytes: stats.payloadBytes, total: fixture.total, open: fixture.open.length };
+  const result = { startupMs, payloadBytes: stats.payloadBytes, total: fixture.total, open: fixture.open.length, replies: stats.replies };
   t.diagnostic(`startup measurement ${JSON.stringify(result)}; ${process.platform}/${process.arch}; real headless Neovim; elapsed connection-to-render (suite attribution from runner)`);
   return result;
 }

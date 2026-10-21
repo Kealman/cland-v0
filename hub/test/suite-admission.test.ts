@@ -86,14 +86,14 @@ test('admission refuses unclassified sources without consuming queue slots', asy
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {} }));
   // A hand holder makes an incorrectly admitted request remain observable in the queue.
   await mkdir(join(f.root, 'suite.lock'));
-  const before = await f.ui.request({ type: 'hub.status' });
+  const before = await f.ui.request({ type: 'hub.status', history: true });
   const failed = await f.ui.request({ type: 'suite.start', mode: 'auto', cwd: f.root, report: f.topic, to: ['rev', 'impl'] });
   assert.equal(failed.ok, false, JSON.stringify(failed));
   assert.equal((failed as { code?: string }).code, 'verify-tiers');
   assert.deepEqual((failed as { files?: string[] }).files, ['hub/src/new.test.ts', 'hub/test/new.test.ts']);
   assert.ok(failed.error!.includes('"hub/src/new.test.ts": "T3",'));
   assert.ok(failed.error!.includes('"hub/test/new.test.ts": "T3",'));
-  const status = await f.ui.request({ type: 'hub.status' });
+  const status = await f.ui.request({ type: 'hub.status', history: true });
   assert.deepEqual((status.value as HubStatus).suites, (before.value as HubStatus).suites, 'refusal creates no durable suite');
   const queue = await f.ui.request({ type: 'suite.queue' });
   assert.deepEqual((queue.value as VerificationQueue).waiters, []);
@@ -116,7 +116,7 @@ test('admission refuses unclassified sources without consuming queue slots', asy
     assert.equal((refusal as { code?: string }).code, 'verify-tiers');
     assert.match(refusal.error!, message);
     assert.deepEqual((refusal as { files?: string[] }).files, [...files]);
-    assert.deepEqual(((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites, (before.value as HubStatus).suites);
+    assert.deepEqual(((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites, (before.value as HubStatus).suites);
     assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
   }
   await writeFile(join(f.root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: {
@@ -218,7 +218,7 @@ for (const capture of ['before change', 'after change'] as const) test(`candidat
   const failed = await pending;
   assert.equal(failed.ok, false, JSON.stringify(failed));
   assert.match(failed.error!, capture === 'before change' ? /head changed during submission/ : /verify-tiers.*advanced\.test\.ts/s);
-  const status = await f.ui.request({ type: 'hub.status' });
+  const status = await f.ui.request({ type: 'hub.status', history: true });
   assert.deepEqual((status.value as HubStatus).suites, [], 'head change cannot reserve a suite');
   const queue = await f.ui.request({ type: 'suite.queue' });
   assert.deepEqual((queue.value as VerificationQueue).waiters, []);

@@ -112,7 +112,7 @@ process.exitCode = result.status ?? 1;
     await cancellation;
   }
   assert.equal(cancelled.code, 0, cancelled.stderr);
-  const status = await f.ui.request({ type: 'hub.status' });
+  const status = await f.ui.request({ type: 'hub.status', history: true });
   const queued = (status.value as { suites: Array<{ id: string; pid: number | null; state: string }> }).suites.find(s => s.id === job.id)!;
   assert.equal(queued.pid, null);
   assert.equal(queued.state, 'finished');
@@ -154,7 +154,7 @@ test('cancelled results held by reporting permissions survive restart and publis
   const cancelled = await clandWithEnv(f.root, f.env, 'suite', 'cancel', job.id);
   assert.equal(cancelled.code, 0, cancelled.stderr);
   await eventually('cancellation report held', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
+    const status = await f.ui.request({ type: 'hub.status', history: true });
     return (status.value as { suites: Array<{ error: string | null }> }).suites[0]?.error?.includes('forbidden') ? true : undefined;
   });
   assert.equal((await f.results()).length, 0);

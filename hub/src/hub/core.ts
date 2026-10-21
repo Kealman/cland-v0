@@ -2606,6 +2606,26 @@ export class HubCore {
     return { topic, messages: this.#store.topicMessages(id, n, filter).map(message => this.#resolveAttachments(message)) };
   }
 
+  /** Byte-bounded client pages; agent/internal history retains its existing count contract. */
+  topicHistoryPage(id: string, limit?: number, filter: TopicHistoryFilter = {}): { topic: Topic; messages: TopicMessage[]; more?: boolean; before?: string; after?: number } {
+    const { topic, messages: all } = this.topicHistory(id, limit, filter);
+    const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), TOPIC_HISTORY_LIMIT);
+    // Leave envelope/cursor room below the 256 kB wire cap. Messages stay whole;
+    // an individually oversized message is the explicit one-message exception.
+    let bytes = Buffer.byteLength(JSON.stringify(topic)) + 1024;
+    let count = 0;
+    const ordered = filter.after !== undefined ? all : [...all].reverse();
+    for (const message of ordered) {
+      const size = Buffer.byteLength(JSON.stringify(message)) + 1;
+      if (count && bytes + size > 255 * 1024) break;
+      bytes += size;
+      count++;
+    }
+    const messages = filter.after !== undefined ? all.slice(0, count) : all.slice(all.length - count);
+    const more = count < all.length || all.length === n;
+    return { topic, messages, ...(more ? { more: true, before: messages[0]!.id, after: messages.at(-1)!.seq } : {}) };
+  }
+
   renameTopic(id: string, title: string): Topic {
     const topic = this.#topicOrThrow(id);
     if (topic.standing) throw new Error(`${topic.title} is a standing topic: it cannot be renamed`);

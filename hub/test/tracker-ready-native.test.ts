@@ -388,7 +388,7 @@ test('restart reconciles a stop recorded before queued hold cleanup, preserving 
   assert.deepEqual(after.claim, before.claim);
   assert.equal(after.status, 'review');
   assert.deepEqual(after.holds, before.holds.filter(h => h.session !== 'rev'));
-  const status = await ui2.request({ type: 'hub.status' });
+  const status = await ui2.request({ type: 'hub.status', history: true });
   assert.equal((status.value as { harnesses: Array<{ name: string; status: string }> }).harnesses.find(p => p.name === 'rev')?.status, 'stopped');
   assert.equal((await ui2.request({ type: 'task.hold', item: item.id, release: true, as: { name: 'unknown-rev' } })).ok, true);
   const released = ((await ui2.request({ type: 'task.view', item: item.id })).value as { item: ItemView }).item;

@@ -45,7 +45,7 @@ test('explicit all is reserved before verification queue admission', async t => 
     for (;;) { const reply = await spoke.next(); if (reply.type === 'result' && reply.id === id) return reply; }
   };
   const empty = async () => {
-    assert.deepEqual(((await ui.request({ type: 'hub.status' })).value as HubStatus).suites, []);
+    assert.deepEqual(((await ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites, []);
     assert.deepEqual(((await ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
   };
   const denied = await frame('reserved');

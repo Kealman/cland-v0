@@ -383,7 +383,7 @@ filtered from launch environments. The Coordinator and Implementer spokes run
 in-process and are pinned so both session rows remain visible. Before connecting,
 the test places Sessions left of the explorer; no GUI or harness starts.
 
-The hard limits are **3,000 ms** and **131,072 bytes (128 KiB)**. A transparent
+The hard limits are **3,000 ms**, **131,072 bytes (128 KiB)** for the first item reply, **262,144 bytes (256 KiB)** per startup reply and **1,048,576 bytes (1 MiB)** across the eight startup reads. A transparent
 socket relay counts UTF-8 bytes of the *first task.list response*, including the
 JSON result envelope and trailing newline. It also checks that exactly one
 open-summary request returns precisely the expected open ids and that Neovim
@@ -1011,7 +1011,7 @@ submission fails that run rather than moving it to the local queue.
 Only the hub creates, lists and deletes droplets; `cland executor status|prepare|reap`
 belongs to the human and Coordinator.
 
-The worker survives the caller's shell exiting. The hub keeps its run record across restart; a killed worker produces a result naming the signal while the hub is live, or a missing-exit-receipt crash report after restart. A permission change can hold reporting: `cland hub status --json` exposes pending runs and their reporting error; restoring permission lets the hub retry without duplicating a committed result. A recipient hygiene refusal holds the whole result until every intended recipient is admissible, so a partially muted recipient cannot lose its report.
+The worker survives the caller's shell exiting. The hub keeps its run record across restart; a killed worker produces a result naming the signal while the hub is live, or a missing-exit-receipt crash report after restart. A permission change can hold reporting: `cland hub status --history --json` exposes pending runs and their reporting error; restoring permission lets the hub retry without duplicating a committed result. A recipient hygiene refusal holds the whole result until every intended recipient is admissible, so a partially muted recipient cannot lose its report.
 
 Omitting the mode selects phases from the branch diff against freshly fetched `origin/dev`, including working changes. Linked worktrees share one in-flight dev fetch per canonical Git common directory, bounded to five seconds; each admission diffs against its captured commit. A failed fetch may use the last known `origin/dev` only if it has a merge base with the candidate, with an explicit warning. That ref does not count as fresh-fetch proof for an integrated occasion. Without a usable base, selection falls back to full. Fallback warnings retain sanitized Git stderr and appear in the first result lines, including capped and cached reports. `all` or `--all` forces full only for the Coordinator, the human shell or an authorized `--occasion` request. Other sessions receive `verify-all-reserved` with the automatic diff selection and no queue entry. A flaky-gate second receipt is another ordinary diff-selected verify, with no mode. Integrated `dev`, shared or ambiguous changes, empty diffs and fetch failures without a usable base run full. A package-local diff runs that package plus the cross-package smoke baseline; `hub` and `nvim` reduce only matching qualifying diffs. The duration line and report include the mode, reason and deciding files. See [phase rules and smoke baselines](../../hub/README.md#tests). Each run first executes `npm run check` (typecheck and test lint) when the candidate declares it and `test:lint`, otherwise `npm run typecheck`, then the package test script from the calling worktree. For queue-enabled tiered task branches the task tier cap applies after package selection: all T1, selected T2 and no T3/T4, including process smoke baselines. `--report` names the result topic; repeat `--to` to name recipients. With a session name in `--report`, the hub uses the caller's claimed item topic and addresses that session. Reporting uses the caller's stable session identity and current artifact/send permissions; an Implementer needs its own item topic or a topic with a delivered request.
 
@@ -1058,7 +1058,7 @@ JSON identifies them with `waitingFor: "remote"`. Acquiring machines are labelle
 `acquiring` until their lease is available. JSON keeps `holder` as the local
 holder and adds `remote`, `remoteBudget`, `localFallback` and each waiter's `executor`.
 The text queue also prints `local fallback: true|false`. The sessions panel follows hub queue events live.
-`hub status --json` includes per-run wait/run timings and median/p90 over the last
+`hub status --history --json` includes historical per-run wait/run timings; compact status retains queue metrics and median/p90 over the last
 20 completions. Cache hits record zero timing; executed-run estimates use recent
 successful durations for the effective mode and executor. Remote durations
 include acquire time; remote holders do not delay local waiter estimates. Unknown history gives a null ETA.
@@ -1664,3 +1664,51 @@ root with a filtered environment and fake Git/clock. The output labels other
 domains as default scratch state and excludes setup/copy/transport from the five
 compose/framing samples. Publish that output through `artifact.create` and name
 the implementation head/tree and platform; it is a measurement, not a suite pass.
+
+
+### Startup reply byte budgets (T-1038)
+
+The startup relay records exact UTF-8 JSON result frames, with envelope and
+newline, for status, rules, General history, artifacts, open item summaries,
+events, sessions and accounts. It retains the rendered completion assertion and
+waits separately for the eight reply receipts. An oversized rule reply exercises
+the per-reply failure guard without depending on an oversized item list.
+`hub-status-component.test.ts` checks compact/default and opt-in historical
+status, complete-message before-id pages, artifact cursor pages and all eight
+budgets on a small durable fixture. It uses the smoke's shared pure byte guard,
+including per-reply and total oversize controls. Timing still requires the
+rendered Neovim receipt.
+
+`startup-replies-scale.test.ts` retains the exact eight byte assertions on 1,000
+items, 8,163 artifacts, 200 General messages and 200 event records. The Coordinator
+approved this scale fixture at T3 because full hub startup dominates its runtime;
+it adds no native process. Task verification defers it to periodic and integrated
+runs. Its exact dated 10-second allowance is owned by C-325 (Bugs); T-1039 owns
+reducing startup time; A-8181 measured the original T2 identity at 6.636 seconds on Linux
+c-8. Neither that receipt nor the copied-state measurement is a new T3 run.
+The recorded artifact screen file checks browser/palette page reads and General
+archive continuation when byte-capped pages contain fewer than 200 messages.
+It also opens older-page rendered centre/split folder-child views, holds detail
+reads across reconnect and visibility reset, and proves both rendered/raw views
+retain their artifact identities before those detail receipts arrive.
+
+Status readers that assert completed-suite receipts, covers or harness launch
+rows explicitly request `history: true` (`cland hub status --history` for CLI
+checks). Cleanup waits do the same: finished jobs leave compact status, so an
+active-only snapshot cannot prove that an owned run finished. Tests of compact
+status and its startup budgets keep the default request. The merge gate, periodic
+dev T3 and verification cache read the scheduler/store history directly.
+
+For copied durable-state evidence, run `node hub/scripts/measure-startup.ts
+/absolute/project/.cland`. It takes a read-only consistent SQLite backup plus
+copies of tracker, rules, roles, crew and journal into one disposable project.
+Recoverable jobs and leases are removed; completed reported history and artifact
+paths are rebased; process PIDs/account environments are cleared. Accounts,
+configuration and adapters are scratch-owned. A fake hub clock prevents schedule
+execution. No source hub, artifact content or inherited credential is used.
+The eight public dispatcher replies measure compose-to-receipt time separately
+from JSON encoding/decoding; byte counts include the wire envelope and newline.
+A serving receipt precedes requests, each has a 60-second bound, and a failed
+request is recorded before continuing. Shutdown completes before root removal.
+Publish the output as an artifact with head/tree and platform. This is diagnostic
+measurement, not suite evidence; local runs require cover-quiet admission.

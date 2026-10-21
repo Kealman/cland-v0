@@ -16,7 +16,7 @@ type Harness = { name: string; pid: number | null; harnessId: string | null; ses
 type Status = { sessions: Presence[]; harnesses: Harness[] };
 
 async function status(ui: FrameClient): Promise<Status> {
-  const r = await ui.request({ type: 'hub.status' });
+  const r = await ui.request({ type: 'hub.status', history: true });
   assert.equal(r.ok, true, r.error);
   return r.value as Status;
 }
@@ -119,7 +119,7 @@ test('signal order is the order the harness fired them: a Stop whose hook proces
   await stop.done;
   assert.equal((await status(ui)).sessions.find(s => s.name === 'coord')?.state, 'busy');
   assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
 });
 
@@ -133,7 +133,7 @@ test("a message the spoke accepted during the launch is injected once the launch
   // no coordinator yet: the message waits for the role, and the launching session's spoke takes it
   const id = await sendGeneral(ui, 'waiting for you');
   await launch(ui, 'coord', { role: 'coordinator' });
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"session-launched".*"early":1/, 'the early SessionStart was replayed');
   await injected(ui, id);
   await ui.waitFor((f) => f.type === 'message' && (f.message as { text: string }).text === 'pong: waiting for you', 15_000);
@@ -169,7 +169,7 @@ test('Claude process resume never adopts another session that reuses the pid: no
     return h?.status === 'exited' ? h : undefined;
   });
   assert.equal(row.state, 'unknown');
-  assert.equal((await ui2.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui2.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.doesNotMatch(await hubLog(root), /"event":"session-resumed","session":"coord"/);
   assert.ok(pidAlive(other.pid), 'the other session is left alone');
 });
@@ -187,7 +187,7 @@ test('a stop whose `claude stop` fails falls back to SIGTERM and stops the sessi
   assert.equal((r.value as { process: Harness }).process.status, 'stopped');
   await eventually('stopped Claude PID is gone', () => !pidAlive(discovered.pid) || undefined);
   assert.ok(!pidAlive(discovered.pid));
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"harness-stop-failed","session":"coord"/);
   assert.doesNotMatch(await hubLog(root), /"event":"harness-exited"/, 'a stop is no crash');
 });
@@ -205,7 +205,7 @@ test('stop kills a Claude Code process that ignores SIGTERM and waits for its ex
   assert.equal((await harness(ui, 'coord')).status, 'stopped');
   await eventually('TERM-ignoring Claude PID is gone', () => !pidAlive(discovered.pid) || undefined);
   assert.equal(pidAlive(discovered.pid), false, 'stop completes with observed exit');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.match(await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8'), /"event":"harness-ended"/);
 });
 

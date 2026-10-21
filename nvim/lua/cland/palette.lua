@@ -247,6 +247,7 @@ end
 function M.open(opts)
   opts = opts or {}
   M.close()
+  require('cland.artifacts').load_more()
   local width = math.min(110, vim.o.columns - 8)
   local max_height = math.max(5, math.min(24, vim.o.lines - 10))
   local row = math.max(1, math.floor((vim.o.lines - max_height) / 5))
@@ -282,6 +283,7 @@ function M.open(opts)
   M.cur = p
   local function move(d)
     return function()
+      if d > 0 and p.sel >= #p.shown - 2 then require('cland.artifacts').load_more() end
       if #p.shown > 0 then
         p.sel = (p.sel - 1 + d) % #p.shown + 1
         safe_render(p)

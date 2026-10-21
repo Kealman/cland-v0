@@ -1325,8 +1325,8 @@ export class Suites {
     }
     return pending;
   }
-  status(): SuiteStatus[] {
-    return this.#jobs.map(job => ({
+  status(includeFinished = true): SuiteStatus[] {
+    return this.#jobs.filter(job => includeFinished || job.state !== 'finished').map(job => ({
       ...(job.devT3Probe ? { devT3Probe: job.devT3Probe } : {}),
       ...(job.batch ? { batch: job.batch } : {}),
       ...(job.cover ? { cover: job.cover } : {}),
@@ -1341,6 +1341,19 @@ export class Suites {
       admittedAt: job.admittedAt ?? null, completedAt: job.completedAt ?? null, waitMs: job.waitMs ?? null, runMs: job.runMs ?? null,
       timingEstimated: job.timingEstimated ?? false,
     }));
+  }
+  recentStatus(): import('../protocol.ts').SuiteSummary[] {
+    const seen = new Set<string>();
+    return this.#jobs.filter(job => job.state === 'finished')
+      .sort((a, b) => (b.completedAt ?? b.finished ?? '').localeCompare(a.completedAt ?? a.finished ?? ''))
+      .flatMap(job => {
+        const kind = job.integrated ? 'integrated' as const : 'task' as const;
+        const occasion = job.occasion ?? null, key = `${kind}/${occasion}`;
+        if (seen.has(key) || seen.size >= 20) return [];
+        seen.add(key);
+        return [{ id: job.id, kind, occasion, head: job.head, exit: job.outcome?.code ?? null,
+          finishedAt: job.completedAt ?? job.finished ?? null, artifact: job.artifact }];
+      });
   }
   async queue(): Promise<VerificationQueue> {
     this.#compatibility = await this.#local.holder();

@@ -193,7 +193,7 @@ clearInterval(heartbeat);process.exit(0);`);
   const notice = await eventually('one cleanup warning',async()=> (await warnings())[0]);
   assert.equal(notice.severity,'warn'); assert.match(notice.text,/cleanup incomplete/);
   await eventually('result is held by mute after warning',async()=> {
-    const status=(await f.ui.request({type:'hub.status'})).value as HubStatus;
+    const status=(await f.ui.request({type:'hub.status', history: true})).value as HubStatus;
     return status.suites?.find(s=>s.id===job.id)?.error?.includes('loop breaker') ? true : undefined;
   });
   assert.equal((await f.results()).length,0);
@@ -210,7 +210,7 @@ clearInterval(heartbeat);process.exit(0);`);
   assert.equal(pidAlive(pids.child),true,'unverified writer is preserved rather than falsely claimed reaped');
   assert.equal(pidAlive(foreign.pid!),true);
   assert.match((await eventually('successor after incomplete cleanup',async()=>(await f.results()).find(m=>m.id===`suite:${next.id}`))).text,/exit 0/);
-  await f.ui.request({type:'hub.status',flushLogs:true});
+  await f.ui.request({type:'hub.status', history: true,flushLogs:true});
   const journal=(await readFile(join(f.root,'.cland/journal.jsonl'),'utf8')).trim().split('\n').map(line=>JSON.parse(line));
   assert.equal(journal.filter(r=>r.event==='verification-cleanup-incomplete'&&r.id===job.id).length,1);
   assert.equal((await warnings()).length,1);

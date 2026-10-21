@@ -51,7 +51,7 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   await writeFile(join(root, '.cland/config.toml'), '[verification]\ntest="true"\nworkers=2\n[verification.droplet]\nsize="c-8"\nregions=["lon1"]\n');
   const { discovery } = await projectHub(t, root, {}, { syntheticProvider: { token: 'cland-test-dry-run-fixture', endpoint: api.url } });
   const ui = await connectUi(t, discovery);
-  const before = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+  const before = (await ui.request({ type: 'hub.status', history: true })).value as HubStatus;
   const beforeSpend = await readFile(spend, 'utf8').catch(() => null);
   const output = await cland(root, 'verify', '--dry-run', '--executor', 'droplet');
   assert.equal(output.code, 0, output.stderr);
@@ -77,7 +77,7 @@ test('CLI dry-run prints admission and planned tiers without queueing or reservi
   const report = frame.value as SuiteDryRun;
   assert.equal(report.dryRun, true);
   assert.deepEqual(report.tiers.map(row => row.tier), ['T1', 'T2', 'T3']);
-  assert.deepEqual(((await ui.request({ type: 'hub.status' })).value as HubStatus).suites, before.suites);
+  assert.deepEqual(((await ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites, before.suites);
   const queue = (await ui.request({ type: 'suite.queue' })).value as VerificationQueue;
   assert.deepEqual(queue.waiters, []); assert.deepEqual(queue.remote, []); assert.equal(queue.holder, null);
   assert.deepEqual(await readdir(join(root, '.cland/run/suites')).catch(() => []), []);
@@ -171,5 +171,5 @@ test('legacy preview includes planned Neovim in T3 accounting without changing e
   const report = suiteSummary(tierReport(preview.tiers, [{ file: 'nvim/test/editor.test.ts', name: 'editor', seconds: 1.5 }]).join('\n'));
   assert.match(report, /tier T3: files 3; tests 1; observed 1.5 s; projected wall 500 s/);
   assert.match(report, /tier share: T1\+T2 20 % of 1000 s \(T3 800 s, T4 0 s\)$/);
-  assert.deepEqual(((await ui.request({ type: 'hub.status' })).value as HubStatus).suites, []);
+  assert.deepEqual(((await ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites, []);
 });

@@ -1,7 +1,7 @@
 -- Persistent artifacts, editable prompt drafts, and browser previews (decision D12).
 local api = vim.api
 local state = require('cland.state')
-local M = { entries = {}, bufs = {}, lists = {} }
+local M = { entries = {}, bufs = {}, lists = {}, more = false, generation = 0 }
 
 function M.all(topic)
   local out = {}
@@ -85,31 +85,69 @@ local function replay(events)
   end
 end
 
+-- One page per human open/scroll. Events are replayed over each page and ids
+-- merge in place, so a concurrent artifact change cannot be undone by the read.
+function M.load_more()
+  if M.loading then if not M.more then M.want_more = true end; return end
+  if not M.more or not (M.client and M.client:connected()) then return end
+  M.loading = true
+  local generation, before = M.generation, M.before
+  M.client:snapshot({type='artifact.list', before=before}, function(err, value, events)
+    if generation ~= M.generation then return end
+    M.loading = false
+    if err then return state.say('artifacts: ' .. err, 'ClandRedBar') end
+    M.more, M.before = value.more == true, value.before
+    for _, a in ipairs(value.artifacts or {}) do upsert(a) end
+    replay(events)
+    M.refresh()
+    state.changed()
+  end)
+end
+
 function M.setup(client)
   M.client = client
   local function load()
+    M.generation = M.generation + 1
+    local generation = M.generation
+    M.loading, M.want_more = true, false
     client:snapshot({ type = 'artifact.list' }, function(err, value, events)
+      if generation ~= M.generation then return end
+      M.loading = false
       if err then return state.say('artifacts: ' .. err, 'ClandRedBar') end
+      -- Rendered views (including split folder children) may never have opened a
+      -- raw M.bufs entry. Retain every buffer-owned identity synchronously before
+      -- resetting the page, so redraw/toggle remains safe while details arrive.
+      local retained, resolve = {}, {}
+      for _, b in ipairs(api.nvim_list_bufs()) do
+        if api.nvim_buf_is_valid(b) then
+          local id = vim.b[b].cland_artifact
+          if id then retained[id] = M.get(id) end
+        end
+      end
       M.entries = value.artifacts or {}
+      M.more, M.before = value.more == true, value.before
+      for id, a in pairs(retained) do
+        if not M.get(id) then
+          M.entries[#M.entries + 1] = a
+          resolve[#resolve + 1] = id
+        else rebind(id) end
+      end
       require('cland.artifact_browser').invalidate()
       replay(events)
-      -- Absorbed ids are absent from the ordinary list. Open buffers still own those ids:
-      -- resolve them after reconnect before their next save can recreate the obsolete path.
-      for id, b in pairs(M.bufs) do
-        if api.nvim_buf_is_valid(b) then
-          if M.get(id) then rebind(id)
-          else
-            client:snapshot({ type = 'artifact.list', artifact = id }, function(resolve_err, resolved, changes)
-              if resolve_err then return state.say('artifact: ' .. resolve_err, 'ClandRedBar') end
-              upsert(resolved.artifact)
-              replay(changes)
-              state.changed()
-            end)
-          end
-        end
+      -- Missing from this page does not mean deleted or absorbed. Resolve each
+      -- retained identity against the hub without clearing its usable metadata.
+      for _, id in ipairs(resolve) do
+        client:snapshot({ type = 'artifact.list', artifact = id }, function(resolve_err, resolved, changes)
+          if generation ~= M.generation then return end
+          if resolve_err then return state.say('artifact: ' .. resolve_err, 'ClandRedBar') end
+          upsert(resolved.artifact)
+          replay(changes)
+          state.changed()
+        end)
       end
       M.refresh()
       state.changed()
+      if M.want_more then M.want_more = false; M.load_more() end
     end)
   end
   client:on('connected', load)

@@ -44,3 +44,10 @@ test('bodies added to the first task.list trip the payload byte budget', { skip 
     return true;
   });
 });
+
+
+test('an oversized non-item startup reply trips the per-reply byte budget', { skip }, async t => {
+  const root = await tempProject(t);
+  const result = await measureStartup(t, bin, root, await generateStartupTracker(root), 'oversized-reply');
+  assert.throws(() => enforceStartupBudget(result), /startup reply budget: rule.list .* > 262144 bytes/);
+});

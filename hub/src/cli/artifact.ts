@@ -18,14 +18,14 @@ export async function runArtifact(args: string[], cwd = process.cwd()): Promise<
   const { values, positionals } = parseArgs({ args: rest, allowPositionals: true, options: {
     kind: { type: 'string' }, title: { type: 'string' }, topic: { type: 'string' }, path: { type: 'string' },
     content: { type: 'string' }, 'content-file': { type: 'string' }, json: { type: 'boolean' },
-    folder: { type: 'boolean' }, entry: { type: 'string' },
+    before: { type: 'string' }, folder: { type: 'boolean' }, entry: { type: 'string' },
     release: { type: 'boolean' }, name: { type: 'string' },
   } });
   const count = command === 'promote' || command === 'move' ? 2 : ['keep', 'archive', 'open'].includes(command) ? 1 : 0;
   if (positionals.length !== count) throw new Error(ARTIFACT_USAGE.trim());
   const allowed: Record<string, string[]> = {
     create: ['kind', 'title', 'topic', 'path', 'content', 'content-file', 'folder', 'entry'],
-    list: ['topic'], promote: [], keep: ['release'], move: ['name'], archive: [], open: [],
+    list: ['topic', 'before'], promote: [], keep: ['release'], move: ['name'], archive: [], open: [],
   };
   for (const option of Object.keys(values)) {
     if (option !== 'json' && !allowed[command]!.includes(option)) throw new Error(`--${option} is not accepted by artifact ${verb}`);
@@ -40,12 +40,12 @@ export async function runArtifact(args: string[], cwd = process.cwd()): Promise<
     command === 'keep' ? { type: 'artifact.keep', artifact: positionals[0], kept: !values.release } :
     command === 'move' ? { type: 'artifact.move', artifact: positionals[0], folder: positionals[1], ...(values.name !== undefined ? { name: values.name } : {}) } :
     command === 'archive' ? { type: 'artifact.archive', artifact: positionals[0] } :
-    command === 'promote' ? { type: 'artifact.promote', artifact: positionals[0], path: positionals[1] } : command === 'list' ? { type: 'artifact.list', ...(values.topic !== undefined ? { topic: values.topic } : {}) } : {
+    command === 'promote' ? { type: 'artifact.promote', artifact: positionals[0], path: positionals[1] } : command === 'list' ? { type: 'artifact.list', ...(values.before !== undefined ? { before: values.before } : {}), ...(values.topic !== undefined ? { topic: values.topic } : {}) } : {
     type: 'artifact.create', kind: values.kind, title: values.title, topic: values.topic,
     ...(values.path !== undefined ? { path: resolve(cwd, values.path) } : {}), ...(content !== undefined ? { content } : {}),
     ...(values.folder !== undefined ? { folder: values.folder } : {}), ...(values.entry !== undefined ? { entry: values.entry } : {}),
   };
-  const value = await askHubFrame(d, frame) as { artifact?: Artifact; artifacts?: Artifact[]; files?: string[]; editable?: boolean; path?: string; followUp?: { error: string } };
+  const value = await askHubFrame(d, frame) as { artifact?: Artifact; artifacts?: Artifact[]; before?: string; more?: boolean; files?: string[]; editable?: boolean; path?: string; followUp?: { error: string } };
   if (command === 'open') {
     const a = value.artifact!;
     const path = a.folder ? join(a.path, a.entry!) : a.path;
@@ -59,6 +59,7 @@ export async function runArtifact(args: string[], cwd = process.cwd()): Promise<
   if (value.followUp) process.stderr.write(`artifact ${command} committed; follow-up failed: ${value.followUp.error}\n`);
   const describe = (a: Artifact) => `${a.id} ${a.kind} · ${a.title}  ${a.creator} · ${a.fileDeleted ? 'file deleted' : a.promoted ? `promoted: ${a.promoted}` : a.status} · ${a.time}  ${a.path}`;
   process.stdout.write((values.json ? JSON.stringify(value) : value.artifact ? describe(value.artifact) : (value.artifacts ?? []).map(describe).join('\n')) + '\n');
+  if (!values.json && value.more) process.stdout.write(`more: cland artifact list --before ${value.before}${values.topic ? ` --topic ${values.topic}` : ''}\n`);
   return 0;
 }
 

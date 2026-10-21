@@ -787,3 +787,12 @@ A parse error or hub refusal appears below the draft and in the status line;
 the draft stays editable. `q` goes back and keeps an unsaved draft for the next
 visit. Rule writes from the workbench or shell, and valid hand edits to
 `.cland/RULES.md`, refresh the view without a key press and preserve selection.
+
+
+Startup reads use bounded hub replies: the first artifact page contains at most
+100 recent entries. Opening the artifact browser or palette loads the next page;
+scrolling loads more, and the browser's More artifacts row also accepts Enter.
+General history keeps complete messages within a byte-capped page. `A` in its
+thread reads older pages, including pages shorter than 200 messages. The startup
+smoke guards every reply at 256 KiB and all eight reads at 1 MiB, retaining the
+stricter 128 KiB first-item and three-second rendered-startup limits.

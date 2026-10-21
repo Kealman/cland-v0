@@ -1535,7 +1535,7 @@ as not set up; malformed roles do not block open, and the hub reports them as us
 | `cland` / `cland open [dir] [nvim args…]` | Requires a project with `.cland/`; otherwise prints `not a cland project: run cland init` to stderr and exits 1 without starting a hub or writing anything. HOME is never a project, including when it holds legacy `~/.cland/` state. Applies the check to `dir` when supplied. Runs `cland hub start` (quietly; its output is shown only when it fails), then the Neovim workbench on the project's root, from any directory inside the project, and exits with its status. `CLAND_LAUNCHER` names another launcher. The workbench is described in `nvim/README.md`. |
 | `cland --headless --qa <case.lua> [--out <dir>] [--hub stdio\|stub] [--timeout <seconds>]` | Runs one QA case in a headless workbench with no socket, against a fixture project in the temp dir and its own stdio hub (`hub serve --stdio --no-listen`) or the stub hub; one JSON line, exit 0 (`PASS`), 1 (`FAIL`) or 2 (`INCONCLUSIVE`, `BLOCKED`). The case file and the Lua QA API are described in `nvim/README.md`. |
 | `cland hub start` | Starts `cland hub serve` detached, waits until it answers, prints its pid, port and socket. `--autostart` honors the deliberate-stop grace period (Neovim uses it); an explicit start bypasses and clears it. `--client cli\|nvim\|other` identifies the starter (default `cli`). The `hub-started` journal record includes `starter: {client, parentPid, cwd}` from the initiating CLI invocation, before it detaches: its parent's PID and its original cwd, never its environment. A live hub is reported instead of started twice, also when two starts race: the hub that takes the project's lock serves, the other serve exits, and both commands report the one hub. A `hub.json` whose pid is gone, or is a process that does not hold the lock, is replaced. |
-| `cland hub status` | Asks the hub over its socket: pid, port, socket, uptime, version, connected sessions with their roles. `--json` prints the raw status. Exit 1 when no hub runs. |
+| `cland hub status` | Asks the hub over its socket: pid, port, socket, uptime, version, connected sessions with their roles. `--json` prints compact status. `--history` explicitly includes full suite/cover history and duplicated harness rows. Exit 1 when no hub runs. |
 | `cland hub stop` | An accepted stop writes `.cland/run/hub-stop.json` before closing connections, then refreshes its ten-second grace period on shutdown. Autostart checks it again inside the startup lock; expired markers do not delay recovery. A crash writes no marker. Asks the hub to stop over its socket and waits for the process to exit. When the socket does not answer it sends SIGTERM, but only to the process holding the project's lock (pid and start time match); a `hub.json` naming any other process is removed and that process left alone. A hub that died without cleaning up has its `hub.json` removed, and its socket file unless another hub holds the lock by now. |
 | `cland hub unmute <a> <b>` | Lifts the loop breaker's mute of two sessions (by name) on the running hub, and clears their count; Agents records it. |
 | `cland hub journal` | Prints `.cland/journal.jsonl`, oldest first, one record per line (`<ts>  <event>  key=value …`). `--since <ISO date \| 30s \| 10m \| 2h \| 1d>`, `--kind <event>[,<event>…]`, `--json` for the lines as they are. Reads the file: no hub needed. |
@@ -1598,7 +1598,7 @@ read. See `nvim/README.md`, “Hub data” and snapshot replay, for the client c
 | --- | --- |
 | `{"type":"hub.status","id":…}` | Hub state, including `keys: {layouts}` for keyboard layouts and `tracker: {levels, ladder}` for loaded container levels, ordered top-down. `ladder` is the nested array of all kinds at each level; `levels` keeps only each level's first kind for older clients. The UI reads the current values on connect/refresh; no config push event is added. Missing/unreadable config reports the levels in use by the running tracker. |
 | `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then those waiting for the human, then by latest activity; a topic with no message last |
-| `{"type":"topic.history","id":…,"topic":"general","limit":50,"after":0}` | `{"topic":Topic,"messages":[TopicMessage…]}`, oldest first, at most 200 |
+| `{"type":"topic.history","id":…,"topic":"general","limit":50,"after":0}` | `{"topic":Topic,"messages":[TopicMessage…],"more"?:true,"before"?:messageId,"after"?:seq}`, oldest first, at most 200 and byte-capped (see Startup replies) |
 | `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"],"replyTo":"<message id>"}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator); in Agents only a reply is accepted, and it addresses the sender of `replyTo` |
 | `{"type":"topic.create","id":…,"title":"…","item":"T-12"}` | `{"topic":Topic}`; `item` is optional; refused without a title, or for an item that has a topic |
 | `{"type":"topic.close","id":…,"topic":…}` | `{"topic":Topic}`, `closed`; refused for General and Agents |
@@ -2980,7 +2980,7 @@ hourly samples.
 
 Integrated dev runs completed from the cover-record rollout onwards persist
 `cover: {status, cause, tests}` in their hub run record, expose it as
-`hub status --json`'s `suites[].cover`, and include it in the journal's
+`hub status --history --json`'s `suites[].cover`, and include it in the journal's
 `suite-result` event. Task runs and child shards have no `cover`; a sharded
 integrated run records one cover from its merged outcome and log. Historical
 already-reported runs are not backfilled or scanned at startup.
@@ -3006,9 +3006,9 @@ derived cause and replaces the annotation. Tests and the original process
 outcome remain intact. The update persists across restart and is journalled as
 `verification-cover-classified` with `id`, `head` and the updated `cover`.
 
-`hub status --json` also returns `covers`, at most ten recorded covers, newest
+`hub status --history --json` also returns `covers`, at most ten recorded covers, newest
 completion first: `[{id, head, branch, completedAt, cover}]`. `completedAt` is
-an ISO timestamp (or `null` when unavailable). `cland hub status` lists their
+an ISO timestamp (or `null` when unavailable). `cland hub status --history` lists their
 run ids, status, cause and head; green's null cause displays as `none`, and a
 classification also shows its derived cause and note.
 
@@ -4008,3 +4008,34 @@ result receipt. Other phases continue. This supplies no passing Web receipt and
 is ineligible for cache reuse. The candidate prerequisite module resolves the pinned Headless Shell and checks
 Linux shared libraries without launching a browser. T-993 supplies Linux browser
 libraries. A broken probe remains an error.
+
+
+### Startup replies
+
+Default `hub.status` is compact for every client. `suites` retains queued and
+running receipts in full. `recentSuites` holds only the latest completed result
+per `(kind, occasion)`, at most 20: `{id, kind, occasion, head, exit, finishedAt,
+artifact}`. Kind is `task` or `integrated`; an absent occasion is `null`.
+Completed summaries omit selection maps and output tails. Historical `covers`
+and duplicated `harnesses` are absent. `history: true` (CLI: `cland hub status
+--history [--json]`) restores full historical diagnostics. Neovim consumes only
+presence, crew, verification, keys, tracker, coordinator and needsYou; the CLI's
+root lookup also uses compact status. The web client has no history consumer.
+The copied-state status target is 64 KiB.
+
+`topic.history` returns complete messages in byte-capped pages below 256 KiB,
+including envelope space. `more`, `before` (exclusive message id) and `after`
+(exclusive sequence) identify continuation. The page always contains at least
+one available message, even if that message alone exceeds the cap; bodies are
+never truncated. In Neovim, `A` in the thread reads older pages on demand,
+including pages shorter than the requested row limit.
+
+`artifact.list` returns at most 100 entries, newest first, byte-capped below
+256 KiB with envelope space. When more remain, `{more:true,before:"A-n"}` names
+an exclusive numeric-id cursor; pass `before` on the next request. A single
+oversized entry remains whole. The one-id detail/folder read is unchanged.
+`cland artifact list --before A-n [--topic topic] [--json]` and the spoke tool
+accept the same cursor. Neovim reads one page on startup; opening the artifact
+browser or palette reads the next page, and scrolling or selecting More artifacts
+reads another. Page snapshots replay concurrent artifact events over received
+rows, without automatically draining the archive at startup.

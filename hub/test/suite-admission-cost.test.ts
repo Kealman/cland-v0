@@ -159,7 +159,7 @@ test('suite.start admission over a repository-sized manifest', async t => {
     const gate = f.holdBatch();
     await f.moveDev();
     await gate.entered.promise;
-    try { assert.equal((await f.ui.request({ type: 'hub.status' })).ok, true, 'foreground requests answer while background warming is held'); }
+    try { assert.equal((await f.ui.request({ type: 'hub.status', history: true })).ok, true, 'foreground requests answer while background warming is held'); }
     finally { gate.release.resolve(); }
     await f.eventually('released Git batch completed', () => gate.completed ? true : undefined);
     await f.eventually('new dev facts warmed', () => f.logs.find(row => row.event === 'test-lint-warmed' && row.head === f.head));
@@ -191,7 +191,7 @@ test('suite.start admission over a repository-sized manifest', async t => {
   await t.test('refuses committed or dirty violations before queue or droplet reservations', async () => {
     const path = f.paths[0]!;
     const original = f.files.get(path)!;
-    const before = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+    const before = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
     let finding: string | undefined;
     for (const where of ['committed', 'dirty'] as const) {
       if (where === 'committed') f.files.set(path, 'sleep(10);\n');
@@ -208,7 +208,7 @@ test('suite.start admission over a repository-sized manifest', async t => {
         assert.deepEqual(queue.waiters, []);
         assert.deepEqual(queue.remote, []);
         assert.equal(queue.holder, null);
-        assert.deepEqual(((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites, before.suites);
+        assert.deepEqual(((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites, before.suites);
         assert.deepEqual(await readdir(join(f.root, '.cland/run/suites')).catch(() => []), []);
         assert.deepEqual(await readdir(join(f.root, '.cland/run/executor/leases')).catch(() => []), []);
       }

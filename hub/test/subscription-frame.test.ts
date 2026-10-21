@@ -20,7 +20,7 @@ test('Claude Code consumes one ordered subscription digest through the native fr
   t.after(() => killDaemon(p.pid));
   await clauseAnswered(ui, 'coord');
   const idle = () => eventually('native clause/turn completion', async () => {
-    const result = await ui.request({ type: 'hub.status', flushLogs: true });
+    const result = await ui.request({ type: 'hub.status', history: true, flushLogs: true });
     return (result.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') || undefined;
   });
   await idle();
@@ -57,7 +57,7 @@ test('Claude Code consumes one ordered subscription digest through the native fr
   });
   await idle();
   assert.equal((await inputLog()).split('Turn digest (3 entries, oldest first):').length - 1, 1);
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   assert.ok(journal.some(e => e.event === 'event-delivery' && e.id === id));
   assert.ok(journal.some(e => e.event === 'injected' && e.id === id));

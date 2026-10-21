@@ -53,7 +53,7 @@ test('hub reload publishes config and roles together and retains both after eith
   const daemon = await projectHub(t, root, {}, { git: async args => args[0] === 'log' ? commit : null });
   const ui = await connectUi(t, daemon.discovery);
   const status = async () => {
-    const result = await ui.request({ type: 'hub.status' });
+    const result = await ui.request({ type: 'hub.status', history: true });
     assert.equal(result.ok, true, result.error);
     const status = result.value as import('../src/protocol.ts').HubStatus;
     assert.ok(status.config);
@@ -110,7 +110,7 @@ test('role auto-refresh applies the pair only when valid, and running launches r
   const second = await launch('after');
   assert.equal(daemon.fakes['claude-code']!.spawns.find(r => r.name === first.name)!.model, 'before');
   assert.equal(daemon.fakes['claude-code']!.spawns.find(r => r.name === second.name)!.model, 'after');
-  const s = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+  const s = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
   assert.equal(s.verification.remoteBudget, 4);
   assert.equal(s.harnesses.find((p: { name: string }) => p.name === 'before').model, 'before');
   assert.equal(s.harnesses.find((p: { name: string }) => p.name === 'after').model, 'after');
@@ -119,7 +119,7 @@ test('role auto-refresh applies the pair only when valid, and running launches r
   assert.match(denied.stderr, /forbidden/);
   await writeFile(path, config(root, 5)); await writeFile(rolePath, roleText('automatic'));
   await eventually('role auto-refresh publishes config too', async () => {
-    const s = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+    const s = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
     return s.verification.remoteBudget === 5 ? true : undefined;
   });
 });
@@ -132,14 +132,14 @@ test('missing config retains the loaded policy and permits role refresh with a w
   await writeFile(path, config(root, 6)); await writeFile(rolePath, roles('before'));
   const daemon = await projectHub(t, root);
   const ui = await connectUi(t, daemon.discovery);
-  const initial = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+  const initial = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
   await unlink(path);
   await writeFile(rolePath, roles('without-config'));
   await eventually('role edit published with config absent', async () => {
     const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
     return listed.roles.find(r => r.role === 'implementer')?.launch.model === 'without-config' ? true : undefined;
   });
-  const loaded = JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout);
+  const loaded = JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout);
   assert.equal(loaded.verification.remoteBudget, 6);
   assert.deepEqual(loaded.config, initial.config, 'retained config keeps its loaded time and provenance');
   const reloaded = await cland(root, 'hub', 'reload');
@@ -153,5 +153,5 @@ test('missing config retains the loaded policy and permits role refresh with a w
   assert.equal(denied.code, 1);
   const listed = (await ui.request({ type: 'role.list' })).value as { roles: Array<{ role: string; launch: { model: string } }> };
   assert.equal(listed.roles.find(r => r.role === 'implementer')?.launch.model, 'without-config');
-  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--json')).stdout).verification.remoteBudget, 6);
+  assert.equal(JSON.parse((await cland(root, 'hub', 'status', '--history', '--json')).stdout).verification.remoteBudget, 6);
 });

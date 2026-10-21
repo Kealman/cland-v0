@@ -128,7 +128,7 @@ test('green nightly publishes a coverage map that selects task tests', async t =
       } }));
   });
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; occasion: string }[] }).suites;
+  const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; occasion: string }[] }).suites;
   const job = jobs.find(job => job.occasion === 'soak'); assert.ok(job);
   await drive(f, f.machine.started(job.id));
   f.machine.finish(job.id);
@@ -206,7 +206,7 @@ test('periodic dev T3 skips tracker-only commits and runs a changed verification
     await f.clock.advance(1000);
     await drive(f, f.verificationSettled());
   });
-  const jobs = async () => ((await f.ui.request({ type: 'hub.status' })).value as {
+  const jobs = async () => ((await f.ui.request({ type: 'hub.status', history: true })).value as {
     suites: { id: string; occasion: string; head: string; tree: string }[];
   }).suites.filter(job => job.occasion === 'dev-t3');
   await tick(); // Establish the activation cursor.
@@ -247,7 +247,7 @@ test('periodic dev T3 posts a hub-owned structured red result to the Coordinator
   f.candidate.selection = { mode: 'full', files: [], reason: 'integrated', fetchedDev: f.candidate.head };
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
-  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; occasion: string }[] }).suites;
+  const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; occasion: string }[] }).suites;
   const job = jobs.find(job => job.occasion === 'dev-t3'); assert.ok(job);
   await drive(f, f.machine.started(job.id));
   f.machine.finish(job.id, 1, log);
@@ -301,7 +301,7 @@ test('unavailable periodic merge range still publishes its result and permits th
     const log = index === 1 ? 'suite test failures [{"file":"hub/test/example.test.ts","name":"failed"}]\n# tests 1\n# fail 1\n' : '# tests 1\n# pass 1\n';
     f.machine.script({ outcome: 'slow', log });
     await f.clock.advance(1000); await drive(f, f.verificationSettled());
-    const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; occasion: string }[] }).suites.filter(job => job.occasion === 'dev-t3');
+    const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; occasion: string }[] }).suites.filter(job => job.occasion === 'dev-t3');
     assert.equal(jobs.length, index + 1, 'each completed report releases periodic eligibility');
     const job = jobs[index]!;
     await drive(f, f.machine.started(job.id));

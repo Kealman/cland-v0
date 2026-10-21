@@ -94,7 +94,7 @@ export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; at
 export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
 
 // hub/src/protocol.ts
-export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string };
+export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string; before?: string };
 
 // hub/src/protocol.ts
 export type ArtifactKeep = { type: 'artifact.keep'; id: string; artifact: string; kept?: boolean };
@@ -791,7 +791,7 @@ export type ClientRequest =
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'config.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
-  | { type: 'hub.status'; id: string; flushLogs?: boolean }
+  | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
   | { type: 'hub.reload'; id: string }
@@ -911,6 +911,12 @@ export type CoverageRecording = { head: string; tree: string; run: string };
 // hub/src/protocol.ts
 export type WebEdgeStatus = { port: number; available: boolean; reason?: string };
 
+/** Latest completed result per suite kind/occasion; full receipts remain opt-in. */
+export type SuiteSummary = {
+  id: string; kind: 'task' | 'integrated'; occasion: VerifyOccasion | null;
+  head: string; exit: number | null; finishedAt: string | null; artifact: string | null;
+};
+
 export type HubStatus = {
   /** The independent browser listener; absent on older or stdio-only hubs. */
   web?: WebEdgeStatus;
@@ -919,7 +925,9 @@ export type HubStatus = {
   mergeQueue?: MergeQueueEntry[];
   covers?: CoverStatus[];
   verification?: VerificationQueue;
+  /** Queued/running suites; history:true explicitly includes completed receipts. */
   suites?: SuiteStatus[];
+  recentSuites?: SuiteSummary[];
   crew?: { config: CrewConfig; summary: string };
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
   keys?: { layouts: string[] };

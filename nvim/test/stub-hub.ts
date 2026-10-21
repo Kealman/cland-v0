@@ -61,6 +61,8 @@ export type Scenario = {
   presence?: Array<Record<string, unknown>>;
   items?: Array<Record<string, unknown>>;
   artifacts?: Array<Record<string, unknown>>;
+  artifactPageSize?: number;
+  historyPageSize?: number;
   attach?: Record<string, string>;
   send?: 'ok' | 'refuse' | 'hold';
   /** `hub.status`'s `coordinator` (the live holder, or null); absent, the field is left out. */
@@ -326,7 +328,14 @@ function answer(f: Frame) {
         const artifact = (scenario.artifacts ?? []).find(a => a.id === f.artifact);
         return artifact ? ok(f.id, { artifact, ...(artifact.folder ? { files: artifact.files ?? [] } : {}) }) : fail(f.id, 'no such artifact');
       }
-      return ok(f.id, { artifacts: (scenario.artifacts ?? []).filter((a) => !a.movedTo).filter((a) => f.topic === undefined || a.topic === f.topic) });
+      {
+        const all = (scenario.artifacts ?? []).filter(a => !a.movedTo && (f.topic === undefined || a.topic === f.topic));
+        if (!scenario.artifactPageSize) return ok(f.id, { artifacts: all });
+        const ordered = [...all].sort((a,b) => Number(String(b.id).slice(2)) - Number(String(a.id).slice(2)));
+        const start = f.before === undefined ? 0 : ordered.findIndex(a => a.id === f.before) + 1;
+        const artifacts = ordered.slice(start, start + scenario.artifactPageSize);
+        return ok(f.id, { artifacts, ...(start + artifacts.length < ordered.length ? { more: true, before: artifacts.at(-1)!.id } : {}) });
+      }
     case 'topic.list':
       return ok(f.id, { topics: scenario.topics });
     case 'topic.history': {
@@ -334,7 +343,8 @@ function answer(f: Frame) {
       if (!topic) return fail(f.id, `no topic ${String(f.topic)}`);
       const messages = filteredHistory(f);
       const end = f.before === undefined ? messages.length : messages.findIndex(m => m.id === f.before);
-      return ok(f.id, { topic, messages: messages.slice(Math.max(0, end - Number(f.limit ?? 50)), end) });
+      const page = messages.slice(Math.max(0, end - Number(scenario.historyPageSize ?? f.limit ?? 50)), end);
+      return ok(f.id, { topic, messages: page, ...(scenario.historyPageSize && end > page.length ? { more: true, before: page[0]!.id } : {}) });
     }
     case 'topic.send':
       if (scenario.send === 'refuse') return fail(f.id, 'the message is larger than 8192 bytes');

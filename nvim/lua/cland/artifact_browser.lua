@@ -156,10 +156,20 @@ end
 
 local function bind(tree)
   local b, topic = tree.buf, tree.topic
+  api.nvim_create_autocmd('BufWinEnter', {buffer=b, callback=function() artifacts.load_more() end})
+  api.nvim_create_autocmd('CursorMoved', {buffer=b, callback=function()
+    local at = api.nvim_win_get_cursor(0)[1]
+    local row = tree.rows[at]
+    if row and at >= #tree.rows - 2 and tree.page_key ~= row.key then
+      tree.page_key = row.key
+      artifacts.load_more()
+    end
+  end})
   local function map(key, fn) require('cland.actions').map('n', key, fn, { buffer = b }) end
   map('<CR>', function()
     local row = selected(b)
-    if row and row.fold then fold(b, 'za')
+    if row and row.more then artifacts.load_more()
+    elseif row and row.fold then fold(b, 'za')
     elseif row and row.artifact then artifacts.open(row.artifact, row.file) end
   end)
   for _, key in ipairs({ 'za', 'zo', 'zc' }) do map(key, function() fold(b, key) end) end
@@ -283,6 +293,7 @@ function M.buffer(topic)
     end, true)
   end
   section('archived', 'Archived', archived, true)
+  if artifacts.more then line(' More artifacts', {key='more',more=true}) end
   tree.rows = rows
   vim.bo[b].modifiable = true
   api.nvim_buf_set_lines(b, 0, -1, false, lines)

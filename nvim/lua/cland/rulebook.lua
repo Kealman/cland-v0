@@ -45,7 +45,8 @@ local function origin(rule, done)
         end
       end
       local messages = value.messages or {}
-      if #messages == 200 and messages[1].id ~= before then return page(messages[1].id) end
+      local next_page = value.before or (#messages > 0 and messages[1].id)
+      if (value.more == true or #messages == 200) and next_page and next_page ~= before then return page(next_page) end
       done(nil, 'origin message is no longer available')
     end)
   end

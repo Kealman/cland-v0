@@ -93,7 +93,7 @@ test('prepare, run, fallback, cancel and stopped-hub watchdog leave the sentinel
   await cland(f.root, 'verify', 'cancel', cancelled.id); await f.result(cancelled.id);
   f.api.faults.create = 422; f.api.faults.echoToken = true;
   const fallback = await f.launch('--fresh');
-  await eventually('fallback became local', async () => ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.find(s => s.id === fallback.id)?.executor === 'local' ? true : undefined);
+  await eventually('fallback became local', async () => ((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites!.find(s => s.id === fallback.id)?.executor === 'local' ? true : undefined);
   await cland(f.root, 'verify', 'cancel', fallback.id); await f.result(fallback.id);
   f.api.faults.create = 0;
   const crash = await f.launch('--fresh'); await f.remote(crash.id);

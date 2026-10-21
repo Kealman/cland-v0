@@ -141,7 +141,7 @@ test('hub restart recovers a worker that outlives it, without replaying the resu
   const results = await eventually('restart result', async () => { const r = await history(); return r.length ? r : undefined; });
   assert.equal(results.length, 1); assert.match(results[0]!.text, /auto exit 0/);
   assert.match(results[0]!.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
-  const recoveredStatus = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+  const recoveredStatus = (await ui.request({ type: 'hub.status', history: true })).value as HubStatus;
   assert.equal(recoveredStatus.suites!.find(run => run.id === job.id)!.executor, 'local');
   assert.equal(recoveredStatus.suites!.find(run => run.id === job.id)!.platform?.nvim, 'none');
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);
@@ -157,7 +157,7 @@ test('revoked report permissions hold the result until restored, without a dupli
   assert.equal((await f.ui.request({ type: 'role.clear', session: 'impl' })).ok, true);
   await writeFile(join(f.root, 'finish'), 'ready');
   await eventually('report held by permissions', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
+    const status = await f.ui.request({ type: 'hub.status', history: true });
     const jobs = (status.value as { suites: Array<{ error: string | null }> }).suites;
     return jobs.some(job => job.error?.includes('forbidden')) ? true : undefined;
   });
@@ -173,7 +173,7 @@ test('a muted named recipient keeps the single result pending across restart unt
   const job = await f.launch();
   await writeFile(join(f.root, 'finish'), 'ready');
   await eventually('recipient refusal retained', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
+    const status = await f.ui.request({ type: 'hub.status', history: true });
     const record = (status.value as { suites: Array<{ reported: boolean; error: string | null }> }).suites[0]!;
     return !record.reported && record.error?.includes('loop breaker') ? true : undefined;
   });
@@ -198,7 +198,7 @@ test('a muted suite report follows its moved log after unmute and publishes once
   for (let n = 0; n < 3; n++) await f.spoke.call('send', { to: ['rev'], topic: f.topic, text: `seed ${n}` });
   const job = await f.launch();
   await eventually('suite report paused after log registration', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
+    const status = await f.ui.request({ type: 'hub.status', history: true });
     const record = (status.value as { suites: Array<{ reported: boolean; error: string | null }> }).suites[0]!;
     return !record.reported && record.error?.includes('loop breaker') ? true : undefined;
   });
@@ -229,7 +229,7 @@ test('a muted suite report follows its moved log after unmute and publishes once
   assert.equal(result.artifacts[0]!.path, path);
   assert.equal(await readFile(result.artifacts[0]!.path, 'utf8'), original);
   await eventually('suite report receipt settled', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
+    const status = await f.ui.request({ type: 'hub.status', history: true });
     return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(record => record.reported) ? true : undefined;
   });
   assert.equal((await f.results()).length, 1);
@@ -292,7 +292,7 @@ test('restart recognizes a committed result even if its run receipt did not sett
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
   await eventually('receipt reconciled', async () => {
-    const status = await ui.request({ type: 'hub.status' });
+    const status = await ui.request({ type: 'hub.status', history: true });
     return (status.value as { suites: Array<{ id: string; reported: boolean }> }).suites.some(record => record.id === job.id && record.reported) ? true : undefined;
   });
   const history = await ui.request({ type: 'topic.history', topic: f.topic });

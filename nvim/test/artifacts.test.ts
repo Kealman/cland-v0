@@ -1,11 +1,12 @@
 // T2: artifact screens replay recorded frames; persistence and send rules live in hub/test/nvim-artifacts-rules.test.ts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { eventually, tempProject } from './fixture.ts';
 import { artifactScreen, skip } from './artifact-screen-fixture.ts';
 import { waitInitialSnapshots } from './readiness.ts';
+import { stubControl } from './stub-control.ts';
 
 test('recorded frames: keeping an agent artifact updates the thread and palette across unkeep and reconnect', { skip }, async t => {
   const root = await tempProject(t);
@@ -259,4 +260,93 @@ test('recorded frames: a draft moved while disconnected resolves and rebinds on 
   await c.input(':w<CR>');
   await eventually('save reaches moved file', async () => (await readFile(destination, 'utf8')).includes('Unsaved moved bytes') ? true : undefined);
   await assert.rejects(readFile(source.path), { code: 'ENOENT' });
+});
+
+
+test('artifact browser and palette fetch the next page only on human demand', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  scene.scenario.artifactPageSize = 2;
+  for (let n = 1; n <= 7; n++) await scene.create({ kind: 'note', title: `Paged note ${n}`, topic: 'general', content: 'Page content' });
+  const c = await scene.start();
+  await waitInitialSnapshots(c);
+  await eventually('first artifact page installed', async () => await c.lua("return #require('cland.artifacts').entries") === 2 || undefined);
+  assert.deepEqual(await c.lua("return vim.tbl_map(function(a) return a.id end,require('cland.artifacts').entries)"), ['A-7', 'A-6']);
+  await c.lua("require('cland.layout').show({kind='artifacts',id='general'},{insert=false})");
+  await c.waitScreen(s => s.includes('Paged note 4'), 'browser next page rendered');
+  assert.equal(await c.lua("return #require('cland.artifacts').entries"), 4);
+  await c.lua("require('cland.palette').open({query='~'})");
+  await c.waitScreen(s => s.includes('Paged note 2'), 'palette next page rendered');
+  assert.equal(await c.lua("return #require('cland.artifacts').entries"), 6);
+  await c.input('<C-n><C-n><C-n><C-n><C-n><C-n>');
+  await c.waitScreen(s => s.includes('Paged note 1'), 'palette scroll loads final page');
+  assert.equal(await c.lua("return #require('cland.artifacts').entries"), 7);
+});
+
+
+test('archived General thread follows byte-capped pages shorter than the row limit', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  scene.scenario.historyPageSize = 2;
+  scene.scenario.rules = [{number:1,title:'Paged origin',scope:'all',date:'2026-10-09',status:'active',origin:'message:general/page-0',reason:'Keep the origin',text:'Read the complete origin'}];
+  scene.scenario.messages = {general: Array.from({length: 5}, (_, i) => ({id: `page-${i}`, from: 'human', fromKind: 'human', via: 'hub', to: [], text: `Complete message ${i}`, ts: '2026-10-09T10:00:00.000Z', topic: 'general'}))};
+  const c = await scene.start();
+  await c.waitScreen(s => s.includes('Complete message 4'), 'latest General page');
+  assert.equal(await c.lua("return #require('cland.views').topic('general').thread.messages"), 2);
+  await c.lua("vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.input('A');
+  await eventually('all General pages are installed', async () => await c.lua("return #require('cland.views').topic('general').thread.messages") === 5 || undefined);
+  await c.input('gg');
+  await c.waitScreen(s => s.includes('Complete message 0'), 'oldest complete message from next pages');
+  assert.deepEqual(await c.lua("return vim.tbl_map(function(m) return m.text end,require('cland.views').topic('general').thread.messages)"), Array.from({length: 5}, (_, i) => `Complete message ${i}`));
+  await c.input('<Esc> R');
+  await c.waitScreen(s => s.includes('Paged origin'), 'rule list still renders');
+  await c.input('j<CR>');
+  await c.waitScreen(s => s.includes('Origin: General'), 'rule origin follows byte-capped next pages');
+  await c.input('gt');
+  await c.waitScreen(s => s.includes('Complete message 0') && !s.includes('Rulebook ·'), 'rule origin opens the complete older message');
+});
+
+test('an older-page rendered artifact survives reconnect and visibility while detail reads are held', { skip }, async t => {
+  const root = await tempProject(t);
+  const scene = await artifactScreen(t, root);
+  scene.scenario.artifactPageSize = 2;
+  for (let n = 1; n <= 4; n++) await scene.create({ kind: 'note', title: `Retained note ${n}`, topic: 'general', ...(n === 2 ? {folder:true} : {}), content: `# Retained heading ${n}\nExact source ${n}` });
+  const c = await scene.start();
+  const control = (frame: Record<string, unknown>) => stubControl(join(root, 'artifact-stub.sock'), frame);
+  await eventually('startup artifact page', async () => await c.lua("return #require('cland.artifacts').entries") === 2 || undefined);
+  await c.lua("require('cland.layout').show({kind='artifacts',id='general'},{insert=false})");
+  await c.waitScreen(s => s.includes('Retained note 1'), 'older page installed');
+  await c.lua("require('cland.artifacts').open('A-1')");
+  await c.waitScreen(s => s.includes('Retained heading 1') && !s.includes('# Retained heading 1'), 'older artifact rendered');
+  assert.equal(await c.lua("return require('cland.artifacts').bufs['A-1'] == nil"), true, 'rendered opens have no raw buffer');
+  await c.lua("require('cland.artifacts').open('A-2','index.md',{split=true}); vim.api.nvim_set_current_win(require('cland.layout').centre())");
+  await c.waitScreen(s => s.includes('Retained heading 1') && s.includes('Retained heading 2'), 'older centre and split folder child rendered');
+  for (const refresh of ['reconnect', 'visibility']) {
+    await control({set:{holdSnapshots:['artifact.list']}});
+    if (refresh === 'reconnect') {
+      scene.scenario.holdSnapshots = ['artifact.list'];
+      await scene.reconnect();
+      const previous = await stat(join(root, 'artifact-stub.sock'));
+      await c.lua("require('cland').client:stop(); require('cland').client:start()");
+      await eventually('new control socket after reconnect', async () => {
+        const current = await stat(join(root, 'artifact-stub.sock')).catch(() => undefined);
+        return current && current.ino !== previous.ino || undefined;
+      });
+    } else await control({emit:{type:'visibility',surface:'artifacts',target:'A-3',mode:'pin'}});
+    await control({waitSnapshot:'artifact.list'});
+    await control({releaseSnapshots:['artifact.list']});
+    await eventually('first page replaced before detail completes', async () => await c.lua("return require('cland.artifacts').loading == false and require('cland.artifacts').before == 'A-3'") || undefined);
+    await control({waitSnapshot:'artifact.list',snapshotCount:2});
+    await c.lua("require('cland.layout').apply_view(); require('cland.artifacts').toggle()");
+    await c.waitScreen(s => s.includes('# Retained heading 1'), 'raw view survives refresh before detail receipt');
+    assert.equal(await c.lua("local separator=...; return table.concat(vim.api.nvim_buf_get_lines(0,0,-1,false),separator)", '\n'), '# Retained heading 1\nExact source 1');
+    await c.lua("require('cland.artifacts').toggle()");
+    await c.waitScreen(s => s.includes('Retained heading 1') && !s.includes('# Retained heading 1'), 'rendered view survives refresh');
+    await c.lua("for _,w in ipairs(vim.api.nvim_list_wins()) do local b=vim.api.nvim_win_get_buf(w); if vim.b[b].cland_artifact=='A-2' then vim.api.nvim_set_current_win(w); require('cland.artifacts').toggle(); break end end");
+    await c.waitScreen(s => s.includes('# Retained heading 2'), 'raw folder child survives delayed detail');
+    await c.lua("require('cland.artifacts').toggle(); vim.api.nvim_set_current_win(require('cland.layout').centre())");
+    await c.waitScreen(s => s.includes('Retained heading 1') && s.includes('Retained heading 2') && !s.includes('# Retained heading'), 'both rendered identities survive');
+    await control({set:{holdSnapshots:[]},releaseSnapshots:['artifact.list']});
+  }
 });

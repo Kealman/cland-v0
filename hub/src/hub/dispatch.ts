@@ -924,7 +924,7 @@ export class Dispatcher {
         });
       }
       if (frame.topic !== undefined && (typeof frame.topic !== 'string' || !core.store.topic(frame.topic))) throw new ArtifactError('artifact-topic', 'no such artifact topic');
-      return { artifacts: core.store.artifacts(frame.topic) };
+      return core.store.artifactPage(frame.topic, frame.before);
     }
     const authorize = () => this.#artifactTopic(callerNow(), frame.topic);
     const topic = authorize();
@@ -1492,7 +1492,7 @@ export class Dispatcher {
           case 'topic.list':
             return answer({ topics: core.topics() });
           case 'topic.history':
-            return answer(core.topicHistory(frame.topic, frame.limit, frame));
+            return answer(core.topicHistoryPage(frame.topic, frame.limit, frame));
           case 'topic.send': {
             const { message, outcomes } = core.sendFromHuman(frame.topic, frame.text, frame.to, frame.replyTo);
             return answer({ message, outcomes });
@@ -1651,9 +1651,11 @@ export class Dispatcher {
           case 'hub.status': {
             const status = (): HubFrame => {
               const verification = this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : undefined;
-              const base = control.status();
+              const full = control.status();
+              const { harnesses: _harnesses, ...compact } = full;
+              const base = frame.history === true ? full : compact;
               const tracker = this.#options.tracker;
-              return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status() ?? [], covers: this.#suites?.covers() ?? [], ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
+              return { type: 'result', id: frame.id, ok: true, value: { ...base, mergeQueue: this.#mergeQueue?.entries() ?? [], ...(tracker ? { tracker: { ...base.tracker, levels: tracker.ladder.flat, ladder: tracker.ladder.levels.map(level => [...level]), prefixes: Object.fromEntries([...tracker.kinds, 'category'].map(kind => [kind, prefixOf(kind)])), storage: tracker.storageStatus() } } : {}), sessions: core.presence(), suites: this.#suites?.status(frame.history === true) ?? [], recentSuites: this.#suites?.recentStatus() ?? [], ...(frame.history === true ? { covers: this.#suites?.covers() ?? [] } : {}), ...(verification ? { verification } : {}), coordinator: core.coordinator(), needsYou: core.inbox.needsYou(), requests: { ...this.#guard.counters } } satisfies HubStatus };
             };
             if (frame.flushLogs === true && control.flushLogs) {
               const resumed = this.#guard.resumer(frame.type, client);

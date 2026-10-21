@@ -44,7 +44,7 @@ test('remote verify delivers host selection, runs as runner, reports accounting,
   assert.match(log, /mode hub-only/); assert.match(log, /COLORS=0,1/);
   assert.match(log, /\$ npm test\n/);
   const selection = JSON.parse(log.match(/^SELECTION=(.*)$/m)![1]!);
-  const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
   assert.deepEqual(selection, status.suites!.find(s => s.id === job.id)!.selection);
   // T3: the real delivered worker must reuse the host receipt across the machine boundary.
   const tree = await candidateTree(f.root, undefined, f.env);

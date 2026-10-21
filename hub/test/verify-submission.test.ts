@@ -90,7 +90,7 @@ test('other-stack verify submits a full project test without cland planning', as
   await writeFile(join(f.root, 'hub'), 'another stack may have a file named hub');
   assert.equal(await f.submit(), 0);
   const id = JSON.parse(f.outputs.pop()!).id;
-  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!;
+  const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites!;
   const job = jobs.find(job => job.id === id)!;
   assert.deepEqual(job.selection, { mode: 'full', files: [], reason: 'project test runs in full' });
   assert.deepEqual(f.inspections, [{ mode: 'full', files: [], reason: 'project test runs in full' }], 'admission supplies the project plan instead of asking for coverage selection');
@@ -106,7 +106,7 @@ test('other-stack CLI refuses cland phases while accepting default and all', asy
   assert.equal(await f.submit(), 0);
   assert.equal(await f.human('all'), 0);
   const all = JSON.parse(f.outputs.pop()!).id;
-  const jobs = ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!;
+  const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites!;
   assert.deepEqual(jobs.find(job => job.id === all)?.selection, { mode: 'full', files: [], reason: 'project test runs in full' });
 });
 
@@ -142,7 +142,7 @@ test('an accepted verify submission times out as unconfirmed and safely retries 
   assert.equal(JSON.parse(f.outputs.pop()!).id, id);
   f.receipts.set(id, { state: 'done', code: 1, finished: f.clock.now().toISOString() });
   await f.clock.advance(1000);
-  await eventually('red terminal run', async () => ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites?.find(run => run.id === id && run.reported));
+  await eventually('red terminal run', async () => ((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites?.find(run => run.id === id && run.reported));
   f.hold(true);
   assert.equal(await f.submit(), 0, 'a terminal red permits a new receipt');
   assert.notEqual(JSON.parse(f.outputs.pop()!).id, id);

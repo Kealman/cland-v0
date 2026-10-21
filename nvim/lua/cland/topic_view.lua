@@ -56,8 +56,8 @@ function M.new(client, topic)
           return view.thread:set_notice('no history: ' .. err)
         end
         view.thread:merge(value.messages, before ~= nil)
-        if view.thread.archive and #value.messages == M.HISTORY_LIMIT then
-          page(value.messages[1].id)
+        if view.thread.archive and (value.more == true or #value.messages == M.HISTORY_LIMIT) and #value.messages > 0 then
+          page(value.before or value.messages[1].id)
         end
         for _, e in ipairs(events) do
           if e.topic == topic.id then

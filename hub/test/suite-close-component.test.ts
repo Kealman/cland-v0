@@ -43,7 +43,7 @@ test('two-shard stage result shows each shard T4 tier line', async t => {
 async function startedShards(f: Awaited<ReturnType<typeof integrated>>, id: string) {
   await drive(f, Promise.all([1, 2].map(n => f.machine.started(`${id}-shard-${n}`))));
   await eventually('shard group durably running', async () => {
-    const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; state: string }[] }).suites;
+    const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; state: string }[] }).suites;
     return jobs.find(job => job.id === id)?.state === 'running' ? true : undefined;
   });
 }
@@ -59,7 +59,7 @@ test('two-shard close reports despite a corrupt spend ledger and the executor sw
   const path = join(f.root, '.cland/executor-state/spend.json');
   const saved = await readFile(path, 'utf8');
   const log = async () => {
-    await f.ui.request({ type: 'hub.status', flushLogs: true });
+    await f.ui.request({ type: 'hub.status', history: true, flushLogs: true });
     return (await readFile(join(f.root, '.cland/log/hub.log'), 'utf8')).trim().split('\n').map(line => JSON.parse(line));
   };
   const result = eventually('merged parent receipt with broken ledger', async () => {
@@ -203,7 +203,7 @@ test('live and restored shards separate remote execution from collection in one 
   await f.clock.advance(4000);
   await f.verificationSettled();
   const finished = f.clock.now().toISOString();
-  const status = (await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; admittedAt: string }[] };
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; admittedAt: string }[] };
   const admittedAt = status.suites.find(run => run.id === job.id)!.admittedAt;
   f.machine.finish(`${job.id}-shard-1`, 0);
   f.machine.finish(`${job.id}-shard-2`, 1, '# tests 1\n# fail 1\nnot ok 1 - shard example\n');
@@ -264,7 +264,7 @@ test('a batch sharding fallback publishes one warning frame and one whole-run re
   const job = await f.launch('all', '--fresh');
   await drive(f, f.machine.started(job.id));
   await eventually('fallback durably running', async () => {
-    const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; state: string }[] }).suites;
+    const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; state: string }[] }).suites;
     return jobs.find(run => run.id === job.id)?.state === 'running' ? true : undefined;
   });
   await f.clock.advance(1000);
@@ -289,7 +289,7 @@ test('task heads and non-Coordinator batches keep one remote slot', async t => {
     assert.deepEqual(queue.remote.map(run => run.id), [job.id]);
     await drive(f, f.machine.started(job.id));
     await eventually('whole run durably running', async () => {
-      const jobs = ((await f.ui.request({ type: 'hub.status' })).value as { suites: { id: string; state: string }[] }).suites;
+      const jobs = ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: { id: string; state: string }[] }).suites;
       return jobs.find(run => run.id === job.id)?.state === 'running' ? true : undefined;
     });
     await f.clock.advance(1000);

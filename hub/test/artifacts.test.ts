@@ -265,14 +265,14 @@ test('closing topics or bound items archives artifacts; reopening restores files
   assert.equal((await cland(root, 'artifact', 'promote', promoted.id, 'design.md')).code, 0);
   const entries = async () => ((await ui.request({ type: 'artifact.list', topic })).value as { artifacts: Artifact[] }).artifacts;
   await ui.request({ type: 'topic.close', topic });
-  assert.equal((await entries())[0]?.status, 'archived');
-  assert.ok((await entries())[0]?.archivedAt);
-  assert.equal((await entries())[1]?.status, 'shared');
+  assert.equal((await entries()).find(entry => entry.id === a.id)?.status, 'archived');
+  assert.ok((await entries()).find(entry => entry.id === a.id)?.archivedAt);
+  assert.equal((await entries()).find(entry => entry.id === promoted.id)?.status, 'shared');
   await ui.request({ type: 'topic.send', topic, text: 'Reopen' });
-  assert.equal((await entries())[0]?.status, 'shared');
-  assert.equal((await entries())[0]?.archivedAt, undefined);
+  assert.equal((await entries()).find(entry => entry.id === a.id)?.status, 'shared');
+  assert.equal((await entries()).find(entry => entry.id === a.id)?.archivedAt, undefined);
   assert.equal((await cland(root, 'task', 'close', item)).code, 0);
-  assert.equal((await entries())[0]?.status, 'archived');
+  assert.equal((await entries()).find(entry => entry.id === a.id)?.status, 'archived');
   assert.equal(await readFile(a.path, 'utf8'), 'bytes');
 });
 
@@ -315,8 +315,8 @@ test('zero-day retention on restart removes only archived files and keeps delete
   assert.match((await cland(root, 'artifact', 'list')).stdout, /file deleted/);
   await restarted.request({ type: 'topic.send', topic, text: 'Reopen' });
   const entries = ((await restarted.request({ type: 'artifact.list', topic })).value as { artifacts: Artifact[] }).artifacts;
-  assert.equal(entries[0]?.status, 'archived');
-  assert.equal(entries[0]?.fileDeleted, true);
+  assert.equal(entries.find(a => a.id === gone.id)?.status, 'archived');
+  assert.equal(entries.find(a => a.id === gone.id)?.fileDeleted, true);
 });
 
 test('promotion rejects existing, escaped, absolute, private and symlinked destinations without copying', async (t) => {

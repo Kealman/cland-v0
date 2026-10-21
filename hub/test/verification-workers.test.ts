@@ -68,7 +68,7 @@ test('verify persists overrides, delivers remote workers, prices requested size 
   assert.match(result.text, /Executor droplet · c-16 lon1/);
   assert.match(result.text, /workers 6 · requested size c-16/);
   assert.match(await log(measured.id), /WORKERS=6\nEXECUTOR=droplet/);
-  const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
   const job = status.suites!.find(job => job.id === measured.id)!;
   assert.equal(job.workers, 6); assert.equal(job.size, 'c-16');
   const leases = (await import('../src/executor/droplet/lease.ts')).readLeases;
@@ -96,7 +96,7 @@ test('verify persists overrides, delivers remote workers, prices requested size 
   await f.stop();
   const restart = await projectHub(t, f.root, f.env);
   const restoredUi = await connectUi(t, restart.discovery);
-  const restoredStatus = (await restoredUi.request({ type: 'hub.status' })).value as HubStatus;
+  const restoredStatus = (await restoredUi.request({ type: 'hub.status', history: true })).value as HubStatus;
   const restored = restoredStatus.suites!.find(job => job.id === measured.id)!;
   assert.equal(restored.workers, 6); assert.equal(restored.size, 'c-16');
 });
@@ -143,7 +143,7 @@ const timer=setInterval(()=>{
   const finished = await eventually('completion timestamp published', async () => (await readFile(marker, 'utf8').catch(() => '')).trim() || undefined, 20000);
   assert.ok(Number.isFinite(Date.parse(finished)));
   await f.result(run.id);
-  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
   const job = status.suites!.find(job => job.id === run.id)!;
   assert.equal(job.finished, finished);
   assert.equal(job.reported, true);

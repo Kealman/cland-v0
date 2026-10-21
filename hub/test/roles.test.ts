@@ -25,7 +25,7 @@ const logEvents = async (root: string, event: string) =>
     .map((l) => JSON.parse(l) as Record<string, unknown>);
 
 async function status(ui: FrameClient): Promise<Status> {
-  const r = await ui.request({ type: 'hub.status' });
+  const r = await ui.request({ type: 'hub.status', history: true });
   assert.equal(r.ok, true, r.error);
   return r.value as Status;
 }

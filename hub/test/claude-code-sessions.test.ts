@@ -13,7 +13,7 @@ import type { HarnessProcessView } from '../src/protocol.ts';
 type Harness = HarnessProcessView;
 type Status = { sessions: Array<{ name: string; sessionId: string; state: string }>; harnesses: Harness[] };
 async function status(ui: FrameClient): Promise<Status> {
-  const r = await ui.request({ type: 'hub.status' });
+  const r = await ui.request({ type: 'hub.status', history: true });
   assert.equal(r.ok, true, r.error);
   return r.value as Status;
 }
@@ -71,7 +71,7 @@ test('in-process Claude signal order drops an older Stop arriving after the next
   assert.deepEqual(stopped.value, { applied: false, state: 'busy' });
   assert.equal((await status(ui)).sessions.find(s => s.name === 'coord')?.state, 'busy');
   assert.equal((await harness(ui, 'coord')).state, 'busy', 'the older Stop arrived last and was dropped');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"signal-stale","session":"coord","state":"idle","source":"hook"/);
   // Rejecting the stale Stop must still allow this turn's own later completion.
   const completed = await f.signal('coord', launched.sessionId, 'turn-end', { at: stopAt + 2 });
@@ -157,7 +157,7 @@ test('in-process Claude signals cannot replace a newer launch identity', async (
   const after = await harness(ui, 'impl-1');
   assert.equal(after.harnessSessionId, row.harnessSessionId, "the replacement keeps its own conversation id");
   assert.equal(after.state, 'idle', 'and its own state');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.match(await hubLog(root), /"event":"signal-other-launch","session":"impl-1"/);
 });
 
@@ -206,6 +206,6 @@ for (const rename of [false, true]) test(rename
   assert.equal(attempts.length, 2, 'the remembered idle retries the unconfirmed input once');
   assert.equal(attempts.at(-1)!.process.name, rename ? 'pool-1' : 'coord');
   assert.equal((await harness(ui, rename ? 'pool-1' : 'coord')).state, 'idle');
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   assert.ok((await hubLog(f.root)).includes(`"event":"injected","id":"${id}"`));
 });

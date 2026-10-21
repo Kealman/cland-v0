@@ -42,7 +42,7 @@ async function fixture(t: import('node:test').TestContext, script: string, alter
     if (waitForRunning) {
       // Admission can reply before the worker starts; observe the hub's receipt.
       job.pid = await eventually('executor worker running with pid', async () => {
-        const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+        const status = (await ui.request({ type: 'hub.status', history: true })).value as HubStatus;
         const run = status.suites?.find(run => run.id === job.id);
         return run?.state === 'running' && run.pid ? run.pid : undefined;
       });
@@ -64,7 +64,7 @@ test('verify reports the worker PATH Node, candidate Neovim pin and platform in 
   });
   const expected = { os: platform(), arch: arch(), release: release(), node: 'v99.8.7', nvim: 'v0.12.5' };
   assert.ok(result.text.includes(`Executor local · ${expected.os} ${expected.arch} · Node v99.8.7 · Neovim v0.12.5`));
-  const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
   const run = status.suites!.find(run => run.id === job.id)!;
   assert.equal(run.executor, 'local');
   assert.deepEqual(run.platform, expected);
@@ -100,7 +100,7 @@ test('a pre-executor running job restored from hub.db reports as local exactly o
   const next = await startDaemon(t, f.root);
   const ui = await connectUi(t, next.discovery);
   const adopted = await eventually('the restarted hub adopts the held live worker', async () => {
-    const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+    const status = (await ui.request({ type: 'hub.status', history: true })).value as HubStatus;
     return status.suites?.find(run => run.id === job.id && run.state === 'running');
   });
   assert.equal(adopted.pid, job.pid);
@@ -121,7 +121,7 @@ test('a pre-executor running job restored from hub.db reports as local exactly o
   assert.equal(result.length, 1);
   assert.match(result[0]!.text, /auto exit 0/);
   assert.match(result[0]!.text, /Executor local · \S+ \S+ · Node v[\d.]+ · Neovim none/);
-  const status = (await ui.request({ type: 'hub.status' })).value as HubStatus;
+  const status = (await ui.request({ type: 'hub.status', history: true })).value as HubStatus;
   assert.equal(status.suites![0]!.executor, 'local');
   assert.equal(status.suites![0]!.platform?.nvim, 'none');
   assert.equal((await cland(f.root, 'hub', 'stop')).code, 0);

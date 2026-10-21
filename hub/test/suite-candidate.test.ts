@@ -37,7 +37,7 @@ for (const phase of ['queued', 'running'] as const) {
       if (phase === 'running') await eventually('worker completed package test', () => stat(join(f.root, '.cland/completed')).then(() => true, () => undefined));
       const result = await eventually('integrated result', async () => (await f.results()).find(m => m.id === `suite:${run.id}`));
       assert.match(result.text, /auto exit 0/, result.text);
-      const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+      const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
       const job = status.suites!.find(job => job.id === run.id)!;
       assert.equal(job.integrated, true);
       assert.equal(job.head, head, 'retain the submitted head as provenance');
@@ -67,6 +67,6 @@ test('integrated running run rejects a source commit after package completion', 
   await eventually('worker completed package test', () => stat(join(f.root, '.cland/completed')).then(() => true, () => undefined));
   const result = await eventually('source change result', async () => (await f.results()).find(m => m.id === `suite:${run.id}`));
   assert.match(result.text, /exit 1; cancelled: candidate tree changed/, result.text);
-  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
   assert.equal(status.suites!.find(job => job.id === run.id)!.cover?.cause, 'cancel-head');
 });

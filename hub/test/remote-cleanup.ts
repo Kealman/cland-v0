@@ -23,7 +23,7 @@ export async function cancelAndDrain(runs: OwnedRemoteRun[], release: () => void
   const reports: Awaited<ReturnType<RemoteFixture['result']>>[] = [];
   for (const { fixture: f, id } of runs) await attempt(async () => {
     await drive(f, eventually('cancelled acquisition completed and released', async () => {
-      const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+      const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
       if (status.suites?.find(job => job.id === id)?.state !== 'finished') return;
       return (await readLeases(f.root)).filter(lease => lease.run === id).every(lease => lease.state === 'released') ? true : undefined;
     }));

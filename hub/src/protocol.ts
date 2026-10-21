@@ -87,7 +87,7 @@ export type Artifact = {
 export type ArtifactCreate = { type: 'artifact.create'; id: string; kind: string; title: string; topic: string; path?: string; content?: string; folder?: boolean; entry?: string; status?: 'draft' | 'shared' };
 export type PromptSend = { type: 'prompt.send'; id: string; artifact: string; attach?: boolean };
 export type ArtifactPromote = { type: 'artifact.promote'; id: string; artifact: string; path: string };
-export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string };
+export type ArtifactList = { type: 'artifact.list'; id: string; topic?: string; artifact?: string; before?: string };
 export type ArtifactKeep = { type: 'artifact.keep'; id: string; artifact: string; kept?: boolean };
 export type ArtifactDelete = { type: 'artifact.delete'; id: string; artifact: string };
 export type ArtifactArchive = { type: 'artifact.archive'; id: string; artifact: string };
@@ -438,6 +438,7 @@ export function isSpokeRequest(f: Record<string, unknown>): f is SpokeRequest {
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string') && (f.cancel === undefined || typeof f.cancel === 'boolean');
     case 'artifact.create':
     case 'artifact.list':
+      return isClientRequest(f);
     case 'artifact.keep':
     case 'artifact.archive':
     case 'artifact.move':
@@ -637,7 +638,7 @@ export type ClientRequest =
   | { type: 'crew.set'; id: string; key: string; value: unknown }
   | { type: 'config.set'; id: string; key: string; value: unknown }
   | { type: 'hub.subscriptions'; id: string }
-  | { type: 'hub.status'; id: string; flushLogs?: boolean }
+  | { type: 'hub.status'; id: string; flushLogs?: boolean; history?: boolean }
   /** Shut the hub down gracefully; the result is sent before the socket closes. */
   | { type: 'hub.stop'; id: string }
   | { type: 'hub.reload'; id: string }
@@ -764,6 +765,12 @@ export type VerificationQueue = {
 
 export type WebEdgeStatus = { port: number; available: boolean; reason?: string };
 
+/** Latest completed result per suite kind/occasion; full receipts remain opt-in. */
+export type SuiteSummary = {
+  id: string; kind: 'task' | 'integrated'; occasion: VerifyOccasion | null;
+  head: string; exit: number | null; finishedAt: string | null; artifact: string | null;
+};
+
 export type HubStatus = {
   /** The independent browser listener; absent on older or stdio-only hubs. */
   web?: WebEdgeStatus;
@@ -772,7 +779,9 @@ export type HubStatus = {
   mergeQueue?: MergeQueueEntry[];
   covers?: CoverStatus[];
   verification?: VerificationQueue;
+  /** Queued/running suites; history:true explicitly includes completed receipts. */
   suites?: SuiteStatus[];
+  recentSuites?: SuiteSummary[];
   crew?: { config: import('./crew.ts').CrewConfig; summary: string };
   /** Keyboard layouts from config.toml, read at hub start; the UI uses these for langmap. */
   keys?: { layouts: string[] };
@@ -914,8 +923,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'artifact.url':
     case 'artifact.delete':
       return typeof f.artifact === 'string' && /^A-[1-9][0-9]*$/.test(f.artifact);
-    case 'artifact.create':
     case 'artifact.list':
+      return (f.before === undefined || typeof f.before === 'string') && (f.topic === undefined || typeof f.topic === 'string') && (f.artifact === undefined || typeof f.artifact === 'string');
+    case 'artifact.create':
     case 'artifact.keep':
     case 'artifact.archive':
     case 'artifact.move':
@@ -943,9 +953,10 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'executor.status':
     case 'executor.reap':
     case 'hub.subscriptions':
+    case 'hub.status':
+      return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
     case 'web.sessions':
     case 'web.link':
-    case 'hub.status':
     case 'hub.stop':
     case 'hub.reload':
     case 'topic.list':

@@ -20,7 +20,7 @@ test('candidate selection reaches execution and explains the reserved all-mode r
   assert.equal(reserved.code, 'verify-all-reserved');
   assert.match(reserved.error, /mode hub-only/);
   assert.deepEqual(((await f.ui.request({ type: 'suite.queue' })).value as VerificationQueue).waiters, []);
-  assert.equal(((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.length, 1, 'MCP refusal creates no suite');
+  assert.equal(((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites!.length, 1, 'MCP refusal creates no suite');
   assert.equal((await f.ui.request({ type: 'role.set', session: 'impl', role: 'coordinator' })).ok, true);
   await f.launch('--all');
   const full = await eventually('forced full result', async () => (await f.results())[1]);
@@ -43,7 +43,7 @@ for (const cap of [768, 384]) test(`selection report respects the ${cap}-byte ca
   const log = await readFile(result.artifacts[0]!.path, 'utf8');
   assert.ok(names.every(name => log.includes(name)), 'every deciding path remains in the log');
   await eventually('bounded report settled', async () => {
-    const status = await f.ui.request({ type: 'hub.status' });
+    const status = await f.ui.request({ type: 'hub.status', history: true });
     return (status.value as { suites: Array<{ reported: boolean }> }).suites.every(job => job.reported) ? true : undefined;
   });
   assert.equal((await f.results()).length, 1);

@@ -66,7 +66,7 @@ test('startup preserves the durable queue when branch enumeration omits a live r
     return null;
   } });
   const reconnected = await connectUi(t, reopened.discovery);
-  assert.deepEqual((await value<{ mergeQueue: unknown[] }>(reconnected, { type: 'hub.status' })).mergeQueue, expected);
+  assert.deepEqual((await value<{ mergeQueue: unknown[] }>(reconnected, { type: 'hub.status', history: true })).mergeQueue, expected);
   assert.deepEqual((await value<{ entries: unknown[] }>(reconnected, { type: 'merge.queue' })).entries, expected);
 });
 
@@ -201,7 +201,7 @@ test('queued merged-tree budget refusal moves no ref or checkout', async t => {
   await until(async () => (await value<{ entries: unknown[] }>(ui, { type: 'merge.queue' })).entries.length === 0, { what: 'budget refusal drops queued candidate' });
   const history = await value<{ messages: Array<{ text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
   assert.ok(history.messages.some(message => /merge-queue-dropped.*merge-budget.*T2 projected wall 600 s > 480 s/s.test(message.text)));
-  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status' })).suites.length, 0);
+  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status', history: true })).suites.length, 0);
   assert.ok(reads.every(args => ['rev-parse', 'merge-tree'].includes(args[0]!)), 'no checkout, commit or ref mutation');
 });
 
@@ -241,7 +241,7 @@ test('a red singleton posts its bisection refusal to the member lead after appea
   assert.equal(verifying.holder?.occasion, 'batch');
   receipt = { state: 'done', code: 1, finished: clock.now().toISOString() };
   await clock.advance(1000);
-  await until(async () => { await clock.advance(1000); const status = await value<{ suites: Array<{ error: string | null }> }>(ui, { type: 'hub.status' }); if (status.suites[0]?.error) throw new Error(status.suites[0].error); return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null; }, { what: 'red singleton refused', timeoutMs: 1500 });
+  await until(async () => { await clock.advance(1000); const status = await value<{ suites: Array<{ error: string | null }> }>(ui, { type: 'hub.status', history: true }); if (status.suites[0]?.error) throw new Error(status.suites[0].error); return (await value<{ batch: MergeBatchStatus | null }>(ui, { type: 'merge.queue' })).batch === null; }, { what: 'red singleton refused', timeoutMs: 1500 });
   const history = await value<{ messages: Array<{ text: string; to: string[] }> }>(ui, { type: 'topic.history', topic, limit: 100 });
   assert.ok(history.messages.some(message => message.text.startsWith(`suite result ${run.id}`) && message.to.includes('coord')));
   assert.ok(history.messages.some(message => message.text.includes(`tree ${tree}`) && message.text.includes(item.id) && /tiers T1, T3; wall \d+ ms; exit 1/.test(message.text)));
@@ -282,11 +282,11 @@ test('refusing a cancelled live batch member preserves its re-enqueued request',
   const replacement = await value<{ entries: unknown[]; batch: MergeBatchStatus }>(ui, { type: 'merge.queue' });
   assert.notDeepEqual(replacement.entries, original.entries, 'the new request has a fresh enqueue time at the same head');
   assert.equal(replacement.batch.id, original.batch.id, 'the live worker keeps its pinned batch');
-  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status' })).suites.length, 1);
+  assert.equal((await value<{ suites: unknown[] }>(ui, { type: 'hub.status', history: true })).suites.length, 1);
   receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
   await until(async () => {
     await clock.advance(1000);
-    const suites = (await value<{ suites: Array<{ id: string; reported: boolean }> }>(ui, { type: 'hub.status' })).suites;
+    const suites = (await value<{ suites: Array<{ id: string; reported: boolean }> }>(ui, { type: 'hub.status', history: true })).suites;
     return suites.some(job => job.id === run.id && job.reported);
   }, { what: 'live batch worker completion receipt', timeoutMs: 1500 });
   await until(async () => {
@@ -336,7 +336,7 @@ test('a code movement rebuild notice survives the original green result notice',
   receipt = { state: 'done', code: 0, finished: clock.now().toISOString() };
   await until(async () => {
     await clock.advance(1000);
-    return (await value<{ suites: unknown[] }>(ui, { type: 'hub.status' })).suites.length === 2;
+    return (await value<{ suites: unknown[] }>(ui, { type: 'hub.status', history: true })).suites.length === 2;
   }, { what: 'changed code candidate admitted for a new batch' });
   const history = await value<{ messages: Array<{ id: string; text: string }> }>(ui, { type: 'topic.history', topic: 'agents', limit: 100 });
   const green = history.messages.find(message => /batch .*tiers T1, T3;.*exit 0/.test(message.text));

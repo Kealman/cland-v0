@@ -165,13 +165,13 @@ export async function startProjectHub(root: string, io: Io, starter: Starter, au
   return 1;
 }
 
-async function status(l: Layout, json: boolean, io: Io): Promise<number> {
+async function status(l: Layout, json: boolean, io: Io, history = false): Promise<number> {
   const root = l.root;
   const found = await inspect(l);
   switch (found.kind) {
     case 'live': {
       try {
-        const full = await askHub(found.d, 'hub.status') as HubStatus;
+        const full = await askHubFrame(found.d, { type: 'hub.status', ...(history ? { history: true } : {}) }) as HubStatus;
         io.out(json ? `${JSON.stringify(full)}\n` : `hub running for ${full.root}\n${describe(full)}`);
       } catch (error) {
         const statusError = error instanceof Error ? error.message : String(error);
@@ -439,7 +439,7 @@ export async function runHub(args: string[], cwd: string = process.cwd(), io: Io
       } catch (error) { io.err(`cland: ${error instanceof Error ? error.message : String(error)}\n`); return 1; }
     }
     case 'status':
-      return status(l, rest.includes('--json'), io);
+      return status(l, rest.includes('--json'), io, rest.includes('--history'));
     case 'stop':
       return stop(l, target !== null, io);
     case 'audit':

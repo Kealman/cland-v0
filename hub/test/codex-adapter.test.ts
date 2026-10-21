@@ -49,7 +49,7 @@ test('an Implementer begins on its launch brief after the clause in the first Co
   const recorded = history.messages.find(m => m.text === `${brief}\n\nProject rules for your role\nNo project rules apply to your role.`);
   assert.equal(recorded?.stage, 'injected');
   await eventually('carried brief stages journalled', async () => {
-    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
     const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
     return ['send', 'acked', 'injected'].every(event => journal.some(entry => entry.id === recorded!.id && entry.event === event)) || undefined;
   });
@@ -70,7 +70,7 @@ test('an early Codex hello does not inject its brief when the native first turn 
   assert.equal(recorded?.stage, 'dropped');
   assert.ok(!ui.frames.some(frame => frame.type === 'delivery' && frame.message === recorded!.id && frame.stage === 'injected'));
   await eventually('refused brief journalled as dropped', async () => {
-    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
     const journal = (await readFile(join(root, '.cland', 'journal.jsonl'), 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line) as { event: string; id?: string });
     assert.ok(!journal.some(entry => entry.id === recorded!.id && entry.event === 'injected'));
     return journal.some(entry => entry.id === recorded!.id && entry.event === 'dropped') || undefined;
@@ -148,7 +148,7 @@ async function fakeCodex(t: TestContext, timings: { pollMs?: number; injectTimeo
 }
 
 async function status(ui: FrameClient): Promise<Status> {
-  const r = await ui.request({ type: 'hub.status' });
+  const r = await ui.request({ type: 'hub.status', history: true });
   assert.equal(r.ok, true, r.error);
   return r.value as Status;
 }
@@ -168,7 +168,7 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
   });
 
 const hubLog = async (root: string, ui: FrameClient) => {
-  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  const flushed = await ui.request({ type: 'hub.status', history: true, flushLogs: true });
   assert.equal(flushed.ok, true, flushed.error);
   return readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
 };
@@ -215,7 +215,7 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   assert.match(firstLog, /turn\/start input/, 'the first turn is a plain input turn');
   assert.match(firstLog, /item: cland hub: you hold the role Coordinator in this project, shown to others as coord \[Coordinator\]/, 'the first turn carries the role clause from roles.toml');
   // ... so the hub records it as injected at the first hello and does not inject it a second time
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   const clauses = (await readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8')).split('\n').filter((l) => l.includes('"event":"role-clause"') && l.includes('"session":"coord"'));
   assert.equal(clauses.length, 1);
   assert.match(clauses[0] as string, /"reason":"assigned at launch \(first turn\)"/);

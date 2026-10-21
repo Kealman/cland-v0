@@ -72,7 +72,7 @@ export const HUB_USAGE = `  hub start       start the project's hub in the backg
                   --autostart: honor the deliberate-stop grace period; --client cli|nvim|other identifies the starter
   hub subscriptions list every session's event subscriptions (--json for JSON)
   hub reload      validate and reload config.toml and roles.toml (also SIGHUP)
-  hub status      show the running hub (including web edge availability), then connected sessions (--json for JSON)
+  hub status      show the running hub (including web edge availability), then connected sessions (--json for JSON; --history includes full suite/cover history and harness rows)
   hub stop        stop the project's hub
   hub serve       run the hub in the foreground (what start runs)
                   --stdio: also speak the UI's frames on stdin/stdout, and stop when stdin ends;
@@ -201,7 +201,8 @@ export const ARTIFACT_USAGE = `  artifact new --kind prompt|note|page|diagram|fi
   artifact keep <A-id> [--release] [--json]
   artifact move <A-id> <folder-A-id> [--name <filename>] [--json]
   artifact archive <A-id> [--json]
-  artifact list [--topic <topic>] [--json]
+  artifact list [--topic <topic>] [--before <A-n>] [--json]
+                  newest first, at most 100 per page; use the returned before cursor for older entries
                   persistent files shown in topics; all commands accept --json
 `;
 

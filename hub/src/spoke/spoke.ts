@@ -68,7 +68,7 @@ const TOOLS = [
   { name: 'artifact.keep', description: 'Keep an artifact from retention, or release it with kept: false. Agents cannot change human or Aide artifacts.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, kept: { type: 'boolean' } }, required: ['artifact'] } },
   { name: 'artifact.archive', description: 'Archive an artifact explicitly. Human and Aide bytes are retained.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' } }, required: ['artifact'] } },
   { name: 'artifact.move', description: 'Absorb a file artifact into a folder; its old id redirects to that file. Folder moves are refused.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, folder: { type: 'string' }, name: { type: 'string' } }, required: ['artifact', 'folder'] } },
-  { name: 'artifact.list', description: 'List artifacts, or resolve one id and list its folder files on request.', inputSchema: { type: 'object', properties: { topic: { type: 'string' }, artifact: { type: 'string' } } } },
+  { name: 'artifact.list', description: 'List up to 100 artifacts newest first; use the returned before cursor for the next page. Or resolve one id and list its folder files.', inputSchema: { type: 'object', properties: { topic: { type: 'string' }, artifact: { type: 'string' }, before: { type: 'string' } } } },
   { name: 'artifact.promote', description: 'Copy an artifact into a project-relative repository path. Aides may promote here; the Coordinator promotes from its shell.', inputSchema: { type: 'object', properties: { artifact: { type: 'string' }, path: { type: 'string' } }, required: ['artifact', 'path'] } },
   {
     name: 'send',

@@ -228,12 +228,12 @@ test('all remote admission refusals persist a local job, one warn notice and one
   const f = await fixture(t, { machine: 'scripted' });
   f.api.faults.create = 422; f.api.faults.echoToken = true;
   const run = await f.launch();
-  await drive(f, eventually('fallback is durably local', async () => { const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(job => job.id === run.id)?.executor === 'local' ? true : undefined; }));
+  await drive(f, eventually('fallback is durably local', async () => { const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus; return status.suites!.find(job => job.id === run.id)?.executor === 'local' ? true : undefined; }));
   await f.clock.advance(1000);
   await drive(f, eventually('local completion receipt', async () => { await f.ui.request({ type: 'suite.queue' }); return localDone(run.id) ? true : undefined; }));
   await f.clock.advance(1000);
   assert.match((await f.result(run.id)).text, /Executor local/);
-  const status = (await f.ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
   assert.equal(status.suites!.find(s => s.id === run.id)!.executor, 'local');
   const history = ((await f.ui.request({ type: 'topic.history', topic: f.topic })).value as { messages: { text: string; severity?: string }[] }).messages;
   const notices = history.filter(m => m.text.includes('droplet unavailable'));
@@ -277,7 +277,7 @@ test('scripted report steps freeze time while an admitted worker receipt is held
   onCleanup(t, () => receipt.resolve());
   const launching = f.launch();
   await eventually('worker receipt is held', () => entered ? true : undefined);
-  const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+  const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
   const id = status.suites![0]!.id;
   const settle = f.verificationSettled;
   let joined = false, completed = false;
@@ -306,7 +306,7 @@ test('two protocol projects reserve against one cap and confirmed release replac
   assert.equal((await ledger(state)).entries[0]!.cost, null);
   const second = await fixture(t, { machine: 'scripted', clock: first.clock, config: 'lifetime="15m"\nrun_timeout="5m"\ndaily_spend_usd=0.063', env: { CLAND_EXECUTOR_STATE: state } });
   const refused = await second.launch();
-  await drive(second, eventually('fallback is durably local', async () => { const status = (await second.ui.request({ type: 'hub.status' })).value as HubStatus; return status.suites!.find(job => job.id === refused.id)?.executor === 'local' ? true : undefined; }));
+  await drive(second, eventually('fallback is durably local', async () => { const status = (await second.ui.request({ type: 'hub.status', history: true })).value as HubStatus; return status.suites!.find(job => job.id === refused.id)?.executor === 'local' ? true : undefined; }));
   await second.clock.advance(1000);
   await drive(second, eventually('refused project local completion receipt', async () => { await second.ui.request({ type: 'suite.queue' }); return localDone(refused.id) ? true : undefined; }));
   assert.match((await scriptedResult(second, refused.id, [first, second])).text, /Executor local/);

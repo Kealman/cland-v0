@@ -80,7 +80,7 @@ async function fakeOpenCode(t: TestContext, timings: { pollMs?: number; injectTi
 }
 
 async function status(ui: FrameClient): Promise<Status> {
-  const r = await ui.request({ type: 'hub.status' });
+  const r = await ui.request({ type: 'hub.status', history: true });
   assert.equal(r.ok, true, r.error);
   return r.value as Status;
 }
@@ -102,7 +102,7 @@ const presentAs = (ui: FrameClient, name: string, state: string) =>
   });
 
 const hubLog = async (root: string, ui: FrameClient) => {
-  const flushed = await ui.request({ type: 'hub.status', flushLogs: true });
+  const flushed = await ui.request({ type: 'hub.status', history: true, flushLogs: true });
   assert.equal(flushed.ok, true, flushed.error);
   return readFile(join(root, '.cland', 'log', 'hub.log'), 'utf8');
 };

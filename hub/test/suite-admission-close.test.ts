@@ -73,7 +73,7 @@ for (const [transport, change] of [['cli', 'none'], ['mcp', 'none'], ['mcp', 'ro
     assert.equal((await ui.request({ type: 'task.edit', item, assignee: null })).ok, true);
   }
   release.resolve(); await completed.promise;
-  const status = (await ui.request({ type: 'hub.status', flushLogs: true })).value as HubStatus;
+  const status = (await ui.request({ type: 'hub.status', history: true, flushLogs: true })).value as HubStatus;
   const history = (await ui.request({ type: 'topic.history', topic })).value as { messages: Message[] };
   const receipt = history.messages.find(m => m.detail?.event === 'verification-submission');
   assert.ok(receipt, 'admission receipt must survive the submitting connection');

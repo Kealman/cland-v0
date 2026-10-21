@@ -84,7 +84,7 @@ test('after-stage gates require Mac and sharded Linux at one tree, retain histor
   // The first two result deliveries fill this pair's loop-breaker window.
   const both = await run('local', false, async id => {
     await eventually('completed Mac run waits for its report to be deliverable', async () => {
-      const status = (await f.ui.request({ type: 'hub.status' })).value as { suites: Array<{ id: string; error: string | null }> };
+      const status = (await f.ui.request({ type: 'hub.status', history: true })).value as { suites: Array<{ id: string; error: string | null }> };
       return status.suites.find(job => job.id === id)?.error ? true : undefined;
     });
     assert.equal((await read()).stages![0]!.state, 'open', 'an undelivered result is not stage evidence');

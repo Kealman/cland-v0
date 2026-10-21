@@ -1262,6 +1262,27 @@ export class Store implements HygieneMemory {
     return this.#artifactIndex().filter(a => !a.movedTo && (topic === undefined || a.topic === topic));
   }
 
+  /** Stable newest-first pages avoid decoding the full artifact index on startup. */
+  artifactPage(topic?: string, before?: string): { artifacts: Artifact[]; more?: boolean; before?: string } {
+    if (before !== undefined && !/^A-[1-9][0-9]*$/.test(before)) throw new Error('invalid artifact cursor');
+    const cursor = before === undefined ? Number.MAX_SAFE_INTEGER : Number(before.slice(2));
+    if (!Number.isSafeInteger(cursor)) throw new Error('invalid artifact cursor');
+    const rows = this.#prepare(`select value from artifacts where number < ?
+      and json_extract(value, '$.movedTo') is null
+      and (? is null or json_extract(value, '$.topic') = ?)
+      order by number desc limit 101`).all(cursor, topic ?? null, topic ?? null) as Row[];
+    const artifacts: Artifact[] = [];
+    let bytes = 1024;
+    for (const row of rows) {
+      const size = Buffer.byteLength(row.value as string) + 1;
+      if (artifacts.length && (artifacts.length === 100 || bytes + size > 255 * 1024)) break;
+      artifacts.push(JSON.parse(row.value as string) as Artifact);
+      bytes += size;
+    }
+    const more = artifacts.length < rows.length;
+    return { artifacts, ...(more ? { more: true, before: artifacts.at(-1)!.id } : {}) };
+  }
+
   #artifactIndex(): Artifact[] {
     const rows = this.#prepare('select value from artifacts order by number').all() as Row[];
     return rows.map(r => JSON.parse(r.value as string) as Artifact);

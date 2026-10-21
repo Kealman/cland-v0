@@ -66,7 +66,7 @@ test('integrated dev verify publishes a portable function map once; task verify 
   const submitted = JSON.parse(launched.stdout) as { id: string; pid: number | null };
   if (submitted.pid) ownProcess(t, submitted.pid);
   const result = await eventually('integrated coverage result', async () => (await f.results())[0], 15000).catch(async error => {
-    const status = (await f.ui.request({ type: 'hub.status' })).value as HubStatus;
+    const status = (await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus;
     const log = await readFile(join(f.root, '.cland/run/suites', submitted.id, 'suite.log'), 'utf8');
     throw new Error(`${error.message}\n${JSON.stringify(status.suites)}\n${log}`);
   });
@@ -76,7 +76,7 @@ test('integrated dev verify publishes a portable function map once; task verify 
   assert.equal(maps.length, 1);
   const map = JSON.parse(await readFile(maps[0]!.path, 'utf8'));
   assert.equal(map.head, head);
-  assert.equal(map.tree, ((await f.ui.request({ type: 'hub.status' })).value as HubStatus).suites!.find(job => job.id === JSON.parse(launched.stdout).id)!.tree);
+  assert.equal(map.tree, ((await f.ui.request({ type: 'hub.status', history: true })).value as HubStatus).suites!.find(job => job.id === JSON.parse(launched.stdout).id)!.tree);
   assert.deepEqual(map.testFiles, ['hub/test/covered.test.ts', 'hub/test/scenarios/hub-lifecycle.test.ts', 'hub/test/scenarios/message-tracer.test.ts', 'hub/test/scenarios/startup-smoke.test.ts']);
   const functions = map.files['hub/src/hub/covered.ts'].functions;
   assert.deepEqual(functions.find((fn: { name: string }) => fn.name === 'called').tests, ['hub/test/covered.test.ts']);

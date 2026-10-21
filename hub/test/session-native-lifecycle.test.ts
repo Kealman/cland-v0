@@ -18,7 +18,7 @@ function startUsageDaemon(t: TestContext, root: string, env: Record<string, stri
 }
 
 async function records(root: string, ui: FrameClient): Promise<Array<Record<string, unknown>>> {
-  assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+  assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
   return (await readFile(join(root, '.cland/journal.jsonl'), 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(r => ['session-launched', 'session-model', 'subagent-launched', 'session-usage'].includes(r.event));
 }
 async function usageRecords(root: string, ui: FrameClient) { return (await records(root, ui)).filter(r => r.event === 'session-usage'); }
@@ -243,7 +243,7 @@ test('the first publication after hub restart is recorded again without replayin
 const read = (path: string) => readFile(path, 'utf8').catch(() => '');
 type Process = { pid: number; sessionId: string; harnessId: string; harnessSessionId: string };
 const idle = (ui: FrameClient) => eventually('coord idle', async () => {
-  const r = await ui.request({ type: 'hub.status' });
+  const r = await ui.request({ type: 'hub.status', history: true });
   return (r.value as { harnesses: Array<{ name: string; state: string }> }).harnesses.some(p => p.name === 'coord' && p.state === 'idle') ? true : undefined;
 });
 { const harness = 'codex';
@@ -268,7 +268,7 @@ const idle = (ui: FrameClient) => eventually('coord idle', async () => {
       const notes = [1, 2, 3].map(i => `${restart ? 'durable' : 'initial'} progress ${i}`);
       for (const text of notes) await sender.call('send', { to: ['coord'], text, kind: 'progress' });
       await sender.call('who'); // ordered receipt after the queued sends
-      await ui.request({ type: 'hub.status', flushLogs: true });
+      await ui.request({ type: 'hub.status', history: true, flushLogs: true });
       assert.equal((await inputLog()).includes(notes[0]!), false, 'no progress reaches the harness alone');
       if (restart) {
         ui.close();
@@ -280,7 +280,7 @@ const idle = (ui: FrameClient) => eventually('coord idle', async () => {
         await eventually('session resumed', async () => (await read(join(root, '.cland', 'log', 'hub.log'))).includes('"event":"session-resumed","session":"coord"') ? true : undefined);
         await idle(ui);
         await sender.call('who'); // ordered receipt after the queued sends
-      await ui.request({ type: 'hub.status', flushLogs: true });
+      await ui.request({ type: 'hub.status', history: true, flushLogs: true });
         assert.equal((await inputLog()).includes(notes[0]!), false, 'reconnect and role clauses leave progress held');
       }
       const report = `${restart ? 'durable' : 'initial'} report finished`;
@@ -310,7 +310,7 @@ const idle = (ui: FrameClient) => eventually('coord idle', async () => {
       await ui.waitFor(f => f.type === 'message' && (f.message as { text: string }).text === `pong: ${text}`, 15_000);
       await idle(ui);
     }
-    assert.equal((await ui.request({ type: 'hub.status', flushLogs: true })).ok, true);
+    assert.equal((await ui.request({ type: 'hub.status', history: true, flushLogs: true })).ok, true);
     const journal = await read(join(root, '.cland', 'journal.jsonl'));
     assert.match(journal, /"event":"send"[^\n]*"kind":"progress"/);
     assert.match(journal, /"event":"send"[^\n]*"kind":"report"/);

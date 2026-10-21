@@ -41,7 +41,7 @@ export async function fixture(t: import('node:test').TestContext, testScript: st
   // Read the current job record instead of retaining the launch response's snapshot.
   const workerPid = async (id: string) => {
     const pid = await eventually(`worker PID published for ${id}`, async () => {
-      const status = await ui.request({ type: 'hub.status' });
+      const status = await ui.request({ type: 'hub.status', history: true });
       assert.equal(status.ok, true, status.error);
       return (status.value as HubStatus).suites?.find(job => job.id === id)?.pid ?? undefined;
     });

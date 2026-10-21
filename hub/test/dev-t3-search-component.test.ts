@@ -20,7 +20,7 @@ test('budget-only periodic red names over-budget identities without starting cul
   const f = await fixture(t, { machine: 'scripted', config: 'dev_t3_every="1s"\nshards=1\nlifetime="15m"\nrun_timeout="5m"' });
   f.candidate.branch = 'dev';
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: f.candidate.head };
-  const jobs = async () => ((await f.ui.request({ type: 'hub.status' })).value as { suites: SuiteStatus[] }).suites;
+  const jobs = async () => ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: SuiteStatus[] }).suites;
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   await f.clock.advance(1000); await drive(f, f.verificationSettled());
   const run = (await jobs()).find(job => job.occasion === 'dev-t3')!;
@@ -65,7 +65,7 @@ for (const flake of [false, true]) test(`red periodic run ${flake ? 'reports a p
   index.recordMerge(f.item, { branch: 'task', tip: redHead, base: 'dev', commit: redHead }); index.close();
   f.candidate.branch = 'dev'; f.candidate.head = baseline; f.candidate.tree = baselineTree;
   f.candidate.selection = { mode: 'full', files: [], reason: 'periodic', fetchedDev: baseline };
-  const jobs = async () => ((await f.ui.request({ type: 'hub.status' })).value as { suites: SuiteStatus[] }).suites;
+  const jobs = async () => ((await f.ui.request({ type: 'hub.status', history: true })).value as { suites: SuiteStatus[] }).suites;
   const finish = async (job: SuiteStatus, code: number, log: string) => {
     await drive(f, f.machine.started(job.id)); f.machine.finish(job.id, code, log);
     await f.clock.advance(1000); await drive(f, f.verificationSettled());
