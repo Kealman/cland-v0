@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T15:57:07.058Z
+updated: 2026-10-21T16:05:48.238Z
 ---
 
 ## Summary
@@ -182,3 +182,16 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta source clear; A-8556, Standards0/Spec0. Exact origin21c10189/treee58c3c22, parents acceptedada57fea/incoming81b69649; Coordinator5f42dd2c independently confirmed. Core task-only dedup and incoming session scheduling both retained with disjoint trigger types/caches; snapshot-only session delivery and close cleanup retained. T-1055 dispatch/snapshot blobs equal incomingdev; tracker/projection/topics blobs equal acceptedhead; authoritative message-topic fields and event filter semantics preserved. Implement skill retains both procedure paragraphs and both metadata entries; summary/Lua/startup docs preserved, C5 reverified. A-8555 exact clean Darwin49/49 targeted/check0 support: sessions/filter/snapshot/summary/nvim, realLua1067+3rows0diff,836897bytes<1MiB,incremental0.243ms<100ms. No queued merge-head pass yet; oldA-8550 historical. C1–C4 final settlement awaits new same-head mode-free plus Coordinator-required full pre-merge run; refresh stale claimant marks before submission. QA affected/afterstage separate; no Reviewer runtime.
 
 Criteria: C5 verified.
+
+### rev-23 · 2026-10-21T16:05:48.238Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-merge-evidence-1
+commit: 21c1018922f3564e187ad5ebf44907d01f17a90d
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Task evidence clear, not final readiness; A-8560. Independently parsed A-8559/43fca595 at reviewed21c10189:2331ordinarytest/357filepass+35loadtest/filepass; all7ownedidentities5distinctpassingfinishes+explicit5/5. Actual Linuxx64c8lon1 T1/allfallbackT2hub+nvim/Web5files exit0;host35dee8c7 reusednotremote,T2workers2/Web4,life433s/$0.0300estimated. Incremental chain0.904ms<100ms; scale whole-test3.542s/maxload4.491s exceed report-only2s, distinct from recomputation. Lint132/59,duration/ratchetreportonly,6missingbaselines; no4sWeb-budgetpass. C1–C4 final settlement remains pending Coordinator-required full pre-merge run5f42dd2c; scheduledafterT1065 per20a90108. C5 source proof retained; A-8555 local merge-head Lua/startup supports but is no full receipt. NoT3/T4/integrated/QA claim from this task run; afterstageQA separate. No Reviewer runtime.

@@ -2,8 +2,8 @@
 id: T-1062
 kind: task
 title: An abandoned tracker drain with no pending operations is reported as not abandoned, so stop skips the fatal-exit fallback
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-811
 branch: t/T-1062-an-abandoned-tracker-drain-with-no
 created: 2026-10-21T14:17:11.952Z
-updated: 2026-10-21T15:46:50.830Z
+updated: 2026-10-21T16:39:46.926Z
+closed: 2026-10-21T16:39:46.926Z
 ---
 
 ## Summary
@@ -29,8 +30,10 @@ The tracker exposes the actual abandonment flag, set whenever the background dra
 
 - [x] C1. A background drain that times out with no pending operations reports abandoned, and the served hub takes the fatal-exit fallback and exits (test through a real `hub serve`).
   - done: impl-1062 · 2026-10-21T15:36:09.856Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1062-final-1 · 2026-10-21T16:05:10.593Z · commit 56020bba90db872168400cf0fb4879d3a5cd6206
 - [x] C2. A drain that completes in time reports not abandoned, and stop exits normally (test).
   - done: impl-1062 · 2026-10-21T15:36:09.872Z
+  - verified: rev-26 [reviewer] · run rev-20261021-1062-final-1 · 2026-10-21T16:05:10.593Z · commit 56020bba90db872168400cf0fb4879d3a5cd6206
 
 ## Comments
 
@@ -58,3 +61,26 @@ Source clear; A-8533 records full Standards/Spec audit of five files from 296a54
 ### impl-1062 · 2026-10-21T15:46:46.182Z
 
 Mode-free e8a3e236-f95e-4e03-9860-7610b06621e6 GREEN at source-clear unchanged56020bba90db872168400cf0fb4879d3a5cd6206. T1/T2/Web exit0;2322 tests all pass,0fail/skip. Linux x64 6.8.0-142-generic Node24.21.0 droplet c-8 lon1, lifetime451s cost$0.0313. Host T0 gate2baeed02 reused/not repeated remotely. Lint/duration/ratchet report-only; enforced gates passed. A-8546 durable log. T3 absent from task selection; required Coordinator full1d44cd6d and final Reviewer C1/C2 settlement still pending.
+
+### impl-1062 · 2026-10-21T16:04:10.212Z
+
+Coordinator decision c2deac27 accepts full1d44cd6d (A-8557) as pre-merge evidence with known shared T-1065 fake-Claude cleanup failure excepted under rule7. Full remains exit1:3398pass/1fail/5skip of3404, T1/T2 exit0,T3 exit1,Web absent. Actual C1/C2 daemon finish receipts pass at lines13580/13589, whole daemon file passes. Linux x64 Node24.21 droplet1476s/$0.1025; hostT0 reused; lint/duration/ratchet report-only. Requested Reviewer final C1/C2 settlement with this explicit exception and green mode-freee8a3e236/A-8546. Head56020bba unchanged; Coordinator says no shared-fix cherry-pick and enqueue only after T-1065 lands.
+
+### rev-26 · 2026-10-21T16:05:10.593Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1062-final-1
+commit: 56020bba90db872168400cf0fb4879d3a5cd6206
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1/C2 clear under explicit Coordinator rule-7 exception c2deac27-14bc-4ec0-a754-aaf6b2647a1f, confirmed by 601bb801; audit A-8558. Same-head green task e8a3e236/A-8546 has 2322 ordinary passes and T1/allT2/Web exit0. Full 1d44cd6d/A-8557 remains exit1,3398 pass/1 fail/5 skip, Web absent; actual sole failure is fake-claude-cleanup.test.ts:63 'directory removal starts only after the poll exits',1!==0, accepted by Coordinator as known T-1065 shared failure. All15 daemon tests pass: C1 empty-operation fatal exit case0.859755406s, C2 normal exit/no-abandonment case0.947767942s, with source-reviewed PID/receipt assertions retained. C1/C2 verified. No full-green claim; Coordinator enqueues only after T-1065 lands, and no fix is taken into this head. Linux x64 c-8 Node24.21; task451s/$0.0313, full1476s/$0.1025. Host typecheck2baeed02 not repeated remotely; timing/lint/ratchet report-only diagnostics retained. No T4/QA claim or reviewer execution. No task findings.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-21T16:39:46.926Z
+
+Merged f55ddabe58f106353c656ce9865a6b067032e894 onto dev.
