@@ -1,3 +1,5 @@
+import { networkInterfaces } from 'node:os';
+import { addressHost, phoneOrigin } from '../web-address.ts';
 // The browser's listener is independent of the authenticated spoke edge.
 import { once } from 'node:events';
 import type { Store } from './store.ts';
@@ -16,7 +18,7 @@ import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
 
-export type WebEdge = { status: WebEdgeStatus; link: () => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; close: () => Promise<void> };
+export type WebEdge = { status: WebEdgeStatus; link: (qr?: boolean) => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; close: () => Promise<void> };
 
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const MIME: Record<string, string> = {
@@ -30,13 +32,13 @@ const MIME: Record<string, string> = {
   '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
 };
 
-function allowedHost(req: IncomingMessage): boolean {
+function allowedHost(req: IncomingMessage, hostsAllowed: string[], origin: string): boolean {
   const hosts = req.rawHeaders.filter((_value, index) => index % 2 === 0 && req.rawHeaders[index]!.toLowerCase() === 'host');
   const port = req.socket.localPort;
-  return hosts.length === 1 && [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`].includes(req.headers.host?.toLowerCase() ?? '');
+  return hosts.length === 1 && [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`, ...hostsAllowed.map(host => `${host}:${port}`), ...(origin ? [new URL(origin).host] : [])].includes(req.headers.host?.toLowerCase() ?? '');
 }
 
-async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts): Promise<void> {
+async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts, hosts: string[], origin: string): Promise<void> {
   // Supply Date directly: Node's automatic Date cache creates a process-global timer.
   res.setHeader('Date', new Date().toUTCString());
   res.setHeader('Content-Security-Policy', CSP);
@@ -47,8 +49,8 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.writeHead(code).end(req.method === 'HEAD' ? undefined : body);
   };
-  if (!allowedHost(req)) {
-    reply(403, 'Host must name this loopback web port');
+  if (!allowedHost(req, hosts, origin)) {
+    reply(403, 'Host must name an allowed web address');
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -84,7 +86,7 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
     const tokens = new URL(req.url!, 'http://localhost').searchParams.getAll('token');
     const session = tokens.length === 1 ? auth.redeem(tokens[0]!) : null;
     if (!session) { reply(401, 'Invalid or expired sign-in link'); return; }
-    res.setHeader('Set-Cookie', `${auth.cookieName}=${session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_SECONDS}`);
+    res.setHeader('Set-Cookie', `${auth.cookieName}=${session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${WEB_SESSION_SECONDS}${origin && req.headers.host?.toLowerCase() === new URL(origin).host && req.headers.origin === origin ? '; Secure' : ''}`);
     res.setHeader('Location', '/');
     res.writeHead(302).end();
     return;
@@ -139,19 +141,27 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
 }
 
 /** A selected origin never drifts when its port is occupied. The daemon holds the project lock. */
-export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; dist?: string }): Promise<WebEdge> {
+export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; bind?: string; origin?: string; dist?: string }): Promise<WebEdge> {
   const clock = options.clock ?? realClock;
+  const bind = options.bind ?? '127.0.0.1';
+  const origin = options.origin ?? '';
+  const pageOrigin = (req: IncomingMessage) => origin && req.headers.host?.toLowerCase() === new URL(origin).host ? origin : `http://${req.headers.host}`;
   const prefix = { path: resolve(options.root), realPath: await realpath(options.root) };
   const auth = new WebAuth(prefix.realPath, options.store, () => clock.now().getTime());
   const artifacts = new WebArtifacts(options.store, auth, prefix, options.artifactOpen);
-  const link = () => {
+  const network = bind === '0.0.0.0' || bind === '::'
+    ? Object.values(networkInterfaces()).flatMap(rows => rows ?? []).filter(row => !row.internal && !row.address.includes('%') && (bind === '::' || row.family === 'IPv4')).map(row => row.address)
+    : [bind];
+  const hosts = network.map(addressHost);
+  const link = (qr = false) => {
     if (!http.listening) throw new Error('the web edge is unavailable');
-    return { url: `http://127.0.0.1:${port}/auth?token=${auth.mint()}` };
+    const base = qr ? phoneOrigin(bind, origin, port, network) : `http://${addressHost(bind === '0.0.0.0' || bind === '::' ? '127.0.0.1' : bind)}:${port}`;
+    return { url: `${base}/auth?token=${auth.mint()}` };
   };
   const file = join(options.stateDir, 'web-port');
   let port = options.port ?? 0;
   const dist = resolve(options.dist ?? fileURLToPath(new URL('../../../web/dist/', import.meta.url)));
-  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts); });
+  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const sockets = new Map<WebSocket, { alive: boolean; session: string }>();
   http.on('upgrade', (req, socket, head) => {
@@ -160,13 +170,13 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
       socket.destroy();
     };
     // Match the actual page origin, including its Host spelling and port.
-    if (!allowedHost(req) || req.headers.origin !== `http://${req.headers.host}`) { refuse(403, 'Forbidden'); return; }
+    if (!allowedHost(req, hosts, origin) || req.headers.origin !== pageOrigin(req)) { refuse(403, 'Forbidden'); return; }
     if (req.url !== '/ws') { refuse(404, 'Not Found'); return; }
     const session = auth.session(req.headers.cookie);
     if (!session) { refuse(401, 'Unauthorized'); return; }
-    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session, req.headers.host!));
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session, pageOrigin(req)));
   });
-  wss.on('connection', (ws: WebSocket, session: string, host: string) => {
+  wss.on('connection', (ws: WebSocket, session: string, page: string) => {
     const state = { alive: true, session };
     sockets.set(ws, state);
     const conversation = options.dispatcher.open({
@@ -174,7 +184,7 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
       send: frame => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),
       isOpen: () => ws.readyState === WebSocket.OPEN,
-    }, { authenticated: true, edge: 'web', artifactUrl: id => artifacts.mint(session, id, `http://${host}`) });
+    }, { authenticated: true, edge: 'web', artifactUrl: id => artifacts.mint(session, id, page) });
     ws.on('message', data => conversation.receive(data.toString()));
     ws.on('pong', () => { state.alive = true; });
     ws.on('close', () => {
@@ -233,16 +243,16 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
     }
     await new Promise<void>((resolve, reject) => {
       http.once('error', reject);
-      http.listen(port, '127.0.0.1', () => { http.off('error', reject); resolve(); });
+      http.listen(port, bind, () => { http.off('error', reject); resolve(); });
     });
     port = (http.address() as AddressInfo).port;
     if (!options.port) {
       await writeFile(`${file}.tmp`, `${port}\n`, { mode: 0o600 });
       await rename(`${file}.tmp`, file);
     }
-    return { status: { port, available: true }, link, sessions, revoke, close };
+    return { status: { port, bind: (http.address() as AddressInfo).address, available: true }, link, sessions, revoke, close };
   } catch (error) {
     await close();
-    return { status: { port, available: false, reason: error instanceof Error ? error.message : String(error) }, link, sessions, revoke, close };
+    return { status: { port, bind, available: false, reason: error instanceof Error ? error.message : String(error) }, link, sessions, revoke, close };
   }
 }

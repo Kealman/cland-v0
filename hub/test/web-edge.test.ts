@@ -1,3 +1,4 @@
+import { connect } from 'node:net';
 // T2: the project's discovery, frames and HTTP edge in-process; no native harnesses or Git.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -171,4 +172,51 @@ test('the web edge accepts only a loopback Host with its exact port', async t =>
     assert.equal(response.status, 403, host);
     assert.equal(response.headers['x-content-type-options'], 'nosniff');
   }
+});
+
+test('configured web bind is independent of the spoke loopback listener', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  // Loopback alias stands in for a LAN interface without exposing the fixture.
+  await writeFile(join(root, '.cland/config.toml'), '[web]\nbind = "::1"\n');
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const status = await askHub(hub.discovery, 'hub.status') as HubStatus;
+  assert.equal(status.web?.bind, '::1');
+  assert.equal(status.spokeBind, '127.0.0.1');
+  const addresses = await Promise.all([
+    new Promise<string>((resolve, reject) => {
+      const req = request({ hostname: '::1', port: status.web!.port, agent: false }, res => {
+        const address = res.socket.remoteAddress!;
+        res.resume();
+        res.on('end', () => resolve(address));
+      });
+      req.setTimeout(2000, () => req.destroy(new Error('bind request timed out')));
+      req.on('error', reject); req.end();
+    }),
+    new Promise<string>((resolve, reject) => {
+      const socket = connect(hub.discovery.port, '127.0.0.1');
+      socket.setTimeout(2000, () => socket.destroy(new Error('spoke connection timed out')));
+      socket.on('error', reject);
+      let address: string;
+      socket.on('connect', () => { address = socket.remoteAddress!; socket.end(); });
+      socket.on('close', () => resolve(address));
+    }),
+  ]);
+  assert.deepEqual(addresses, ['::1', '127.0.0.1']);
+});
+
+test('doctor warns about plain HTTP on a network bind without a tunnel, including a stopped hub', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  const path = join(root, '.cland/config.toml');
+  await writeFile(path, '[web]\nbind = "192.0.2.4"\n');
+  const tools = await toolchain(t);
+  const warning = check((await report(root, tools.env, [])).report, 'web network');
+  assert.equal(warning.verdict, 'warn');
+  assert.match(warning.detail, /plain HTTP.*cookie.*clear/);
+  assert.match(warning.fix!, /web.*origin/);
+  await writeFile(path, '[web]\nbind = "192.0.2.4"\norigin = "https://phone.example"\n');
+  assert.equal(check((await report(root, tools.env, [])).report, 'web network').verdict, 'ok');
+  await writeFile(path, '[web]\nbind = "::1"\n');
+  assert.equal(check((await report(root, tools.env, [])).report, 'web network').verdict, 'ok');
 });

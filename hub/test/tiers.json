@@ -509,6 +509,7 @@
     "hub/test/web-authority.test.ts": "T2",
     "hub/test/web-bundle.test.ts": "T1",
     "hub/test/web-edge.test.ts": "T2",
+    "hub/test/web-network-unit.test.ts": "T1",
     "hub/test/web-phase.test.ts": "T1",
     "hub/test/worktree-cli.test.ts": "T3",
     "nvim/test/account-poll.test.ts": "T2",

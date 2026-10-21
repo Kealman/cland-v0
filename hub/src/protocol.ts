@@ -597,7 +597,7 @@ export type DemoRequest =
 
 export type ArtifactUrl = { type: 'artifact.url'; id: string; artifact: string };
 export type ArtifactUrlResult = { url: string };
-export type WebLink = { type: 'web.link'; id: string };
+export type WebLink = { type: 'web.link'; id: string; qr?: boolean };
 export type WebLinkResult = { url: string };
 export type WebSessions = { type: 'web.sessions'; id: string };
 export type WebRevoke = { type: 'web.revoke'; id: string; session: string };
@@ -768,7 +768,7 @@ export type VerificationQueue = {
   metrics: { window: number; count: number; wait: DurationStats; run: DurationStats; queueWait?: QueueWaitMetrics };
 };
 
-export type WebEdgeStatus = { port: number; available: boolean; reason?: string };
+export type WebEdgeStatus = { port: number; bind?: string; available: boolean; reason?: string };
 
 /** Latest completed result per suite kind/occasion; full receipts remain opt-in. */
 export type SuiteSummary = {
@@ -777,6 +777,8 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  /** Actual spoke listener address; absent on older or stdio-only hubs. */
+  spokeBind?: string;
   /** The independent browser listener; absent on older or stdio-only hubs. */
   web?: WebEdgeStatus;
   /** Scheduling priority observed at hub startup. Absent on older hubs. */
@@ -960,8 +962,9 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'hub.subscriptions':
     case 'hub.status':
       return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
-    case 'web.sessions':
     case 'web.link':
+      return f.qr === undefined || typeof f.qr === 'boolean';
+    case 'web.sessions':
     case 'hub.stop':
     case 'hub.reload':
     case 'topic.list':

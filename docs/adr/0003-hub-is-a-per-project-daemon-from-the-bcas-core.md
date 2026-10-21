@@ -44,3 +44,22 @@ creation and last-use times in `hub.db`; they survive restarts and expire 30 day
 after creation. Human-only Unix-socket `web.sessions` and `web.revoke` list them
 and revoke one with its sockets closed before returning. The hub secret
 never crosses the browser edge.
+
+
+## Amendment, 2026-10-21: configurable web network binding (T-988)
+
+`[web] bind` defaults to `127.0.0.1` and may name an IPv4 or IPv6 network address,
+including a wildcard. Only the independent web HTTP listener uses it; the spokes'
+WebSocket listener stays on `127.0.0.1`, and the Unix socket stays local. Host and
+exact Origin checks continue on the web edge, with the concrete bound address
+(or local interface addresses for a wildcard) added to the Host allow-list.
+
+`[web] origin` names the human's HTTPS tunnel origin and adds its Host and exact
+Origin to admission. A cookie issued with both Host and Origin matching it carries
+`Secure`, even though the last hop is HTTP. Forwarded headers are never trusted.
+The tunnel preserves these request headers; a top-level GET without Origin does
+not meet the Secure condition. `cland web --qr` uses the tunnel first, otherwise
+the LAN address, and refuses loopback alone. `cland doctor` warns for a network
+bind without a tunnel because plain HTTP exposes cookies and lacks phone
+notifications/install support. This supersedes the loopback-only web restriction;
+the spokes' admission and binding remain as decided above.

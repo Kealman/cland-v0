@@ -1,3 +1,7 @@
+import { createServer } from 'node:net';
+import { parseConfig } from '../src/init/config.ts';
+import { phoneOrigin } from '../src/web-address.ts';
+import { decodeTerminalQr } from './qr-decode.ts';
 // T2: the executable CLI and HTTP authentication against an in-process project hub.
 import { test, type TestContext } from 'node:test';
 import { once } from 'node:events';
@@ -280,3 +284,110 @@ for (const type of ['web.sessions', 'web.revoke'] as const) {
     assert.match(refused.error!, /CLI and Neovim/);
   });
 }
+
+test('tunnel Host and exact Origin admit a web client and set Secure without trusting forwarded headers', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[web]\norigin = "https://phone.example:8443"\n');
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const mint = async () => (await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string }).url;
+  const url = await mint();
+  const tunnel = { Host: 'phone.example:8443', Origin: 'https://phone.example:8443' };
+  const auth = await get(url, tunnel);
+  assert.equal(auth.status, 302);
+  assert.match(auth.headers['set-cookie']![0]!, /; Secure$/);
+  const cookie = auth.headers['set-cookie']![0]!.split(';')[0]!;
+  const ws = new WebSocket(`${new URL(url).origin.replace('http:', 'ws:')}/ws`, { headers: { ...tunnel, Cookie: cookie } });
+  t.after(() => ws.terminate());
+  const client = frameClient(line => ws.send(line.trim()), fn => ws.on('message', data => fn(`${data}\n`)), () => ws.terminate());
+  await once(ws, 'open', { signal: AbortSignal.timeout(2000) });
+  const welcomed = client.waitFor(f => f.type === 'welcome');
+  client.send({ type: 'hello', protocol: 2, client: 'web' });
+  assert.equal((await welcomed).name, 'human');
+  assert.equal((await client.request({ type: 'hub.status' })).ok, true);
+  for (const headers of [
+    { Host: tunnel.Host },
+    { Host: tunnel.Host, Origin: 'https://foreign.example' },
+    { 'X-Forwarded-Host': tunnel.Host, 'X-Forwarded-Proto': 'https', Forwarded: 'host=phone.example:8443;proto=https', Origin: tunnel.Origin },
+  ]) {
+    const response = await get(await mint(), headers);
+    assert.equal(response.status, 302);
+    assert.doesNotMatch(response.headers['set-cookie']![0]!, /; Secure/);
+  }
+  for (const headers of [
+    { ...tunnel, Origin: 'https://foreign.example' },
+    { ...tunnel, Origin: 'null' },
+    { ...tunnel, Host: 'foreign.example', 'X-Forwarded-Host': tunnel.Host },
+  ]) {
+    const refused = await get(`${new URL(url).origin}/ws`, { ...headers, Cookie: cookie, Connection: 'Upgrade', Upgrade: 'websocket', 'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==' });
+    assert.equal(refused.status, 403);
+  }
+});
+
+test('web --qr refuses loopback alone with a reason and never opens a browser', async t => {
+  const root = await tempProject(t);
+  await projectHub(t, root, {}, { clock: new FakeClock() });
+  const result = await clandWithEnv(root, await openers(root), 'web', '--qr');
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /phone cannot reach loopback/);
+  assert.equal(result.stdout, '');
+  await assert.rejects(readFile(join(root, 'opened')), { code: 'ENOENT' });
+});
+
+
+test('web --qr prints a decodable tunnel link without opening the browser', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[web]\norigin = "https://phone.example:8443"\n');
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const result = await clandWithEnv(root, await openers(root), 'web', '--qr');
+  assert.equal(result.code, 0, result.stderr);
+  const [url, ...qr] = result.stdout.trimEnd().split('\n');
+  assert.match(url!, /^https:\/\/phone\.example:8443\/auth\?token=[a-f0-9]{64}$/);
+  assert.equal(decodeTerminalQr(qr.join('\n')), url);
+  const local = `http://127.0.0.1:${(await askHubFrame(hub.discovery, { type: 'hub.status' }, 3000, {}) as { web: { port: number } }).web.port}${new URL(url!).pathname}${new URL(url!).search}`;
+  assert.equal((await get(local, { Host: 'phone.example:8443', Origin: 'https://phone.example:8443' })).status, 302);
+  assert.equal((await get(local, { Host: 'phone.example:8443' })).status, 401);
+  await assert.rejects(readFile(join(root, 'opened')), { code: 'ENOENT' });
+});
+
+
+test('web --qr draws the LAN link from a recorded Unix frame fixture with scratch config only', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'));
+  const configPath = join(root, '.cland/config.toml');
+  await writeFile(configPath, '[web]\nbind = "192.0.2.4"\n');
+  const web = parseConfig(await readFile(configPath, 'utf8'), 'fixture').web;
+  const url = `${phoneOrigin(web.bind, web.origin, 1234)}/auth?token=${'ab'.repeat(32)}`;
+  const socket = join(root, '.cland/qr.sock');
+  const requests: Array<Record<string, unknown>> = [];
+  const server = createServer(peer => {
+    let buffer = '';
+    peer.setEncoding('utf8');
+    peer.on('data', chunk => {
+      buffer += chunk;
+      let newline: number;
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const frame = JSON.parse(buffer.slice(0, newline));
+        buffer = buffer.slice(newline + 1);
+        if (frame.type === 'hello') peer.write(`${JSON.stringify({ type: 'welcome', protocol: 2, name: 'human' })}\n`);
+        else {
+          requests.push(frame);
+          peer.end(`${JSON.stringify({ type: 'result', id: frame.id, ok: true, value: { url } })}\n`);
+        }
+      }
+    });
+  });
+  await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(socket, resolve); });
+  t.after(() => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+  await writeFile(join(root, '.cland/hub.json'), JSON.stringify({ socket, secret: 'fixture', pid: process.pid, port: 1234, version: 'fixture' }));
+  const result = await clandWithEnv(root, await openers(root), 'web', '--qr', '--no-open');
+  assert.equal(result.code, 0, result.stderr);
+  const [printed, ...qr] = result.stdout.trimEnd().split('\n');
+  assert.equal(printed, url);
+  assert.equal(decodeTerminalQr(qr.join('\n')), url);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0]!.type, 'web.link');
+  assert.equal(requests[0]!.qr, true);
+  await assert.rejects(readFile(join(root, 'opened')), { code: 'ENOENT' });
+});

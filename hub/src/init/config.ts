@@ -1,3 +1,5 @@
+import { canonicalAddress } from '../web-address.ts';
+import { isIP } from 'node:net';
 // `.cland/config.toml` (spec 4.9, decision #17): the project's name and the hub's hygiene thresholds, committed.
 // `cland init` writes it with the defaults; `cland update` rewrites it to the current template, keeping the values
 // it finds (so a threshold the human changed survives an update). A file without the mark is the human's and left
@@ -25,7 +27,7 @@ export type ProjectConfig = {
   tracker: { levels: Levels; fatalStallMs: number };
   plan: { approval: 'none' | 'human'; qaDefault: QaPolicy };
   artifacts: { retentionDays: number };
-  web: { port: number; dist: string };
+  web: { port: number; dist: string; bind: string; origin: string };
   keys: { layouts: string[] };
   hygiene: { eventLimit: RateLimit; rateLimit: RateLimit; loopBreaker: LoopBreaker; maxTextBytes: number };
 };
@@ -43,7 +45,7 @@ export const defaultConfig = (name: string): ProjectConfig => ({
   tracker: { levels: [...DEFAULT_LEVELS], fatalStallMs: 60000 },
   plan: { approval: 'none', qaDefault: { scope: 'none', when: 'per-item' } },
   artifacts: { retentionDays: 30 },
-  web: { port: 0, dist: '' },
+  web: { port: 0, dist: '', bind: '127.0.0.1', origin: '' },
   keys: { layouts: [] },
   hygiene: { eventLimit: { ...EVENT_LIMIT }, rateLimit: { ...RATE_LIMIT }, loopBreaker: { ...LOOP_BREAKER }, maxTextBytes: MAX_TEXT_BYTES },
 });
@@ -169,8 +171,12 @@ loop_breaker_mute_minutes = ${minutes(h.loopBreaker.muteMs)}
 # the largest message text, in bytes
 max_text_bytes = ${h.maxTextBytes}
 
-# The browser listener is loopback-only. Changes apply after a hub restart.
+# The browser listener defaults to loopback. Changes apply after a hub restart.
 [web]
+# Only the web edge uses this address; the spokes stay on loopback.
+bind = ${JSON.stringify(c.web.bind)}
+# Optional HTTPS tunnel origin; forwarded headers are never trusted.
+origin = ${JSON.stringify(c.web.origin)}
 # 0 keeps the first free port in .cland/web-port; a taken port disables only this edge.
 port = ${c.web.port}
 # Empty serves the installed web/dist; a development bundle path is relative to the project root.
@@ -342,6 +348,19 @@ export function parseConfig(text: string, fallbackName: string, env: NodeJS.Proc
   accepts('keys.layouts', keys.layouts, Boolean(Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')), 'a list of strings');
   if (Array.isArray(keys.layouts) && keys.layouts.every(v => typeof v === 'string')) c.keys.layouts = [...new Set(keys.layouts)];
   const web = (doc.web ?? {}) as Record<string, unknown>;
+  if (web.bind !== undefined) {
+    if (typeof web.bind !== 'string' || !isIP(web.bind) || web.bind.includes('%')) throw new Error('web.bind must be an IPv4 or IPv6 address');
+    c.web.bind = canonicalAddress(web.bind);
+  }
+  if (web.origin !== undefined) {
+    if (typeof web.origin !== 'string') throw new Error('web.origin must be an HTTPS origin or empty');
+    if (web.origin) {
+      let origin: URL;
+      try { origin = new URL(web.origin); } catch { throw new Error('web.origin must be an HTTPS origin'); }
+      if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash || origin.origin !== web.origin.replace(/\/$/, '')) throw new Error('web.origin must be an HTTPS origin without credentials, path, query or fragment');
+      c.web.origin = origin.origin;
+    }
+  }
   if (web.port !== undefined) {
     if (typeof web.port !== 'number' || !Number.isInteger(web.port) || web.port < 0 || web.port > 65535) throw new Error('web.port must be an integer from 0 to 65535 (0 keeps the first free port)');
     c.web.port = web.port;

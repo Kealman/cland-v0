@@ -174,7 +174,7 @@ fonts and the development loop. E-412 serves this bundle; there is no dev bridge
 | `test/fakes/claude-code/` | The fake Claude Code the adapter is tested against (`claude`, a script; `fake-claude.ts`): `--bg` with the MCP config, the settings hooks and the plugin dir, the real spoke as its MCP server, the real cland mod against a small `$`, `agents --json`, `attach`, `stop`. Every CLI invocation records its time, arguments and effective config directory in `invocations.jsonl` (and the compatible `calls.jsonl`); sessions are partitioned by that directory and job records include only the names of inherited auth variables; a `logged-out` marker refuses `agents` and `--bg` with token expiry. Like the real one it also runs the project's `.claude/settings.json` hooks and reads `CLAUDE.md` with its `@` imports, else `AGENTS.md`; what a session loaded goes to `jobs/<id>.context.json`. |
 | `test/fakes/codex/` | The fake Codex the adapter is tested against (`codex`, a script; `fake-codex.ts`): `app-server --listen unix://…` speaking Codex's JSON-RPC over a WebSocket on the socket, with the real spoke started from the `-c mcp_servers…` overrides; `resume --remote …`, which refuses any `-c`/`--profile`; `--version`. |
 
-The hub also owns an independent **web edge**, an HTTP listener on `127.0.0.1`.
+The hub also owns an independent **web edge**, an HTTP listener defaulting to `127.0.0.1`.
 It serves the installed `web/dist` bundle. Its stable port is `webPort` in
 `.cland/hub.json`; `port` remains the spokes' WebSocket port. With `[web] port = 0`
 (the default, also when unset), the first start chooses a free port and keeps it
@@ -182,26 +182,60 @@ in the volatile, ignored `.cland/web-port` file across restarts. An explicit
 `[web] port` (1–65535) overrides that file without replacing the kept automatic
 port. A taken port never causes a move to another origin: the hub starts with
 its spoke and Unix-socket edges, logs `web-unavailable` with the port and reason,
-and reports `{ port, available: false, reason }` as `hub.status.web`.
+and reports `{ port, bind, available: false, reason }` as `hub.status.web`.
 `cland hub status` shows the web URL or that reason in its hub block, before
 `sessions: N` and the connected session rows; `cland doctor` warns. Free the port or
 change the setting and restart the hub. A running edge reports
-`hub.status.web = { port, available: true }`; stdio-only hubs omit it.
+`hub.status.web = { port, bind, available: true }`; stdio-only hubs omit it.
 
 For development, `[web] dist = "path/to/bundle"` serves another bundle; relative
 paths resolve from the project root, absolute paths are accepted, and the empty
-default uses the installed bundle. Both settings take effect on hub restart.
+default uses the installed bundle. All `[web]` settings take effect on hub restart.
 For example:
 
 ```toml
 [web]
 port = 54321
+bind = "127.0.0.1"
+origin = ""
 dist = "web/dist"
 ```
 
-Use `http://127.0.0.1:<webPort>/`. Host must be `127.0.0.1`, `localhost` or `[::1]`
-with that exact port. The spokes' authentication and refusal of client hellos
-are unchanged. Paths stay inside the bundle,
+`[web] bind` accepts an IPv4 or IPv6 address. A LAN address opens only the web
+edge there; the spokes stay on `127.0.0.1`. Wildcards `0.0.0.0` and `::` expose
+local interfaces, whose addresses join the Host allow-list at startup. Loopback
+Hosts (`127.0.0.1`, `localhost`, `[::1]`) and the bound address require the exact
+web port; foreign Hosts and duplicate Host headers are refused. `hub.status.web.bind`
+reports the actual bound address; `hub.status.spokeBind` reports the spokes’
+listener address from its server. On a wildcard bind, a normal link uses loopback;
+on a concrete bind it uses that address.
+
+`[web] origin = "https://phone.example"` names the human's HTTPS tunnel, with an
+optional port and no path, credentials, query or fragment. Its Host joins the
+allow-list, and that exact HTTPS Origin is required when upgrading with that Host.
+The tunnel must preserve Host and Origin. The last hop may be plain HTTP: forwarded
+headers (`Forwarded`, `X-Forwarded-*`) are never trusted. A cookie issued when
+both Host and Origin match this configured origin carries `Secure`; other requests
+do not gain `Secure` from a forwarded header. A top-level GET may omit Origin, in
+which case this rule does not set Secure. The tunnel and its TLS are human-managed;
+cland starts no tunnel service.
+
+`cland web --qr` prints the one-time link and a Unicode half-block QR code with a
+four-module quiet zone and explicit terminal colours. It never opens a browser;
+`--no-open` may accompany it. The link uses `[web] origin` first, otherwise the
+concrete LAN bind (for a wildcard, the first usable non-internal local address).
+Selection skips loopback, unspecified/multicast and IPv6 link-local destinations
+(`fe80::/10`): a link-local zone belongs to each device, so the hub’s scope id
+cannot be put in a phone URL. With no usable LAN address, QR mode refuses with
+the reason and suggests a tunnel or a LAN bind.
+Loopback alone refuses with a reason: a phone cannot reach it. QR encoding uses
+the vendored MIT-licensed Project Nayuki encoder, with no runtime package dependency.
+The QR and printed URL contain the same five-minute single-use token: treat both
+as sign-in credentials. `cland doctor` warns when a network bind has no tunnel:
+plain HTTP carries the cookie in clear and gives phones no notifications or install.
+
+The spokes' authentication and refusal of client hellos are unchanged.
+Paths stay inside the bundle,
 including symlinks; extensionless routes fall back to `index.html`. Missing
 bundle/index responses name `npm run build --workspace web` (503, plain text).
 Every ordinary HTTP response has CSP (including `frame-ancestors 'none'`),
@@ -217,10 +251,10 @@ link; `cland web --help` describes the command. It does not start the hub.
 This is a human-shell command: a session's shell is refused, including an
 unknown session identity; do not unset its actor variables to bypass that check.
 
-The client frame `{type: "web.link", id: "…"}` returns a normal `result` with
+The client frame `{type: "web.link", id: "…", qr?: boolean}` returns a normal `result` with
 `value: {url: "http://127.0.0.1:<port>/auth?token=…"}`. It requires the local Unix
 socket and human authority, so isolated test clients can mint links without
-opening a browser. The token is 32 random bytes, encoded as 64 hex digits; the
+opening a browser. `qr: true` selects the phone origin and refuses loopback alone. The token is 32 random bytes, encoded as 64 hex digits; the
 hub retains only its SHA-256 digest and accepts it for five minutes, once.
 `GET /auth?token=…` atomically spends it, sets a fresh browser session cookie,
 and sends a 302 redirect to `/`. Unknown, expired and spent tokens return 401;
@@ -253,8 +287,8 @@ socket (not browser, spoke or stdio). Their result values are
 `{sessions: [{id, createdAt, lastUsedAt, sockets}]}` and `{revoked: "<uuid>"}`.
 No cookie or digest is returned by listing. Session shells are refused.
 
-Every `/ws` upgrade checks the exact loopback Host and port, an Origin exactly
-matching `http://<Host>`, and the project's unexpired cookie before accepting
+Every `/ws` upgrade checks an allowed Host and its exact port, an Origin exactly
+matching `http://<Host>` (or the configured HTTPS tunnel origin for its Host), and the project's unexpired cookie before accepting
 any frames. Missing, foreign and `null` Origins are refused with 403; a missing
 or invalid cookie gets 401. An authenticated socket accepts only a client hello
 `{type: "hello", protocol: 2, client: "web"}` without a secret, welcomes it as
@@ -1555,6 +1589,7 @@ Doctor requires only the harnesses used by `.cland/roles.toml`: each role's laun
 | `project` | Only when `.cland/` is missing: then the project checks below are this one `fail`, `cland init`. | |
 | `territory` | `origin` is the local bare territory, it holds `main` and `dev`, `HEAD` is on `dev`, and the protection hook is current and executable; a non-Git folder needs none. | `fail` names missing or damaged state; run `cland init` (restore a changed `origin` to `.cland/territory.git` first). |
 | `hub` | `hub.json` names a live pid that holds `.cland/hub.lock` and answers `hub.status` on the socket, at this cland's version. | No hub (no file, a stale file): `warn`, `cland hub start`. A lock holder without `hub.json`, an invalid file, a hub that does not answer: `fail`. A stale file (its pid gone, or not the lock's holder) while a live process holds the lock: `fail` naming the holder, `kill <holder>`, then `rm .cland/hub.json` and `cland hub start` (`cland hub start` alone would refuse). Another version: `warn`, restart it. |
+| `web network` | A loopback bind or HTTPS tunnel is configured. | `warn` for a network bind without `[web] origin`: cookie in clear, no phone notifications/install; configure the tunnel or return to loopback. |
 | `web edge` | The independent browser listener is available. | `warn` with its port and bind failure reason; free the port or change `[web] port`, then restart. Spoke/Unix-socket service continues. |
 | `hub.json` | Valid (socket, port, secret, pid, version; optional webPort), or absent while no hub runs. | Missing while a hub holds the lock, or invalid: `fail`. Stale: `warn`. |
 | `secret` | `.cland/secret` is 64 hex digits, mode 0600, the one `hub.json` carries. | Absent before the first start: `warn`; loose mode: `fail`, `chmod 600 .cland/secret`. |

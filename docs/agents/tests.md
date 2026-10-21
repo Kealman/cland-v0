@@ -1517,6 +1517,20 @@ The 16 ms target is a quiet local macOS measurement, separate from load-gate rep
 
 ## Browser sign-in fixtures
 
+Network-edge tests use loopback aliases (`::1` for the web edge while spokes
+stay on `127.0.0.1`) or scratch config; never bind the live hub to a network
+interface. `web-edge.test.ts` reads both actual listener addresses from `hub.status` and confirms both connected
+addresses, plus doctor's
+stopped-hub config warning. `web-auth.test.ts` covers tunnel Host/Origin admission,
+Secure only on the configured Host + Origin pair, forwarded-header spoofing,
+and executable `web --qr` output/refusal with scratch browser openers.
+`web-network-unit.test.ts` covers LAN/wildcard/IPv6 link selection and half-block
+QR vectors at T1, including link-local-first/only-link-local wildcard selection
+and tunnel precedence; its independent byte-mode decoder reads format/mask/data from
+the terminal rendering (L, versions 1–6; it does not correct damaged symbols).
+`web.link` optionally takes `qr: true`; it remains a human-only Unix-socket frame.
+
+
 `cland web` is human-only. A session shell carries its own actor and is refused;
 never remove the live session's identity to mint a link. In a disposable project,
 `projectHub` plus `askHubFrame(discovery, {type: 'web.link'}, 3000, {})` mints a

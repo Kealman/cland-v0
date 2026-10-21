@@ -755,7 +755,7 @@ export type DemoRequest =
 // hub/src/protocol.ts
 export type ArtifactUrl = { type: 'artifact.url'; id: string; artifact: string };
 export type ArtifactUrlResult = { url: string };
-export type WebLink = { type: 'web.link'; id: string };
+export type WebLink = { type: 'web.link'; id: string; qr?: boolean };
 export type WebLinkResult = { url: string };
 export type WebSessions = { type: 'web.sessions'; id: string };
 export type WebRevoke = { type: 'web.revoke'; id: string; session: string };
@@ -919,7 +919,7 @@ export type SuiteMode = 'hub-only' | 'hub-selected' | 'nvim-only' | 'web-only' |
 export type CoverageRecording = { head: string; tree: string; run: string };
 
 // hub/src/protocol.ts
-export type WebEdgeStatus = { port: number; available: boolean; reason?: string };
+export type WebEdgeStatus = { port: number; bind?: string; available: boolean; reason?: string };
 
 /** Latest completed result per suite kind/occasion; full receipts remain opt-in. */
 export type SuiteSummary = {
@@ -928,6 +928,8 @@ export type SuiteSummary = {
 };
 
 export type HubStatus = {
+  /** Actual spoke listener address; absent on older or stdio-only hubs. */
+  spokeBind?: string;
   /** The independent browser listener; absent on older or stdio-only hubs. */
   web?: WebEdgeStatus;
   /** Scheduling priority observed at hub startup. Absent on older hubs. */

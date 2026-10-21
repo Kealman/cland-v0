@@ -72,7 +72,7 @@ export type Hub = HubBase & {
   port: number;
 };
 
-export type WebSocketEdge = { url: string; port: number; close: () => Promise<void> };
+export type WebSocketEdge = { url: string; port: number; bind: string; close: () => Promise<void> };
 
 const bearerMatches = (header: string | undefined, secret: string): boolean => {
   if (!header) return false;
@@ -251,6 +251,7 @@ export async function createWebSocketEdge(
   return {
     url,
     port: address.port,
+    bind: address.address,
     close: async () => {
       clock.clearInterval(keepaliveTimer);
       for (const ws of sockets) ws.terminate();

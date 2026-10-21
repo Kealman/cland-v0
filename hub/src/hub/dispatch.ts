@@ -105,7 +105,7 @@ export type Peer = {
 
 /** What only the process running the hub can answer: its facts, and stopping it. */
 export type Control = {
-  webLink?: () => import('../protocol.ts').WebLinkResult;
+  webLink?: (qr?: boolean) => import('../protocol.ts').WebLinkResult;
   webSessions?: () => import('../protocol.ts').WebSessionsResult;
   webRevoke?: (id: string) => Promise<import('../protocol.ts').WebRevokeResult>;
   status: () => Omit<HubStatus, 'sessions'>;
@@ -1657,7 +1657,7 @@ export class Dispatcher {
           case 'web.link':
             if (transport.edge !== 'socket') throw new Error('web.link requires the local Unix socket');
             if (!control.webLink) throw new Error('the web edge is unavailable');
-            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink() });
+            peer.send({ type: 'result', id: frame.id, ok: true, value: control.webLink(frame.qr) });
             break;
           case 'hub.status': {
             const status = (): HubFrame => {

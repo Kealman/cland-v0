@@ -136,9 +136,9 @@ test('marketing allow-list preserves configured exact paths and directory prefix
 
 // T1: web settings validate and round-trip without opening listeners.
 test('web port and development bundle settings round-trip and reject invalid values', t => {
-  assert.deepEqual(parseConfig('', 'web').web, { port: 0, dist: '' });
+  assert.deepEqual(parseConfig('', 'web').web, { port: 0, dist: '', bind: '127.0.0.1', origin: '' });
   const c = parseConfig('[web]\nport = 54321\ndist = "../shell bundle"', 'web');
-  assert.deepEqual(c.web, { port: 54321, dist: '../shell bundle' });
+  assert.deepEqual(c.web, { port: 54321, dist: '../shell bundle', bind: '127.0.0.1', origin: '' });
   assert.deepEqual(parseConfig(renderConfig(c), 'web').web, c.web);
   for (const port of [-1, 65536, 1.5, '1234', null]) {
     assert.throws(() => parseConfig(`[web]\nport = ${JSON.stringify(port)}`, 'web', {}, { strict: true }), /web.port|Invalid TOML/);
@@ -154,4 +154,18 @@ test('web port and development bundle settings round-trip and reject invalid val
   assert.equal(setConfigValue(root, path, 'web.port', 65535, {}), 65535);
   assert.equal(setConfigValue(root, path, 'web.dist', 'prototype/dist', {}), 'prototype/dist');
   assert.equal(setConfigValue(root, path, 'web.port', 0, {}), 0);
+});
+
+
+test('web bind and HTTPS tunnel origin validate and round-trip', () => {
+  const c = parseConfig('[web]\nbind = "192.0.2.4"\norigin = "https://phone.example:8443"', 'web');
+  assert.equal(c.web.bind, '192.0.2.4');
+  assert.equal(c.web.origin, 'https://phone.example:8443');
+  assert.deepEqual(parseConfig(renderConfig(c), 'web').web, c.web);
+  for (const bind of ['', 'example.org', '127.0.0.1:80', ' 127.0.0.1', 4]) {
+    assert.throws(() => parseConfig(`[web]\nbind = ${JSON.stringify(bind)}`, 'web'), /web.bind/);
+  }
+  for (const origin of ['http://phone.example', 'https://user@phone.example', 'https://phone.example/path', 'https://phone.example?x', 'https://phone.example#x', 4]) {
+    assert.throws(() => parseConfig(`[web]\norigin = ${JSON.stringify(origin)}`, 'web'), /web.origin/);
+  }
 });

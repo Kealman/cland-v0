@@ -269,9 +269,9 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
           if (!web) throw new Error('the web edge is unavailable');
           return web.revoke(id);
         },
-        webLink: () => {
+        webLink: qr => {
           if (!web?.status.available) throw new Error('the web edge is unavailable');
-          return web.link();
+          return web.link(qr);
         },
         reload: resumed => roles.reload(resumed),
         setConfig: (key, value, resumed, authorize) => roles.set(key, value, resumed, authorize),
@@ -282,6 +282,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
           pid: process.pid,
           priority,
           port: ws?.port ?? 0,
+          ...(ws ? { spokeBind: ws.bind } : {}),
           ...(web ? { web: web.status } : {}),
           socket: edge ? l.socket : '',
           version: VERSION,
@@ -389,7 +390,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
-  web = await createWebEdge({ root, store, log, ...(options.artifactOpen ? { artifactOpen: options.artifactOpen } : {}), dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
+  web = await createWebEdge({ root, store, log, ...(options.artifactOpen ? { artifactOpen: options.artifactOpen } : {}), dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, bind: config.web.bind, origin: config.web.origin, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
   if (!web.status.available) log({ event: 'web-unavailable', ...web.status });
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again

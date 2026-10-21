@@ -62,6 +62,7 @@ export const SETUP_USAGE = `  setup [dir] [--json] [--yes] [--harness claude-cod
 
 export const DOCTOR_USAGE = `  doctor [dir]    check the harnesses, gh, Neovim, the hub/web edge and what cland init provisioned; one line per
                   check with the fix for each problem; exits 1 on a failure (--json for JSON; --fix ends owned orphan servers, deleted-project hubs and fixtures)
+                  web network: warns about plain HTTP without [web] origin (cookie in clear; no phone install/notifications)
                   web bundle: compare the installed web/dist build stamp with its source inputs; npm run build refreshes it
                   tracker conflicts counts live .conflict captures and names differing bytes; read-only, including --fix
                   hub retention prunes finalized captures after seven days at startup and hourly; recover differences before expiry
@@ -230,6 +231,8 @@ export const MODELS_USAGE = `  models claude-code|codex|opencode [--account <nam
 
 export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  validate and save one managed config.toml value
                   web.port: 0 keeps the first free port; 1–65535 overrides it; a taken port disables only the web edge
+                  web.bind: IPv4/IPv6 address (default 127.0.0.1); only the web edge binds there
+                  web.origin: HTTPS tunnel origin (empty: none); Host + Origin match sets Secure; forwarded headers ignored
                   web.dist: bundle directory (empty: installed web/dist); web settings apply after a hub restart
 `;
 
@@ -243,8 +246,11 @@ export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this 
 export const WEB_USAGE = `  web [--no-open]  print a one-time browser sign-in link from the running hub
                   opens with open (macOS) or xdg-open (Linux); --no-open only prints
                   human shell only; link expires in five minutes and is spent on first use
+  web --qr        print the phone's link and a half-block QR; never opens a browser
+                  uses [web] origin (HTTPS tunnel), otherwise [web] bind's LAN address; loopback alone refuses
   web --sessions  list cookie session ids, creation, last use and open socket counts
   web --revoke <id> revoke a cookie session and close its sockets before returning
+                  --qr accepts --no-open, but cannot be combined with --sessions or --revoke
                   sessions survive restarts; expire 30 days after creation (last use is /ws admission)
                   --no-open, --sessions and --revoke are mutually exclusive; all use the Unix socket
                   web actions follow the deny-by-default authority table in hub/README.md

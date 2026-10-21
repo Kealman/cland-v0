@@ -1,3 +1,4 @@
+import { checkWebNetwork } from './web.ts';
 // The project's side of `cland doctor`: the hub (running or startable, its discovery file, the secret), the
 // committed config (`roles.toml`, `config.toml`), and what `cland init` provisioned (the skills and their link
 // for Claude Code, the hooks, the mod cland ships, `docs/agents/*`, AGENTS.md's block). Read-only: the hub is
@@ -102,7 +103,7 @@ async function checkHub(l: Layout, readers: ProjectReaders): Promise<Check[]> {
       if (!owns) out.push(fail('hub', `pid ${d.pid} answers on ${d.socket} ${lock}`, 'cland hub stop, then cland hub start'));
       else if (status.version !== VERSION) out.push(warn('hub', `running pid ${d.pid}, version ${status.version}; this cland is ${VERSION}`, 'cland hub stop, then cland hub start'));
       else out.push(ok('hub', `running: pid ${d.pid}, ${lock}, answers hub.status on ${d.socket}, port ${d.port}, ${sessions}`));
-      if (status.web && !status.web.available) out.push(warn('web edge', `unavailable on 127.0.0.1:${status.web.port}: ${status.web.reason ?? 'unknown reason'}`, `free port ${status.web.port} or set [web] port, then restart the hub`));
+      if (status.web && !status.web.available) out.push(warn('web edge', `unavailable on ${status.web.bind ?? '127.0.0.1'}:${status.web.port}: ${status.web.reason ?? 'unknown reason'}`, `free port ${status.web.port} or set [web] port, then restart the hub`));
       if (status.priority?.warning) out.push(warn('hub priority', status.priority.warning.detail, status.priority.warning.fix));
       out.push(ok('hub.json', `valid, names pid ${d.pid}`));
     } else if (owns) {
@@ -165,7 +166,8 @@ function checkConfig(l: Layout): Check[] {
   if (config === null) out.push(warn('config.toml', `${CLAND_DIR}/config.toml is absent: the hub uses the built-in defaults`, 'cland update'));
   else {
     try {
-      parseConfig(config, basename(l.root));
+      const parsed = parseConfig(config, basename(l.root));
+      out.push(checkWebNetwork(parsed.web));
       out.push(ok('config.toml', `parses${isManagedFile(config) ? '' : ' (the project\'s own: no managed mark)'}`));
     } catch (err) {
       out.push(fail('config.toml', `does not parse: ${tomlError(err)}`, `fix ${CLAND_DIR}/config.toml (until then the hub uses the built-in defaults)`));
