@@ -2,8 +2,8 @@
 id: T-1032
 kind: task
 title: Periodic dev T3 regression at 07eeff96cb31d8e1cc391a95edd3408d9f0edf4d
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 1
 labels:
@@ -17,7 +17,8 @@ found_by: droplet
 topic: topic-779
 branch: t/T-1032-periodic-dev-t3-regression-at
 created: 2026-10-20T23:58:31.284Z
-updated: 2026-10-21T02:55:56.925Z
+updated: 2026-10-21T03:04:06.264Z
+closed: 2026-10-21T03:04:06.264Z
 ---
 
 ## Summary
@@ -39,6 +40,7 @@ Run 078c11c9-3f29-42e4-86a8-b6aed0c62237; head 07eeff96cb31d8e1cc391a95edd3408d9
 
 - [x] C1. hub/test/typecheck.test.ts passes with the web workspace: its project fixture carries the files web/test and web/tsconfig.tools.json import from hub/test and hub/src, derived from the import closure rather than a hand list (targeted local T3 run named in the item).
   - done: impl-1032 · 2026-10-21T02:54:33.388Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1032-final · 2026-10-21T02:59:47.283Z · commit 80cc33c83802e97909800abb1e78a04161dbbc91
 
 ## Comments
 
@@ -58,3 +60,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards/Spec audit A-8110 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8110-t-1032-source-review-at-80cc33c8.md). Actual A-8105 TS2307 diagnostics name the five omitted cross-workspace imports. Parsed script-selected workspace tsconfig inputs now seed sourceFixtureFiles, retaining full transitive closure without a hand list. Existing minimal compiler fixtures, scripts/configs, pinned CLI/API and root/inherited/local-worktree assertions are preserved. Diff check clear; no findings. A-8109 local targeted T3 1/1 on matching patch/static check are separately scoped, not a full gate or Linux claim. C1 remains runtime-unverified until normal same-head configured verification is assessed alongside that targeted evidence. No Reviewer processes launched.
+
+### rev-23 · 2026-10-21T02:59:47.283Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1032-final
+commit: 80cc33c83802e97909800abb1e78a04161dbbc91
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; audit A-8115 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8115-t-1032-final-evidence-review-at-80cc33c8.md). Same-head configured ed24b016/A-8114 passed Linux T1: 670 ordinary test finishes/113 files; selected T2 command has no tests, Web NOT RUN for missing Linux libraries, no T3/T4 execution. Host check 5ddacec5 not repeated remotely; lint/budget/ratchet report-only. C1's named targeted local macOS T3 red→green (0/1→1/1) is separately retained in A-8109 on matching source patch, with full compiler assertions preserved by source audit. This establishes the requested local T3 criterion alongside the green configured scope; no Linux T3/browser/integrated/timing pass claimed. No findings; verify C1.
+
+Criteria: C1 verified.
+
+### coord · 2026-10-21T03:04:06.264Z
+
+Merged 22a0cbf0c1f92bff9c0df4f4e280fbf0795d9d3f onto dev.

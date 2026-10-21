@@ -3,7 +3,7 @@ id: T-983
 kind: task
 title: The snapshot at connection
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-412
 blocked_by:
   - T-979
-topic: null
-branch: null
+topic: topic-780
+branch: t/T-983-the-snapshot-at-connection
 created: 2026-10-20T16:50:00.282Z
-updated: 2026-10-20T20:57:50.476Z
+updated: 2026-10-21T02:58:00.368Z
 ---
 
 ## Summary
