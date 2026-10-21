@@ -3,8 +3,9 @@ id: T-1060
 kind: task
 title: A stopped hub with the web edge does not exit, and hub stop calls it not this project's hub
 state: open
-status: in progress
+status: review
 size: S
+criterion_seq: 3
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-807
 branch: t/T-1060-a-stopped-hub-with-the-web-edge-does-not
 created: 2026-10-21T14:06:08.818Z
-updated: 2026-10-21T14:06:49.695Z
+updated: 2026-10-21T14:28:24.941Z
 ---
 
 ## Summary
@@ -30,6 +31,66 @@ After `hub stop`, the hub at cb231eeb logs "stopped" but its process stays alive
 
 ## Acceptance criteria
 
-- [ ] C1. After "stopped", a served hub with the web edge enabled exits within 2 s with no open handles (test through a real `hub serve` process).
-- [ ] C2. When `cland hub stop` sees the lock released by the pid it asked to stop and that pid is still alive, it reports "stopped, lock released, process still alive" and names the pid, not "not this project's hub" (test).
-- [ ] C3. The handle that kept the loop alive is named in the item topic, with the commit that introduced it.
+- [x] C1. After "stopped", a served hub with the web edge enabled exits within 2 s with no open handles (test through a real `hub serve` process).
+  - done: impl-1060 · 2026-10-21T14:26:27.753Z
+- [x] C2. When `cland hub stop` sees the lock released by the pid it asked to stop and that pid is still alive, it reports "stopped, lock released, process still alive" and names the pid, not "not this project's hub" (test).
+  - done: impl-1060 · 2026-10-21T14:18:55.102Z
+- [x] C3. The handle that kept the loop alive is named in the item topic, with the commit that introduced it.
+  - done: impl-1060 · 2026-10-21T14:18:55.120Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1060-source · 2026-10-21T14:21:37.986Z · commit 5a1f508a19939d2507c7a1e31c44c85765b70f25
+  - verified: rev-23 [reviewer] · run rev-20261021-1060-source-2 · 2026-10-21T14:28:24.941Z · commit c200da18bb377f19d7be6acfc3980e4e151ada34
+
+## Comments
+
+### impl-1060 · 2026-10-21T14:17:53.916Z
+
+C3 diagnosis: active handle is an execFile Git ChildProcess (plus stdout/stderr pipes and its timeout) in tracker/verdict-git.ts:15 -> epic-surfaces.ts:45, epicDemoFreshness. The multi-command scan introduced by a9d2fb32613e918720216bb50284439a4486af3e (T-459) continues after tracker shutdown gives up. Identical scratch copied-tracker probes reproduce at BOTH cb231eeb and 7c5e4028, disproving that suspected new-web regression boundary. With only the freshness cancellation fix overlaid, the copied-tracker process exits. A-8449 contains probe source, raw historical outputs and qualifications: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8449-t-1060-shutdown-handle-diagnosis-and-historical-comparison/report.md. Minimized C1 and C2 tests went red before fixes; current targeted Darwin arm64 execution passes daemon.test.ts 14/14 and freshness.test.ts 8/8. No suite receipt yet.
+
+### rev-23 · 2026-10-21T14:21:37.986Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1060-source
+commit: 5a1f508a19939d2507c7a1e31c44c85765b70f25
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; A-8451 records full nine-file Standards/Spec audit at fixed merged-devbe94e3ac. No findings. Freshness owns abort before draining, fences later sequential Git launches; native runner waits normal child completion while cancellation signals its owned PID. Stop CLI preserves prior owner+acknowledgement and current lock safety: released-lock/live owner yields explicit PID diagnostic/exit1, no signalling or successor-file removal. T3 real-process tests arm exact diff-tree/stopped receipts before fault/stop, separately bound exit2s and retain hub/Git PID absence; CLI fake deadline follows completed shutdown receipt. Help/README/tests/skill provenance/default Coordinator clause match. C3 verified from raw A-8449 resource traces and historical a9d2fb32613e918720216bb50284439a4486af3e introduction diff: execFile Git ChildProcess/pipes/timeout in epicDemoFreshness, present at both suspected historical versions; fixed-overlay exits. Diagnostics use copied-current tracker, not historical DB/suite/benchmark proof. C1/C2 remain runtime-unverified; targeted green counts are development summaries. Proceed unchanged-head mode-free verify; Coordinator57b4d3e7 also requires full pre-merge lifecycle suite. Final settlement waits for its same-head new-T3 receipts; task T1/T2 alone insufficient. Separate abandonment flag issue is T-1062. No Reviewer runtime; QA none.
+
+Criteria: C3 verified.
+
+### impl-1060 · 2026-10-21T14:25:47.010Z
+
+Verification e23cc5c1 at 5a1f508a failed (A-8456), T1 704 completed/703 pass/1 fail; T2/Web not run. Actual failure: defaults coordinator clause reply 6540 bytes exceeds 6528-byte growth-headroom ceiling. Reproduced targeted locally. Per Coordinator 379027e1, removed only T-1060's added default clause line and placed guidance in hub/README.md Coordinator session procedure; all other clause text unchanged. Targeted roles-clauses.test.ts now 27/27 on local Darwin arm64, byte-budget assertions retained. Old full run 98d84b09 cancelled (A-8458, counts unavailable), supplies no passing lifecycle evidence. Fresh source review and verification required at the new head.
+
+### rev-23 · 2026-10-21T14:26:00.154Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261021-1060-evidence-red
+commit: 5a1f508a19939d2507c7a1e31c44c85765b70f25
+scope: evidence
+findings: [{"severity":"medium","text":"The added hub-stop guidance exceeds the enforced default Coordinator reply growth reserve: A-8456 roles-clauses assertion reports6540bytes versus6528 allowed. Shorten the new pointer without raising the ceiling or weakening the assertion, then fresh source review and verification.","file":"hub/src/roles/default-roles.ts","line":61}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+Not clear; A-8459 records A-8456/e23cc5c1 actual failure at5a1f508a: 'defaults coordinator: clause reply is 6540 bytes; 15% growth headroom requires at most 6528 of 7680 bytes' (log3984). Task-local enforced assertion, not duration report debt/shared defect. Linux droplet T1 exit1:703pass/1fail; T2/Web absent, no T3 proof. C1 failed; C2 remains unverified, C3 diagnostic verification retained. Lead already correcting clause wording; preserve byte ceiling/assertion. New head needs fresh source review before replacement mode-free and Coordinator-required full lifecycle receipts. Full98d84b09 still launching at inspection, not a result. Hostcheck020cac57 reused; lint/duration/ratchet report-only. No Reviewer execution.
+
+Criteria: C1 failed (Task run e23cc5c1 fails enforced T1 Coordinator clause headroom (6540 > 6528 bytes), blocking required same-head lifecycle proof.).
+
+### rev-23 · 2026-10-21T14:28:24.941Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1060-source-2
+commit: c200da18bb377f19d7be6acfc3980e4e151ada34
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-8467 extends full A-8451 audit, Standards0/Spec0. Task-added Coordinator clause line removed; default-roles.ts equals fixed merged-devbase, existing procedure pointer retains access to README guidance. Diagnostic explanation now under Coordinator session procedure, exactly per verified Coordinator379027e1. No unrelated clause shortening, byte ceiling/assertion edits, lifecycle code/test changes or dev merge. Historical M1 reserve failure resolved in source; reported local27/27 clause tests are targeted support. C3 diagnostic/provenance remains unchanged and reverified at this head; C1/C2 require runtime receipts, C1 done refreshed. Proceed mode-free verify unchangedc200da18, then Coordinator's replacement full lifecycle suite. Final settlement waits for both exact-head receipts/newT3cases. A-8456 failed/A-8458 cancelled remain historical, not passes. No Reviewer runtime; QA none.
+
+Criteria: C3 verified.

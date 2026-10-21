@@ -2,8 +2,8 @@
 id: T-1035
 kind: task
 title: Fake Claude fixture homes fail cleanup with ENOTEMPTY while a fake process still writes
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -15,7 +15,8 @@ blocked_by: []
 topic: topic-803
 branch: t/T-1035-fake-claude-fixture-homes-fail-cleanup
 created: 2026-10-21T06:00:35.827Z
-updated: 2026-10-21T13:59:23.264Z
+updated: 2026-10-21T14:28:01.899Z
+closed: 2026-10-21T14:28:01.899Z
 ---
 
 ## Summary
@@ -35,9 +36,13 @@ Evidence:
 
 - [x] C1. A test that leaves a late writer in a fake Claude home passes its cleanup once the writer exits, and the cleanup waits for it within a bounded time (test with a deliberate late write).
   - done: impl-1035 · 2026-10-21T13:58:04.759Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1035-final · 2026-10-21T14:23:32.278Z · commit 72c117c1c08fbc630fd6a5f877234e92fdc5ccf8
 - [x] C2. When the home still cannot be removed after the bound, the cleanup error names the late file (test).
   - done: impl-1035 · 2026-10-21T13:50:43.442Z
-- [ ] C3. roles.test.ts, aide.test.ts and claude-code-adapter.test.ts pass 20 sequential repetitions each at the task head, in a scratch clone with workers 2 under the load gate (evidence in the item topic).
+  - verified: rev-23 [reviewer] · run rev-20261021-1035-final · 2026-10-21T14:23:32.278Z · commit 72c117c1c08fbc630fd6a5f877234e92fdc5ccf8
+- [x] C3. roles.test.ts, aide.test.ts and claude-code-adapter.test.ts pass 20 sequential repetitions each at the task head, in a scratch clone with workers 2 under the load gate (evidence in the item topic).
+  - done: impl-1035 · 2026-10-21T14:22:05.484Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1035-final · 2026-10-21T14:23:32.278Z · commit 72c117c1c08fbc630fd6a5f877234e92fdc5ccf8
 
 ## Comments
 
@@ -76,3 +81,26 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; A-8436 extends full audit A-8434. Standards0/Spec0. M1 resolved: captured ownership registers immediately with real t.after, restores filesystem mocks before disposal, and no rejected poll can skip that hook; release armed before launch. Added actual child-test scope setup-rejection/CLI-error coverage retains final PID-gone/home-absent assertions; held-poll no-live-removal and all original lifecycle assertions retained. Implementation/docs unchanged. C1/C2 still runtime-unverified; C1 done refreshed, C3 deliberately pending. A-8435 is development red/green summary, not queued/C3 proof; retain original targeted stdout/exit and execution head/tree for final evidence. Proceed mode-free verify and authorized sequential C3 at this unchanged head, respecting Coordinator4cdddaa3 load<15/workers2/runner-lock/cover-quiet/no-overlap conditions. Final verdict waits for same-head run plus lifecycle/C3 receipts. No Reviewer execution; QA none.
+
+### impl-1035 · 2026-10-21T14:22:05.504Z
+
+C3 complete at head72c117c1c08fbc630fd6a5f877234e92fdc5ccf8/tree86262b7ae6a616d5308a0fe22b10badaaa385e0f. macOS arm64, Nodev24.21.0, local, scratch clone with fixtureEnvironment-sealed HOME/XDG/Git/provider/account state and original system TMPDIR. Workers2, one file at a time, 20 sequential fresh package-runner invocations each: roles20/20, aide20/20, claude-code-adapter20/20. 260 underlying tests passed; 0 failed/cancelled/skipped, all60 exits0. Start load gate enforced<15 (observed4.33496–13.90088), controller paused twice when load exceeded15. Runner shared /tmp locks serialize with local covers; no overlap with mode-free verify37c0de9b, which completed before C3 began. T3 targeted repetition evidence only; tier resource and duration budgets report-only, no Linux/integrated claim. Original60 logs, structured receipt and exact controller are published as the C3 artifact in topic-803. Queued verify37c0de9b separately passed2295 tests, T1/T2/Web, Linux x64 droplet c-8lon1, lifetime506s/cost$0.0352, workers2 (Web phase4); report-only duration/tier gates, host typecheck gate reused at8410f05 rather than repeated. A-8444 holds that receipt; A-8441 holds original C1/C2 lifecycle stdout/exits, whose execution tree matches this head. Final evidence review requested; head unchanged since clear source rev-20261021-1035-source-2.
+
+### rev-23 · 2026-10-21T14:23:32.278Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1035-final
+commit: 72c117c1c08fbc630fd6a5f877234e92fdc5ccf8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-8454 audits all receipts, origin tip unchanged from source-clearA-8436. C1/C2 original A-8441 local Darwin7/7/exit0 covers late poll, hook exit, admission fence, bounded late-file diagnostic/retry and M1 setup/child error cleanup. Executed overlay provenance names tree86262b7a identical to committed72c117c1; targeted plain Node, no tier/duration gate. C3 independently checked all60 A-8453 original logs/receipt/controller: roles20/20(80passes),aide20/20(60),adapter20/20(120),260total,zero fail/cancel/skip/todo; sequential1–20 each, workers2 runner locks and sealed scratch environment, all start loads4.335–13.901<15. First14:09:25 after task verify finished14:08:51; Coordinator4cdddaa3 authorized this targeted local Darwin T3 repetition plan. Same-head queued37c0de9b/A-8444 Linux droplet T1/allT2 both+actualWeb3files exit0:2295ordinary/351filepasses,no load-gate finishes. Hostcheck8410f05f reused not repeated remotely; testlint132/59,duration/ratchet report-only, existing overages retained without timing-pass claims. No integratedT3/T4/stage/QA pass claimed. All C1–C3 verified, no findings; no Reviewer execution, QA none.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T14:28:01.899Z
+
+Merged a4001ec5d9573e5cc35da94120b2fb16b5653827 onto dev.
