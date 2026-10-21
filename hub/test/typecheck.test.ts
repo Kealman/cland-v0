@@ -6,9 +6,10 @@ import { existsSync } from 'node:fs';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { fixtureSource, sourceFixtureFiles } from './source-fixture.ts';
 import { fixtureEnvironment } from './fixture-environment.ts';
 
@@ -34,7 +35,18 @@ test('typecheck resolves pinned compilers in roots and linked worktrees', async 
     await cp(join(source, workspace), join(root, workspace), { recursive: true,
       filter: path => !['node_modules', 'dist'].includes(path.split('/').at(-1)!),
     });
-    workspaceSources.push(...files.filter(file => /\.ts$/.test(file)).map(file => `${workspace}/${file}`));
+    const workspaceManifest = JSON.parse(await readFile(join(source, workspace, 'package.json'), 'utf8')) as { scripts: Record<string, string> };
+    // Seed the closure from every configured compiler input, including nested
+    // tests and tools that import modules outside their workspace.
+    for (const [, config] of workspaceManifest.scripts.typecheck!.matchAll(/-p\s+(\S+\.json)/g)) {
+      const parsed = ts.getParsedCommandLineOfConfigFile(join(source, workspace, config!), {}, {
+        ...ts.sys,
+        onUnRecoverableConfigFileDiagnostic: diagnostic => { throw new Error(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')); },
+      });
+      assert.ok(parsed);
+      assert.deepEqual(parsed.errors, []);
+      workspaceSources.push(...parsed.fileNames.map(file => relative(source, file)));
+    }
   }
   // The web token guard compares the shipped palette at this runtime-loaded path.
   assets.push('nvim/lua/cland/hl.lua');
