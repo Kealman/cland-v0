@@ -87,7 +87,7 @@ High: hub/src/tracker/tracker.ts:212 a closed item keeps its claim.
 A QA request names a brief: `qa/briefs/T-<n>.md`, committed with the work and self-contained, because a rescue run cannot ask. The Coordinator writes it with the `qa` skill (`.agents/skills/qa/`; `BRIEF.md` there is the template). A brief has:
 
 - the item, and the build: its branch and a rule that resolves without the request (the tip of that branch in the item's worktree when the run starts; the run records the commit it ran; a dirty worktree, or a request naming a commit other than the tip, is `BLOCKED`);
-- the cases: ids of `qa/cases/<ID>.lua`, run with `cland --headless --qa` (spec 4.10, `nvim/README.md`, "QA cases"), each with its surface: `headless-grid` (the default, needs no grant), `tmux` (grant 2), `web-terminal` (grant 1) or `hub-api`;
+- the cases: ids of `qa/cases/<ID>.lua`, run with `cland --headless --qa` (spec 4.10, `nvim/README.md`, "QA cases"), each with its surface: `headless-grid` (the default, needs no grant), `tmux` (grant 2), `web-terminal` (grant 1) or `hub-api`; web briefs also include `real-browser` computer-use cases recorded with `note` and screenshots;
 - the manual checks: a command and its expected outcome each;
 - what is out of scope, and the grants the run needs (none by default).
 
@@ -101,12 +101,18 @@ A run is the pass over a brief, with an id of the QA session's own (`qa-<date>-<
 {"ts":"2026-10-09T15:20:03Z","item":"T-62","run":"qa-2026-10-09-1","case":"SHELL-001","build":"29fe14f","surface":"headless-grid","method":"cland --headless --qa qa/cases/SHELL-001.lua","result":"PASS","exit_code":0,"evidence":[".cland/qa/T-62/qa-2026-10-09-1/SHELL-001.screen.txt",".cland/qa/T-62/qa-2026-10-09-1/SHELL-001.state.json"],"session":"qa-1"}
 ```
 
-- `ts` UTC; `item` and `run` as above; `case` the case id (`M1`, `M2`… for the brief's manual checks); `build` the short commit of the worktree that was run; `surface` is `headless-grid`, `tmux`, `web-terminal` or `hub-api`; `method` is the command run; `result` is `PASS`, `FAIL`, `INCONCLUSIVE` or `BLOCKED`; `exit_code` is 0 for PASS, 1 for FAIL, 2 for INCONCLUSIVE and BLOCKED; `evidence` are paths relative to the project root; `session` is the QA session (`$CLAND_SESSION_NAME`), or `rescue` for a rescue run.
+- `ts` UTC; `item` and `run` as above; `case` the case id (`M1`, `M2`… for the brief's manual checks); `build` the short commit of the worktree that was run; `surface` is `headless-grid`, `tmux`, `web-terminal`, `hub-api` or `real-browser`; `method` is the command run or the computer-use steps and observations; `result` is `PASS`, `FAIL`, `INCONCLUSIVE` or `BLOCKED`; `exit_code` is 0 for PASS, 1 for FAIL, 2 for INCONCLUSIVE and BLOCKED; `evidence` are paths relative to the project root; `session` is the QA session (`$CLAND_SESSION_NAME`), or `rescue` for a rescue run.
 - `item` is exactly `T-<digits>`; `run` and `case` are single path components (letters, digits, `.`, `_`, `-`, not starting with `.` or `-`), because they name the evidence tree; the script refuses anything else (exit 64) and a line it cannot serialize (exit 70), appending nothing.
 - Evidence (the grid and state dumps, captures) goes in `.cland/qa/T-<n>/<run>/`. Both live under `.cland/qa/`, which the managed `.cland/.gitignore` ignores (decision D14): runs are the machine's record, the verdict on the item is the project's. The QA role's `workspace-write` default for `writable_roots` is `.cland/qa`, the only place outside its worktree a restricted QA session writes.
 - A rescue run reaches neither the hub nor, usually, `.cland/qa`: its captures go to the temp dir (or, failing that, inline on stderr) and it prints each line. The Coordinator runs `sh .agents/skills/qa/qa-record.sh recover T-<n> <run> <captures-dir> <lines-file>`, which copies and verifies the captures into `.cland/qa/T-<n>/<run>/`, rewrites the evidence paths and appends only the lines whose captures were all copied (exit 73 names each line it could not; the `qa` skill, "Recovering a rescue run").
 
 The verdict that follows is one `task.comment` with `verdict qa`, `result`, `run` and `commit` (the full SHA that was run; the hub otherwise takes the branch tip). It is `clear` only when **every** case in scope passed. A FAIL, BLOCKED or INCONCLUSIVE case makes it `not clear`, and the text names the case. The text opens with the case table (case, surface, result, evidence). Each finding becomes an item labelled `qa-found` and `needs-triage`, which the Coordinator files.
+
+## Web QA in the real browser
+
+Web briefs use Codex `gpt-6-astra` with computer use on the local Mac; the Coordinator tells the human before launching the GUI run. QA opens the `cland web` link (or the brief’s local static page until available) in the human’s default browser with a dedicated cland profile, normal HOME and login keychain. It touches only the cland page and its browser permission prompts, captures screenshots under `.cland/qa/<item>/<run>/`, closes its tab and records a `real-browser` note. Fixtures remain disposable with sealed HOME/XDG/Git and filtered credentials.
+
+Implementers and Reviewers never launch a real browser or GUI on the human’s Mac. QA never presses Reset or changes keychain, profile or system settings; it cancels unexpected system dialogs and reports an uncancellable dialog, harness refusal, missing Screen Recording/Accessibility permission or unavailable dedicated profile to the item lead as a blocker. The Coordinator takes that blocker to the human. See the qa skill’s “Web briefs” procedure and the web sections in both brief templates.
 
 ## The verdict
 

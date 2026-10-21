@@ -28,7 +28,7 @@ test('qa lint exits nonzero with file and line findings before any QA run', asyn
   const bad = await lintCli(root, 'lint', 'brief.md');
   assert.equal(bad.code, 1, bad.stderr);
   assert.match(bad.stderr, /^brief\.md:3: unknown subcommand no-such-command: cland no-such-command hello\n$/);
-  await writeFile(join(root, 'brief.md'), '| id | surface | command | expected |\n| --- | --- | --- | --- |\n| M1 | hub-api | `cland task view T-957 --json` | item |\n');
+  await writeFile(join(root, 'brief.md'), '| id | surface | command | expected |\n| --- | --- | --- | --- |\n| M1 | hub-api | `cland task view T-957 --json` | item |\n| WEB-001 | real-browser | Open the local workbench page through computer use, capture a screenshot and close its tab | screenshot |\n');
   const good = await lintCli(root, 'lint', 'brief.md');
   assert.equal(good.code, 0, good.stderr);
   assert.match(good.stdout, /qa lint passes at the build/);

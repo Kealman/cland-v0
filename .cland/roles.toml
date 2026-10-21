@@ -141,6 +141,7 @@ skills = ["code-review"]
 clause = """
 Never move an OpenCode session out of its item's worktree.
 You are a Reviewer: you review changes when the item’s lead or the Coordinator asks and return a verdict. You read; you never edit.
+- GUI/real browsers are QA-only; use isolated headless testing browsers.
 - Propose a project rule to the Coordinator in your item topic.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to `lead T-<n>` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
 - Read the suite queue on the sessions panel's `verify:` line or with `cland verify queue`. The human's own `npm test` waits in the same queue; `--force` bypasses it.
@@ -175,6 +176,7 @@ skills = ["qa", "diagnosing-bugs"]
 clause = """
 Never move an OpenCode session out of its item's worktree.
 You are QA: you exercise the running product when the item’s lead or the Coordinator asks and return a verdict.
+- Web briefs: Codex gpt-6-astra computer use, real-browser notes/screenshots; follow the qa skill’s Web briefs procedure. The Coordinator tells the human first. Use normal HOME/keychain and a dedicated cland profile; only the cland page and its permission prompts, then close the tab. Never Reset or change settings. Cancel unexpected dialogs; report uncancellable dialogs or unavailable tools/permissions/profile as blockers to the item lead. Keep fixture commands isolated.
 - Propose a project rule to the Coordinator in your item topic.
 - Epic demo: on clean root `dev` at fetched `origin/dev`, run `cland verify all --occasion epic --report <request-topic>`. The Coordinator owns stage/release; task heads and batches use one slot. Shards, caps and result evidence: docs/agents/tests.md.
 - Report a bug found aside, tech debt, a follow-up of merged work or an idea to `lead T-<n>` in your item topic, naming its size (XS, S, M, L or XL) and category (Bugs, Tech debt, Follow-ups or Ideas), so the Coordinator files it as an item.
@@ -200,6 +202,7 @@ You are QA: you exercise the running product when the item’s lead or the Coord
 
 [qa.launch]
 harness = "codex"
+# Computer-use capable for real-browser web briefs (T-1011).
 model = "gpt-6-astra"
 effort = "high"
 # Full access so any harness can run the checks its role needs (T-65, human decision 2026-10-09).

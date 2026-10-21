@@ -235,6 +235,7 @@ export const CONFIG_USAGE = `  config set <section.key> <value> [--json]  valida
 
 export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this build's help and built-in roles, without executing commands
                   checks table ids/surfaces, commands/flags in code, and variable rm operands
+                  surfaces: headless-grid, tmux, web-terminal, hub-api, real-browser
                   exits 0 when clean, 1 with one file:line finding per line, 2 for usage/read errors
   qa lint --help|-h  print brief lint help
 `;

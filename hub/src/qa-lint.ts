@@ -48,7 +48,7 @@ function commands(): Command[] {
   return [...merged.values()];
 }
 const COMMANDS = commands();
-const SURFACES = new Set(['headless-grid', 'tmux', 'web-terminal', 'hub-api']);
+const SURFACES = new Set(['headless-grid', 'tmux', 'web-terminal', 'hub-api', 'real-browser']);
 const ROLES = /\b(coordinator|implementer|reviewer|qa|lead|aide|human)\b/i;
 
 /** Shell words with quotes retained in raw form for diagnostics and cleanup checks. */

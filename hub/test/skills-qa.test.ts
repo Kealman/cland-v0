@@ -10,6 +10,7 @@ import { delimiter, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clandCliLaunch } from './tier-cli.ts';
 import { cland, inProcessSpoke, projectHub, tempProject } from './harness.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const SKILL = join(REPO, '.agents', 'skills', 'qa');
@@ -40,6 +41,31 @@ test('QA filing CLI creates aside findings under the Bugs category', async t => 
 });
 
 type RunLine = { ts: string; item: string; run: string; case: string; build: string; surface: string; method: string; result: string; exit_code: number; evidence: string[]; session: string };
+
+test('QA recorder records real-browser notes with screenshot evidence without launching a browser', { skip: skipRun }, async t => {
+  const root = await tempProject(t);
+  const evidence = '.cland/qa/T-1011/qa-browser/WEB-001.png';
+  await mkdir(join(root, '.cland/qa/T-1011/qa-browser'), { recursive: true });
+  const capture = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aRZsAAAAASUVORK5CYII=', 'base64');
+  await writeFile(join(root, evidence), capture);
+  const method = 'computer use: open local workbench page, capture screenshot, close tab';
+  const result = await new Promise<{ code: number; stdout: string; stderr: string }>((resolve, reject) => {
+    clandCliLaunch(() => execFile('/bin/sh', [RECORD, 'note', 'T-1011', 'qa-browser', 'WEB-001', 'real-browser', method, 'PASS', evidence], {
+      cwd: root, encoding: 'utf8', timeout: 10_000,
+      env: fixtureEnvironment(root, { PATH: process.env.PATH }, { CLAND_HUB_FILE: join(root, '.cland/hub.json'), QA_SESSION: 'qa-browser' }),
+    }, (error, stdout, stderr) => {
+      if (error && typeof error.code !== 'number') reject(error);
+      else resolve({ code: error ? error.code as number : 0, stdout, stderr });
+    }));
+  });
+  assert.equal(result.code, 0, result.stderr);
+  const receipt = await readFile(join(root, '.cland/qa/runs.jsonl'), 'utf8');
+  assert.equal(receipt, result.stdout);
+  const line = JSON.parse(receipt) as RunLine;
+  assert.deepEqual([line.item, line.case, line.surface, line.method, line.result, line.exit_code, line.evidence],
+    ['T-1011', 'WEB-001', 'real-browser', method, 'PASS', 0, [evidence]]);
+  assert.deepEqual(await readFile(join(root, line.evidence[0]!)), capture);
+});
 
 /** `qa-record.sh <args>` from the repository root, as a QA session would run it from the item's worktree. */
 async function record(hubFile: string, env: Record<string, string>, ...args: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {

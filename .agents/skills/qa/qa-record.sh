@@ -4,7 +4,8 @@
 #   sh qa-record.sh run  <item> <run> <case-id>
 #       headless-grid: runs qa/cases/<case-id>.lua with `cland --headless --qa`, evidence in .cland/qa/<item>/<run>/
 #   sh qa-record.sh note <item> <run> <case-id> <surface> <method> <PASS|FAIL|INCONCLUSIVE|BLOCKED> [evidence-file...]
-#       any other surface or a manual check: records what you ran and saw
+#       surfaces: headless-grid, tmux, web-terminal, hub-api, real-browser; records what you ran and saw
+#       real-browser: computer-use method and screenshot paths; note never launches a browser
 #   sh qa-record.sh recover <item> <run> <temp-dir> <lines-file>
 #       the Coordinator's, for a rescue run: copies the captures its lines name from <temp-dir> into
 #       .cland/qa/<item>/<run>/ and appends each line with its evidence paths rewritten there, but only a line whose
@@ -141,7 +142,7 @@ case $mode in
   note)
     surface=${5:-}; method=${6:-}; result=${7:-}
     [ -n "$method" ] || die "note needs <surface> <method> <result>"
-    case $surface in headless-grid|tmux|web-terminal|hub-api) ;; *) die "surface is headless-grid, tmux, web-terminal or hub-api";; esac
+    case $surface in headless-grid|tmux|web-terminal|hub-api|real-browser) ;; *) die "surface is headless-grid, tmux, web-terminal, hub-api or real-browser";; esac
     case $result in PASS) code=0;; FAIL) code=1;; INCONCLUSIVE|BLOCKED) code=2;; *) die "result is PASS, FAIL, INCONCLUSIVE or BLOCKED";; esac
     shift 7 2>/dev/null || shift $#
     evidence=$(printf '%s\n' "$@" | jq -R -s -c 'split("\n") | map(select(length > 0))')

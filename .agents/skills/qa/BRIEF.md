@@ -19,6 +19,12 @@ Run each with `sh .agents/skills/qa/qa-record.sh run T-<n> <run> <CASE-ID>` (hea
 | --- | --- | --- |
 | `<AREA>-<NNN>` | headless-grid | |
 
+### Web cases (when in scope)
+
+Add a `real-browser` row above with computer-use steps and the exact expected result; these cases use `qa-record.sh note`, not `run`. Name the local project/link (`cland web`, or a local static page until available), dedicated cland browser profile and screenshot paths under `.cland/qa/<item>/<run>/`. QA uses Codex `gpt-6-astra`; the Coordinator tells the human before launching the GUI run.
+
+Open the link in the human’s default browser through computer use, using the human’s normal HOME and login keychain plus the dedicated cland profile. Touch only the cland page and its browser permission prompts, take screenshot evidence and close the opened tab afterwards. Keep keychain, profile and system settings unchanged; never press Reset or Reset To Defaults. Cancel unexpected system dialogs; report any dialog that cannot be cancelled, harness refusal, missing Screen Recording/Accessibility permission or unavailable profile as an exact blocker to the item lead in the request topic. See the qa skill’s “Web briefs” section for isolation and recording. Implementers and Reviewers never launch the real browser or GUI on the human’s Mac. Write “none” here when web cases are out of scope.
+
 ## Manual checks
 
 Each is a command and its expected outcome; record each with `sh .agents/skills/qa/qa-record.sh note T-<n> <run> M1 <surface> "<command>" <result>`.
