@@ -70,6 +70,7 @@ export function vacancyWarning(roles: string[]): string | undefined {
  */
 export type TopicItems = {
   list?: () => ItemSummary[];
+  explorerContext?: (layers: Record<string, import('./visibility.ts').Layer>, messages: Record<string,string>) => ItemSummary[];
   resolveId?: (raw: string) => string | null;
   get?: (raw: string) => ItemSummary | null;
   ancestry?: (item: string) => string[];
@@ -90,6 +91,7 @@ export function trackerItems(tracker: Tracker): TopicItems {
   const hub = { id: 'hub', name: 'hub', role: null };
   return {
     list: () => tracker.list(),
+    explorerContext: (layers,messages) => tracker.explorerContext(layers,messages),
     resolveId: raw => tracker.resolveId(raw),
     get: raw => tracker.summary(raw),
     ancestry: item => tracker.ancestry(item),

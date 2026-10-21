@@ -204,6 +204,7 @@ export class HubCore {
   }
   readonly #clients = new Set<{ features: readonly ClientFeature[]; key: string; send: (frame: HubFrame, serialized: () => string) => void }>();
   #taskLayers: Record<string, Layer> = {};
+  readonly #publishedTasks = new Map<string,ItemSummary|null>();
   readonly #modelPublications: Array<() => void> = [];
   #publishingModel = false;
   /** Model clients share the core's ordering; request replies never enter it. */
@@ -218,6 +219,7 @@ export class HubCore {
   readonly #unsubscribeRules: (() => void) | undefined;
   readonly #rulebookUiUnsubscribe: (() => void) | undefined;
   async refreshVisibility(choice: { surface: 'topics' | 'sessions' | 'artifacts'; target: string }, resumed: <T>(work: () => T) => T = work => work()): Promise<void> {
+    this.#refreshExplorerContext();
     type Rows = import('../protocol.ts').VisibilityFrame['rows'];
     const empty = (): Rows => ({ topics: [], sessions: [], processes: [], artifacts: [], messages: [] });
     let rows = empty(), bytes = 512, count = 0, announced = false;
@@ -482,6 +484,8 @@ export class HubCore {
     for (const a of this.#store.artifacts()) this.#artifactStates.set(a.id, a.status);
     const now = this.#now().toISOString();
     for (const t of STANDING_TOPICS) this.#store.ensureTopic(t.id, t.title, true, now);
+    this.#refreshExplorerContext(false);
+    for (const [key,item] of this.#itemSnapshots) this.#publishedTasks.set(key,item);
     for (const t of this.#store.topics()) { this.#publishedTopics.set(t.id, HubCore.#topicSignature(t)); this.#topicStatuses.set(t.id, t.status); }
     this.asks = new Asks({
       store: this.#store,
@@ -707,6 +711,12 @@ export class HubCore {
   }
 
   #emit(event: HubEvent, featured?: import('../protocol.ts').ModelEvent, legacy = true): void {
+    if (event.type === 'task') {
+      const signature = event.item;
+      const key = `T-${idNumber(event.id)}`;
+      if (!event.siblings && this.#publishedTasks.has(key) && isDeepStrictEqual(this.#publishedTasks.get(key),signature)) return;
+      this.#publishedTasks.set(key, signature);
+    }
     if (['presence', 'session.process', 'session.state', 'session.role', 'session.usage', 'sessions.pruned', 'visibility'].includes(event.type)) this.#scheduleSessionRows();
     if (legacy) for (const listener of [...this.#listeners]) {
       try {
@@ -883,15 +893,30 @@ export class HubCore {
     });
   }
 
+  #refreshExplorerContext(emit = true): ItemSummary[] {
+    if (!this.#items?.explorerContext) return [];
+    const layers = this.visibility.frame({type:'task',id:'',item:null} as Extract<HubEvent,{type:'task'}>).layers ?? {};
+    const messages = Object.fromEntries(this.#store.topics().flatMap(topic => topic.lastMessageAt ? [[topic.id,topic.lastMessageAt]] : []));
+    const changed = this.#items.explorerContext(layers,messages);
+    for (const item of changed) {
+      this.#itemSnapshots.set(`T-${idNumber(item.id)}`,item);
+      if (emit) this.#emit({type:'task',id:item.id,item});
+    }
+    return changed;
+  }
+
   publishTask(change: ItemChange): void {
     if (change.item) this.#store.heartbeatItemSince(change.item.id, change.item.status ?? change.item.state, Date.parse(change.item.updated), this.#now().getTime());
     if (change.item) this.#itemSnapshots.set(`T-${idNumber(change.id)}`, change.item);
     else this.#itemSnapshots.delete(`T-${idNumber(change.id)}`);
+    const contextChanged = this.#refreshExplorerContext(false);
+    if (change.item) change = {...change,item:this.#items?.get?.(change.id) ?? change.item};
     this.#afterCommit(() => this.#drainVerifierRequests());
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
       this.#defaultItems.delete(`T-${idNumber(change.id)}`);
       this.#emit({ type: 'task', id: change.id, item: null, ...(change.siblings ? { siblings: change.siblings } : {}) });
+      for (const item of contextChanged) this.#emit({type:'task',id:item.id,item});
       return;
     }
     if (change.item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(change.id)}`, change.item);
@@ -921,6 +946,7 @@ export class HubCore {
     }
     if (change.item.state === 'closed') this.#defaultItems.delete(`T-${idNumber(change.id)}`);
     this.#emit({ type: 'task', id: change.id, item: change.item, ...(change.siblings ? { siblings: change.siblings } : {}) });
+    for (const item of contextChanged) if (item.id !== change.id) this.#emit({type:'task',id:item.id,item});
   }
 
   /** Immediate events still use the ordinary delivery queue and the adapter's ordinary injection. */
@@ -2645,6 +2671,7 @@ export class HubCore {
   /** Tell subscribers about every topic whose status, warning, binding or title changed since they last heard,
    *  and about the ones in `force` whatever changed (the human's unread count). */
   #publishTopics(force: ReadonlySet<string> = new Set()): void {
+    this.#refreshExplorerContext();
     for (const topic of this.topics()) {
       const signature = HubCore.#topicSignature(topic);
       if (this.#publishedTopics.get(topic.id) === signature && !force.has(topic.id)) continue;

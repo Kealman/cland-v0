@@ -486,9 +486,29 @@ export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' 
 // hub/src/tracker/tracker.ts
 export type ChildCounts = { total: number; done: number; statuses: Partial<Record<Status, number>>; work: Record<'in progress' | 'review' | 'qa', number> };
 
-export type ItemSummary = IndexedItem & { child_counts?: ChildCounts; plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type SummaryText = { text?: string; from: string | null; provenance: string | null };
+export type ExplorerVerdict = Pick<ItemSummary['verdicts'][number], 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { item: string; title: string; round: number };
+export type Activity = { at: string; item: string; title: string; source: 'item updated' | 'a message in its topic' };
+export type ExplorerFields = {
+  summary: SummaryText;
+  blocked: boolean;
+  derived_status: string;
+  glyph: string;
+  layer?: Layer;
+  rollup?: {
+    layer: Layer | null;
+    stage: { number: number; total: number; name: string } | null;
+    claims: Array<{ item: string; claim: NonNullable<ItemSummary['claim']> }>;
+    holds: Array<{ item: string; hold: ItemSummary['holds'][number] }>;
+    latest_verdict: ExplorerVerdict | null;
+    last_activity: Activity;
+  };
+  next?: string | null;
+};
 
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts'> & {
+export type ItemSummary = IndexedItem & Partial<ExplorerFields> & { child_counts?: ChildCounts; plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+
+export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer'> & {
   open_blockers: string[];
   rank?: number;
   verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round: number }>;
@@ -1054,7 +1074,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {

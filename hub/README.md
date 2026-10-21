@@ -2356,8 +2356,58 @@ Container summaries (including default lists and task events) include `child_cou
 apply, so unloaded closed children count from the first render. Progress counts a
 release's direct containers and other containers' direct tasks; release work counts
 all descendant tasks. Other work counts direct tasks. Closing, reopening, moving,
-creating or removing a child publishes refreshed parent/ancestor task events;
+creating or removing a child publishes changed parent/ancestor task events;
 clients do not need to re-read the list. Closed rows still load only on demand.
+
+Item snapshots, summary lists and task deltas also carry `summary: {text?, from,
+provenance}`, `blocked`, `derived_status`, `glyph` and `layer`. The summary follows
+the plugin's `explorer_summary.lua` rule (v0.1.2 §3.9): an explicit `## Summary`
+wins verbatim; otherwise the first eligible prose paragraph or list item supplies
+up to two sentences and 50 words, after leading provenance sentences are removed.
+`from` is `written`, the source section heading, or null for the body. `provenance`
+is the fallback line shown by the Lua card, or null for written/empty summaries.
+`blocked` means an unfinished item has an unresolved blocker, including an unknown
+id; an active task keeps its status glyph even when blocked.
+
+A container has `next` (the first unblocked planned task in rank-ordered tree
+order, with open ancestors, or null) and `rollup`: the highest descendant-task
+`layer` (or null for no tasks), `stage` (`{number,total,name}` for the first open
+stage, else null), `claims` (`{item,claim}`), `holds` (`{item,hold}`),
+`latest_verdict` (the subtree verdict with its item id, title and round, else null),
+and `last_activity` (`{at,item,title,source}`). Verdicts come from descendants;
+activity includes the container itself and topic messages. Equal verdict times
+choose the later row in rank-ordered traversal; equal activity times retain the
+first source. Open containers whose children are all done remain backlog until
+the container closes, matching Lua. The top-level `layer` is the item's visibility;
+`rollup.layer` is the container card's derived task layer.
+
+The 2026-10-21 T-1052 decision keeps the items snapshot cap at 1 MiB. Only open
+items carry `summary.text` in ordinary snapshots, lists and deltas. Closed items
+retain provenance and the inexpensive fields. Read their full text in batches:
+`{type:"task.list", id:"closed-text", projection:"summary", ids:["T-12","T-14"]}`
+returns `{items:[{id,summary}], remaining:[...]}`. Supply at most 100 ids and repeat
+with `remaining` until empty. Each page reserves envelope space within the 256 KiB
+reply budget; an individual summary exceeding that budget refuses explicitly.
+Ids require the summary projection and the existing `task.list` read permission.
+The CLI's flags are unchanged. Full agents' text still comes from `task.view`.
+
+These fields are in-memory projections, never written to item files (ADR 0002).
+Parsed-body summaries are cached at indexing. A change recomputes that row and
+its ancestor chain from cached child aggregates; a move also invalidates the old
+chain. Ancestor state/reparenting changes also invalidate descendant containers
+whose effective `next` changes, since Lua checks parents above the scoped
+container too. Ordinary task edits still touch only their ancestor chain.
+Blocker-state changes invalidate dependents and their ancestors; topic
+messages and visibility changes invalidate the affected context and chains.
+Only changed rows are published, including stage-only changes on asynchronous
+cover/tree settlement and freshness/claim/hold changes. Pending verdict
+freshness remains guarded.
+`explorer-recomputed` diagnostics name the touched ids and synchronous duration;
+they exclude file I/O, transport and Git waits. The differential test preserves
+Lua parity on every copied tracker body, fetching closed text through bounded
+pages, and checks the copied snapshot cap (833,088 bytes for 1,063 copied items plus three ancestor-regression rows on
+2026-10-21). Oversized open sets still refuse atomically; item-domain paging is
+separate work.
 
 Lane order is a separate `follows` list beside `blocked_by` in epic frontmatter. Set it with `cland task create "Next epic" --kind epic --follows E-1`, or `cland task link E-2 --follows E-1`; remove an edge with `--unfollow E-1`. Repeated flags and the matching `task.create` / `task.link` tool fields take multiple ids. Any recognized prefix or bare number resolves to the canonical epic id; non-epic endpoints and cycles refuse. `task.view`, the card and explorer show follows beside blockers. Only `blocked_by` marks an item blocked.
 

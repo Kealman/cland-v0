@@ -1751,6 +1751,26 @@ never enter the hub or Neovim's `ui.json`.
 
 ## Connection snapshots
 
+`item-summary.test.ts` exercises summaries, provenance, roll-ups, claims/holds,
+verdicts, topic activity and bounded closed-text pages through `projectHub` frames
+at T2. It also retains the stage-only delta on platform-cover settlement and
+checks next through closed-ancestor reopening and reparenting. The ordinary
+mutation assertion retains only changed task/ancestor deltas; existing
+logger diagnostics record which rows were recomputed. `item-summary-scale.test.ts`
+uses 1,000 durable rows and bounds their three-row recomputation at 100 ms,
+excluding setup, I/O, transport and freshness probes. This is a local synchronous
+measurement, not a whole-request latency claim. T-1038's eight startup byte guards
+remain in `startup-replies-scale.test.ts`.
+
+`item-summary-lua.test.ts` is T3 because its independent oracle executes the real
+Lua through headless Neovim. It copies every live tracker file into a disposable
+project, adds a guaranteed closed-release/open-epic/planned-task regression,
+then compares every summary and the Lua roll-up rules with the snapshot and
+bounded by-id closed-text reads, and asserts the copied items frame fits 1 MiB.
+It also feeds separate plan reads to Lua's stage selector. The dated E-880
+allowance preserves this all-body differential guard. Neither the source tracker
+nor the human's HOME, accounts or Git configuration is used for execution.
+
 Resume coverage adds `model-ring.test.ts` (T1 fake-clock age/UTF-8 byte bounds,
 including terminal close after a late disconnect publication) and
 `model-output.test.ts` (T1 stalled transport at exactly/past 4 MiB).

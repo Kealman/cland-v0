@@ -1,4 +1,7 @@
-import { containerChildCounts, type ChildCounts } from './child-counts.ts';
+import { isDeepStrictEqual } from 'node:util';
+import { summary as bodySummary } from './summary.ts';
+import { ExplorerFieldsIndex, type ExplorerFields, type SummaryText } from './explorer-fields.ts';
+import { type ChildCounts } from './child-counts.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
 import { pruneConflictCaptures, CONFLICT_PRUNE_INTERVAL_MS } from './conflict-captures.ts';
 import type { DatabaseSync } from 'node:sqlite';
@@ -146,10 +149,10 @@ export type ItemView = IndexedItem & {
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & { child_counts?: ChildCounts; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & Partial<ExplorerFields> & { child_counts?: ChildCounts; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
 
 /** Explorer rows; detail, plans, verification and index bookkeeping stay in task.view. */
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts'> & {
+export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer'> & {
   open_blockers: string[];
   rank?: number;
   verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round: number }>;
@@ -322,6 +325,9 @@ export class Tracker {
   readonly #adoptions = new Map<string, Set<string>>();
   #identityOf: (id: string) => string = id => this.#sessionIds.get(id) ?? id;
   #identityAdopted: (name: string, id: string) => void = () => {};
+  readonly #planSources = new Map<string, Item>();
+  readonly #summaries = new Map<string, SummaryText>();
+  #explorer: ExplorerFieldsIndex | undefined;
   readonly #announced = new Map<string, ItemSummary>();
   #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
   #stageCovers: () => StageCover[] = () => [];
@@ -333,7 +339,6 @@ export class Tracker {
   readonly #stageTreeRetries = new Map<string, NodeJS.Timeout>();
   readonly #verifyChanges = new Map<string, { item: string | null; branch: string }>();
   #verifyImmediate: NodeJS.Immediate | null = null;
-  readonly #shown = new Map<string, string>();
 
   constructor(options: { stageTree?: (head: string) => Promise<string | null>; onDevTip?: (head: string | null) => void; clock?: Clock; openDatabase?: (path: string) => DatabaseSync; parse?: typeof parseItem; watch?: typeof watchFolder; env?: NodeJS.ProcessEnv; onStorageFatal?: (operation: StorageOperation) => void; storageStallMs?: number; storageFatalMs?: number; stopTimeoutMs?: number; planHistory?: ReadonlyArray<Record<string, unknown>>; planApproval?: 'none' | 'human'; qaDefault?: QaPolicy; levels?: Levels; watchResumed?: Resumed; files?: TrackerFiles; root: string; db: string; log?: LogFn; now?: () => Date; writeGate?: () => Promise<void>; git?: Git; readBase?: (tips: ReadonlyMap<string, string>) => Promise<string | null>; tipCheckMs?: number; scheduleTips?: TipSchedule }) {
     this.#clock = options.clock ?? realClock;
@@ -431,6 +436,7 @@ export class Tracker {
 
   /** Listen to index changes; returns the unsubscribe. */
   onChange(listener: (change: ItemChange) => void): () => void {
+    if (!this.#changeListeners.size) for (const item of this.list()) this.#announced.set(`T-${idNumber(item.id)}`,item);
     this.#changeListeners.add(listener);
     return () => this.#changeListeners.delete(listener);
   }
@@ -446,12 +452,10 @@ export class Tracker {
       ...this.#ancestorIds(previous?.parent ?? null),
       ...this.#ancestorIds(current?.parent ?? null),
     ]);
-    this.#announce(id, false);
+    this.#announce(id, false, undefined, false, true, true);
     // Parent aggregates come from the complete index, even when clients have not
     // fetched the changed child's closed row. Old paths also change on a move.
-    const countsChanged = previous?.state !== current?.state || previous?.status !== current?.status
-      || previous?.parent !== current?.parent || previous?.kind !== current?.kind;
-    if (countsChanged && this.#changeListeners.size) for (const parent of parents) this.#announce(parent, false);
+    if (this.#changeListeners.size) for (const parent of parents) this.#announce(parent, false);
     if (before !== this.#index.get(id)?.state) {
       for (const dependent of this.#index.blockedDependents(id)) this.#announce(dependent, false);
     }
@@ -648,16 +652,24 @@ export class Tracker {
   }
 
   /**
-   * The `task` event for `id`. `ifMoved`: only when its freshness changed from what was last announced and none of
-   * it is still being computed (that announces itself once known), so a tip read does not flood the UI.
+   * Publish changed projected fields, including stage-only changes from asynchronous cover/tree settlement.
+   * `ifMoved` retains the pending-verdict guard; whole-row equality suppresses unchanged freshness callbacks.
    */
-  #announce(id: string, ifMoved: boolean, siblings?: string[], silent = false): void {
+  #announce(id: string, ifMoved: boolean, siblings?: string[], silent = false, ancestors = true, notifyUnchanged = false): void {
     const indexed = this.#index.get(id);
     id = indexed?.id ?? id;
-    const item: ItemSummary | null = indexed ? { ...indexed, ...this.#childCountFields(indexed), open_blockers: this.#index.openBlockers(id), ...this.#verifyOf(indexed), ...this.#inboxPlan(id), criteria: this.#summaryCriteria(indexed), claim: this.#index.claimOf(id), holds: this.#index.holdsOf(id), verdicts: this.#annotateVerdicts(id, indexed.kind, indexed.branch, this.#index.verdicts(id).get(id) ?? []), verdictBase: this.#fresh.base() } : null;
+    if (!this.#explorer && this.#changeListeners.size === 0) {
+      if (indexed) this.#announced.set(`T-${idNumber(id)}`, this.#rawSummary(indexed));
+      else this.#announced.delete(`T-${idNumber(id)}`);
+      return;
+    }
+    const nextDependents = this.#refreshExplorer(id);
+    const item = indexed ? this.#projected(indexed.id) : null;
+    // Internal write observers also drive maintenance on idempotent operations.
+    // HubCore separately suppresses identical client deltas; ancestors stay quiet.
+    if (!notifyUnchanged && !siblings && isDeepStrictEqual(this.#announced.get(`T-${idNumber(id)}`) ?? null, item)) return;
     if (silent && JSON.stringify(this.#announced.get(`T-${idNumber(id)}`)?.verify) === JSON.stringify(item?.verify)) return;
-    const shown = item ? JSON.stringify([item.criteria, item.verdictBase, this.#fresh.tip(isPlanningContainer(item.kind, this.ladder) ? 'dev' : item.branch), item.verdicts.map((v) => v.current ?? null)]) : '';
-    if (ifMoved && (this.#shown.get(`T-${idNumber(id)}`) === shown || (item && pending(item.verdicts)))) return;
+    if (ifMoved && item && pending(item.verdicts)) return;
     const previous = this.#announced.get(`T-${idNumber(id)}`);
     // Keep the pre-change path before removal/reparenting changes the indexed tree.
     const previousAncestry: string[] = [];
@@ -684,8 +696,6 @@ export class Tracker {
     }
     if (item) this.#announced.set(`T-${idNumber(id)}`, item);
     else this.#announced.delete(`T-${idNumber(id)}`);
-    if (item) this.#shown.set(`T-${idNumber(id)}`, shown);
-    else this.#shown.delete(`T-${idNumber(id)}`);
     if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
@@ -694,6 +704,8 @@ export class Tracker {
         this.#log({ event: 'task-change-listener-failed', id, error: err instanceof Error ? err.message : String(err) });
       }
     }
+    if (ancestors) for (const parent of this.#ancestorIds(indexed?.parent ?? previous?.parent ?? null)) this.#announce(parent, false, undefined, false, false);
+    for (const dependent of nextDependents) this.#announce(dependent, false, undefined, false, false);
   }
 
   /** Listen to verdict comments written through the hub; returns the unsubscribe. */
@@ -944,6 +956,7 @@ export class Tracker {
       return;
     }
     if (known && known.hash === hash) {
+      if (!this.#summaries.has(item.fm.id)) this.#rememberSource(item);
       const indexed = this.#index.get(knownId!);
       if (indexed?.kind !== 'task' || indexed.status !== undefined) {
         if (this.#bootstrapping || this.#planErrors.has(knownId!)) this.#plansAfterIndex(item, 'hand');
@@ -954,6 +967,7 @@ export class Tracker {
     // the id moved out of this file (someone rewrote it by hand): the old row goes
     if (knownId && idNumber(knownId) !== idNumber(id)) {
       this.#index.remove(knownId);
+      this.#planSources.delete(knownId); this.#summaries.delete(knownId);
       this.#planCandidates.delete(knownId);
       this.#changed(knownId);
     }
@@ -988,6 +1002,7 @@ export class Tracker {
     }
     const wasOpen = prior?.state === 'open';
     this.#index.put(item, { file: name, hash, source: 'hand', indexedAt: now });
+    this.#rememberSource(item);
     this.#plansAfterIndex(item, 'hand');
     if (migrated) {
       // Bootstrap indexes synchronously before the hub serves requests. Its migrations still write through
@@ -1081,6 +1096,7 @@ export class Tracker {
     const affected = new Set(this.#index.plansContaining(id));
     for (const child of this.#index.list({ under: id })) for (const epic of this.#index.plansContaining(child.id)) affected.add(epic);
     this.#index.remove(id);
+    this.#planSources.delete(id); this.#summaries.delete(id);
     this.#stageCoverDependents.delete(id);
     this.#planCandidates.delete(id);
     this.#planErrors.delete(id);
@@ -1351,11 +1367,15 @@ export class Tracker {
         const meta = this.#index.metaOf(written.fm.id);
         if (meta?.file !== name || meta.hash !== hashOf(text)) {
           this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() });
+          this.#rememberSource(written);
           this.#plansAfterIndex(written, 'hand');
+          this.#changed(written.fm.id);
         }
       }
       const present = new Set(entries.map(entry => this.#fileNumber(entry.file)!));
-      for (const id of this.#index.ids()) if (!present.has(idNumber(id))) this.#index.remove(id);
+      for (const id of this.#index.ids()) if (!present.has(idNumber(id))) {
+        this.#index.remove(id); this.#planSources.delete(id); this.#summaries.delete(id); this.#changed(id);
+      }
       for (const category of plan.categories) if (category.action === 'create') {
         const created = await this.#create(actor, { title: category.title, kind: category.kind }, resumed, () => {});
         if (created.id !== category.id) throw new TrackerError(`migration counter changed: expected ${category.id}, got ${created.id}`);
@@ -1939,57 +1959,131 @@ export class Tracker {
     return this.#index.criteriaCounts(item, tip, this.isPlanContainer(item.kind) ? commit => commit ? this.#fresh.demo(item.id, commit, this.#demoTasks(item.id)) : false : undefined);
   }
 
+  #rememberSource(item: Item): void {
+    if (this.isPlanContainer(item.fm.kind)) this.#planSources.set(item.fm.id, item);
+    else this.#planSources.delete(item.fm.id);
+    const value = bodySummary(item.body);
+    this.#summaries.set(item.fm.id, { ...value, provenance: value.text && value.from !== 'written'
+      ? `fallback from ${value.from ? `## ${value.from}` : 'the body'} · no ## Summary yet` : null });
+  }
+
+  #rawSummary(i: IndexedItem): ItemSummary {
+    return { ...i, summary: this.#summaries.get(i.id) ?? {text:'',from:null,provenance:null},
+      open_blockers: this.#index.openBlockers(i.id), ...this.#verifyOf(i), ...this.#inboxPlan(i.id),
+      criteria: this.#summaryCriteria(i), claim: this.#index.claimOf(i.id), holds: this.#index.holdsOf(i.id),
+      verdictBase: this.#fresh.base(), verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, this.#index.verdicts(i.id).get(i.id) ?? []) };
+  }
+
+  #ensureExplorer(): ExplorerFieldsIndex {
+    if (!this.#explorer) {
+      this.#explorer = new ExplorerFieldsIndex(this.ladder, (ids, durationMs) => this.#log({event:'explorer-recomputed',items:ids,durationMs}));
+      for (const i of this.#index.list()) this.#explorer.update(i.id, this.#rawSummary(i));
+      for (const i of this.#index.list()) this.#refreshStage(i.id);
+    }
+    return this.#explorer;
+  }
+
+  #refreshStage(id: string): void {
+    const item = this.#planSources.get(id);
+    if (!item || !this.isPlanContainer(item.fm.kind)) return;
+    const stages = this.#stagesOf(item);
+    const n = stages.findIndex(stage => stage.state !== 'closed');
+    this.#explorer!.stage(id, n < 0 ? null : {number:n+1,total:stages.length,name:stages[n]!.name});
+  }
+
+  #refreshExplorer(id: string): string[] {
+    if (!this.#explorer) return [];
+    const row = this.#index.get(id);
+    const old = this.#announced.get(`T-${idNumber(id)}`);
+    const dependents = old && old.id !== id ? this.#explorer.update(old.id, null) : [];
+    dependents.push(...this.#explorer.update(id, row ? this.#rawSummary(row) : null));
+    this.#refreshStage(id);
+    return dependents;
+  }
+
+  #projected(id: string): ItemSummary {
+    const explorer = this.#ensureExplorer();
+    // Index adapters may seed durable rows after startup without a file event.
+    // Hydrate only a missing row; ordinary reads retain the cached projection.
+    if (!explorer.rows.has(id)) {
+      const indexed = this.#index.get(id);
+      if (indexed) { explorer.update(id, this.#rawSummary(indexed)); this.#refreshStage(id); }
+    }
+    const row = {...explorer.rows.get(id)!, ...explorer.fields(id)};
+    if (row.state === 'closed' && row.summary) {
+      const {text: _text, ...provenance} = row.summary;
+      return {...row,summary:provenance};
+    }
+    return row;
+  }
+
+  /** Visibility and topic timestamps are hub state, not tracker-file fields. */
+  explorerContext(layers: Record<string, import('../hub/visibility.ts').Layer>, messages: Record<string, string>): ItemSummary[] {
+    const explorer = this.#ensureExplorer();
+    explorer.context(layers, messages);
+    return explorer.flush().map(id => this.#projected(id));
+  }
+
   list(filter: ListFilter = {}): ItemSummary[] {
     if (filter.under !== undefined) filter = { ...filter, under: this.#require(filter.under).id };
-    const childCounts = containerChildCounts(this.#index.list(), this.ladder);
-    const claims = this.#index.claims();
-    const verdicts = this.#index.verdicts();
-    const base = this.#fresh.base();
-    return this.#index.list(filter).map((i) => ({ ...i, ...(childCounts.has(i.id) ? { child_counts: childCounts.get(i.id)! } : {}), ...this.#verifyOf(i), ...this.#inboxPlan(i.id), criteria: this.#summaryCriteria(i), claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), verdictBase: base, verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, verdicts.get(i.id) ?? []) }));
+    this.#ensureExplorer();
+    return this.#index.list(filter).map(i => this.#projected(i.id));
   }
 
   listSummaries(filter: ListFilter = {}): ExplorerSummary[] {
-    if (filter.under !== undefined) filter = { ...filter, under: this.#require(filter.under).id };
-    const childCounts = containerChildCounts(this.#index.list(), this.ladder);
-    const claims = this.#index.claims();
-    const verdicts = this.#index.verdicts();
-    return this.#index.list(filter).map(i => {
+    return this.list(filter).map(i => {
       const counts = { review: 0, qa: 0 };
       const latest = new Map<string, IndexedVerdict & { round: number }>();
-      for (const v of verdicts.get(i.id) ?? []) {
+      for (const v of i.verdicts) {
         latest.delete(v.verdict);
         latest.set(v.verdict, { ...v, round: ++counts[v.verdict] });
       }
-      // Keep file order across the two kinds, with the original per-kind round.
-      const selected = [...latest.values()];
-      const annotated = this.#annotateVerdicts(i.id, i.kind, i.branch, selected);
       return {
-        id: i.id, kind: i.kind, title: i.title, state: i.state,
-        ...(childCounts.has(i.id) ? { child_counts: childCounts.get(i.id)! } : {}),
-        ...(i.status ? { status: i.status } : {}), ...(i.size ? { size: i.size } : {}),
-        ...(i.version ? { version: i.version } : {}),
-        ...(i.rank_set ? { rank: i.rank, rank_set: i.rank_set } : {}),
-        updated: i.updated, ...(i.closed ? { closed: i.closed } : {}),
-        labels: i.labels, parent: i.parent, blocked_by: i.blocked_by, open_blockers: this.#index.openBlockers(i.id),
-        claim: claims.get(i.id) ?? null, holds: this.#index.holdsOf(i.id), criteria: this.#summaryCriteria(i),
-        verdicts: annotated.map((v, n) => ({ verdict: v.verdict, result: v.result, by: v.by, run: v.run, at: v.at,
-          ...(v.scope ? { scope: v.scope } : {}), ...(v.current !== undefined ? { current: v.current } : {}), round: selected[n]!.round })),
+        id:i.id,kind:i.kind,title:i.title,state:i.state,
+        ...(i.child_counts ? {child_counts:i.child_counts} : {}),
+        ...(i.summary ? {summary:i.summary} : {}),...(i.blocked !== undefined ? {blocked:i.blocked} : {}),
+        ...(i.derived_status ? {derived_status:i.derived_status} : {}),...(i.glyph ? {glyph:i.glyph} : {}),...(i.layer ? {layer:i.layer} : {}),
+        ...(i.rollup ? {rollup:i.rollup,next:i.next ?? null} : {}),
+        ...(i.status ? {status:i.status} : {}), ...(i.size ? {size:i.size} : {}),
+        ...(i.version ? {version:i.version} : {}), ...(i.rank_set ? {rank:i.rank,rank_set:i.rank_set} : {}),
+        updated:i.updated, ...(i.closed ? {closed:i.closed} : {}),labels:i.labels,parent:i.parent,
+        blocked_by:i.blocked_by,open_blockers:i.open_blockers ?? [],claim:i.claim,holds:i.holds,criteria:i.criteria,
+        verdicts:[...latest.values()].map(v => ({verdict:v.verdict,result:v.result,by:v.by,run:v.run,at:v.at,
+          ...(v.scope ? {scope:v.scope} : {}),...(v.current !== undefined ? {current:v.current} : {}),round:v.round})),
       };
     });
   }
 
+  /** Explicit by-id pages carry closed summary text; the envelope stays below 256 KiB. */
+  summaryPage(ids: string[]): { items: Array<{id: string; summary: SummaryText}>; remaining: string[] } {
+    this.#ensureExplorer();
+    const resolved = [...new Set(ids.map(raw => {
+      const id = this.resolveId(raw);
+      if (!id) throw new TrackerError(`no such item ${raw}`);
+      return id;
+    }))];
+    const items: Array<{id: string; summary: SummaryText}> = [];
+    let bytes = 0;
+    for (const id of resolved) {
+      const row = {id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null}};
+      const size = Buffer.byteLength(JSON.stringify(row)) + 1;
+      if (bytes + size > 250 * 1024) {
+        if (!items.length) throw new TrackerError(`${id}: summary exceeds the 256 KiB reply budget`);
+        break;
+      }
+      items.push(row); bytes += size;
+    }
+    return {items,remaining:resolved.slice(items.length)};
+  }
+
   #childCountFields(item: IndexedItem): { child_counts?: ChildCounts } {
-    if (!this.ladder.containers.includes(item.kind) && item.kind !== 'map') return {};
-    const counts = containerChildCounts([item, ...this.#index.list({ under: item.id })], this.ladder).get(item.id);
-    return counts ? { child_counts: counts } : {};
+    const counts = this.#ensureExplorer().fields(item.id)?.child_counts;
+    return counts ? {child_counts:counts} : {};
   }
 
   summary(raw: string): ItemSummary | null {
     const id = this.resolveId(raw);
-    const item = id ? this.#index.get(id) : null;
-    return item ? { ...item, ...this.#childCountFields(item), open_blockers: this.#index.openBlockers(item.id), ...this.#verifyOf(item), ...this.#inboxPlan(item.id), criteria: this.#summaryCriteria(item), claim: this.#index.claimOf(item.id),
-      holds: this.#index.holdsOf(item.id), verdictBase: this.#fresh.base(),
-      verdicts: this.#annotateVerdicts(item.id, item.kind, item.branch, this.#index.verdicts(item.id).get(item.id) ?? []) } : null;
+    return id && this.#index.get(id) ? this.#projected(id) : null;
   }
 
   #mergeQueue: (id: string) => ItemView['mergeQueue'] = () => undefined;
@@ -1997,6 +2091,8 @@ export class Tracker {
 
   useVerify(lookup: (item: string, branch: string | null) => VerifyResult | null, stageCovers: () => StageCover[] = () => []): void {
     this.#verify = lookup; this.#stageCovers = stageCovers;
+    // The dispatcher binds restored receipts after the startup projection exists.
+    if (this.#explorer) for (const item of this.#index.list()) this.#explorer.update(item.id, this.#rawSummary(item));
     this.#stageCoversChanged();
   }
 
@@ -2175,6 +2271,7 @@ export class Tracker {
       }
       return resumed(() => {
         this.#index.put(written, { file: name, hash: hashOf(text), source: 'hub', indexedAt: this.#now().getTime() }, verdictWriter ? { ...verdictWriter, id: this.#sessionId(verdictWriter.id) } : undefined);
+        this.#rememberSource(written);
         this.#plansAfterIndex(written, 'hub', planWriter, planReason);
         committed?.();
         this.#changed(written.fm.id, read?.op === 'planned');

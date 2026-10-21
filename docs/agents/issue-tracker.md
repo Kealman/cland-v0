@@ -97,6 +97,15 @@ Re-run `cland merge T-<n>` to clean a stale worktree of a closed, landed task. I
 
 ## Review before verification
 
+Workbench clients read hub-computed summaries and roll-ups from snapshots and
+task deltas. Open items include `summary.text`; closed items retain provenance
+and facts and fetch full summaries with `task.list` frames carrying
+`projection: "summary", ids: [...]` (at most 100). Repeat with the returned
+`remaining` ids; each reply stays within 256 KiB. This uses the existing read
+permission and adds no CLI flag. See hub/README.md, the summary projection, for
+field definitions and incremental invalidation. Full bodies and acceptance
+criteria still require `task.view` when reviewing an item.
+
 `send.to` accepts one recipient string or an array of strings (`string | string[]`); `to: "reviewer"` and `to: ["reviewer"]` route identically. Omit `to` or use `[]` for the human. Malformed values return `to must be a string or an array of strings` before permission checks.
 
 Before requesting review, the Implementer fetches and merges `origin/dev`, commits and pushes its head, sets the claimed item to `review`, and sends `review request T-<n>` to `reviewer` in its topic. After a clear source verdict it runs `cland verify` at the exact reviewed head. A fix or later merge that changes the head needs a new source review before a new run. An unchanged head may reuse an earlier green run through the tree-hash cache. The Reviewer leaves run-dependent criteria unverified until that same-head result arrives, then records the final verdict. The merge gate and verdict rules are unchanged; see [test guidance](tests.md) and [review and QA](../review-and-qa.md).

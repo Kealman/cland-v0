@@ -47,6 +47,12 @@
         "created": "2026-10-13T12:00:00.000Z",
         "updated": "2026-10-13T12:00:00.000Z",
         "file": "T-1-recorded-task.md",
+        "summary": {
+          "text": "",
+          "from": null,
+          "provenance": null
+        },
+        "open_blockers": [],
         "verify": null,
         "criteria": {
           "total": 1,
@@ -59,6 +65,9 @@
         "holds": [],
         "verdictBase": null,
         "verdicts": [],
+        "blocked": false,
+        "derived_status": "backlog",
+        "glyph": "○",
         "layer": "background"
       }
     ]

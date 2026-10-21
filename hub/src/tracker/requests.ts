@@ -31,7 +31,7 @@ export type TaskRequest =
     }
   | { type: 'task.plan'; id: string; item?: string; op: 'set' | 'show' | 'migrate' | 'approve'; yaml?: string; reason?: string; allow_large?: Record<string, string>; as?: ActorField }
   | { type: 'task.view'; id: string; item: string; as?: ActorField }
-  | { type: 'task.list'; id: string; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
+  | { type: 'task.list'; id: string; ids?: string[]; projection?: 'summary'; under?: string; state?: State; labels?: string[]; kind?: Kind; assignee?: string; verdict?: string; as?: ActorField }
   | { type: 'task.criterion'; id: string; item: string; op: string; criterion?: string; text?: string; note?: string; run?: string; as?: ActorField }
   | { type: 'task.comment'; id: string; item: string; text: string; verdict?: VerdictInput; as?: ActorField }
   | {
@@ -117,6 +117,12 @@ export async function handleTaskRequest(tracker: Tracker, frame: TaskRequest, ac
     case 'task.view':
       return { item: await tracker.viewAsync(needItem(f), resumed) };
     case 'task.list': {
+      optList(f, 'ids');
+      if (frame.ids !== undefined) {
+        if (frame.projection !== 'summary') throw new TrackerError('ids requires projection: summary');
+        if (frame.ids.length > 100) throw new TrackerError('summary ids accepts at most 100 items');
+        return tracker.summaryPage(frame.ids);
+      }
       if (f.projection !== undefined && f.projection !== 'summary') throw new TrackerError('projection must be summary');
       let verdict;
       if (frame.verdict !== undefined) {

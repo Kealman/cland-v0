@@ -162,7 +162,7 @@ test('summary projection bounds the first open payload in a thousand-item tracke
   assert.equal((open.items.find(i => i.id === 'E-100')?.child_counts as { done: number }).done, 500);
   assert.deepEqual(open.items[0]?.blocked_by, ['T-1000']);
   assert.deepEqual(open.items[0]?.open_blockers, [], 'closed blocker stays resolved without loading its row');
-  assert.ok(Buffer.byteLength(JSON.stringify(open)) < 60_000, 'first open-only payload stays under 60 KB');
+  assert.ok(Buffer.byteLength(JSON.stringify(open)) < 256 * 1024, 'open summaries with full text fit the 256 KiB startup reply budget');
   const all = await list({ projection: 'summary' });
   assert.equal(all.items.length, 1000);
   t.diagnostic(`summary bytes: open=${Buffer.byteLength(JSON.stringify(open))}, all=${Buffer.byteLength(JSON.stringify(all))}`);
@@ -238,7 +238,7 @@ test('task events refresh both container paths when a child changes state or par
   changes.length = 0;
   await tracker.edit(human, child.id, { state: 'closed' });
   assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.done, 1);
-  assert.equal(changes.find(c => c.id === release.id)?.item?.child_counts?.work.review, 0);
+  assert.equal(changes.find(c => c.id === release.id), undefined, 'an unchanged release projection sends no redundant row');
   changes.length = 0;
   await tracker.edit(human, child.id, { state: 'open', status: 'review' });
   assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.done, 0);
@@ -249,7 +249,8 @@ test('task events refresh both container paths when a child changes state or par
   assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.total, 0);
   assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.total, 1);
   assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.work.review, 1);
-  assert.equal(changes.find(c => c.id === release.id)?.item?.child_counts?.work.review, 1);
+  assert.equal(changes.find(c => c.id === release.id), undefined, 'moving a task within the same release leaves its roll-up unchanged');
+  assert.equal(tracker.summary(release.id)?.child_counts?.work.review, 1);
   changes.length = 0;
   const extra = await tracker.create(human, { title: 'New child', size: 'S', parent: other.id });
   assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.total, 2);

@@ -5739,6 +5739,13 @@
     "web/test/palette.test.ts::the palette and area keys help": 5.081626
   },
   "allow": {
+    "hub/test/item-summary-lua.test.ts::snapshot summaries and roll-ups equal Lua on every copied live tracker body": {
+      "seconds": 20,
+      "owner": "E-880",
+      "added": "2026-10-21",
+      "expires": "2026-11-04",
+      "reason": "T-1052 runs the independent headless Lua oracle over all 1051 copied tracker bodies and roll-ups through real frame reads. Local Darwin arm64 targeted run measured 7.489 s including disposable hub setup, bounded by-id pages and Lua; T3 allowance retains the all-body parity guard under loaded Linux."
+    },
     "hub/test/connection-resync.test.ts::a paused real socket reader receives resync, drains and resumes its model": {
       "seconds": 9,
       "owner": "E-880",
