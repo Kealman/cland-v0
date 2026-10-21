@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T09:52:44.616Z
+updated: 2026-10-21T20:03:06.364Z
 ---
 
 ## Summary
@@ -193,3 +193,9 @@ C2 live evidence: the human's live workbench idle-sampled for 10 minutes, 2026-1
 - Hub CPU per minute: 2.6, 90.7, 30.4, 35.8, 13.3, 17.2, 16.6, 49.9, 12.2 and 9.4 %; RSS 390–945 MB. The journal shows the crew's load, not the workbench's: cli 284 requests, nvim 103, unattributed 89, suite 2. Three implementers, QA and the reviewers were working.
 
 Reading: the workbench's own idle load is negligible, and the hub's CPU in the window came from crew traffic. A crew-quiet control sample would prove that clause directly; the stand-in has offered one.
+
+### coord · 2026-10-21T20:03:06.364Z
+
+C2 quiet sample, 2026-10-21 19:51:24–20:01:24Z, taken by cland-impl, read-only, on the human's live workbench (nvim --embed 45730) and hub 63790.
+- Workbench half met: zero nvim-spoke requests in 10 minutes, so no whole-state re-reads. nvim RSS stayed flat at 47–48 MB, and CPU was 0% in 8 of 10 samples.
+- Hub half not met: steady hub CPU was about 9–12%, with spikes of 67.7% and 42%. The cause is the hub's own idle work, chiefly `session-archive-sweep` scanning 248 rows about every 15 s (41 events), plus the hourly P90 computation. T-1084 fixes it, and C2 is re-sampled afterwards.
