@@ -3,7 +3,7 @@ id: T-1058
 kind: task
 title: The card's facts in the item summary
 state: open
-status: planned
+status: in progress
 size: M
 criterion_seq: 5
 labels:
@@ -13,9 +13,9 @@ parent: E-413
 blocked_by:
   - T-1052
 topic: null
-branch: null
+branch: t/T-1058-the-card-s-facts-in-the-item-summary
 created: 2026-10-21T14:04:18.959Z
-updated: 2026-10-21T14:13:34.845Z
+updated: 2026-10-21T18:41:15.163Z
 ---
 
 ## Summary

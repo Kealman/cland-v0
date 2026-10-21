@@ -2,8 +2,8 @@
 id: T-1052
 kind: task
 title: Summaries and roll-ups computed in the hub, equal to the Lua's
-state: open
-status: review
+state: closed
+status: done
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T18:03:38.024Z
+updated: 2026-10-21T18:40:59.066Z
+closed: 2026-10-21T18:40:59.066Z
 ---
 
 ## Summary
@@ -34,15 +35,19 @@ Each item summary in the snapshot and the deltas carries the summary text with i
 - [x] C1. A differential test runs the hub's summary rule and roll-ups and the Lua's (`explorer_summary.lua` and the Lua roll-ups, through headless Neovim) over every body of a copy of the live tracker and reports zero differences (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
   - done: impl-1052 · 2026-10-21T17:54:22.445Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-final · 2026-10-21T18:36:05.097Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
 - [x] C2. A frame client reads an item's summary with its provenance, a container's roll-ups, `blocked` and `next` from the snapshot, with no `task.view` (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
   - done: impl-1052 · 2026-10-21T17:54:22.466Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-final · 2026-10-21T18:36:05.097Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
 - [x] C3. A change to one task produces a delta that carries only that task and its ancestors whose fields changed, and the recomputation touches only that chain (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
   - done: impl-1052 · 2026-10-21T17:54:22.485Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-final · 2026-10-21T18:36:05.097Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
 - [x] C4. On a thousand-item fixture, recomputing after one task change stays under a measured bound recorded in the test, and the startup reply budgets of T-1038 still hold (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
   - done: impl-1052 · 2026-10-21T17:54:22.505Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-final · 2026-10-21T18:36:05.097Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
 - [x] C5. `hub/README.md` describes the new summary fields, their provenance and the incremental rule.
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-2 · 2026-10-21T14:52:30.592Z · commit 3a7b4f034b219461c7e87be4558a944a19fa9bc7
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-3 · 2026-10-21T14:58:35.648Z · commit e79e1231f323b223c469f89c6ed7de485b021c26
@@ -51,6 +56,7 @@ Each item summary in the snapshot and the deltas carries the summary text with i
   - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-source · 2026-10-21T15:56:58.063Z · commit 21c1018922f3564e187ad5ebf44907d01f17a90d
   - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-source-2 · 2026-10-21T17:54:15.627Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
   - done: impl-1052 · 2026-10-21T17:54:22.529Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-final · 2026-10-21T18:36:05.097Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
 
 ## Comments
 
@@ -228,3 +234,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Task evidence clear, not final readiness; A-8599. Exact unchanged bd3bf94f/treefeb1c68f. A-8598/f60bea5b raw2331ordinarytest/357filepasses+35loadtest/filepasses, actual T1/allfallbackT2hub+nvim/Web5files exit0. Seven owned identities each5distinctpassingfinishes+explicit5/5; chain work0.661ms<100ms, whole scale4.371s/maxload4.285s remain over report-only2s. Linuxx64 c8lon1 Node24.21/Nvim0.12.5,T2workers2/Web4,life465s/$0.0323estimated; host52dff9ee reusednotremote. Lint132/59,6missingbaselines,duration/resource/ratchet report-only; no4sWeb-tier-budgetpass. NoT3/T4 in task receipt; unchanged non-rewrite live attach T3 assertion still awaits Coordinator replacement full pre-merge run at this head. C1–C4 final evidence pending that full receipt; C5 source proof retained. Historical fullA-8569 stays red at21c10189. No integrated/stage/QA claim; afterstageQA separate. No Reviewer runtime.
+
+### rev-23 · 2026-10-21T18:36:05.097Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-merge-final
+commit: bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-8615, Standards0/Spec0, C1–C5 verified at unchanged origin bd3bf94f/treefeb1c68f. Required Coordinator full69958e15/A-8614 exit0:3561test/537filepasses,8environment skips,0fails/cancellations; actual Linuxx64c8lon1 T1/allT2hub+nvim/T3hub+nvim/Web5files. Real Lua14759–14763:1067copied+3ancestorrows0differences,836897bytes<1MiB. Startup8replyguard16436passes; unchanged non-rewrite live attach fixture19374passes, fixing priorA-8569 red. Incremental work0.907ms<100ms onlyT12/E2/R1; whole scale3.146s remains report-only2s overage. Same-head taskA-8598 audited inA-8599:2331ordinarytest/357filepasses+35loadtest/filepasses, all7ownedT2identities5/5. Snapshot/provenance/rollups/blocked/next, bounded closed reads, changed-chain/stage/ancestor next, compatibility observers and docs source retained. Host52dff9ee reusednotremote; T2/T3workers2/Web4,life1520s/$0.1055estimated. Lint132/59,8missingbaselines,duration/ratchet report-only: T3phase1083.45>900, ratchet2149.221>2135.601 (+13.620), compiler/CLI/Web overages retained; T-1068 follow-up filed. NoT4/stage/afterstageQA pass; affected afterstageQA separate, Coordinator owns enqueue. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### coord · 2026-10-21T18:40:59.066Z
+
+Merged ee95f17e73aaa62bba63e6ec010fd1741c084f11 onto dev.

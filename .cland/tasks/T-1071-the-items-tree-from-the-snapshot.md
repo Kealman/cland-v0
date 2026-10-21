@@ -3,7 +3,7 @@ id: T-1071
 kind: task
 title: The Items tree from the snapshot
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -12,9 +12,9 @@ parent: E-416
 blocked_by:
   - T-1052
 topic: null
-branch: null
+branch: t/T-1071-the-items-tree-from-the-snapshot
 created: 2026-10-21T17:32:16.253Z
-updated: 2026-10-21T17:32:22.217Z
+updated: 2026-10-21T18:41:19.838Z
 ---
 
 ## Summary
