@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { summary as bodySummary } from './summary.ts';
+import { summary as bodySummary, outline, sentences } from './summary.ts';
 import { ExplorerFieldsIndex, type ExplorerFields, type SummaryText } from './explorer-fields.ts';
 import { type ChildCounts } from './child-counts.ts';
 import { realClock, type Clock, type ClockTimer } from '../hub/clock.ts';
@@ -131,7 +131,7 @@ export type ItemView = IndexedItem & {
   mergeQueue?: { position: number; enqueued: string };
   warnings?: string[];
   planError?: string;
-  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; closure?: Omit<StageClosure, 'hash'>; cover?: { tree: string | null; missing: StagePlatform[]; pending?: StagePlatform[]; linux?: string; macos?: string } }>;
+  stages?: Array<StageSummary & { items: string[]; verdict?: IndexedVerdict; closure?: Omit<StageClosure, 'hash'>; cover?: { tree: string | null; missing: StagePlatform[]; pending?: StagePlatform[]; linux?: string; macos?: string } }>;
   planHistory?: PlanHistoryEntry[];
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
@@ -149,17 +149,31 @@ export type ItemView = IndexedItem & {
 };
 
 /** A row of `task.list`: the indexed fields, the live claim, and the verdicts in file order (the latest last). */
-export type ItemSummary = IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & Partial<ExplorerFields> & { child_counts?: ChildCounts; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type StageSummary = { name: string; state: 'open' | 'closed'; qa: QaPolicy; merged: number; total: number; statuses: Record<string,number> };
+export type CardFields = {
+  stages?: StageSummary[];
+  agents_text?: { sections: string[]; words: number };
+  decision?: { text: string; by: string; at: string };
+};
+export type CardVerdict = IndexedVerdict & { reason?: string; round?: number };
+
+export type ItemSummary = CardFields & IndexedItem & Pick<Partial<ItemView>, 'plan' | 'planError' | 'approval'> & Partial<ExplorerFields> & { child_counts?: ChildCounts; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: import('../hub/visibility.ts').Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: CardVerdict[]; verdictBase: string | null };
 
 /** Explorer rows; detail, plans, verification and index bookkeeping stay in task.view. */
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer'> & {
+export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer' | 'agents_text' | 'decision' | 'stages'> & {
   open_blockers: string[];
   rank?: number;
-  verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round: number }>;
+  verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round?: number; reason?: string }>;
 };
 
 /** An index change, as a subscribed UI hears it (the `task` event): the item as `task.list` shows it, or null when its file is gone. */
 export type ItemChange = { id: string; item: ItemSummary | null; siblings?: string[]; events?: string[]; postedVerdicts?: Verdict[]; previousAncestry?: string[] };
+
+// Card prose stays a single bounded preview; full comments remain on demand.
+const cardPreview = (text: string, limit: number): string => {
+  const chars = Array.from(text.replace(/\s+/g,' ').trim());
+  return chars.length > limit ? chars.slice(0,limit-1).join('')+'…' : chars.join('');
+};
 
 const verdictIdentity = (v: IndexedVerdict): string => JSON.stringify([v.author, v.at, v.verdict, v.result, v.run, v.commit ?? null, v.by, v.stage ?? null, v.stage_hash ?? null, v.scope ?? null, v.findings ?? null]);
 
@@ -327,8 +341,11 @@ export class Tracker {
   #identityAdopted: (name: string, id: string) => void = () => {};
   readonly #planSources = new Map<string, Item>();
   readonly #summaries = new Map<string, SummaryText>();
+  readonly #cards = new Map<string, CardFields>();
+  readonly #reasons = new Map<string, Map<string, string>>();
   #explorer: ExplorerFieldsIndex | undefined;
   readonly #announced = new Map<string, ItemSummary>();
+  readonly #announcedVerdicts = new Map<string, IndexedVerdict[]>();
   #verify: (item: string, branch: string | null) => VerifyResult | null = () => null;
   #stageCovers: () => StageCover[] = () => [];
   #stageCoverKey = '[]';
@@ -436,7 +453,7 @@ export class Tracker {
 
   /** Listen to index changes; returns the unsubscribe. */
   onChange(listener: (change: ItemChange) => void): () => void {
-    if (!this.#changeListeners.size) for (const item of this.list()) this.#announced.set(`T-${idNumber(item.id)}`,item);
+    if (!this.#changeListeners.size) for (const item of this.list()) this.#rememberAnnouncement(item.id,item);
     this.#changeListeners.add(listener);
     return () => this.#changeListeners.delete(listener);
   }
@@ -651,6 +668,17 @@ export class Tracker {
     }); }
   }
 
+  /** Client row compaction must never change the identity of a posted verdict. */
+  #rememberAnnouncement(id: string, item: ItemSummary | null): void {
+    const key = `T-${idNumber(id)}`;
+    if (item) {
+      this.#announced.set(key,item);
+      this.#announcedVerdicts.set(key,this.#explorer?.rows.get(item.id)?.verdicts ?? item.verdicts);
+    } else {
+      this.#announced.delete(key); this.#announcedVerdicts.delete(key);
+    }
+  }
+
   /**
    * Publish changed projected fields, including stage-only changes from asynchronous cover/tree settlement.
    * `ifMoved` retains the pending-verdict guard; whole-row equality suppresses unchanged freshness callbacks.
@@ -659,8 +687,7 @@ export class Tracker {
     const indexed = this.#index.get(id);
     id = indexed?.id ?? id;
     if (!this.#explorer && this.#changeListeners.size === 0) {
-      if (indexed) this.#announced.set(`T-${idNumber(id)}`, this.#rawSummary(indexed));
-      else this.#announced.delete(`T-${idNumber(id)}`);
+      this.#rememberAnnouncement(id,indexed ? this.#rawSummary(indexed) : null);
       return;
     }
     const nextDependents = this.#refreshExplorer(id);
@@ -680,11 +707,11 @@ export class Tracker {
       if (previous.status !== item.status) events.push(`status changed ${previous.status ?? 'none'} → ${item.status ?? 'none'}`);
       if (item.claim && (!previous.claim || !this.sameSession(previous.claim.sessionId, item.claim.sessionId))) events.push(`claimed by ${item.claim.session}`);
       const remaining = new Map<string, number>();
-      for (const verdict of previous.verdicts) {
+      for (const verdict of this.#announcedVerdicts.get(`T-${idNumber(id)}`) ?? []) {
         const key = verdictIdentity(verdict);
         remaining.set(key, (remaining.get(key) ?? 0) + 1);
       }
-      for (const verdict of item.verdicts) {
+      for (const verdict of this.#explorer!.rows.get(item.id)!.verdicts) {
         const key = verdictIdentity(verdict), count = remaining.get(key) ?? 0;
         if (count) remaining.set(key, count - 1);
         else {
@@ -694,8 +721,7 @@ export class Tracker {
       }
       if (previous.state !== 'closed' && item.state === 'closed') events.push('closed');
     }
-    if (item) this.#announced.set(`T-${idNumber(id)}`, item);
-    else this.#announced.delete(`T-${idNumber(id)}`);
+    this.#rememberAnnouncement(id,item);
     if (this.#changeListeners.size === 0) return;
     for (const listener of [...this.#changeListeners]) {
       try {
@@ -772,7 +798,7 @@ export class Tracker {
     for (const item of this.#startupItems.values()) this.#acceptPlan(item, 'hand');
     this.#startupItems.clear();
     // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
-    for (const item of this.list()) this.#announced.set(`T-${idNumber(item.id)}`, item);
+    for (const item of this.list()) this.#rememberAnnouncement(item.id,item);
     this.#watcher = this.#watch(
       this.#dir,
       {
@@ -967,7 +993,7 @@ export class Tracker {
     // the id moved out of this file (someone rewrote it by hand): the old row goes
     if (knownId && idNumber(knownId) !== idNumber(id)) {
       this.#index.remove(knownId);
-      this.#planSources.delete(knownId); this.#summaries.delete(knownId);
+      this.#planSources.delete(knownId); this.#summaries.delete(knownId); this.#cards.delete(knownId); this.#reasons.delete(knownId);
       this.#planCandidates.delete(knownId);
       this.#changed(knownId);
     }
@@ -1096,7 +1122,7 @@ export class Tracker {
     const affected = new Set(this.#index.plansContaining(id));
     for (const child of this.#index.list({ under: id })) for (const epic of this.#index.plansContaining(child.id)) affected.add(epic);
     this.#index.remove(id);
-    this.#planSources.delete(id); this.#summaries.delete(id);
+    this.#planSources.delete(id); this.#summaries.delete(id); this.#cards.delete(id); this.#reasons.delete(id);
     this.#stageCoverDependents.delete(id);
     this.#planCandidates.delete(id);
     this.#planErrors.delete(id);
@@ -1374,7 +1400,7 @@ export class Tracker {
       }
       const present = new Set(entries.map(entry => this.#fileNumber(entry.file)!));
       for (const id of this.#index.ids()) if (!present.has(idNumber(id))) {
-        this.#index.remove(id); this.#planSources.delete(id); this.#summaries.delete(id); this.#changed(id);
+        this.#index.remove(id); this.#planSources.delete(id); this.#summaries.delete(id); this.#cards.delete(id); this.#reasons.delete(id); this.#changed(id);
       }
       for (const category of plan.categories) if (category.action === 'create') {
         const created = await this.#create(actor, { title: category.title, kind: category.kind }, resumed, () => {});
@@ -1733,14 +1759,19 @@ export class Tracker {
   }
 
   /** A stage stays closed across later dev builds, but its own plan and landing evidence must stay unchanged. */
-  #stageSnapshot(id: string, name: string): { hash: string; merged: boolean; items: string[]; qa: QaPolicy } | null {
+  #stageSnapshot(id: string, name: string): { hash: string; merged: boolean; mergedCount: number; statuses: Record<string,number>; items: string[]; qa: QaPolicy } | null {
     const plan = this.#index.plan(id), stage = plan?.stages.find(s => s.name === name);
     if (!stage) return null;
     const items = stage.lanes.flat();
+    // Read each member once for both closure evidence and card counts. Status
+    // stays outside the closure hash: an open member's status is not a landing.
+    const statuses: Record<string,number> = {};
     const facts = items.map(childId => {
       const child = this.#index.get(childId), receipt = this.#index.mergeReceipt(childId);
+      const status = child?.state === 'closed' ? 'done' : child?.status ?? 'backlog';
+      statuses[status] = (statuses[status] ?? 0)+1;
       return { id: childId, state: child?.state, parent: child?.parent ? `T-${idNumber(child.parent)}` : child?.parent, kind: child?.kind, commit: receipt?.commit ?? null, base: receipt?.base ?? null,
-        belongs: !!child && this.#ancestorIds(child.parent).includes(id) };
+        belongs: !!child && (child.parent === id || this.#ancestorIds(child.parent).includes(id)) };
     });
     const overrides = items.map(childId => [childId, planOverride(plan!, childId) ?? null]);
     // An item's after-stage override still needs integrated QA even when the stage default uses per-item/none.
@@ -1749,7 +1780,8 @@ export class Tracker {
     const qa: QaPolicy = policies.length ? { scope: policies.some(qa => qa.scope === 'full') ? 'full' : 'affected', when: 'after-stage' } : stage.qa;
     return { hash: createHash('sha256').update(JSON.stringify([stage, overrides, facts])).digest('hex'),
       merged: facts.every(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || !!f.commit && f.base === 'dev')),
-      items, qa };
+      mergedCount: facts.filter(f => f.belongs && f.state === 'closed' && (f.kind !== 'task' || !!f.commit && f.base === 'dev')).length,
+      statuses, items, qa };
   }
 
   #stageCurrent(id: string, v: IndexedVerdict): boolean | undefined {
@@ -1855,6 +1887,7 @@ export class Tracker {
       }
       const closed = item.fm.state === 'closed' || completed;
       return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
+        merged:snapshot.mergedCount,total:snapshot.items.length,statuses:snapshot.statuses,
         ...(cover ? { cover } : {}),
         ...(closure ? { closure: { head: closure.head, tree: closure.tree, linux: closure.linux, macos: closure.macos } } : {}),
         ...(verdict ? { verdict: withCurrent(verdict, this.#stageCurrent(item.fm.id, verdict)) } : {}) };
@@ -1971,16 +2004,31 @@ export class Tracker {
   #rememberSource(item: Item): void {
     if (this.isPlanContainer(item.fm.kind)) this.#planSources.set(item.fm.id, item);
     else this.#planSources.delete(item.fm.id);
+    const {names,words} = outline(item.body);
+    const card: CardFields = {agents_text:{sections:names,words}};
+    const reasons = new Map<string,string>();
+    for (const comment of item.comments) {
+      if (comment.verdict) reasons.set(`${comment.verdict.verdict}:${comment.verdict.run}`, cardPreview(sentences(comment.text)[0] ?? '',96));
+      const opening = comment.text.trim().replace(/^[#*\s]+/,'');
+      if (/^(Resolution|Decided)/.test(opening)) card.decision = {text:cardPreview(bodySummary(comment.text.trim()).text,300),by:comment.author,at:comment.at};
+    }
+    this.#cards.set(item.fm.id,card); this.#reasons.set(item.fm.id,reasons);
     const value = bodySummary(item.body);
     this.#summaries.set(item.fm.id, { ...value, provenance: value.text && value.from !== 'written'
       ? `fallback from ${value.from ? `## ${value.from}` : 'the body'} · no ## Summary yet` : null });
   }
 
   #rawSummary(i: IndexedItem): ItemSummary {
-    return { ...i, summary: this.#summaries.get(i.id) ?? {text:'',from:null,provenance:null},
+    const source = this.#planSources.get(i.id);
+    const stages = source && this.#index.plan(i.id) ? this.#stagesOf(source).map(({name,state,qa,merged,total,statuses}) => ({name,state,qa,merged,total,statuses})) : undefined;
+    const rounds = {review:0,qa:0};
+    return { ...i, ...this.#cards.get(i.id), ...(stages ? {stages} : {}), summary: this.#summaries.get(i.id) ?? {text:'',from:null,provenance:null},
       open_blockers: this.#index.openBlockers(i.id), ...this.#verifyOf(i), ...this.#inboxPlan(i.id),
       criteria: this.#summaryCriteria(i), claim: this.#index.claimOf(i.id), holds: this.#index.holdsOf(i.id),
-      verdictBase: this.#fresh.base(), verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, this.#index.verdicts(i.id).get(i.id) ?? []) };
+      verdictBase: this.#fresh.base(), verdicts: this.#annotateVerdicts(i.id, i.kind, i.branch, this.#index.verdicts(i.id).get(i.id) ?? []).map(v => {
+        const reason = this.#reasons.get(i.id)?.get(`${v.verdict}:${v.run}`);
+        return {...v,round:++rounds[v.verdict],...(reason !== undefined ? {reason} : {})};
+      }) };
   }
 
   #ensureExplorer(): ExplorerFieldsIndex {
@@ -1995,7 +2043,7 @@ export class Tracker {
   #refreshStage(id: string): void {
     const item = this.#planSources.get(id);
     if (!item || !this.isPlanContainer(item.fm.kind)) return;
-    const stages = this.#stagesOf(item);
+    const stages = this.#explorer!.rows.get(id)?.stages ?? [];
     const n = stages.findIndex(stage => stage.state !== 'closed');
     this.#explorer!.stage(id, n < 0 ? null : {number:n+1,total:stages.length,name:stages[n]!.name});
   }
@@ -2019,9 +2067,15 @@ export class Tracker {
       if (indexed) { explorer.update(id, this.#rawSummary(indexed)); this.#refreshStage(id); }
     }
     const row = {...explorer.rows.get(id)!, ...explorer.fields(id)};
-    if (row.state === 'closed' && row.summary) {
-      const {text: _text, ...provenance} = row.summary;
-      return {...row,summary:provenance};
+    const latest = row.rollup?.latest_verdict;
+    if (latest && (row.state === 'closed' || this.#index.get(latest.item)?.state === 'closed')) {
+      const {reason: _reason,round: _round,scope: _scope,...verdict} = latest;
+      row.rollup = {...row.rollup!,latest_verdict:verdict};
+    }
+    if (row.state === 'closed') {
+      const {agents_text: _outline,decision: _decision,...closed} = row;
+      const {text: _text,...provenance} = row.summary ?? {from:null,provenance:null};
+      return {...closed,summary:provenance,verdicts:row.verdicts.map(({reason: _reason,round: _round,scope: _scope,...verdict}) => verdict)};
     }
     return row;
   }
@@ -2039,42 +2093,49 @@ export class Tracker {
     return this.#index.list(filter).map(i => this.#projected(i.id));
   }
 
+  #compactVerdicts(verdicts: CardVerdict[], card: boolean): ExplorerSummary['verdicts'] {
+    const counts = {review:0,qa:0};
+    const latest = new Map<string,CardVerdict & {round:number}>();
+    for (const v of verdicts) {
+      latest.delete(v.verdict); latest.set(v.verdict,{...v,round:++counts[v.verdict]});
+    }
+    return [...latest.values()].map(v => ({verdict:v.verdict,result:v.result,by:v.by,run:v.run,at:v.at,
+      ...(v.current !== undefined ? {current:v.current} : {}),
+      ...(card ? {round:v.round,...(v.scope ? {scope:v.scope} : {}),...(v.reason !== undefined ? {reason:v.reason} : {})} : {})}));
+  }
+
   listSummaries(filter: ListFilter = {}): ExplorerSummary[] {
     return this.list(filter).map(i => {
-      const counts = { review: 0, qa: 0 };
-      const latest = new Map<string, IndexedVerdict & { round: number }>();
-      for (const v of i.verdicts) {
-        latest.delete(v.verdict);
-        latest.set(v.verdict, { ...v, round: ++counts[v.verdict] });
-      }
       return {
         id:i.id,kind:i.kind,title:i.title,state:i.state,
         ...(i.child_counts ? {child_counts:i.child_counts} : {}),
-        ...(i.summary ? {summary:i.summary} : {}),...(i.blocked !== undefined ? {blocked:i.blocked} : {}),
+        ...(i.summary ? {summary:i.summary} : {}),...(i.agents_text ? {agents_text:i.agents_text} : {}),...(i.stages ? {stages:i.stages} : {}),...(i.decision ? {decision:i.decision} : {}),...(i.blocked !== undefined ? {blocked:i.blocked} : {}),
         ...(i.derived_status ? {derived_status:i.derived_status} : {}),...(i.glyph ? {glyph:i.glyph} : {}),...(i.layer ? {layer:i.layer} : {}),
         ...(i.rollup ? {rollup:i.rollup,next:i.next ?? null} : {}),
         ...(i.status ? {status:i.status} : {}), ...(i.size ? {size:i.size} : {}),
         ...(i.version ? {version:i.version} : {}), ...(i.rank_set ? {rank:i.rank,rank_set:i.rank_set} : {}),
         updated:i.updated, ...(i.closed ? {closed:i.closed} : {}),labels:i.labels,parent:i.parent,
         blocked_by:i.blocked_by,open_blockers:i.open_blockers ?? [],claim:i.claim,holds:i.holds,criteria:i.criteria,
-        verdicts:[...latest.values()].map(v => ({verdict:v.verdict,result:v.result,by:v.by,run:v.run,at:v.at,
-          ...(v.scope ? {scope:v.scope} : {}),...(v.current !== undefined ? {current:v.current} : {}),round:v.round})),
+        verdicts:this.#compactVerdicts(i.verdicts,i.state !== 'closed'),
       };
     });
   }
 
-  /** Explicit by-id pages carry closed summary text; the envelope stays below 256 KiB. */
-  summaryPage(ids: string[]): { items: Array<{id: string; summary: SummaryText}>; remaining: string[] } {
+  /** Explicit by-id pages carry closed summary text and card facts; the envelope stays below 256 KiB. */
+  summaryPage(ids: string[]): { items: Array<Pick<CardFields,'agents_text' | 'decision'> & {id: string; summary: SummaryText; verdicts: ExplorerSummary['verdicts']}>; remaining: string[] } {
     this.#ensureExplorer();
     const resolved = [...new Set(ids.map(raw => {
       const id = this.resolveId(raw);
       if (!id) throw new TrackerError(`no such item ${raw}`);
       return id;
     }))];
-    const items: Array<{id: string; summary: SummaryText}> = [];
+    const items: ReturnType<Tracker['summaryPage']>['items'] = [];
     let bytes = 0;
     for (const id of resolved) {
-      const row = {id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null}};
+      const source = this.#ensureExplorer().rows.get(id)!;
+      const {agents_text,decision} = this.#cards.get(id) ?? {};
+      const row = {id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null},
+        ...(agents_text ? {agents_text} : {}),...(decision ? {decision} : {}),verdicts:this.#compactVerdicts(source.verdicts,true)};
       const size = Buffer.byteLength(JSON.stringify(row)) + 1;
       if (bytes + size > 250 * 1024) {
         if (!items.length) throw new TrackerError(`${id}: summary exceeds the 256 KiB reply budget`);

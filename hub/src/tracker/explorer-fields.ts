@@ -6,7 +6,7 @@ import type { Layer } from '../hub/visibility.ts';
 import { compareRank } from './rank.ts';
 
 export type SummaryText = { text?: string; from: string | null; provenance: string | null };
-export type ExplorerVerdict = Pick<ItemSummary['verdicts'][number], 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { item: string; title: string; round: number };
+export type ExplorerVerdict = Pick<ItemSummary['verdicts'][number], 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current' | 'reason'> & { item: string; title: string; round?: number };
 export type Activity = { at: string; item: string; title: string; source: 'item updated' | 'a message in its topic' };
 export type ExplorerFields = {
   summary: SummaryText;
@@ -148,7 +148,7 @@ export class ExplorerFieldsIndex {
       const rounds = {review:0,qa:0};
       for (const v of row.verdicts) {
         const candidate: ExplorerVerdict = {verdict:v.verdict,result:v.result,by:v.by,run:v.run,at:v.at,
-          ...(v.scope ? {scope:v.scope} : {}),...(v.current !== undefined ? {current:v.current} : {}),item:id,title:title(row),round:++rounds[v.verdict]};
+          ...(v.scope ? {scope:v.scope} : {}),...(v.current !== undefined ? {current:v.current} : {}),...(v.reason !== undefined ? {reason:v.reason} : {}),item:id,title:title(row),round:v.round ?? ++rounds[v.verdict]};
         if (!latest || candidate.at >= latest.at) latest = candidate;
       }
       let subtree: ExplorerVerdict | null = null;

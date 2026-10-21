@@ -31,25 +31,133 @@ async function featured(t:TestContext,discovery:{socket:string;secret:string}) {
   return {ui,items:(snapshot.value as {items:ItemSummary[]}).items};
 }
 
+test('card facts arrive in snapshots and deltas while body and comments stay on demand',async t=>{
+  const root=await tempProject(t);
+  const body='## Summary\n\nCard summary.\n\n## Implementation\n\nPrivate implementation details.';
+  await source(root,'T-1','task',null,'planned',body);
+  const path=join(root,'.cland/tasks/T-1-fixture.md');
+  const {parseItem}=await import('../src/tracker/item.ts');
+  const item=parseItem(await readFile(path,'utf8'));
+  item.comments=[
+    {author:'reviewer',at,text:'Old reason '+ 'é'.repeat(300)+'.',verdict:{verdict:'review',result:'not clear',run:'r1',by:'reviewer',scope:'full'}},
+    {author:'human',at,text:'## Resolution\n\nUse the shared projection. Keep full prose on demand.'},
+    {author:'reviewer',at,text:'Fixed the missing boundary. More review detail stays private.',verdict:{verdict:'review',result:'clear',run:'r2',by:'reviewer',scope:'delta'}},
+  ];
+  await writeFile(path,serializeItem(item));
+  const hub=await projectHub(t,root,{}, {clock:new FakeClock()});
+  const {ui,items}=await featured(t,hub.discovery);
+  const task=items.find(i=>i.id==='T-1')!;
+  assert.deepEqual(task.verdicts.map(v=>({run:v.run,reason:v.reason,round:v.round,scope:v.scope})),
+    [{run:'r2',reason:'Fixed the missing boundary.',round:2,scope:'delta'}]);
+  assert.deepEqual(task.decision,{text:'Use the shared projection. Keep full prose on demand.',by:'human',at});
+  assert.deepEqual(task.agents_text,{sections:['Summary','Implementation'],words:9});
+  assert.equal(Object.hasOwn(task,'body'),false);assert.equal(Object.hasOwn(task,'comments'),false);
+  assert.ok(!JSON.stringify(task).includes('Private implementation details'));
+  const changed=ui.waitFor(f=>f.type==='task'&&f.id==='T-1'&&(f.item as ItemSummary).agents_text?.words===5);
+  assert.equal((await ui.request({type:'task.edit',item:'T-1',body:'## Summary\n\nA smaller body.'})).ok,true);
+  const delta=(await changed).item as ItemSummary;
+  assert.deepEqual(delta.agents_text,{sections:['Summary'],words:5});
+  assert.equal(Array.from(delta.verdicts[0]!.reason!).length,96);assert.ok(delta.verdicts[0]!.reason!.endsWith('…'));
+  assert.deepEqual(delta.decision,task.decision);assert.equal(delta.verdicts.at(-1)?.reason,'Fixed the missing boundary.');
+  const decision=ui.waitFor(f=>f.type==='task'&&f.id==='T-1'&&(f.item as ItemSummary).decision?.text==='Choose the new path.');
+  assert.equal((await ui.request({type:'task.comment',item:'T-1',text:'## Decided\n\nChoose the new path.'})).ok,true);
+  assert.equal(((await decision).item as ItemSummary).decision?.by,'human');
+  const verdict=ui.waitFor(f=>f.type==='task'&&f.id==='T-1'&&(f.item as ItemSummary).verdicts.at(-1)?.run==='r3');
+  void verdict.catch(()=>{});
+  assert.equal((await ui.request({type:'task.comment',item:'T-1',text:'A new evidence reason. More private details.',
+    verdict:{verdict:'review',result:'not clear',run:'r3',scope:'evidence',findings:[]}})).ok,true);
+  const latest=((await verdict).item as ItemSummary).verdicts.at(-1)!;
+  assert.equal(latest.reason,'A new evidence reason.');assert.equal(latest.round,3);assert.equal(latest.scope,'evidence');
+  const closed=ui.waitFor(f=>f.type==='task'&&f.id==='T-1'&&(f.item as ItemSummary).state==='closed');
+  assert.equal((await ui.request({type:'task.edit',item:'T-1',state:'closed'})).ok,true);
+  const compact=(await closed).item as ItemSummary;
+  assert.equal(compact.agents_text,undefined);assert.equal(compact.decision,undefined);
+  assert.ok(compact.verdicts.every(v=>v.reason===undefined&&v.round===undefined&&v.scope===undefined));
+  const fresh=(await featured(t,hub.discovery)).items.find(i=>i.id==='T-1')!;
+  assert.equal(fresh.agents_text,undefined);assert.equal(fresh.decision,undefined);
+  assert.ok(fresh.verdicts.every(v=>v.reason===undefined&&v.round===undefined&&v.scope===undefined));
+  const page=await ui.request({type:'task.list',projection:'summary',ids:['T-1']});
+  assert.equal(page.ok,true,page.error);
+  const full=(page.value as {items:ItemSummary[]}).items[0]!;
+  assert.deepEqual(full.agents_text,{sections:['Summary'],words:5});assert.equal(full.decision?.text,'Choose the new path.');
+  assert.deepEqual(full.verdicts.map(v=>({run:v.run,reason:v.reason,round:v.round,scope:v.scope})),
+    [{run:'r3',reason:'A new evidence reason.',round:3,scope:'evidence'}]);
+  assert.equal(Object.hasOwn(full,'body'),false);assert.equal(Object.hasOwn(full,'comments'),false);
+  assert.ok(!ui.frames.some(f=>f.type==='result'&&JSON.stringify(f).includes('Private implementation details')));
+});
+
+test('closing and reopening a compact card never posts its historical scoped verdicts again',async t=>{
+  const root=await tempProject(t);
+  await source(root,'T-1','task',null,'planned');
+  const path=join(root,'.cland/tasks/T-1-fixture.md');
+  const {parseItem}=await import('../src/tracker/item.ts');
+  const item=parseItem(await readFile(path,'utf8'));
+  item.comments=['full','delta'].map((scope,n)=>({author:'reviewer',at,text:`Historical reason ${n+1}.`,
+    verdict:{verdict:'review',result:'not clear',run:`old-${n+1}`,by:'reviewer',scope:scope as 'full'|'delta'}}));
+  await writeFile(path,serializeItem(item));
+  const logs:Record<string,unknown>[]=[];
+  const hub=await projectHub(t,root,{}, {clock:new FakeClock(),log:entry=>logs.push(entry)});
+  const {ui}=await featured(t,hub.discovery);
+  const {inProcessSpoke}=await import('./harness.ts');
+  const observer=await inProcessSpoke(t,{discover:true,cwd:root,name:'observer',role:'coordinator'});
+  onCleanup(t,()=>observer.close());await observer.waitForPresence(['observer']);
+  assert.equal((await observer.call<{ok:boolean}>('subscribe',{subject:{item:'T-1'},events:['task']})).ok,true);
+  const posted=()=>logs.filter(l=>l.event==='event-announced'&&String(l.text).includes('verdict posted'));
+  for (const state of ['closed','open'] as const) {
+    const changed=ui.waitFor(f=>f.type==='task'&&f.id==='T-1'&&(f.item as ItemSummary).state===state);
+    assert.equal((await ui.request({type:'task.edit',item:'T-1',state})).ok,true);
+    const row=(await changed).item as ItemSummary;
+    assert.equal((await ui.request({type:'hub.status',flushLogs:true})).ok,true);
+    assert.deepEqual(posted(),[],`${state} must not create postedVerdicts or verdict events`);
+    const history=await ui.request({type:'topic.history',topic:'agents'});
+    assert.equal(history.ok,true,history.error);
+    assert.deepEqual((history.value as {messages:Array<{kind:string;text:string}>}).messages.filter(m=>m.kind==='event'&&m.text.includes('verdict posted')),[]);
+    if (state==='closed') {
+      assert.equal(row.agents_text,undefined);assert.equal(row.decision,undefined);
+      assert.ok(row.verdicts.every(v=>v.reason===undefined&&v.round===undefined&&v.scope===undefined));
+      const page=await ui.request({type:'task.list',projection:'summary',ids:['T-1']});
+      assert.equal(page.ok,true,page.error);assert.ok(Buffer.byteLength(JSON.stringify(page)+'\n')<=256*1024);
+      assert.deepEqual((page.value as {items:ItemSummary[]}).items[0]!.verdicts.map(v=>({run:v.run,scope:v.scope,round:v.round,reason:v.reason})),
+        [{run:'old-2',scope:'delta',round:2,reason:'Historical reason 2.'}]);
+    }
+  }
+  assert.equal((await observer.call<{ok:boolean}>('subscribe',{subject:{item:'T-1'},events:['task']})).ok,true);
+  const genuine=ui.waitFor(f=>f.type==='task'&&f.id==='T-1'&&(f.item as ItemSummary).verdicts.at(-1)?.run==='new-evidence');
+  assert.equal((await ui.request({type:'task.comment',item:'T-1',text:'A genuine new verdict.',
+    verdict:{verdict:'review',result:'not clear',run:'new-evidence',scope:'evidence',findings:[]}})).ok,true);
+  await genuine;assert.equal((await ui.request({type:'hub.status',flushLogs:true})).ok,true);
+  assert.equal(posted().length,1);assert.equal((posted()[0]!.verdict as {run:string;scope:string}).run,'new-evidence');
+  assert.equal((posted()[0]!.verdict as {scope:string}).scope,'evidence');
+  const history=await ui.request({type:'topic.history',topic:'agents'});
+  const delivered=(history.value as {messages:Array<{kind:string;text:string;to:string[]}>}).messages.filter(m=>m.kind==='event'&&m.text.includes('verdict posted'));
+  assert.equal(delivered.length,1);assert.match(delivered[0]!.text,/review not clear · evidence · new-evidence/);
+  assert.deepEqual(delivered[0]!.to,['observer']);
+});
+
 test('snapshot supplies summary provenance, container progress, stage, blocked and next without task.view',async t=>{
   const root=await tempProject(t);
   await source(root,'R-1','release',null);
-  await source(root,'E-2','epic','R-1',undefined,withPlan('## Summary\n\nThe epic summary.',{stages:[{name:'first',qa:{scope:'none',when:'per-item'},lanes:[['T-3','T-4']]}]}));
-  await source(root,'T-3','task','E-2','planned');await source(root,'T-4','task','E-2','done');
+  await source(root,'E-2','epic','R-1',undefined,withPlan('## Summary\n\nThe epic summary.',{stages:[{name:'first',qa:{scope:'none',when:'per-item'},lanes:[['T-3','T-4']]},{name:'second',qa:{scope:'none',when:'per-item'},lanes:[['T-5']]}]}));
+  await source(root,'T-3','task','E-2','planned');await source(root,'T-4','task','E-2','done');await source(root,'T-5','task','E-2','done');
+  await source(root,'E-6','epic','R-1','done',withPlan('## Summary\n\nClosed epic.',{stages:[{name:'closed',qa:{scope:'none',when:'per-item'},lanes:[['T-7']]}]}));
+  await source(root,'T-7','task','E-6','done');
   const clock=new FakeClock();
   const hub=await projectHub(t,root,{}, {clock});
   await clock.advance(1);
   const actor=await connectUi(t,hub.discovery);
   const initial=await featured(t,hub.discovery);
   assert.equal(initial.items.find(i=>i.id==='E-2')!.rollup?.layer,'watch','startup layer is ready before any mutation');
+  assert.deepEqual(initial.items.find(i=>i.id==='E-6')!.stages,[{name:'closed',state:'closed',qa:{scope:'none',when:'per-item'},merged:0,total:1,statuses:{done:1}}]);
   assert.equal((await actor.request({type:'task.link',item:'T-3',blocked_by:['T-4']})).ok,true);
   const {items}=await featured(t,hub.discovery);
   const task=items.find(i=>i.id==='T-3')!, epic=items.find(i=>i.id==='E-2')!, release=items.find(i=>i.id==='R-1')!;
   assert.deepEqual(task.summary,{text:'The summary describes the work. Another sentence.',from:'Problem',provenance:'fallback from ## Problem · no ## Summary yet'});
   assert.equal(task.blocked,false);assert.equal(epic.next,'T-3');assert.equal(release.next,'T-3');
-  assert.deepEqual(epic.child_counts,{total:2,done:1,statuses:{planned:1,done:1},work:{'in progress':0,review:0,qa:0}});
+  assert.deepEqual(epic.child_counts,{total:3,done:2,statuses:{planned:1,done:2},work:{'in progress':0,review:0,qa:0}});
   assert.equal(epic.derived_status,'planned');assert.equal(epic.glyph,'○');
-  assert.deepEqual(epic.rollup?.stage,{number:1,total:1,name:'first'});assert.equal(epic.rollup?.layer,'watch');
+  assert.deepEqual(epic.stages,[{name:'first',state:'open',qa:{scope:'none',when:'per-item'},merged:0,total:2,statuses:{planned:1,done:1}},
+    {name:'second',state:'open',qa:{scope:'none',when:'per-item'},merged:0,total:1,statuses:{done:1}}]);
+  assert.deepEqual(epic.rollup?.stage,{number:1,total:2,name:'first'});assert.equal(epic.rollup?.layer,'watch');
   assert.deepEqual(epic.rollup?.claims,[]);assert.deepEqual(epic.rollup?.holds,[]);
   assert.equal(epic.rollup?.last_activity.item,'T-3');
   const block=await actor.request({type:'task.link',item:'T-3',blocked_by:['R-1']});assert.equal(block.ok,true,block.error);
@@ -57,6 +165,8 @@ test('snapshot supplies summary provenance, container progress, stage, blocked a
   assert.equal(after.items.find(i=>i.id==='T-3')!.blocked,true);
   assert.equal(after.items.find(i=>i.id==='T-3')!.glyph,'◌');
   assert.equal(after.items.find(i=>i.id==='E-2')!.next,null);
+
+
 });
 
 test('one task change recomputes and sends only changed task and ancestor fields',async t=>{
@@ -171,6 +281,9 @@ test('stage-cover settlement pushes a changed current stage without another item
   tracker.useVerify(()=>null,()=>covers);
   const delta=await settled;
   assert.equal((delta.item as ItemSummary).rollup?.stage,null);
+  assert.deepEqual((delta.item as ItemSummary).stages,[{name:'only',state:'closed',qa:{scope:'none',when:'after-stage'},merged:1,total:1,statuses:{done:1}}]);
+  const snapshot=await ui.request({type:'task.list',projection:'summary'});
+  assert.deepEqual((snapshot.value as {items:ItemSummary[]}).items.find(i=>i.id===epic)!.stages,(delta.item as ItemSummary).stages);
 });
 
 test('next excludes planned work below closed ancestors and follows reopening and movement',async t=>{

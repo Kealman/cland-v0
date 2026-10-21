@@ -1829,6 +1829,19 @@ that buffer with an independently armed PerformanceObserver capture.
 
 ## Connection snapshots
 
+`item-summary.test.ts` also proves card verdict reasons/rounds/scopes, Decision
+previews and agents' text outlines through snapshots and mutation deltas, without
+body/comment reads. Closing a row removes its card facts from the snapshot and
+delta; a bounded by-id page restores them without a body/comment payload. Scoped
+verdict history must not emit posted-verdict notifications on close/reopen; the
+frame regression retains one genuine new-verdict subscription delivery. The
+copied-live boundary asserts its measured items size below 97.9% of 1 MiB. Stage summaries and cover-settlement deltas retain complete
+merged/total/status counts; closed tasks without landing receipts do not count
+as merged. `progress-counts-component.test.ts` renders unloaded closed stage
+members in the plan, explorer and card, then observes a stage-count delta. The
+thousand-item startup guard includes card facts and preserves both the eight
+reply budgets and the full 1 MiB items-snapshot cap.
+
 `item-summary.test.ts` exercises summaries, provenance, roll-ups, claims/holds,
 verdicts, topic activity and bounded closed-text pages through `projectHub` frames
 at T2. It also retains the stage-only delta on platform-cover settlement and

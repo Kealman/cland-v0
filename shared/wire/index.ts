@@ -487,7 +487,7 @@ export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' 
 export type ChildCounts = { total: number; done: number; statuses: Partial<Record<Status, number>>; work: Record<'in progress' | 'review' | 'qa', number> };
 
 export type SummaryText = { text?: string; from: string | null; provenance: string | null };
-export type ExplorerVerdict = Pick<ItemSummary['verdicts'][number], 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { item: string; title: string; round: number };
+export type ExplorerVerdict = Pick<ItemSummary['verdicts'][number], 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current' | 'reason'> & { item: string; title: string; round?: number };
 export type Activity = { at: string; item: string; title: string; source: 'item updated' | 'a message in its topic' };
 export type ExplorerFields = {
   summary: SummaryText;
@@ -506,12 +506,20 @@ export type ExplorerFields = {
   next?: string | null;
 };
 
-export type ItemSummary = IndexedItem & Partial<ExplorerFields> & { child_counts?: ChildCounts; plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type StageSummary = { name: string; state: 'open' | 'closed'; qa: QaPolicy; merged: number; total: number; statuses: Record<string,number> };
+export type CardFields = {
+  stages?: StageSummary[];
+  agents_text?: { sections: string[]; words: number };
+  decision?: { text: string; by: string; at: string };
+};
+export type CardVerdict = IndexedVerdict & { reason?: string; round?: number };
 
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer'> & {
+export type ItemSummary = CardFields & IndexedItem & Partial<ExplorerFields> & { child_counts?: ChildCounts; plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: CardVerdict[]; verdictBase: string | null };
+
+export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts' | 'summary' | 'blocked' | 'derived_status' | 'glyph' | 'rollup' | 'next' | 'layer' | 'agents_text' | 'decision' | 'stages'> & {
   open_blockers: string[];
   rank?: number;
-  verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round: number }>;
+  verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round?: number; reason?: string }>;
 };
 
 // hub/src/tracker/index-db.ts

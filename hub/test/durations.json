@@ -5734,7 +5734,6 @@
     "nvim/test/progress-counts-component.test.ts::graph container badges and plan panel fractions include unloaded closed children": 0.275387,
     "nvim/test/progress-counts-component.test.ts::release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes": 0.647774,
     "nvim/test/progress-counts-component.test.ts::scoped release details and category rows count the aggregate child level": 0.249982,
-    "nvim/test/progress-counts-component.test.ts::the plan workflow summary labels loaded counts and omits unloaded closed stage members": 0.262766,
     "web/test/folds.test.ts::browser folds and the prose guard": 4.110278,
     "web/test/palette.test.ts::the palette and area keys help": 5.081626
   },

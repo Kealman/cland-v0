@@ -47,6 +47,12 @@
         "created": "2026-10-13T12:00:00.000Z",
         "updated": "2026-10-13T12:00:00.000Z",
         "file": "T-1-recorded-task.md",
+        "agents_text": {
+          "sections": [
+            "Acceptance criteria"
+          ],
+          "words": 9
+        },
         "summary": {
           "text": "",
           "from": null,

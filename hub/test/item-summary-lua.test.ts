@@ -26,6 +26,7 @@ local ix, out = E.index(), {}
 for _, it in ipairs(data.items) do
   local text, from = S.summary(data.bodies[it.id])
   local value = {summary={text=text,from=from or vim.NIL,provenance=(text~='' and from~='written') and ('fallback from ' .. (from and ('## ' .. from) or 'the body') .. ' · no ## Summary yet') or vim.NIL},derived_status=E.status_of(ix,it),glyph=E.glyph(ix,it),blocked=not E.done(it) and #require('cland.items').open_blockers(it)>0}
+  local names,words=S.outline(data.bodies[it.id]); value.agents_text={sections=names,words=words}
   if E.is_container(ix,it) then
     local members = {}
     for _, child in ipairs(E.kids(ix,it.id)) do
@@ -61,7 +62,7 @@ for _, it in ipairs(data.items) do
     local activity={at=it.updated,item=it.id,title=items.display_title(it),source='item updated'}
     for _, child in ipairs(descendants) do
       for _, v in ipairs(child.verdicts or {}) do
-        if not latest or v.at>=latest.at then latest={item=child.id,run=v.run,verdict=v.verdict,result=v.result,at=v.at,round=v.round} end
+        if not latest or v.at>=latest.at then latest={item=child.id,run=v.run,verdict=v.verdict,result=v.result,at=v.at,round=it.state~='closed' and child.state~='closed' and v.round or nil} end
       end
       if child.updated>activity.at then activity={at=child.updated,item=child.id,title=items.display_title(child),source='item updated'} end
     end
@@ -111,19 +112,23 @@ test('snapshot summaries and roll-ups equal Lua on every copied live tracker bod
   // 2026-10-21 Darwin arm64: 1,063 copied rows plus 3 ancestor regressions occupied 833,088 bytes.
   const snapshotBytes = Buffer.byteLength(JSON.stringify({type:'snapshot',epoch:'x'.repeat(36),seq:0,domain:'items',value:{items}}));
   t.diagnostic(`copied live items snapshot: ${snapshotBytes} bytes; cap 1048576 bytes`);
+  assert.ok(snapshotBytes <= Math.floor(1024*1024*0.979), `${snapshotBytes} bytes exceeds T-1058's 97.9% copied-state ceiling`);
   assert.ok(snapshotBytes <= 1024*1024, `${snapshotBytes} bytes exceeds the 1 MiB items cap`);
   const ui = await connectUi(t, hub.discovery);
   const closed = items.filter(item => item.state === 'closed');
-  assert.ok(closed.every(item => !Object.hasOwn(item.summary as object,'text')));
+  assert.ok(closed.every(item => !Object.hasOwn(item.summary as object,'text')&&!Object.hasOwn(item,'agents_text')&&!Object.hasOwn(item,'decision')));
   for (let n=0; n<closed.length; n+=100) {
     let ids = closed.slice(n,n+100).map(item => String(item.id));
     while (ids.length) {
       const reply = await ui.request({type:'task.list',projection:'summary',ids});
       assert.equal(reply.ok,true,reply.error);
       assert.ok(Buffer.byteLength(JSON.stringify(reply)+'\n') <= 256*1024);
-      const value = reply.value as {items:Array<{id:string;summary:unknown}>;remaining:string[]};
+      const value = reply.value as {items:Array<{id:string;summary:unknown;agents_text:unknown}>;remaining:string[]};
       assert.ok(value.items.length > 0);
-      for (const row of value.items) items.find(item => item.id===row.id)!.summary = row.summary;
+      for (const row of value.items) {
+        assert.ok(row.agents_text,'closed card facts share the bounded by-id page');
+        Object.assign(items.find(item => item.id===row.id)!,row);
+      }
       ids = value.remaining;
     }
   }

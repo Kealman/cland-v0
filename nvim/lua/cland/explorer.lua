@@ -236,7 +236,12 @@ M.policy = policy
 function M.stages(it)
   if items.level_of(it) ~= 2 then return nil end
   local d = require('cland.plan').get(it.id)
-  return d and type(d.plan) == 'table' and type(d.stages) == 'table' and #d.stages > 0 and d.stages or nil
+  if not (d and type(d.plan)=='table' and type(d.stages)=='table' and #d.stages>0) then return nil end
+  local stages = {}
+  for n, stage in ipairs(d.stages) do
+    stages[n] = vim.tbl_extend('force', stage, type(it.stages)=='table' and it.stages[n] or {})
+  end
+  return stages
 end
 
 function M.children(ix, node)
@@ -307,8 +312,10 @@ function M.children(ix, node)
     end
     for n, st in ipairs(stages) do
       local members, merged = {}, 0
+      local complete = type(st.merged)=='number' and type(st.total)=='number'
       for _, k in ipairs(live) do if at[k.id] == n then members[#members + 1] = k end end
       for _, id in ipairs(st.items or {}) do if ix.by[id] and M.done(ix.by[id]) then merged = merged + 1 end end
+      if complete then merged = st.merged end
       do
         local busy = merged > 0
         for _, k in ipairs(members) do if IN_WORK[M.leaf_status(k)] then busy = true end end
@@ -317,7 +324,7 @@ function M.children(ix, node)
         local word = st.state == 'closed' and 'closed' or (busy and 'in work' or planned and 'planned' or 'backlog')
         local dim = word == 'backlog'
         out[#out + 1] = label_row({ { 'S' .. n .. ' ', dim and 'ClandDim' or 'ClandBold' }, { st.name or '', dim and 'ClandDim' or 'ClandText' },
-          { '  ' .. word .. ' · ' .. merged .. ' of ' .. #(st.items or {}) .. ' merged (loaded) · ' .. policy(st.qa), 'ClandDim' } }, { stage = n })
+          { '  ' .. word .. ' · ' .. merged .. ' of ' .. (complete and st.total or #(st.items or {})) .. ' merged' .. (complete and '' or ' (loaded)') .. ' · ' .. policy(st.qa), 'ClandDim' } }, { stage = n })
         add(members)
       end
     end

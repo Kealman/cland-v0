@@ -5,7 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { FakeClock } from './fake-clock.ts';
-import { tempProject } from './harness.ts';
+import { tempProject, connectSocket } from './harness.ts';
+import {onCleanup} from './process-cleanup.ts';
 import { performance } from 'node:perf_hooks';
 import { ProcessTable } from '../src/adapters/processes.ts';
 import type { SuiteJob } from '../src/hub/suites.ts';
@@ -21,7 +22,11 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
   await Promise.all(Array.from({ length: 1000 }, (_, i) => writeFile(join(root, `.cland/tasks/T-${i + 1}-fixture.md`), serializeItem({
     fm: { id: `T-${i + 1}`, kind: 'task', size: 'S', title: `Startup item ${i + 1}`, state: i < 104 ? 'open' : 'closed',
       status: i < 104 ? 'planned' : 'done', labels: [], assignee: null, parent: `E-${1001 + Math.floor(i / 250)}`, blocked_by: [], topic: null, branch: null, created: at, updated: at },
-    body: '## Summary\n\nA realistic startup item.\n\n## Implementation\n\n' + 'Detailed item body stays on demand. '.repeat(50), comments: [],
+    body: '## Summary\n\nA realistic startup item.\n\n## Implementation\n\n' + 'Detailed item body stays on demand. '.repeat(50), comments: [
+      {author:'reviewer',at,text:'The card facts include a bounded verdict reason. Full review prose remains on demand.',
+        verdict:{verdict:'review',result:'clear',run:'review-1',scope:'full',by:'reviewer'}},
+      {author:'human',at,text:'## Resolution\n\nUse the shared projection for the card.'},
+    ],
   }))));
   for (let n = 0; n < 4; n++) await writeFile(join(root, `.cland/tasks/E-${1001 + n}-fixture.md`), serializeItem({
     fm: { id: `E-${1001 + n}`, kind: 'epic', title: `Startup plan ${n}`, state: 'open', labels: [], assignee: null, parent: null,
@@ -72,6 +77,7 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     assert.equal(reply.ok, true, reply.error);
     if (request.type === 'hub.status') {
       const elapsed = performance.now() - started;
+      t.diagnostic(`first completed hub.status: ${elapsed.toFixed(1)} ms; budget 15000 ms`);
       // Coordinator decision a6b632c3: 3× the local 5 s target gives loaded T3
       // shards headroom while staying well below the 39 s production regression.
       assert.ok(elapsed < 15000, `first hub.status took ${elapsed.toFixed(1)} ms; budget 15000 ms`); // lint-allow-wall-clock: T-1039 guards end-to-end startup through the first completed status reply; the separate copied-state CLI evidence enforces the local 5 s target.
@@ -84,6 +90,25 @@ test('eight startup replies fit per-frame and total budgets on a thousand-item d
     if (request.type === 'artifact.list') assert.equal((reply.value as {artifacts:unknown[]}).artifacts.length, 100);
   }
   assert.ok(total <= 1024 * 1024, `${total} total startup bytes exceeds 1 MB`);
+  const snapshot=await connectSocket(hub.discovery.socket);
+  onCleanup(t,()=>snapshot.close());
+  snapshot.send({type:'hello',protocol:2,secret:hub.discovery.secret,client:'startup-card-budget',features:['snapshot']});
+  let itemBytes=0;
+  for (;;) {
+    const frame=await snapshot.next();
+    assert.notEqual(frame.type,'snapshot.refused',JSON.stringify(frame));
+    if (frame.type==='snapshot' && frame.domain==='items') {
+      itemBytes=Buffer.byteLength(JSON.stringify(frame));
+      const rows=(frame.value as {items:Array<Record<string,unknown>>}).items;
+      assert.equal(rows.length,1004);
+      assert.ok(rows.every(row=>!Object.hasOwn(row,'body')&&!Object.hasOwn(row,'comments')));
+      assert.ok(rows.filter(row=>row.kind==='task'&&row.state==='open').every(row=>row.agents_text&&row.decision));
+      assert.ok(rows.filter(row=>row.state==='closed').every(row=>!row.agents_text&&!row.decision));
+    }
+    if (frame.type==='snapshot.end') break;
+  }
+  t.diagnostic(`startup replies: ${total} bytes; all-item card snapshot: ${itemBytes} bytes`);
+  assert.ok(itemBytes>0 && itemBytes<=1024*1024, `${itemBytes} items snapshot bytes exceeds 1 MiB`);
   for (let n = 0; n < 4; n++) {
     const reply = await ui.request({ type: 'task.view', item: `E-${1001 + n}` });
     assert.equal(reply.ok, true, reply.error);

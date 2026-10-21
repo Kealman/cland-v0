@@ -59,7 +59,7 @@ test('snapshot contains each workbench domain, compact verdict rounds and recent
   await writeFile(join(root, '.cland/tasks/T-1-fixture.md'), serializeItem({
     fm: { id: 'T-1', kind: 'task', title: 'Fixture', state: 'open', size: 'S', labels: [], assignee: null, parent: null, blocked_by: [], topic: null, branch: null, created: at, updated: at },
     body: '## Acceptance criteria\n\n- [ ] C1. Works.',
-    comments: [1, 2, 3].map(round => ({ author: 'reviewer', at, text: 'Private verdict history', verdict: { verdict: 'review', result: 'clear', by: 'reviewer', run: `r${round}` } })),
+    comments: [1, 2, 3].map(round => ({ author: 'reviewer', at, text: `Visible verdict reason ${round}. Private verdict history ${round}.`, verdict: { verdict: 'review', result: 'clear', by: 'reviewer', run: `r${round}` } })),
   }));
   const store = new Store(join(root, '.cland/hub.db'));
   store.createTopic('old-closed', 'Old closed', null, '2026-10-01T00:00:00.000Z');
@@ -99,10 +99,18 @@ test('snapshot contains each workbench domain, compact verdict rounds and recent
   for (const f of ui.frames.filter(f => f.type === 'snapshot')) {
     assert.ok(Buffer.byteLength(JSON.stringify(f)) <= SNAPSHOT_LIMITS[f.domain as keyof typeof SNAPSHOT_LIMITS]);
   }
+  const card=values.items.items[0]!;
+  assert.equal(card.verdicts[0]?.reason,'Visible verdict reason 3.');
+  for (const older of ['Visible verdict reason 1.','Visible verdict reason 2.']) {
+    assert.equal(JSON.stringify(values).includes(older),false,'historical reasons stay on demand');
+  }
+  assert.equal(Object.hasOwn(card,'body'),false);assert.equal(Object.hasOwn(card,'comments'),false);
   assert.equal(JSON.stringify(values).includes('Private verdict history'), false);
   assert.equal(Object.hasOwn(values.sessions, 'suites'), false);
   const viewed = await legacy.request({ type: 'task.view', item: 'T-1' });
   assert.equal((viewed.value as { item: { verdicts: unknown[] } }).item.verdicts.length, 3);
+  assert.deepEqual((viewed.value as {item:{comments:Array<{text:string}>}}).item.comments.map(c=>c.text),
+    [1,2,3].map(round=>`Visible verdict reason ${round}. Private verdict history ${round}.`));
   assert.ok(values.topics.topics.some(topic => topic.id === 'recent-closed'));
   assert.ok(values.topics.topics.some(topic => topic.id === 'boundary-closed'));
   assert.ok(!values.topics.topics.some(topic => topic.id === 'old-closed'));

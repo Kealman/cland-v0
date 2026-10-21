@@ -221,6 +221,12 @@ function C.compose(key, width)
       for _, id in ipairs(stage.items or {}) do
         if ix.by[id] then list[#list+1] = E.leaf_status(ix.by[id]) end
       end
+      if type(stage.statuses)=='table' then
+        list = {}
+        for _, status in ipairs(E.BAR_ORDER) do
+          for _=1,stage.statuses[status] or 0 do list[#list+1] = status end
+        end
+      end
       local row = {{'S' .. n .. ' ','ClandDim'}}
       local stage_cells = E.cells(list,math.max(1,width-12))
       vim.list_extend(row,stage_cells)
@@ -230,7 +236,7 @@ function C.compose(key, width)
   end
   if items.level_of(it) == 2 then
     local plan = require('cland.plan').get(it.id)
-    local stages = plan and type(plan.stages)=='table' and plan.stages or {}
+    local stages = E.stages(it) or {}
     local current
     for n, stage in ipairs(stages) do if stage.state ~= 'closed' and not current then current = n end end
     section('plan' .. (#stages>0 and (current and (' · stage ' .. current .. ' of ' .. #stages) or (' · all ' .. #stages .. ' stages closed')) or ''),'gp opens the plan view')
@@ -257,7 +263,9 @@ function C.compose(key, width)
         if n == current then
           local merged = 0
           for _, id in ipairs(stage.items or {}) do if ix.by[id] and E.done(ix.by[id]) then merged = merged+1 end end
-          value = value .. ' · ' .. merged .. ' of ' .. #(stage.items or {}) .. ' merged (loaded) · ' .. E.policy(stage.qa or definition.qa)
+          local complete = type(stage.merged)=='number' and type(stage.total)=='number'
+          if complete then merged = stage.merged end
+          value = value .. ' · ' .. merged .. ' of ' .. (complete and stage.total or #(stage.items or {})) .. ' merged' .. (complete and '' or ' (loaded)') .. ' · ' .. E.policy(stage.qa or definition.qa)
         elseif stage.state == 'closed' then
           value = value .. ' · ' .. E.when(closed_at(stage))
         end
@@ -291,6 +299,14 @@ function C.compose(key, width)
   end
   if verdict then
     local detail = owner.id == it.id and d or require('cland.item_view').get(owner.id, {summary_only=true})
+    -- Closed summary rows defer card metadata; full detail retains historical rounds.
+    round = verdict.round or round_of(detail or {},verdict.run) or round
+    local scope = verdict.scope
+    if not present(scope) then
+      for _, v in ipairs(detail and type(detail.verdicts)=='table' and detail.verdicts or {}) do
+        if v.run == verdict.run then scope = v.scope end
+      end
+    end
     if container then text('in its tasks · ' .. owner.id .. ' ' .. items.display_title(owner),'ClandDim',owner.id) end
     local ok = verdict.result == 'clear'
     text((ok and '✓ ' or '✗ ') .. verdict.verdict .. ' · ' .. verdict.result,ok and 'ClandGreen' or 'ClandRed',owner.id)
@@ -301,7 +317,7 @@ function C.compose(key, width)
       label = state.label(by,session and session.role or (verdict.verdict == 'review' and 'reviewer' or 'qa'))
     end
     kv('by',label .. ' · r' .. round,nil,owner.id)
-    text((present(verdict.scope) and (verdict.scope .. ' · ') or '') .. E.when(verdict.at) .. (verdict.current == false and ' · stale' or ''),'ClandDim',owner.id)
+    text((present(scope) and (scope .. ' · ') or '') .. E.when(verdict.at) .. (verdict.current == false and ' · stale' or ''),'ClandDim',owner.id)
     local reason
     for _, comment in ipairs(detail and type(detail.comments)=='table' and detail.comments or {}) do
       if type(comment.verdict)=='table' and comment.verdict.run == verdict.run then reason = summary.sentences(comment.text)[1] end

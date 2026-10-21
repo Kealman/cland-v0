@@ -764,7 +764,7 @@ The card occupies a vertical split to the tree's right inside the centre. It fol
 
 The card's blocks follow this order: Summary, Facts, Progress, Plan (epic), Latest verdict, Relations, Branch and suite (task), Dates, Decision when recorded, then the agents' text folded behind `zb`. Facts show status (derived for a container), layer (the highest task layer for a container), labels, size, parent path, lead, claim, holds with their roles and time, claims and holds on a container's tasks, and the ordinal among siblings. The raw `rank` appears only when the summary carries `rank_set`. Virtual rows describe what they hold and list up to twelve items.
 
-Progress uses the summary's verified, failed and stale counts for a task and its cached `task.view` criteria for the glyphs, text and latest marks. Containers show one cell per child in status order and counts in words, with stage cells for planned epics. The Plan block comes from cached `plan.get`: current stage, merged count, QA policy, other stages and closing times, and approval. A closed stage's time is the latest child `closed` time or stage verdict time; missing legacy child closing times show `—`. A closed epic shows every stage closed; an epic without a plan says `no plan`.
+Progress uses the summary's verified, failed and stale counts for a task and its cached `task.view` criteria for the glyphs, text and latest marks. Containers show one cell per child in status order and counts in words, with stage cells for planned epics. The Plan block uses hub stage summaries for current state and merged counts, with cached `plan.get` for lanes, QA evidence, closing times and approval. A closed stage's time is the latest child `closed` time or stage verdict time; missing legacy child closing times show `—`. A closed epic shows every stage closed; an epic without a plan says `no plan`.
 
 Latest verdict uses the summary's latest verdict per kind, file order for a task and the latest timestamp across a container's loaded subtree. It shows the result, author and role, original round within that verdict kind, scope, time and run id. Its one-line reason is the first sentence of the cached verdict comment matched by run. A container fetches at most one additional cached `task.view`, for that verdict's item. Relations show blockers, blocked items and `regression_of`, with each target's glyph and state. Branch and suite use the cached `task.view` branch and latest `verify` result, job id, short head, finish time and cache-hit marker. Dates use local time; last activity is the later of an item's update and its topic's latest message, or the latest of those across a container's loaded subtree, naming the item. Decision is the latest comment opening with `Resolution` or `Decided`, trimmed like a fallback summary, with its author and time.
 
@@ -827,10 +827,12 @@ aggregates. The board header counts planned through ready as in work; the graph
 counts in progress through ready. Both count direct progress members and name
 the level when it is not tasks, for example `epics: 2 in work · 3 done` in the
 board header. Category open/done counts and bars also use direct task aggregates.
-Stage-specific merged counters and the board's release direct-task group say
-`loaded` until the hub supplies their complete roll-ups. The plan's workflow
-summary also says `loaded` and omits unloaded stage members rather than treating
-them as planned. Done rows retain their
+Stage progress uses the hub's per-stage `merged`, `total` and `statuses` facts in
+item summaries and deltas, including closed members whose rows have not loaded.
+The explorer stage label, card's current-stage count and plan view's stage bars
+and status summary share those facts. Plan details still supply lanes and QA
+evidence; older hubs show explicitly labelled loaded-only counters.
+The board's release direct-task group still says `loaded`. Done rows retain their
 existing hiding and loading behaviour; visible-row section counts still count
 the rows in that section. Older frames without `child_counts` retain their
 loaded-row fallback.

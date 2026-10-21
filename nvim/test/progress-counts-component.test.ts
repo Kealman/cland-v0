@@ -6,6 +6,7 @@ import { tempProject, eventually } from './fixture.ts';
 import { nvimOrSkip, startClient } from './stub-client.ts';
 import { waitInitialSnapshots } from './readiness.ts';
 import type { Scenario } from './stub-hub.ts';
+import {stubControl} from './stub-control.ts';
 
 const nvim = await nvimOrSkip();
 const skip = 'skip' in nvim ? nvim.skip : false;
@@ -40,11 +41,11 @@ const fixture: Scenario = { summaryLists: true, items: [
 async function start(t: test.TestContext, scenario = fixture) {
   const root = await tempProject(t);
   const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio',
-    CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario) });
+    CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_SCENARIO_JSON: JSON.stringify(scenario), CLAND_STUB_CONTROL: root+'/control.sock' });
   await waitInitialSnapshots(c);
   await c.input('<Esc><Space>i');
   await c.lua("local l=require('cland.layout'); vim.api.nvim_win_set_width(l.win.left,90)");
-  return c;
+  return Object.assign(c,{control:(command:Record<string,unknown>)=>stubControl(root+'/control.sock',command)});
 }
 
 test('board fractions and header include closed children before loading closed rows', { skip }, async t => {
@@ -177,17 +178,50 @@ test('graph container badges and plan panel fractions include unloaded closed ch
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
 });
 
-test('the plan workflow summary labels loaded counts and omits unloaded closed stage members', { skip }, async t => {
+test('stage progress in the plan, explorer and card includes unloaded closed stage members', { skip }, async t => {
   const c = await start(t, { ...fixture, items: fixture.items!.map(it => it.id === 'E-2' ? { ...it,
     plan: { stages: [{ name: 'Current', lanes: [['T-10', 'T-12', 'T-14']], qa: { scope: 'none', when: 'per-item' } }] },
-    stages: [{ name: 'Current', items: ['T-10', 'T-12', 'T-14'], state: 'open' }],
+    stages: [{ name: 'Current', items: ['T-10', 'T-12', 'T-14'], state: 'open',
+      merged: 1, total: 3, statuses: { done: 1, 'in progress': 1, planned: 1 } }],
   } : it) });
   await c.rpc.request('nvim_ui_try_resize', 300, 50);
+  const planDrawn=eventually('initial stage facts rendered in plan',async()=>{
+    const text=await c.lua<string>("local b=require('cland.plan').bufs['E-2']; return b and table.concat(vim.api.nvim_buf_get_lines(b,0,-1,false),'\\n') or ''");
+    assert.match(text,/1\/3 merged/);
+    const progress=text.split('\n').map(line=>line.split('│').at(-1)?.trim()).join(' ').replace(/\s+/g,' ');
+    assert.match(progress,/1 done · 0 in review · 1 in progress · 1 planned/);
+    return text;
+  });
   await c.input(':Cland view plan E-2<CR>');
-  await c.waitScreen(s => s.includes('PROGRESS · stage 1 of 1'), 'plan workflow summary');
-  const text = await c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.plan').bufs['E-2'],0,-1,false),'\\n')");
-  assert.match(text, /loaded:/);
-  assert.match(text, /1 planned/);
-  assert.doesNotMatch(text, /2 planned/);
+  const text=await planDrawn;
+  assert.match(text,/1\/3 merged/);assert.doesNotMatch(text,/loaded|2 planned/);
+  const drawn = eventually('stage counts anchored in explorer and card', async () => {
+    const observed = await c.lua<{tree:string;card:string;key:string}>(`
+      local e=require('cland.explorer'); return {tree=table.concat(e.lines or {},'\\n'),
+        card=table.concat(e.card.lines or {},'\\n'),key=e.card.drawn_key or ''}`);
+    assert.equal(observed.key,'E-2');
+    assert.match(observed.tree,/1 of 3 merged/);assert.match(observed.card,/1 of 3 merged/);
+    return observed;
+  });
+  await c.input(':Cland explorer E-2<CR>');
+  const observed=await drawn;
+  assert.match(observed.tree,/1 of 3 merged/);assert.match(observed.card,/1 of 3 merged/);
+  assert.doesNotMatch(observed.card,/merged \(loaded\)/);
+  const updated={...fixture.items!.find(i=>i.id==='E-2')!,stages:[{name:'Current',state:'open',
+    merged:2,total:3,statuses:{done:2,planned:1}}]};
+  const changed=eventually('stage delta rendered in card and explorer',async()=>{
+    const value=await c.lua<{tree:string;card:string}>(`local e=require('cland.explorer');
+      return {tree=table.concat(e.lines or {},'\\n'),card=table.concat(e.card.lines or {},'\\n')}`);
+    assert.match(value.tree,/2 of 3 merged/);assert.match(value.card,/2 of 3 merged/);return value;
+  });
+  await c.control({emit:{type:'task',id:'E-2',item:updated}});
+  const after=await changed;assert.match(after.tree,/2 of 3 merged/);assert.match(after.card,/2 of 3 merged/);
+  const planChanged=eventually('stage delta rendered in plan',async()=>{
+    const lines=await c.lua<string>("return table.concat(vim.api.nvim_buf_get_lines(require('cland.plan').bufs['E-2'],0,-1,false),'\\n')");
+    assert.match(lines,/2\/3 merged/);return lines;
+  });
+  await c.input(':Cland view plan E-2<CR>');
+  assert.match(await planChanged,/2\/3 merged/);
   assert.equal(await c.lua("return require('cland.state').item('T-10') ~= nil"), false);
+  assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);
 });

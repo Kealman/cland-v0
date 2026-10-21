@@ -295,10 +295,21 @@ end
 
 -- Closure is a hub fact: all merged items alone cannot close an after-stage gate.
 local function progress(plan, detail)
-  local out = { stages = {}, counts = { done = 0, review = 0, work = 0, planned = 0 }, runs = {}, sessions = {}, cost = 0, cost_known = false }
+  local out = { stages = {}, complete = true, counts = { done = 0, review = 0, work = 0, planned = 0 }, runs = {}, sessions = {}, cost = 0, cost_known = false }
   local named = {}
   for n, stage in ipairs(plan.stages) do
-    local metadata = (detail.stages or {})[n] or {}
+    local authoritative = (state.item(detail.id or '') or {}).stages
+    local metadata = vim.tbl_extend('force', (detail.stages or {})[n] or {},
+      type(authoritative)=='table' and authoritative[n] or {})
+    local complete = type(metadata.statuses)=='table' and type(metadata.merged)=='number' and type(metadata.total)=='number'
+    out.complete = out.complete and complete
+    if complete then
+      for status, count in pairs(metadata.statuses) do
+        local key = status == 'done' and 'done' or status == 'review' and 'review'
+          or (status == 'in progress' or status == 'qa' or status == 'ready') and 'work' or 'planned'
+        out.counts[key] = out.counts[key] + count
+      end
+    end
     local done, total = 0, 0
     for _, lane in ipairs(stage.lanes) do for _, id in ipairs(lane) do
       total = total + 1
@@ -306,9 +317,11 @@ local function progress(plan, detail)
       local status = items.status(it)
       local key = status == 'done' and 'done' or status == 'review' and 'review'
         or (status == 'in progress' or status == 'qa' or status == 'ready') and 'work' or 'planned'
-      if it.id then out.counts[key] = out.counts[key] + 1 end
-      local item_detail = require('cland.item_view').get(id)
-      if metadata.state == 'closed' or (item_detail and not item_detail.failed and item_detail.merged == true) then done = done + 1 end
+      if not complete and it.id then out.counts[key] = out.counts[key] + 1 end
+      if not complete then
+        local item_detail = require('cland.item_view').get(id)
+        if metadata.state == 'closed' or (item_detail and not item_detail.failed and item_detail.merged == true) then done = done + 1 end
+      end
       local claim = items.claim(it)
       if claim then named[claim.session] = true end
       for _, v in ipairs(type(it.verdicts) == 'table' and it.verdicts or {}) do
@@ -316,7 +329,7 @@ local function progress(plan, detail)
       end
     end end
     local closed = metadata.state == 'closed'
-    out.stages[n] = { state = closed and 'closed' or 'planned', done = done, total = total, verdict = metadata.verdict }
+    out.stages[n] = { state = closed and 'closed' or 'planned', done = complete and metadata.merged or done, total = complete and metadata.total or total, complete = complete, verdict = metadata.verdict }
     if not closed and not out.current then out.current = n end
   end
   if out.current and out.counts.done + out.counts.work + out.counts.review > 0 then
@@ -448,7 +461,7 @@ function M.compose(id, w)
       boxed = true
       prose((changes.stages[n] and '△ ' or '') .. 'S' .. n .. ' · ' .. stage.name .. ' · ' .. st.state .. ' · ' .. #stage.lanes .. ' lanes', changes.stages[n] and 'ClandPlanChange' or st.state == 'in work' and 'ClandTeal' or st.state == 'planned' and 'ClandDim' or 'ClandBold')
       local filled = st.total > 0 and math.floor(10 * st.done / st.total) or 0
-      prose('[' .. ('━'):rep(filled) .. ('─'):rep(10 - filled) .. '] ' .. st.done .. '/' .. st.total .. ' merged' .. (st.state ~= 'closed' and ' (loaded)' or ''), tone)
+      prose('[' .. ('━'):rep(filled) .. ('─'):rep(10 - filled) .. '] ' .. st.done .. '/' .. st.total .. ' merged' .. (not st.complete and st.state ~= 'closed' and ' (loaded)' or ''), tone)
       prose('QA: ' .. policy(stage.qa), tone)
       if st.verdict then
         local round = 0
@@ -509,7 +522,7 @@ function M.compose(id, w)
     local started = p.counts.done + p.counts.work + p.counts.review > 0
     if started then
       fields[1] = 'PROGRESS · stage ' .. (p.current or #plan.stages) .. ' of ' .. #plan.stages
-      fields[2] = 'loaded: ' .. p.counts.done .. ' done · ' .. p.counts.review .. ' in review · ' .. p.counts.work .. ' in progress · ' .. p.counts.planned .. ' planned'
+      fields[2] = (p.complete and '' or 'loaded: ') .. p.counts.done .. ' done · ' .. p.counts.review .. ' in review · ' .. p.counts.work .. ' in progress · ' .. p.counts.planned .. ' planned'
       fields[3] = p.current and ('Current gate: ' .. gate(plan.stages[p.current], plan)) or 'All stages closed'
       fields[9] = 'QA runs: ' .. #p.runs .. ' so far'
       local remaining = 0

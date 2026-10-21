@@ -170,10 +170,35 @@ test('summary projection bounds the first open payload in a thousand-item tracke
     for (const field of ['body', 'comments', 'plan', 'verify', 'file', 'verdictBase']) assert.equal(Object.hasOwn(row, field), false, field);
     assert.equal((row.verdicts as Array<{ run: string }>).length, 1);
     assert.equal((row.verdicts as Array<{ run: string }>)[0]?.run, 'r3');
-    assert.equal((row.verdicts as Array<{ round: number }>)[0]?.round, 3);
+    const verdict=(row.verdicts as Array<{ round?: number; scope?: string; reason?: string }>)[0]!;
+    assert.equal(verdict.round,row.state==='closed'?undefined:3);
+    if (row.state==='closed') {
+      assert.equal(verdict.scope,undefined);assert.equal(verdict.reason,undefined);
+      assert.equal(Object.hasOwn(row,'agents_text'),false);assert.equal(Object.hasOwn(row,'decision'),false);
+    }
     assert.deepEqual(row.criteria, { total: 1, done: 0, verified: 0, stale: 0, failed: 0 });
   }
-  assert.equal((await list({ projection: 'summary', state: 'closed' })).items.length, 900);
+  const closed=(await list({ projection: 'summary', state: 'closed' })).items;
+  assert.equal(closed.length,900);
+  const restored=new Set<string>();
+  for (let n=0;n<closed.length;n+=100) {
+    let ids=closed.slice(n,n+100).map(row=>String(row.id));
+    while (ids.length) {
+      const page=await handleTaskRequest(tracker,{type:'task.list',id:'closed-cards',projection:'summary',ids},
+        {id:'human',name:'human',role:null}) as {items:Array<Record<string,unknown>>;remaining:string[]};
+      assert.ok(page.items.length>0);assert.ok(Buffer.byteLength(JSON.stringify(page))<256*1024);
+      for (const row of page.items) {
+        assert.equal(restored.has(String(row.id)),false);restored.add(String(row.id));
+        assert.deepEqual(row.agents_text,{sections:['Summary','Acceptance criteria'],words:310});
+        assert.equal(Object.hasOwn(row,'body'),false);assert.equal(Object.hasOwn(row,'comments'),false);
+        const verdicts=row.verdicts as Array<{run:string;round:number;reason:string}>;
+        assert.equal(verdicts.length,1);assert.equal(verdicts[0]!.run,'r3');assert.equal(verdicts[0]!.round,3);
+        assert.equal(verdicts[0]!.reason,'A long verdict reason.');
+      }
+      ids=page.remaining;
+    }
+  }
+  assert.equal(restored.size,900);
   await assert.rejects(list({ projection: 'unknown' }), /projection/);
   const changes: ItemChange[] = [];
   tracker.onChange(change => changes.push(change));

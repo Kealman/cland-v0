@@ -2344,9 +2344,10 @@ labels, parent, blockers, claim, verifier holds and criteria counts.
 Task events carry this field too; closing, reopening or deleting a blocker refreshes
 its dependents. Unknown blockers remain open.
 It retains version, explicit rank, updated/closed times for ordering and cache invalidation, and only the
-latest verdict per kind in file order, including its original `round`. Verdict reasons,
-findings, bodies, comments, full criteria, plans, verification and index bookkeeping
-are excluded; selected cards read those through `task.view`. State and other existing
+latest verdict per kind in file order, including its original `round`, `scope` and
+one-line `reason` for open items. Closed rows defer these three card fields to
+the bounded by-id read below. Findings, bodies, comments, full criteria, plans, verification
+and index bookkeeping are excluded; clients read those details through `task.view`. State and other existing
 filters combine normally. Unknown projections refuse. Omitting `projection` preserves
 the existing response, including the CLI's `cland task list --json`; the CLI adds no
 projection flag. Neovim requests open summaries first and closed summaries on demand.
@@ -2369,6 +2370,32 @@ is the fallback line shown by the Lua card, or null for written/empty summaries.
 `blocked` means an unfinished item has an unresolved blocker, including an unknown
 id; an active task keeps its status glyph even when blocked.
 
+For open items, card facts also travel in snapshots, summary lists and task deltas:
+
+- `verdicts[].reason` is the matching verdict comment's first sentence, collapsed
+  to one line and capped at 96 Unicode code points. The subtree's
+  `rollup.latest_verdict` carries the reason too. `round` counts that verdict kind
+  in file order; `scope` remains the recorded source/evidence review scope.
+- `decision: {text, by, at}` is the latest comment beginning with `Resolution`
+  or `Decided` (optional Markdown heading/emphasis), using the Lua card's summary
+  rule. Its single-line text preview is capped at 300 code points. Both prose
+  previews end with `…` when truncated; full comments stay in `task.view`.
+- `agents_text: {sections, words}` lists the body's level-two headings in order
+  and its whitespace-delimited word count, matching `explorer_summary.outline`.
+- Every container with an accepted plan, open or closed, carries `stages`, in plan order:
+  `{name, state, qa, merged, total, statuses}`. States use the existing stage gate;
+  `merged` counts closed members with a dev landing receipt (closed non-task
+  members need no task receipt), and `total` includes every planned member,
+  including unloaded closed items. `statuses` is the complete sparse histogram.
+  Stage facts refresh on member changes, plan edits and stage-cover settlement.
+  Lane membership, QA evidence and full plan history remain on demand through
+  `task.plan show`; that detail response includes the same stage counts.
+
+These facts let a card read verdict reasons, decisions, stage states and the text
+fold line without fetching each item's full text or each epic's plan. Neovim's
+stage counters consume the hub's counts; the rest of its card-detail adoption is
+separate work. Older hubs retain explicitly labelled loaded-only counters.
+
 A container has `next` (the first unblocked planned task in rank-ordered tree
 order, with open ancestors, or null) and `rollup`: the highest descendant-task
 `layer` (or null for no tasks), `stage` (`{number,total,name}` for the first open
@@ -2385,9 +2412,15 @@ The 2026-10-21 T-1052 decision keeps the items snapshot cap at 1 MiB. Only open
 items carry `summary.text` in ordinary snapshots, lists and deltas. Closed items
 retain provenance and the inexpensive fields. Read their full text in batches:
 `{type:"task.list", id:"closed-text", projection:"summary", ids:["T-12","T-14"]}`
-returns `{items:[{id,summary}], remaining:[...]}`. Supply at most 100 ids and repeat
+returns `{items:[{id,summary,agents_text,decision?,verdicts}], remaining:[...]}`.
+The 2026-10-21 T-1058 Coordinator decision puts closed items' card facts on these
+same pages: verdict reasons, rounds and scopes, Decision previews and text outlines
+stay out of closed snapshot/list/delta rows. Stage facts remain on all planned
+containers. The copied-live boundary test measures and asserts the items snapshot
+below 97.9% of 1 MiB; T-1081 owns closed-item paging and further snapshot reduction.
+Supply at most 100 ids and repeat
 with `remaining` until empty. Each page reserves envelope space within the 256 KiB
-reply budget; an individual summary exceeding that budget refuses explicitly.
+reply budget; an individual text-and-card row exceeding that budget refuses explicitly.
 Ids require the summary projection and the existing `task.list` read permission.
 The CLI's flags are unchanged. Full agents' text still comes from `task.view`.
 
