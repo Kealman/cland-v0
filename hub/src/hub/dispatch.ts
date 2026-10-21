@@ -1,3 +1,4 @@
+import { ModelOutput } from './model-output.ts';
 import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { webAuthorityRefusal } from './web-authority.ts';
 import { PublishError } from '../territory-publish.ts';
@@ -97,6 +98,8 @@ export type Peer = {
   send: (frame: HubFrame) => void;
   /** An already serialized model frame, shared across peers of one feature set. */
   sendSerialized?: (json: string) => void;
+  /** Bytes accepted by the transport but not yet flushed to its reader. */
+  bufferedBytes?: () => number;
   /** End the connection. `code` is a WebSocket close code; a transport without codes ignores it. */
   close: (code: number, reason: string) => void;
   /** Whether frames from the peer still count: false once the connection is closing. */
@@ -991,19 +994,106 @@ export class Dispatcher {
     /** A client's event subscription, ended when the connection closes. */
     let unsubscribe: (() => void) | null = null;
     let features: import('../protocol.ts').ClientFeature[] = [];
+    const modelOutput = new ModelOutput(wire);
     let preparingSnapshot = false;
+    let modelGeneration = 0;
     let subscriptionRequested = false;
+    let holdingModel = false;
+    const heldModel: Array<{ frame: HubFrame; serialized: () => string }> = [];
+    const sendModel = (frame: HubFrame, serialized: () => string) => {
+      if (done || !peer.isOpen()) return;
+      if (features.includes('numbered-deltas')) modelOutput.send(frame, serialized);
+      else if (wire.sendSerialized) wire.sendSerialized(serialized());
+      else wire.send(frame);
+    };
     const subscribeModel = () => {
-      if (!done && !unsubscribe && !preparingSnapshot) unsubscribe = core.subscribeClient(features, (event, serialized) => {
-        if (!done && peer.isOpen()) {
-          if (wire.sendSerialized) wire.sendSerialized(serialized());
-          else wire.send(event);
-        }
+      if (done || unsubscribe || preparingSnapshot) return;
+      const generation = modelGeneration;
+      unsubscribe = core.subscribeClient(features, (frame, serialized) => {
+        // Fan-out may have captured this callback before a reentrant resume replaced it.
+        if (done || generation !== modelGeneration) return;
+        if (holdingModel) heldModel.push({ frame, serialized });
+        else sendModel(frame, serialized);
       });
+    };
+    const releaseModel = () => {
+      // Keep holding during drain: a synchronous peer can itself publish a new delta.
+      for (let next; (next = heldModel.shift());) sendModel(next.frame, next.serialized);
+      holdingModel = false;
     };
     const snapshotFinished = (complete: boolean) => {
       preparingSnapshot = false;
       if (subscriptionRequested || complete && features.includes('numbered-deltas')) subscribeModel();
+    };
+    const startSnapshot = (completed?: (complete: boolean) => void) => {
+      preparingSnapshot = true;
+      const generation = ++modelGeneration;
+      const finish = (complete: boolean) => {
+        snapshotFinished(complete);
+        completed?.(complete);
+      };
+      // Disk inputs are prepared before composition. Journal revisions fence the page read.
+      const prepare = async () => {
+        const registry = await readAccounts(this.#options.env);
+        for (let attempt = 0; attempt < 3 && peer.isOpen(); attempt++) {
+          const journal = this.#options.journal;
+          const revision = journal?.revision;
+          const events = journal ? await journal.events(undefined, undefined, core.eventsProject()) : { rows: [], before: null, more: false };
+          if (done || generation !== modelGeneration) return;
+          if (journal?.revision !== revision) continue;
+          // No await below: composition, subscription and the transaction occupy one turn.
+          const result = snapshotFrames(composeSnapshot({
+            core, tracker: this.#options.tracker, sessions: this.#sessions ?? null,
+            verification: this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : null,
+            events, registry,
+          }), core.modelCursor().epoch, core.modelCursor().seq);
+          if (!peer.isOpen()) return;
+          if ('refusal' in result) {
+            log({ event: 'snapshot-refused', ...result.refusal }); peer.send(result.refusal); finish(false);
+          } else {
+            holdingModel = true;
+            preparingSnapshot = false;
+            if (subscriptionRequested || features.includes('numbered-deltas')) subscribeModel();
+            let complete = true;
+            for (const frame of result.frames) {
+              if (features.includes('numbered-deltas')) {
+                if (!modelOutput.send(frame)) { complete = false; break; }
+              } else peer.send(frame);
+            }
+            releaseModel();
+            finish(complete);
+          }
+          return;
+        }
+        if (done || generation !== modelGeneration) return;
+        if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'journal changed during snapshot preparation; retry or use individual reads' });
+        finish(false);
+      };
+      void prepare().catch(() => {
+        if (done || generation !== modelGeneration) return;
+        releaseModel();
+        if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'snapshot preparation failed; use individual reads' });
+        finish(false);
+      });
+    };
+    const resumeModel = (cursor: { epoch: string; seq: number }, completed?: (replayed: boolean) => void) => {
+      unsubscribe?.(); unsubscribe = null;
+      ++modelGeneration;
+      preparingSnapshot = false;
+      modelOutput.resume();
+      const replay = core.resumeModel(cursor.epoch, cursor.seq, features);
+      if (replay !== null) {
+        holdingModel = true;
+        subscribeModel();
+        let complete = true;
+        for (const json of replay) if (!modelOutput.replay(json)) { complete = false; break; }
+        releaseModel();
+        completed?.(complete);
+      } else if (features.includes('snapshot')) startSnapshot(() => completed?.(false));
+      else {
+        modelOutput.pause('snapshot-required');
+        completed?.(false);
+      }
     };
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
@@ -1276,40 +1366,11 @@ export class Dispatcher {
         client = transport.edge === 'web' ? HUMAN_SESSION : frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
+        if (frame.resume && !features.includes('numbered-deltas')) return refuse('bad-hello', 'resume requires numbered-deltas');
         peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
-        if (features.includes('snapshot')) {
-          preparingSnapshot = true;
-          // Disk-only inputs are prepared before composition. If the journal changes
-          // during its page read, retry rather than stamp stale events with new state.
-          const prepare = async () => {
-            const registry = await readAccounts(this.#options.env);
-            for (let attempt = 0; attempt < 3 && peer.isOpen(); attempt++) {
-              const journal = this.#options.journal;
-              const revision = journal?.revision;
-              const events = journal ? await journal.events(undefined, undefined, core.eventsProject()) : { rows: [], before: null, more: false };
-              if (journal?.revision !== revision) continue;
-              // No await below: all domains and all writes occupy one loop turn.
-              const result = snapshotFrames(composeSnapshot({
-                core, tracker: this.#options.tracker, sessions: this.#sessions ?? null,
-                verification: this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : null,
-                events, registry,
-              }), core.modelCursor().epoch, core.modelCursor().seq);
-              if (!peer.isOpen()) return;
-              if ('refusal' in result) { log({ event: 'snapshot-refused', ...result.refusal }); peer.send(result.refusal); snapshotFinished(false); }
-              else {
-                for (const frame of result.frames) peer.send(frame);
-                snapshotFinished(true);
-              }
-              return;
-            }
-            if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'journal changed during snapshot preparation; retry or use individual reads' });
-            snapshotFinished(false);
-          };
-          void prepare().catch(() => {
-            if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'snapshot preparation failed; use individual reads' });
-            snapshotFinished(false);
-          });
-        } else if (features.includes('numbered-deltas')) subscribeModel();
+        if (frame.resume) resumeModel(frame.resume);
+        else if (features.includes('snapshot')) startSnapshot();
+        else if (features.includes('numbered-deltas')) subscribeModel();
         return;
       }
       refuse('bad-hello', 'first frame must be a hello');
@@ -1492,6 +1553,11 @@ export class Dispatcher {
       const answer = (value: unknown) => peer.send({ type: 'result', id: frame.id, ok: true, value });
       try {
         switch (frame.type) {
+          case 'resume':
+            if (!features.includes('numbered-deltas')) throw new Error('resume requires numbered-deltas');
+            if (preparingSnapshot || holdingModel) throw new Error('wait for the current model transaction before resuming');
+            resumeModel(frame, replayed => answer({ replayed, ...core.modelCursor() }));
+            return;
           case 'visibility.set': {
             if (this.#asSession(frame)) throw new Error('visibility choices belong to the human');
             const preferences = core.visibility.preferences;

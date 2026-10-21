@@ -26,6 +26,7 @@ export async function createSocketEdge(options: SocketEdgeOptions): Promise<Sock
     socket.setEncoding('utf8');
     const conversation = options.dispatcher.open(
       {
+        bufferedBytes: () => socket.writableLength,
         sendSerialized: json => { if (!socket.destroyed) socket.write(`${json}\n`); },
         send: (frame) => {
           if (!socket.destroyed) socket.write(`${JSON.stringify(frame)}\n`);

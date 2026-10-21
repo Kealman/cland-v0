@@ -643,6 +643,7 @@ export type HubFrame =
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
+  | Resync
   | ModelDelta
   | SlimTaskFrame
   | VisibilityFrame
@@ -710,6 +711,8 @@ export type SnapshotFrame = { [D in SnapshotDomain]: { type: 'snapshot'; epoch: 
 export type SnapshotEnd = { type: 'snapshot.end'; epoch: string; seq: number };
 export type SnapshotRefused = { type: 'snapshot.refused'; code: 'frame-too-large'; domain: SnapshotDomain; bytes: number; limit: number } | { type: 'snapshot.refused'; code: 'unavailable'; message: string };
 
+export type Resync = { type: 'resync'; reason: 'queue-limit' | 'snapshot-required' };
+
 export type ClientHello = {
   type: 'hello';
   protocol: number;
@@ -718,6 +721,8 @@ export type ClientHello = {
   /** What is connecting: `cli`, `ui`. */
   client: string;
   features?: string[];
+  /** Atomically replay after this cursor instead of taking an initial snapshot. */
+  resume?: { epoch: string; seq: number };
 };
 
 // hub/src/protocol.ts
@@ -764,6 +769,7 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
+  | { type: 'resume'; id: string; epoch: string; seq: number }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke
   | DemoRequest
   | RuleRequest

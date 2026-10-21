@@ -47,6 +47,7 @@ export const WEB_AUTHORITY = {
   'publish': 'publishes project files',
   'push': 'pushes project history',
   'release': 'publishes a release',
+  'resume': true,
   'role.clear': true,
   'role.launch': true,
   'role.list': true,

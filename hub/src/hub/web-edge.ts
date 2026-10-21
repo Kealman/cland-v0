@@ -190,6 +190,7 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
     const seen = () => { state.seen = clock.now().getTime(); };
     req.socket.on('data', seen);
     const conversation = options.dispatcher.open({
+      bufferedBytes: () => ws.bufferedAmount,
       sendSerialized: json => { if (ws.readyState === WebSocket.OPEN) ws.send(json); },
       send: frame => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),

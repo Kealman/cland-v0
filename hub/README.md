@@ -477,7 +477,44 @@ All clients share the same sequence within that epoch. The epoch changes when
 the core restarts. Request results, welcome, snapshot frames and keepalives do
 not consume numbers; future binary streams stay outside the model sequence too.
 Without `snapshot`, `numbered-deltas` starts at the current live stream.
-Resume and ring-buffer catch-up are subsequent protocol work.
+A reconnecting client adds `resume: {epoch, seq}` to its hello, where `seq` is
+its last **applied** model delta (or completed snapshot). This requires
+`numbered-deltas`. The welcome still accepts `snapshot` and `numbered-deltas`.
+A covered cursor in the current epoch suppresses the initial snapshot: the hub
+replays exactly `seq + 1` through its current number in the negotiated full or
+slim shape, then sends live deltas. The subscription is established before
+catch-up writes; live changes are held until replay finishes.
+
+The in-memory ring retains at most **15 minutes** of deltas and **4 MiB** of
+UTF-8 JSON across its distinct full and slim representations. It records deltas
+while no clients are connected too. The oldest entries are evicted at either
+bound; a cursor immediately before the oldest retained number is still covered.
+An empty interval at the current number is covered. A future number, an evicted
+interval or a different epoch requires a fresh snapshot. A hub restart creates a
+new epoch and an empty ring, so a resume across a restart takes a fresh snapshot.
+Only model deltas enter the ring: results, welcome, snapshot, `resync`, keepalive
+and future binary stream frames stay outside it.
+
+An existing connection can send `{type: "resume", id, epoch, seq}` with the same
+rules. It replaces that connection's model subscription, completes replay or the
+fallback snapshot, then answers with a normal result containing `{replayed,
+epoch, seq}`. Wait for the current snapshot/replay transaction before requesting
+another resume. If catch-up is unavailable and `snapshot` was not negotiated,
+the hub sends `{type: "resync", reason: "snapshot-required"}` and holds model
+output; reconnect with both features to obtain a snapshot. Snapshot refusals
+retain their documented fallback to individual reads.
+
+A featured connection whose next model frame would take its unsent transport
+queue past **4 MiB** gets `{type: "resync", reason: "queue-limit"}` instead.
+The transport queue is also checked after writes to account for framing overhead.
+That ends its model stream, leaving the socket and request/reply path open. It
+emits only one resync until the client explicitly resumes. Model output remains
+paused even after the queued bytes drain. After draining, the client sends
+`resume` with its own last applied number, or reconnects with `hello.resume`.
+It may receive catch-up or a fresh snapshot if retention no longer covers it.
+Unsent bytes come from the WebSocket's `bufferedAmount` or the Unix/stdio
+writable queue; snapshots and replay share the same model output limit.
+Neovim's hello has no features and its existing frames are unchanged.
 
 `inbox`, `presence` and `verification.queue` replace their whole domain.
 `message`, `delivery` and `event` append (an event's `replaces` retains its existing

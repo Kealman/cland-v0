@@ -1,5 +1,6 @@
 import { resolveClock, type Clock, type ClockOptions, type ClockTimer } from './clock.ts';
 import type { AnswerAttribution } from '../protocol.ts';
+import { ModelRing } from './model-ring.ts';
 import { heartbeatDigest } from './heartbeat.ts';
 import { defaultCrew } from '../crew.ts';
 import { durationMs } from '../duration.ts';
@@ -194,8 +195,12 @@ const ROLE_NOTICE = 'role';
 export class HubCore {
   readonly #epoch = randomUUID();
   #modelSeq = 0;
+  readonly #modelRing: ModelRing;
   /** Snapshots describe the state after this delta, without consuming a number. */
   modelCursor(): { epoch: string; seq: number } { return { epoch: this.#epoch, seq: this.#modelSeq }; }
+  resumeModel(epoch: string, seq: number, features: readonly ClientFeature[]): string[] | null {
+    return epoch === this.#epoch ? this.#modelRing.after(seq, features.includes('slim-frames')) : null;
+  }
   readonly #clients = new Set<{ features: readonly ClientFeature[]; key: string; send: (frame: HubFrame, serialized: () => string) => void }>();
   #taskLayers: Record<string, Layer> = {};
   readonly #modelPublications: Array<() => void> = [];
@@ -212,10 +217,6 @@ export class HubCore {
   readonly #unsubscribeRules: (() => void) | undefined;
   readonly #rulebookUiUnsubscribe: (() => void) | undefined;
   async refreshVisibility(choice: { surface: 'topics' | 'sessions' | 'artifacts'; target: string }, resumed: <T>(work: () => T) => T = work => work()): Promise<void> {
-    if (![...this.#clients].some(client => client.features.includes('numbered-deltas') || client.features.includes('slim-frames'))) {
-      this.#emit({ type: 'visibility' });
-      return;
-    }
     type Rows = import('../protocol.ts').VisibilityFrame['rows'];
     const empty = (): Rows => ({ topics: [], sessions: [], processes: [], artifacts: [], messages: [] });
     let rows = empty(), bytes = 512, count = 0, announced = false;
@@ -443,6 +444,7 @@ export class HubCore {
     this.#env = options.env ?? process.env;
     this.#reserved = new Set([HUMAN, ...(options.reservedNames ?? [])]);
     this.clock = resolveClock(options);
+    this.#modelRing = new ModelRing(this.clock);
     this.#now = () => this.clock.now();
     this.#log = options.log ?? (() => {});
     this.#store = options.store ?? new Store();
@@ -537,6 +539,7 @@ export class HubCore {
   close(): void {
     this.#closed = true;
     this.#clients.clear();
+    this.#modelRing.close();
     this.#rulebookUiUnsubscribe?.();
     this.clock.clearInterval(this.#heartbeatTimer);
     this.#unsubscribeRules?.();
@@ -648,6 +651,9 @@ export class HubCore {
       this.#taskLayers = layers;
       slim = { ...projected, layers: changed };
     }
+    const full = { ...(featured ?? projected), epoch: this.#epoch, seq };
+    const slimDelta = slim === projected || featured ? full : { ...slim, epoch: this.#epoch, seq };
+    const retained = this.#modelRing.append(full, slimDelta);
     const clients = [...this.#clients];
     this.#modelPublications.push(() => {
       const variants = new Map<string, { frame: HubFrame; json?: string }>();
@@ -658,7 +664,9 @@ export class HubCore {
           if (!variant) {
             const frame = featured && (client.features.includes('slim-frames') || client.features.includes('numbered-deltas')) ? featured
               : client.features.includes('slim-frames') ? slim : projected;
-            variant = { frame: client.features.includes('numbered-deltas') ? { ...frame, epoch: this.#epoch, seq } : frame };
+            variant = client.features.includes('numbered-deltas')
+              ? { frame: client.features.includes('slim-frames') ? slimDelta : full, json: client.features.includes('slim-frames') ? retained.slim : retained.full }
+              : { frame };
             variants.set(client.key, variant);
           }
           const shared = variant;

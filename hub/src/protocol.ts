@@ -385,6 +385,7 @@ export type HubFrame =
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
+  | Resync
   | ModelDelta
   | SlimTaskFrame
   | VisibilityFrame
@@ -500,6 +501,8 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
       return typeof f.epoch === 'string' && Number.isSafeInteger(f.seq) && typeof f.domain === 'string' && Object.hasOwn(SNAPSHOT_LIMITS, f.domain) && isObject(f.value);
     case 'snapshot.end':
       return typeof f.epoch === 'string' && Number.isSafeInteger(f.seq);
+    case 'resync':
+      return f.reason === 'queue-limit' || f.reason === 'snapshot-required';
     case 'snapshot.refused':
       return f.code === 'unavailable' ? typeof f.message === 'string' : f.code === 'frame-too-large' && typeof f.domain === 'string' && Object.hasOwn(SNAPSHOT_LIMITS, f.domain) && typeof f.bytes === 'number' && typeof f.limit === 'number';
     case 'deliver':
@@ -540,6 +543,8 @@ export type SnapshotFrame = { [D in SnapshotDomain]: { type: 'snapshot'; epoch: 
 export type SnapshotEnd = { type: 'snapshot.end'; epoch: string; seq: number };
 export type SnapshotRefused = { type: 'snapshot.refused'; code: 'frame-too-large'; domain: SnapshotDomain; bytes: number; limit: number } | { type: 'snapshot.refused'; code: 'unavailable'; message: string };
 
+export type Resync = { type: 'resync'; reason: 'queue-limit' | 'snapshot-required' };
+
 export type ClientHello = {
   type: 'hello';
   protocol: number;
@@ -549,6 +554,8 @@ export type ClientHello = {
   client: string;
   /** Unknown features are ignored; welcome echoes only implemented features. */
   features?: string[];
+  /** Atomically replay after this cursor instead of taking an initial snapshot. */
+  resume?: { epoch: string; seq: number };
 };
 
 // Operational verification occasions are independent of configured tracker container kinds.
@@ -607,6 +614,7 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
+  | { type: 'resume'; id: string; epoch: string; seq: number }
   | ArtifactUrl | WebLink | WebSessions | WebRevoke
   | DemoRequest
   | RuleRequest
@@ -879,12 +887,14 @@ export type HarnessProcessView = {
 };
 
 export function isClientHello(f: Record<string, unknown>): f is ClientHello {
-  return f.type === 'hello' && typeof f.protocol === 'number' && (f.secret === undefined || typeof f.secret === 'string') && typeof f.client === 'string' && (f.features === undefined || Array.isArray(f.features) && f.features.every(feature => typeof feature === 'string'));
+  return f.type === 'hello' && typeof f.protocol === 'number' && (f.secret === undefined || typeof f.secret === 'string') && typeof f.client === 'string' && (f.features === undefined || Array.isArray(f.features) && f.features.every(feature => typeof feature === 'string')) && (f.resume === undefined || isObject(f.resume) && typeof f.resume.epoch === 'string' && Number.isSafeInteger(f.resume.seq) && Number(f.resume.seq) >= 0);
 }
 
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {
   if (typeof f.id !== 'string') return false;
   switch (f.type) {
+    case 'resume':
+      return typeof f.epoch === 'string' && Number.isSafeInteger(f.seq) && Number(f.seq) >= 0;
     case 'demo.start':
       return typeof f.epic === 'string' && (f.commit === undefined || typeof f.commit === 'string');
     case 'demo.exec':
