@@ -7941,11 +7941,11 @@
       "reason": "T-670 adds the real shell builder/snapshot/delivery proof, planted-red and failed/dirty prepare controls, and the prepare CLI contract. Base T3 is 2092.229397 s; native A-6845 contributes 16.772127542 s and A-6830 contributes 0.776026333 s, projecting 2109.777550875 s. The 2115 s total cap allows 5.222449125 s of headroom above this measured projection; reduce native lifecycle cost (T-670)."
     },
     "web/test/palette.test.ts::the palette and area keys help": {
-      "seconds": 8,
+      "seconds": 12,
       "owner": "E-880",
       "added": "2026-10-21",
       "expires": "2026-10-28",
-      "reason": "T-996 palette test measured 6.441 s on a Linux c-8 droplet (run 8c9946b8, A-8475) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web shell and palette tests under budget"
+      "reason": "T-996 palette test measured 5.98 to 8.285 s on Linux c-8 droplets (runs 8c9946b8, 57da3ffe, 9e25e121) against the 5 s new-identity gate; headroom for browser launch variance until T-1051 brings Web shell and palette tests under budget"
     }
   }
 }
