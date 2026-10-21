@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-1006
 blocked_by: []
-topic: null
+topic: topic-785
 branch: t/T-1038-one-neovim-startup-response-is-still
 created: 2026-10-21T06:33:16.684Z
-updated: 2026-10-21T06:33:35.625Z
+updated: 2026-10-21T06:33:56.494Z
 ---
 
 ## Summary

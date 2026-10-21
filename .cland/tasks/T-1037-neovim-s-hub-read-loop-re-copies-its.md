@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: E-1006
 blocked_by: []
-topic: null
+topic: topic-786
 branch: t/T-1037-neovim-s-hub-read-loop-re-copies-its
 created: 2026-10-21T06:33:16.589Z
-updated: 2026-10-21T06:33:32.234Z
+updated: 2026-10-21T06:34:08.483Z
 ---
 
 ## Summary
