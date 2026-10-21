@@ -3,7 +3,7 @@ id: T-1033
 kind: task
 title: A Web-only tier run with a coverage map crashes reducing an absent raw directory
 state: open
-status: backlog
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -12,10 +12,10 @@ assignee: null
 parent: C-325
 blocked_by: []
 regression_of: T-991
-topic: null
-branch: null
+topic: topic-784
+branch: t/T-1033-a-web-only-tier-run-with-a-coverage-map
 created: 2026-10-21T05:59:43.464Z
-updated: 2026-10-21T05:59:43.464Z
+updated: 2026-10-21T06:00:34.690Z
 ---
 
 ## Summary
