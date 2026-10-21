@@ -3,7 +3,7 @@ id: T-986
 kind: task
 title: Resume, the ring and resync
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:50:00.557Z
-updated: 2026-10-20T16:50:00.557Z
+updated: 2026-10-21T09:39:18.481Z
 ---
 
 ## Summary

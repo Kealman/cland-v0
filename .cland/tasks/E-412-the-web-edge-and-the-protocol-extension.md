@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-773
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-21T08:10:13.529Z
+updated: 2026-10-21T09:39:17.364Z
 ---
 
 ## Summary
@@ -203,3 +203,52 @@ T-983 C5: snapshot measurement on a disposable copy of the live tracker (A-8119,
 Notes:
 - Items will reach the 1 MiB cap at about 1,900 items at today's density. Paging the items domain (or slim frames) is needed before then.
 - The synchronous compose holds the hub loop for about 120 ms per featured connection. That is fine for one browser, but worth watching when T-985/T-986 add reconnects.
+
+### qa-676 · 2026-10-21T09:39:17.364Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-1
+commit: 479178b25c78ccbb54f908ef7cc7c05c18426cd0
+stage: authority, cookie sessions, snapshot and pages
+stage_hash: 2fcea38e2ba40ff42e5806d2221d03be11af1202e198bf0e730abe8de423d6c4
+findings: [{"severity":"low","text":"M2 recursive grep encounters hub.sock and exits 2; approved regular-file probe finds no cookie, exit 1. Original and corrected captures retained.","file":"qa/briefs/E-412-stage-2.md","line":238},{"severity":"low","text":"M5 artifact chip follows message, so history last is chip. Approved before:3 history and Unix artifact list confirm both persisted human attribution.","file":"qa/briefs/E-412-stage-2.md","line":241}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Check | Surface | Result | Observation / retained evidence |
+| --- | --- | --- | --- |
+| S0 | local macOS CLI | PASS | Clean detached SHA/dev; T-981/983/984/982/987/1042 merges present; scratch HOME/XDG/Git, shared credential filter after overlays, system TMPDIR; exact-source web bundle built. |
+| M1 | scratch CLI/HTTP | PASS | Auth 302, valid project cookie name, one UUID row with equal creation/last-use and 0 sockets. |
+| M2 | scratch DB/files | PASS | Exactly four columns; matching SHA-256 digest only. Corrected regular-file scan no match, exit 1; original socket error retained. |
+| M3 | scratch web/Unix frames | PASS | 20 restricted frames cli-neovim-only; allowed hub.status works; Unix sessions/path artifact creation succeeds. |
+| M4 | scratch web frames | PASS | Initial hello with as refused; plain hello accepted as human; status succeeds. |
+| M5 | scratch web/Unix frames | PASS | Message and inline artifact accepted and persisted human/human. Seq 2 message confirmed by before:3; following seq 3 artifact chip and Unix artifact list confirmed. |
+| M6 | scratch frames | PASS | Exactly 9 frames: welcome, 7 ordered domains, end. Common epoch, seq 1→2→3 across connections; each below cap; no suites history. |
+| M7 | scratch frames | PASS | Four legacy/empty/unknown-feature hellos produce only the expected welcome after 1.5 s. |
+| M8 | scratch history | PASS | 450 sends; 451 distinct numbered messages both directions, pages 200/200/51; inserted once on page 2. |
+| M9 | scratch history | PASS | Limit 500 capped at 200; default 50; both/negative/fractional cursors refused. |
+| M10 | scratch artifact HTTP | PASS | Four independent valid capability URLs, duplicate note mints differ; unknown and Unix mint refused. HTML/CSS/Markdown/plain/HEAD all 200 with exact types, sandbox and protective headers. |
+| M11 | scratch artifact HTTP | PASS | All 11 --path-as-is confinement probes 403/404; zero foreign bytes. |
+| M12 | scratch restart | PASS | Cookie/session creation and four capabilities survive restart, same port 54611; old hold closed, cookie upgrade 101. |
+| M13 | scratch revocation | PASS | A and B each 1 socket; revoke A closes A only, one server close receipt; B stays connected. |
+| M14 | scratch restart/revocation | PASS | A cookie 401 and four caps 404; B cookie 101/cap 200; repeat revoke and combined flags exit 1. Same after restart. |
+| M15 | copied tracker measurement | PASS | 1042 items, seven domains under caps, five warm samples, eight frames; posted measurement comment found. |
+| M16 | documentation read | PASS | All 10 required strings present; surrounding sections agree with manual behavior. |
+| M17 | serial targeted hub files | PASS | 105/105 tests, zero failures/cancellations/skips/todo, including fake-clock expiry, snapshot races/caps, symlink ancestor and parent-swap cases. |
+| M18 | targeted Neovim | PASS | T-984 nvim diff empty; thread tests 23/23, zero skips. |
+| M19 | lint/typecheck | PASS | Wire import guard exit 0; complete root typecheck exit 0, no diagnostics. |
+
+Findings, ranked:
+- Low, brief M2 (qa/briefs/E-412-stage-2.md:238): recursive grep printed `grep: .cland/hub.sock: Operation not supported on socket`, exit 2, no matches. Coordinator ruling 43304c90-b18e-4d33-aa39-2b49a7b7c5fd corrected the probe to regular files. `find .cland -type f -print0 | xargs -0 grep -a -l -F "$V"` printed nothing and exited 1. Cookie never printed; original capture retained.
+- Low, brief M5 (qa/briefs/E-412-stage-2.md:241): inline artifact creation posts a normal chip after the message, so history last is the seq-3 chip, not seq-2 message. Coordinator ruling 5316978b-6547-412d-ad5f-ac608526a854 accepts persisted human attribution: `topic.history before:3 limit:1` returns seq 2 from human/human; seq 3 chip and Unix A-2 list also human/human. Original and corrected captures retained.
+
+No product failure. Run qa-2026-10-21-1; stage “authority, cookie sessions, snapshot and pages”; tested full SHA 479178b25c78ccbb54f908ef7cc7c05c18426cd0. All 20 scoped checks passed; 128 targeted test executions passed. Actual executor local macOS arm64, Node v24.21.0, pinned Neovim v0.12.5. No real browser, GUI or provider call. No full suite submitted by QA; stage covers are the Coordinator's Linux 6773233c/A-8207 and macOS baaf13ec/A-8211 at tree d026d0a84f0b25de15257e303002111bc247cbf1, complete in task.view and outside this brief. Duration budget lines are not a stage criterion.
+
+T-1042 behavior was exercised under logical /var/folders ancestry resolving to /private/var/folders. Valid capability reads passed, while traversal/symlink confinement remained enforced. M17 executes the platform-specific macOS branch of parent-swap tests.
+
+M15 measured the committed tracker copy, not live sessions: items frame 576811 bytes (55.01% cap) versus posted 571512; compose samples 116.042, 103.686, 104.791, 119.066 and 115.929 ms versus posted ~120 ms. Five warm-process compose samples exclude setup/copy/transport; these are not suite wall times.
+
+All exact commands and redacted outputs are retained by case prefix, plus 20 recorder rows. Scratch bearer scan found 0 cookies/capability URLs/auth links in retained evidence. Final HEAD/dev unchanged, worktree clean, scratch hub stopped, own process scan 0; scratch and detached worktree removed. Stage verdict carries no epic criterion marks.
+
+Durable artifact A-8219: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8219-e-412-stage-2-20-checks-pass-at-479178b2/report.md

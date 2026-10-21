@@ -3,7 +3,7 @@ id: T-989
 kind: task
 title: Liveness, version skew and the terminal's door
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -15,7 +15,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:50:00.836Z
-updated: 2026-10-20T16:50:00.836Z
+updated: 2026-10-21T09:39:18.702Z
 ---
 
 ## Summary

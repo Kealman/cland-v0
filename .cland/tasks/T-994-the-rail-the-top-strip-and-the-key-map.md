@@ -3,7 +3,7 @@ id: T-994
 kind: task
 title: The rail, the top strip and the key map
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:51:40.769Z
-updated: 2026-10-20T16:51:40.769Z
+updated: 2026-10-21T09:33:07.769Z
 ---
 
 ## Summary

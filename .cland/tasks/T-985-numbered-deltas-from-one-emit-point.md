@@ -3,7 +3,7 @@ id: T-985
 kind: task
 title: Numbered deltas from one emit point
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-412
 blocked_by:
   - T-983
-topic: null
-branch: null
+topic: topic-791
+branch: t/T-985-numbered-deltas-from-one-emit-point
 created: 2026-10-20T16:50:00.467Z
-updated: 2026-10-20T16:50:00.467Z
+updated: 2026-10-21T09:39:51.072Z
 ---
 
 ## Summary

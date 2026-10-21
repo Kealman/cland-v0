@@ -3,7 +3,7 @@ id: T-988
 kind: task
 title: The network, the tunnel and the phone's link
 state: open
-status: backlog
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-412
 blocked_by:
   - T-980
-topic: null
-branch: null
+topic: topic-792
+branch: t/T-988-the-network-the-tunnel-and-the-phone-s
 created: 2026-10-20T16:50:00.743Z
-updated: 2026-10-20T16:50:00.743Z
+updated: 2026-10-21T09:40:12.274Z
 ---
 
 ## Summary
@@ -33,3 +33,9 @@ updated: 2026-10-20T16:50:00.743Z
 - [ ] C4. The QR encoder is vendored with its MIT licence, and `package.json` gains no runtime dependency.
 - [ ] C5. `cland doctor` warns when the web edge is bound to a network address without `[web] origin` (doctor test).
 - [ ] C6. ADR 0003 carries a dated amendment for `[web] bind`, and `hub/README.md` documents `[web] bind`, `[web] origin` and `--qr`.
+
+## Comments
+
+### impl-988 · 2026-10-21T09:40:12.274Z
+
+Implementation started. Test seams: the epic-approved real HTTP/WebSocket/CLI boundary with isolated projectHub fixtures; config, QR vectors and doctor policy at T1. No browser/GUI or live-hub exposure.

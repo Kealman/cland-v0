@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-783
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-21T03:14:41.964Z
+updated: 2026-10-21T09:33:06.714Z
 ---
 
 ## Summary
@@ -146,3 +146,36 @@ Plan approved by the human, 2026-10-20 16:54Z (ask 310190bf option 1, typed by t
 ### coord · 2026-10-20T17:06:48.136Z
 
 Crew browser rule (Coordinator, 2026-10-20 17:06Z, after impl-990's run raised a macOS 'Keychain Not Found' modal on the human's desktop, A-7738): Implementers and Reviewers never launch the human's real Chrome, Safari or default profile. Browser checks use Chrome Headless Shell or Chrome for Testing headless, with its own --user-data-dir under the worktree or a scratch temp dir, killed at the end. No GUI process starts from a crew session unless a brief explicitly foresees it. Only QA (T-1011) touches the real browser, through computer use, with the human's normal environment and a dedicated cland profile, and it never resets or changes keychain, profile or system settings.
+
+### qa-676 · 2026-10-21T09:33:06.714Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-1
+commit: 479178b25c78ccbb54f908ef7cc7c05c18426cd0
+stage: the ground
+stage_hash: 0035804adb5fce026489e5f185f5db05705be8099e0e60bf6778e78067b5454f
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Surface | Result | Evidence/observation |
+| --- | --- | --- | --- |
+| S0 | local macOS CLI | PASS | Clean detached HEAD and dev 479178b25c78ccbb54f908ef7cc7c05c18426cd0; all three item merges present; scratch HOME/XDG/Git, filtered credentials, system TMPDIR. |
+| M1 | CLI | PASS | npm install exit 0; prepare built index.html/build-stamp.json; dist ignored; tree clean. |
+| M2 | CLI | PASS | Control exit 0; CSS and TSX plants each exit 1 at exact line; plants removed. |
+| M3 | CLI | PASS | Hooks control exit 0; conditional-hook plant rejected with rules-of-hooks; removed. |
+| M4 | Headless Shell via node:test | PASS | 4/4 including subtests, zero skips; external browser census 0→0; fixture group 80461 after 0; scratch hub stopped. |
+| M5 | CLI tests | PASS | Web-only selection and hub-plus-Neovim smoke tests: 1/1 each, zero skips. |
+| M6 | CLI tests | PASS | Web planner file 8/8, zero skips; enforced 4-second Web budget contract tested. |
+| M7 | CLI tests | PASS | Missing-browser unavailable receipt contract 1/1, zero skips. |
+| M8 | CLI | PASS | Workspace/tier lint exit 0; bundle doctor 1/1; both documentation headings present. |
+| M9 | CLI | PASS | Root typecheck exit 0, no warnings/errors. |
+
+Findings: no product failures. Low brief observation, M4: smoke.test.ts verifies the planted trace ZIP and then removes it explicitly, so the trace does not remain in test-results after the passing test. M4.txt retains the trace diagnostic and passing ZIP/context assertions. This satisfies failure-capture behavior; no missing product evidence.
+
+Run qa-2026-10-21-1, stage “the ground”. Actual local macOS arm64, Node v24.21.0; Chrome Headless Shell 156.0.8078.4 (Playwright revision 1248), disposable profile. 16 targeted test executions passed, zero skips. No full suite submitted by QA. Requested covers: Linux 6773233c/A-8207 and macOS baaf13ec/A-8211; task.view confirms complete cover tree d026d0a84f0b25de15257e303002111bc247cbf1. Stage covers and their duration reports are outside this brief.
+
+npm install recovered from two download-host DNS errors using its normal fallback and exited 0. No credential or GUI access. All command captures retained. Final HEAD/dev unchanged and tree clean; own process scan zero, scratch and detached worktree removed. No epic criterion marks.
+
+Durable artifact A-8217: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8217-e-415-ground-stage-10-checks-pass-at-479178b2/report.md

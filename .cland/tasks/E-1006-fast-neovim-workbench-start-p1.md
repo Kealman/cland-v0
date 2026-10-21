@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T06:33:24.100Z
+updated: 2026-10-21T09:42:05.926Z
 ---
 
 ## Summary
@@ -119,3 +119,62 @@ Stage covers are outside this brief. The request named A-8040 and A-8038 as comp
 Stage verdict only: no epic criterion marks.
 
 Durable evidence A-8045: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8045-e-1006-stage-qa-evidence-at-44097bad-s0-and-m1-m11-pass/report.md
+
+### qa-676 · 2026-10-21T09:24:58.880Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-1
+commit: 479178b25c78ccbb54f908ef7cc7c05c18426cd0
+stage: the read loop and the startup replies
+stage_hash: 52011ad39dbe0725783cb49590f0d7075a698820a61f9adb4adccb9061af8ba8
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Surface | Result | Observation / evidence |
+| --- | --- | --- | --- |
+| S0 | local macOS hub-api | PASS | Clean detached requested SHA/dev; T-1037 and T-1038 merges present; pinned Neovim; scratch hub under filtered HOME/XDG/Git; S0.txt and quiet-before.txt |
+| M1 | local macOS hub-api | PASS | 2/2 read-loop tests; 20 MiB frame in 64 KiB chunks decoded once in 22.9 ms; 37,888,488 allocated bytes and 46,366,720 RSS growth bytes; M1.txt |
+| M2 | local macOS hub-api | PASS | 8/8 status/history/paging/fragmented-response component tests; M2.txt |
+| M3 | local macOS hub-api | PASS | Thousand-item durable fixture: all eight startup replies within per-frame and total budgets; 1/1 test; M3.txt |
+| M4 | local macOS hub-api | PASS | 4/4 startup budget tests, including oversized non-item reply control; M4.txt |
+| M5 | local macOS hub-api | PASS | Exactly 3/3 named demand-paging and older-page reconnect tests executed; M5.txt |
+| M6 | local macOS hub-api | PASS | Scratch cwd confirmed; default status 2,571 bytes; --history 2,598 bytes; both exit 0; hub/web/sessions shown; M6.txt |
+| M7 | local macOS hub-api | PASS | 60/60 shell-component tests, including ten fake-minute reconnect settling and delayed-items header checks; M7.txt |
+| M8 | local macOS hub-api | PASS | npm run typecheck exit 0; zero warnings/errors; M8.txt |
+
+Findings: none.
+
+Stage: the read loop and the startup replies.
+Run: qa-2026-10-21-1.
+Tested full SHA: 479178b25c78ccbb54f908ef7cc7c05c18426cd0.
+Brief: qa/briefs/E-1006-stage-2.md at that build. Items T-1037 and T-1038; no added fixes. HEAD and refs/heads/dev matched the requested SHA before and after execution; detached worktree status was empty.
+
+Actual execution: local Darwin arm64, Node v24.21.0, pinned Neovim v0.12.5. Six targeted test files, 78 test executions passed with no skips or cancellations; no full suite was rerun. Tests ran one file at a time from the detached worktree with fresh fixtures, filtered credentials, scratch HOME/XDG/Git and the system TMPDIR. CLI M6 used only the scratch hub, never the live project. Queue receipts before each test show local:none; before M1 CPU idle sampled 88.23% and 89.96%, and before M4 85.56% and 88.9% on 10 logical CPUs. No deliberate stress or local suite ran alongside these checks.
+
+M1's hard assertions enforced <2,000 ms decode and <8×20 MiB allocation/RSS growth. Actual measurements: 22.9 ms, 37,888,488 allocated bytes, 46,366,720 RSS growth bytes. Split/coalesced/partial frame ordering and malformed-line handling also passed.
+
+M4's baseline generated tracker had 1,000 items, 200 open. Connection-to-render was 26.860625 ms, first item payload 67,588 bytes. This is fixture-based startup measurement, not the human's live-tracker startup or the separate hub-start time. Enforced negative controls:
+- slow list: 3,136.9 ms >3,000 ms, expected time-budget rejection;
+- bodies included: 415,880 bytes >131,072 bytes, expected first-item-payload rejection;
+- oversized rule.list: 280,077 bytes >262,144 bytes, expected per-reply rejection.
+These controls passed because their expected failures were caught by the tests; they are not product failures.
+M3's actual whole-command wall was 1,675 ms, with 1,379.364 ms reported for its test body. The dated duration allowance is recorded context only, not a stage timing gate. No projections are reported as measured wall.
+
+The Coordinator's completed stage covers were already present in task.view at verification tree d026d0a84f0b25de15257e303002111bc247cbf1: Linux 6773233c-8f9c-4c8f-bf60-bfa6591f327b / A-8207 and macOS baaf13ec-e3bf-47a4-b310-db8c446d6902 / A-8211. Those are external gate receipts, not executions by this QA run. General duration report-only lines and T-1039 hub-start time are outside this stage.
+
+Cleanup: scratch hub pid 55231 stopped through cland hub stop; no owned process remained after excluding the probe's own ancestor processes. The initial process scan matched only its own zsh parent (pid 64530); both that raw result and the corrected scan are retained. Scratch root and detached worktree removed non-force. All nine recorder lines and referenced captures were checked.
+
+Stage QA clear. No epic criterion marks: E-1006 C1's human-Mac live-tracker measure and C2's ten-minute idle check remain for the epic DoD.
+
+Evidence A-8214: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8214-e-1006-stage-2-qa-read-loop-and-startup-replies-9-checks-pass-at-479178b2/report.md
+
+### coord · 2026-10-21T09:42:05.926Z
+
+C1 live evidence: the human's Mac, 2026-10-21 09:40:37Z, dev 7c5e4028 (hub pid 92080 with T-1038, Neovim with T-1037), relayed by the stand-in cland-impl.
+- The human's words: «О, запустился почти сразу». Exact seconds will follow if they measured.
+- `nvim --embed` peaked at 46 MB RSS and 7.6 % CPU. On the failed 06:26Z run it reached 8.4 GB at 100 % and ran out of memory.
+- Hub RSS was 678 MB, with one CPU spike to 28 % for under 5 s and no macOS memory pressure.
+- Hub audit of the Neovim spoke, 09:40:37–09:41:24Z: the startup set was issued exactly once, against three times each in the failed run. The calls were subscribe, topic.list, hub.status, role.list, inbox.list, rule.list, session.list, artifact.list, task.list, account.list and events.list once each; topic.history, account.poll, task.view and topic.read twice each; task.plan 12 times; topic.send once.
+- C2: cland-impl's 10-minute idle sampler is running on this Neovim, and its figures follow.
