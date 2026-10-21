@@ -2,8 +2,8 @@
 id: T-1060
 kind: task
 title: A stopped hub with the web edge does not exit, and hub stop calls it not this project's hub
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 3
 labels:
@@ -14,7 +14,8 @@ blocked_by: []
 topic: topic-807
 branch: t/T-1060-a-stopped-hub-with-the-web-edge-does-not
 created: 2026-10-21T14:06:08.818Z
-updated: 2026-10-21T14:50:45.476Z
+updated: 2026-10-21T15:12:32.743Z
+closed: 2026-10-21T15:12:32.743Z
 ---
 
 ## Summary
@@ -33,13 +34,16 @@ After `hub stop`, the hub at cb231eeb logs "stopped" but its process stays alive
 
 - [x] C1. After "stopped", a served hub with the web edge enabled exits within 2 s with no open handles (test through a real `hub serve` process).
   - done: impl-1060 · 2026-10-21T14:26:27.753Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1060-final · 2026-10-21T15:08:02.253Z · commit 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
 - [x] C2. When `cland hub stop` sees the lock released by the pid it asked to stop and that pid is still alive, it reports "stopped, lock released, process still alive" and names the pid, not "not this project's hub" (test).
   - done: impl-1060 · 2026-10-21T14:18:55.102Z
+  - verified: rev-31 [reviewer] · run rev-20261021-1060-final · 2026-10-21T15:08:02.253Z · commit 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
 - [x] C3. The handle that kept the loop alive is named in the item topic, with the commit that introduced it.
   - done: impl-1060 · 2026-10-21T14:18:55.120Z
   - verified: rev-23 [reviewer] · run rev-20261021-1060-source · 2026-10-21T14:21:37.986Z · commit 5a1f508a19939d2507c7a1e31c44c85765b70f25
   - verified: rev-23 [reviewer] · run rev-20261021-1060-source-2 · 2026-10-21T14:28:24.941Z · commit c200da18bb377f19d7be6acfc3980e4e151ada34
   - verified: rev-31 [reviewer] · run rev-20261021-1060-shared-source · 2026-10-21T14:41:31.502Z · commit 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
+  - verified: rev-31 [reviewer] · run rev-20261021-1060-final · 2026-10-21T15:08:02.253Z · commit 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
 
 ## Comments
 
@@ -114,3 +118,26 @@ Criteria: C3 verified.
 ### impl-1060 · 2026-10-21T14:50:42.036Z
 
 Mode-free configured verification 76fde038-31e9-41ff-adab-0da651ec983d green at 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7, source-clear rev-20261021-1060-shared-source. T1/T2/Web exit 0; 2306/2306 tests pass, zero skips/fails. Executor droplet, Linux x64 6.8.0-142-generic, Node24.21.0, c-8 lon1, lifetime475s/cost$0.0330. Test lint/duration/ratchet report-only; enforced gates passed. Host gate receipt 3af5b80b reused, not repeated remotely. A-8494: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8494-suite-76fde038-31e9-41ff-adab-0da651ec983d-auto-at-8d5bee1.log. T3 is absent from task verification; full 68c57731 remains pending and is required for C1/C2 final review settlement.
+
+### impl-1060 · 2026-10-21T15:06:38.522Z
+
+Coordinator-required full fresh 68c57731-d17d-4dca-8d65-477caaaa63e1 is GREEN at unchanged reviewed 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7. T1/T2/T3/Web all exit0; 3536 tests,3528 pass,8 skipped,0 failures. T4 not included. Actual C1 and C2 T3 finish receipts are both pass, not skipped (A-8510 lines13523/13553 and13557/13559). Linux x64 6.8.0-142-generic, Node24.21.0, Neovim0.12.5, c-8 lon1 droplet, lifetime1400s/cost$0.0973. Lint/duration/ratchet report-only, enforced gates pass; reused host gate3af5b80b not repeated remotely. A-8510 durable log: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8510-suite-68c57731-d17d-4dca-8d65-477caaaa63e1-all-at-8d5bee1.log. Together with mode-free A-8494/76fde038 this supplies requested runtime evidence. Reviewer final settlement requested; no source change or merge.
+
+### rev-31 · 2026-10-21T15:08:02.253Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261021-1060-final
+commit: 8d5bee1a9a66a681c859f064400fa1d7efa5b5c7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final C1–C3 clear, A-8513. Exact-head Linux mode-free A-8494:2306 pass; Coordinator-required full A-8510:T1/T2/T3/Web exit0,3528 pass/8 explicit non-task skips/0fail. Actual C1 hub-serve and C2 acknowledged-live-PID daemon identities pass, final2s+hub/Git reaping and diagnostic/safety assertions inspected; daemon14/14 and freshness8/8. No lifecycle load-repetition claim. Host check not repeated on droplet; inherited report-only duration/lint/skip limitations retained. Both claimant marks and required receipts complete. No T4/QA/merge-enqueue claim.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T15:12:32.743Z
+
+Merged 3d6da90e49430a7d63eddd49c9de5a3d2ffff646 onto dev.
