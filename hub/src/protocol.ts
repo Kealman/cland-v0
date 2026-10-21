@@ -3,6 +3,8 @@
 
 import type { Layer } from './hub/visibility.ts';
 import type { ItemSummary } from './tracker/tracker.ts';
+export type { ModelDelta, ModelEvent, SlimTaskFrame, VisibilityFrame } from '../../shared/wire/index.ts';
+import type { ModelDelta, SlimTaskFrame, VisibilityFrame } from '../../shared/wire/index.ts';
 
 export { PROTOCOL_VERSION, parseFrame } from '../../shared/protocol-frame.ts';
 
@@ -382,6 +384,9 @@ export type HubFrame =
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
+  | ModelDelta
+  | SlimTaskFrame
+  | VisibilityFrame
   /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice.
    *  `topic` is the topic the message belongs to; absent on the hub's own notices. */
   | { type: 'deliver'; id: string; message: Message; topic?: TopicRef }
@@ -513,7 +518,7 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
 // The same frames as JSON lines, one per line. There is no upgrade request to carry the secret, so the
 // client's hello carries it; on stdio the parent that spawned the hub vouches for the client instead.
 
-/** Negotiated independently; only snapshot is implemented by this extension. */
+/** Negotiated independently; unknown features are ignored. */
 export type ClientFeature = 'snapshot' | 'numbered-deltas' | 'slim-frames';
 export const SNAPSHOT_LIMITS = {
   tracker: 64 * 1024, items: MAX_FRAME_BYTES, sessions: MAX_FRAME_BYTES,

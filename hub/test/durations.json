@@ -5520,7 +5520,6 @@
     "hub/src/hub/store.test.ts::numeric history walks 450 messages in three pages in either direction without gaps or repeats": 0.012956,
     "hub/test/connection-snapshot.test.ts::a model change raced against the first snapshot frame runs after its end marker": 0.040049,
     "hub/test/connection-snapshot.test.ts::an oversized domain refuses the whole snapshot and leaves legacy reads usable": 0.068572,
-    "hub/test/connection-snapshot.test.ts::hello negotiates snapshot alone and legacy clients keep their existing welcome": 0.123288,
     "hub/test/connection-snapshot.test.ts::snapshot contains each workbench domain, compact verdict rounds and recent closed topics": 0.086938,
     "hub/test/hub-status-component.test.ts::artifact pages are newest first and an exclusive cursor reaches the next page": 0.050779,
     "hub/test/hub-status-component.test.ts::default hub status bounds completed suite history and preserves explicit historical diagnostics": 0.085214,

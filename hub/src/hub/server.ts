@@ -201,6 +201,7 @@ export async function createWebSocketEdge(
     });
     const conversation = dispatcher.open(
       {
+        sendSerialized: json => { if (ws.readyState === WebSocket.OPEN) ws.send(json); },
         send: (frame) => {
           if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
         },

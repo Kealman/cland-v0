@@ -103,6 +103,12 @@ create table if not exists deliveries (
   primary key (message_id, session)
 );
 create index if not exists deliveries_session on deliveries (session, state, queued_at);
+create table if not exists message_artifact_refs (
+  artifact_id text not null, seq integer not null,
+  message_id text not null references messages (id) on delete cascade,
+  primary key (artifact_id, seq)
+);
+create index if not exists message_artifact_parent on message_artifact_refs (message_id);
 create table if not exists topics (
   id text primary key,
   title text not null,
@@ -219,9 +225,12 @@ const ADDED_COLUMNS: ReadonlyArray<{ table: string; column: string; type: string
 
 /** Indexes over added columns: created after the migration, when the column surely exists. */
 const LATE_INDEXES = `
+create index if not exists artifacts_topic on artifacts (json_extract(value, '$.topic'), number);
+create index if not exists artifacts_destination on artifacts (json_extract(value, '$.movedTo.folder'), number);
 create index if not exists messages_topic on messages (topic, created_at);
 create unique index if not exists topics_item on topics (item) where item is not null;
 create index if not exists messages_seq on messages (topic, seq);
+create index if not exists messages_from_seq on messages (from_name, seq);
 create index if not exists messages_reply_to on messages (reply_to, seq);
 create index if not exists messages_topic_time on messages (topic, ts);
 create index if not exists messages_human_seq on messages (topic, seq) where from_kind = 'human';
@@ -401,6 +410,14 @@ export class Store implements HygieneMemory {
     this.#migrate();
     this.#db.exec(LATE_INDEXES);
     this.#db.exec(SEQ_SETUP);
+    // Backfill once for stores created before indexed placement re-projection.
+    if (!this.meta('visibility-artifact-refs')) this.#transaction(() => {
+      this.#db.exec(`insert or ignore into message_artifact_refs
+        select json_extract(artifact, '$.id'), seq, id from messages where artifact is not null;
+        insert or ignore into message_artifact_refs
+        select json_extract(a.value, '$.id'), m.seq, m.id from messages m, json_each(m.artifacts) a;`);
+      this.setMeta('visibility-artifact-refs', '1');
+    });
   }
 
   #migrate(): void {
@@ -822,6 +839,9 @@ export class Store implements HygieneMemory {
           const current = this.artifact(a.id);
           if (current && !current.movedTo) this.updateArtifact({ ...current, status: 'sent' });
         }
+      }
+      for (const artifact of [...(message.artifact ? [message.artifact] : []), ...(message.artifacts ?? [])]) {
+        this.#prepare('insert or ignore into message_artifact_refs (artifact_id, seq, message_id) values (?, ?, ?)').run(artifact.id, seq, message.id);
       }
       if (message.fromKind === 'agent') this.#prepare('update messages set from_session_id = (select session_id from sessions where name = ?) where id = ?').run(message.from, message.id);
       // each addressee's session id as the hub knows it now: a later holder of the name is not this addressee
@@ -1484,6 +1504,36 @@ export class Store implements HygieneMemory {
       return { ...toMessage(row), seq: Number(row.seq), topic, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
     });
   }
+
+  /** Indexed keyset pages select affected history before decoding text or attachments. */
+  visibilityMessages(choice: { surface: 'topics' | 'sessions' | 'artifacts'; target: string }, after: number, through: number): TopicMessage[] {
+    const rows = (choice.surface === 'topics'
+      ? this.#prepare(`with affected_artifacts(id) as (
+          select 'A-' || number from artifacts where json_extract(value, '$.topic') = ?
+          union
+          select 'A-' || moved.number from artifacts folder join artifacts moved
+            on json_extract(moved.value, '$.movedTo.folder') = 'A-' || folder.number
+            where json_extract(folder.value, '$.topic') = ?
+        ), keys(seq, id) as (
+          select seq, id from messages where topic = ? and seq > ? and seq <= ?
+          union
+          select r.seq, r.message_id from affected_artifacts a join message_artifact_refs r on r.artifact_id = a.id
+            where r.seq > ? and r.seq <= ?
+          order by 1 limit 100
+        ) select m.* from keys k join messages m on m.id = k.id order by k.seq`)
+        .all(choice.target, choice.target, choice.target, after, through, after, through)
+      : choice.surface === 'artifacts'
+      ? this.#prepare(`select m.* from message_artifact_refs r join messages m on m.id = r.message_id
+          where r.artifact_id = ? and r.seq > ? and r.seq <= ? order by r.seq limit 100`).all(choice.target, after, through)
+      : this.#prepare(`select * from messages where from_name = ?
+          and seq > ? and seq <= ? order by seq limit 100`).all(choice.target, after, through)) as Row[];
+    return rows.map(row => {
+      const stage = this.stage(row.id as string), ask = this.ask(row.id as string);
+      return { ...toMessage(row), seq: Number(row.seq), topic: row.topic as string, ...(stage ? { stage } : {}), ...(ask ? { ask: cardOf(ask) } : {}) };
+    });
+  }
+
+  messageWatermark(): number { return Number((this.#prepare("select value from counters where name = 'message_seq'").get() as Row).value); }
 
   // ---------------------------------------------------------------- asks (#33)
 

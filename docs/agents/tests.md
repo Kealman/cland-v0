@@ -1669,6 +1669,21 @@ feature negotiation, the seven domain frames and end marker, legacy compatibilit
 UTF-8 overflow fallback, and a model change raced against the first snapshot
 frame. The observer is armed before the hello/change, and final assertions retain
 the complete contiguous transaction and the later change receipt.
+The same file proves numbered model continuity across tracker, topic, session and
+inbox changes, slim task layers (including other items affected by a release
+change), pin/mute row re-projection, and one serialization per feature set with
+three clients. An in-memory dispatcher peer proves that a synchronous action
+during fan-out cannot invert the order another client receives. These tests use
+the existing frame seam; they add no process. `suite-queue.test.ts` proves with
+fake time that elapsed timing does not republish a held queue, while holder and
+waiter changes do and explicit reads keep current timing.
+Pin/mute/toggle-off also compare pushed topic-owned artifacts with a fresh read.
+A scratch pre-extension store with 401 affected older messages and unrelated
+history proves attachment-reference backfill, complete affected-row delivery and
+bounded wire chunks. The snapshot cursor equality uses `FakeClock` so a legitimate
+coalesced inbox publication cannot race the no-number-consumed assertion.
+The cross-topic move case compares old-thread creation chips with fresh history
+through pin/mute/toggle-off of the destination topic.
 `hub/test/snapshot-framing.test.ts` proves each domain cap and the exact-byte
 boundary at T1. The wire conformance check keeps the browser leaf aligned.
 

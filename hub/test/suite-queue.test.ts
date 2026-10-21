@@ -4,6 +4,33 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { suiteUnit } from './suite-unit-fixture.ts';
+import type { VerificationQueue } from '../src/protocol.ts';
+
+test('verification queue pushes holder and waiter changes without ticking elapsed time', async t => {
+  const pushed: VerificationQueue[] = [];
+  const f = await suiteUnit(t, { onQueue: queue => pushed.push(queue) });
+  f.hold(true, { since: f.clock.now().toISOString(), holder: { pid: 123, started: null, token: 'hand', worktree: '/fixture', since: f.clock.now().toISOString() } });
+  const first = await f.launch();
+  await f.tick();
+  await f.suites.settled();
+  assert.equal(pushed.at(-1)?.holder?.pid, 123);
+  assert.deepEqual(pushed.at(-1)?.waiters.map(w => w.id), [first.id]);
+  const before = pushed.length;
+  await f.tick(5000);
+  await f.suites.settled();
+  assert.equal(pushed.length, before, 'elapsed run, wait and ETA do not republish the queue');
+  assert.ok((await f.suites.queue()).holder!.runMs! >= 5000, 'explicit reads still return current timing');
+  const second = await f.launch();
+  await f.tick();
+  await f.suites.settled();
+  assert.equal(pushed.length, before + 1);
+  assert.deepEqual(pushed.at(-1)?.waiters.map(w => w.id), [first.id, second.id]);
+  f.hold(false);
+  await f.tick();
+  await f.suites.settled();
+  assert.equal(pushed.at(-1)?.holder?.id, first.id);
+  assert.deepEqual(pushed.at(-1)?.waiters.map(w => w.id), [second.id]);
+});
 
 test('verify queue shows a hand holder, ordered waiters and unknown ETA; survives restart', async t => {
   const f = await suiteUnit(t);

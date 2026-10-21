@@ -643,6 +643,9 @@ export type HubFrame =
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
+  | ModelDelta
+  | SlimTaskFrame
+  | VisibilityFrame
   /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice.
    *  `topic` is the topic the message belongs to; absent on the hub's own notices. */
   | { type: 'deliver'; id: string; message: Message; topic?: TopicRef }
@@ -679,8 +682,15 @@ export type MergeCode = 'merge-bare' | 'merge-git' | 'merge-item' | 'merge-branc
 export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refusal?: HygieneRefusal; resolvedTo?: string };
 
 // hub/src/protocol.ts
-/** Negotiated independently; only snapshot is implemented by this extension. */
+/** Negotiated independently; unknown features are ignored. */
 export type ClientFeature = 'snapshot' | 'numbered-deltas' | 'slim-frames';
+
+/** Null removes the layer of a deleted item. Other entries replace just that layer. */
+export type SlimTaskFrame = Omit<Extract<HubEvent, { type: 'task' }>, 'layers'> & { layers: Record<string, Layer | null> };
+/** Re-project existing rows by their stable ids; this is not an append or an invalidation. */
+export type VisibilityFrame = { type: 'visibility'; rows: { topics: Topic[]; sessions: Presence[]; processes: HarnessProcessView[]; messages: TopicMessage[]; artifacts: Artifact[] } };
+export type ModelEvent = HubEvent | SlimTaskFrame | VisibilityFrame;
+export type ModelDelta = ModelEvent & { epoch: string; seq: number };
 export const SNAPSHOT_LIMITS = {
   tracker: 64 * 1024, items: 1024 * 1024, sessions: 1024 * 1024,
   topics: 1024 * 1024, inbox: 1024 * 1024, events: 1024 * 1024,

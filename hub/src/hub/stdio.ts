@@ -28,6 +28,7 @@ export function createStdioEdge(options: StdioEdgeOptions): void {
   };
   const conversation = options.dispatcher.open(
     {
+      sendSerialized: json => { if (open) output.write(`${json}\n`); },
       send: (frame) => {
         if (open) output.write(`${JSON.stringify(frame)}\n`);
       },

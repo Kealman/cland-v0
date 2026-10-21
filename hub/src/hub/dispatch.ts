@@ -95,6 +95,8 @@ import { RequestGuard, type GuardOptions } from './budget.ts';
 /** How a conversation answers: a frame to the peer, or the end of the connection. */
 export type Peer = {
   send: (frame: HubFrame) => void;
+  /** An already serialized model frame, shared across peers of one feature set. */
+  sendSerialized?: (json: string) => void;
   /** End the connection. `code` is a WebSocket close code; a transport without codes ignores it. */
   close: (code: number, reason: string) => void;
   /** Whether frames from the peer still count: false once the connection is closing. */
@@ -186,8 +188,6 @@ export class Dispatcher {
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
   #rolesSnapshot: RolesConfig | undefined;
-  readonly #epoch = randomUUID();
-  #snapshotSeq = 0;
   readonly #processWork = new Map<string, string>();
   #workImmediate: ReturnType<typeof setImmediate> | null = null;
   #closed = false;
@@ -990,6 +990,21 @@ export class Dispatcher {
     let connection: Connection | null = null;
     /** A client's event subscription, ended when the connection closes. */
     let unsubscribe: (() => void) | null = null;
+    let features: import('../protocol.ts').ClientFeature[] = [];
+    let preparingSnapshot = false;
+    let subscriptionRequested = false;
+    const subscribeModel = () => {
+      if (!done && !unsubscribe && !preparingSnapshot) unsubscribe = core.subscribeClient(features, (event, serialized) => {
+        if (!done && peer.isOpen()) {
+          if (wire.sendSerialized) wire.sendSerialized(serialized());
+          else wire.send(event);
+        }
+      });
+    };
+    const snapshotFinished = (complete: boolean) => {
+      preparingSnapshot = false;
+      if (subscriptionRequested || complete && features.includes('numbered-deltas')) subscribeModel();
+    };
     /** What else ends with the connection (an in-session bridge). */
     const onClose: Array<() => void> = [];
     /** A result that comes later (Git work): its answer going out is timed against the budget as `answer`. */
@@ -1260,9 +1275,10 @@ export class Dispatcher {
         kind = 'client';
         client = transport.edge === 'web' ? HUMAN_SESSION : frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
-        const features = frame.features?.includes('snapshot') ? ['snapshot' as const] : [];
+        features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
         peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined ? { features } : {}) });
         if (features.includes('snapshot')) {
+          preparingSnapshot = true;
           // Disk-only inputs are prepared before composition. If the journal changes
           // during its page read, retry rather than stamp stale events with new state.
           const prepare = async () => {
@@ -1277,18 +1293,23 @@ export class Dispatcher {
                 core, tracker: this.#options.tracker, sessions: this.#sessions ?? null,
                 verification: this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : null,
                 events, registry,
-              }), this.#epoch, ++this.#snapshotSeq);
+              }), core.modelCursor().epoch, core.modelCursor().seq);
               if (!peer.isOpen()) return;
-              if ('refusal' in result) { log({ event: 'snapshot-refused', ...result.refusal }); peer.send(result.refusal); }
-              else for (const frame of result.frames) peer.send(frame);
+              if ('refusal' in result) { log({ event: 'snapshot-refused', ...result.refusal }); peer.send(result.refusal); snapshotFinished(false); }
+              else {
+                for (const frame of result.frames) peer.send(frame);
+                snapshotFinished(true);
+              }
               return;
             }
             if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'journal changed during snapshot preparation; retry or use individual reads' });
+            snapshotFinished(false);
           };
           void prepare().catch(() => {
             if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'snapshot preparation failed; use individual reads' });
+            snapshotFinished(false);
           });
-        }
+        } else if (features.includes('numbered-deltas')) subscribeModel();
         return;
       }
       refuse('bad-hello', 'first frame must be a hello');
@@ -1481,12 +1502,11 @@ export class Dispatcher {
             if (!exists) throw new Error(`no ${frame.surface} entry ${frame.target}`);
             const resumed = this.#guard.resumer(frame.type, client);
             later(frame.type, preferences.toggle(frame.surface, frame.target, frame.mode, resumed).then(
-              visibility => resumed(() => {
-                this.#guard.changed();
-                core.refreshVisibility();
-                return { type: 'result', id: frame.id, ok: true, value: { visibility } } as HubFrame;
-              }),
-              err => resumed(() => Dispatcher.#failure(frame.id, err))));
+              async visibility => {
+                resumed(() => this.#guard.changed());
+                await resumed(() => core.refreshVisibility({ surface: frame.surface, target: frame.target }, resumed));
+                return resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { visibility } } as HubFrame));
+              }).catch(err => resumed(() => Dispatcher.#failure(frame.id, err))));
             break;
           }
           case 'topic.list':
@@ -1588,18 +1608,9 @@ export class Dispatcher {
             return later(frame.type, value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
           }
           case 'subscribe':
+            subscriptionRequested = true;
             if (!unsubscribe) {
-              const fromCore = core.subscribe((event) => {
-                if (peer.isOpen()) peer.send(event);
-              });
-              // the tracker's index changes reach the UI as `task` events (the items panel, the board)
-              const fromTracker = this.#options.tracker?.onChange(({ id, item, siblings }) => {
-                if (peer.isOpen()) peer.send({ type: 'task', id, item, ...(siblings ? { siblings } : {}) });
-              });
-              unsubscribe = () => {
-                fromCore();
-                fromTracker?.();
-              };
+              subscribeModel();
               log({ event: 'subscribed', edge: transport.edge });
             }
             return answer({ subscribed: true });

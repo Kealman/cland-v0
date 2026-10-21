@@ -354,17 +354,20 @@ The readiness bound is below the harness tool-call deadlines: [Codex defaults to
 
 A human client can add `features: ["snapshot", "numbered-deltas", "slim-frames"]`
 to its existing protocol-2 hello. Unknown feature names are ignored. The welcome
-includes `features`, the accepted subset; this extension accepts only `snapshot`.
+includes `features`, the accepted subset; `snapshot`, `numbered-deltas` and
+`slim-frames` are supported independently.
 A hello without `features` keeps its existing welcome and receives no snapshot.
 An empty list receives `features: []`. Spoke hellos are unchanged.
 
 After the welcome, an accepted snapshot produces seven ordered frames:
 `{type: "snapshot", epoch, seq, domain, value}`, then
-`{type: "snapshot.end", epoch, seq}`. All eight share one dispatcher-lifetime
-UUID epoch and one sequence number. Until numbered deltas land, the sequence
-increases for each composed snapshot. A client commits the replacement model
-only at the matching end marker. Snapshot negotiation does not imply `subscribe`;
-the existing subscription request still enables subsequent events.
+`{type: "snapshot.end", epoch, seq}`. All eight share one core-lifetime UUID
+epoch and the current model delta number. Composing another snapshot does not
+advance that number. A client commits the replacement model only at the matching
+end marker. With `numbered-deltas`, the live model stream begins immediately
+after that marker; `subscribe` is idempotent. With `snapshot` alone the existing
+subscription request still enables subsequent events. A `subscribe` received
+during snapshot preparation takes effect after the snapshot transaction finishes.
 
 | Domain | Value | Maximum UTF-8 JSON frame bytes |
 | --- | --- | --- |
@@ -391,6 +394,49 @@ Preparation errors or repeated journal changes instead send
 `{type: "snapshot.refused", code: "unavailable", message}`. Both keep the
 connection usable; the client falls back to individual reads. An accepted
 feature in the welcome alone does not prove a completed snapshot.
+
+### Numbered model deltas
+
+Every committed model publication, including tracker `task` changes, passes
+through the core's single emit point. A client accepting `numbered-deltas`
+receives the usual event fields plus `{epoch, seq}`: the first delta after its
+snapshot is `snapshot.seq + 1`, then each following delta increments by one.
+All clients share the same sequence within that epoch. The epoch changes when
+the core restarts. Request results, welcome, snapshot frames and keepalives do
+not consume numbers; future binary streams stay outside the model sequence too.
+Without `snapshot`, `numbered-deltas` starts at the current live stream.
+Resume and ring-buffer catch-up are subsequent protocol work.
+
+`inbox`, `presence` and `verification.queue` replace their whole domain.
+`message`, `delivery` and `event` append (an event's `replaces` retains its existing
+coalescing semantics). Item, topic, process, account and artifact rows update by
+their stable identities. A `task` with `item: null` removes that item.
+The verification queue is pushed when its holder, remote holders, waiters or
+other queue facts change, never for elapsed run/wait time or a decreasing ETA.
+`suite.queue` reads still return current timing.
+
+With `slim-frames`, `task` carries the changed item and a `layers` map containing
+only entries that changed since the preceding model state. Changes in the active
+release can update other items' layers; a null layer removes a deleted entry.
+A title-only edit normally has `layers: {}`. The all-items layer map remains on
+legacy `task` frames. A pin or mute on a featured connection sends a `visibility`
+frame with `rows`: affected topics, presence (`sessions`), processes, retained
+thread messages and artifacts (including artifacts inheriting a topic choice).
+Replace these rows by id,
+including messages already loaded from older history pages; do not append them.
+Affected history is selected through indexed keyset pages before attachment
+resolution. Topic choices also follow artifact references across threads when a
+file has moved into a folder in that topic. Message keys are deduplicated and
+limited before their bodies are decoded. Each chunk carries at most 100 rows, targets 256 KiB and always stays
+within the 1 MiB wire cap; a single oversized row refuses the request. The hub
+yields between pages and flushes current projections before yielding, so a
+concurrent choice cannot be followed by buffered rows with an older projection.
+The request result follows the final chunk. Inbox replacement continues on its
+ordinary coalesced publication. Legacy-only choices do not traverse history.
+Unfeatured clients retain their bare `visibility` notification and existing
+frame shapes. Each model frame is projected once and its JSON serialization is
+shared by every receiving connection with the same negotiated feature set on
+the Unix socket, stdio and both WebSocket edges.
 
 `node hub/scripts/measure-snapshot.ts /path/to/project/.cland/tasks` copies the
 tracker into a disposable root, seals HOME/XDG/Git and provider/account variables,

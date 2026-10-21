@@ -958,7 +958,14 @@ export class Suites {
       if (this.#closed || !this.#options.onQueue) return;
       const queue = await this.queue();
       if (this.#closed) return;
-      const signature = JSON.stringify({ ...queue, at: undefined });
+      const holder = (value: import('../protocol.ts').VerificationHolder) => {
+        const { runMs: _run, etaMs: _eta, ...facts } = value;
+        return facts;
+      };
+      const signature = JSON.stringify({ ...queue, at: undefined,
+        holder: queue.holder && holder(queue.holder), remote: queue.remote?.map(holder),
+        waiters: queue.waiters.map(({ waitMs: _wait, etaMs: _eta, ...facts }) => facts),
+      });
       if (signature !== this.#lastQueue) { this.#lastQueue = signature; this.#options.onQueue(queue); }
     }).catch(error => { this.#options.log?.({ event: 'verification-queue-failed', error: String(error) }); }).finally(() => { this.#checking = null; });
     return this.#checking;

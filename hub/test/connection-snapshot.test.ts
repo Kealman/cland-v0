@@ -3,12 +3,14 @@ import { test, type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createConnection } from 'node:net';
 import { once } from 'node:events';
+import { DatabaseSync } from 'node:sqlite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { serializeItem } from '../src/tracker/item.ts';
 import { Store } from '../src/hub/store.ts';
 import { FakeClock } from './fake-clock.ts';
 import { SNAPSHOT_LIMITS } from '../src/protocol.ts';
+import type { HubFrame } from '../src/protocol.ts';
 import { connectSocket, frameClient, projectHub, tempProject, type FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
 
@@ -24,13 +26,13 @@ async function client(t: TestContext, discovery: { socket: string; secret: strin
   return ui;
 }
 
-test('hello negotiates snapshot alone and legacy clients keep their existing welcome', async t => {
+test('hello negotiates model features and legacy clients keep their existing welcome', async t => {
   const root = await tempProject(t);
-  const { discovery } = await projectHub(t, root);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
   const legacy = await client(t, discovery);
   assert.deepEqual(legacy.frames, [{ type: 'welcome', name: 'ui', presence: [] }]);
   const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames', 'unknown', 'snapshot']);
-  assert.deepEqual(ui.frames[0]!.features, ['snapshot']);
+  assert.deepEqual(ui.frames[0]!.features, ['snapshot', 'numbered-deltas', 'slim-frames']);
   const end = await ui.waitFor(f => f.type === 'snapshot.end');
   const snapshots = ui.frames.slice(1, -1);
   assert.deepEqual(snapshots.map(f => f.domain), ['tracker', 'items', 'sessions', 'topics', 'inbox', 'events', 'accounts']);
@@ -45,7 +47,7 @@ test('hello negotiates snapshot alone and legacy clients keep their existing wel
   const again = await client(t, discovery, ['snapshot']);
   const next = await again.waitFor(f => f.type === 'snapshot.end');
   assert.equal(next.epoch, end.epoch);
-  assert.ok(Number(next.seq) > Number(end.seq));
+  assert.equal(next.seq, end.seq, 'snapshots do not consume model delta numbers');
 });
 
 test('snapshot contains each workbench domain, compact verdict rounds and recent closed topics', async t => {
@@ -104,6 +106,209 @@ test('snapshot contains each workbench domain, compact verdict rounds and recent
   assert.ok(values.topics.topics.some(topic => topic.id === 'recent-closed'));
   assert.ok(values.topics.topics.some(topic => topic.id === 'boundary-closed'));
   assert.ok(!values.topics.topics.some(topic => topic.id === 'old-closed'));
+});
+
+test('numbered model deltas continue the snapshot without gaps across tracker, topics, sessions and inbox', async t => {
+  const root = await tempProject(t);
+  const clock = new FakeClock();
+  const { discovery } = await projectHub(t, root, {}, { clock });
+  const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames']);
+  const end = await ui.waitFor(f => f.type === 'snapshot.end');
+  // A featured snapshot starts the model stream; subscribe remains idempotent.
+  const changed = ui.waitFor(f => f.type === 'task');
+  assert.equal((await ui.request({ type: 'task.create', title: 'Numbered item', size: 'S' })).ok, true);
+  await changed;
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  assert.equal((await ui.request({ type: 'session.launch', name: 'coord', harness: 'claude-code', role: 'coordinator' })).ok, true);
+  assert.equal((await ui.request({ type: 'topic.send', topic: 'general', text: 'Numbered message' })).ok, true);
+  const inbox = ui.waitFor(f => f.type === 'inbox');
+  await clock.advance(1000);
+  await inbox;
+  // An ordered request result fences every prior socket write, including coalesced inbox output.
+  assert.equal((await ui.request({ type: 'topic.list' })).ok, true);
+  const deltas = ui.frames.slice(ui.frames.indexOf(end) + 1);
+  for (const type of ['task', 'topic', 'session.process', 'message', 'inbox']) assert.ok(deltas.some(f => f.type === type), type);
+  assert.deepEqual(deltas.map(f => f.seq), deltas.map((_, i) => Number(end.seq) + i + 1));
+  assert.ok(deltas.every(f => f.epoch === end.epoch));
+});
+
+test('slim task frames carry only changed layers, including changes to other items', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await client(t, discovery);
+  const create = async (input: Record<string, unknown>) => {
+    const result = await ui.request({ type: 'task.create', ...input });
+    assert.equal(result.ok, true, result.error);
+    return (result.value as { item: { id: string } }).item.id;
+  };
+  const first = await create({ kind: 'release', title: 'First', version: '1.0.0' });
+  const second = await create({ kind: 'release', title: 'Second', version: '2.0.0' });
+  const a = await create({ title: 'Active first', size: 'S', parent: first, status: 'planned' });
+  const b = await create({ title: 'Active second', size: 'S', parent: second, status: 'planned' });
+  for (const id of [a, b]) assert.equal((await ui.request({ type: 'task.edit', item: id, status: 'planned' })).ok, true);
+  const featured = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames']);
+  await featured.waitFor(f => f.type === 'snapshot.end');
+  await ui.request({ type: 'subscribe' });
+  const changed = featured.waitFor(f => f.type === 'task' && f.id === a);
+  assert.equal((await ui.request({ type: 'task.edit', item: a, title: 'Renamed first' })).ok, true);
+  const delta = await changed;
+  assert.equal((delta.item as { title: string }).title, 'Renamed first');
+  assert.equal(Object.hasOwn(delta, 'items'), false);
+  assert.deepEqual(delta.layers, {}, 'unchanged layers are not resent');
+  const movedFrame = featured.waitFor(f => f.type === 'task' && f.id === first);
+  const edited = await ui.request({ type: 'task.edit', item: first, version: '3.0.0' });
+  assert.equal(edited.ok, true, edited.error);
+  const moved = await movedFrame;
+  assert.deepEqual(moved.layers, { [a]: 'background', [b]: 'watch' });
+  const legacy = ui.frames.findLast(f => f.type === 'task' && f.id === first)!;
+  assert.deepEqual(legacy.layers, { [first]: 'background', [second]: 'background', [a]: 'background', [b]: 'watch' });
+  assert.equal(Object.hasOwn(legacy, 'seq'), false);
+});
+
+test('pin and mute push re-projected topic and message rows to featured clients', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames']);
+  await ui.waitFor(f => f.type === 'snapshot.end');
+  const legacy = await client(t, discovery);
+  await legacy.request({ type: 'subscribe' });
+  await ui.request({ type: 'topic.send', topic: 'general', text: 'Placed message' });
+  const created = await ui.request({ type: 'artifact.create', kind: 'note', topic: 'general', title: 'Placed artifact', content: 'Fixture' });
+  assert.equal(created.ok, true, created.error);
+  const artifact = (created.value as { artifact: { id: string } }).artifact.id;
+  for (const [mode, layer, messageLayer] of [['pin', 'now', 'now'], ['pin', 'watch', 'now'], ['mute', 'background', 'watch'], ['mute', 'watch', 'now']] as const) {
+    const mark = ui.frames.length;
+    const changed = ui.waitFor(f => f.type === 'visibility' && ui.frames.indexOf(f) >= mark);
+    const result = await ui.request({ type: 'visibility.set', surface: 'topics', target: 'general', mode });
+    assert.equal(result.ok, true, result.error);
+    const frame = await changed;
+    const rows = frame.rows as { topics: Array<{ id: string; layer: string }>; messages: Array<{ text: string; layer: string }>; artifacts: Array<{ id: string; layer: string }> };
+    assert.equal(rows.topics.find(row => row.id === 'general')?.layer, layer);
+    assert.equal(rows.messages.find(row => row.text === 'Placed message')?.layer, messageLayer);
+    const read = await ui.request({ type: 'artifact.list', artifact });
+    assert.equal(read.ok, true, read.error);
+    assert.equal(rows.artifacts.find(row => row.id === artifact)?.layer, (read.value as { artifact: { layer: string } }).artifact.layer);
+    assert.equal((await legacy.request({ type: 'topic.list' })).ok, true);
+    assert.deepEqual(legacy.frames.findLast(f => f.type === 'visibility'), { type: 'visibility' });
+  }
+});
+
+test('three clients serialize a model frame only once per negotiated feature set', async t => {
+  const root = await tempProject(t);
+  const { dispatcher } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const peers = [
+    ['numbered-deltas', 'slim-frames'],
+    ['slim-frames', 'numbered-deltas', 'numbered-deltas'],
+    [],
+  ].map(features => {
+    const frames: HubFrame[] = [];
+    const conversation = dispatcher.open({
+      send: frame => { frames.push(JSON.parse(JSON.stringify(frame)) as HubFrame); },
+      sendSerialized: line => { frames.push(JSON.parse(line) as HubFrame); },
+      close: () => {}, isOpen: () => true,
+    }, { authenticated: true, edge: 'socket' });
+    onCleanup(t, () => conversation.closed());
+    conversation.receive(JSON.stringify({ type: 'hello', protocol: 2, client: 'ui', features }));
+    conversation.receive(JSON.stringify({ type: 'subscribe', id: 'sub' }));
+    return { frames, conversation };
+  });
+  let serializations = 0;
+  const stringify = JSON.stringify;
+  const mock = t.mock.method(JSON, 'stringify', (value: unknown) => {
+    if ((value as { type?: string })?.type === 'topic') serializations++;
+    return stringify(value);
+  });
+  peers[0]!.conversation.receive('{"type":"topic.create","id":"create","title":"Serialized once"}');
+  mock.mock.restore();
+  assert.ok(peers.every(peer => peer.frames.some(f => f.type === 'topic' && f.topic.title === 'Serialized once')));
+  assert.equal(serializations, 2);
+  const frame = (i: number) => peers[i]!.frames.find(f => f.type === 'topic' && f.topic.title === 'Serialized once');
+  assert.deepEqual(frame(0), frame(1));
+  assert.equal(Object.hasOwn(frame(2)!, 'seq'), false);
+});
+
+test('artifact placement re-projects retained older messages in bounded frames without unrelated history', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  const store = new Store(join(root, '.cland/hub.db'));
+  const at = new FakeClock().now().toISOString();
+  store.createTopic('general', 'General', null, at);
+  const artifact = store.registerArtifact(id => ({ id, kind: 'note', title: 'History fixture', path: join(root, 'note.md'), creator: 'human', time: at, topic: 'general', status: 'shared' }), () => {});
+  for (let n = 0; n < 401; n++) {
+    for (const affected of [true, false]) store.record({ id: `${affected ? 'affected' : 'unrelated'}-${n}`, from: 'human', fromKind: 'human', via: 'hub', to: [], text: 'x'.repeat(8000), ts: at, topic: 'general', ...(affected ? { artifact } : {}) }, [], Date.parse(at));
+  }
+  // Simulate a pre-extension store: startup must backfill retained references,
+  // rather than only finding attachments written by this version of record().
+  store.setMeta('visibility-artifact-refs', '');
+  store.close();
+  const old = new DatabaseSync(join(root, '.cland/hub.db'));
+  old.exec('drop table message_artifact_refs');
+  old.close();
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames']);
+  await ui.waitFor(f => f.type === 'snapshot.end');
+  const changed = ui.waitFor(f => f.type === 'visibility');
+  const result = await ui.request({ type: 'visibility.set', surface: 'artifacts', target: artifact.id, mode: 'pin' });
+  assert.equal(result.ok, true, result.error);
+  await changed;
+  const frames = ui.frames.filter(f => f.type === 'visibility');
+  assert.ok(frames.length > 1, 'retained rows are chunked, not truncated to the latest page');
+  assert.ok(frames.every(f => Buffer.byteLength(JSON.stringify(f)) <= 1024 * 1024), 'every wire frame stays bounded');
+  const messages = frames.flatMap(f => (f.rows as { messages: Array<{ id: string; layer: string }> }).messages);
+  assert.deepEqual(messages.map(m => m.id).sort(), Array.from({ length: 401 }, (_, n) => `affected-${n}`).sort());
+  assert.ok(messages.every(m => m.layer === 'now'));
+});
+
+test('topic placement re-projects old-thread creation chips after an artifact moves across topics', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await client(t, discovery, ['snapshot', 'numbered-deltas', 'slim-frames']);
+  await ui.waitFor(f => f.type === 'snapshot.end');
+  const topic = await ui.request({ type: 'topic.create', title: 'Destination' });
+  assert.equal(topic.ok, true, topic.error);
+  const destination = (topic.value as { topic: { id: string } }).topic.id;
+  const source = await ui.request({ type: 'artifact.create', topic: 'general', kind: 'note', title: 'Moved notes', content: 'Fixture' });
+  const folder = await ui.request({ type: 'artifact.create', topic: destination, kind: 'note', title: 'Destination folder', folder: true, content: 'Folder' });
+  assert.equal(source.ok, true, source.error); assert.equal(folder.ok, true, folder.error);
+  const artifact = (source.value as { artifact: { id: string } }).artifact.id;
+  const moved = await ui.request({ type: 'artifact.move', artifact, folder: (folder.value as { artifact: { id: string } }).artifact.id, name: 'moved.md' });
+  assert.equal(moved.ok, true, moved.error);
+  for (const mode of ['pin', 'pin', 'mute', 'mute'] as const) {
+    const mark = ui.frames.length;
+    const updated = await ui.request({ type: 'visibility.set', surface: 'topics', target: destination, mode });
+    assert.equal(updated.ok, true, updated.error);
+    const history = await ui.request({ type: 'topic.history', topic: 'general' });
+    assert.equal(history.ok, true, history.error);
+    type Row = { id: string; layer: string; artifact?: { id: string } };
+    const fresh = (history.value as { messages: Row[] }).messages.find(message => message.artifact?.id === artifact)!;
+    const pushed = ui.frames.slice(mark).filter(f => f.type === 'visibility').flatMap(f => (f.rows as { messages: Row[] }).messages);
+    assert.deepEqual(pushed.find(row => row.id === fresh.id), fresh);
+  }
+});
+
+test('a synchronous client action cannot invert delta order for another client', async t => {
+  const root = await tempProject(t);
+  const { dispatcher } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  let nested = false;
+  const peers = [0, 1].map(index => {
+    const frames: HubFrame[] = [];
+    const conversation = dispatcher.open({
+      send: frame => {
+        frames.push(frame);
+        if (index === 0 && frame.type === 'topic' && frame.topic.title === 'Outer' && !nested) {
+          nested = true;
+          conversation.receive('{"type":"topic.create","id":"nested","title":"Inner"}');
+        }
+      }, close: () => {}, isOpen: () => true,
+    }, { authenticated: true, edge: 'socket' });
+    onCleanup(t, () => conversation.closed());
+    conversation.receive('{"type":"hello","protocol":2,"client":"ui","features":["numbered-deltas"]}');
+    return { frames, conversation };
+  });
+  peers[0]!.conversation.receive('{"type":"topic.create","id":"outer","title":"Outer"}');
+  const topics = peers.map(peer => peer.frames.filter(f => f.type === 'topic'));
+  assert.deepEqual(topics[1], topics[0]);
+  assert.deepEqual(topics[1]!.map(f => f.topic.title), ['Outer', 'Inner']);
 });
 
 test('an oversized domain refuses the whole snapshot and leaves legacy reads usable', async t => {

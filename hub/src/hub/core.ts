@@ -20,6 +20,7 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
   PROTOCOL_VERSION,
+  MAX_FRAME_BYTES,
   UPDATE_HINT,
   isSendKind,
   isHeldDelivery,
@@ -30,6 +31,8 @@ import {
   type HandoverNote,
   type Hello,
   type HubEvent,
+  type HubFrame,
+  type ClientFeature,
   type HarnessProcessView,
   type SessionUsage,
   type HygieneRefusal,
@@ -64,7 +67,7 @@ import type { Verdict } from '../tracker/item.ts';
 import { sessionActor } from '../tracker/requests.ts';
 import type { LogFn } from '../log.ts';
 import { Asks } from './asks.ts';
-import { Visibility, messageVerdict, type VisibilityOverrides } from './visibility.ts';
+import { Visibility, messageVerdict, type VisibilityOverrides, type Layer } from './visibility.ts';
 import { eventKey, type JournalRecord } from './journal.ts';
 import type { EventRow, EventsFilter } from '../protocol.ts';
 import { IDLE_NOTIFY_MS, InboxBoard } from './inbox.ts';
@@ -189,12 +192,88 @@ export const COORDINATOR = 'coordinator';
 const ROLE_NOTICE = 'role';
 
 export class HubCore {
+  readonly #epoch = randomUUID();
+  #modelSeq = 0;
+  /** Snapshots describe the state after this delta, without consuming a number. */
+  modelCursor(): { epoch: string; seq: number } { return { epoch: this.#epoch, seq: this.#modelSeq }; }
+  readonly #clients = new Set<{ features: readonly ClientFeature[]; key: string; send: (frame: HubFrame, serialized: () => string) => void }>();
+  #taskLayers: Record<string, Layer> = {};
+  readonly #modelPublications: Array<() => void> = [];
+  #publishingModel = false;
+  /** Model clients share the core's ordering; request replies never enter it. */
+  subscribeClient(features: readonly ClientFeature[], send: (frame: HubFrame, serialized: () => string) => void): () => void {
+    const client = { features, key: [...new Set(features)].sort().join(','), send };
+    this.#clients.add(client);
+    return () => this.#clients.delete(client);
+  }
   readonly #env: NodeJS.ProcessEnv;
   readonly crew: CrewSource | undefined;
   readonly rules: RulebookFile | undefined;
   readonly #unsubscribeRules: (() => void) | undefined;
   readonly #rulebookUiUnsubscribe: (() => void) | undefined;
-  refreshVisibility(): void { this.#emit({ type: 'visibility' }); }
+  async refreshVisibility(choice: { surface: 'topics' | 'sessions' | 'artifacts'; target: string }, resumed: <T>(work: () => T) => T = work => work()): Promise<void> {
+    if (![...this.#clients].some(client => client.features.includes('numbered-deltas') || client.features.includes('slim-frames'))) {
+      this.#emit({ type: 'visibility' });
+      return;
+    }
+    type Rows = import('../protocol.ts').VisibilityFrame['rows'];
+    const empty = (): Rows => ({ topics: [], sessions: [], processes: [], artifacts: [], messages: [] });
+    let rows = empty(), bytes = 512, count = 0, announced = false;
+    const flush = () => {
+      this.#emit({ type: 'visibility' }, { type: 'visibility', rows }, !announced);
+      announced = true;
+      rows = empty(); bytes = 512; count = 0;
+    };
+    const add = <K extends keyof Rows>(surface: K, row: Rows[K][number]) => {
+      const size = Buffer.byteLength(JSON.stringify(row)) + 1;
+      if (size + 512 > MAX_FRAME_BYTES) throw new Error('visibility row exceeds the model frame byte limit');
+      if (count && (count === 100 || bytes + size > 256 * 1024)) flush();
+      // A single large row may exceed the target chunk size, but never the wire cap.
+      (rows[surface] as Array<Rows[K][number]>).push(row);
+      bytes += size; count++;
+    };
+    const through = this.#store.messageWatermark();
+    if (choice.surface === 'topics') {
+      const topic = this.#store.topic(choice.target);
+      if (topic) add('topics', this.visibility.place('topics', topic));
+    }
+    if (choice.surface === 'sessions') {
+      for (const session of this.presence().filter(session => session.name === choice.target)) add('sessions', this.visibility.place('sessions', session));
+      for (const process of this.#heartbeatProcesses.values()) if (process.name === choice.target) add('processes', this.visibility.place('sessions', process));
+    }
+    if (choice.surface === 'artifacts') {
+      const artifact = this.#store.artifact(choice.target);
+      if (artifact) add('artifacts', this.visibility.place('artifacts', artifact));
+    } else if (choice.surface === 'topics') {
+      let before: string | undefined;
+      do {
+        const page = resumed(() => this.#store.artifactPage(choice.target, before));
+        resumed(() => { for (const artifact of page.artifacts) add('artifacts', this.visibility.place('artifacts', artifact)); });
+        before = page.more ? page.before : undefined;
+        if (before) {
+          if (count) resumed(flush);
+          await new Promise<void>(resolve => setImmediate(resolve));
+        }
+      } while (before && !this.#closed);
+    }
+    let after = 0;
+    while (!this.#closed) {
+      const page = resumed(() => this.#store.visibilityMessages(choice, after, through));
+      resumed(() => {
+        for (const message of page) {
+          const projected = this.visibility.frame({ type: 'message', topic: this.topicRef(message.topic)!, message: this.#resolveAttachments(message) });
+          add('messages', projected.message);
+        }
+      });
+      if (page.length < 100) break;
+      after = page.at(-1)!.seq;
+      // Do not retain an old projection over a yield: another preference may
+      // commit in between pages. Every following page uses the current policy.
+      if (count) resumed(flush);
+      await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    if (!this.#closed && (count || !announced)) resumed(flush);
+  }
 
   publishCrew(config: CrewConfig): void {
     this.#emit({ type: 'crew', config, summary: crewSummary(config) });
@@ -387,6 +466,7 @@ export class HubCore {
       this.#itemSnapshots.set(`T-${idNumber(item.id)}`, item);
       if (item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(item.id)}`, item);
     }
+    this.#taskLayers = this.visibility.frame({ type: 'task', id: '', item: null } as Extract<HubEvent, { type: 'task' }>).layers ?? {};
     this.#queueTtlMs = options.queueTtlMs ?? QUEUE_TTL_MS;
     this.#retentionMs = options.retentionMs ?? RETENTION_MS;
     this.#hygiene = new Hygiene({
@@ -456,6 +536,7 @@ export class HubCore {
   /** Stop deferred publications before the hub closes its store. */
   close(): void {
     this.#closed = true;
+    this.#clients.clear();
     this.#rulebookUiUnsubscribe?.();
     this.clock.clearInterval(this.#heartbeatTimer);
     this.#unsubscribeRules?.();
@@ -544,8 +625,8 @@ export class HubCore {
   #verificationQueue: VerificationQueue | undefined;
   publishVerification(queue: VerificationQueue): void { this.#verificationQueue = queue; this.#emit({ type: 'verification.queue', queue }); }
 
-  #emit(event: HubEvent): void {
-    for (const listener of [...this.#listeners]) {
+  #emit(event: HubEvent, featured?: import('../protocol.ts').ModelEvent, legacy = true): void {
+    if (legacy) for (const listener of [...this.#listeners]) {
       try {
         listener(event);
       } catch (err) {
@@ -555,6 +636,41 @@ export class HubCore {
         catch { /* the failed observer/logger must not turn publication into a domain failure */ }
       }
     }
+    const seq = ++this.#modelSeq;
+    const projected = this.visibility.frame(event);
+    let slim: import('../protocol.ts').ModelEvent = projected;
+    if (projected.type === 'task') {
+      const layers = projected.layers ?? {};
+      const changed: Record<string, Layer | null> = {};
+      for (const id of new Set([...Object.keys(this.#taskLayers), ...Object.keys(layers)])) {
+        if (this.#taskLayers[id] !== layers[id]) changed[id] = layers[id] ?? null;
+      }
+      this.#taskLayers = layers;
+      slim = { ...projected, layers: changed };
+    }
+    const clients = [...this.#clients];
+    this.#modelPublications.push(() => {
+      const variants = new Map<string, { frame: HubFrame; json?: string }>();
+      for (const client of clients) {
+        if (!legacy && !client.features.includes('numbered-deltas') && !client.features.includes('slim-frames')) continue;
+        try {
+          let variant = variants.get(client.key);
+          if (!variant) {
+            const frame = featured && (client.features.includes('slim-frames') || client.features.includes('numbered-deltas')) ? featured
+              : client.features.includes('slim-frames') ? slim : projected;
+            variant = { frame: client.features.includes('numbered-deltas') ? { ...frame, epoch: this.#epoch, seq } : frame };
+            variants.set(client.key, variant);
+          }
+          const shared = variant;
+          client.send(shared.frame, () => shared.json ??= JSON.stringify(shared.frame));
+        } catch { /* a disconnected client cannot undo a committed publication */ }
+      }
+    });
+    if (this.#publishingModel) return;
+    this.#publishingModel = true;
+    try {
+      for (let next; (next = this.#modelPublications.shift());) next();
+    } finally { this.#publishingModel = false; }
   }
 
   /** A recorded topic message reaches the subscribers, with its stage as stored. */
@@ -678,6 +794,7 @@ export class HubCore {
     if (change.item === null) {
       this.#terminalEvent({ item: change.id }, 'task', `${change.id} removed`, change.previousAncestry ? { ancestry: change.previousAncestry } : {});
       this.#defaultItems.delete(`T-${idNumber(change.id)}`);
+      this.#emit({ type: 'task', id: change.id, item: null, ...(change.siblings ? { siblings: change.siblings } : {}) });
       return;
     }
     if (change.item.state !== 'closed') this.#defaultItems.set(`T-${idNumber(change.id)}`, change.item);
@@ -706,6 +823,7 @@ export class HubCore {
       }
     }
     if (change.item.state === 'closed') this.#defaultItems.delete(`T-${idNumber(change.id)}`);
+    this.#emit({ type: 'task', id: change.id, item: change.item, ...(change.siblings ? { siblings: change.siblings } : {}) });
   }
 
   /** Immediate events still use the ordinary delivery queue and the adapter's ordinary injection. */
