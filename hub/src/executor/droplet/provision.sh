@@ -8,6 +8,9 @@ APT=(apt-get -q -y -o DPkg::Lock::Timeout=600)
 retry() { local n=0; until "$@"; do n=$((n + 1)); [ "$n" -lt 10 ] || return 1; sleep 10; done; }
 retry "${APT[@]}" update
 retry "${APT[@]}" install --no-install-recommends git curl ca-certificates build-essential python3 jq lsof xz-utils procps locales
+# Chrome Headless Shell: Playwright's Ubuntu 24.04 Chromium runtime dependencies.
+# Install as root before the non-root runner's npm ci downloads the pinned shell.
+retry "${APT[@]}" install --no-install-recommends libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 libcairo2 libcups2t64 libdbus-1-3 libdrm2 libgbm1 libglib2.0-0t64 libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
 locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8
 NODE_VERSION=__NODE_VERSION__

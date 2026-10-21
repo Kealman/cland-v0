@@ -2404,8 +2404,10 @@ Preparation and the other executor controls belong to the human and Coordinator.
 
 The snapshot contains the base packages, the host's exact Node version, the
 ordinary `runner` user, a bare repository mirror and a checkout of the base, plus
-what the project's prepare command installs (for cland: `node_modules` and pinned
-Neovim). Its key combines Node, the Neovim tag and Linux digest, the committed
+what the project's prepare command installs (for cland: `node_modules`, pinned
+Neovim and Chrome Headless Shell). Root provisioning installs the Ubuntu 24.04
+Chromium runtime libraries before the runner's `npm ci` installs the pinned shell.
+Its key combines Node, the Neovim tag and Linux digest, the committed
 base's lockfile SHA-256, and `origin/dev` after a fetch from the local territory.
 A matching prepare reports `current`; a new key builds a replacement and deletes
 the previous image only after the new image completes. Failures clean up the
@@ -2417,6 +2419,9 @@ The record lives in `.cland/run/executor/snapshot.json`, mirrored in `hub.db` un
 for the inputs that moved. A moved base increases future delivery bundles;
 changed install inputs need reseeding during a run. Re-prepare after a release or
 a lockfile change; this is a human or Coordinator action, never automatic.
+After provisioning changes land, restart the hub onto that code before preparing:
+the root cloud-init template comes from the running hub, while a delivered branch's
+prepare command runs as the non-root runner. Collect Web evidence on the rebuilt image.
 
 Acquire creates from the image, without user data, only in regions holding it.
 It polls until active with a public IPv4 address under a five-minute bound,
@@ -4012,8 +4017,10 @@ Missing browser executables or libraries produce "Web unavailable on this machin
 with the reason and `webPhase: {status: "not-run", reason}` in the durable job and
 result receipt. Other phases continue. This supplies no passing Web receipt and
 is ineligible for cache reuse. The candidate prerequisite module resolves the pinned Headless Shell and checks
-Linux shared libraries without launching a browser. T-993 supplies Linux browser
-libraries. A broken probe remains an error.
+Linux shared libraries without launching a browser. Prepared snapshots carry these
+libraries; missing image libraries require the human or Coordinator to rebuild the
+snapshot as described under [Controls and the prepared snapshot](#controls-and-the-prepared-snapshot).
+A broken probe remains an error.
 
 
 ### Startup replies

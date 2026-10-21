@@ -1625,6 +1625,18 @@ targeted file after `npm run build`. Crew full suites still go through mode-free
 the package runner checks the source receipt and builds once before workers only
 when a hand run lacks a current bundle.
 
+Prepared Ubuntu 24.04 executor snapshots include Headless Shell's Chromium runtime
+libraries. Root cloud-init (`hub/src/executor/droplet/provision.sh`) installs them
+before the non-root runner executes the project's prepare command. For this repo,
+`verify-prepare.ts` runs `npm ci` on a cold image; its `prepare` lifecycle downloads
+the lockfile-pinned shell into the checkout. The snapshot key includes the committed
+`package-lock.json` SHA-256, so a changed browser pin invalidates the image.
+After provisioning changes land, the Coordinator or human restarts the hub onto
+that code and runs `cland executor prepare`: cloud-init comes from the running hub,
+not the delivered task branch. A branch receipt on the old image cannot prove new
+system libraries; collect a droplet Web receipt after that rebuild. Implementers
+report missing image libraries to their item lead for this preparation.
+
 Use `web/test/harness.ts`: one scratch `projectHub` and Headless Shell per file,
 one fresh context per sequential case. The fixture mints a test-client `web.link`
 frame, trades it through `/auth`, stubs `Notification` in an init script and keeps
@@ -1648,8 +1660,7 @@ an unavailable phase supplies no passing Web evidence and cannot be reused as a
 green cache receipt. A broken or missing probe with Web selected is an error.
 The probe checks the pinned executable and, on Linux, the shell and bundled shared
 libraries with bounded `ldd` calls in a sealed scratch environment. It launches
-no browser; the fixture launches exactly its returned executable. T-993 supplies
-the Linux browser libraries.
+no browser; the fixture launches exactly its returned executable.
 
 ## Connection snapshots
 
