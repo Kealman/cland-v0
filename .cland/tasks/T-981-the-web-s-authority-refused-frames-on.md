@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-775
 branch: t/T-981-the-web-s-authority-refused-frames-on
 created: 2026-10-20T16:49:59.999Z
-updated: 2026-10-20T21:19:38.363Z
+updated: 2026-10-20T21:44:40.379Z
 ---
 
 ## Summary
@@ -29,21 +29,27 @@ The dispatcher knows the edge a conversation came from. The edge policy is one t
 ## Acceptance criteria
 
 - [x] C1. On the web edge every frame the table refuses (`hub.stop`, `hub.reload`, `release`, `sync`, `push`, `publish`, `config.set`, `crew.set`, the three `executor.*` frames, `task.migrate`, `web.link`, `artifact.create` with a `path`) is refused with a code and a message naming the CLI and Neovim, while the same frames still work from a Unix-socket client (test per frame).
-  - done: impl-981 · 2026-10-20T21:07:17.438Z
   - verified: rev-23 [reviewer] · run rev-20261020-981-final · 2026-10-20T21:19:38.277Z · commit 2ff5293f9af5b8710a98b34879e21549047bf38b
+  - done: impl-981 · 2026-10-20T21:34:54.684Z
+  - verified: rev-23 [reviewer] · run rev-20261020-981-final-2 · 2026-10-20T21:44:40.191Z · commit fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
 - [x] C2. Any frame that carries `as` is refused on the web edge (test).
-  - done: impl-981 · 2026-10-20T21:07:17.457Z
   - verified: rev-23 [reviewer] · run rev-20261020-981-final · 2026-10-20T21:19:38.277Z · commit 2ff5293f9af5b8710a98b34879e21549047bf38b
+  - done: impl-981 · 2026-10-20T21:34:54.704Z
+  - verified: rev-23 [reviewer] · run rev-20261020-981-final-2 · 2026-10-20T21:44:40.191Z · commit fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
 - [x] C3. `topic.send` and `artifact.create` with `content` pass on the web edge and are recorded as the human's (test).
-  - done: impl-981 · 2026-10-20T21:07:17.478Z
   - verified: rev-23 [reviewer] · run rev-20261020-981-final · 2026-10-20T21:19:38.277Z · commit 2ff5293f9af5b8710a98b34879e21549047bf38b
+  - done: impl-981 · 2026-10-20T21:34:54.725Z
+  - verified: rev-23 [reviewer] · run rev-20261020-981-final-2 · 2026-10-20T21:44:40.191Z · commit fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
 - [x] C4. The edge policy is one table with a row for every human frame in `protocol.ts`; a frame without a row is refused, and a test fails when a protocol frame has no row.
-  - done: impl-981 · 2026-10-20T21:07:17.499Z
   - verified: rev-23 [reviewer] · run rev-20261020-981-final · 2026-10-20T21:19:38.277Z · commit 2ff5293f9af5b8710a98b34879e21549047bf38b
+  - done: impl-981 · 2026-10-20T21:34:54.746Z
+  - verified: rev-23 [reviewer] · run rev-20261020-981-final-2 · 2026-10-20T21:44:40.191Z · commit fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
 - [x] C5. `hub/README.md` lists the refused frames and the deny-by-default rule.
-  - done: impl-981 · 2026-10-20T21:07:17.526Z
   - verified: rev-23 [reviewer] · run rev-20261020-981-source · 2026-10-20T21:08:57.299Z · commit 2ff5293f9af5b8710a98b34879e21549047bf38b
   - verified: rev-23 [reviewer] · run rev-20261020-981-final · 2026-10-20T21:19:38.277Z · commit 2ff5293f9af5b8710a98b34879e21549047bf38b
+  - verified: rev-23 [reviewer] · run rev-20261020-981-source-2 · 2026-10-20T21:34:49.234Z · commit fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
+  - done: impl-981 · 2026-10-20T21:34:54.767Z
+  - verified: rev-23 [reviewer] · run rev-20261020-981-final-2 · 2026-10-20T21:44:40.191Z · commit fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
 
 ## Comments
 
@@ -102,5 +108,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Final clear; evidence audit A-8076 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8076-t-981-final-evidence-review-at-2ff5293f.md). Same-head configured run 6e56c0c4/A-8075 exited 0 on Linux x64 droplet: T1/all-T2 fallback, 2,187 ordinary passing test finishes/337 passing files. All 36 new authority identities pass 5/5 load repetitions separately: policy T1 4/4 and authority T2 32/32 confirm typed frame refusals, every own-as form, human attribution and deny-by-default behavior. Full-union compile-time conformance and docs remain source-established. Costly Unix parity checks validate handler admission/preconditions, not actual publication/cloud execution. Host check 091b0f5d not repeated remotely; lint/duration/ratchet diagnostics report-only, two missing baselines. No T3/T4/Web phase or after-stage QA claim. No findings; verify C1–C5.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### rev-23 · 2026-10-20T21:34:49.234Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-981-source-2
+commit: fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merge delta source clear; Standards/Spec audit A-8093 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8093-t-981-merge-delta-source-review-at-fdc614db.md). Coordinator authorization 3d334dae covers the dev merge. Both role-clause meanings and skill instructions/provenance retained; Web phase pointer resolves to detailed human-only sign-in/authority fixtures. Policy/dispatcher/authority tests unchanged; incoming numeric history fields preserve the same 93 human request names and both shared-wire conformance checks. A-8092 local Mac merge-source targeted/static checks are scoped, not the task gate. No findings; verify C5 by source only. Refresh stale claimant marks; C1–C4 await fresh same-head configured mode-free verification. Old A-8075 is historical only.
+
+Criteria: C5 verified.
+
+### rev-23 · 2026-10-20T21:44:40.191Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261020-981-final-2
+commit: fdc614db5b14e7a5287cbc5d90d0c51079af0ff5
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear at merged head; audit A-8099 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8099-t-981-merged-head-final-evidence-at-fdc614db.md). Same-head df7a82bb/A-8098 completed Linux T1/full hub+Neovim T2 fallback: 2,194 ordinary test passes/337 files and all 36 authority identities each 5/5 load passes separately. C1–C4 policy/socket acceptance tests pass (T1 4/4, T2 32/32); docs C5 remain source-established. Web selected but NOT RUN, structured missing-Linux-libraries reason retained; no browser pass or zero timing claimed. Costly Unix parity remains handler/precondition coverage. Host check 0c5050cc not repeated remotely; lint/duration/ratchet report-only, two missing baselines. No T3/T4 or after-stage QA claim. No findings; verify C1–C5.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.

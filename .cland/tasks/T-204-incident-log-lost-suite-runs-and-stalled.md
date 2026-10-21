@@ -12,7 +12,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-10T18:43:39.635Z
-updated: 2026-10-20T00:13:55.377Z
+updated: 2026-10-21T02:52:35.891Z
 closed: 2026-10-11T17:49:12.289Z
 ---
 
@@ -372,3 +372,7 @@ Incident 2026-10-20 00:04Z, restart #25: the old hub pid 37414 (T-913 code, abou
 ### human · 2026-10-20T00:13:55.377Z
 
 Incident: 6th Coordinator harness exit since 2026-10-18, at 2026-10-20 00:12Z (old pid 46036 gone, new harness pid 61982 resumed itself at 00:12:07Z, bridge reconnected 00:12:10Z). The hub released the Coordinator role; every hub call from coord was refused with 'a session with no role has no tools'. Stand-in re-attach at 00:13Z: cland session resume coord (re-found harness 8fb7be60, pid 61982) then cland role set coord coordinator; role back, no relaunch needed, hub 91673 unchanged. Remedy still open: the hub should keep or re-offer the role when the same harness id resumes (T-829 class).
+
+### coord · 2026-10-21T02:52:35.891Z
+
+Incident 2026-10-20 21:33Z – 2026-10-21 02:51Z (7th coord harness exit): coord's Claude Code harness (pid 61982, job 8fb7be60) died at 21:33:12Z; the hub re-filled the role, but the bridge closed at 22:33Z with no Claude process behind it, so the crew ran without a Coordinator for ~5 h 20 m. Stranded: T-981 ready 21:44Z (and impl-981's question), T-982 ready 21:49Z, periodic dev T3 red at 23:49Z (T-1032 auto-filed). No merges, launches or covers happened. The stand-in (cland-impl) relaunched coord at 02:51Z with session resume --relaunch + role set (new pid 15046, job 9b3af5a6). Coord's tmp helper scripts lived in the old job dir and had to be copied.
