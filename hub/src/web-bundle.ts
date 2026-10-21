@@ -8,7 +8,7 @@ export type WebBuildStamp = { version: 1; sources: string; builtAt: number };
 
 /** All bundle inputs, including filenames so additions and deletions invalidate the receipt. */
 export async function webSources(root: string): Promise<WebSources> {
-  const paths = ['package.json', 'package-lock.json', 'hub/src/web-bundle.ts', 'web/package.json', 'web/index.html', 'web/tsconfig.json', 'web/vite.config.ts', 'web/build.ts', 'web/check-assets.ts'];
+  const paths = ['package.json', 'package-lock.json', 'hub/src/web-bundle.ts', 'shared/protocol-frame.ts', 'web/package.json', 'web/index.html', 'web/tsconfig.json', 'web/vite.config.ts', 'web/build.ts', 'web/check-assets.ts'];
   async function visit(dir: string): Promise<void> {
     for (const entry of await readdir(join(root, dir), { withFileTypes: true })) {
       const path = `${dir}/${entry.name}`;
@@ -18,6 +18,7 @@ export async function webSources(root: string): Promise<WebSources> {
   }
   await visit('web/src');
   await visit('web/public');
+  await visit('shared/wire');
   const hash = createHash('sha256');
   let newest = 0;
   for (const path of paths.sort()) {

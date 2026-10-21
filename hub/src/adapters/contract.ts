@@ -11,6 +11,8 @@ import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.
 export type Reliability = 'reliable' | 'heuristic' | 'none';
 
 export type Capabilities = {
+  /** Interactive terminal streams are reserved for a later protocol extension. */
+  terminal: 'none';
   /** OpenCode maps launch policy to permission rules without OS isolation. */
   launchPolicy?: 'rules, not a sandbox';
   /** Optional capabilities (spec 4.3). */

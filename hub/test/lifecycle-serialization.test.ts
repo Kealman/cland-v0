@@ -30,7 +30,7 @@ async function fixture(t: TestContext, log?: (entry: Record<string, unknown>) =>
   table.put(p);
   sessions.register({
     harness: 'test',
-    capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+    capabilities: { terminal: 'none', history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
     spawn: async r => ({ ...p, ...r, sessionId: 'replacement', harness: 'test', status: 'running' }),
     resume: async r => ({ found: true, process: { ...r, status: 'running' }, state: 'unknown' }),
     stop: async () => {}, attachCommand: () => '', watch: () => {}, inject: async () => {}, confirm: () => {}, interpret: () => ({}), close: () => {},

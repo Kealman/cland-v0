@@ -944,7 +944,7 @@ export class Dispatcher {
     });
   }
 
-  open(wire: Peer, transport: { authenticated: boolean; edge: string; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
+  open(wire: Peer, transport: { authenticated: boolean; edge: string; buildStamp?: () => string | null; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
     const core = this.#options.core;
     const log = this.#log;
     /** The calls in flight, by request id, waiting for their result to be audited. */
@@ -1220,7 +1220,7 @@ export class Dispatcher {
       if (done) return;
       done = true;
       clearTimeout(helloTimer);
-      peer.send({ type: 'error', code, message });
+      peer.send({ type: 'error', code, message, ...(transport.edge === 'web' && code === 'version' ? { action: 'restart-hub' as const } : {}) });
       peer.close(4000, code);
     };
     const helloTimer = setTimeout(() => {
@@ -1264,7 +1264,7 @@ export class Dispatcher {
         return;
       }
       if (isClientHello(frame)) {
-        if (frame.protocol !== PROTOCOL_VERSION) return refuse('version', `protocol ${frame.protocol} is not the hub's ${PROTOCOL_VERSION} — ${UPDATE_HINT}`);
+        if (frame.protocol !== PROTOCOL_VERSION) return refuse('version', `protocol ${frame.protocol} is not the hub's ${PROTOCOL_VERSION} — ${transport.edge === 'web' ? 'restart the hub to use this page' : UPDATE_HINT}`);
         // the human's side comes over the Unix socket or stdio: the spokes' WebSocket never makes a client (with
         // the spokes' bearer secret, a session would otherwise act as the human, unrestricted by its role). A hub with
         // no human side (`createHub`, no `control`: the in-process hub of the tests) has no other way in for a client.
@@ -1276,7 +1276,7 @@ export class Dispatcher {
         client = transport.edge === 'web' ? HUMAN_SESSION : frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
         features = (['snapshot', 'numbered-deltas', 'slim-frames'] as const).filter(feature => frame.features?.includes(feature));
-        peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined ? { features } : {}) });
+        peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined || transport.edge === 'web' ? { features } : {}), ...(transport.buildStamp ? { buildStamp: transport.buildStamp() } : {}) });
         if (features.includes('snapshot')) {
           preparingSnapshot = true;
           // Disk-only inputs are prepared before composition. If the journal changes

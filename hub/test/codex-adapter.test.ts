@@ -294,6 +294,7 @@ test('a launched Codex session: the app-server runs with the spoke, a UI message
   // the capability table
   const list = (await ui.request({ type: 'session.list' })).value as { adapters: Record<string, unknown> };
   assert.deepEqual(list.adapters.codex, {
+    terminal: 'none',
     history: 'none',
     usage: 'reliable',
     setModel: 'none',

@@ -45,6 +45,7 @@ export const OPENCODE = 'opencode';
 export const OPENCODE_CLAUSE_AT_SPAWN = false;
 
 export const OPENCODE_CAPABILITIES: Capabilities = {
+  terminal: 'none',
   launchPolicy: 'rules, not a sandbox',
   // the session's messages are readable (`GET /api/session/{id}/message`), but cland does not read them in v0
   history: 'none',

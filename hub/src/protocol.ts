@@ -6,7 +6,8 @@ import type { ItemSummary } from './tracker/tracker.ts';
 export type { ModelDelta, ModelEvent, SlimTaskFrame, VisibilityFrame } from '../../shared/wire/index.ts';
 import type { ModelDelta, SlimTaskFrame, VisibilityFrame } from '../../shared/wire/index.ts';
 
-export { PROTOCOL_VERSION, parseFrame } from '../../shared/protocol-frame.ts';
+export { PROTOCOL_VERSION, parseFrame, FRAME_LIMITS_BYTES, BINARY_RESERVED_CLOSE_CODE } from '../../shared/protocol-frame.ts';
+import { FRAME_LIMITS_BYTES } from '../../shared/protocol-frame.ts';
 
 /** The spoke's keepalive interval; the hub closes a socket silent for two of them. */
 export const KEEPALIVE_MS = 30_000;
@@ -15,7 +16,7 @@ export const KEEPALIVE_MS = 30_000;
  * The largest frame the hub reads; a bigger one closes the socket before it is parsed. Every frame
  * the protocol carries today is kilobytes (a message's text is capped by hygiene at 8 KiB).
  */
-export const MAX_FRAME_BYTES = 1024 * 1024;
+export const MAX_FRAME_BYTES = FRAME_LIMITS_BYTES.json;
 
 /** The close code a hub older than T-51 sent a spoke when a newer spoke of its session took its name. Today's hub
  *  never sends it (every spoke of a session stands), and a spoke that gets it reconnects like after any close. */
@@ -380,7 +381,7 @@ export type SpokeFrame = Hello | SpokeRequest | Ack;
 export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name' | 'bad-hello' | 'no-role';
 
 export type HubFrame =
-  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[] }
+  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[]; buildStamp?: string | null }
   | SnapshotFrame
   | SnapshotEnd
   | SnapshotRefused
@@ -398,7 +399,7 @@ export type HubFrame =
    *  missing (`tool` or `tool:scope`), `role` the caller's at call time, `reason` why. `refusal`: a hygiene refusal (typed). */
   // cli-neovim-only: the web authority policy keeps this request in local clients.
   | { type: 'result'; id: string; ok: false; error: string; files?: string[]; recovery?: { commit: string; base: string }; account?: string; resetsAt?: string | null; code?: 'cli-neovim-only' | 'account-limited' | 'verify-all-reserved' | 'verify-tiers' | 'verify-test-lint' | 'verify-shards' | import('./territory-push.ts').PushCode | import('./territory-publish.ts').PublishCode | import('./release.ts').ReleaseCode | import('./merge.ts').MergeCode | 'forbidden' | 'note-incomplete' | 'invalid-cwd' | 'git-unavailable' | 'artifact-kind' | 'artifact-source' | 'artifact-topic' | 'artifact-title' | 'artifact-unavailable' | 'artifact-path' | 'artifact-busy'; permission?: string; role?: string | null; reason?: string; missing?: string[]; refusal?: HygieneRefusal }
-  | { type: 'error'; code: RefusalCode; message: string }
+  | { type: 'error'; code: RefusalCode; message: string; action?: 'restart-hub' }
   /** To a harness's in-session bridge (the Claude Code mod): submit this message as a turn, then confirm it (`session.signal` `injected`). */
   | { type: 'inject'; session: string; message: string; text: string }
   | HubEvent;

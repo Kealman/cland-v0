@@ -57,6 +57,7 @@ export const MOD_DIR = fileURLToPath(new URL('../../mod/cland', import.meta.url)
 export const CLAUDE_CODE_CLAUSE_AT_SPAWN = false;
 
 export const CLAUDE_CODE_CAPABILITIES: Capabilities = {
+  terminal: 'none',
   // the transcript format is internal to Claude Code and changes between versions
   history: 'none',
   // the mod's `turn.complete` carries the turn's usage and model

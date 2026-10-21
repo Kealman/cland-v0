@@ -61,7 +61,7 @@ test('hub tracker mutations, reads, scans, and shared launches use no synchronou
   onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close());
   const adapter: HarnessAdapter = {
     harness: 'test',
-    capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+    capabilities: { terminal: 'none', history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
     spawn: async r => ({ name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, pidStarted: null, harnessId: null, sessionId: r.name, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' }),
     attachCommand: () => 'test', watch: () => {}, inject: async () => {}, confirm: () => {}, interpret: () => ({}), stop: async () => {}, resume: async p => ({ found: true, process: p, state: 'idle' }), close: () => {},
   };

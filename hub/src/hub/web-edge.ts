@@ -7,11 +7,12 @@ import type { LogFn } from '../log.ts';
 import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, realpath, rename, stat, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
-import { MAX_FRAME_BYTES } from '../protocol.ts';
+import { FRAME_LIMITS_BYTES, BINARY_RESERVED_CLOSE_CODE } from '../protocol.ts';
 import type { WebEdgeStatus, WebLinkResult, WebSessionsResult, WebRevokeResult } from '../protocol.ts';
 import { WebArtifacts } from './web-artifacts.ts';
 import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
@@ -161,9 +162,16 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
   const file = join(options.stateDir, 'web-port');
   let port = options.port ?? 0;
   const dist = resolve(options.dist ?? fileURLToPath(new URL('../../../web/dist/', import.meta.url)));
+  // Read at welcome: rebuilding the served bundle does not require a hub restart.
+  const buildStamp = (): string | null => {
+    try {
+      const stamp = JSON.parse(readFileSync(join(dist, 'build-stamp.json'), 'utf8')) as { version?: unknown; sources?: unknown };
+      return stamp?.version === 1 && typeof stamp.sources === 'string' && /^[a-f0-9]{64}$/.test(stamp.sources) ? stamp.sources : null;
+    } catch { return null; }
+  };
   const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts, hosts, origin); });
-  const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
-  const sockets = new Map<WebSocket, { alive: boolean; session: string }>();
+  const wss = new WebSocketServer({ noServer: true, maxPayload: FRAME_LIMITS_BYTES.json });
+  const sockets = new Map<WebSocket, { seen: number; session: string }>();
   http.on('upgrade', (req, socket, head) => {
     const refuse = (code: number, reason: string) => {
       socket.write(`HTTP/1.1 ${code} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
@@ -174,32 +182,37 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
     if (req.url !== '/ws') { refuse(404, 'Not Found'); return; }
     const session = auth.session(req.headers.cookie);
     if (!session) { refuse(401, 'Unauthorized'); return; }
-    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session, pageOrigin(req)));
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session, pageOrigin(req), req));
   });
-  wss.on('connection', (ws: WebSocket, session: string, page: string) => {
-    const state = { alive: true, session };
+  wss.on('connection', (ws: WebSocket, session: string, page: string, req: IncomingMessage) => {
+    const state = { seen: clock.now().getTime(), session };
     sockets.set(ws, state);
+    const seen = () => { state.seen = clock.now().getTime(); };
+    req.socket.on('data', seen);
     const conversation = options.dispatcher.open({
       sendSerialized: json => { if (ws.readyState === WebSocket.OPEN) ws.send(json); },
       send: frame => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),
       isOpen: () => ws.readyState === WebSocket.OPEN,
-    }, { authenticated: true, edge: 'web', artifactUrl: id => artifacts.mint(session, id, page) });
-    ws.on('message', data => conversation.receive(data.toString()));
-    ws.on('pong', () => { state.alive = true; });
+    }, { authenticated: true, edge: 'web', buildStamp, artifactUrl: id => artifacts.mint(session, id, page) });
+    ws.on('message', (data, binary) => {
+      if (binary) { ws.close(BINARY_RESERVED_CLOSE_CODE, 'binary frames reserved for streams'); return; }
+      conversation.receive(data.toString());
+    });
+    ws.on('pong', seen);
     ws.on('close', () => {
+      req.socket.off('data', seen);
       sockets.delete(ws);
       conversation.closed();
       options.log?.({ event: 'web-session-socket-closed', session });
     });
     ws.on('error', () => { /* close follows */ });
   });
-  // Browsers cannot send protocol pings themselves. Two missed server pings
-  // reap a disconnected page without requiring application keepalive frames.
+  // Browsers answer protocol pings automatically. Incoming traffic also counts
+  // as liveness, including a large frame still arriving at the silence boundary.
   const ping = clock.setInterval(() => {
     for (const [ws, state] of sockets) {
-      if (!state.alive) { ws.terminate(); continue; }
-      state.alive = false;
+      if (clock.now().getTime() - state.seen >= 60_000) { ws.terminate(); continue; }
       if (ws.readyState === WebSocket.OPEN) ws.ping();
     }
   }, 30_000);

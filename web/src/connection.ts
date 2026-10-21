@@ -1,7 +1,7 @@
 import { PROTOCOL_VERSION, type ClientHello, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type WorkbenchRequest } from '../../shared/wire/index.ts';
 
 export type ConnectionState = {
-  project: string; live: boolean;
+  project: string; live: boolean; restartRequired?: boolean;
   coordinator?: string | null;
   needsYou?: number;
   approvals?: number;
@@ -31,7 +31,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     // An open socket alone is not authenticated readiness. Bound the hello/status too.
     deadline = setTimeout(() => socket.close(), 5000);
     socket.onopen = () => {
-      const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, client: 'ui' };
+      const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, client: 'ui', features: [] };
       socket.send(JSON.stringify(hello));
     };
     socket.onmessage = event => {
@@ -39,6 +39,16 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       try { frame = JSON.parse(String(event.data)) as HubFrame; }
       catch { socket.close(); return; }
       if (frame.type === 'welcome') {
+        const loaded = document.querySelector('meta[name="cland-build-stamp"]')?.getAttribute('content');
+        if (loaded && frame.buildStamp && loaded !== frame.buildStamp) {
+          // One reload per target build, even if a proxy keeps serving old entry HTML.
+          let reload = false;
+          try {
+            reload = sessionStorage.getItem('cland-reload-build') !== frame.buildStamp;
+            sessionStorage.setItem('cland-reload-build', frame.buildStamp);
+          } catch { /* Storage may be unavailable; keep the current page usable. */ }
+          if (reload) { stopped = true; clearTimeout(deadline); socket.close(); location.reload(); return; }
+        }
         request({ type: 'subscribe', id: 'shell-subscribe' });
         request({ type: 'hub.status', id: 'connection-status' });
         request({ type: 'inbox.list', id: 'shell-inbox' });
@@ -61,7 +71,14 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         request({ type: 'hub.status', id: 'connection-status' });
       } else if (frame.type === 'task' && (frame.item?.kind === 'release' || state.releases?.some(item => item.id === frame.id))) {
         request({ type: 'task.list', id: 'shell-releases', kind: 'release', state: 'open', projection: 'summary' });
-      } else if (frame.type === 'error') socket.close();
+      } else if (frame.type === 'error') {
+        if (frame.code === 'version') {
+          stopped = true;
+          state = { ...state, live: false, restartRequired: true };
+          changed(state);
+        }
+        socket.close();
+      }
     };
     socket.onerror = () => socket.close();
     socket.onclose = () => {

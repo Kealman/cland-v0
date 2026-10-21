@@ -69,7 +69,7 @@ export function Shell() {
           Needs you<span className={connection.needsYou === 0 ? s.clear : s.mono}>{connection.needsYou === undefined ? '—' : connection.needsYou || '✓'}</span>
         </button>
         <span className={s.live} role="status" aria-label="Hub connection">
-          <span className={s.dot} data-live={connection.live} />{connection.live ? 'Live' : 'Offline'}
+          <span className={s.dot} data-live={connection.live} />{connection.restartRequired ? 'Restart hub' : connection.live ? 'Live' : 'Offline'}
         </span>
         <button className={s.help} aria-label="Help" title="Area keys">?</button>
       </div>

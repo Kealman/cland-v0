@@ -10,7 +10,7 @@ import { checkWebBundle } from '../src/doctor/web.ts';
 test('doctor compares the installed web stamp and diagnoses missing, changed and newer sources', async t => {
   const root = await mkdtemp(join(tmpdir(), 'cland-web-stamp-'));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const path of ['package.json', 'package-lock.json', 'hub/src/web-bundle.ts', 'web/package.json', 'web/index.html', 'web/tsconfig.json', 'web/vite.config.ts', 'web/build.ts', 'web/check-assets.ts', 'web/src/Shell.tsx', 'web/public/fonts/font.woff2', 'web/dist/index.html']) {
+  for (const path of ['package.json', 'package-lock.json', 'hub/src/web-bundle.ts', 'shared/protocol-frame.ts', 'shared/wire/index.ts', 'web/package.json', 'web/index.html', 'web/tsconfig.json', 'web/vite.config.ts', 'web/build.ts', 'web/check-assets.ts', 'web/src/Shell.tsx', 'web/public/fonts/font.woff2', 'web/dist/index.html']) {
     await mkdir(dirname(join(root, path)), { recursive: true });
     await writeFile(join(root, path), path);
     await utimes(join(root, path), 1, 1);
@@ -19,6 +19,14 @@ test('doctor compares the installed web stamp and diagnoses missing, changed and
   const stamp = { version: 1, sources: (await webSources(root)).digest, builtAt: 2000 };
   assert.match((await checkWebBundle(root)).detail, /missing/);
   await writeFile(stampPath, JSON.stringify(stamp));
+  assert.equal((await checkWebBundle(root)).verdict, 'ok');
+  // Protocol runtime values are bundled too: a protocol-only change needs a new stamp.
+  const protocol = join(root, 'shared/protocol-frame.ts');
+  await writeFile(protocol, 'export const PROTOCOL_VERSION = 999;');
+  await utimes(protocol, 1, 1);
+  assert.match((await checkWebBundle(root)).detail, /stale.*changed/);
+  await writeFile(protocol, 'shared/protocol-frame.ts');
+  await utimes(protocol, 1, 1);
   assert.equal((await checkWebBundle(root)).verdict, 'ok');
   const source = join(root, 'web/src/Shell.tsx');
   await utimes(source, 3, 3);

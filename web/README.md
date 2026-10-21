@@ -23,7 +23,12 @@ the top strip shows the project directory's name and a live dot. On disconnect
 the dot turns down, keeping the project name, and the shell retries after 250 ms,
 doubling to a 10 s cap. A successful status reply resets the backoff. Each
 connection has a 5 s hello/status deadline. A hub restart reuses the edge port
-and cookie, so an open shell reconnects without reloading.
+and cookie, so an open shell reconnects without reloading when the bundle matches.
+The entry HTML's `cland-build-stamp` meta tag and the web welcome's `buildStamp`
+identify the same source digest. A mismatched page reloads once per target build
+per tab; session storage bounds retries if old HTML persists. Without session
+storage the page remains usable. A protocol refusal displays **Restart hub**
+and stops reconnecting; restart it through the CLI or Neovim.
 
 Verification's `npm run check` typechecks, builds `web/dist`, then runs static/test
 lint. This build runs locally as well as remotely; remote prepare remains the
@@ -34,6 +39,8 @@ Vite checks local resource references and the fonts, then writes
 stamp with the installation's sources, including filenames and modification times;
 changed, added, deleted or newer sources warn as stale. Run `npm run build` to refresh.
 Watch builds use the same stamp hook. Inputs changing during a build refuse a stamp.
+The welcome reads the served receipt at connection time, including a configured
+`[web] dist`; a missing or invalid receipt is reported as `buildStamp: null`.
 
 The development loop uses a build and reload, with E-412's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven

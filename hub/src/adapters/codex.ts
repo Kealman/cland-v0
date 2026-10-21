@@ -57,6 +57,7 @@ export const MIN_CODEX_VERSION: readonly [number, number, number] = [0, 153, 4];
 export const CODEX_CLAUSE_AT_SPAWN = true;
 
 export const CODEX_CAPABILITIES: Capabilities = {
+  terminal: 'none',
   // rollouts are on disk, but `Thread.path` is marked unstable and the format is not a stable interface
   history: 'none',
   // `thread/tokenUsage/updated` per turn and the account's rate limits

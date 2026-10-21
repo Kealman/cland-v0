@@ -208,6 +208,7 @@ test('a launched OpenCode session: its own server, the spoke connects, a UI mess
   const list = (await ui.request({ type: 'session.list' })).value as { processes: Harness[]; adapters: Record<string, unknown> };
   assert.equal(list.processes.find((p) => p.name === 'impl')?.state, 'idle');
   assert.deepEqual(list.adapters.opencode, {
+    terminal: 'none',
     launchPolicy: 'rules, not a sandbox',
     history: 'none',
     usage: 'reliable',

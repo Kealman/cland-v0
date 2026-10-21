@@ -199,6 +199,7 @@ test('Claude Code binary contract: launch, attach, first clause, mod injection, 
   // the capability table declares what the adapter cannot do
   const list = (await ui.request({ type: 'session.list' })).value as { adapters: Record<string, { approvalRelay: string; history: string; setModel: string; usage: string; states: Record<string, string> }> };
   assert.deepEqual(list.adapters['claude-code'], {
+    terminal: 'none',
     history: 'none',
     usage: 'reliable',
     setModel: 'none',

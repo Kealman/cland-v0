@@ -390,8 +390,46 @@ A human client can add `features: ["snapshot", "numbered-deltas", "slim-frames"]
 to its existing protocol-2 hello. Unknown feature names are ignored. The welcome
 includes `features`, the accepted subset; `snapshot`, `numbered-deltas` and
 `slim-frames` are supported independently.
-A hello without `features` keeps its existing welcome and receives no snapshot.
+A local hello without `features` keeps its existing welcome and receives no snapshot.
 An empty list receives `features: []`. Spoke hellos are unchanged.
+
+### Liveness, version skew and terminal reservations
+
+The web edge sends a WebSocket ping every 30 seconds and terminates a socket
+at the first sweep with 60 seconds of silence. Pongs and incoming bytes refresh
+that deadline; an application frame still arriving is live traffic too.
+
+Every web welcome includes the negotiated `features` list (empty without opt-in)
+and `buildStamp`: the served bundle's source digest from `build-stamp.json`, or
+`null` when that receipt is absent or invalid. The digest is read at each welcome,
+so rebuilding the bundle needs no hub restart. Vite embeds the same digest in
+the entry HTML's `cland-build-stamp` meta tag. A page with a different stamp
+reloads once per target build per tab; the guard prevents repeated reloads if a
+proxy keeps serving old HTML. With storage unavailable it keeps the page usable.
+A protocol-refused web hello gets error code `version`, `action: "restart-hub"`
+and an instruction to restart the hub. The page shows **Restart hub** and stops
+retrying. The web edge cannot perform the restart itself.
+
+The eight reservations for a later terminal are:
+
+1. Text messages carry JSON. Binary messages are reserved for streams and are
+   refused with close code **4003**, reason `binary frames reserved for streams`.
+2. Streams stay outside the live model: no snapshot, journal or catch-up payload
+   carries terminal bytes; no stream is admitted yet.
+3. Sequence numbers count committed model deltas. Welcome, results, snapshots,
+   pings and future stream frames do not consume them.
+4. Each connection's model queue must have a resync boundary; the 4 MiB queue
+   and resume ring are owned by the resume slice (T-986).
+5. The present socket carries model/control traffic only. A terminal extension
+   must preserve model priority or use a separate socket before admitting streams.
+6. Upgrade routing admits only `/ws`, with a fresh Host, Origin and cookie check
+   on every socket. One cookie can authenticate several sockets.
+7. `FRAME_LIMITS_BYTES` separates JSON (**1,048,576 UTF-8 bytes**) from binary
+   (**0 bytes admitted**). Oversize JSON closes with **1009** before parsing;
+   even an empty binary message is refused. WebSocket control frames retain
+   their RFC 6455 125-byte cap. Snapshot domains have their own smaller caps below.
+8. Hello/welcome negotiate features. Every adapter must declare `terminal`,
+   currently `"none"`, in its capability table, readable in `session.list.adapters`.
 
 After the welcome, an accepted snapshot produces seven ordered frames:
 `{type: "snapshot", epoch, seq, domain, value}`, then

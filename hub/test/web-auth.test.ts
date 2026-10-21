@@ -188,12 +188,126 @@ test('server pings reap a browser that does not return a pong', async t => {
   const welcome = client.waitFor(frame => frame.type === 'welcome');
   client.send({ type: 'hello', protocol: 2, client: 'web' });
   await welcome;
+  let pings = 0;
+  ws.on('ping', () => { pings++; });
   const ping = once(ws, 'ping', { signal: AbortSignal.timeout(2000) });
-  await clock.advance(30_000);
+  await clock.advance(29_999);
+  assert.equal(pings, 0);
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  await clock.advance(1);
   await ping;
+  assert.equal(pings, 1);
+  const closed = once(ws, 'close', { signal: AbortSignal.timeout(2000) });
+  await clock.advance(29_999);
+  assert.equal(ws.readyState, WebSocket.OPEN);
+  await clock.advance(1);
+  assert.equal((await closed)[0], 1006);
+});
+
+test('web traffic refreshes the silence deadline even without automatic pongs', async t => {
+  const { origin, cookie, clock } = await signIn(t);
+  const { ws, client } = await browser(t, origin, cookie, false);
+  const welcome = client.waitFor(frame => frame.type === 'welcome');
+  client.send({ type: 'hello', protocol: 2, client: 'web' });
+  await welcome;
+  const firstPing = once(ws, 'ping', { signal: AbortSignal.timeout(2000) });
+  await clock.advance(30_000);
+  await firstPing;
+  assert.equal((await client.request({ type: 'hub.status' })).ok, true);
+  const secondPing = once(ws, 'ping', { signal: AbortSignal.timeout(2000) });
+  await clock.advance(30_000);
+  await secondPing;
+  assert.equal(ws.readyState, WebSocket.OPEN);
   const closed = once(ws, 'close', { signal: AbortSignal.timeout(2000) });
   await clock.advance(30_000);
   assert.equal((await closed)[0], 1006);
+});
+
+test('binary web frames are reserved for streams and close with their dedicated code', async t => {
+  const { origin, cookie } = await signIn(t);
+  const { ws, client } = await browser(t, origin, cookie);
+  const welcome = client.waitFor(frame => frame.type === 'welcome');
+  client.send({ type: 'hello', protocol: 2, client: 'web' });
+  await welcome;
+  const closed = once(ws, 'close', { signal: AbortSignal.timeout(2000) });
+  // Valid JSON bytes must still be refused when carried by a binary opcode.
+  ws.send(Buffer.from('{"type":"hub.status","id":"binary"}'));
+  const [code, reason] = await closed;
+  assert.equal(code, 4003);
+  assert.match(String(reason), /binary.*reserved/i);
+});
+
+test('JSON web frames accept exactly 1 MiB and refuse the next byte, including multibyte text', async t => {
+  const { origin, cookie } = await signIn(t);
+  const { ws, client } = await browser(t, origin, cookie);
+  const welcome = client.waitFor(frame => frame.type === 'welcome');
+  client.send({ type: 'hello', protocol: 2, client: 'web' });
+  await welcome;
+  const envelope = JSON.stringify({ type: 'hub.status', id: 'limit', padding: '' });
+  const payload = envelope.replace('"padding":""', `"padding":"é${'x'.repeat(1024 * 1024 - Buffer.byteLength(envelope) - 2)}"`);
+  assert.equal(Buffer.byteLength(payload), 1024 * 1024);
+  const accepted = client.waitFor(frame => frame.type === 'result' && frame.id === 'limit');
+  ws.send(payload);
+  assert.equal((await accepted).ok, true);
+  const closed = once(ws, 'close', { signal: AbortSignal.timeout(2000) });
+  ws.send(`${payload} `);
+  assert.equal((await closed)[0], 1009);
+});
+
+test('even an empty binary web frame is reserved', async t => {
+  const { origin, cookie } = await signIn(t);
+  const { ws } = await browser(t, origin, cookie);
+  const closed = once(ws, 'close', { signal: AbortSignal.timeout(2000) });
+  ws.send(Buffer.alloc(0));
+  assert.equal((await closed)[0], 4003);
+});
+
+test('web welcome reports negotiated features and the current served bundle stamp', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, 'bundle'));
+  await mkdir(join(root, '.cland'));
+  await writeFile(join(root, '.cland/config.toml'), '[web]\ndist = "bundle"\n');
+  const stamp = join(root, 'bundle/build-stamp.json');
+  await writeFile(stamp, JSON.stringify({ version: 1, sources: 'a'.repeat(64), builtAt: 1 }));
+  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const { url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+  const response = await get(url);
+  const cookie = response.headers['set-cookie']![0]!.split(';')[0]!;
+  for (const digest of ['a'.repeat(64), 'b'.repeat(64)]) {
+    await writeFile(stamp, JSON.stringify({ version: 1, sources: digest, builtAt: 1 }));
+    const { client } = await browser(t, new URL(url).origin, cookie);
+    const welcomed = client.waitFor(frame => frame.type === 'welcome');
+    client.send({ type: 'hello', protocol: 2, client: 'web', features: ['slim-frames', 'future-feature'] });
+    const frame = await welcomed;
+    assert.deepEqual(frame.features, ['slim-frames']);
+    assert.equal(frame.buildStamp, digest);
+  }
+});
+
+test('a protocol-refused web hello tells the page to restart the hub', async t => {
+  const { origin, cookie } = await signIn(t);
+  const { ws, client } = await browser(t, origin, cookie);
+  const refused = client.waitFor(frame => frame.type === 'error');
+  const closed = once(ws, 'close', { signal: AbortSignal.timeout(2000) });
+  client.send({ type: 'hello', protocol: 999, client: 'web' });
+  const frame = await refused;
+  assert.equal(frame.code, 'version');
+  assert.equal(frame.action, 'restart-hub');
+  assert.match(String(frame.message), /restart the hub/i);
+  assert.equal((await closed)[0], 4000);
+});
+
+test('a web client reads the terminal capability of every adapter', async t => {
+  const { origin, cookie } = await signIn(t);
+  const { client } = await browser(t, origin, cookie);
+  const welcome = client.waitFor(frame => frame.type === 'welcome');
+  client.send({ type: 'hello', protocol: 2, client: 'web' });
+  await welcome;
+  const status = await client.request({ type: 'session.list' });
+  assert.equal(status.ok, true);
+  const capabilities = (status.value as { adapters: Record<string, { terminal: string }> }).adapters;
+  assert.deepEqual(Object.keys(capabilities).sort(), ['claude-code', 'codex', 'opencode']);
+  for (const capability of Object.values(capabilities)) assert.equal(capability.terminal, 'none');
 });
 
 // C1: restart the served hub on the same project, with no real hub process needed.

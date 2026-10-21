@@ -32,7 +32,7 @@ async function fixture(t: TestContext, fresh: NonNullable<RolesSource['fresh']>,
   const starts: string[] = [];
   sessions.register({
     harness: 'test',
-    capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+    capabilities: { terminal: 'none', history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
     spawn: async r => {
       starts.push(r.name);
       return { name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, harnessId: null, sessionId: r.name, harnessSessionId: null, startedAt: '', status: 'running' };
@@ -54,7 +54,7 @@ test('crew admission and merge-stop continuations remain measured after lifecycl
   onCleanup(t, () => sessions.close()); onCleanup(t, () => table.close()); onCleanup(t, () => hub.close());
   sessions.register({
     harness: 'test',
-    capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+    capabilities: { terminal: 'none', history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
     spawn: async () => { throw new Error('test spawn refused'); },
     resume: async p => ({ found: true, process: p, state: 'idle' }),
     stop: async () => {}, attachCommand: () => '', watch: () => {}, inject: async () => {}, confirm: () => {}, interpret: () => ({}), close: () => {},

@@ -63,7 +63,7 @@ async function pendingAlias(t: TestContext, log?: LogFn, faultAdoption = true) {
   const watched: string[] = [];
   sessions.register({
     harness: 'test',
-    capabilities: { history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
+    capabilities: { terminal: 'none', history: 'none', usage: 'none', setModel: 'none', approvalRelay: 'none', states: { busy: 'none', idle: 'none', 'waiting for human': 'none', 'waiting for approval': 'none' } },
     spawn: async r => {
       starts.push(r.name);
       return { name: r.name, harness: 'test', role: r.role, model: r.model, cwd: r.cwd, pid: null, harnessId: null, sessionId: `launched:${r.name}`, harnessSessionId: null, startedAt: new Date().toISOString(), status: 'running' };

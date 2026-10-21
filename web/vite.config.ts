@@ -15,6 +15,9 @@ export default defineConfig({
       await rm(`${dist}/build-stamp.json`, { force: true });
       before = await webSources(root);
     },
+    transformIndexHtml() {
+      return [{ tag: 'meta', attrs: { name: 'cland-build-stamp', content: before.digest }, injectTo: 'head' }];
+    },
     async writeBundle() {
       await checkAssets(dist);
       const after = await webSources(root);
