@@ -13,9 +13,13 @@ test('a pending stage build tree keeps QA currency unknown until a mismatching t
   const head = 'a'.repeat(40), coveredTree = 'b'.repeat(40), actualTree = 'c'.repeat(40);
   const tree = Promise.withResolvers<string>();
   let readingTree = false;
+  let coverReads = 0;
   onCleanup(t, () => tree.resolve(actualTree));
   const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'),
-    git: async args => args[0] === 'for-each-ref' ? `${head} refs/heads/dev` : args[0] === 'rev-parse' ? head : '',
+    git: async args => {
+      if (args[0] === 'rev-parse' && args.at(-1) === `${'d'.repeat(40)}^{commit}`) coverReads++;
+      return args[0] === 'for-each-ref' ? `${head} refs/heads/dev` : args[0] === 'rev-parse' ? head : '';
+    },
     readBase: async () => 'dev', stageTree: async () => { readingTree = true; return tree.promise; },
     scheduleTips: () => ({ poke() {}, stop() {} }),
   });
@@ -27,7 +31,7 @@ test('a pending stage build tree keeps QA currency unknown until a mismatching t
   await tracker.close(actor, child.id);
   tracker.recordMerge(child.id, { branch: 't/landed', tip: head, commit: head, base: 'dev' });
   tracker.useVerify(() => null, () => [
-    { id: 'linux', head, tree: coveredTree, platform: 'Linux droplet' },
+    { id: 'linux', head: 'd'.repeat(40), tree: coveredTree, platform: 'Linux droplet' },
     { id: 'mac', head, tree: coveredTree, platform: 'macOS' },
   ]);
   await tracker.refreshFreshness();
@@ -46,6 +50,7 @@ test('a pending stage build tree keeps QA currency unknown until a mismatching t
   assert.deepEqual(missing.cover, { tree: actualTree, missing: ['Linux droplet', 'macOS'] });
   assert.equal(missing.verdict!.current, false);
   assert.equal(missing.state, 'open');
+  assert.equal(coverReads, 0, 'a cover with an unobserved then mismatching tree never requests ancestry');
 });
 
 for (const contained of [true, false]) test(`pending landing ancestry holds advancement until it resolves ${contained}`, async t => {

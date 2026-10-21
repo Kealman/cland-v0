@@ -45,7 +45,20 @@ export class PlanGit {
     }
     if (op === 'merge-base') return args[1] === '--is-ancestor' ? (this.chain(args[3]!).includes(args[2]!) ? '' : null) : this.head;
     if (op === 'diff') return '';
-    if (op === 'log') return this.chain(this.head).map(sha => `${sha}\0${this.commits.get(sha)!.item}\0`).join('\n');
+    if (op === 'log') {
+      if (args.includes('--raw')) {
+        const ref = args.at(-2)!;
+        const [base, tip] = ref.includes('..') ? ref.split('..') : [null, ref];
+        let chain = this.chain(tip!);
+        if (base) chain = chain.slice(0, chain.indexOf(base));
+        if (args.includes('--reverse')) chain.reverse();
+        return chain.map(sha => {
+          const entry = this.commits.get(sha)!;
+          return `${sha}\0${entry.item}\0\0${entry.files.map(file => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${file}\0`).join('')}`;
+        }).join('\0');
+      }
+      return this.chain(this.head).map(sha => `${sha}\0${this.commits.get(sha)!.item}\0`).join('\n');
+    }
     if (op === 'rev-list') {
       const [base, tip] = args[2]!.split('..');
       const chain = this.chain(tip!);

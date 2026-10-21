@@ -124,7 +124,7 @@ Demo checked.
     import { syncBuiltinESMExports } from 'node:module';
     const execFile = cp.execFile;
     cp.execFile = function(file, args, options, callback) {
-      if (file === 'git' && args[0] === 'diff-tree') {
+      if (file === 'git' && args[0] === 'log' && args.includes('--raw')) {
         return execFile(process.execPath, ['-e', ${JSON.stringify(`require('node:fs').writeFileSync(${JSON.stringify(gitPidFile)}, String(process.pid)); setInterval(() => {}, 1000);`)}], options, callback);
       }
       return execFile(file, args, options, callback);

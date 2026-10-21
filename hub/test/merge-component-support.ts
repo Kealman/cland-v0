@@ -40,6 +40,7 @@ export class MergeFacts {
     if (args[0] === 'symbolic-ref') return 'dev';
     if (args[0] === 'show') return this.landings.find(l => l.commit === args.at(-1))?.message ?? null;
     if (args[0] === 'log') {
+      if (args.includes('--raw')) return this.landings.map(l => `${l.commit}\0${l.message.split('\n').filter(line => line.startsWith('Item: ')).map(line => line.slice(6)).join('\n')}\0\0${l.files.map(file => `\n:100644 100644 ${'a'.repeat(40)} ${'b'.repeat(40)} M\0${file}\0`).join('')}`).join('\0');
       return this.landings.map(l => `${l.commit}\0${l.message.split('\n').filter(line => line.startsWith('Item: ')).map(line => line.slice(6)).join('\n')}\0`).join('\n');
     }
     if (args[0] === 'diff-tree') {

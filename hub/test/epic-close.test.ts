@@ -7,9 +7,40 @@ import { cland, connectUi, eventually, inProcessSpoke, projectHub, flushProjectL
 import type { ItemView } from '../src/tracker/tracker.ts';
 import { FakeClock } from './fake-clock.ts';
 import { planStageHub, PlanGit, writeBarrier } from './plan-stage-fixture.ts';
+import { Tracker } from '../src/tracker/tracker.ts';
+import { manualTips } from './freshness-harness.ts';
+import { onCleanup } from './process-cleanup.ts';
 
 const repositories = new Map<string, PlanGit>();
 const facts = (root: string) => repositories.get(root)!;
+
+test('closed epic demo reads after restart do not rescan history', async t => {
+  const root = await tempProject(t);
+  const graph = new PlanGit();
+  const old = graph.head;
+  graph.commit(['surface.txt'], 'T-3');
+  graph.branches.set('t/2', graph.head);
+  await mkdir(join(root, '.cland/tasks'), { recursive: true });
+  await writeFile(join(root, '.cland/tasks/E-1.md'), `---\nid: E-1\nkind: epic\ntitle: Closed demo\nstate: closed\n---\n\n## Definition of done\n- [x] C1. Demo\n  - verified: qa [qa] · run q1 · 2026-10-20T00:00:00Z · commit ${old}\n\n## Comments\n\n### qa · 2026-10-20T00:00:00.000Z\n\nverdict: qa\nresult: clear\nby: qa [qa]\nrun: q1\ncommit: ${old}\n\nDemo.\n`);
+  await writeFile(join(root, '.cland/tasks/T-2.md'), `---\nid: T-2\nkind: task\ntitle: Foreground\nstate: open\nbranch: t/2\n---\n\n## Comments\n\n### rev · 2026-10-20T00:00:00.000Z\n\nverdict: review\nscope: full\nresult: clear\nby: rev [reviewer]\nrun: r1\ncommit: ${old}\n\nReviewed.\n`);
+  let scans = 0;
+  const tips = manualTips();
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'), scheduleTips: tips.scheduleTips,
+    git: async (...args) => { if (args[0][0] === 'log') scans++; return graph.read(...args); } });
+  onCleanup(t, () => tracker.stop());
+  tracker.start();
+  await tips.refresh();
+  tracker.list();
+  const closed = tracker.view('E-1');
+  assert.equal(closed.criteria[0]?.marks[0]?.kind, 'verified');
+  tracker.listSummaries({ state: 'closed' });
+  await eventually('foreground verdict settles after restart', () => tracker.view('T-2').verdicts.at(-1)?.current === true ? true : undefined);
+  assert.equal(scans, 0, 'closed epic verdict and criterion reads leave demo scans unrequested');
+  assert.equal(tracker.view('E-1').verdicts.at(-1)?.current, undefined, 'skipped currency is unknown');
+  await tracker.edit({ id: 'human', name: 'human', role: null }, 'E-1', { state: 'open' });
+  await eventually('reopened epic demo settles', () => tracker.view('E-1').verdicts.at(-1)?.current === true ? true : undefined);
+  assert.ok(scans > 0, 'reopening resumes demo history checks');
+});
 
 async function project(t: TestContext, gated = false, levels = ['release', 'epic']) {
   const root = await tempProject(t);

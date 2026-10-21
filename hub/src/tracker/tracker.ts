@@ -1665,8 +1665,9 @@ export class Tracker {
     const tip = this.#criteriaTip(item.fm);
     if (this.isPlanContainer(item.fm.kind)) {
       const tasks = this.#demoTasks(item.fm.id);
-      const criteria = parsed.criteria.map(c => ({ ...c, marks: c.marks.map(m => m.kind === 'verified' ? withCurrent(m, this.#fresh.demo(item.fm.id, m.commit, tasks)) : m) }));
-      return { ...parsed, criteria, criteriaCounts: countCriteria(summarizeCriteria(parsed.criteria), tip, commit => commit ? this.#fresh.demo(item.fm.id, commit, tasks) : false) };
+      const current = (commit: string | undefined) => this.#demoCurrent(item.fm.id, commit, tasks);
+      const criteria = parsed.criteria.map(c => ({ ...c, marks: c.marks.map(m => m.kind === 'verified' ? withCurrent(m, current(m.commit)) : m) }));
+      return { ...parsed, criteria, criteriaCounts: countCriteria(summarizeCriteria(parsed.criteria), tip, commit => commit ? current(commit) : false) };
     }
     return { ...parsed, criteria: annotateCriteria(parsed.criteria, tip), criteriaCounts: countCriteria(summarizeCriteria(parsed.criteria), tip) };
   }
@@ -1709,6 +1710,12 @@ export class Tracker {
 
   #demoTasks(id: string): string[] { return this.#index.list({ under: id, kind: 'task' }).map(t => t.id).sort(); }
 
+  /** Closed demos can read a cached answer, but never enqueue new history work.
+   * Reopening restores normal scheduling; an uncomputed answer stays unknown. */
+  #demoCurrent(id: string, commit: string | undefined, tasks = this.#demoTasks(id)): boolean | undefined {
+    return this.#fresh.demo(this.#index.get(id)?.state === 'closed' ? '' : id, commit, tasks);
+  }
+
   async demoFreshness(id: string, commit: string, tip?: string): Promise<DemoFreshness> {
     const epic = this.#require(id).id;
     const head = tip ?? await this.#resolve('refs/heads/dev', 'the epic demo tip');
@@ -1722,7 +1729,7 @@ export class Tracker {
   #annotateVerdicts(id: string, kind: Kind, branch: string | null, verdicts: IndexedVerdict[]): IndexedVerdict[] {
     if (!isPlanningContainer(kind, this.ladder)) return this.#fresh.annotate(id, branch, verdicts);
     return verdicts.map((v, i) => verdicts.slice(i + 1).some(w => w.verdict === v.verdict && w.stage === v.stage && w.source === 'hub') ? v :
-      withCurrent(v, v.stage === undefined ? this.#fresh.demo(id, v.commit, this.#demoTasks(id)) : this.#stageCurrent(id, v)));
+      withCurrent(v, v.stage === undefined ? this.#demoCurrent(id, v.commit) : this.#stageCurrent(id, v)));
   }
 
   /** A stage stays closed across later dev builds, but its own plan and landing evidence must stay unchanged. */
@@ -1799,8 +1806,10 @@ export class Tracker {
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
     const landings = snapshot.items.flatMap(child => this.#index.mergeReceipt(child)?.commit ?? []);
     const candidates = covers.filter(cover => cover.platform === 'Linux droplet').map(cover => {
-      const treeMatches = !build ? true : expected === null ? undefined : cover.tree === expected;
-      if (treeMatches === false) return { cover, current: false };
+      const treeMatches = expected === null ? undefined : !build || cover.tree === expected;
+      // A tested build must have a known matching tree before ancestry can
+      // qualify its cover. Avoid queuing every historical cover while it loads.
+      if (treeMatches !== true) return { cover, current: treeMatches };
       const facts = [treeMatches, this.#fresh.ancestor(id, cover.head), ...landings.map(landing => this.#fresh.contains(id, landing, cover.head))];
       return { cover, current: facts.includes(false) ? false : facts.includes(undefined) ? undefined : true };
     });
@@ -1956,7 +1965,7 @@ export class Tracker {
 
   #summaryCriteria(item: IndexedItem): CriteriaCounts {
     const tip = this.#criteriaTip(item);
-    return this.#index.criteriaCounts(item, tip, this.isPlanContainer(item.kind) ? commit => commit ? this.#fresh.demo(item.id, commit, this.#demoTasks(item.id)) : false : undefined);
+    return this.#index.criteriaCounts(item, tip, this.isPlanContainer(item.kind) ? commit => commit ? this.#demoCurrent(item.id, commit) : false : undefined);
   }
 
   #rememberSource(item: Item): void {

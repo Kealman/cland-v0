@@ -5,7 +5,7 @@
 // An answer is kept by what decides it: (verdict commit, branch tip, base, base tip). The branch tips are read with
 // one `git for-each-ref` on a timer and soon after every tracker change; a tip that moved changes the key, so nothing
 // has to be invalidated by hand: answers for tips no branch has any more are dropped. Missing answers are computed
-// one at a time, asynchronously, and the items waiting for them are announced (`settled`) once they are known.
+// asynchronously in separate foreground and demo lanes; items waiting for answers are announced (`settled`).
 import { epicDemoFreshness } from './epic-surfaces.ts';
 import type { IndexedVerdict } from './index-db.ts';
 import type { VerdictKind } from './item.ts';
@@ -18,6 +18,7 @@ export const TIP_CHECK_MS = 2000;
 const POKE_MS = 50;
 
 type Want = { commit: string; tip: string; base: string | null; ancestry: boolean; demoTasks?: string[]; ids: Set<string> };
+type Worker = { demo: boolean; working: boolean; promise: Promise<void> | null };
 
 /** Owns when tip reads run, including the first read; tests can drive and await them by hand. */
 export type TipSchedule = (read: () => Promise<void>, intervalMs: number) => { poke: () => void; stop: () => void };
@@ -74,8 +75,7 @@ export class Freshness {
   readonly #retries = new Map<string, { want: Want; after: number }>();
   /** Task patch ids by (base, base tip, commit): the tip's is shared by the review and the QA verdict. */
   readonly #patches = new Map<string, Promise<string | null>>();
-  #working = false;
-  #workPromise: Promise<void> | null = null;
+  readonly #workers: Worker[] = [false, true].map(demo => ({ demo, working: false, promise: null }));
   #workImmediate: NodeJS.Immediate | null = null;
   /** The worker is due to start: never from inside a read, where its first git would run in the handler. */
   #workSoon = false;
@@ -130,7 +130,7 @@ export class Freshness {
     // Scheduling is stopped synchronously, but owned native Git operations must
     // settle before the tracker closes its index and the fixture checks handles.
     const read = this.#reading ? new Promise<void>(resolve => this.#readWaiters.push(resolve)) : Promise.resolve();
-    return Promise.all([read, this.#workPromise]).then(() => {});
+    return Promise.all([read, ...this.#workers.map(worker => worker.promise)]).then(() => {});
   }
 
   /** The integration branch patch ids are compared against, as last read; null when neither exists or not read yet. */
@@ -225,12 +225,12 @@ export class Freshness {
   }
 
   #startWork(): void {
-    if (this.#working || this.#workSoon || this.#stopped) return;
+    if (this.#workSoon || this.#stopped || this.#workers.every(worker => worker.working)) return;
     this.#workSoon = true;
     this.#workImmediate = setImmediate(() => {
       this.#workImmediate = null;
       this.#workSoon = false;
-      this.#workPromise = this.#work();
+      for (const worker of this.#workers) if (!worker.working) worker.promise = this.#work(worker);
     });
   }
 
@@ -312,16 +312,15 @@ export class Freshness {
     }
   }
 
-  /** Compute the missing answers, one at a time. */
-  async #work(): Promise<void> {
-    if (this.#working) return;
-    this.#working = true;
+  /** Demo history never holds up stage ancestry or task merge-gate verdicts. */
+  async #work(worker: Worker): Promise<void> {
+    worker.working = true;
     try {
       for (;;) {
         if (this.#stopped) return;
-        const next = this.#wants.entries().next();
-        if (next.done) return;
-        const [key, want] = next.value;
+        const next = [...this.#wants].find(([, want]) => !!want.demoTasks === worker.demo);
+        if (!next) return;
+        const [key, want] = next;
         let value: boolean;
         let failed = false;
         try {
@@ -340,7 +339,7 @@ export class Freshness {
         this.#settled([...want.ids]);
       }
     } finally {
-      this.#working = false;
+      worker.working = false;
     }
   }
 
