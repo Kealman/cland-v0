@@ -378,7 +378,10 @@ export type SpokeFrame = Hello | SpokeRequest | Ack;
 export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name' | 'bad-hello' | 'no-role';
 
 export type HubFrame =
-  | { type: 'welcome'; name: string; presence: Presence[]; role?: string }
+  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[] }
+  | SnapshotFrame
+  | SnapshotEnd
+  | SnapshotRefused
   /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice.
    *  `topic` is the topic the message belongs to; absent on the hub's own notices. */
   | { type: 'deliver'; id: string; message: Message; topic?: TopicRef }
@@ -486,6 +489,12 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
   switch (f.type) {
     case 'welcome':
       return typeof f.name === 'string' && Array.isArray(f.presence);
+    case 'snapshot':
+      return typeof f.epoch === 'string' && Number.isSafeInteger(f.seq) && typeof f.domain === 'string' && Object.hasOwn(SNAPSHOT_LIMITS, f.domain) && isObject(f.value);
+    case 'snapshot.end':
+      return typeof f.epoch === 'string' && Number.isSafeInteger(f.seq);
+    case 'snapshot.refused':
+      return f.code === 'unavailable' ? typeof f.message === 'string' : f.code === 'frame-too-large' && typeof f.domain === 'string' && Object.hasOwn(SNAPSHOT_LIMITS, f.domain) && typeof f.bytes === 'number' && typeof f.limit === 'number';
     case 'deliver':
       return typeof f.id === 'string' && isObject(f.message) && typeof f.message.id === 'string' && typeof f.message.text === 'string';
     case 'role':
@@ -503,6 +512,27 @@ export function isHubFrame(f: Record<string, unknown>): f is HubFrame {
 // The same frames as JSON lines, one per line. There is no upgrade request to carry the secret, so the
 // client's hello carries it; on stdio the parent that spawned the hub vouches for the client instead.
 
+/** Negotiated independently; only snapshot is implemented by this extension. */
+export type ClientFeature = 'snapshot' | 'numbered-deltas' | 'slim-frames';
+export const SNAPSHOT_LIMITS = {
+  tracker: 64 * 1024, items: MAX_FRAME_BYTES, sessions: MAX_FRAME_BYTES,
+  topics: MAX_FRAME_BYTES, inbox: MAX_FRAME_BYTES, events: MAX_FRAME_BYTES,
+  accounts: 256 * 1024,
+} as const;
+export type SnapshotValues = {
+  tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
+  items: { items: import('./tracker/tracker.ts').ExplorerSummary[] };
+  sessions: { processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: import('./crew.ts').CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
+  topics: { topics: Topic[] };
+  inbox: Inbox & { needsYou: number };
+  events: EventsPage;
+  accounts: import('./accounts/limits.ts').AccountList;
+};
+export type SnapshotDomain = keyof SnapshotValues;
+export type SnapshotFrame = { [D in SnapshotDomain]: { type: 'snapshot'; epoch: string; seq: number; domain: D; value: SnapshotValues[D] } }[SnapshotDomain];
+export type SnapshotEnd = { type: 'snapshot.end'; epoch: string; seq: number };
+export type SnapshotRefused = { type: 'snapshot.refused'; code: 'frame-too-large'; domain: SnapshotDomain; bytes: number; limit: number } | { type: 'snapshot.refused'; code: 'unavailable'; message: string };
+
 export type ClientHello = {
   type: 'hello';
   protocol: number;
@@ -510,6 +540,8 @@ export type ClientHello = {
   secret?: string;
   /** What is connecting: `cli`, `ui`. */
   client: string;
+  /** Unknown features are ignored; welcome echoes only implemented features. */
+  features?: string[];
 };
 
 // Operational verification occasions are independent of configured tracker container kinds.
@@ -828,7 +860,7 @@ export type HarnessProcessView = {
 };
 
 export function isClientHello(f: Record<string, unknown>): f is ClientHello {
-  return f.type === 'hello' && typeof f.protocol === 'number' && (f.secret === undefined || typeof f.secret === 'string') && typeof f.client === 'string';
+  return f.type === 'hello' && typeof f.protocol === 'number' && (f.secret === undefined || typeof f.secret === 'string') && typeof f.client === 'string' && (f.features === undefined || Array.isArray(f.features) && f.features.every(feature => typeof feature === 'string'));
 }
 
 export function isClientRequest(f: Record<string, unknown>): f is ClientRequest {

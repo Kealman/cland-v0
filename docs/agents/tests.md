@@ -1634,3 +1634,21 @@ The probe checks the pinned executable and, on Linux, the shell and bundled shar
 libraries with bounded `ldd` calls in a sealed scratch environment. It launches
 no browser; the fixture launches exactly its returned executable. T-993 supplies
 the Linux browser libraries.
+
+## Connection snapshots
+
+`hub/test/connection-snapshot.test.ts` uses a disposable `projectHub` at T2 for
+feature negotiation, the seven domain frames and end marker, legacy compatibility,
+UTF-8 overflow fallback, and a model change raced against the first snapshot
+frame. The observer is armed before the hello/change, and final assertions retain
+the complete contiguous transaction and the later change receipt.
+`hub/test/snapshot-framing.test.ts` proves each domain cap and the exact-byte
+boundary at T1. The wire conformance check keeps the browser leaf aligned.
+
+For copied-live-tracker evidence, run
+`node hub/scripts/measure-snapshot.ts /path/to/project/.cland/tasks`.
+Only source files are copied; the tracker and hub open in the script's disposable
+root with a filtered environment and fake Git/clock. The output labels other
+domains as default scratch state and excludes setup/copy/transport from the five
+compose/framing samples. Publish that output through `artifact.create` and name
+the implementation head/tree and platform; it is a measurement, not a suite pass.

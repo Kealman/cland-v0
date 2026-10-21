@@ -1,3 +1,4 @@
+import { composeSnapshot, snapshotFrames } from './snapshot.ts';
 import { webAuthorityRefusal } from './web-authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
@@ -185,6 +186,8 @@ export class Dispatcher {
   /** Every frame's handling timed against the budget; reads repeated too fast answered from their last answer. */
   readonly #guard: RequestGuard;
   #rolesSnapshot: RolesConfig | undefined;
+  readonly #epoch = randomUUID();
+  #snapshotSeq = 0;
   readonly #processWork = new Map<string, string>();
   #workImmediate: ReturnType<typeof setImmediate> | null = null;
   #closed = false;
@@ -1087,7 +1090,7 @@ export class Dispatcher {
           if (frame.type === 'task.view' && result.type === 'result' && result.ok && this.#options.journal) {
             const value = result.value as { item: ItemView };
             const subagents = await this.#options.journal.subagents(value.item.id);
-            result = resumed(() => ({ ...result, value: { ...value, item: { ...value.item, usage: { subagents } } } }));
+            result = resumed(() => ({ type: 'result', id: frame.id, ok: true, value: { ...value, item: { ...value.item, usage: { subagents } } } }));
           }
           this.#bindAssignee(frame as unknown as Record<string, unknown>, result);
           return this.#withWorktree(frame, result, resumed);
@@ -1257,7 +1260,35 @@ export class Dispatcher {
         kind = 'client';
         client = transport.edge === 'web' ? HUMAN_SESSION : frame.client;
         log({ event: 'client', edge: transport.edge, client: frame.client });
-        peer.send({ type: 'welcome', name: client, presence: core.presence() });
+        const features = frame.features?.includes('snapshot') ? ['snapshot' as const] : [];
+        peer.send({ type: 'welcome', name: client, presence: core.presence(), ...(frame.features !== undefined ? { features } : {}) });
+        if (features.includes('snapshot')) {
+          // Disk-only inputs are prepared before composition. If the journal changes
+          // during its page read, retry rather than stamp stale events with new state.
+          const prepare = async () => {
+            const registry = await readAccounts(this.#options.env);
+            for (let attempt = 0; attempt < 3 && peer.isOpen(); attempt++) {
+              const journal = this.#options.journal;
+              const revision = journal?.revision;
+              const events = journal ? await journal.events(undefined, undefined, core.eventsProject()) : { rows: [], before: null, more: false };
+              if (journal?.revision !== revision) continue;
+              // No await below: all domains and all writes occupy one loop turn.
+              const result = snapshotFrames(composeSnapshot({
+                core, tracker: this.#options.tracker, sessions: this.#sessions ?? null,
+                verification: this.#suites ? { ...this.#suites.snapshot(), batch: this.#batches?.snapshot() ?? null } : null,
+                events, registry,
+              }), this.#epoch, ++this.#snapshotSeq);
+              if (!peer.isOpen()) return;
+              if ('refusal' in result) { log({ event: 'snapshot-refused', ...result.refusal }); peer.send(result.refusal); }
+              else for (const frame of result.frames) peer.send(frame);
+              return;
+            }
+            if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'journal changed during snapshot preparation; retry or use individual reads' });
+          };
+          void prepare().catch(() => {
+            if (peer.isOpen()) peer.send({ type: 'snapshot.refused', code: 'unavailable', message: 'snapshot preparation failed; use individual reads' });
+          });
+        }
         return;
       }
       refuse('bad-hello', 'first frame must be a hello');

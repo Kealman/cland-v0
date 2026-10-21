@@ -193,6 +193,9 @@ export type SubagentRecord = {
 };
 
 export class Journal {
+  #revision = 0;
+  /** Changes synchronously when a producer accepts a record, before async disk I/O. */
+  get revision(): number { return this.#revision; }
   readonly #path: string;
   readonly #now: () => Date;
   readonly #report: LogFn;
@@ -262,6 +265,7 @@ export class Journal {
   /** Enqueue a serialized record in call order. Accepted records drain on close; no durability acknowledgement. */
   write(record: { event: string } & Record<string, unknown>): void {
     if (this.#closing || this.#error) return;
+    this.#revision++;
     const bytes = Buffer.from(`${JSON.stringify({ ts: this.#now().toISOString(), ...record })}\n`);
     const child = record.event === 'subagent-launched' ? JSON.parse(bytes.toString()) as JournalRecord : null;
     const resumed = this.#resumer('journal.append');

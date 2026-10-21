@@ -314,6 +314,54 @@ The readiness bound is below the harness tool-call deadlines: [Codex defaults to
 
 `artifact.create` has a separate 120 s reply budget because folder publication queues behind other creations and copies files serially. `artifact.list` keeps the ordinary 10 s budget. The creation budget starts when the spoke sends the request; readiness can add up to 20 s before that. The outer harness/MCP tool deadline still applies and can expire before this longer spoke deadline. To receive the full creation budget, the caller must allow more than 120 s for a ready spoke, or more than 140 s including readiness and transport overhead. This override does not raise the outer deadline or cancel hub copying. If either deadline expires, publication may still finish: inspect `artifact.list` in the destination topic before retrying, since a new create can publish a duplicate. Durable operation ids and idempotent retries are not provided by this budget override.
 
+## Negotiated connection snapshot
+
+A human client can add `features: ["snapshot", "numbered-deltas", "slim-frames"]`
+to its existing protocol-2 hello. Unknown feature names are ignored. The welcome
+includes `features`, the accepted subset; this extension accepts only `snapshot`.
+A hello without `features` keeps its existing welcome and receives no snapshot.
+An empty list receives `features: []`. Spoke hellos are unchanged.
+
+After the welcome, an accepted snapshot produces seven ordered frames:
+`{type: "snapshot", epoch, seq, domain, value}`, then
+`{type: "snapshot.end", epoch, seq}`. All eight share one dispatcher-lifetime
+UUID epoch and one sequence number. Until numbered deltas land, the sequence
+increases for each composed snapshot. A client commits the replacement model
+only at the matching end marker. Snapshot negotiation does not imply `subscribe`;
+the existing subscription request still enables subsequent events.
+
+| Domain | Value | Maximum UTF-8 JSON frame bytes |
+| --- | --- | --- |
+| `tracker` | `levels`, `ladder`, kind `prefixes` | 65,536 |
+| `items` | `items`: explorer summaries, latest verdict of each kind and its original round | 1,048,576 |
+| `sessions` | `processes`, `presence`, `archived`, `roles`, `crew`, `coordinator`, `verification` queue | 1,048,576 |
+| `topics` | `topics`: open/waiting plus closed topics updated within the last seven days (inclusive) | 1,048,576 |
+| `inbox` | current inbox sections, including `needsYou` | 1,048,576 |
+| `events` | first `events.list` page: `rows`, `before`, `more` | 1,048,576 |
+| `accounts` | registry path/error and accounts with current limits | 262,144 |
+
+`SNAPSHOT_LIMITS` in `hub/src/protocol.ts` owns the domain caps; byte counts include
+the envelope. Suite history, covers and full item verdict histories stay out;
+`task.view` retains verdict history. Accounts and the journal page are prepared
+asynchronously before composition. Journal revisions detect writes during the
+read and retry up to three times. All model gathering, frame-size validation and
+snapshot writes then run synchronously in one loop turn, without an intervening
+frame on that connection.
+
+Overflow is checked for every domain before the first snapshot frame is sent.
+The hub logs it and sends
+`{type: "snapshot.refused", code: "frame-too-large", domain, bytes, limit}`.
+Preparation errors or repeated journal changes instead send
+`{type: "snapshot.refused", code: "unavailable", message}`. Both keep the
+connection usable; the client falls back to individual reads. An accepted
+feature in the welcome alone does not prove a completed snapshot.
+
+`node hub/scripts/measure-snapshot.ts /path/to/project/.cland/tasks` copies the
+tracker into a disposable root, seals HOME/XDG/Git and provider/account variables,
+and reports bytes per domain plus five compose/framing samples. It never opens
+the source tracker database or runs Git. Other domains use empty/default scratch
+state and are labelled accordingly. Setup, copying and transport are excluded.
+
 ## Identity and delivery
 
 The Implementer holding an item's claim leads that item. Send a report to `@lead T-n` with `send {to: ["lead T-n"], text: "…"}`; human topic messages may mention `@lead T-n` in their text. The hub resolves this address from committed tracker facts immediately before recording: to the nearest node lead up the item's parent chain, then the Coordinator. When the sender leads that node, the address skips its own claims and reaches the next lead; an Implementer reports blocked with `to: ["lead T-n"]` for its own item. Stopped or dead Leads are skipped, while disconnected living Leads retain queued delivery. Explicit session names and role addresses, including `coordinator`, keep their ordinary meaning. The recorded addressee is the resolved session; a later claim change cannot move its queued report or progress note, including across a restart. Unknown and closed items are refused with an error naming the item and telling the sender to address `coordinator` instead. A human's claim does not become an agent addressee. Ordinary agent-send permissions still apply.

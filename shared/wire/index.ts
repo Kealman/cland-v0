@@ -639,7 +639,10 @@ export type RefusalCode = 'version' | 'unauthorized' | 'name-in-use' | 'bad-name
 
 // hub/src/protocol.ts
 export type HubFrame =
-  | { type: 'welcome'; name: string; presence: Presence[]; role?: string }
+  | { type: 'welcome'; name: string; presence: Presence[]; role?: string; features?: ClientFeature[] }
+  | SnapshotFrame
+  | SnapshotEnd
+  | SnapshotRefused
   /** `id` is the message's id; the spoke answers with an `ack` of it. Re-sent until acked, so a spoke may see it twice.
    *  `topic` is the topic the message belongs to; absent on the hub's own notices. */
   | { type: 'deliver'; id: string; message: Message; topic?: TopicRef }
@@ -676,6 +679,27 @@ export type MergeCode = 'merge-bare' | 'merge-git' | 'merge-item' | 'merge-branc
 export type SendOutcome = { to: string; outcome: Outcome; reason?: string; refusal?: HygieneRefusal; resolvedTo?: string };
 
 // hub/src/protocol.ts
+/** Negotiated independently; only snapshot is implemented by this extension. */
+export type ClientFeature = 'snapshot' | 'numbered-deltas' | 'slim-frames';
+export const SNAPSHOT_LIMITS = {
+  tracker: 64 * 1024, items: 1024 * 1024, sessions: 1024 * 1024,
+  topics: 1024 * 1024, inbox: 1024 * 1024, events: 1024 * 1024,
+  accounts: 256 * 1024,
+} as const;
+export type SnapshotValues = {
+  tracker: { levels: string[]; ladder: string[][]; prefixes: Record<string, string> };
+  items: { items: ExplorerSummary[] };
+  sessions: { processes: HarnessProcessView[]; presence: Presence[]; archived: number; roles: RoleList; crew: { config: CrewConfig; summary: string }; coordinator: string | null; verification: VerificationQueue | null };
+  topics: { topics: Topic[] };
+  inbox: Inbox & { needsYou: number };
+  events: EventsPage;
+  accounts: Omit<{ registry: string; error?: string; accounts: Account[] }, 'accounts'> & { accounts: AccountView[] };
+};
+export type SnapshotDomain = keyof SnapshotValues;
+export type SnapshotFrame = { [D in SnapshotDomain]: { type: 'snapshot'; epoch: string; seq: number; domain: D; value: SnapshotValues[D] } }[SnapshotDomain];
+export type SnapshotEnd = { type: 'snapshot.end'; epoch: string; seq: number };
+export type SnapshotRefused = { type: 'snapshot.refused'; code: 'frame-too-large'; domain: SnapshotDomain; bytes: number; limit: number } | { type: 'snapshot.refused'; code: 'unavailable'; message: string };
+
 export type ClientHello = {
   type: 'hello';
   protocol: number;
@@ -683,6 +707,7 @@ export type ClientHello = {
   secret?: string;
   /** What is connecting: `cli`, `ui`. */
   client: string;
+  features?: string[];
 };
 
 // hub/src/protocol.ts
