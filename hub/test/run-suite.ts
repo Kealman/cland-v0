@@ -277,7 +277,7 @@ process.chdir(cwd);`);
       if (budgetFailed) return 1;
       if (loadResult.failed) return 1;
     }
-    if (recording && output && coverageRaw && !interruption.signal) {
+    if (recording && output && coverageRaw && coverageFiles.size > 0 && !interruption.signal) {
       let map = await reduceCoverage(resolve(options.cwd ?? process.cwd()), coverageRaw, recording, [...coverageFiles]);
       if (process.env.CLAND_COVERAGE_APPEND === '1') {
         const previous = await readFile(output, 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error; });

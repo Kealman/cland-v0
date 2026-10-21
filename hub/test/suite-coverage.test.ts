@@ -2,7 +2,7 @@
 import { serializeTierManifest } from '../src/suite-shards.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, stat, symlink, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname, join } from 'node:path';
@@ -11,9 +11,40 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tempProject } from './harness.ts';
 import { reduceCoverage } from '../src/suite-coverage.ts';
 import { fixtureSource, sourceFixtureFiles } from './source-fixture.ts';
+import { fixtureEnvironment } from './fixture-environment.ts';
 
 const exec = promisify(execFile);
 const repository = fileURLToPath(new URL('../../', import.meta.url));
+
+for (const append of ['0', '1']) test(`Web-only coverage preserves the map and test exit code (append=${append})`, async t => {
+  const root = await tempProject(t, 'cland-coverage-web-');
+  const file = 'web/test/smoke.test.ts';
+  await mkdir(join(root, 'web/test'), { recursive: true });
+  await mkdir(join(root, 'hub/test'), { recursive: true });
+  await writeFile(join(root, 'web/test/prerequisite.ts'), 'export const webPrerequisite = async () => ({ available: true, executablePath: process.execPath });');
+  await writeFile(join(root, 'hub/test/tiers.json'), serializeTierManifest({ version: 1, tests: { [file]: 'Web' } }));
+  const output = join(root, 'coverage-map.json');
+  const previous = JSON.stringify({ version: 1, head: 'a'.repeat(40), tree: 'b'.repeat(40), created: '2026-10-20T00:00:00.000Z', testFiles: ['hub/test/previous.test.ts'], files: {} }) + '\n';
+  await writeFile(output, previous);
+  const runner = fileURLToPath(new URL('./run-suite.ts', import.meta.url));
+  const env = fixtureEnvironment(root, process.env, {
+    NODE_TEST_CONTEXT: '', CLAND_TEST_SKIP_LOCK: '1', CLAND_COVERAGE_OUTPUT: output, CLAND_COVERAGE_APPEND: append,
+    CLAND_SUITE_SELECTION: JSON.stringify({ mode: 'full', files: [], reason: 'Web coverage fixture', recordCoverage: { head: 'a'.repeat(40), tree: 'b'.repeat(40), run: 'fixture' } }),
+  });
+  for (const expected of [0, 1]) {
+    await writeFile(join(root, file), `import test from 'node:test'; import assert from 'node:assert/strict'; test('Web fixture', () => assert.equal(${expected}, 0));`);
+    const result = await exec(process.execPath, [runner, '--tier', 'Web'], { cwd: root, env, timeout: 10_000 })
+      .then(value => ({ ...value, code: 0 }), error => {
+        if (typeof error.code !== 'number') throw error;
+        return { code: error.code as number, stdout: String(error.stdout), stderr: String(error.stderr) };
+      });
+    assert.equal(result.code, expected, result.stdout + result.stderr);
+    assert.match(result.stdout, /Web fixture/);
+    assert.doesNotMatch(result.stdout, /suite coverage map/);
+    assert.equal(await readFile(output, 'utf8'), previous);
+    await assert.rejects(stat(`${output}.raw`), { code: 'ENOENT' });
+  }
+});
 
 test('coverage receipts follow owner start times when a pid is reused, independent of test order', async t => {
   const root = await tempProject(t, 'cland-coverage-reused-pid-');
