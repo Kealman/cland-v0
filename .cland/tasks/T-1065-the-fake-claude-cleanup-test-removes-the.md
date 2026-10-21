@@ -15,7 +15,7 @@ regression_of: T-1035
 topic: topic-813
 branch: t/T-1065-the-fake-claude-cleanup-test-removes-the
 created: 2026-10-21T15:28:00.671Z
-updated: 2026-10-21T15:41:01.244Z
+updated: 2026-10-21T15:51:47.160Z
 ---
 
 ## Summary
@@ -26,6 +26,7 @@ T-1035's new test `hub/test/fake-claude-cleanup.test.ts` "fake Claude cleanup wa
 
 - [x] C1. Cleanup never starts removing a fake Claude home while a registered writer is alive, however long it takes. Any bound applies only to reporting a stuck writer, and the test proves the ordering under artificial delay.
   - done: impl-1065 · 2026-10-21T15:37:33.200Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1065-evidence-1 · 2026-10-21T15:51:47.160Z · commit 9f32de6cc1528fd37b2ebb422b2df62486ff0bb4
 - [ ] C2. The test passes 20 sequential repetitions under the load gate (workers 2) in a scratch clone at the task head, and the Coordinator's full `cland verify all` at the reviewed head shows its load-gate repetitions at 5/5 (evidence in the item topic).
 
 ## Comments
@@ -54,3 +55,22 @@ Full corrected source clear; four-file diff versus fixed296a5457 at origin9f32de
 ### impl-1065 · 2026-10-21T15:41:01.244Z
 
 Scratch portion of C2 complete at unchanged reviewed9f32de6cc1528fd37b2ebb422b2df62486ff0bb4/tree7c669a9c378c965dbefbb6c0d48584053ecf23b4. A-8541 holds exact controller,receipt and20 original logs: macOS arm64/local,Nodev24.21.0,20 sequential fresh package-runner invocations of the full lifecycle file, workers2,160 ordinary test passes,zero failures/cancellations/skips, all20 exits0. Start-load gate enforced<15 on every run (3.24414–4.45898); shared runner locks;15:39:17–15:40:17Z. Sealed scratch HOME/XDG/Git/provider/account environment after overlay; system TMPDIR=/tmp. T3 targeted repetitions only, resource/duration budgets report-only with missing-file baseline labelled; no integrated/Linux5/5 pass claimed. Mode-free verification admitted as527cce72-8c14-45b9-bde7-b396507c217c despite CLI reply timeout(exit75); no resubmit. Coordinator's fullLinux run waits behind T-1062 per e973b52c. C2 done mark/final review await that5/5 receipt and same-head mode-free result; claim/head retained.
+
+### impl-1065 · 2026-10-21T15:47:37.209Z
+
+Same-head mode-free verify527cce72-8c14-45b9-bde7-b396507c217c passed at9f32de6cc1528fd37b2ebb422b2df62486ff0bb4:2,322/2,322 ordinary tests,zero failures/cancellations/skips. Linux x64 droplet c-8/lon1,Nodev24.21.0,workers2(Web4),lifetime409s/cost$0.0284; A-8549 is the durable raw log. Executed allT1, fallback allT2 across both packages, and actualWeb5 files; T3 excluded. Host typecheck gate at6f28b3a2 reused/not repeated, with separate exact-task-tree hub typecheck0 in A-8535. Lint,duration andT3 ratchet gates report-only; reported overages/missing baselines are not timing passes. Scratch20/20 remains A-8541. C2/final evidence review still await Coordinator full same-head T3 lifecycle5/5; head/claim unchanged.
+
+### rev-23 · 2026-10-21T15:51:47.160Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1065-evidence-1
+commit: 9f32de6cc1528fd37b2ebb422b2df62486ff0bb4
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Partial evidence clear, C1 verified only; A-8551. Original A-8535 pre-fix red Missing expected rejection / current-tree full file8/8 green; deadline retains live writer/home and succeeds after release. A-8541 controller +20 raw package-runner files: exact scratch head/tree, Darwinarm64 workers2,20 sequential fresh processes/160pass, starts3.244–4.459<15, nofail/skip. A-8549 mode-free527cce72 samehead Linuxx64 c8lon1 exit0:2322 ordinary test passes, allT1/fallbackallT2hub+nvim/actualWeb5files, host6f28b3a2 reusednotremote; lint/duration/ratchet reportonly. Lifecycle fileT3 was not run; no per-identity load proof from this task receipt. C2 remains unverified pending Coordinator full Linux same-head actual5/5, per d9562fcf. Not a final/ready verdict; no T3/T4/integrated/QA claim. No Reviewer runtime.
+
+Criteria: C1 verified.

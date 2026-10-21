@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T15:42:01.750Z
+updated: 2026-10-21T15:57:07.058Z
 ---
 
 ## Summary
@@ -32,18 +32,24 @@ Each item summary in the snapshot and the deltas carries the summary text with i
 ## Acceptance criteria
 
 - [x] C1. A differential test runs the hub's summary rule and roll-ups and the Lua's (`explorer_summary.lua` and the Lua roll-ups, through headless Neovim) over every body of a copy of the live tracker and reports zero differences (test).
-  - done: impl-1052 · 2026-10-21T15:39:43.940Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
+  - done: impl-1052 · 2026-10-21T15:57:06.871Z
 - [x] C2. A frame client reads an item's summary with its provenance, a container's roll-ups, `blocked` and `next` from the snapshot, with no `task.view` (test).
-  - done: impl-1052 · 2026-10-21T15:39:43.962Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
+  - done: impl-1052 · 2026-10-21T15:57:06.891Z
 - [x] C3. A change to one task produces a delta that carries only that task and its ancestors whose fields changed, and the recomputation touches only that chain (test).
-  - done: impl-1052 · 2026-10-21T15:39:43.983Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
+  - done: impl-1052 · 2026-10-21T15:57:07.014Z
 - [x] C4. On a thousand-item fixture, recomputing after one task change stays under a measured bound recorded in the test, and the startup reply budgets of T-1038 still hold (test).
-  - done: impl-1052 · 2026-10-21T15:39:44.003Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
+  - done: impl-1052 · 2026-10-21T15:57:07.034Z
 - [x] C5. `hub/README.md` describes the new summary fields, their provenance and the incremental rule.
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-2 · 2026-10-21T14:52:30.592Z · commit 3a7b4f034b219461c7e87be4558a944a19fa9bc7
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-3 · 2026-10-21T14:58:35.648Z · commit e79e1231f323b223c469f89c6ed7de485b021c26
-  - done: impl-1052 · 2026-10-21T15:39:44.024Z
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-4 · 2026-10-21T15:42:01.750Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-source · 2026-10-21T15:56:58.063Z · commit 21c1018922f3564e187ad5ebf44907d01f17a90d
+  - done: impl-1052 · 2026-10-21T15:57:07.058Z
 
 ## Comments
 
@@ -140,5 +146,39 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear at exact originada57fea/treef5c4cebc; one-file13add/3delete sincee79e1231, no dev merge. Original full source/design audits remain applicable. Missing indexed rows hydrate on cache miss; useVerify refreshes cached source facts when restored lookup binds; #changed preserves internal idempotent-write observers while ordinary ancestor/freshness equality and HubCore client-delta dedup stay intact. Historical three compatibility failures resolved without changing their assertions. A-8537 exact clean-head localDarwin64 targeted passes across9files, normal exits/no force-exit, checkexit0/lintreportonly; wrong nonexistent stage filename ran no tests, corrected invocation5passesexplicitlylogged. A-8538 fresh exact-head targetedT3 Lua1063copied+3regression rows0differences/833088bytes and startup8replyguard1/1exit0 now replace old provenance-qualified support. No integrated/LinuxT3 claim; whole-test timings not startup latency. C5 docs reverified; C1-C4 final settlement awaits replacement same-head mode-free/load evidence. A-8525 remains historicalcancelled/incompleteT2red/noWeb; A-8542 records that verdict. No Reviewer runtime; after-stage QA separate.
+
+Criteria: C5 verified.
+
+### rev-23 · 2026-10-21T15:53:19.762Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-final
+commit: ada57feabc11c66dc531cb83c07fe1f03b2a3813
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; A-8554, Standards0/Spec0, C1–C5 verified at exact originada57fea/treef5c4cebc. A-8550 mode-free5d3d21a0 exit0 Linuxx64 c8lon1:2313 ordinary test/354filepasses plus35 distinct loadtest/filepasses; seven owned identities each explicit5/5. Actual allT1/fallbackallT2hub+Neovim/Web4files; formerly failing task-prefixes/archive/suite-admission pass normally. Host check90524363 reusednotremote; T2workers2/Webactual4,life438s/$0.0304 estimated. C1 A-8538 exact clean-head targetedDarwin realLua1063copied+3ancestorrows0differences,833088bytes<1MiB; startup8replyguard1/1. C2 snapshot/provenance/rollups/blocked/next/frame checks pass; C3 only changed chain/stage settlement/closed-ancestor next regressions pass. C4 Linux synchronous chain recomputation1.066ms<100ms; whole-test4.397s exceeds report-only2s and is not that measurement. C5 unchanged docs source verified. Lint132/59,duration/ratchet report-only,3missingbaselines; no4sWeb-budgetpass, queuedT3/T4/integrated/QA claim. Earlier cancelled/red receipts stay historical; after-stage affected QA separate. No Reviewer runtime.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1052 · 2026-10-21T15:55:34.104Z
+
+At Coordinator request (topic805 decision5f42dd2c), merged origin/dev81b69649 into reviewed ada57fea; pushed21c10189/treee58c3c22. Manual resolutions keep task-frame dedup plus computed session-row scheduling in core.ts and both skill metadata entries; upstream subscription filtering preserved. A-8555 records49/49 targeted Darwin tests, no skips, at clean merged head; Lua1067 copied+3 regression bodies zero differences, snapshot836897bytes below1MiB; incremental0.243ms/100ms; root check0 (lint report-only). Delta source review requested before mode-free verification; Coordinator plans separate full pre-merge all receipt. Previous green A-8550 applies to ada57fea only.
+
+### rev-23 · 2026-10-21T15:56:58.063Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-merge-source
+commit: 21c1018922f3564e187ad5ebf44907d01f17a90d
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta source clear; A-8556, Standards0/Spec0. Exact origin21c10189/treee58c3c22, parents acceptedada57fea/incoming81b69649; Coordinator5f42dd2c independently confirmed. Core task-only dedup and incoming session scheduling both retained with disjoint trigger types/caches; snapshot-only session delivery and close cleanup retained. T-1055 dispatch/snapshot blobs equal incomingdev; tracker/projection/topics blobs equal acceptedhead; authoritative message-topic fields and event filter semantics preserved. Implement skill retains both procedure paragraphs and both metadata entries; summary/Lua/startup docs preserved, C5 reverified. A-8555 exact clean Darwin49/49 targeted/check0 support: sessions/filter/snapshot/summary/nvim, realLua1067+3rows0diff,836897bytes<1MiB,incremental0.243ms<100ms. No queued merge-head pass yet; oldA-8550 historical. C1–C4 final settlement awaits new same-head mode-free plus Coordinator-required full pre-merge run; refresh stale claimant marks before submission. QA affected/afterstage separate; no Reviewer runtime.
 
 Criteria: C5 verified.

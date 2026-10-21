@@ -2,8 +2,8 @@
 id: T-1066
 kind: task
 title: The card progress-counts test renders wrong counts under load
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -15,7 +15,8 @@ regression_of: T-1061
 topic: topic-812
 branch: t/T-1066-the-card-progress-counts-test-renders
 created: 2026-10-21T15:28:00.813Z
-updated: 2026-10-21T15:46:59.830Z
+updated: 2026-10-21T15:51:56.629Z
+closed: 2026-10-21T15:51:56.629Z
 ---
 
 ## Summary
@@ -71,3 +72,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear, C1/C2 verified. Source A-8523 applies; origin89730092 unchanged. A-8529 exact-head hermetic clone controller prints deterministic raw-substring red mutation (exit1 wrapped breakdown), restores pristine source, fullfile6/6/typecheck0. A-8543 independently parsed20unique loadtest/file passes, four5/5 rounds workers2, all targetstarts after priorfinish, originalmanifestsreport/resource report-only and runnerjointleases; startloads3.3325–3.4805<15,max0.640871s onlocalDarwinarm64. A-8545/75439bbf actualLinuxc8lon1 autoexit0: allT1, selectedNeovim-onlyT2(39files),Websmoke1file;1029ordinarytest/160file passes plus5loadtest/file passes, zero failure/cancel/skip/todo. Renamedidentity five distinctfinishes5086/5119/5147/5178/5218, explicit5/5at5225,max0.784518453s. Host4e244506 reusednotremote; lint132/59,duration/ratchetreportonly unrelatedoveragesretained,newidentitygatepasses/noallowance. NoHubT2/allpackages/T3/T4/integrated/QA claim. Life222s/$0.0154estimate. No remainingfindings,QA none; no Reviewer execution.
 
 Criteria: C1 verified, C2 verified.
+
+### impl-1066 · 2026-10-21T15:47:27.861Z
+
+Evidence accounting clarification from final Reviewer parse (A-8547): A-8545 has1029 ordinary test passes plus5 separate load-test passes; the1029 count includes nested ordinary tests, not load repetitions. Earlier comment's suggestion that1029 included repetitions was imprecise. Coverage remains allT1, Neovim-onlyT2 and Websmoke on Linux; C1/C2 final verified, ready and Coordinator-enqueued.
+
+### coord · 2026-10-21T15:51:56.629Z
+
+Merged 81b69649ed15398e9ad58556206e812efb331728 onto dev.
