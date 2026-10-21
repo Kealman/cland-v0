@@ -64,24 +64,43 @@ test('board fractions and header include closed children before loading closed r
   assert.match((await c.screen()).join('\n'), /board · 2 in work · 2 done/);
 });
 
-test('release and epic cards include closed children in progress and preserve open blocker counts', { skip }, async t => {
+test('release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes', { skip }, async t => {
   const c = await start(t);
   await c.rpc.request('nvim_ui_try_resize', 260, 50);
   await c.input(':Cland explorer R-1<CR>');
   await c.waitScreen(s => s.includes('Mixed progress') && s.includes('Completed children'), 'release explorer rows');
-  for (const [id, fraction, breakdown] of [
-    ['R-1', '1 of 4 done', '1 done · 1 in progress · 1 planned · 1 backlog, 1 blocked'],
-    ['E-2', '2 of 5 done', '2 done · 1 in progress · 1 planned · 1 backlog, 1 blocked'],
-    ['E-3', '2 of 2 done', '2 done'],
-  ]) {
+  for (const [id, fraction, breakdown, width] of [
+    ['R-1', '1 of 4 done', '1 done · 1 in progress · 1 planned · 1 backlog, 1 blocked', 72],
+    ['R-1', '1 of 4 done', '1 done · 1 in progress · 1 planned · 1 backlog, 1 blocked', 42],
+    ['E-2', '2 of 5 done', '2 done · 1 in progress · 1 planned · 1 backlog, 1 blocked', 42],
+    ['E-3', '2 of 2 done', '2 done', 42],
+  ] as const) {
+    const counts = fixture.items!.find(it => it.id === id)!.child_counts;
+    // Arm the observation before selection/resize. A drawn_key alone can still
+    // name a render from the previous geometry; observe the progress itself.
+    const drawn = eventually('aggregate progress rendered for ' + id + ' at width ' + width, async () => {
+      const lines = await c.lua<string[] | false>(`
+        local id, counts, width=...; local e=require('cland.explorer'); local card=e.card
+        local it=require('cland.state').item(id)
+        if not it or not vim.deep_equal(it.child_counts,counts) or card.key~=id or card.drawn_key~=id
+          or not card.win or not vim.api.nvim_win_is_valid(card.win)
+          or vim.api.nvim_win_get_width(card.win)~=width then return false end
+        return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(card.win),0,-1,false)
+      `, id, counts, width);
+      if (!lines) return;
+      const progress = lines.join('\n').split('\nPROGRESS\n')[1]?.split('\n\n')[0];
+      if (!progress) return;
+      const text = progress.replace(/\s+/g, ' ').trim();
+      if (id === 'R-1' && width === 42 && progress.includes(breakdown)) return;
+      return text.includes(fraction) && text.includes(breakdown) ? { text, progress } : undefined;
+    });
+    await c.lua("local width=...; local e=require('cland.explorer'); e.ui().card_width=width; e.sync(e.tree_win())", width);
     await c.lua(`local id=...; local e=require('cland.explorer'); local w=e.tree_win(); vim.api.nvim_set_current_win(w);
       for n,row in ipairs(e.rows) do if row.key==id then vim.api.nvim_win_set_cursor(w,{n,0}); return end end; error('missing '..id)`, id);
-    // Observe the card for the selected item before asserting its progress.
-    await eventually('card drawn for ' + id, async () => await c.lua<boolean>(
-      "local id=...; local e=require('cland.explorer'); return e.card.key==id and e.card.drawn_key==id", id) || undefined);
-    const text = await c.lua<string>("return table.concat(require('cland.explorer').card.lines,'\\n')");
-    assert.ok(text.includes(fraction!), text);
-    assert.ok(text.includes(breakdown!), text);
+    const { text, progress } = await drawn;
+    assert.ok(text.includes(fraction), progress);
+    assert.ok(text.includes(breakdown), progress);
+    if (id === 'R-1' && width === 42) assert.ok(!progress.includes(breakdown), 'narrow card must exercise a wrapped breakdown');
   }
   assert.equal(await c.lua("return require('cland.state').item('T-10') ~= nil"), false);
   assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"), false);

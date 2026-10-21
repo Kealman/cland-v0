@@ -478,6 +478,15 @@ clients keep their existing snapshot behavior. No polling delay or longer timeou
 
 ## Tests
 
+After selection or resize, observe the selected item's rendered fields with a
+bounded wait before asserting them. A matching card `drawn_key` proves identity,
+but does not prove that its progress or geometry is current. Aggregate progress
+tests also observe the matching `child_counts` in client state. For wrapped card
+prose, compare whitespace-normalized text within the relevant section; a visual
+line break can split a phrase such as `1 blocked` without changing its value.
+Keep the final value assertions and cover a deliberately narrow card so wrapping
+is exercised on every run (`test/progress-counts-component.test.ts`).
+
 ```sh
 npm run test:nvim          # from the repository root; `npm test` runs it after the hub's tests
 ```
