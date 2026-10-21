@@ -1,6 +1,6 @@
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
-export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result';
+export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
 /** The single physical-code/modifier table; also the source for displayed area keys. */
@@ -11,6 +11,7 @@ export const keyMap: Readonly<Record<string, Shortcut>> = {
   'Meta+KeyK': 'palette', Space: 'leader', 'Space KeyP': 'palette', 'Shift+Slash': 'help',
   Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind',
   ArrowDown: 'next-result', ArrowUp: 'previous-result',
+  ArrowLeft: 'fold-close', ArrowRight: 'fold-open',
 };
 
 export function shortcut(event: KeyStroke, leader = false): Shortcut | undefined {
@@ -29,7 +30,7 @@ export function actionKeys(action: Shortcut): string[] {
 export function displayKey(chord: string): string {
   return chord.replace(/Space Key([A-Z])/g, (_, letter: string) => `Space ${letter.toLowerCase()}`).replace('Meta+', '⌘').replace('Shift+Slash', '?')
     .replace('Shift+', '⇧').replace('Backslash', '\\').replace('Key', '').replace('Digit', '')
-    .replace('ArrowDown', '↓').replace('ArrowUp', '↑').replace('Escape', 'Esc');
+    .replace('ArrowDown', '↓').replace('ArrowUp', '↑').replace('ArrowLeft', '←').replace('ArrowRight', '→').replace('Escape', 'Esc');
 }
 
 /** Labels and scopes carry no chords: help and palette derive those from keyMap. */
@@ -44,4 +45,7 @@ export const paletteActions: ReadonlyArray<{ action: Shortcut; label: string }> 
   { action: 'next-kind', label: 'Next kind' }, { action: 'previous-kind', label: 'Previous kind' },
   { action: 'next-result', label: 'Next result' }, { action: 'previous-result', label: 'Previous result' },
   { action: 'dismiss', label: 'Close' },
+];
+export const foldActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
+  { action: 'fold-close', label: 'Fold group' }, { action: 'fold-open', label: 'Unfold group' },
 ];

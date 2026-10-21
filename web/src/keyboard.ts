@@ -16,6 +16,8 @@ export function listenForShortcuts(run: (action: Shortcut) => void, context: () 
     if (action === 'leader' && mode !== 'shell') return;
     if (field && action !== 'palette' && !(mode === 'palette' && ['dismiss', 'accept', 'open-other', 'next-kind', 'previous-kind', 'next-result', 'previous-result'].includes(action ?? ''))) return;
     if (!action) return;
+    if (action === 'leader' && event.target instanceof Element && event.target.closest('[data-fold-toggle]')) return;
+    if ((action === 'fold-close' || action === 'fold-open') && !(event.target instanceof Element && event.target.closest('[data-fold-block]'))) return;
     if (mode === 'shell' && ['accept', 'next-kind', 'previous-kind', 'next-result', 'previous-result'].includes(action)) return;
     if (mode === 'help' && action !== 'dismiss' && action !== 'palette') return;
     event.preventDefault();

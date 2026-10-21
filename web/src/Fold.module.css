@@ -1,0 +1,9 @@
+.fold { min-width: 0; }
+.heading { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 20px; border-bottom: 1px solid var(--border); color: var(--muted); }
+.heading h1, .heading h2 { min-width: 0; margin: 0; font: 600 14px var(--prose); color: var(--text); }
+.heading button[data-fold-toggle] { display: flex; align-items: center; gap: 8px; max-width: 100%; border: 0; padding: 6px 0; background: none; font: inherit; }
+.heading button[data-fold-toggle] span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.heading svg { width: 14px; height: 14px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; transform: rotate(90deg); }
+.heading svg[data-folded="true"] { transform: none; }
+.heading button[data-fold-toggle]:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; background: var(--selection); }
+.count { font-family: var(--mono); white-space: nowrap; }

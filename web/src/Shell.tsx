@@ -6,6 +6,7 @@ import { areas, areaKey, actionKeys, displayKey, type Area, type Shortcut } from
 import { listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
+import { Fold, runFoldShortcut } from './Fold.tsx';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -74,6 +75,7 @@ export function Shell() {
   };
   const paletteControls = useRef<PaletteControls>(null);
   const runShortcut = (action: Shortcut, fromPalette = false) => {
+    if (runFoldShortcut(action)) return;
     if (action === 'palette') setOverlay('palette');
     else if (overlay && !fromPalette) paletteControls.current?.run(action);
     else if (action === 'help') setOverlay('help');
@@ -176,13 +178,13 @@ export function Shell() {
             return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
               style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
               onPointerDown={() => setActive(pane)} onFocus={() => setActive(pane)}>
-              <header className={s.heading}><h1>{detail && row ? row.title : paneArea}</h1><span className={s.mono}>{detail ? row?.id ?? '—' : rows?.length ?? '—'}</span>
-                {split && <div className={s.actions}>
+              <Fold area={paneArea.toLowerCase()} id={detail ? `detail:${selected}` : 'objects'}
+                label={detail && row ? row.title : paneArea} count={detail ? 1 : rows?.length ?? '—'} level={1}
+                actions={split && <div className={s.actions}>
                   <button onClick={() => setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail }))}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>
-                </div>}
-              </header>
+                </div>}>
               {!detail && <ul className={s.objects} aria-label={`${paneArea} objects`}>
                 {rows?.map(object => <li key={object.id}><button className={s.object} data-object-id={object.id}
                   title={object.title} aria-pressed={selected === object.id} onFocus={() => selectRow(pane, object.id)} onClick={() => selectRow(pane, object.id)}>
@@ -190,6 +192,7 @@ export function Shell() {
                 </button></li>)}
               </ul>}
               {detail && row && <div className={s.detail}><span className={s.mono}>{row.id}</span><p>{row.title}</p></div>}
+              </Fold>
               {pane === 'primary' && split && <div className={s.divider} role="separator" aria-label="Pane divider"
                 aria-orientation="vertical" aria-valuemin={20} aria-valuemax={80} aria-valuenow={Math.round(preferences.ratio * 100)}
                 onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); event.preventDefault(); }}
@@ -203,11 +206,12 @@ export function Shell() {
           })}
         </div>
         {drawerOpen && <aside className={s.drawer} aria-label="Drawer">
-          <header className={s.heading}><h2>{selectedRow.title}</h2><div className={s.actions}>
+          <Fold area={preferences.area.toLowerCase()} id={`drawer:${selectedRow.id}`} label={selectedRow.title} count={1} actions={<div className={s.actions}>
             <button title="Open in the other pane (⌘Enter)" onClick={openOther}>Split</button>
             <button onClick={() => { setDismissed(selectionKey); areaButtons.current[preferences.area]?.focus(); }}>Close</button>
-          </div></header>
+          </div>}>
           <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p>{selectedRow.title}</p></div>
+          </Fold>
         </aside>}
       </main>
     </div>

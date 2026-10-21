@@ -159,6 +159,30 @@ The leader survives ordinary hub updates at the same focus target; it only
 resolves in the shell outside fields and is cleared by the next stroke.
 Reserved browser window/tab shortcuts remain unbound.
 
+## Folds and factual labels
+
+`src/Fold.tsx` is the reusable group/block component used by the reference
+`Shell.tsx` for area lists, detail blocks and the drawer. Supply an area, a stable
+fold ID, a name, a count and contents. Its chevron button exposes `aria-expanded`
+and `aria-controls`; folded contents are hidden, while the heading and actions
+stay available. On the header or inside its contents, `←` folds and `→` unfolds,
+returning focus to the header. Enter and Space activate the header button.
+The arrow actions come from the single physical-code map and appear in `?` help;
+fields keep their normal typing and cursor movement.
+
+Folds live in the area's `cland.ui.<area>.v1` record under `folds`, keyed by the
+stable fold ID. Updates preserve other fields and fold IDs, and both panes agree
+on the same area's fold. Invalid fields default to unfolded. Denied reads or
+writes leave folds working in memory for the page. No fold sends a hub frame
+or changes Neovim's `ui.json`.
+
+`test/prose.ts` checks visible text nodes mechanically: a trailing full stop or
+more than six whitespace-separated words fails. It excludes hidden text,
+`title` attributes, elements with `role="tooltip"` and the `?` panel marked by
+`data-keys-help`. `test/folds.test.ts` applies it to the shell and plants header
+fixtures for both failure rules; explanations belong in those excluded help
+surfaces or docs. Names, counts and facts belong in headings and rows.
+
 ## Fonts and asset checks
 
 Golos Text (400–900) and JetBrains Mono (100–800), normal variable WOFF2 subsets
@@ -185,6 +209,7 @@ npm run test:web                     # just Web, under the normal suite queue
 node --test web/test/smoke.test.ts    # targeted file; build first with npm run build
 node --test web/test/connection.test.ts # sign-in, connection and hub restart
 node --test web/test/palette.test.ts    # palette, prefixes, keys help and physical-code controls
+node --test web/test/folds.test.ts      # local folds, zero fold frames and visible-prose guard
 node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```

@@ -7933,6 +7933,13 @@
       "expires": "2026-11-19",
       "reason": "load-variance headroom near the tier budget (T-929)"
     },
+    "web/test/folds.test.ts::browser folds and the prose guard": {
+      "seconds": 9,
+      "owner": "E-880",
+      "added": "2026-10-21",
+      "expires": "2026-10-28",
+      "reason": "T-997: one isolated Headless Shell and scratch hub serve five sequential browser cases proving fold persistence, no outgoing frames, pane/client isolation, storage failures and positive/negative prose fixtures. Linux c-8 task run 6d7447cc at 1c0ecf2a (A-8473) observed parent 5.772334855 s. Coordinator directed a 9 s cap after shared Linux Web timings varied by about 40% across runs; the observed folds peak is one sample. Assertions and fixture teardown remain unchanged; Web's separate 4 s budget stays report-only."
+    },
     "T3": {
       "seconds": 2115,
       "owner": "E-880",

@@ -14,6 +14,9 @@ test('browser tab/window chords remain unbound and area shortcuts require exact 
   }
   assert.equal(shortcut(key('KeyT', { metaKey: true, shiftKey: true })), undefined);
   assert.equal(shortcut(key('Digit3')), 'Sessions');
+  assert.equal(shortcut(key('ArrowLeft')), 'fold-close');
+  assert.equal(shortcut(key('ArrowRight')), 'fold-open');
+  assert.equal(shortcut(key('ArrowLeft', { shiftKey: true })), undefined);
   for (const modifier of ['metaKey', 'ctrlKey', 'altKey', 'shiftKey']) {
     assert.equal(shortcut(key('Digit3', { [modifier]: true })), undefined);
   }
