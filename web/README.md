@@ -14,6 +14,17 @@ npm run build                       # production browser bundle
 npm run watch --workspace web       # vite build --watch; reload the page
 ```
 
+Open the workbench with `cland web` from the project. `cland web --no-open`
+prints the one-time sign-in link instead of opening a browser. The edge trades
+that link for an HttpOnly, SameSite=Strict cookie and redirects to `/`.
+The shell connects to the same origin's `/ws` with a secret-free client hello;
+its types come from `shared/wire/`. After the authenticated `hub.status` reply,
+the top strip shows the project directory's name and a live dot. On disconnect
+the dot turns down, keeping the project name, and the shell retries after 250 ms,
+doubling to a 10 s cap. A successful status reply resets the backoff. Each
+connection has a 5 s hello/status deadline. A hub restart reuses the edge port
+and cookie, so an open shell reconnects without reloading.
+
 Verification's `npm run check` typechecks, builds `web/dist`, then runs static/test
 lint. This build runs locally as well as remotely; remote prepare remains the
 installation/Neovim step. `web/dist` is generated and ignored. Never commit it.
@@ -25,10 +36,10 @@ changed, added, deleted or newer sources warn as stale. Run `npm run build` to r
 Watch builds use the same stamp hook. Inputs changing during a build refuse a stamp.
 
 The development loop uses a build and reload, with E-412's same-origin web edge.
-There is no Vite dev server or development bridge. This initial slice is a static
-frame: the seven area names, top strip and main area, with the drawer closed.
-Dashes represent unavailable facts; navigation, live data and keys land in the
-later shell slices. Ported from `prototype/web-shell`'s frame and tokens, slice by
+There is no Vite dev server or development bridge. The frame has the seven area
+names, top strip and main area, with the drawer closed. Dashes represent
+unavailable facts; navigation, area data and keys land in the later shell slices.
+Ported from `prototype/web-shell`'s frame and tokens, slice by
 slice, following spec v0.2 before prototype behaviour before the accepted boards.
 
 ## Components and colours
@@ -73,6 +84,7 @@ change; the preparation step's `npm ci` installs the pinned shell on a cold imag
 ```sh
 npm run test:web                     # just Web, under the normal suite queue
 node --test web/test/smoke.test.ts    # targeted file; build first with npm run build
+node --test web/test/connection.test.ts # sign-in, connection and hub restart
 ```
 
 Full runs place Web after the hub phases, with resource `machine`, two local
@@ -102,6 +114,14 @@ The budgets are 4 seconds per top-level test and 40 seconds for the phase, curre
 reported under the repository's duration report mode. A 60-second gross hang
 guard reaps a stuck phase. Web never receives load-gate repetitions; browser
 assertions use deterministic facts and bounded waits, not latency assertions.
+
+The connection case opens the link printed by `cland web --no-open` in its
+disposable project (with both browser openers stubbed). It proves the rendered
+project/live state, `/auth` redirect, cookie flags and the served JS bundle's CSP.
+It scans every served bundle file, browser storage, cookie values, HTTP responses
+and WebSocket frames for the scratch hub's secret. Restarting the in-process hub
+proves offline/live rendering and cookie persistence without navigation; a
+controlled browser clock proves the retry schedule without latency assertions.
 
 The runner calls `test/prerequisite.ts` before a selected Web phase. It resolves
 the pinned package's Headless Shell revision and checkout-local executable; Linux

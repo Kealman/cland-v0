@@ -4,12 +4,12 @@ import type { TestContext } from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
-import { mkdir } from 'node:fs/promises';
+import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page } from 'playwright-core';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
-import { projectHub, tempProject } from '../../hub/test/harness.ts';
+import { clandWithEnv, projectHub, tempProject } from '../../hub/test/harness.ts';
 import { onCleanup, ownProcess, captureProcess } from '../../hub/test/process-cleanup.ts';
 import { until } from '../../hub/test/until.ts';
 import { browserCache, webPrerequisite } from './prerequisite.ts';
@@ -23,7 +23,7 @@ export async function pageUntil(page: Page, predicate: () => boolean, what: stri
   assert.equal(await page.evaluate(predicate), true, what);
 }
 
-export async function webFixture(t: TestContext) {
+export async function webFixture(t: TestContext, options: { cliLink?: boolean } = {}) {
   const root = await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
   // Keep it short and owned, including the browser's artifacts and crash paths.
@@ -32,7 +32,16 @@ export async function webFixture(t: TestContext) {
   onCleanup(t, () => { if (previousTmp === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = previousTmp; });
   process.env.PLAYWRIGHT_BROWSERS_PATH = browserCache;
   const env = await accountFixtureEnvironment({ TMPDIR: root, TMP: root, TEMP: root, PLAYWRIGHT_BROWSERS_PATH: browserCache });
-  const hub = await projectHub(t, root);
+  let hub = await projectHub(t, root);
+  const openers = join(root, 'openers');
+  if (options.cliLink) {
+    await mkdir(openers);
+    for (const name of ['open', 'xdg-open']) {
+      const path = join(openers, name);
+      await writeFile(path, '#!/bin/sh\nexit 99\n');
+      await chmod(path, 0o700);
+    }
+  }
   const prerequisite = await webPrerequisite();
   if (!prerequisite.available) throw new Error(prerequisite.reason);
   const { chromium } = await import('playwright-core');
@@ -75,7 +84,7 @@ export async function webFixture(t: TestContext) {
   let serial = 0;
   const tracePaths: string[] = [];
   const contexts = new Set<unknown>();
-  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>) {
+  async function pageCase(t: TestContext, body: (page: Page, origin: string, requests: string[]) => Promise<void>, beforeNavigate?: (page: Page) => void) {
     const context = await browser!.newContext({ viewport: { width: 1440, height: 900 }, serviceWorkers: 'block' });
     assert.ok(!contexts.has(context), 'fresh context'); contexts.add(context);
     context.setDefaultTimeout(3000);
@@ -92,11 +101,20 @@ export async function webFixture(t: TestContext) {
         }
         Object.defineProperty(globalThis, 'Notification', { value: StubNotification, configurable: true });
       });
-      const { url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+      let url: string;
+      if (options.cliLink) {
+        const result = await clandWithEnv(root, { PATH: `${openers}:${env.PATH ?? ''}` }, 'web', '--no-open');
+        assert.equal(result.code, 0, result.stderr);
+        url = result.stdout.trim();
+        assert.match(url, /^http:\/\/127\.0\.0\.1:\d+\/auth\?token=[a-f0-9]{64}$/);
+      } else {
+        ({ url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string });
+      }
       const origin = new URL(url).origin;
       const requests: string[] = [];
       context.on('request', request => requests.push(request.url()));
       const page = await context.newPage();
+      beforeNavigate?.(page);
       await page.goto(url, { waitUntil: 'load' });
       await pageUntil(page, () => document.querySelector('nav[aria-label="Areas"]')?.children.length === 7, 'seven rendered rail areas');
       assert.equal(page.url(), `${origin}/`);
@@ -118,5 +136,10 @@ export async function webFixture(t: TestContext) {
     }
     assert.equal(browser!.contexts().length, 0, 'context explicitly closed');
   }
-  return { root, hub, browser, server, close, pageCase, tracePaths };
+  const restartHub = async () => {
+    await hub.stop();
+    await hub.stopped;
+    hub = await projectHub(t, root);
+  };
+  return { root, get hub() { return hub; }, restartHub, browser, server, close, pageCase, tracePaths };
 }

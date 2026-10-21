@@ -573,6 +573,7 @@
     "nvim/test/vboard.test.ts": "T2",
     "nvim/test/verification-queue.test.ts": "T2",
     "nvim/test/verification-view.test.ts": "T2",
+    "web/test/connection.test.ts": "Web",
     "web/test/smoke.test.ts": "Web"
   }
 }

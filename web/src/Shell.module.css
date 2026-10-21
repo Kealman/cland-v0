@@ -10,6 +10,7 @@
 .needs { display: inline-flex; gap: 8px; color: var(--muted); }
 .live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--failed); }
+.dot[data-live="true"] { background: var(--active); }
 .help { font-family: var(--mono); color: var(--muted); }
 .mono { font-family: var(--mono); white-space: nowrap; }
 .body { flex: 1; min-height: 0; display: flex; }
