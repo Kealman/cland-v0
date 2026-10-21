@@ -63,8 +63,14 @@ export class ProjectConfiguration implements RolesSource {
   status = (): ConfigStatus => ({ ...this.#status });
   async start(): Promise<void> {
     try { this.#idleMinutes = idleMinutes(await readFile(this.layout.config, 'utf8')); } catch { /* startup already reports unreadable config and uses defaults */ }
-    try { await writeFile(this.layout.roles, rolesTemplate(await installedHarnessesAsync(this.env)), { flag: 'wx' }); }
-    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+    const missingRoles = await stat(this.layout.roles).then(() => false, error => {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return true;
+      throw error;
+    });
+    if (missingRoles) {
+      try { await writeFile(this.layout.roles, rolesTemplate(await installedHarnessesAsync(this.env)), { flag: 'wx' }); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error; }
+    }
     let migration: ReturnType<typeof migrateAideTools> | undefined;
     let original: string | undefined;
     try {

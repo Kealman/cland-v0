@@ -1539,11 +1539,13 @@ export class Store implements HygieneMemory {
 
   /** Candidate messages and their durable read/reply facts. Sequence order handles equal timestamps. */
   inboxMessages(): Array<{ message: TopicMessage; read: boolean; replied: boolean; toHuman: boolean; latest: boolean }> {
+    // An addressed report becomes a human inbox candidate only on a waiting
+    // topic. Unread direct messages and unsettled requests have separate paths.
     const rows = this.#prepare(`with latest_messages as materialized (
       select t.id as topic, (select m.seq from messages m where m.topic = t.id
         and m.from_kind = 'agent' and coalesce(m.notice, '') not in ('progress', 'event', 'request')
         and not exists (select 1 from asks a where a.id = m.id)
-        order by m.seq desc limit 1) as seq from topics t
+        order by m.seq desc limit 1) as seq from topics t where t.status = 'waiting for human'
     ), candidates as materialized (
       -- Only unread human-addressed rows after the last same-topic human reply can become messages.
       select m.id from topics t cross join messages m on m.topic = t.id

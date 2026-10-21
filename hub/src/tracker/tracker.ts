@@ -275,6 +275,7 @@ export class Tracker {
   #stopping: Promise<void> | null = null;
   #polling = false;
   #bootstrapping = true;
+  readonly #startupItems = new Map<string, Item>();
   readonly #planErrors = new Map<string, string>();
   readonly #planHistory = new Map<string, PlanHistoryEntry[]>();
   /** Parsed file candidates, including temporarily invalid plans waiting for dependent hand saves. */
@@ -735,13 +736,17 @@ export class Tracker {
   }
 
   /** Bring the index level with the folder, then watch it. */
-  start(options: { deferReadyChecks?: boolean } = {}): void {
+  /** Index synchronously, then acknowledge the durable migrations admitted by that scan. */
+  start(options: { deferReadyChecks?: boolean } = {}): Promise<void> {
     if (options.deferReadyChecks) this.#deferredReady = new Set();
     this.#recoverCriterionCaptures();
     this.rescan();
     // Membership is checked after every file has been indexed, including newly added children.
     this.#bootstrapping = false;
-    this.rescan();
+    // Validate each file once against the complete index. Re-reading every child
+    // used to revalidate its entire containing plan, quadratically at restart.
+    for (const item of this.#startupItems.values()) this.#acceptPlan(item, 'hand');
+    this.#startupItems.clear();
     // Unchanged cached files skip #changed; every indexed item still needs a restart baseline.
     for (const item of this.list()) this.#announced.set(`T-${idNumber(item.id)}`, item);
     this.#watcher = this.#watch(
@@ -773,6 +778,7 @@ export class Tracker {
     this.#fresh.start();
     this.#scheduleCapturePrune(1);
     for (const [id, candidate] of this.#planCandidates) if (candidate.item.fm.state === 'open' && this.#index.plan(id)) this.#schedulePlanned(id);
+    return Promise.all([this.#queue, ...this.#background]).then(() => {});
   }
 
   /** Maintenance runs outside the tracker request queue, with one async pass at a time. */
@@ -928,7 +934,7 @@ export class Tracker {
     if (known && known.hash === hash) {
       const indexed = this.#index.get(knownId!);
       if (indexed?.kind !== 'task' || indexed.status !== undefined) {
-        this.#plansAfterIndex(item, 'hand');
+        if (this.#bootstrapping || this.#planErrors.has(knownId!)) this.#plansAfterIndex(item, 'hand');
         return;
       }
     }
@@ -1116,7 +1122,7 @@ export class Tracker {
     }
     if (this.isPlanContainer(item.fm.kind)) this.#planCandidates.set(item.fm.id, { item, source, ...(writer ? { writer } : {}) });
     else this.#planCandidates.delete(item.fm.id);
-    if (this.#bootstrapping) return;
+    if (this.#bootstrapping) { this.#startupItems.set(item.fm.id, item); return; }
     this.#acceptPlan(item, source, writer, reason);
     // Criterion, kind or parent changes can make a previously refused epic candidate valid.
     const affected = new Set(this.#index.plansContaining(item.fm.id));

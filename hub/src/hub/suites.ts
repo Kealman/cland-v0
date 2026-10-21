@@ -234,8 +234,11 @@ export class Suites {
     this.#remoteBudget = options.remoteBudget ?? 4;
     if ((options.budget ?? 1) > 1) options.log?.({ event: 'verification-budget-capped', configured: options.budget, effective: this.#budget, reason: 'resource overlap remains disabled after T-215', reservedFor: 'T-218' });
     this.#store = store; this.#root = root; this.#report = report;
-    const history = store.suiteJobHistory().map(text => JSON.parse(text) as { position: number; job: SuiteJob }).sort((a, b) => a.position - b.position);
-    for (const entry of history) this.#savedJobs.set(entry.job.id, JSON.stringify(entry));
+    const history = store.suiteJobHistory().map(text => {
+      const entry = JSON.parse(text) as { position: number; job: SuiteJob };
+      this.#savedJobs.set(entry.job.id, text);
+      return entry;
+    }).sort((a, b) => a.position - b.position);
     const active = JSON.parse(store.meta(KEY) ?? '[]') as SuiteJob[];
     this.#jobs = [...history.map(entry => entry.job).filter(job => !active.some(current => current.id === job.id)), ...active];
     this.#savedActive = store.meta(KEY) ?? '';
@@ -1289,13 +1292,17 @@ export class Suites {
     if (changed) void this.#check();
   }
   requesterExited(sessionId: string): void {
+    let changed = false;
     for (const job of this.#jobs) {
       if (job.actor?.sessionId !== sessionId || job.state !== 'queued' || job.outcome) continue;
       job.requesterDied = true;
       job.outcome = { code: 130, cause: 'cancelled: requester died before admission' };
       this.#save(job);
+      changed = true;
     }
-    this.#save(); void this.#check();
+    // Restored stopped processes usually own no queued work. Rewriting every
+    // historical receipt for each one makes startup scale as sessions × history.
+    if (changed) void this.#check();
   }
   covers(): import('../protocol.ts').CoverStatus[] { return recentCovers(this.#jobs); }
   /** Collected immutable evidence for hub-owned batch diagnosis. */

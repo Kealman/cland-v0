@@ -1755,13 +1755,23 @@ budgets on a small durable fixture. It uses the smoke's shared pure byte guard,
 including per-reply and total oversize controls. Timing still requires the
 rendered Neovim receipt.
 
-`startup-replies-scale.test.ts` retains the exact eight byte assertions on 1,000
-items, 8,163 artifacts, 200 General messages and 200 event records. The Coordinator
-approved this scale fixture at T3 because full hub startup dominates its runtime;
-it adds no native process. Task verification defers it to periodic and integrated
-runs. Its exact dated 10-second allowance is owned by C-325 (Bugs); T-1039 owns
-reducing startup time; A-8181 measured the original T2 identity at 6.636 seconds on Linux
-c-8. Neither that receipt nor the copied-state measurement is a new T3 run.
+`startup-replies-scale.test.ts` retains the eight byte assertions on 1,000 tasks,
+8,163 artifacts, 200 General messages and 200 event records. It also restores
+1,645 completed suite receipts, 217 stopped sessions, four plans with 250 children
+each, and 800 closed topics. The first completed status reply must arrive within
+15 seconds of embedded startup, excluding fixture creation. This T3 guard is
+three times the local five-second target to allow loaded Linux shards, while
+remaining well below the 39-second production regression (Coordinator decision
+`a6b632c3`, after run `26993a9e` measured 5,275.8 ms on a two-worker Linux droplet).
+The separate copied-state CLI measurement still enforces five seconds. The
+original generated-fixture red was 14,443.6 ms, so the 15-second guard does not
+claim to reject that particular historical fixture timing. Every restored
+plan must retain its children. This Coordinator-approved T3 scale seam adds no
+native process; task verification defers it to periodic and integrated runs.
+T-1039 removes the C-325 duration allowance after the expanded file ran in
+2.768 seconds on local Darwin arm64; this is targeted local T3 evidence, not
+a new Linux or integrated receipt. A-8181's original 6.636-second Linux T2 result
+remains historical evidence.
 The recorded artifact screen file checks browser/palette page reads and General
 archive continuation when byte-capped pages contain fewer than 200 messages.
 It also opens older-page rendered centre/split folder-child views, holds detail
@@ -1776,12 +1786,17 @@ status and its startup budgets keep the default request. The merge gate, periodi
 dev T3 and verification cache read the scheduler/store history directly.
 
 For copied durable-state evidence, run `node hub/scripts/measure-startup.ts
-/absolute/project/.cland`. It takes a read-only consistent SQLite backup plus
+/absolute/project/.cland`. Add `--cli` for the actual `cland hub start`, native
+daemon and first `hub.status` socket receipt, with an enforcing five-second bound.
+The default embedded run reports per-phase monotonic startup times and dispatcher
+composition separately; its fake clock does not supply performance timings.
+Both modes take a read-only consistent SQLite backup plus
 copies of tracker, rules, roles, crew and journal into one disposable project.
 Recoverable jobs and leases are removed; completed reported history and artifact
 paths are rebased; process PIDs/account environments are cleared. Accounts,
 configuration and adapters are scratch-owned. A fake hub clock prevents schedule
-execution. No source hub, artifact content or inherited credential is used.
+execution in the default run; CLI mode uses the isolated native daemon's real clock.
+No source hub, artifact content or inherited credential is used.
 The eight public dispatcher replies measure compose-to-receipt time separately
 from JSON encoding/decoding; byte counts include the wire envelope and newline.
 A serving receipt precedes requests, each has a 60-second bound, and a failed

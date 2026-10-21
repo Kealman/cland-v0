@@ -2,14 +2,14 @@
 // node hub/scripts/measure-startup.ts /absolute/project/.cland
 import test from 'node:test';
 import { DatabaseSync, backup } from 'node:sqlite';
-import { cp, mkdir, writeFile } from 'node:fs/promises';
+import { cp, mkdir, writeFile, readFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { projectHub, tempProject, frameClient } from '../test/harness.ts';
+import { projectHub, tempProject, frameClient, startDaemon, connectUi, clandWithEnv, killDaemon } from '../test/harness.ts';
 import { fixtureEnvironment } from '../../test-support/fixture-environment.ts';
 import { FakeClock } from '../test/fake-clock.ts';
 
-if (process.argv.length !== 3) throw new Error('usage: node hub/scripts/measure-startup.ts /absolute/project/.cland');
+if (process.argv.length < 3 || process.argv.length > 4 || process.argv[3] !== undefined && process.argv[3] !== '--cli') throw new Error('usage: node hub/scripts/measure-startup.ts /absolute/project/.cland [--cli]');
 const source = resolve(process.argv[2]!);
 test('measure copied durable startup state', async t => {
   const root = await tempProject(t, 'cland-startup-copy-');
@@ -41,7 +41,29 @@ test('measure copied durable startup state', async t => {
   await writeFile(join(dest, 'config.toml'), '[verification]\nexecutor = "local"\n');
   const env = fixtureEnvironment(root, process.env);
   const setup = performance.now();
-  const hub = await projectHub(t, root, env, { clock: new FakeClock(Date.now()), log: entry => { if (entry.event === 'hub-startup-step') console.error(JSON.stringify(entry)); } });
+  if (process.argv[3] === '--cli') {
+    // A separate measurement of the actual CLI, native daemon and socket reply.
+    // Worker/schedule credentials were removed above; all child environments are sealed.
+    const { discovery } = await startDaemon(t, root, env);
+    try {
+      const ui = await connectUi(t, discovery);
+      try {
+        const reply = await ui.request({ type: 'hub.status' }, 60_000);
+        if (!reply.ok) throw new Error(JSON.stringify(reply));
+        const firstStatusMs = performance.now() - setup;
+        console.log(JSON.stringify({ platform: `${process.platform}/${process.arch}`, source, firstStatusMs,
+          note: 'Actual cland hub start, native daemon, UI hello and first hub.status socket receipt; excludes copy/setup. Scratch accounts/config, no source hub or workers.' }));
+        const entries = (await readFile(join(dest, 'log/hub.log'), 'utf8')).split('\n').flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
+        for (const entry of entries) if (entry.event === 'hub-startup-step' || entry.event === 'serving') console.log(JSON.stringify(entry));
+        if (firstStatusMs >= 5000) throw new Error(`first hub.status took ${firstStatusMs.toFixed(3)} ms; budget 5000 ms`);
+      } finally { ui.close(); }
+    } finally {
+      try { await clandWithEnv(root, env, 'hub', 'stop'); }
+      finally { await killDaemon(discovery.pid); }
+    }
+    return;
+  }
+  const hub = await projectHub(t, root, env, { clock: new FakeClock(Date.now()), log: entry => { if (entry.event === 'hub-startup-step' || entry.event === 'serving') console.error(JSON.stringify({ ...entry, elapsedMs: +(performance.now() - setup).toFixed(3) })); } });
   try {
     const startupMs = performance.now() - setup;
     console.log('READY ' + startupMs.toFixed(3) + ' ms');

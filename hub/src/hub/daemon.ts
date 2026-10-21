@@ -108,7 +108,11 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     if (starting || String(entry.event).startsWith('orphan-sweep-') || entry.event === 'orphan-ended' || entry.event === 'orphan-preserved') fatalLog(entry);
     else processJournal!.write(entry as { event: string } & Record<string, unknown>);
   });
-  const journal = new Journal(journalPath(l.dir), () => clock.now(), { log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
+  processLog({ event: 'hub-startup-step', step: 'reading startup journal', pid: process.pid });
+  // The lock excludes another writer. New lifecycle notices are held by
+  // agentsRecord, and new subagent records are indexed by Journal.write.
+  let startupHistory = readJournal(journalPath(l.dir), { startupOnly: true });
+  const journal = new Journal(journalPath(l.dir), () => clock.now(), { history: startupHistory, log: processLog, guard: requestGuard, ...(options.journalOpen ? { open: options.journalOpen } : {}) });
   const agents = agentsRecord();
   let hub!: HubBase;
   const tapped = agents.tap(journal.tap(processLog));
@@ -177,7 +181,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
       // Give the notice's socket writes a turn before closing the edges.
       setImmediate(() => { void stop().catch(error => fatalLog({ event: 'stop-failed', error: String(error) })); });
     }
-  }, planHistory: readJournal(journalPath(l.dir), { kinds: ['task-plan-changed', 'task-plan-approved'] }), ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
+  }, planHistory: startupHistory, ...(config ? { levels: config.tracker.levels, storageFatalMs: config.tracker.fatalStallMs, qaDefault: config.plan.qaDefault, planApproval: config.plan.approval } : {}), ...(storageStallMs > 0 && Number.isFinite(storageStallMs) ? { storageStallMs } : {}), ...(storageFatalMs > 0 && storageFatalMs <= 2147483647 && Number.isFinite(storageFatalMs) ? { storageFatalMs } : {}), ...(stopTimeoutMs > 0 && Number.isFinite(stopTimeoutMs) ? { stopTimeoutMs } : {}), root, db: l.db, log, watchResumed: requestGuard.resumer('tracker.watch'), ...(writeGate ? { writeGate } : {}), ...(tipCheckMs > 0 ? { tipCheckMs } : {}), ...(options.scheduleTips ? { scheduleTips: options.scheduleTips } : {}) });
   // the role definitions: written with the defaults when the project has none, then watched
   const roles = new ProjectConfiguration(l, config, log, env, requestGuard.resumer('config.reload'), next => { hub.dispatcher.configure(next); tracker.configurePlanApproval(next.plan.approval); config = next; }, options.git ? () => options.git!(['log', '-1', '--format=%H', '--', '.cland/config.toml']) : undefined);
   // the hygiene thresholds of `.cland/config.toml`; the built-in defaults when it is missing or unreadable
@@ -194,14 +198,16 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     log({ event: 'hub-startup-step', step: 'indexing tracker', pid: process.pid });
     // Finish index recovery/migrations before exposing the hub, but do not queue
     // background readiness ahead of that barrier or the status listeners.
-    tracker.start({ deferReadyChecks: true });
-    await tracker.rescanAsync();
+    const migrations = tracker.start({ deferReadyChecks: true });
+    log({ event: 'hub-startup-step', step: 'settling tracker migrations', pid: process.pid });
+    await migrations;
     log({ event: 'hub-startup-step', step: 'loading roles', pid: process.pid });
     await roles.start();
     log({ event: 'hub-startup-step', step: 'loading rules', pid: process.pid });
     await rules.start();
     log({ event: 'hub-startup-step', step: 'loading crew', pid: process.pid });
     await crew.start();
+    log({ event: 'hub-startup-step', step: 'restoring recent events', pid: process.pid });
     // The live cache must share the journal's recent groups, including ones beyond the
     // first page. Read the tail before creating the core so startup log producers cannot
     // race restoration; the listeners and adapters start only after this cache is installed.
@@ -226,6 +232,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     }
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
     store = new Store(l.db, options.openDatabase);
+    log({ event: 'hub-startup-step', step: 'restoring core and suites', pid: process.pid });
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
       clock,
@@ -308,12 +315,14 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     throw err;
   }
   agents.attach(hub.core);
+  log({ event: 'hub-startup-step', step: 'replaying agents journal', pid: process.pid });
   // notices a previous run journalled but died before recording (a crash between the two)
   try {
-    replayAgentsRecord(hub.core, readJournal(journalPath(l.dir)), log);
+    replayAgentsRecord(hub.core, startupHistory, log);
   } catch (err) {
     log({ event: 'agents-record-failed', error: err instanceof Error ? err.message : String(err) });
   }
+  startupHistory = [];
   let resolveStopped!: () => void;
   const stopped = new Promise<void>((resolve) => (resolveStopped = resolve));
   let stopping: Promise<void> | null = null;
@@ -382,7 +391,12 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
     }
   }
 
+  const primeInbox = () => {
+    try { hub.core.inbox.needsYou(); }
+    catch (error) { log({ event: 'inbox-failed', error: String(error) }); }
+  };
   if (ws === null || edge === null) {
+    primeInbox();
     log({ event: 'serving', root, pid: process.pid, listeners: false });
     starting = false;
     tracker.resumeReadyChecks();
@@ -406,6 +420,7 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   }
 
   const discovery: Discovery = { root, socket: l.socket, port: ws.port, webPort: web.status.port, secret, pid: process.pid, version: VERSION };
+  primeInbox();
   writeDiscovery(l.discovery, discovery);
   log({ event: 'serving', root, port: ws.port, socket: l.socket, pid: process.pid });
   starting = false;
@@ -413,7 +428,9 @@ export async function serveProject(root: string, options: { artifactOpen?: typeo
   lintWarmer.request(devTip);
   accountPoller = new AccountPoller(hub.core, adapters.sessions, root, log, env, clock, options.accountReader);
   hub.dispatcher.useAccountPoller(accountPoller);
-  void adapters.sessions.resumeAll().then(() => { if (!stopping) accountPoller!.start(); });
+  void adapters.sessions.resumeAll().then(() => {
+    if (!stopping) { primeInbox(); accountPoller!.start(); }
+  }).catch(error => log({ event: 'session-restore-failed', error: String(error) }));
   // Socket readiness never awaits cleanup. Reservations cover servers spawned before their row is published.
   sweep = new Promise<void>(resolve => setImmediate(resolve)).then(async () => {
     if (env.CLAND_TEST_SKIP_ORPHAN_SWEEP === '1') {

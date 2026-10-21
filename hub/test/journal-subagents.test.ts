@@ -1,9 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rename, writeFile } from 'node:fs/promises';
+import { open, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Journal } from '../src/hub/journal.ts';
+import { Journal, readJournal } from '../src/hub/journal.ts';
 import { tempProject } from './harness.ts';
+
+test('startup journal selection retains plan, subagent and checkpoint records including escaped JSON keys', async t => {
+  const root = await tempProject(t), path = join(root, 'journal.jsonl');
+  const plan = { event: 'task-plan-changed', id: 'E-1' };
+  const approved = { event: 'task-plan-approved', id: 'E-1' };
+  const child = { event: 'subagent-launched', item: 'T-1' };
+  const checkpoint = { event: 'legacy-event', agentsNotice: 'checkpoint-id' };
+  await writeFile(path, [
+    JSON.stringify({ event: 'audit', text: 'Ordinary retained output' }), JSON.stringify(plan), JSON.stringify(approved),
+    String.raw`{"\u0065vent":"subagent-launched","item":"T-1"}`,
+    String.raw`{"event":"legacy-event","agents\u004eotice":"checkpoint-id"}`,
+    JSON.stringify({ event: 'audit', text: '"subagent-launched"' }), 'null', 'damaged record',
+  ].join('\n'));
+  assert.deepEqual(readJournal(path, { startupOnly: true }), [plan, approved, child, checkpoint]);
+});
+
+test('a supplied durable prefix restores subagents without rereading the startup journal', async t => {
+  const root = await tempProject(t), path = join(root, 'journal.jsonl');
+  const first = { event: 'subagent-launched', item: 'T-1', ts: '2026-10-15T20:00:00Z', session: 'impl', sessionId: 'parent', harness: 'codex', model: 'child-model' };
+  await writeFile(path, JSON.stringify(first) + '\n');
+  const journal = new Journal(path, undefined, { history: [first], open: async () => {
+    const file = await open(path, 'a+');
+    await rename(path, join(root, 'owned-journal.jsonl'));
+    return file;
+  } });
+  t.after(() => journal.close());
+  const { event: _event, item: _item, ...child } = first;
+  assert.deepEqual(await journal.subagents('T-1'), [child]);
+  journal.write({ ...first, model: 'live-model' });
+  assert.deepEqual(await journal.subagents('T-1'), [child, { ...child, model: 'live-model' }]);
+});
 
 test('sub-agent lookups use restored and incrementally appended rows without reopening the journal', async t => {
   const root = await tempProject(t);

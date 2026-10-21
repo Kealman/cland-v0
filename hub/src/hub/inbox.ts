@@ -3,7 +3,7 @@ import type { Finding, FindingCounts } from '../tracker/findings.ts';
 // The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
 // Each row records when its wait began; departures persist in hub.db and reach the journal
 // through the log tap. Publications are coalesced over 250 ms; explicit reads always settle current waits.
-import { messageVerdict, type Visibility } from './visibility.ts';
+import { messageVerdict, OLD_MESSAGE_MS, type Visibility } from './visibility.ts';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
@@ -73,6 +73,8 @@ export class InboxBoard {
   readonly #deaths = new Set<string>();
   #scheduled: ClockTimer | null = null;
   #published: string | null = null;
+  #count: { value: number; until: number } | null = null;
+  readonly #approvalProcesses = new Set<string>();
   #closed = false;
 
   constructor(port: InboxPort) {
@@ -104,12 +106,16 @@ export class InboxBoard {
   /** Every hub event passes here: what may change a section schedules a new `inbox` event; informational changes also reach the events journal. */
   observe(event: HubEvent): void {
     if (this.#closed) return;
+    let invalidateCount = true;
     switch (event.type) {
       case 'session.state':
         this.#sessionState(event);
         break;
       case 'session.process': {
         const proc = event.process;
+        // Non-approval process metadata cannot add or remove an inbox row.
+        // Still publish labels/details through the normal coalesced window.
+        invalidateCount = this.#approvalProcesses.has(proc.sessionId) || proc.status === 'running' && proc.state === 'waiting for approval';
         const key = `${proc.sessionId}:${proc.startedAt}`;
         if (proc.status === 'exited' && !this.#deaths.has(key)) {
           this.#deaths.add(key);
@@ -150,13 +156,14 @@ export class InboxBoard {
         break;
       case 'delivery':
       case 'inbox':
+      case 'event': // Journal projections do not change any inbox section.
         return;
       default:
         break;
     }
     // The sections are recomputed once per publication window by #changed; a synchronous list() here ran the full
     // inbox query on every hub event, which stalled startup for minutes on a project with 200 remembered processes
-    this.#changed();
+    this.#changed(invalidateCount);
   }
 
   /** An inject whose outcome is unknown: the human decides whether to send it again. */
@@ -242,8 +249,10 @@ export class InboxBoard {
     const presence = p.presence();
     const live = new Map(presence.map((s) => [s.sessionId, s]));
     const seen = new Set<string>();
+    this.#approvalProcesses.clear();
     for (const proc of this.#processes?.() ?? []) {
       if (proc.status !== 'running' || proc.state !== 'waiting for approval') continue;
+      this.#approvalProcesses.add(proc.sessionId);
       seen.add(proc.sessionId);
       const now = live.get(proc.sessionId);
       const name = now?.name ?? proc.name;
@@ -325,6 +334,14 @@ export class InboxBoard {
     placedApprovals.sort((a, b) => b.since.localeCompare(a.since));
     const needsYou = rows.length;
     const now = p.now(), today = new Date(now);
+    // Status polls share the current projection. Time alone can move a message
+    // to the old-message layer, so expire at that exact boundary as well.
+    let until = Infinity;
+    for (const candidate of candidates) {
+      const expires = Date.parse(candidate.message.ts) + OLD_MESSAGE_MS + 1;
+      if (expires > now.getTime()) until = Math.min(until, expires);
+    }
+    this.#count = { value: needsYou, until };
     today.setHours(0, 0, 0, 0);
     return { asks, approvals: placedApprovals, plans, requests, messages, waiting, needsYou,
       archiveToday: p.store.inboxDeparturesToday(today.toISOString()),
@@ -350,7 +367,7 @@ export class InboxBoard {
   }
 
   needsYou(): number {
-    return this.list().needsYou;
+    return this.#count && this.#port.now().getTime() < this.#count.until ? this.#count.value : this.list().needsYou;
   }
 
   /** These actions address one current row; stale and unknown ids are refused by name. */
@@ -372,7 +389,8 @@ export class InboxBoard {
   }
 
   /** A fixed window bounds rebuilds even when steady traffic arrives on separate event-loop turns. */
-  #changed(): void {
+  #changed(invalidateCount = true): void {
+    if (invalidateCount) this.#count = null;
     if (this.#scheduled || this.#closed) return;
     this.#scheduled = this.#clock.setTimeout(() => {
       this.#scheduled = null;

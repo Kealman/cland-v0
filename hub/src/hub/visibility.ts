@@ -5,6 +5,7 @@ import type { HubFrame } from '../protocol.ts';
 import type { VisibilityPreferences, VisibilityPreferenceFile, PreferenceSurface } from './visibility-preferences.ts';
 
 export type Layer = 'now' | 'watch' | 'background' | 'archive';
+export const OLD_MESSAGE_MS = 7 * 86_400_000;
 export const DEFAULT_VISIBILITY = {
   messages: { human: 'now', ask: 'now', not_clear: 'watch', clear: 'watch', coordinator_report: 'watch', agent: 'background', old: 'archive' },
   // Warnings inform the human; asks, approvals and waiting topics need a response.
@@ -151,7 +152,7 @@ export class Visibility {
       case 'messages': {
         if (r.fromKind === 'hub' && r.kind === 'event' && row(r.detail)?.event === 'rule') return 'agent';
         const ts = Date.parse(String(r.ts));
-        if (Number.isFinite(ts) && this.#now().getTime() - ts > 7 * 86_400_000) return 'old';
+        if (Number.isFinite(ts) && this.#now().getTime() - ts > OLD_MESSAGE_MS) return 'old';
         if (r.ask || r.answerTo) return 'ask';
         // Verdicts remain visible to the human even when addressed to an agent.
         const verdict = messageVerdict(r);

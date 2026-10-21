@@ -712,6 +712,16 @@ export class HubCore {
     this.#store.setMeta(`subscription-terminal:${process.sessionId}`, '');
   }
 
+  /** Restore a complete process snapshot before publishing terminal recovery.
+   * One commit owns the startup checkpoints; observers run after it, including
+   * those that write through the separate process-table connection. */
+  restoreProcesses(processes: HarnessProcessView[], stopped: HarnessProcessView[]): void {
+    this.#store.transaction(() => {
+      for (const process of [...processes, ...stopped]) this.seedProcess(process);
+      for (const process of processes) this.rememberProcess(process);
+    });
+  }
+
   /** Every terminal fact records its fan-out and exact-subject cleanup together, before observers. */
   #terminalEvent(subject: SubscriptionSubject, event: SubscriptionEvent, text: string, context: EventContext = {}, options: { subscriberId?: string; selected?: OwnedSubscription[]; memberOnly?: boolean } = {}): void {
     this.#store.transaction(() => {
@@ -754,7 +764,7 @@ export class HubCore {
         this.#store.setMeta(checkpoint, signature);
       });
     }
-    this.#emit({ type: 'session.process', process, ...(archived === undefined ? {} : { archived }) });
+    this.#afterCommit(() => this.#emit({ type: 'session.process', process, ...(archived === undefined ? {} : { archived }) }));
   }
 
   pruneProcess(process: Pick<HarnessProcessView, 'name' | 'sessionId'>): void {

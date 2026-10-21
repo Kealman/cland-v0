@@ -206,11 +206,14 @@ export class Journal {
   #closing: Promise<void> | null = null;
   readonly #subagents = new Map<string, SubagentRecord[]>();
 
-  constructor(path: string, now: () => Date = () => new Date(), options: { open?: JournalOpen; log?: LogFn; guard?: RequestGuard } = {}) {
+  constructor(path: string, now: () => Date = () => new Date(), options: { open?: JournalOpen; log?: LogFn; guard?: RequestGuard; history?: readonly JournalRecord[] } = {}) {
     this.#path = path;
     this.#now = now;
     this.#report = options.log ?? (() => {});
     this.#guard = options.guard;
+    // The daemon already reads the durable prefix for plan/Agents recovery.
+    // Reuse it rather than parsing the same growing file again before appending.
+    for (const record of options.history ?? []) this.#rememberSubagent(record);
     const resumed = this.#resumer('journal.open');
     this.#tail = (async () => {
       const opening = resumed(() => this.#attempt(() => (options.open ?? (path => open(path, 'a+')))(path)));
@@ -228,7 +231,7 @@ export class Journal {
       }
       // Restore once before queued producers append. Item reads must never scan
       // the accumulated journal again, or a crew's read burst pins the hub.
-      if (size) await this.#restoreSubagents(size, resumed);
+      if (size && options.history === undefined) await this.#restoreSubagents(size, resumed);
     })().catch(err => resumed(() => { if (err !== this.#error) this.#failed(err); }));
   }
 
@@ -437,11 +440,30 @@ export class Journal {
 }
 
 export type JournalQuery = {
+  /** Only startup's plan history, subagent index and Agents replay checkpoints. */
+  startupOnly?: boolean;
   /** Records at or after this instant (ISO, or a duration back from now: `10m`, `2h`, `1d`). */
   since?: string;
   /** Only these events (`send`, `loop-breaker`, `audit`, …). */
   kinds?: string[];
 };
+const STARTUP_EVENTS = new Set(['task-plan-changed', 'task-plan-approved', 'subagent-launched']);
+
+/** Search the retained text once, decoding only candidate records. Most journal
+ * lines are unrelated audit and lifecycle history, even on a large project. */
+function* startupLines(text: string): Generator<string> {
+  // ASCII keys/values can also use Unicode escapes. Parse those candidates too;
+  // the ordinary record predicate below rejects matches inside unrelated values.
+  const candidate = /"(?:agentsNotice|task-plan-changed|task-plan-approved|subagent-launched)"|\\u/g;
+  let match: RegExpExecArray | null;
+  while ((match = candidate.exec(text))) {
+    const start = text.lastIndexOf('\n', match.index) + 1;
+    const newline = text.indexOf('\n', match.index);
+    const end = newline === -1 ? text.length : newline;
+    candidate.lastIndex = end + 1;
+    yield text.slice(start, end);
+  }
+}
 
 /** `10m`, `2h`, `3d`, `30s` back from `now`; an ISO date as given; null when it is neither. */
 export function sinceInstant(since: string, now: Date = new Date()): Date | null {
@@ -464,7 +486,8 @@ export function readJournal(path: string, query: JournalQuery = {}, now: Date = 
   }
   const kinds = query.kinds?.length ? new Set(query.kinds) : null;
   const out: JournalRecord[] = [];
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
+  const text = readFileSync(path, 'utf8');
+  for (const line of query.startupOnly ? startupLines(text) : text.split('\n')) {
     if (!line.trim()) continue;
     let r: JournalRecord;
     try {
@@ -472,6 +495,7 @@ export function readJournal(path: string, query: JournalQuery = {}, now: Date = 
     } catch {
       continue;
     }
+    if (query.startupOnly && (!r || typeof r.agentsNotice !== 'string' && !STARTUP_EVENTS.has(r.event))) continue;
     if (since && !(new Date(r.ts).getTime() >= since.getTime())) continue;
     if (kinds && !kinds.has(r.event)) continue;
     out.push(r);

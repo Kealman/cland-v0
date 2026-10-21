@@ -1265,10 +1265,10 @@ export class Sessions {
   releaseInterruptedLaunches(): void {
     const processes = this.#table.all().filter(p => !this.#pendingStops.has(p.sessionId)).map(p => this.view(p));
     // Recovery must know every lead's durable status before routing any verifier's final event.
-    for (const process of processes) this.#core.seedProcess(process);
     // A verified stop is authoritative even while its published row awaits cleanup.
-    for (const entry of this.#pendingStops.values()) if (entry.published && !entry.preserveRow && entry.stages.stopped) this.#core.seedProcess(this.view({ ...entry.process, status: 'stopped' }));
-    for (const process of processes) this.#core.rememberProcess(process);
+    const stopped = [...this.#pendingStops.values()].filter(entry => entry.published && !entry.preserveRow && entry.stages.stopped)
+      .map(entry => this.view({ ...entry.process, status: 'stopped' }));
+    this.#core.restoreProcesses(processes, stopped);
     this.#core.releaseInterruptedLaunches((name) => this.#table.get(name)?.status === 'running' || [...this.#pendingStops.values()].some(entry => entry.process.name === name));
   }
 

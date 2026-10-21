@@ -6,12 +6,53 @@ import type { Inbox } from '../src/protocol.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Store } from '../src/hub/store.ts';
+import { sqliteProbe } from './sqlite-probe.ts';
+import { FakeClock } from './fake-clock.ts';
 
 async function ok<T>(ui: Awaited<ReturnType<typeof connectUi>>, frame: { type: string } & Record<string, unknown>): Promise<T> {
   const result = await ui.request(frame);
   assert.equal(result.ok, true, `${frame.type}: ${result.error}`);
   return result.value as T;
 }
+
+test('status reuses current inbox counts and refreshes them after writes and message aging', async t => {
+  const root = await tempProject(t), clock = new FakeClock(), database = sqliteProbe();
+  let queries = 0;
+  database.trace(t, (sql, method) => { if (sql.startsWith('with latest_messages as') && method === 'all') queries++; });
+  const { discovery, fakes } = await projectHub(t, root, {}, { clock, openDatabase: database.open });
+  const ui = await connectUi(t, discovery);
+  const aide = await inProcessSpoke(t, { discover: true, cwd: root, name: 'aide-count', role: 'aide', sessionId: 'inbox-count-aide' });
+  t.after(() => aide.close());
+  await aide.waitForPresence(['aide-count']);
+  const status = () => ok<{ needsYou: number }>(ui, { type: 'hub.status' });
+  await ok<Inbox>(ui, { type: 'inbox.list' });
+  const before = queries;
+  assert.equal((await status()).needsYou, 0);
+  assert.equal((await status()).needsYou, 0);
+  assert.equal(queries, before, 'unchanged status reads do not rebuild the inbox');
+  assert.equal((await aide.call<{ ok: boolean }>('send', { topic: 'general', text: 'Please read this report' })).ok, true);
+  assert.equal((await status()).needsYou, 1, 'a new message invalidates the previous count');
+  await ok(ui, { type: 'topic.read', topic: 'general' });
+  assert.equal((await status()).needsYou, 0, 'reading settles the count immediately');
+  assert.equal((await aide.call<{ ok: boolean }>('send', { topic: 'general', text: 'A report that will age' })).ok, true);
+  assert.equal((await status()).needsYou, 1);
+  clock.block(7 * 86_400_000);
+  // A distinct public request bypasses the dispatcher's rapid-repeat reply cache.
+  assert.equal((await ok<{ needsYou: number }>(ui, { type: 'hub.status', history: true })).needsYou, 1);
+  clock.block(1);
+  assert.equal((await ok<{ needsYou: number }>(ui, { type: 'hub.status', history: true, flushLogs: true })).needsYou, 0,
+    'crossing the old-message boundary refreshes without an event');
+  await ok(ui, { type: 'subscribe' });
+  await ok(ui, { type: 'session.launch', name: 'approval-worker', harness: 'codex', role: 'implementer' });
+  const waiting = ui.waitFor(frame => frame.type === 'session.state' && frame.session === 'approval-worker' && frame.state === 'waiting for approval');
+  fakes.codex!.waitingForApproval('approval-worker');
+  await waiting;
+  assert.equal((await status()).needsYou, 1, 'entering command approval invalidates the count');
+  const idle = ui.waitFor(frame => frame.type === 'session.state' && frame.session === 'approval-worker' && frame.state === 'idle');
+  fakes.codex!.idle('approval-worker');
+  await idle;
+  assert.equal((await status()).needsYou, 0, 'leaving command approval invalidates the count');
+});
 
 test('a request from an unmentioned Implementer raises needsYou and the human reply journals its departure', async t => {
   const root = await tempProject(t);

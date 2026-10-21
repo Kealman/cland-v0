@@ -4194,6 +4194,32 @@ presence, crew, verification, keys, tracker, coordinator and needsYou; the CLI's
 root lookup also uses compact status. The web client has no history consumer.
 The copied-state status target is 64 KiB.
 
+Startup indexing validates each plan once after all item files are indexed;
+unchanged child reads do not revalidate the entire parent plan. Restoring stopped
+sessions writes only their affected queued suites, rather than rewriting retained
+suite history. The daemon awaits that scan's durable migrations without scanning
+the folder again, and one journal prefix supplies plan, Agents and subagent restore.
+A single text scan selects those startup records before JSON decoding unrelated
+retained history. Existing role policy skips installation discovery. Terminal
+process recovery commits its checkpoints together and publishes observers after
+that commit; retained suite history reuses its original serialized snapshots.
+Inbox status considers latest addressed reports only in topics waiting for the
+human; unread direct messages and pending requests remain current. Status reuses
+the current inbox count until a section changes or a message crosses its seven-day
+age boundary. Non-approval process metadata and journal event projections do not
+invalidate that count; ordinary coalesced inbox publications still refresh details.
+`hub-startup-step` records identify tracker, journal, store, suite and session
+restore phases. To profile a disposable copy, use
+`node hub/scripts/measure-startup.ts /absolute/project/.cland`; add `--cli` to
+measure the real `cland hub start` through the first status socket reply against
+the five-second target. The default run measures dispatcher composition separately
+against a 50 ms target. See [copied-state measurement](../docs/agents/tests.md#startup-reply-byte-budgets-t-1038)
+for isolation, timing boundaries and cover-quiet requirements.
+The generated T3 fixture uses a 15-second first-status regression guard: three
+times the local target for loaded shards, still below the former 39-second
+production startup. Its reply byte limits remain exact; the copied-state CLI
+measurement retains its five-second limit.
+
 `topic.history` returns complete messages in byte-capped pages below 256 KiB,
 including envelope space. `more`, `before` (exclusive message id) and `after`
 (exclusive sequence) identify continuation. The page always contains at least

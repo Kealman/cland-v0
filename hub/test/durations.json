@@ -5603,13 +5603,6 @@
     "nvim/test/startup-budget.test.ts::an oversized non-item startup reply trips the per-reply byte budget": 1.800434
   },
   "allow": {
-    "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": {
-      "seconds": 10,
-      "owner": "C-325",
-      "added": "2026-10-21",
-      "expires": "2026-10-28",
-      "reason": "Required comparable-size C2 fixture: 1,000 durable items, 8,163 artifacts, 200 complete General messages and journal records. Original T2 identity took 6.636 s on Linux c-8 (A-8181); local phase profiling shows hub startup dominates. T-1039 owns reducing that startup cost; byte assertions and fixture size are unchanged."
-    },
     "hub/test/account-limited.test.ts::Claude hard StopFailure and OpenCode quota mark; overloaded and the two retryable throttles do not": {
       "seconds": 9.859054,
       "owner": "E-880",
