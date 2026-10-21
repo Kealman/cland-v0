@@ -141,8 +141,9 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
 /** A selected origin never drifts when its port is occupied. The daemon holds the project lock. */
 export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; dist?: string }): Promise<WebEdge> {
   const clock = options.clock ?? realClock;
-  const auth = new WebAuth(await realpath(options.root), options.store, () => clock.now().getTime());
-  const artifacts = new WebArtifacts(options.store, auth, options.artifactOpen);
+  const prefix = { path: resolve(options.root), realPath: await realpath(options.root) };
+  const auth = new WebAuth(prefix.realPath, options.store, () => clock.now().getTime());
+  const artifacts = new WebArtifacts(options.store, auth, prefix, options.artifactOpen);
   const link = () => {
     if (!http.listening) throw new Error('the web edge is unavailable');
     return { url: `http://127.0.0.1:${port}/auth?token=${auth.mint()}` };

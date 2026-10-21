@@ -28,7 +28,13 @@ Promise<{ status: number; headers: IncomingHttpHeaders; body: string }> {
 }
 
 async function fixture(t: TestContext, artifactOpen?: typeof open) {
-  const root = await tempProject(t);
+  // Keep a lexical symlinked ancestor on every platform, including Linux where
+  // the system temp directory normally has none. Only this prefix is trusted;
+  // the artifact/folder symlink substitutions below must still be refused.
+  const scratch = await tempProject(t);
+  await mkdir(join(scratch, 'physical', 'project'), { recursive: true });
+  await symlink(join(scratch, 'physical'), join(scratch, 'alias'));
+  const root = join(scratch, 'alias', 'project');
   const clock = new FakeClock();
   const hub = await projectHub(t, root, {}, { clock, ...(artifactOpen ? { artifactOpen } : {}) });
   const local = await connectUi(t, hub.discovery);
@@ -92,6 +98,7 @@ test('capabilities confine files and folders, including encoded traversal and sy
   const a = await artifact(local);
   const b = await artifact(local, { title: 'Other artifact', content: 'private other bytes' });
   const url = await mint(web, a.id);
+  assert.equal((await get(url)).status, 200, 'the authorized file is readable before testing refusals');
   const prefix = new URL(url).pathname.slice(0, new URL(url).pathname.lastIndexOf('/') + 1);
   for (const name of [basename(b.path), `../${basename(b.path)}`, `%2e%2e/${basename(b.path)}`, `%2e%2e%2f${basename(b.path)}`, '%5c..%5cprivate.txt', '%00', '/private.txt', './file']) {
     const response = await get(url, prefix + name);
@@ -105,6 +112,7 @@ test('capabilities confine files and folders, including encoded traversal and sy
   await writeFile(join(source, 'style.css'), 'body { color: green }');
   const folder = await artifact(local, { content: undefined, path: source, entry: 'index.html' });
   const page = await mint(web, folder.id);
+  assert.equal((await get(page)).status, 200, 'the authorized folder entry is readable before testing refusals');
   const folderPrefix = new URL(page).pathname.replace(/index.html$/, '');
   await symlink(b.path, join(folder.path, 'escape.txt'));
   await symlink(root, join(folder.path, 'escape'));

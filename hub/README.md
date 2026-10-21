@@ -316,8 +316,14 @@ backslashes and symlink escapes are refused. MIME types follow the extension
 `Referrer-Policy: no-referrer` and `Content-Security-Policy: sandbox allow-scripts`.
 HTML can run scripts and load its own relative assets in an opaque origin;
 never combine `allow-scripts` with `allow-same-origin` on an artifact iframe.
-File opens reject symlinks in every ancestor: Linux walks directory descriptors
-through `/proc/self/fd` (procfs is required), while macOS uses `O_NOFOLLOW_ANY`.
+The web edge resolves its trusted project prefix once, so symlinked project
+ancestors (including macOS `/var` and `/tmp`) work. Artifact suffixes stay
+lexical: file opens reject symlinks below that prefix. Linux walks directory
+descriptors from the resolved prefix through `/proc/self/fd` (procfs is required),
+while macOS uses `O_NOFOLLOW_ANY` on the resolved prefix plus lexical suffix,
+without combining it with the incompatible `O_NOFOLLOW` flag. Artifact paths
+outside the lexical project prefix retain full-path no-follow checks and are
+never canonicalized.
 A directory renamed after admission cannot redirect an opened Linux parent;
 macOS checks the entire path during open. Other platforms refuse artifact reads.
 Treat the whole URL as a bearer credential and avoid sharing or logging it.
