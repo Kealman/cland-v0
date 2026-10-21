@@ -93,6 +93,7 @@ export const TASK_USAGE = `  task create <title> [--kind k] [--size XS|S|M|L] [-
   task migrate [--dry-run] [--sizes <JSON-file>] [--json] (offline prefixes, references, titles, categories and retired labels)
   task plan migrate (retire qa-required labels, report policy fallbacks)
   task plan <set|show|approve> <epic-id> [--file plan.yaml] [--reason text] [--allow-large <id>=<reason>]…
+    show distinguishes pending stage tree/ancestry checks from missing platform covers.
   task list [--under <id>] [--state open|closed] [--label l]… [--kind k] [--assignee a] [--verdict review=clear]
   task comment <id> <text> [--verdict review|qa --result clear|"not clear" --run <id> [--commit <sha>] [--scope full|delta|evidence] [--stage <name>] [--finding high|medium|low:text[@file:line]]… [--verified C1,C3|all | --failed "C1=note"]…]
   task edit <id> [--found-by review|cover|droplet|qa|human|none] [--version semver|none] [--title t] [--body t | --body-file f] [--kind k] [--size XS|S|M|L] [--state s] [--status s] [--label l]…

@@ -4,9 +4,73 @@ import assert from 'node:assert/strict';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stringify } from 'yaml';
+import { DatabaseSync } from 'node:sqlite';
 import type { ItemView } from '../src/tracker/tracker.ts';
-import { cland, connectUi, eventually, spawnSpoke, startDaemon } from './harness.ts';
+import { gitIn } from '../src/tracker/verdict-git.ts';
+import { cland, connectUi, eventually, nativeProjectHub, spawnSpoke, startDaemon } from './harness.ts';
 import { git, fixture } from './stage-qa-support.ts';
+import { accountFixtureEnvironment } from './account-fixture-env.ts';
+import { onCleanup } from './process-cleanup.ts';
+
+test('a two-shard Linux stage cover is pending then counts across projectHub restart', async t => {
+  const f = await fixture(t, false, 1);
+  await f.land();
+  assert.equal((await f.verdict()).ok, true);
+  const before = await eventually('QA and both platform covers close the pre-restart stage', async () => {
+    const stage = (await f.read()).stages![0]!;
+    return stage.state === 'closed' && stage.verdict?.current === true && stage.cover?.linux && stage.cover.macos
+      && stage.cover.missing.length === 0 && !stage.cover.pending?.length ? stage : undefined;
+  });
+  assert.deepEqual(before.cover!.missing, []);
+  assert.equal(before.verdict!.current, true);
+  assert.equal(before.state, 'closed');
+  const tested = git(f.root, 'rev-parse', 'dev');
+  await f.rev.close(); await f.qa.close(); f.ui.close(); await f.stop();
+  // Restart between durable QA publication and the derived closure checkpoint.
+  const db = new DatabaseSync(join(f.root, '.cland/hub.db'));
+  try { db.prepare("delete from tracker_meta where key like 'stage-closure:%'").run(); }
+  finally { db.close(); }
+  git(f.root, 'commit', '--allow-empty', '-qm', 'Later dev work');
+  const later = git(f.root, 'rev-parse', 'dev');
+  const nativeGit = gitIn(f.root, await accountFixtureEnvironment());
+  const release = Promise.withResolvers<void>();
+  onCleanup(t, () => release.resolve());
+  let entered = false;
+  const hub = await nativeProjectHub(t, f.root, {}, { git: async (args, input) => {
+    if (args[0] === 'merge-base' && args[1] === '--is-ancestor' && args[2] === tested && args[3] === later) {
+      entered = true;
+      await release.promise;
+    }
+    return nativeGit(args, input);
+  } });
+  const ui = await connectUi(t, hub.discovery);
+  const read = async () => {
+    const response = await ui.request({ type: 'task.plan', item: f.epic.id, op: 'show' });
+    assert.equal(response.ok, true, response.error);
+    return (response.value as { stages: NonNullable<ItemView['stages']> }).stages[0]!;
+  };
+  await eventually('restarted hub reaches the held stage ancestry read', () => entered ? true : undefined);
+  const pending = await eventually('recorded build tree resolves while ancestry remains held', async () => {
+    const stage = await read();
+    return stage.cover?.tree === before.cover!.tree ? stage : undefined;
+  });
+  assert.deepEqual(pending.cover!.missing, [], 'unknown ancestry is not missing Linux evidence');
+  assert.deepEqual(pending.cover!.pending, ['Linux droplet']);
+  assert.equal(pending.verdict!.current, undefined, 'unknown ancestry is not a stale QA verdict');
+  assert.equal(pending.state, 'open', 'pending evidence cannot close the stage');
+  const shown = await cland(f.root, 'task', 'plan', 'show', f.epic.id);
+  assert.equal(shown.code, 0, shown.stderr);
+  assert.match(shown.stdout, /stage cover pending Linux droplet/);
+  assert.doesNotMatch(shown.stdout, /missing Linux droplet|stage cover complete/);
+  release.resolve();
+  const restored = await eventually('restored Linux cover closes the stage after ancestry settles', async () => {
+    const stage = await read();
+    return stage.state === 'closed' ? stage : undefined;
+  }, 3000);
+  assert.deepEqual(restored.cover, before.cover);
+  assert.equal(restored.cover!.linux, `linux-${tested}`);
+  assert.equal(restored.verdict!.current, true);
+});
 
 test('stage verdict refuses premature QA, wrong roles, stale builds, unknown stages and epic criterion marks', async t => {
   const f = await fixture(t);

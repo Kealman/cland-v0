@@ -2475,6 +2475,13 @@ the Mac. Cache reuse for stage requests preserves the executor and platform, so 
 Linux cache hit cannot stand in for a Mac run. Completed stages remain closed
 across later descendant builds, while their plan and landing evidence stay valid.
 
+Restored covers can await background tree or ancestry checks. `task plan show`
+reports those platforms as `pending`, not `missing`; JSON covers include an optional
+`pending` platform array. A stage QA verdict's `current` stays absent until its
+facts settle. Pending evidence holds stage closure and advancement. Older epic
+demo freshness checks share the serialized Git queue, so restoration may take
+time even when the completed suite receipts are intact.
+
 At admission, free remote slots up to `[verification] shards` (default 2) set the
 shard count. Hub files are placed largest-first on the lightest shard using
 `hub/test/durations.json` `files[*].seconds`; unknown files use the manifest

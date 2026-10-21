@@ -289,7 +289,11 @@ function humanOf(sub: Sub, value: Record<string, unknown>): string {
       const approval = value.approval as { state?: string; by?: string; at?: string } | undefined;
       const approvalLine = approval ? `# approval: ${approval.state}${approval.by ? ` by ${approval.by} at ${approval.at}` : ''}\n` : '';
       const stages = (value.stages as ItemView['stages']) ?? [];
-      const covers = stages.filter(stage => stage.cover).map(stage => `# ${stage.name}: ${stage.state}; stage cover ${stage.cover!.missing.length ? `missing ${stage.cover!.missing.join(', ')}` : 'complete (Linux droplet, macOS)'}; tree ${stage.cover!.tree ?? 'pending'}\n`).join('');
+      const covers = stages.filter(stage => stage.cover).map(stage => {
+        const cover = stage.cover!;
+        const status = [cover.missing.length ? `missing ${cover.missing.join(', ')}` : '', cover.pending?.length ? `pending ${cover.pending.join(', ')}` : ''].filter(Boolean).join('; ');
+        return `# ${stage.name}: ${stage.state}; stage cover ${status || 'complete (Linux droplet, macOS)'}; tree ${cover.tree ?? 'pending'}\n`;
+      }).join('');
       return approvalLine + covers + (value.plan ? planYaml(value.plan as EpicPlan) : `${String(value.id)} has no plan\n`) + (value.planError ? `plan refused: ${String(value.planError)}; showing the last valid plan\n` : '');
     case 'list':
       return listText(value.items as ItemSummary[]);

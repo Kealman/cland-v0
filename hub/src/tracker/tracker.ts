@@ -128,7 +128,7 @@ export type ItemView = IndexedItem & {
   mergeQueue?: { position: number; enqueued: string };
   warnings?: string[];
   planError?: string;
-  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; closure?: Omit<StageClosure, 'hash'>; cover?: { tree: string | null; missing: StagePlatform[]; linux?: string; macos?: string } }>;
+  stages?: Array<{ name: string; state: 'open' | 'closed'; qa: QaPolicy; items: string[]; verdict?: IndexedVerdict; closure?: Omit<StageClosure, 'hash'>; cover?: { tree: string | null; missing: StagePlatform[]; pending?: StagePlatform[]; linux?: string; macos?: string } }>;
   planHistory?: PlanHistoryEntry[];
   approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string };
   criteria: Criterion[];
@@ -1725,15 +1725,17 @@ export class Tracker {
       items, qa };
   }
 
-  #stageCurrent(id: string, v: IndexedVerdict): boolean {
+  #stageCurrent(id: string, v: IndexedVerdict): boolean | undefined {
     const snapshot = v.stage === undefined ? null : this.#stageSnapshot(id, v.stage);
     const closure = v.stage === undefined ? null : this.#index.stageClosure(id, v.stage);
     const claim = this.#index.claimOf(id);
     const independent = !claim || !['implementer', 'aide'].includes(claim.role ?? '') || !v.writer || !this.sameSession(claim.sessionId, v.writer.sessionId);
-    return independent && v.source === 'hub' && v.writer?.role === 'qa' && v.writer.sessionId !== 'human' && !v.writer.sessionId.startsWith('cli:')
-      && !!v.commit && !!snapshot?.merged && snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none' && snapshot.hash === v.stage_hash
-      && (this.#fresh.ancestor(id, v.commit) ?? (closure?.hash === snapshot.hash && closure.head === v.commit))
-      && this.#stageCover(id, v.stage!, snapshot, v.commit).missing.length === 0;
+    if (!(independent && v.source === 'hub' && v.writer?.role === 'qa' && v.writer.sessionId !== 'human' && !v.writer.sessionId.startsWith('cli:')
+      && !!v.commit && !!snapshot?.merged && snapshot.qa.when === 'after-stage' && snapshot.qa.scope !== 'none' && snapshot.hash === v.stage_hash)) return false;
+    const ancestor = this.#fresh.ancestor(id, v.commit) ?? (closure?.hash === snapshot.hash && closure.head === v.commit ? true : undefined);
+    if (ancestor !== true) return ancestor;
+    const cover = this.#stageCover(id, v.stage!, snapshot, v.commit);
+    return cover.pending?.length ? undefined : cover.missing.length === 0;
   }
 
   #stageTree(id: string, head: string | null): string | null {
@@ -1776,14 +1778,27 @@ export class Tracker {
     const covers = this.#stageCovers();
     const expected = this.#stageTree(id, build ?? this.#fresh.tip('dev'));
     const landings = snapshot.items.flatMap(child => this.#index.mergeReceipt(child)?.commit ?? []);
-    const eligible = covers.filter(cover => cover.platform === 'Linux droplet' && (!build || cover.tree === expected)
-      && this.#fresh.ancestor(id, cover.head) === true && landings.every(landing => this.#fresh.contains(id, landing, cover.head) === true));
+    const candidates = covers.filter(cover => cover.platform === 'Linux droplet').map(cover => {
+      const treeMatches = !build ? true : expected === null ? undefined : cover.tree === expected;
+      if (treeMatches === false) return { cover, current: false };
+      const facts = [treeMatches, this.#fresh.ancestor(id, cover.head), ...landings.map(landing => this.#fresh.contains(id, landing, cover.head))];
+      return { cover, current: facts.includes(false) ? false : facts.includes(undefined) ? undefined : true };
+    });
+    const eligible = candidates.filter(candidate => candidate.current === true).map(candidate => candidate.cover);
     // A completed stage keeps its tested build across later descendant work.
     const pair = eligible.findLast(linux => covers.some(mac => mac.platform === 'macOS' && mac.tree === linux.tree));
     const tree = pair?.tree ?? expected;
     const linux = pair ?? eligible.findLast(cover => cover.tree === tree);
     const mac = covers.findLast(cover => cover.platform === 'macOS' && cover.tree === tree);
-    return { tree, missing: [...(!linux ? ['Linux droplet' as const] : []), ...(!mac ? ['macOS' as const] : [])], ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
+    const pending: StagePlatform[] = [];
+    const missing: StagePlatform[] = [];
+    if (!linux) {
+      const unresolved = candidates.some(candidate => candidate.current !== false && (!tree || candidate.cover.tree === tree)
+        && (candidate.current === undefined || tree === null));
+      (unresolved ? pending : missing).push('Linux droplet');
+    }
+    if (!mac) (tree === null && covers.some(cover => cover.platform === 'macOS') ? pending : missing).push('macOS');
+    return { tree, missing, ...(pending.length ? { pending } : {}), ...(linux ? { linux: linux.id } : {}), ...(mac ? { macos: mac.id } : {}) };
   }
 
   #stagesOf(item: Item): NonNullable<ItemView['stages']> {
@@ -1797,7 +1812,7 @@ export class Tracker {
       const saved = this.#index.stageClosure(item.fm.id, stage.name);
       let closure = saved?.hash === snapshot.hash && (!needsQa || saved.head === verdict?.commit) ? saved : null;
       const cover = snapshot.qa.when === 'after-stage' ? this.#stageCover(item.fm.id, stage.name, snapshot, needsQa ? verdict?.commit : undefined) : undefined;
-      const completed = snapshot.merged && (!cover || cover.missing.length === 0)
+      const completed = snapshot.merged && (!cover || cover.missing.length === 0 && !cover.pending?.length)
         // A recorded closure remains evidence while a moved tip's ancestry check
         // is pending. An observed rollback (or Git failure) still opens it.
         && (!closure || this.#fresh.ancestor(item.fm.id, closure.head) !== false)
@@ -1813,7 +1828,7 @@ export class Tracker {
       return { name: stage.name, state: closed ? 'closed' : 'open', qa: snapshot.qa, items: snapshot.items,
         ...(cover ? { cover } : {}),
         ...(closure ? { closure: { head: closure.head, tree: closure.tree, linux: closure.linux, macos: closure.macos } } : {}),
-        ...(verdict ? { verdict: { ...verdict, current: this.#stageCurrent(item.fm.id, verdict) } } : {}) };
+        ...(verdict ? { verdict: withCurrent(verdict, this.#stageCurrent(item.fm.id, verdict)) } : {}) };
     });
   }
 

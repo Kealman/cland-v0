@@ -6,15 +6,106 @@ import { join } from 'node:path';
 import { Tracker, type ItemView } from '../src/tracker/tracker.ts';
 import type { StageCover } from '../src/hub/suites.ts';
 import { connectWsUi, eventually, startHub, tempProject } from './harness.ts';
+import { onCleanup } from './process-cleanup.ts';
+
+test('a pending stage build tree keeps QA currency unknown until a mismatching tree is observed', async t => {
+  const root = await tempProject(t);
+  const head = 'a'.repeat(40), coveredTree = 'b'.repeat(40), actualTree = 'c'.repeat(40);
+  const tree = Promise.withResolvers<string>();
+  let readingTree = false;
+  onCleanup(t, () => tree.resolve(actualTree));
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'),
+    git: async args => args[0] === 'for-each-ref' ? `${head} refs/heads/dev` : args[0] === 'rev-parse' ? head : '',
+    readBase: async () => 'dev', stageTree: async () => { readingTree = true; return tree.promise; },
+    scheduleTips: () => ({ poke() {}, stop() {} }),
+  });
+  tracker.start(); onCleanup(t, () => tracker.stop());
+  const actor = { id: 'human', name: 'human', role: null };
+  const epic = await tracker.create(actor, { kind: 'epic', title: 'Pending build' });
+  const child = await tracker.create(actor, { size: 'S', title: 'Landed', parent: epic.id });
+  await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [{ name: 'build', qa: { scope: 'affected', when: 'after-stage' }, lanes: [[child.id]] }] }));
+  await tracker.close(actor, child.id);
+  tracker.recordMerge(child.id, { branch: 't/landed', tip: head, commit: head, base: 'dev' });
+  tracker.useVerify(() => null, () => [
+    { id: 'linux', head, tree: coveredTree, platform: 'Linux droplet' },
+    { id: 'mac', head, tree: coveredTree, platform: 'macOS' },
+  ]);
+  await tracker.refreshFreshness();
+  await tracker.comment({ id: 'qa-session', name: 'qa', role: 'qa' }, epic.id, '', { verdict: 'qa', result: 'clear', run: 'qa', stage: 'build' });
+  const stage = async () => (await tracker.viewAsync(epic.id)).stages![0]!;
+  await eventually('stage tree lookup entered', () => readingTree ? true : undefined);
+  const pending = await stage();
+  assert.deepEqual(pending.cover, { tree: null, missing: [], pending: ['Linux droplet', 'macOS'] });
+  assert.equal(pending.verdict!.current, undefined);
+  assert.equal(pending.state, 'open');
+  tree.resolve(actualTree);
+  const missing = await eventually('observed build tree rejects both covers', async () => {
+    const value = await stage();
+    return value.cover?.tree === actualTree ? value : undefined;
+  });
+  assert.deepEqual(missing.cover, { tree: actualTree, missing: ['Linux droplet', 'macOS'] });
+  assert.equal(missing.verdict!.current, false);
+  assert.equal(missing.state, 'open');
+});
+
+for (const contained of [true, false]) test(`pending landing ancestry holds advancement until it resolves ${contained}`, async t => {
+  const root = await tempProject(t);
+  const landing = 'a'.repeat(40), head = 'b'.repeat(40), tree = 'c'.repeat(40);
+  const ancestry = Promise.withResolvers<string | null>();
+  let checkingLanding = false;
+  onCleanup(t, () => ancestry.resolve(contained ? '' : null));
+  const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'),
+    git: async args => {
+      if (args[0] === 'for-each-ref') return `${head} refs/heads/dev`;
+      if (args[0] === 'rev-parse') return args.at(-1)!.replace(/\^\{commit\}$/, '');
+      if (args[0] === 'merge-base' && args[2] === landing && args[3] === head) { checkingLanding = true; return ancestry.promise; }
+      return '';
+    }, readBase: async () => 'dev', stageTree: async () => tree,
+    scheduleTips: () => ({ poke() {}, stop() {} }),
+  });
+  tracker.start(); onCleanup(t, () => tracker.stop());
+  const actor = { id: 'human', name: 'human', role: null };
+  const epic = await tracker.create(actor, { kind: 'epic', title: 'Pending landing' });
+  const child = await tracker.create(actor, { size: 'S', title: 'Landed', parent: epic.id });
+  const next = await tracker.create(actor, { size: 'S', title: 'Next', parent: epic.id });
+  await tracker.setPlan(actor, epic.id, JSON.stringify({ stages: [
+    { name: 'build', qa: { scope: 'none', when: 'after-stage' }, lanes: [[child.id]] },
+    { name: 'next', qa: { scope: 'none', when: 'per-item' }, lanes: [[next.id]] },
+  ] }));
+  await tracker.close(actor, child.id);
+  tracker.recordMerge(child.id, { branch: 't/landed', tip: landing, commit: landing, base: 'dev' });
+  tracker.useVerify(() => null, () => [
+    { id: 'linux', head, tree, platform: 'Linux droplet' },
+    { id: 'mac', head, tree, platform: 'macOS' },
+  ]);
+  await tracker.refreshFreshness();
+  const stage = async () => (await tracker.viewAsync(epic.id)).stages![0]!;
+  const pending = await eventually('landing check entered and build tree resolved', async () => {
+    const value = await stage();
+    return checkingLanding && value.cover?.tree === tree ? value : undefined;
+  });
+  assert.deepEqual(pending.cover, { tree, missing: [], pending: ['Linux droplet'], macos: 'mac' });
+  assert.equal(pending.state, 'open');
+  assert.equal((await tracker.viewAsync(next.id)).status, 'backlog');
+  ancestry.resolve(contained ? '' : null);
+  const settled = await eventually('landing ancestry settles platform evidence', async () => {
+    const value = await stage();
+    return !value.cover?.pending?.length ? value : undefined;
+  });
+  assert.deepEqual(settled.cover, contained ? { tree, missing: [], linux: 'linux', macos: 'mac' } : { tree, missing: ['Linux droplet'], macos: 'mac' });
+  assert.equal(settled.state, contained ? 'closed' : 'open');
+  await eventually('next stage follows resolved landing evidence', async () =>
+    (await tracker.viewAsync(next.id)).status === (contained ? 'planned' : 'backlog') ? true : undefined);
+});
 
 test('a covered stage records its tested build durably while later stages advance on their own cover', async t => {
   const root = await tempProject(t);
   const tested = 'a'.repeat(40), later = 'b'.repeat(40);
   const testedTree = 'c'.repeat(40), laterTree = 'd'.repeat(40);
   let head = tested;
-  const ancestryStarted = Promise.withResolvers<void>();
+  let ancestryStarted = false;
   const ancestry = Promise.withResolvers<string | null>();
-  t.after(() => ancestry.resolve(''));
+  onCleanup(t, () => ancestry.resolve(''));
   let covers: StageCover[] = [
     { id: 'linux-stage-1', head: tested, tree: testedTree, platform: 'Linux droplet' },
     { id: 'mac-stage-1', head: tested, tree: testedTree, platform: 'macOS' },
@@ -26,7 +117,7 @@ test('a covered stage records its tested build durably while later stages advanc
       if (args[0] === 'for-each-ref') return `${head} refs/heads/dev`;
       if (args[0] === 'rev-parse') return args.at(-1)!.replace(/\^\{commit\}$/, '');
       if (args[0] === 'merge-base') {
-        if (args[3] === later) { ancestryStarted.resolve(); return ancestry.promise; }
+        if (args[3] === later) { ancestryStarted = true; return ancestry.promise; }
         return '';
       }
       return null;
@@ -69,7 +160,7 @@ test('a covered stage records its tested build durably while later stages advanc
   head = later;
   covers = [];
   await tracker.refreshFreshness();
-  await ancestryStarted.promise;
+  await eventually('later dev ancestry read entered', () => ancestryStarted ? true : undefined);
   try {
     assert.equal((await read())[0]!.state, 'closed', 'pending ancestry and retired suite history cannot reopen a completed stage');
   } finally { ancestry.resolve(''); }
@@ -98,15 +189,15 @@ test('recorded cover cannot close a changed stage or a build removed from dev an
   const root = await tempProject(t);
   const tested = 'a'.repeat(40), before = 'b'.repeat(40), tree = 'c'.repeat(40), later = 'd'.repeat(40);
   let head = tested;
-  const ancestryStarted = Promise.withResolvers<void>();
+  let ancestryStarted = false;
   const ancestry = Promise.withResolvers<string | null>();
-  t.after(() => ancestry.resolve(''));
+  onCleanup(t, () => ancestry.resolve(''));
   const tracker = new Tracker({ root, db: join(root, '.cland/hub.db'),
     git: async args => {
       if (args[0] === 'for-each-ref') return `${head} refs/heads/dev`;
       if (args[0] === 'rev-parse') return tested;
       if (args[0] === 'merge-base') {
-        if (args[3] === later) { ancestryStarted.resolve(); return ancestry.promise; }
+        if (args[3] === later) { ancestryStarted = true; return ancestry.promise; }
         return args[3] === before ? null : '';
       }
       return null;
@@ -148,7 +239,7 @@ test('recorded cover cannot close a changed stage or a build removed from dev an
   await eventually('new QA policy closes with its own verdict', async () => (await stage()).state === 'closed' ? true : undefined);
   covers = [];
   head = later; await tracker.refreshFreshness();
-  await ancestryStarted.promise;
+  await eventually('later QA build ancestry read entered', () => ancestryStarted ? true : undefined);
   try {
     assert.equal((await stage()).state, 'closed', 'a recorded QA closure also survives pending ancestry');
   } finally { ancestry.resolve(''); }

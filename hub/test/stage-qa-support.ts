@@ -61,7 +61,10 @@ export async function fixture(t: test.TestContext, gated = false, count = 3, lau
     ui = await connectUi(t, hub.discovery);
     rev = await spawnSpoke({ discover: true, cwd: root, name: 'rev', role: 'reviewer', sessionId: 'review-session' });
     qa = await spawnSpoke({ discover: true, cwd: root, name: 'qa-one', role: 'qa', sessionId: 'qa-session' });
-    await eventually('platform tree resolved before stage QA', async () => (await read()).stages?.[0]?.cover?.missing.length === 0 ? true : undefined);
+    await eventually('platform tree resolved before stage QA', async () => {
+      const cover = (await read()).stages?.[0]?.cover;
+      return cover?.linux && cover.macos && cover.missing.length === 0 && !cover.pending?.length ? true : undefined;
+    });
   };
   const verdict = (result = 'clear', extra: Record<string, unknown> = {}) => qa.call<{ ok: boolean; error?: string; item?: ItemView }>('task.comment', { id: epic.id, verdict: 'qa', result, stage: 'Stage 1', run: `stage-${result}`, ...extra });
   return { root, stop: async () => { if ('stop' in hub) await hub.stop(); else assert.equal((await cland(root, 'hub', 'stop')).code, 0); }, get ui() { return ui; }, get rev() { return rev; }, get qa() { return qa; }, epic, items, plan, set, read, land, verdict, gate, failAncestry };
