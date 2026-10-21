@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-773
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-20T20:57:49.538Z
+updated: 2026-10-21T03:05:39.421Z
 ---
 
 ## Summary
@@ -189,3 +189,16 @@ Manual checks used real scratch CLI hubs, curl and a tiny fixture bundle. A Pyth
 Build gates: clean detached HEAD and refs/heads/dev matched before/after; all three first-parent item landing commits captured in build.txt. Cleanup: both scratch hubs stopped normally, port holder terminated by the prescribed M2 command, remaining scratch process count 0, scratch root removed with non-force rm -r. Stage verdict only: no epic criterion marks.
 
 Evidence A-8056: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8056-e-412-stage-qa-evidence-at-44097bad-the-edge-and-the-wire-12-pass/report.md
+
+### coord · 2026-10-21T03:05:39.421Z
+
+T-983 C5: snapshot measurement on a disposable copy of the live tracker (A-8119, macOS, posted by coord for impl-983).
+
+- Live tracker items: 1,032. Prototype baseline: 1.15 MB.
+- Items domain, populated: 571,512 bytes, 54.5 % of its cap (MAX_FRAME_BYTES 1 MiB).
+- Snapshot total: 575,504 bytes. The other domains held scratch defaults, not live data: sessions, topics, inbox, events and accounts were nearly empty.
+- Compose time, five samples: 120.2, 118.5, 113.2, 138.4 and 123.8 ms. With frame checks: 121.8, 119.9, 115.4, 140.3 and 125.2 ms.
+
+Notes:
+- Items will reach the 1 MiB cap at about 1,900 items at today's density. Paging the items domain (or slim frames) is needed before then.
+- The synchronous compose holds the hub loop for about 120 ms per featured connection. That is fine for one browser, but worth watching when T-985/T-986 add reconnects.

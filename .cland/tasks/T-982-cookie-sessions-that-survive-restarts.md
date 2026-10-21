@@ -2,8 +2,8 @@
 id: T-982
 kind: task
 title: Cookie sessions that survive restarts, listed and revoked
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-778
 branch: t/T-982-cookie-sessions-that-survive-restarts
 created: 2026-10-20T16:50:00.187Z
-updated: 2026-10-21T03:00:42.133Z
+updated: 2026-10-21T03:13:24.113Z
+closed: 2026-10-21T03:13:24.113Z
 ---
 
 ## Summary
@@ -31,23 +32,29 @@ Each cookie session is stored as a hash, with its creation time and its last use
 - [x] C1. A cookie issued before a hub restart still opens `/ws` after it (test with two hub starts on one project).
   - verified: rev-23 [reviewer] · run rev-20261020-982-final · 2026-10-20T21:48:57.454Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - done: impl-982 · 2026-10-21T02:58:43.830Z
+  - verified: rev-23 [reviewer] · run rev-20261021-982-final-2 · 2026-10-21T03:08:47.196Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
 - [x] C2. `hub.db` holds only a hash of each cookie, with its creation and last use (test reads the row).
   - verified: rev-23 [reviewer] · run rev-20261020-982-final · 2026-10-20T21:48:57.454Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - done: impl-982 · 2026-10-21T02:58:43.849Z
+  - verified: rev-23 [reviewer] · run rev-20261021-982-final-2 · 2026-10-21T03:08:47.196Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
 - [x] C3. `cland web --sessions` lists each cookie session with its id, creation, last use and open socket count (CLI test).
   - verified: rev-23 [reviewer] · run rev-20261020-982-final · 2026-10-20T21:48:57.454Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - done: impl-982 · 2026-10-21T02:58:43.867Z
+  - verified: rev-23 [reviewer] · run rev-20261021-982-final-2 · 2026-10-21T03:08:47.196Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
 - [x] C4. `cland web --revoke <id>` closes that session's open sockets within the call, and its cookie is refused afterwards (test).
   - verified: rev-23 [reviewer] · run rev-20261020-982-final · 2026-10-20T21:48:57.454Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - done: impl-982 · 2026-10-21T02:58:43.884Z
+  - verified: rev-23 [reviewer] · run rev-20261021-982-final-2 · 2026-10-21T03:08:47.196Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
 - [x] C5. A cookie session older than 30 days is refused (fake-clock test).
   - verified: rev-23 [reviewer] · run rev-20261020-982-final · 2026-10-20T21:48:57.454Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - done: impl-982 · 2026-10-21T02:58:43.904Z
+  - verified: rev-23 [reviewer] · run rev-20261021-982-final-2 · 2026-10-21T03:08:47.196Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
 - [x] C6. `hub/README.md` documents `--sessions`, `--revoke` and the 30-day lifetime.
   - verified: rev-23 [reviewer] · run rev-20261020-982-source-2 · 2026-10-20T21:40:25.546Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - verified: rev-23 [reviewer] · run rev-20261020-982-final · 2026-10-20T21:48:57.454Z · commit 129f031c6a68eb43be06a4cc9c33dccd54684358
   - done: impl-982 · 2026-10-21T02:58:43.921Z
   - verified: rev-23 [reviewer] · run rev-20261021-982-source-3 · 2026-10-21T03:00:42.133Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
+  - verified: rev-23 [reviewer] · run rev-20261021-982-final-2 · 2026-10-21T03:08:47.196Z · commit 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
 
 ## Comments
 
@@ -114,3 +121,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Authorized merge delta source clear; audit A-8116 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8116-t-982-merge-delta-source-clear-at-6c7ea23a.md). Coordinator 9f1532e7/fc29d20c authorize this merge. Persistent store/auth/edge/CLI semantics and M1/M2 fixes unchanged; two explicit Web-refusing rows preserve complete protocol inventory, authenticated tests now assert cli-neovim-only/CLI/Neovim. Both sides of docs/help/skill provenance and human-only clause pointers retained, within reported roles headroom. A-8113 local targeted/static evidence is scoped, not a fresh configured gate. No findings; C6 verified by source, C1–C5 await exact-head mode-free verification. A-8100 is historical only; no Reviewer runtime or QA claim.
 
 Criteria: C6 verified.
+
+### rev-23 · 2026-10-21T03:08:47.196Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-982-final-2
+commit: 6c7ea23aeb7c4851f6bf8eea77840c01012101c7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head final clear; audit A-8122 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8122-t-982-merged-head-final-review-at-6c7ea23a.md). Exact-head 17caee06/A-8121 completes Linux T1/all-T2 fallback: 2,199 ordinary passes/337 files, five owned new identities each 5/5 load passes separately. Auth T1 3/3/T2 17/17 and incoming policy 4/4/authority 32/32 pass. Persistence/expiry/list/revoke, exact server completion, separate client closure, owned openers and typed refusal integration all established; docs C6 remain source-verified. M1/M2 resolved. Web NOT RUN for missing Linux libraries; no browser/T3/T4/after-stage QA claim. Host check 5253b3a6 not repeated remotely; lint/duration/ratchet report-only, two missing baselines. No findings; verify C1–C6.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-21T03:13:24.113Z
+
+Merged 694e823dfa7231c433de939a3b87a6e4e28c1209 onto dev.

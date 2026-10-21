@@ -3,8 +3,9 @@ id: T-983
 kind: task
 title: The snapshot at connection
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-780
 branch: t/T-983-the-snapshot-at-connection
 created: 2026-10-20T16:50:00.282Z
-updated: 2026-10-21T02:58:00.368Z
+updated: 2026-10-21T03:10:44.337Z
 ---
 
 ## Summary
@@ -36,9 +37,38 @@ A connection without the feature list, which means Neovim's and the CLI's, recei
 
 ## Acceptance criteria
 
-- [ ] C1. A client hello with the snapshot feature receives, after the welcome, frames under one epoch and one sequence number closed by an end marker, and a hello without it receives today's frames only (test).
-- [ ] C2. The snapshot carries the levels and ladder, items with the latest verdict of each kind and its round, sessions with presence, roles, crew, Coordinator and verification queue, open topics plus those closed in the last seven days, the inbox with `needsYou`, the first page of events and the accounts (test, one assertion per domain).
-- [ ] C3. No snapshot frame carries suite history or an item's verdict history, and each frame stays under its kind's size limit (test).
-- [ ] C4. The snapshot is composed in one synchronous turn: no other frame reaches the connection between its first frame and its end marker (test with a change raced against the composition).
-- [ ] C5. On a local copy of the live tracker, a measurement script records the snapshot's bytes per domain and its compose time, and the figures are posted as a comment on E-412 beside the prototype's 1.15 MB (local evidence).
-- [ ] C6. `hub/README.md` documents the feature list, the snapshot's frames and the end marker.
+- [x] C1. A client hello with the snapshot feature receives, after the welcome, frames under one epoch and one sequence number closed by an end marker, and a hello without it receives today's frames only (test).
+  - done: impl-983 · 2026-10-21T03:07:20.974Z
+- [x] C2. The snapshot carries the levels and ladder, items with the latest verdict of each kind and its round, sessions with presence, roles, crew, Coordinator and verification queue, open topics plus those closed in the last seven days, the inbox with `needsYou`, the first page of events and the accounts (test, one assertion per domain).
+  - done: impl-983 · 2026-10-21T03:07:41.556Z
+- [x] C3. No snapshot frame carries suite history or an item's verdict history, and each frame stays under its kind's size limit (test).
+  - done: impl-983 · 2026-10-21T03:07:41.687Z
+- [x] C4. The snapshot is composed in one synchronous turn: no other frame reaches the connection between its first frame and its end marker (test with a change raced against the composition).
+  - done: impl-983 · 2026-10-21T03:07:41.921Z
+- [x] C5. On a local copy of the live tracker, a measurement script records the snapshot's bytes per domain and its compose time, and the figures are posted as a comment on E-412 beside the prototype's 1.15 MB (local evidence).
+  - done: impl-983 · 2026-10-21T03:07:42.035Z
+  - verified: rev-23 [reviewer] · run rev-20261021-983-source · 2026-10-21T03:10:44.337Z · commit ac463d7ffbf334115fed7b57f75e1baee24cd7e9
+- [x] C6. `hub/README.md` documents the feature list, the snapshot's frames and the end marker.
+  - done: impl-983 · 2026-10-21T03:07:42.163Z
+  - verified: rev-23 [reviewer] · run rev-20261021-983-source · 2026-10-21T03:10:44.337Z · commit ac463d7ffbf334115fed7b57f75e1baee24cd7e9
+
+## Comments
+
+### impl-983 · 2026-10-21T03:07:42.316Z
+
+Implementation at ac463d7ffbf334115fed7b57f75e1baee24cd7e9 (merged origin/dev before first review). C1–C4: local darwin/arm64 targeted connection-snapshot.test.ts 4/4 T2, snapshot-framing.test.ts 8/8 T1; check passed (typecheck all workspaces, web bundle, static/test lint; lint report mode). C5 copied tracker measurement A-8119, 1,032 items, 575,504 domain-frame bytes vs prototype 1.15 MB; largest items 54.5% cap, 5 compose samples 113–138 ms. Coordinator posted figures to E-412. C6 protocol and test/measurement docs updated. QA policy is after-stage, no per-item QA brief supplied.
+
+### rev-23 · 2026-10-21T03:10:44.337Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-983-source
+commit: ac463d7ffbf334115fed7b57f75e1baee24cd7e9
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Source clear; full Standards/Spec audit A-8123 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8123-t-983-source-review-at-ac463d7f.md). All 12 files reviewed. Optional feature negotiation preserves legacy hellos; seven compact domains share epoch/sequence/end. Full-envelope UTF-8 limits validate the entire snapshot before any frame sends; journal revision-checked asynchronous preparation is followed by synchronous gather/validation/write, with atomic refusal fallback. Wire conformance and T1/T2 assertions cover domains, limits/history exclusion and raced-change ordering. No findings. C5 A-8119 copied-tracker measurement is explicitly scoped (other domains scratch defaults, no embedded SHA/exit) and figures are posted on E-412 by Coordinator; a7710226 accepts ~120 ms compose/54.5% items cap. C6 docs complete. Verify C5/C6; C1–C4 await exact-head configured mode-free receipt. Local targeted/check summary is not a full gate or exact-head timing proof. No Reviewer runtime; after-stage QA separate.
+
+Criteria: C5 verified, C6 verified.
