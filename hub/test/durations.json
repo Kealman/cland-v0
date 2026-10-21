@@ -14,9 +14,11 @@
       "A-8040",
       "A-8038",
       "A-8008",
-      "A-8009"
+      "A-8009",
+      "A-8205",
+      "A-8202"
     ],
-    "commit": "44097bad32444c7db96492ef15d182c819166f99"
+    "commit": "0404908b94cd8f61fb3687f3cbff2506427b0146"
   },
   "budget": {
     "testSeconds": 5,
@@ -2133,6 +2135,38 @@
     "web/test/smoke.test.ts": {
       "seconds": 0.965907,
       "tests": 1
+    },
+    "hub/test/connection-snapshot.test.ts": {
+      "seconds": 0.318847,
+      "tests": 4
+    },
+    "hub/test/snapshot-framing.test.ts": {
+      "seconds": 0.004,
+      "tests": 8
+    },
+    "hub/test/startup-replies-scale.test.ts": {
+      "seconds": 2.451923,
+      "tests": 1
+    },
+    "hub/test/web-artifacts-unit.test.ts": {
+      "seconds": 0.018706,
+      "tests": 2
+    },
+    "hub/test/web-artifacts.test.ts": {
+      "seconds": 0.426494,
+      "tests": 7
+    },
+    "hub/test/web-authority-unit.test.ts": {
+      "seconds": 0.001429,
+      "tests": 4
+    },
+    "hub/test/web-authority.test.ts": {
+      "seconds": 1.386085,
+      "tests": 32
+    },
+    "nvim/test/hub-read-component.test.ts": {
+      "seconds": 0.159896,
+      "tests": 2
     }
   },
   "tests": {
@@ -5477,7 +5511,95 @@
     "nvim/test/startup-budget.test.ts::bodies added to the first task.list trip the payload byte budget": 3.528401,
     "nvim/test/startup-budget.test.ts::thousand-item workbench startup fits the time and first-payload budgets": 3.810433,
     "nvim/test/ui.test.ts::a cold Neovim restart restores Sessions left and Items right from version-2 preferences": 0.678077,
-    "web/test/smoke.test.ts::the web shell uses a one-time edge link, strict CSP and isolated browser fixtures": 0.965907
+    "web/test/smoke.test.ts::the web shell uses a one-time edge link, strict CSP and isolated browser fixtures": 0.965907,
+    "hub/src/hub/store.test.ts::a message inserted between forward pages appears exactly once after the existing tail": 0.008787,
+    "hub/src/hub/store.test.ts::history accepts exclusive safe-integer cursors and refuses ambiguous or invalid cursors": 0.003004,
+    "hub/src/hub/store.test.ts::legacy history keeps its latest-first selection and oldest-first output, including message-id before": 0.003623,
+    "hub/src/hub/store.test.ts::numeric history walks 450 messages in three pages in either direction without gaps or repeats": 0.012956,
+    "hub/test/connection-snapshot.test.ts::a model change raced against the first snapshot frame runs after its end marker": 0.040049,
+    "hub/test/connection-snapshot.test.ts::an oversized domain refuses the whole snapshot and leaves legacy reads usable": 0.068572,
+    "hub/test/connection-snapshot.test.ts::hello negotiates snapshot alone and legacy clients keep their existing welcome": 0.123288,
+    "hub/test/connection-snapshot.test.ts::snapshot contains each workbench domain, compact verdict rounds and recent closed topics": 0.086938,
+    "hub/test/hub-status-component.test.ts::artifact pages are newest first and an exclusive cursor reaches the next page": 0.050779,
+    "hub/test/hub-status-component.test.ts::default hub status bounds completed suite history and preserves explicit historical diagnostics": 0.085214,
+    "hub/test/hub-status-component.test.ts::eight startup replies and byte guards work on a small durable fixture": 0.08233,
+    "hub/test/hub-status-component.test.ts::topic history pages complete messages by bytes and reads the next before-id page": 0.063726,
+    "hub/test/snapshot-framing.test.ts::a frame exactly at its byte cap is accepted; one extra byte refuses it": 0.000965,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses accounts overflow before returning any frames": 0.000172,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses events overflow before returning any frames": 0.000372,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses inbox overflow before returning any frames": 0.000346,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses items overflow before returning any frames": 0.000387,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses sessions overflow before returning any frames": 0.000718,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses topics overflow before returning any frames": 0.000377,
+    "hub/test/snapshot-framing.test.ts::snapshot refuses tracker overflow before returning any frames": 0.000663,
+    "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": 2.451923,
+    "hub/test/suite-coverage.test.ts::Web-only coverage preserves the map and test exit code (append=0)": 1.133055,
+    "hub/test/suite-coverage.test.ts::Web-only coverage preserves the map and test exit code (append=1)": 1.117389,
+    "hub/test/web-artifacts-unit.test.ts::capability rows persist only digests and cascade away with revoked or expired sessions": 0.013331,
+    "hub/test/web-artifacts-unit.test.ts::paths outside the trusted project prefix retain full-path no-follow confinement": 0.005375,
+    "hub/test/web-artifacts.test.ts::a parent swap at final open cannot return an outside file": 0.045579,
+    "hub/test/web-artifacts.test.ts::artifact.url mints random web-only URLs serving extension types without cookies": 0.094821,
+    "hub/test/web-artifacts.test.ts::capabilities and minting expire at the cookie session fixed thirty-day boundary": 0.0643,
+    "hub/test/web-artifacts.test.ts::capabilities confine files and folders, including encoded traversal and symlinks": 0.058368,
+    "hub/test/web-artifacts.test.ts::capabilities survive hub restart and revocation invalidates only the minting session URLs": 0.065857,
+    "hub/test/web-artifacts.test.ts::folder HTML carries the script-only sandbox and relative assets use its capability": 0.045443,
+    "hub/test/web-artifacts.test.ts::moved file and folder capabilities refuse substituted ancestor symlinks": 0.052126,
+    "hub/test/web-auth-unit.test.ts::cookie rows contain only a hash and timestamps and survive reopening the store": 0.010832,
+    "hub/test/web-auth.test.ts::a persisted cookie opens /ws after two hub starts on one project": 0.052476,
+    "hub/test/web-auth.test.ts::cland web lists timestamps and socket counts and revokes only the chosen session within the call": 0.378287,
+    "hub/test/web-auth.test.ts::web.revoke refuses browser and session-shell requests": 0.131678,
+    "hub/test/web-auth.test.ts::web.sessions refuses browser and session-shell requests": 0.127646,
+    "hub/test/web-authority-unit.test.ts::the web allows human workbench reads, writes, queued verification and merge": 0.000515,
+    "hub/test/web-authority-unit.test.ts::the web denies absent rows and prototype names, including malformed request ids": 0.00047,
+    "hub/test/web-authority-unit.test.ts::the web refuses any artifact path even alongside content or with an invalid value": 0.000073,
+    "hub/test/web-authority-unit.test.ts::the web refuses any as field on every classified request, even a malformed value": 0.000371,
+    "hub/test/web-authority.test.ts::web cannot stop the hub; Unix can stop the in-process hub": 0.037879,
+    "hub/test/web-authority.test.ts::web refuses an own as field (\"\") before replay and attribution": 0.035923,
+    "hub/test/web-authority.test.ts::web refuses an own as field ({\"name\":\"human\"}) before replay and attribution": 0.035245,
+    "hub/test/web-authority.test.ts::web refuses an own as field ({\"name\":\"pretend-session\",\"sessionId\":\"unknown\",\"shell\":true}) before replay and attribution": 0.039632,
+    "hub/test/web-authority.test.ts::web refuses an own as field ({}) before replay and attribution": 0.036591,
+    "hub/test/web-authority.test.ts::web refuses an own as field (false) before replay and attribution": 0.037502,
+    "hub/test/web-authority.test.ts::web refuses an own as field (null) before replay and attribution": 0.035738,
+    "hub/test/web-authority.test.ts::web refuses artifact.create paths without reading them; Unix creates from the path": 0.039839,
+    "hub/test/web-authority.test.ts::web refuses artifact.delete; Unix retains its normal handler": 0.04151,
+    "hub/test/web-authority.test.ts::web refuses as on the initial hello and still requires a valid human hello": 0.039083,
+    "hub/test/web-authority.test.ts::web refuses config.set; Unix retains its normal handler": 0.055357,
+    "hub/test/web-authority.test.ts::web refuses crew.set; Unix retains its normal handler": 0.04815,
+    "hub/test/web-authority.test.ts::web refuses demo.exec; Unix retains its normal handler": 0.039938,
+    "hub/test/web-authority.test.ts::web refuses demo.start; Unix retains its normal handler": 0.037632,
+    "hub/test/web-authority.test.ts::web refuses demo.status; Unix retains its normal handler": 0.039673,
+    "hub/test/web-authority.test.ts::web refuses demo.stop; Unix retains its normal handler": 0.037059,
+    "hub/test/web-authority.test.ts::web refuses executor.prepare; Unix retains its normal handler": 0.041793,
+    "hub/test/web-authority.test.ts::web refuses executor.reap; Unix retains its normal handler": 0.039775,
+    "hub/test/web-authority.test.ts::web refuses executor.retire-legacy; Unix retains its normal handler": 0.04224,
+    "hub/test/web-authority.test.ts::web refuses hub.reload with CLI and Neovim guidance; the Unix socket still reloads": 0.094497,
+    "hub/test/web-authority.test.ts::web refuses publish; Unix retains its normal handler": 0.056925,
+    "hub/test/web-authority.test.ts::web refuses push; Unix retains its tracker precondition without running Git": 0.036507,
+    "hub/test/web-authority.test.ts::web refuses release; Unix retains its normal handler": 0.042366,
+    "hub/test/web-authority.test.ts::web refuses session.signal; Unix retains its normal handler": 0.038823,
+    "hub/test/web-authority.test.ts::web refuses suite.forced; Unix retains its normal handler": 0.039575,
+    "hub/test/web-authority.test.ts::web refuses sync; Unix retains its tracker precondition without running Git": 0.035907,
+    "hub/test/web-authority.test.ts::web refuses task.import; Unix retains its normal handler": 0.041793,
+    "hub/test/web-authority.test.ts::web refuses task.migrate; Unix retains its normal handler": 0.040464,
+    "hub/test/web-authority.test.ts::web refuses unknown and prototype frame names by default": 0.042019,
+    "hub/test/web-authority.test.ts::web refuses web.link; Unix retains its normal handler": 0.045132,
+    "hub/test/web-authority.test.ts::web refuses worktree.prune; Unix retains its normal handler": 0.07019,
+    "hub/test/web-authority.test.ts::web topic messages and inline artifacts are recorded as the human": 0.041328,
+    "nvim/test/artifact-render.test.ts::a raw toggle keeps its source position when deferred tables change the final row count": 0.335718,
+    "nvim/test/artifact-render.test.ts::artifact events refresh an open projection and raw saves replace its cached version": 0.359739,
+    "nvim/test/artifact-render.test.ts::artifact tables follow the thread layout at 120 and 80 columns and toggle at their source line": 0.300766,
+    "nvim/test/artifact-render.test.ts::folder entry and md and markdown children open rendered from the artifacts browser and toggle to exact raw source": 1.553484,
+    "nvim/test/artifact-render.test.ts::moving an open Markdown artifact rebinds its rendered view and editable raw source": 0.381421,
+    "nvim/test/artifact-render.test.ts::palette CTRL-v opens Markdown through the artifact opener with independent centre and split modes and widths": 0.358157,
+    "nvim/test/artifact-render.test.ts::recorded prompt drafts stay raw and ps and pa send exact saved Markdown bytes with their attachment flag": 0.488517,
+    "nvim/test/artifact-render.test.ts::restart snapshot restores an artifact rendered even when it was raw": 0.312734,
+    "nvim/test/artifacts.test.ts::an older-page rendered artifact survives reconnect and visibility while detail reads are held": 0.47762,
+    "nvim/test/artifacts.test.ts::archived General thread follows byte-capped pages shorter than the row limit": 0.267956,
+    "nvim/test/artifacts.test.ts::artifact browser and palette fetch the next page only on human demand": 0.290296,
+    "nvim/test/hub-read-component.test.ts::a 20 MiB frame in 64 KiB chunks decodes once within 2 s and bounded allocation": 0.111546,
+    "nvim/test/hub-read-component.test.ts::split, coalesced and partial lines preserve frame order and drop malformed lines": 0.04835,
+    "nvim/test/qa-shipped.test.ts::ARTIFACT-002 passes through the headless QA runner": 0.359402,
+    "nvim/test/startup-budget.test.ts::an oversized non-item startup reply trips the per-reply byte budget": 1.800434
   },
   "allow": {
     "hub/test/startup-replies-scale.test.ts::eight startup replies fit per-frame and total budgets on a thousand-item durable fixture": {
@@ -7691,6 +7813,13 @@
       "added": "2026-10-20",
       "expires": "2026-10-27",
       "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an intentional slow task.list to prove the 3 s startup guard rejects it, then confirms client teardown; Linux stage 888e98da at 7c1aeae9 measured 9.286204391 s (A-8003)."
+    },
+    "nvim/test/startup-budget.test.ts::an oversized non-item startup reply trips the per-reply byte budget": {
+      "seconds": 6.4,
+      "owner": "E-880",
+      "added": "2026-10-21",
+      "expires": "2026-10-27",
+      "reason": "Builds 1000 tracker items and drives real Neovim socket startup with an oversized non-item reply to prove the per-reply byte guard rejects it, then confirms client teardown (T-1038 C3); Linux stage 15d2ecff at 0404908b measured 5.329 s (A-8202), macOS stage de444828 1.80 s (A-8205)."
     },
     "nvim/test/startup-budget.test.ts::bodies added to the first task.list trip the payload byte budget": {
       "seconds": 5.791998113,
