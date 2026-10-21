@@ -563,20 +563,34 @@ export class HubCore {
     }
   }
 
-  /** Same projection for the journal and live rows, independent of visibility preferences. */
-  eventsProject(filter: EventsFilter = {}): (row: EventRow, record: JournalRecord) => EventRow | null {
+  /** Match already projected rows, also used for per-connection live and replay filters. */
+  eventsMatch(filter: EventsFilter = {}): (row: EventRow) => boolean {
     const canonical = (id: string) => this.#items?.resolveId?.(id) ?? id;
     if (filter.subject?.kind === 'item') filter = { ...filter, subject: { ...filter.subject, id: canonical(filter.subject.id) } };
     if (filter.muted) filter = { ...filter, muted: filter.muted.map(subject => subject.kind === 'item' ? { ...subject, id: canonical(subject.id) } : subject) };
+    const descendants = filter.subject?.kind === 'item' ? new Set([...this.#itemSnapshots.values()].filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
+    descendants?.add(filter.subject!.id);
+    return row => {
+      if (row.item || row.subject.kind === 'item') row = { ...row, ...(row.item ? { item: canonical(row.item) } : {}), ...(row.subject.kind === 'item' ? { subject: { ...row.subject, id: canonical(row.subject.id) } } : {}) };
+      if (filter.kinds?.length && !filter.kinds.includes(row.kind) || filter.warnings && !row.warning) return false;
+      if (filter.muted?.some(s => s.kind === row.subject.kind && s.id === row.subject.id)) return false;
+      const subject = filter.subject;
+      if (subject && !(subject.kind === 'item' ? descendants?.has(row.item ?? (row.subject.kind === 'item' ? row.subject.id : '')) : row.subject.kind === subject.kind && row.subject.id === subject.id || row[subject.kind] === subject.id)) return false;
+      return true;
+    };
+  }
+
+  /** Same projection for the journal and live rows, independent of visibility preferences. */
+  eventsProject(filter: EventsFilter = {}): (row: EventRow, record: JournalRecord) => EventRow | null {
+    const matches = this.eventsMatch(filter);
     // Most journal rows cannot duplicate an inbox wait. Do not rebuild the inbox for usage/state/task traffic.
     // Capture it lazily once for a batch that actually needs wait suppression.
     let snapshot: ReturnType<InboxBoard['list']> | undefined;
     const inbox = () => snapshot ??= this.inbox.list();
     let waitingTopics: Set<string> | undefined;
     const items = new Map([...this.#itemSnapshots.values()].map(i => [i.id, i]));
-    const descendants = filter.subject?.kind === 'item' ? new Set([...this.#itemSnapshots.values()].filter(i => i.id === filter.subject!.id || this.#items?.ancestry?.(i.id)?.includes(filter.subject!.id)).map(i => i.id)) : null;
-    descendants?.add(filter.subject!.id);
     return (row, record) => {
+      const canonical = (id: string) => this.#items?.resolveId?.(id) ?? id;
       if (row.item || row.subject.kind === 'item') row = { ...row, ...(row.item ? { item: canonical(row.item) } : {}), ...(row.subject.kind === 'item' ? { subject: { ...row.subject, id: canonical(row.subject.id) } } : {}) };
       if (row.kind === 'topic' && /waiting for human/.test(row.text)) {
         waitingTopics ??= new Set([...inbox().waiting.map(t => t.id), ...inbox().asks.map(a => a.topic.id), ...inbox().messages.map(m => m.topic.id), ...inbox().requests.map(r => r.topic.id)]);
@@ -591,10 +605,7 @@ export class HubCore {
         || row.kind === 'session' && this.visibility.raisedToNow('sessions', { role: record.role, status: /stopped|died|harness-exited/.test(row.text) ? 'stopped' : 'running', state: /idle/.test(row.text) ? 'idle' : 'busy' })
         || row.kind === 'topic' && this.visibility.raisedToNow('topics', { status: /closed/.test(row.text) ? 'closed' : /waiting for human/.test(row.text) ? 'waiting for human' : 'open' });
       if (promoted) row = { ...row, warning: true, glyph: '⚠', bookkeeping: false };
-      if (filter.kinds?.length && !filter.kinds.includes(row.kind) || filter.warnings && !row.warning) return null;
-      if (filter.muted?.some(s => s.kind === row.subject.kind && s.id === row.subject.id)) return null;
-      const subject = filter.subject;
-      if (subject && !(subject.kind === 'item' ? descendants?.has(row.item ?? (row.subject.kind === 'item' ? row.subject.id : '')) : row.subject.kind === subject.kind && row.subject.id === subject.id || row[subject.kind] === subject.id)) return null;
+      if (!matches(row)) return null;
       return row;
     };
   }

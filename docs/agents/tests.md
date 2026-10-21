@@ -860,6 +860,13 @@ the discovery `webPort` contract and checks that session rows follow that headin
 directly. The compiler contract fixture in `typecheck.test.ts` includes each root
 typecheck project, including `shared/wire/tsconfig.json` and a browser-safe source.
 
+Events subscription tests use the same frame seam: `events.test.ts` covers a
+warning filter's first page and live rows beside an unfiltered client;
+`connection-snapshot.test.ts` changes kind/subject filters without reconnecting,
+checks inherited pagination and snapshot fallback, and verifies contiguous live
+and replay cursors via row-free `model.advance` deltas. An omitted filter resets
+the subscription; an explicit `events.list` filter overrides only that read.
+
 Hub scheduling tests pass one complete clock at the fixture boundary:
 `projectHub(t, root, env, { clock: new FakeClock() })` (`hub/test/fake-clock.ts`).
 `await clock.advance(ms)` runs due hub timers in deadline order and yields to

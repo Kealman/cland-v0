@@ -998,10 +998,19 @@ export class Dispatcher {
     let preparingSnapshot = false;
     let modelGeneration = 0;
     let subscriptionRequested = false;
+    let eventsFilter: import('../protocol.ts').EventsFilter | undefined;
+    const filterModel = (frame: HubFrame): HubFrame | null => {
+      if (frame.type !== 'event' || !eventsFilter || core.eventsMatch(eventsFilter)(frame.row)) return frame;
+      return 'seq' in frame ? { type: 'model.advance', epoch: frame.epoch, seq: frame.seq } : null;
+    };
     let holdingModel = false;
     const heldModel: Array<{ frame: HubFrame; serialized: () => string }> = [];
     const sendModel = (frame: HubFrame, serialized: () => string) => {
       if (done || !peer.isOpen()) return;
+      const filtered = filterModel(frame);
+      if (!filtered) return;
+      if (filtered !== frame) serialized = () => JSON.stringify(filtered);
+      frame = filtered;
       if (features.includes('numbered-deltas')) modelOutput.send(frame, serialized);
       else wire.send(frame, serialized());
     };
@@ -1037,9 +1046,10 @@ export class Dispatcher {
         for (let attempt = 0; attempt < 3 && peer.isOpen(); attempt++) {
           const journal = this.#options.journal;
           const revision = journal?.revision;
-          const events = journal ? await journal.events(undefined, undefined, core.eventsProject()) : { rows: [], before: null, more: false };
+          const filter = eventsFilter;
+          const events = journal ? await journal.events(undefined, undefined, core.eventsProject(filter)) : { rows: [], before: null, more: false };
           if (done || generation !== modelGeneration) return;
-          if (journal?.revision !== revision) continue;
+          if (journal?.revision !== revision || filter !== eventsFilter) continue;
           // No await below: composition, subscription and the transaction occupy one turn.
           const result = snapshotFrames(composeSnapshot({
             core, tracker: this.#options.tracker, sessions: this.#sessions ?? null,
@@ -1085,7 +1095,10 @@ export class Dispatcher {
         holdingModel = true;
         subscribeModel();
         let complete = true;
-        for (const json of replay) if (!modelOutput.replay(json)) { complete = false; break; }
+        for (const json of replay) {
+          const frame = eventsFilter ? filterModel(JSON.parse(json) as HubFrame) : null;
+          if (!(frame ? modelOutput.send(frame) : modelOutput.replay(json))) { complete = false; break; }
+        }
         releaseModel();
         completed?.(complete);
       } else if (features.includes('snapshot')) startSnapshot(() => completed?.(false));
@@ -1649,7 +1662,7 @@ export class Dispatcher {
             return answer(core.asks.answer(frame.ask, frame.option, frame.text, frame.as?.name === 'human' ? undefined : frame.as?.name));
           case 'events.list': {
             const resumed = this.#guard.resumer(frame.type);
-            return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
+            return later(frame.type, (this.#options.journal ? this.#options.journal.events(frame.before, frame.limit, core.eventsProject(frame.filter ?? eventsFilter)) : Promise.resolve({ rows: [], before: null, more: false })).then(value => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
           }
           case 'inbox.list':
             return answer(core.inbox.list(frame.archive));
@@ -1673,10 +1686,16 @@ export class Dispatcher {
             return later(frame.type, value.then((v): HubFrame => ({ type: 'result', id, ok: true, value: v }), (err: unknown) => Dispatcher.#failure(id, err)));
           }
           case 'subscribe':
+            eventsFilter = frame.filter;
             subscriptionRequested = true;
             if (!unsubscribe) {
               subscribeModel();
               log({ event: 'subscribed', edge: transport.edge });
+            }
+            if (frame.filter !== undefined) {
+              const resumed = this.#guard.resumer(frame.type);
+              const page = this.#options.journal?.events(undefined, undefined, core.eventsProject(eventsFilter)) ?? Promise.resolve({ rows: [], before: null, more: false });
+              return later(frame.type, page.then(events => resumed((): HubFrame => ({ type: 'result', id: frame.id, ok: true, value: { subscribed: true, events } })), err => resumed(() => Dispatcher.#failure(frame.id, err))));
             }
             return answer({ subscribed: true });
         }

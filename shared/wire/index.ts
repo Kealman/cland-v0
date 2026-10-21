@@ -718,7 +718,7 @@ export type SlimTaskFrame = Omit<Extract<HubEvent, { type: 'task' }>, 'layers'> 
 /** Re-project existing rows by their stable ids; this is not an append or an invalidation. */
 export type VisibilityFrame = { type: 'visibility'; rows: { topics: Topic[]; sessions: Presence[]; processes: HarnessProcessView[]; messages: TopicMessage[]; artifacts: Artifact[] } };
 export type ModelEvent = HubEvent | SlimTaskFrame | VisibilityFrame;
-export type ModelDelta = ModelEvent & { epoch: string; seq: number };
+export type ModelDelta = (ModelEvent | { type: 'model.advance' }) & { epoch: string; seq: number };
 export const SNAPSHOT_LIMITS = {
   tracker: 64 * 1024, items: 1024 * 1024, sessions: 1024 * 1024,
   topics: 1024 * 1024, inbox: 1024 * 1024, events: 1024 * 1024,
@@ -856,8 +856,8 @@ export type ClientRequest =
   | { type: 'topic.resolve'; id: string; topic: string }
   /** The human read the topic up to a message (its id; absent: the latest): `{ topic: Topic }` with `unread`. */
   | { type: 'topic.read'; id: string; topic: string; upTo?: string }
-  /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
-  | { type: 'subscribe'; id: string }
+  /** Subscribe/update the connection's events filter. With filter, returns `{ subscribed: true, events: EventsPage }`; absent resets to all rows. */
+  | { type: 'subscribe'; id: string; filter?: EventsFilter }
   /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
   | { type: 'role.set'; id: string; session: string; role: string; note?: HandoverNote | string; move?: boolean; item?: string }
   /** A role's state, as its holder would pull it: `RoleState`. */

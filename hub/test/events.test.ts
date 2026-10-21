@@ -244,3 +244,44 @@ test('inbox retires notifications and dismissal frames while verdicts and role c
   assert.doesNotMatch(cli.stdout, /notification:/);
   assert.ok(ui.frames.filter(f => f.type === 'inbox').every(f => !('notifications' in (f.inbox as object))));
 });
+
+
+test('subscription warning filter covers its first page and live rows without affecting other clients', async t => {
+  const root = await tempProject(t);
+  await mkdir(join(root, '.cland'), { recursive: true });
+  await writeFile(join(root, '.cland/journal.jsonl'), [
+    { event: 'notification', kind: 'verdict', item: 'T-8', result: 'not clear', text: 'Historical warning' },
+    { event: 'notification', kind: 'verdict', item: 'T-9', result: 'clear', text: 'Historical clear' },
+  ].map(record => JSON.stringify({ ts: '2026-10-12T10:00:00Z', ...record }) + '\n').join(''));
+  const { discovery } = await projectHub(t, root);
+  const filtered = await connectUi(t, discovery);
+  const all = await connectUi(t, discovery);
+  assert.deepEqual((await all.request({ type: 'subscribe' })).value, { subscribed: true });
+  for (const filter of [{ warnings: 'yes' }, { kinds: ['unknown'] }, { subject: { kind: 'topic', id: '' } }, null]) {
+    assert.equal((await filtered.request({ type: 'subscribe', filter })).ok, false);
+  }
+  const subscribed = await filtered.request({ type: 'subscribe', filter: { warnings: true } });
+  assert.equal(subscribed.ok, true, subscribed.error);
+  const first = (subscribed.value as { events: EventsPage }).events;
+  assert.deepEqual(first.rows.map(row => row.text), ['Historical warning']);
+  const item = ((await all.request({ type: 'task.create', title: 'Live warnings', size: 'S' })).value as { item: { id: string } }).item.id;
+  const mark = filtered.frames.length;
+  for (const result of ['clear', 'not clear'] as const) {
+    const received = all.waitFor(frame => frame.type === 'event' && (frame.row as EventRow).text.includes(`review ${result} ·`));
+    const verdict = await all.request({ type: 'task.comment', item, text: 'Filter fixture', verdict: { verdict: 'review', scope: 'full', result, run: `filter-${result}` }, as: { name: 'rev', role: 'reviewer' } });
+    assert.equal(verdict.ok, true, verdict.error);
+    await received;
+  }
+  const warning = await filtered.waitFor(frame => frame.type === 'event' && (frame.row as EventRow).text.includes('review not clear ·'));
+  await filtered.request({ type: 'topic.list' });
+  assert.deepEqual(filtered.frames.slice(mark).filter(frame => frame.type === 'event'), [warning]);
+  assert.equal((warning.row as EventRow).warning, true);
+  const page = (await filtered.request({ type: 'events.list' })).value as EventsPage;
+  assert.ok(page.rows.length >= 2);
+  assert.ok(page.rows.every(row => row.warning));
+  const override = (await filtered.request({ type: 'events.list', filter: {} })).value as EventsPage;
+  assert.ok(override.rows.some(row => row.text === 'Historical clear'));
+  const unfiltered = (await all.request({ type: 'events.list' })).value as EventsPage;
+  assert.ok(unfiltered.rows.some(row => row.text === 'Historical clear'));
+  assert.ok(unfiltered.rows.some(row => row.kind === 'verdict' && !row.warning));
+});

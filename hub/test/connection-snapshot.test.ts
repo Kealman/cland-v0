@@ -358,3 +358,60 @@ test('a model change raced against the first snapshot frame runs after its end m
   const topics = ui.frames.find(f => f.domain === 'topics')!.value as { topics: Array<{ id: string; unread: number }> };
   assert.equal(topics.topics.find(topic => topic.id === 'general')!.unread, 0);
 });
+
+
+test('changing an events subscription filters pages, snapshots, live rows and replay on the same connection', async t => {
+  const root = await tempProject(t);
+  const { discovery } = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const ui = await client(t, discovery, ['snapshot', 'numbered-deltas']);
+  const initial = await ui.waitFor(f => f.type === 'snapshot.end');
+  const all = await client(t, discovery);
+  await all.request({ type: 'subscribe' });
+  const topics: string[] = [];
+  for (const title of ['Selected topic', 'Other topic']) {
+    const created = await all.request({ type: 'topic.create', title });
+    assert.equal(created.ok, true, created.error);
+    topics.push((created.value as { topic: { id: string } }).topic.id);
+  }
+  await ui.request({ type: 'subscribe', filter: { warnings: true } });
+  const changed = await ui.request({ type: 'subscribe', filter: { kinds: ['topic'], subject: { kind: 'topic', id: topics[0] } } });
+  assert.equal(changed.ok, true, changed.error);
+  type Page = import('../src/protocol.ts').EventsPage;
+  const page = (changed.value as { events: Page }).events;
+  assert.equal(page.rows.length, 1);
+  assert.equal(page.rows[0]!.subject.id, topics[0]);
+  assert.deepEqual((await ui.request({ type: 'events.list', limit: 1 })).value, page);
+  const older = (await ui.request({ type: 'events.list', before: page.before, limit: 1 })).value as Page;
+  assert.deepEqual(older.rows, []);
+  const mark = ui.frames.length;
+  for (const topic of topics) {
+    const receipt = all.waitFor(f => f.type === 'event' && (f.row as { text: string }).text.includes(`${topic} closed`));
+    assert.equal((await all.request({ type: 'topic.close', topic })).ok, true);
+    await receipt;
+  }
+  await ui.request({ type: 'topic.list' });
+  const live = ui.frames.slice(mark);
+  assert.deepEqual(live.filter(f => f.type === 'event').map(f => (f.row as { subject: { id: string } }).subject.id), [topics[0]]);
+  assert.ok(live.some(f => f.type === 'model.advance'));
+  const numbered = ui.frames.slice(ui.frames.indexOf(initial) + 1);
+  assert.deepEqual(numbered.map(f => f.seq), numbered.map((_, i) => Number(initial.seq) + i + 1));
+  const replayMark = ui.frames.length;
+  const replay = await ui.request({ type: 'resume', epoch: initial.epoch, seq: initial.seq });
+  assert.equal(replay.ok, true, replay.error);
+  assert.equal((replay.value as { replayed: boolean }).replayed, true);
+  const replayed = ui.frames.slice(replayMark);
+  assert.ok(replayed.some(f => f.type === 'event'));
+  assert.ok(replayed.filter(f => f.type === 'event').every(f => (f.row as { subject: { id: string } }).subject.id === topics[0]));
+  assert.deepEqual(replayed.map(f => f.seq), replayed.map((_, i) => Number(initial.seq) + i + 1));
+  const snapshotMark = ui.frames.length;
+  await ui.request({ type: 'resume', epoch: 'expired-epoch', seq: 0 });
+  const events = ui.frames.slice(snapshotMark).find(f => f.type === 'snapshot' && f.domain === 'events')!.value as Page;
+  assert.ok(events.rows.length > 0);
+  assert.ok(events.rows.every(row => row.subject.id === topics[0]));
+  assert.deepEqual((await ui.request({ type: 'subscribe' })).value, { subscribed: true });
+  const reset = (await ui.request({ type: 'events.list' })).value as Page;
+  assert.ok(reset.rows.some(row => row.subject.id === topics[1]));
+  const received = ui.waitFor(f => f.type === 'event' && (f.row as { text: string }).text.includes(' created') && (f.row as { subject: { id: string } }).subject.id !== topics[0] && (f.row as { subject: { id: string } }).subject.id !== topics[1]);
+  assert.equal((await all.request({ type: 'topic.create', title: 'Unfiltered again' })).ok, true);
+  await received;
+});

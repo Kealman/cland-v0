@@ -676,8 +676,8 @@ export type ClientRequest =
   | { type: 'topic.resolve'; id: string; topic: string }
   /** The human read the topic up to a message (its id; absent: the latest): `{ topic: Topic }` with `unread`. */
   | { type: 'topic.read'; id: string; topic: string; upTo?: string }
-  /** From here on the hub pushes `message` and `delivery` events on this connection: `{ subscribed: true }`. */
-  | { type: 'subscribe'; id: string }
+  /** Subscribe/update the connection's events filter. With filter, returns `{ subscribed: true, events: EventsPage }`; absent resets to all rows. */
+  | { type: 'subscribe'; id: string; filter?: EventsFilter }
   /** The human assigns a role to a session, live or not yet connected: `{ session: RoleHolder }`. */
   | { type: 'role.set'; id: string; session: string; role: string; note?: HandoverNote | string; move?: boolean; item?: string }
   /** A role's state, as its holder would pull it: `RoleState`. */
@@ -1004,7 +1004,6 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'hub.stop':
     case 'hub.reload':
     case 'topic.list':
-    case 'subscribe':
     case 'role.list':
       return true;
     case 'executor.prepare':
@@ -1017,6 +1016,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.request === 'string';
     case 'inbox.read':
       return typeof f.message === 'string';
+    case 'subscribe':
+      return isEventsFilter(f.filter);
     case 'events.list':
       return (f.before === undefined || (typeof f.before === 'string' && (/^(0|[1-9]\d*)$/.test(f.before) && Number.isSafeInteger(Number(f.before)) || /^events:[A-Za-z0-9_-]+$/.test(f.before)))) && (f.limit === undefined || (typeof f.limit === 'number' && Number.isInteger(f.limit) && f.limit > 0)) && isEventsFilter(f.filter);
     case 'worktree.list':
