@@ -16,13 +16,24 @@ const iconPaths = [
   'M4 5h16v14H4z M4 9h16 M8 14h3 M15 14h2',
 ];
 
-type ShellPreferences = { collapsed: boolean; area: Area; release: string };
+type ShellPreferences = {
+  collapsed: boolean; area: Area; release: string; ratio: number;
+  secondary?: Area | undefined; row?: string | undefined; detail?: boolean | undefined;
+  secondaryRow?: string | undefined; secondaryDetail?: boolean | undefined; dismissed?: string | undefined;
+};
 function savedShell(): ShellPreferences {
   const saved = readInterfaceState('shell') as Partial<ShellPreferences> | null;
   return {
     collapsed: saved?.collapsed === true,
     area: areas.includes(saved?.area as Area) ? saved!.area! : 'Inbox',
     release: typeof saved?.release === 'string' ? saved.release : '',
+    secondary: areas.includes(saved?.secondary as Area) ? saved!.secondary : undefined,
+    row: typeof saved?.row === 'string' ? saved.row : undefined,
+    detail: saved?.detail === true,
+    dismissed: typeof saved?.dismissed === 'string' ? saved.dismissed : undefined,
+    secondaryRow: typeof saved?.secondaryRow === 'string' ? saved.secondaryRow : undefined,
+    secondaryDetail: saved?.secondaryDetail === true,
+    ratio: typeof saved?.ratio === 'number' && saved.ratio >= 0.2 && saved.ratio <= 0.8 ? saved.ratio : 2 / 3,
   };
 }
 
@@ -30,18 +41,53 @@ function savedShell(): ShellPreferences {
 export function Shell() {
   const [preferences, setPreferences] = useState(savedShell);
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
-  const area = preferences.area;
-  const setArea = (selected: Area) => setPreferences(previous => ({ ...previous, area: selected }));
+  const [active, setActive] = useState<'primary' | 'secondary'>('primary');
+  const split = preferences.secondary !== undefined;
+  const area = active === 'secondary' && preferences.secondary ? preferences.secondary : preferences.area;
+  const setArea = (selected: Area) => setPreferences(previous => active === 'secondary' && previous.secondary
+    ? { ...previous, secondary: selected, secondaryRow: undefined, secondaryDetail: false } : { ...previous, area: selected, row: undefined, detail: false });
+  const dismissed = preferences.dismissed;
+  const setDismissed = (key: string | undefined) => setPreferences(previous => ({ ...previous, dismissed: key }));
+  const selectionKey = `${preferences.area}/${preferences.row ?? ''}`;
+  const selectRow = (pane: 'primary' | 'secondary', id: string) => {
+    if (id !== (pane === 'primary' ? preferences.row : preferences.secondaryRow)) setDismissed(undefined);
+    setPreferences(previous => pane === 'primary' ? { ...previous, row: id } : { ...previous, secondaryRow: id });
+  };
   const areaButtons = useRef<Partial<Record<Area, HTMLButtonElement>>>({});
-  useEffect(() => listenForShortcuts(selected => {
-    setPreferences(previous => ({ ...previous, area: selected }));
-    areaButtons.current[selected]?.focus();
-  }), []);
+  const workspace = useRef<HTMLDivElement>(null);
+  const closePane = (pane: 'primary' | 'secondary') => {
+    setDismissed(selectionKey);
+    setPreferences(previous => pane === 'primary'
+      ? { ...previous, area: previous.secondary ?? previous.area, row: previous.secondaryRow, detail: previous.secondaryDetail, secondary: undefined, secondaryRow: undefined, dismissed: `${previous.secondary}/${previous.secondaryRow ?? ''}` }
+      : { ...previous, secondary: undefined, secondaryRow: undefined });
+    setActive('primary');
+  };
+  const openOther = () => {
+    const selected = active === 'primary' ? preferences.row : preferences.secondaryRow;
+    if (!selected) return;
+    setDismissed(selectionKey);
+    setPreferences(previous => active === 'primary'
+      ? { ...previous, secondary: previous.area, secondaryRow: selected, secondaryDetail: true, ratio: split ? previous.ratio : 2 / 3 }
+      : { ...previous, area: previous.secondary!, row: selected, detail: true });
+  };
+  useEffect(() => listenForShortcuts(action => {
+    if (action === 'split') {
+      if (split) closePane('secondary');
+      else setPreferences(previous => ({ ...previous, secondary: previous.area, secondaryRow: undefined, secondaryDetail: false, ratio: 2 / 3 }));
+    } else if (action === 'open-other') openOther();
+    else if (action === 'dismiss') { setDismissed(selectionKey); areaButtons.current[preferences.area]?.focus(); }
+    else if (areas.includes(action as Area)) {
+      setArea(action as Area);
+      areaButtons.current[action as Area]?.focus();
+    }
+  }));
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
   useEffect(() => connectHub(setConnection), []);
   useEffect(() => {
     document.title = `${connection.needsYou ? `(${connection.needsYou}) ` : ''}${connection.project} · cland`;
   }, [connection.project, connection.needsYou]);
+  const selectedRow = connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
+  const drawerOpen = !split && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
   const counts: Partial<Record<Area, number | undefined>> = {
@@ -75,7 +121,7 @@ export function Shell() {
       </div>
     </header>
     <div className={s.body}>
-      <aside className={s.sidebar} data-collapsed={preferences.collapsed}>
+      <aside className={s.sidebar} data-collapsed={split || preferences.collapsed}>
         <nav className={s.rail} aria-label="Areas">
           {areas.map((name, index) => <button key={name}
             ref={node => { if (node) areaButtons.current[name] = node; else delete areaButtons.current[name]; }}
@@ -90,13 +136,55 @@ export function Shell() {
           </button>)}
         </nav>
         <button className={s.collapse} aria-label={preferences.collapsed ? 'Expand rail' : 'Collapse rail'}
-          title="Rail width (automatically collapsed below 1280 px)"
+          disabled={split} title="Rail width (automatically collapsed below 1280 px and while split)"
           onClick={() => setPreferences({ ...preferences, collapsed: !preferences.collapsed })}>
           {preferences.collapsed ? '»' : '«'}
         </button>
       </aside>
       <main className={s.main} aria-label={area}>
-        <header className={s.heading}><h1>{area}</h1><span className={s.mono}>—</span></header>
+        <div className={s.workspace} ref={workspace}>
+          {(['primary', 'secondary'] as const).filter(pane => pane === 'primary' || split).map(pane => {
+            const paneArea = pane === 'primary' ? preferences.area : preferences.secondary!;
+            const selected = pane === 'primary' ? preferences.row : preferences.secondaryRow;
+            const detail = pane === 'primary' ? preferences.detail : preferences.secondaryDetail;
+            const rows = connection.rows?.[paneArea];
+            const row = rows?.find(object => object.id === selected);
+            return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
+              style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
+              onPointerDown={() => setActive(pane)} onFocus={() => setActive(pane)}>
+              <header className={s.heading}><h1>{detail && row ? row.title : paneArea}</h1><span className={s.mono}>{detail ? row?.id ?? '—' : rows?.length ?? '—'}</span>
+                {split && <div className={s.actions}>
+                  <button onClick={() => setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
+                    row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail }))}>Swap</button>
+                  <button onClick={() => closePane(pane)}>Close</button>
+                </div>}
+              </header>
+              {!detail && <ul className={s.objects} aria-label={`${paneArea} objects`}>
+                {rows?.map(object => <li key={object.id}><button className={s.object} data-object-id={object.id}
+                  title={object.title} aria-pressed={selected === object.id} onFocus={() => selectRow(pane, object.id)} onClick={() => selectRow(pane, object.id)}>
+                  <span className={s.mono}>{object.id}</span> <span>{object.title}</span>
+                </button></li>)}
+              </ul>}
+              {detail && row && <div className={s.detail}><span className={s.mono}>{row.id}</span><p>{row.title}</p></div>}
+              {pane === 'primary' && split && <div className={s.divider} role="separator" aria-label="Pane divider"
+                aria-orientation="vertical" aria-valuemin={20} aria-valuemax={80} aria-valuenow={Math.round(preferences.ratio * 100)}
+                onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); event.preventDefault(); }}
+                onPointerMove={event => {
+                  if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+                  const rect = workspace.current!.getBoundingClientRect();
+                  setPreferences(previous => ({ ...previous, ratio: Math.max(0.2, Math.min(0.8, (event.clientX - rect.x) / rect.width)) }));
+                }}
+                onPointerUp={event => event.currentTarget.releasePointerCapture(event.pointerId)} />}
+            </section>;
+          })}
+        </div>
+        {drawerOpen && <aside className={s.drawer} aria-label="Drawer">
+          <header className={s.heading}><h2>{selectedRow.title}</h2><div className={s.actions}>
+            <button title="Open in the other pane (⌘Enter)" onClick={openOther}>Split</button>
+            <button onClick={() => { setDismissed(selectionKey); areaButtons.current[preferences.area]?.focus(); }}>Close</button>
+          </div></header>
+          <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p>{selectedRow.title}</p></div>
+        </aside>}
       </main>
     </div>
   </div>;

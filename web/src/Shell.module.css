@@ -1,4 +1,4 @@
-/* Q-405 shell geometry and canvas tokens; the drawer has no selection and stays closed. */
+/* Q-405 shell geometry and canvas tokens. */
 .app { height: 100dvh; display: flex; flex-direction: column; background: var(--ground); }
 .top { flex: none; display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 16px; background: var(--panel); border-bottom: 1px solid var(--border); white-space: nowrap; }
 .brand { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--text-strong); }
@@ -17,7 +17,7 @@
 .sidebar { box-sizing: border-box; flex: none; display: flex; flex-direction: column; width: 188px; background: var(--panel); border-right: 1px solid var(--border); }
 .rail { box-sizing: border-box; width: 100%; padding: 12px 8px; }
 .area, .current { display: flex; align-items: center; height: 38px; padding: 0 12px; margin-bottom: 2px; border-radius: 6px; color: var(--muted); width: 100%; border: 0; background: none; font: inherit; gap: 10px; text-align: left; }
-.main { flex: 1; min-width: 0; overflow: auto; }
+.main { flex: 1; min-width: 0; display: flex; }
 .heading { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 20px; border-bottom: 1px solid var(--border); color: var(--muted); }
 .heading h1 { font: 600 14px var(--prose); color: var(--text); }
 @media (max-width: 1100px) { .search { width: auto; flex: 1; margin-left: 0; } }
@@ -46,3 +46,24 @@
 .area:hover { background: var(--row-hover); }
 .current:hover { background: var(--selection-hover); }
 .area:focus-visible, .current:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; background: var(--selection); }
+
+.workspace { display: flex; flex: 1; min-width: 0; }
+.pane { min-width: 0; position: relative; overflow: auto; }
+.actions { margin-left: auto; display: flex; gap: 8px; }
+.actions button { background: var(--control); border: 1px solid var(--control-border); border-radius: 4px; padding: 3px 8px; }
+.divider { position: absolute; top: 0; right: 0; width: 6px; height: 100%; background: var(--border); cursor: col-resize; touch-action: none; }
+.divider:hover { background: var(--separator); }
+
+.drawer { flex: 0 0 360px; min-width: 0; overflow: auto; background: var(--drawer); border-left: 1px solid var(--border); }
+.drawer .heading { height: auto; min-height: 48px; padding: 0 16px; }
+.heading h2 { font: 600 14px var(--prose); color: var(--text); }
+.objects { list-style: none; padding: 8px 12px; margin: 0; }
+.object { width: 100%; display: flex; gap: 12px; align-items: baseline; padding: 10px 12px; border: 0; border-radius: 4px; text-align: left; background: none; }
+.object span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.object:hover { background: var(--row-hover); }
+.object[aria-pressed="true"] { background: var(--selection); }
+.object:focus-visible, .actions button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; background: var(--selection); }
+.detail { padding: 16px 20px; }
+
+.heading h1, .heading h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actions { flex-shrink: 0; }

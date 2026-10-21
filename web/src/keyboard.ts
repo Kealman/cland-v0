@@ -1,7 +1,7 @@
-import { shortcut, type Area } from './keymap.ts';
+import { shortcut, type Shortcut } from './keymap.ts';
 
 /** The shell's only key listener. Components subscribe to actions, never raw keys. */
-export function listenForShortcuts(run: (area: Area) => void): () => void {
+export function listenForShortcuts(run: (action: Shortcut) => void): () => void {
   const keydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) return;
     if (event.target instanceof Element && event.target.closest(

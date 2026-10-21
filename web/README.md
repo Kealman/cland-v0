@@ -45,7 +45,8 @@ The welcome reads the served receipt at connection time, including a configured
 The development loop uses a build and reload, with E-412's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven
 areas through the rail or physical `Digit1`–`Digit7` keys. The main area has its
-heading; area contents and the split/drawer land in later slices. Dashes represent
+heading and a stand-in list of hub object IDs and titles; E-416 to E-418 replace
+these lists with the full areas. Dashes represent
 unavailable facts. The palette and help buttons are the controls for the later
 palette/key-help slice.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
@@ -95,11 +96,29 @@ the selection surface; hover only lightens a row. IDs use non-wrapping
 JetBrains Mono.
 
 Browser preferences use `src/interface-state.ts`, one `cland.ui.<area>.v1` key
-per area. The shell's rail choice, selected area and release ID share
+per area. The shell's rail choice, selected area, release ID, pane contents and split ratio share
 `cland.ui.shell.v1`. Reads, parsing and writes (including access to the storage
 property) are guarded; invalid fields fall back independently and denied
 storage leaves navigation working. This state is local to the browser and
 never writes the hub's or Neovim's interface state.
+
+## Split and drawer
+
+`⌘\` toggles a split of the main area, initially 2:1. Drag the divider to resize
+between 20% and 80%. Each pane has Swap and Close; closing the primary pane keeps
+the other pane's contents. Click or focus a pane to direct area navigation to it.
+The rail collapses while split and restores the button choice on closing, subject
+to the narrow-window rule. The split and ratio survive reloads in the shell's
+versioned browser key; unavailable storage leaves them usable for the current page.
+
+Selecting a row by click or keyboard focus opens its ID/title in the drawer.
+Close and Escape dismiss it until selection moves. Split or `⌘Enter` opens the
+selected object in the other pane; the drawer stays closed during the split and
+when it closes until a row is selected again. Swap carries each pane's area and
+selection together. Escape sends no hub request and never answers an inbox row.
+All three shortcuts use the shared physical-code map (`Meta+Backslash`,
+`Meta+Enter`, `Escape`). The stand-in lists use read-only list replies and refresh
+on matching hub frames and reconnection; they expose no domain mutations.
 
 ## Fonts and asset checks
 
