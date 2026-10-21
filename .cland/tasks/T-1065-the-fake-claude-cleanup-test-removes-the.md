@@ -15,7 +15,7 @@ regression_of: T-1035
 topic: topic-813
 branch: t/T-1065-the-fake-claude-cleanup-test-removes-the
 created: 2026-10-21T15:28:00.671Z
-updated: 2026-10-21T16:35:04.213Z
+updated: 2026-10-21T17:11:05.336Z
 closed: 2026-10-21T16:35:04.213Z
 ---
 
@@ -101,3 +101,7 @@ Criteria: C1 verified, C2 verified.
 ### coord · 2026-10-21T16:35:04.213Z
 
 Merged 142f4c4bcf71029e9e0ecf88f5aa0df92a55e7b8 onto dev.
+
+### coord · 2026-10-21T17:11:05.336Z
+
+Landing evidence: the E-415 stage 3 Linux cover 5551daab at dev dbb1604f (A-8570) is green. The load gate passed this item's new identity 5/5: fake-claude-cleanup "retains a delayed writer and its home at the drain deadline" (line 17943). The original identity "waits for a poll that writes after hub shutdown" passed in the base phase.

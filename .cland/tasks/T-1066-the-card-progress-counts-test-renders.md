@@ -15,7 +15,7 @@ regression_of: T-1061
 topic: topic-812
 branch: t/T-1066-the-card-progress-counts-test-renders
 created: 2026-10-21T15:28:00.813Z
-updated: 2026-10-21T15:51:56.629Z
+updated: 2026-10-21T17:11:05.436Z
 closed: 2026-10-21T15:51:56.629Z
 ---
 
@@ -80,3 +80,7 @@ Evidence accounting clarification from final Reviewer parse (A-8547): A-8545 has
 ### coord · 2026-10-21T15:51:56.629Z
 
 Merged 81b69649ed15398e9ad58556206e812efb331728 onto dev.
+
+### coord · 2026-10-21T17:11:05.436Z
+
+Landing evidence: the E-415 stage 3 Linux cover 5551daab at dev dbb1604f (A-8570) is green. The load gate passed this item's renamed identity "release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes" 5/5 (line 6477).

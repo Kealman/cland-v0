@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-783
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-21T12:56:03.534Z
+updated: 2026-10-21T17:30:16.431Z
 ---
 
 ## Summary
@@ -227,3 +227,110 @@ All merges present: T-992158e188a, T-994e70309cd, T-993b65fb11b, T-1011102d592d.
 Coordinator cover metadata initially reported missing Linux after hub restart#37 (T-1049). Coordinator has replacement117ca925 at this same SHA; closure/cover handling remains the Coordinator's. This verdict reports scoped execution and does not replace or assert a new full-suite receipt.
 
 Durable evidence A-8388: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8388-e-415-stage-2-19-checks-pass-real-chrome-shell-at-cb231eeb/report.md
+
+### qa-676 · 2026-10-21T17:30:16.431Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-s3-2026-10-21-1
+commit: dbb1604fd8ab9f21a4f1a5858117d99e9e4932ac
+stage: split, palette and folds
+stage_hash: 794487fe5e0cd3a19ce5727d0d930d4d2968bea5aa58b4dfe76228e066e821ac
+findings: [{"severity":"low","text":"WEB-REAL-005 brief correction: fresh client writes default cland.ui.shell.v1. Coordinator decision 5a3d761e permits self-written defaults; captured value has no fold and inbox value is null. Original empty-key expectation and corrected evidence retained; isolation passes.","file":"qa/briefs/E-415-stage-3.md"},{"severity":"low","text":"WEB-DOCS-001: palette.test.ts has no dedicated paragraph in tests.md, though README documents its command. Brief explicitly treats this as non-blocking. Reported as Follow-ups / XS.","file":"docs/agents/tests.md"}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Case | Surface | Result | Observation and evidence |
+| --- | --- | --- | --- |
+| S0 | hub-api | PASS | Clean requested HEAD and dev; all three items merged and closed; isolated fixture environment. [S0.txt](S0.txt), [S0-setup.txt](S0-setup.txt) |
+| WEB-REAL-001 | real-browser | PASS | Real Chrome showed the matching anonymous shell, seven areas and Offline state; owned tab closed. [WEB-REAL-001.png](WEB-REAL-001.png), [WEB-REAL-001-before.png](WEB-REAL-001-before.png) |
+| WEB-REAL-002 | real-browser | PASS | Both palette shortcuts, blue filtered action, Enter, Tab and safe Escape worked. [WEB-REAL-002-filter.png](WEB-REAL-002-filter.png), [WEB-REAL-002-open.png](WEB-REAL-002-open.png) |
+| WEB-REAL-003 | real-browser | PASS | Physical help shortcut and Help button showed all 14 keys; both dismissal paths worked. [WEB-REAL-003.png](WEB-REAL-003.png), [WEB-REAL-003-closed.png](WEB-REAL-003-closed.png) |
+| WEB-REAL-004 | real-browser | PASS | Visible 2:1 split, Topics navigation, Swap, divider drag and Close worked; no drawer. [WEB-REAL-004-closed.png](WEB-REAL-004-closed.png), [WEB-REAL-004-swap.png](WEB-REAL-004-swap.png) |
+| WEB-REAL-005 | real-browser | PASS | Fold persisted; fresh client inherited no fold. PASS under the documented expectation correction. [WEB-REAL-005-reload.png](WEB-REAL-005-reload.png), [WEB-REAL-005-explicit-reload.png](WEB-REAL-005-explicit-reload.png) |
+| WEB-REAL-006 | real-browser | PASS | Visible-text transcript and second-client prose/origin checks passed. [WEB-REAL-observations.txt](WEB-REAL-observations.txt), [WEB-REAL-006-text.txt](WEB-REAL-006-text.txt) |
+| S2-M1 | hub-api | PASS | Build passed; index, JS and CSS emitted; clean tree and matching live source stamp. [S2-M1.txt](S2-M1.txt) |
+| WEB-SPLIT-001 | hub-api | PASS | Shell tests 9/9; default 2:1 split, drag, Swap and Close passed. [WEB-SPLIT-001.raw.txt](WEB-SPLIT-001.raw.txt) |
+| WEB-SPLIT-002 | hub-api | PASS | Rail collapses to 60 px while split and restores its previous choice. [WEB-SPLIT-001.raw.txt](WEB-SPLIT-001.raw.txt) |
+| WEB-DRAWER-001 | hub-api | PASS | Selection, dismissal, reload, area changes and split drawer states passed. [WEB-SPLIT-001.raw.txt](WEB-SPLIT-001.raw.txt) |
+| WEB-DRAWER-002 | hub-api | PASS | Physical Command-Enter opens the other pane; Swap and Close retain selection. [WEB-SPLIT-001.raw.txt](WEB-SPLIT-001.raw.txt) |
+| WEB-DRAWER-003 | hub-api | PASS | Escape closes the drawer with no outgoing hub frame. [WEB-SPLIT-001.raw.txt](WEB-SPLIT-001.raw.txt) |
+| WEB-PALETTE-001 | hub-api | PASS | Palette tests 8/8; both modal openers, input focus and safe Escape passed. [WEB-PALETTE-001.raw.txt](WEB-PALETTE-001.raw.txt) |
+| WEB-PALETTE-002 | hub-api | PASS | Five prefix groups, ordering, action keys and Unicode blue matches passed. [WEB-PALETTE-001.raw.txt](WEB-PALETTE-001.raw.txt) |
+| WEB-PALETTE-003 | hub-api | PASS | Enter, Command-Enter, kind cycling, footer keys and empty searches passed. [WEB-PALETTE-001.raw.txt](WEB-PALETTE-001.raw.txt) |
+| WEB-KEYS-001 | hub-api | PASS | Physical/Cyrillic keys and Space focus checks passed; keymap test 1/1. [WEB-PALETTE-001.raw.txt](WEB-PALETTE-001.raw.txt), [WEB-KEYS-001.raw.txt](WEB-KEYS-001.raw.txt) |
+| WEB-KEYS-002 | hub-api | PASS | Three README sections, nine key rows and both fold keys match behavior. [WEB-KEYS-002.raw.txt](WEB-KEYS-002.raw.txt) |
+| WEB-FOLDS-001 | hub-api | PASS | Fold tests 6/6; persistence, shared pane state, defaults and denied storage passed. [WEB-FOLDS-001.raw.txt](WEB-FOLDS-001.raw.txt) |
+| WEB-FOLDS-002 | hub-api | PASS | No outgoing fold frames; hub/shared source search returned no fold-state key. [WEB-FOLDS-001.raw.txt](WEB-FOLDS-001.raw.txt), [WEB-FOLDS-002.raw.txt](WEB-FOLDS-002.raw.txt) |
+| WEB-PROSE-001 | hub-api | PASS | Positive and negative prose fixtures passed; detector source inspected. [WEB-FOLDS-001.raw.txt](WEB-FOLDS-001.raw.txt), [WEB-PROSE-001.raw.txt](WEB-PROSE-001.raw.txt) |
+| WEB-FOLDS-003 | hub-api | PASS | Documented reference Shell imports Fold and renders it twice. [WEB-FOLDS-003.raw.txt](WEB-FOLDS-003.raw.txt) |
+| S2-M10 | hub-api | PASS | One key listener/table; preference storage and deliberate reload guard only. [S2-M10.raw.txt](S2-M10.raw.txt) |
+| WEB-DOCS-001 | hub-api | PASS | Web tier entries, README commands, fold paragraph and tier lint passed; low palette-doc observation. [WEB-DOCS-001.raw.txt](WEB-DOCS-001.raw.txt) |
+| S1-M2 | hub-api | PASS | Colour guard passed, rejected both planted files at line 1, and cleanup restored the tree. [S1-M2.raw.txt](S1-M2.raw.txt) |
+| S1-M3 | hub-api | PASS | Conditional hook plant was rejected; initial guard and clean-tree checks passed. [S1-M3.raw.txt](S1-M3.raw.txt) |
+| S1-M5 | hub-api | PASS | Both targeted selection tests passed, one test each. [S1-M5.raw.txt](S1-M5.raw.txt) |
+| S1-M6 | hub-api | PASS | Web phase planner passed 8/8 tests. [S1-M6.raw.txt](S1-M6.raw.txt) |
+| S1-M7 | hub-api | PASS | Missing-browser reporting fixture passed 1/1; the actual host ran Web tests. [S1-M7.raw.txt](S1-M7.raw.txt) |
+| S1-M8 | hub-api | PASS | Workspace/tier lints, bundle doctor test and documentation headings passed. [S1-M8.raw.txt](S1-M8.raw.txt), [cleanup.txt](cleanup.txt) |
+| S2-M2 | hub-api | PASS | One-time sign-in 302; correct cookie flags; replay 401. [S2-M2.raw.txt](S2-M2.raw.txt) |
+| S2-M3 | hub-api | PASS | Matching served bundle, strict CSP, unauthenticated WS 401 and authenticated WS 101. [S2-M3.raw.txt](S2-M3.raw.txt) |
+| S2-M4 | hub-api | PASS | Positive control 1; all 11 bundle files 200; probes 401/404; zero secret matches. [S2-M4.raw.txt](S2-M4.raw.txt) |
+| S2-M5 | hub-api | PASS | WS 101 before stop, 000 stopped, 101 after restart on the same port; no timeout. [S2-M5.raw.txt](S2-M5.raw.txt) |
+| S2-M6 | hub-api | PASS | Shared wire import and connection documentation match the tested behavior. [S2-M6.raw.txt](S2-M6.raw.txt) |
+| S2-M7 | hub-api | PASS | Connection tests passed 4/4, including reconnect and the reload guard. [S2-M7.raw.txt](S2-M7.raw.txt) |
+| S2-M8 | hub-api | PASS | All six prior-stage shell regression subtests passed in the fresh shell run. [WEB-SPLIT-001.raw.txt](WEB-SPLIT-001.raw.txt) |
+| S2-M9 | hub-api | PASS | Smoke tests passed 4/4; CSP, origin isolation and trace cleanup passed. [S2-M9.raw.txt](S2-M9.raw.txt) |
+| S2-M11 | hub-api | PASS | Rail CSS, README keys/state documentation and tier classifications passed. [S2-M11.raw.txt](S2-M11.raw.txt) |
+| S2-M12 | hub-api | PASS | Prepare-key tests passed 5/5; provision script syntax/order passed. Static/unit evidence only. [S2-M12.raw.txt](S2-M12.raw.txt) |
+| S2-M13 | hub-api | PASS | Worker-count test passed 1/1; two local/four remote workers and docs confirmed. [S2-M13.raw.txt](S2-M13.raw.txt) |
+| S2-M14 | hub-api | PASS | Scratch recorder accepted the valid surface, rejected the invalid surface without append; test passed 1/1. [S2-M14.raw.txt](S2-M14.raw.txt) |
+| S2-M15 | hub-api | PASS | Good/bad fixtures behaved as expected; both briefs linted; CLI tests passed 2/2. [S2-M15.raw.txt](S2-M15.raw.txt) |
+| S2-M16 | hub-api | PASS | QA skill, templates, lint, usage and scoped browser grant documentation confirmed. [S2-M16.raw.txt](S2-M16.raw.txt) |
+| S2-M17 | hub-api | PASS | All workspace typechecks, colour/contrast guards and hooks checks passed. [S2-M17.raw.txt](S2-M17.raw.txt) |
+| COVER-001 | hub-api | PASS | Both same-head receipts are green; final plan confirms both covers complete. See COVER-001-final-plan.txt. [COVER-001-plan.txt](COVER-001-plan.txt), [A-8570-summary.txt](A-8570-summary.txt) |
+
+## Findings, ranked by severity
+
+High: none. Medium: none.
+
+- Low — WEB-REAL-005, brief expectation correction. Original fresh second-client output was `fold-inbox-expanded true`, `storage-keys ["cland.ui.shell.v1"]`, rather than the brief's empty-key list. Coordinator decision `5a3d761e-47ab-4733-9edf-357085465bad` permits client-written defaults and requires no inherited key/value. The supplementary fresh context returned `inbox-value null` and shell value `{"collapsed":false,"area":"Inbox","release":"","detail":false,"secondaryDetail":false,"ratio":0.6666666666666666}`. It contains no fold entry; the real Chrome client was still folded. Both outputs retained. The correct expectation is no key or value inherited from the first client. Product behavior passes.
+- Low — WEB-DOCS-001, documentation observation, Follow-ups / XS. The README documents the palette targeted command, but `rg web/test/palette.test.ts docs/agents/tests.md` has no paragraph. The brief explicitly makes this non-blocking; no criterion requires that paragraph. Reported to Coordinator for filing.
+
+## Build and execution
+
+E-415 stage **split, palette and folds**, full/after-stage; run **qa-s3-2026-10-21-1**. Tested commit **dbb1604fd8ab9f21a4f1a5858117d99e9e4932ac**, verification tree **15400ec57d0bfbbb09eccf792c492bda4039cbfc**. Stage items T-995/T-996/T-997 are closed and landed via 0080a0c7/b4264fdd/c9063d06. Brief committed at fb9adfe3. No product or brief edits. T-1065/T-1066 fixes were present at the requested build.
+
+Fresh local macOS arm64, Node v24.21.0. 53 targeted passing test records, zero failures/skips/cancellations/todos; this includes 31 Web records (five parent tests plus 26 subtests), the keymap test and 21 other test records. Some planner checks are deliberately repeated by the prescribed brief. Single files ran serially, with local queue-none receipts before each test case. No QA full suite or performance benchmark. Test durations are raw observations only.
+
+Detached worktree and scratch root paths are in paths.json. Fixture commands used their own HOME/XDG/Git configuration and the brief's credential/provider filter; PATH/SHELL/TERM and macOS system TMPDIR were preserved. Shared dependencies were linked without npm install. Existing repository fixtures apply their fixture environment to child launches. The second anonymous Headless Shell client alone used a scratch TMPDIR/profile, as granted. Its two executions each closed fully. All five Web test files report browser group after 0 and external census 0 → 0.
+
+Real browser: computer use, real Chrome existing **cland QA** profile, anonymous allowed origin only. Newly created tab 1158676369 was explicitly closed; original New Tab left intact. No sign-in, live cookie/session, settings, profile, keychain or layout change. Restored one pane, Inbox unfolded, expanded rail. Screenshot/AX captures and action notes retained. The literal key API spelling `super+\` was used after the tool rejected `super+backslash` as an unknown key; this was an input spelling error, not a product or permission failure. Explicit browser reload additionally confirms both chevron and keyboard folds. A supplementary owned tab 1158676371 was restored and closed after the chevron reload capture; see WEB-REAL-observations.txt.
+
+Live and detached stamp sources both **1003d2d554c2cca66bcb7dd1bf85ef410a8d7eed3a428e495d0589542bcd71f1**, live HTTP 200, so the GUI observations judge this stage's shell. Real-browser screenshots show no selected objects because the client is anonymous; drawer-open and palette object behavior was established against signed-in scratch hubs by the passing Headless Shell tests.
+
+## Same-head stage covers, cited rather than rerun
+
+The Coordinator owns both stage runs. Both executed check/T1/T2/T3/T4/Web at the tested SHA. T4 base files ran; T4 load repetitions were skipped. Linux has 8 platform skips; macOS has 0. Lint, test budgets and T3 ratchet were **report-only**, not enforced performance passes. Both logs name missing duration baselines; projections are not measured walls.
+
+| Receipt | Executor/platform | Actual result and Web phase | Wall/lifetime/cost |
+| --- | --- | --- | --- |
+| A-8570  / 5551daab-2343-45ff-9dd6-1003514d7839 | Droplet, Linux x64 6.8.0-142-generic, Node 24.21.0, Neovim 0.12.5 | exit 0; summed runner summaries: 3611 tests / 3603 pass / 8 skipped / 0 fail; Web: 5 files / 31 records pass, four workers, phase wall 9.95 s | Overall admission through collection 1044.93 s; total $0.1361 |
+| A-8571  / shard 1 | cland-v0-c1268906, c-8 lon1 | exit 0, including executed Web | Admission through remote finish 1020.59 s; collection 24.02 s; lifetime 1009 s; $0.0701 |
+| A-8572  / shard 2 | cland-v0-ca8994c0, c-8 lon1 | exit 0; no Web files assigned here | Admission through remote finish 961.59 s; collection 38.14 s; lifetime 951 s; $0.0660 |
+| A-8574  / 97d513e8-1686-4737-90b4-c654c1173c57 | Local macOS arm64 27.0.0, Node 24.21.0, Neovim 0.12.5 | exit 0; summed runner summaries: 3611 / 3611 pass / 0 skipped / 0 fail; Web: 5 files / 31 records pass,two workers,phase wall 5.99 s | Queued 16:53:30.934Z,result finished 17:13:13.092Z: elapsed 1182.158 s, including reported queue 0.20 s; derived admission-to-result 1181.958 s. Local cost N/A |
+
+Linux artifact paths and all shard summaries are in cover-artifacts.json and A-8570/1/2-summary.txt; macOS A-8574-summary.txt. Original full logs remain the authoritative durable artifacts. Aggregate counts above sum logged runner summaries (including parent/subtests and any repeated records), rather than equating tier top-level counts with total test records. The Web aggregate tier count is 5 top-level tests; its actual runner includes 31 records. QA incurred no additional droplet cost.
+
+Restored Linux admission was pending after restart #39 although the receipt was green. Coordinator message a0834cd6 explains the Freshness rescan (T-1049 correctness/T-1050 speed). Initial and final plan states are retained. The final plan read at 17:29Z reports stage cover complete (Linux droplet, macOS) at the same tree; admission is resolved.
+
+## Cleanup and record
+
+Scratch hub 10388 stopped and restarted as 25670 on the same edge port 52862; final stop confirmed, zero scratch process matches and zero Chrome Headless Shell processes. No T-1060 timeout. Scratch root removed by literal non-force rm -r. HEAD/dev unchanged and worktree clean after checks. Bearer scratch link/header files are retained privately in source evidence and excluded from the published folder; no cookie/secret values are published.
+
+All 46 scoped cases are PASS and recorded at the full tested build. Verdict: clear. COVER-001 now counts both green covers. Stage QA has **no epic criterion marks**. Case mapping covers T-995 C1–C5, T-996 C1–C5, T-997 C1–C4 and the specified stage 1/2 regression criteria; item QA marks are not added by this stage verdict.
+
+Rule proposal sent to Coordinator: second-client isolation checks should assert absence of inherited state, allowing defaults written by the fresh client itself. Preserve original output and any authorized corrected expectation separately from product failures.
+
+Final build recheck: HEAD and dev remained dbb1604fd8ab9f21a4f1a5858117d99e9e4932ac; clean detached worktree. The historical pending artifact is A-8579; this final evidence supersedes its pending status without removing the history.
+
+Durable evidence A-8583: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8583-e-415-stage-3-at-dbb1604f-all-46-checks-pass-real-chrome-and-both-covers/report.md
