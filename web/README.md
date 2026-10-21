@@ -253,7 +253,8 @@ controlled browser clock proves the retry schedule without latency assertions.
 The runner calls `test/prerequisite.ts` before a selected Web phase. It resolves
 the pinned package's Headless Shell revision and checkout-local executable; Linux
 also checks the shell and bundled shared libraries with bounded `ldd` calls in a
-sealed scratch environment. It launches no browser. Until T-993 supplies Linux
-libraries, an incapable droplet reports Web unavailable, with no passing Web
-receipt, while preserving other phase results. The fixture uses the probe's exact
-executable path, with no fallback to an installed browser.
+sealed scratch environment. It launches no browser. Web runs on macOS and Linux
+droplets; prepared Ubuntu 24.04 snapshots include the shell's runtime libraries.
+A machine missing the shell or required libraries reports Web unavailable, with
+no passing Web receipt, while preserving other phase results. The fixture uses
+the probe's exact executable path, with no fallback to an installed browser.
