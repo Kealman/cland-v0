@@ -16,7 +16,7 @@ blocked_by:
 topic: topic-795
 branch: t/T-989-liveness-version-skew-and-the-terminal-s
 created: 2026-10-20T16:50:00.836Z
-updated: 2026-10-21T10:42:53.667Z
+updated: 2026-10-21T10:53:00.286Z
 ---
 
 ## Summary
@@ -31,14 +31,18 @@ The web edge pings every 30 seconds, and the existing sweep closes a socket sile
 
 - [x] C1. The web edge pings every 30 seconds, and a socket silent for 60 seconds is closed (fake-clock test).
   - done: impl-989 · 2026-10-21T10:39:18.757Z
+  - verified: rev-23 [reviewer] · run rev-20261021-989-linux-evidence · 2026-10-21T10:53:00.286Z · commit d71acb93ae77d196915fc6d513fab1acca134c33
 - [x] C2. A binary frame on the web edge closes the socket with a dedicated close code (test).
   - done: impl-989 · 2026-10-21T10:39:18.807Z
+  - verified: rev-23 [reviewer] · run rev-20261021-989-linux-evidence · 2026-10-21T10:53:00.286Z · commit d71acb93ae77d196915fc6d513fab1acca134c33
 - [x] C3. Each frame kind has its own size limit, JSON frames keep 1 MiB, and an oversize frame of a kind is refused (test).
   - done: impl-989 · 2026-10-21T10:39:18.864Z
+  - verified: rev-23 [reviewer] · run rev-20261021-989-linux-evidence · 2026-10-21T10:53:00.286Z · commit d71acb93ae77d196915fc6d513fab1acca134c33
 - [x] C4. The welcome carries the feature list and the bundle's build stamp, and a hello refused for its protocol carries the instruction to restart the hub (test).
   - done: impl-989 · 2026-10-21T10:39:18.914Z
 - [x] C5. Every adapter declares its `terminal` capability, `none` today, readable by a client (test).
   - done: impl-989 · 2026-10-21T10:39:18.984Z
+  - verified: rev-23 [reviewer] · run rev-20261021-989-linux-evidence · 2026-10-21T10:53:00.286Z · commit d71acb93ae77d196915fc6d513fab1acca134c33
 - [x] C6. `hub/README.md` documents the eight reservations as built.
   - done: impl-989 · 2026-10-21T10:39:19.348Z
   - verified: rev-23 [reviewer] · run rev-20261021-989-source · 2026-10-21T10:42:53.667Z · commit d71acb93ae77d196915fc6d513fab1acca134c33
@@ -63,3 +67,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Full source clear; Standards0/Spec0 findings. A-8295 records 28-file audit at base3da31f0fb6c7d9f8cc2d4d49c82b34debc646308: raw traffic/pong liveness with30/60s fake-clock receipts, binary4003 and exact UTF8 JSON1MiB/oversize1009, per-welcome served digest plus Vite meta and protocol-runtime hashing, web-only version restart action and browser reload guard, all adapters terminal:none exposed in session.list. Exact local legacy no-feature welcome/spoke paths preserved. Browser tests retain reconnect/secret checks, arm navigation before restart and separately assert final rendered state. C6 docs verified; T-986 queue/resume ownership explicitly qualified. C1–C5 remain execution-dependent. A-8292 targeted Mac summaries are not a queued full/Web/load-gate receipt. Proceed normal mode-free configured verification at this unchanged head; final evidence must retain actual Web/browser coverage and phase limits. If Web unavailable, route disposition to lead/Coordinator; no unavailable-as-pass or unauthorized executor override. No Reviewer runtime/GUI.
 
 Criteria: C6 verified.
+
+### rev-23 · 2026-10-21T10:53:00.286Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-989-linux-evidence
+commit: d71acb93ae77d196915fc6d513fab1acca134c33
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Intermediate Linux evidence clear, not final readiness. A-8307 audits exact-head A-8305/run eda77ddb: configured Linux x64 c-8 lon1 T1/all-T2 exit 0, 2259 ordinary passes/343 files plus 35 separate load passes. Seven new socket identities each have five distinct passing finish ids. C1 fake-clock ping/silence/traffic, C2/C3 binary4003/UTF8 JSON1MiB/oversize1009 and C5 all adapters terminal:none via web session.list verified. Existing legacy welcome and bundle-source tests pass. C6 source proof retained. C4 server assertions pass but browser recovery remains unverified: Web explicitly NOT RUN for missing libraries/T-993. Coordinator 6ab9d101-33d0-4065-92a9-1f0c14c548e7 authorizes unchanged-head queued local run 7f84bdf7 for actual macOS Web; it is admitted, not completed. A-8292 supporting context only. No findings. Host typecheck ef6fe2066afea635330c91c3b2047a3f2e360a43 not repeated remotely; lint132/59, duration and ratchet report-only; no T3/T4/stage/QA/browser pass claimed. Lifetime460s, reportedcost$0.0319.
+
+Criteria: C1 verified, C2 verified, C3 verified, C5 verified.

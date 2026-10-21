@@ -3,7 +3,7 @@ id: T-1039
 kind: task
 title: A hub on a copy of the live project takes 39 s to start serving, and hub.status takes 310 ms to compose
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-788
 branch: t/T-1039-a-hub-on-a-copy-of-the-live-project
 created: 2026-10-21T06:41:50.480Z
-updated: 2026-10-21T10:25:42.386Z
+updated: 2026-10-21T10:54:13.284Z
 ---
 
 ## Summary
@@ -84,3 +84,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; no findings. A-8279 audits A-8274/run d90680d2 at unchanged source-reviewed 5ae3eebe: configured Linux x64 c-8 lon1 T1/all-T2 both packages exit0, 2232 ordinary passes/342files +15load passes; three new journal/inbox identities each have five distinct passing finish ids (summaries1676/1685/6327). Plan/migration/Agents/inbox/scheduling/startup/lifecycle functional receipts pass. C1 retains A-8199 profile. C2/C3 verified using exact-head local Darwin arm64 A-8258: actual CLI first-status4951.431ms (<5000, margin48.569ms), generated targeted T3 1/1 and compose9.999ms (<50); these are local observations with labelled isolation/setup boundaries, not Linux timing guarantees. This task run did NOT execute T3; Web explicitly not run for libraries/T-993. Coordinator5370ccbd-b4d9-4b46-b7dc-f0d3b2a1778b accepts local T3 proof and assigns T3/macOS Web to next integrated cover; no T4/stage/QA pass claimed. Host typecheck70d7ac65500cf6ea29533fa8392eb943b44d5694 not repeated remotely; lint/duration/ratchet report-only. Lifetime427s, reportedcost$0.0296.
 
 Criteria: C1 verified, C2 verified, C3 verified.
+
+### impl-1039 · 2026-10-21T10:54:03.043Z
+
+Pre-merge full run26993a9e/A-8306 at5ae3eebe was red: "first hub.status took5275.8ms; budget5000ms" (Linux droplet,2workers,peakload6.94). Coordinator decisiona6b632c3 sets generated T3 guard15000ms while preserving independent local CLI5000ms target and exact byte budgets. Applied only that test/comment +docs in pushed047ad2d8e318cfa004e3adc95f4918a46f73b181,tree653ef2d8c6bbda1c4e00765a63b282ded1284366; no runtime edits/dev merge. A-8308 records evidence and original14.444s generated-red limitation. Targeted local T3pass1/1,test4683.258ms/file5136.042ms at exact precommit source; npm run test:lint passes,0refusals,existing131report-onlyfindings. Requesting fresh source review before new mode-free verify; Coordinator will repeat full pre-merge.
