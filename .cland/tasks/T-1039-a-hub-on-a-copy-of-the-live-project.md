@@ -3,7 +3,7 @@ id: T-1039
 kind: task
 title: A hub on a copy of the live project takes 39 s to start serving, and hub.status takes 310 ms to compose
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-788
 branch: t/T-1039-a-hub-on-a-copy-of-the-live-project
 created: 2026-10-21T06:41:50.480Z
-updated: 2026-10-21T11:05:01.600Z
+updated: 2026-10-21T11:31:48.810Z
 ---
 
 ## Summary
@@ -31,17 +31,20 @@ Evidence: T-1038 topic-785, impl-1038's table of 2026-10-21 06:41Z.
 ## Acceptance criteria
 
 - [x] C1. A startup profile on the live-copy fixture names the time spent per phase, posted in the item topic (local evidence).
-  - done: impl-1039 · 2026-10-21T08:42:05.756Z
   - verified: rev-23 [reviewer] · run rev-20261021-1039-source · 2026-10-21T10:15:51.634Z · commit 5ae3eebe5e124f4eaccbe8f5ffe92ae3220577e6
   - verified: rev-23 [reviewer] · run rev-20261021-1039-final · 2026-10-21T10:25:42.357Z · commit 5ae3eebe5e124f4eaccbe8f5ffe92ae3220577e6
   - verified: rev-23 [reviewer] · run rev-20261021-1039-source-2 · 2026-10-21T10:55:35.909Z · commit 047ad2d8e318cfa004e3adc95f4918a46f73b181
+  - done: impl-1039 · 2026-10-21T11:30:37.961Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1039-final-2 · 2026-10-21T11:31:48.716Z · commit 047ad2d8e318cfa004e3adc95f4918a46f73b181
 - [x] C2. On that copy, the hub answers `hub.status` within 5 s of `cland hub start` (measured wall time, local evidence), and a T3 test guards the startup time on a generated fixture of comparable size.
-  - done: impl-1039 · 2026-10-21T10:11:49.249Z
   - verified: rev-23 [reviewer] · run rev-20261021-1039-final · 2026-10-21T10:25:42.357Z · commit 5ae3eebe5e124f4eaccbe8f5ffe92ae3220577e6
+  - done: impl-1039 · 2026-10-21T11:30:37.974Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1039-final-2 · 2026-10-21T11:31:48.716Z · commit 047ad2d8e318cfa004e3adc95f4918a46f73b181
 - [x] C3. `hub.status` composes in under 50 ms on the copy (measured, local evidence).
-  - done: impl-1039 · 2026-10-21T10:11:49.277Z
   - verified: rev-23 [reviewer] · run rev-20261021-1039-final · 2026-10-21T10:25:42.357Z · commit 5ae3eebe5e124f4eaccbe8f5ffe92ae3220577e6
   - verified: rev-23 [reviewer] · run rev-20261021-1039-source-2 · 2026-10-21T10:55:35.909Z · commit 047ad2d8e318cfa004e3adc95f4918a46f73b181
+  - done: impl-1039 · 2026-10-21T11:30:37.988Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1039-final-2 · 2026-10-21T11:31:48.716Z · commit 047ad2d8e318cfa004e3adc95f4918a46f73b181
 
 ## Comments
 
@@ -118,3 +121,18 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Intermediate task evidence clear, not final readiness. A-8322 audits A-8320/run18cca02a: exact reviewed/origin head, configured Linux x64 c-8 lon1 T1/all-T2 both packages exit0, 2232 ordinary test passes/342 files +15 distinct load passes; three new journal/inbox identities each 5/5. Host check e60b1450 not repeated remotely; lint131/59, durations/ratchet report-only; Web NOT RUN for T-993 libraries, no T3/T4/browser claim. Lifetime440s, reportedcost$0.0306. C1/C3 current source marks retained; C2 awaits Coordinator-required repeated full run including corrected15s startup guard. e842844f is launching, not a completed full receipt. Prior full A-8306 remains red; no new local CLI timing claimed. Claimant done marks need refresh at current head. No findings or Reviewer runtime.
+
+### rev-23 · 2026-10-21T11:31:48.716Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1039-final-2
+commit: 047ad2d8e318cfa004e3adc95f4918a46f73b181
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final corrected-head clear; no findings. A-8337 audits exact-head A-8336 / Coordinator full run e842844f: Linux x64 c-8 lon1 T1/T2/T3 exit0, 3450 ordinary test passes,8 skips,520 passing files. Startup scale test line16059 passes enforcing15s first-status and exact byte/plan assertions; whole-test6.080706s/file6.774287s are not first-status latency, whose numeric success value is unreported. Separate A-8320 task receipt establishes2232 ordinary passes and three identities5/5 load passes. C2 retains Coordinator a6b632c3's explicitly accepted historical local A-8258 CLI4951.431ms (<5s;48.569ms margin) on unchanged production source, not new-head/Linux timing; C3 compose9.999ms and C1 phase profile retain their labelled provenance. Corrected head only changes generated guard/docs; prior full A-8306 remains red (5275.8ms>5000). All done marks refreshed. Lint/duration/ratchet report-only: startup exceeds nominal5s and T3 shard1050.24s exceeds900s; removed C-325 allowance is not a budget pass. Host e60b1450 not repeated remotely. Web NOT RUN/T-993 under Coordinator acceptance; no T4/browser/stage/QA/Reviewer runtime claim. Lifetime1480s, reportedcost$0.1028. All C1–C3 verified.
+
+Criteria: C1 verified, C2 verified, C3 verified.

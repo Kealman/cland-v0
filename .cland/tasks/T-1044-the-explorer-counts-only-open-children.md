@@ -16,7 +16,7 @@ regression_of: T-1007
 topic: topic-796
 branch: t/T-1044-the-explorer-counts-only-open-children
 created: 2026-10-21T11:16:47.594Z
-updated: 2026-10-21T11:26:48.058Z
+updated: 2026-10-21T11:29:11.045Z
 ---
 
 ## Summary
@@ -45,3 +45,16 @@ Container rows show correct done and total counts without loading every closed i
 ### impl-1044 · 2026-10-21T11:26:42.337Z
 
 Implemented at ca876d130778622aed9818a7f3654da6a2894ff5 (tree c4a1e585706041e2cc38f0a7e76f89c16fa922a5), pushed to origin. Full-index child_counts feed both Neovim progress views; parent task events keep current/former ancestor counts fresh. Test-first regressions and targeted receipts are in A-8332, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8332-t-1044-implementation-and-targeted-evidence.md. Local darwin/arm64 targeted tracker 11/11, explorer-component 21/21, explorer-card-component 15/15, items 5/5, explorer-card 1/1, explorer 2/2 and startup-budget 4/4 passed; npm run check passed (test lint report-only, 0 refusals). Startup hard bounds passed at 38.604 ms and 67,813 bytes; 1,000-item summary guard 42,666 bytes. No whole-suite receipt yet; requesting source review before mode-free verification.
+
+### rev-23 · 2026-10-21T11:29:11.045Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1044-source
+commit: ca876d130778622aed9818a7f3654da6a2894ff5
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Full source clear; Standards 0 / Spec 0 findings. A-8335 audits 13-file change from fixed base80f8f94c: complete-index child_counts before list filters; sparse status/done/work aggregates preserve release/direct-task conventions and lazy closed rows. Default/summary lists and task events carry counts. Union of previous/current ancestor paths refreshes both parents and release work after child mutations without list re-read. Explorer and Items consume counts with legacy-frame fallback. Public T1 projection/events and observed T2 first-render/update cases retain final assertions and bounded startup payload guard. Wire equality and hub/Neovim/issue-tracker docs match additive behavior. All C1–C4 remain execution-dependent; A-8332 targeted Darwin summaries are supporting evidence, not a queued task pass. Normal mode-free configured verification may proceed at unchanged reviewed head. No Reviewer runtime or source edits.
