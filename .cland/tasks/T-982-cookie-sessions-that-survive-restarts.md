@@ -3,7 +3,7 @@ id: T-982
 kind: task
 title: Cookie sessions that survive restarts, listed and revoked
 state: open
-status: ready
+status: in progress
 size: S
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-778
 branch: t/T-982-cookie-sessions-that-survive-restarts
 created: 2026-10-20T16:50:00.187Z
-updated: 2026-10-20T21:48:57.535Z
+updated: 2026-10-21T02:57:34.127Z
 ---
 
 ## Summary

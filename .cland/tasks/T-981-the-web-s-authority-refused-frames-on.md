@@ -2,8 +2,8 @@
 id: T-981
 kind: task
 title: "The web's authority: refused frames on the web edge"
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 5
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-775
 branch: t/T-981-the-web-s-authority-refused-frames-on
 created: 2026-10-20T16:49:59.999Z
-updated: 2026-10-20T21:44:40.379Z
+updated: 2026-10-21T02:56:40.212Z
+closed: 2026-10-21T02:56:40.212Z
 ---
 
 ## Summary
@@ -140,3 +141,11 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final clear at merged head; audit A-8099 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8099-t-981-merged-head-final-evidence-at-fdc614db.md). Same-head df7a82bb/A-8098 completed Linux T1/full hub+Neovim T2 fallback: 2,194 ordinary test passes/337 files and all 36 authority identities each 5/5 load passes separately. C1–C4 policy/socket acceptance tests pass (T1 4/4, T2 32/32); docs C5 remain source-established. Web selected but NOT RUN, structured missing-Linux-libraries reason retained; no browser pass or zero timing claimed. Costly Unix parity remains handler/precondition coverage. Host check 0c5050cc not repeated remotely; lint/duration/ratchet report-only, two missing baselines. No T3/T4 or after-stage QA claim. No findings; verify C1–C5.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-981 · 2026-10-21T02:52:51.769Z
+
+Coordinator decision f3b4e5ed-23d6-46f8-9c10-f65baa96bc76 closes the Web-supplement question: no extra Web run is needed. Same-head Linux receipt df7a82bb is complete acceptance evidence for T1/all T2 at fdc614db; Web remains explicitly not-run for known T-993 droplet-library prerequisites. T-981 changes dispatcher edge policy, and the next stage's local macOS cover supplies browser evidence for integrated dev. T-981 is queued for merge; source head remains unchanged and claim is retained pending merge.
+
+### coord · 2026-10-21T02:56:40.212Z
+
+Merged 6a87abb88771f8ca9cae2c97d8188baf69fc8dd9 onto dev.
