@@ -2,7 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readlinkSync, readdirSync, realpathSync, statSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import type { TestContext } from 'node:test';
 import { parseProcessTable, processTableArgs, type SystemProcess } from '../src/process-table.ts';
 
@@ -164,7 +164,8 @@ function runMarkers(rows: ProcessRow[]): Map<number, string> {
   return result;
 }
 
-const directories = new Map<string, { device: number; inode: number }>();
+type DirectoryOptions = { beforeRemove?: CleanupStep; removeTimeoutMs?: number };
+const directories = new Map<string, { device: number; inode: number } & DirectoryOptions>();
 let self: ProcessRow | undefined;
 let inspectedSelf = false;
 // A worker with no children needs no OS identity. Native cleanup still captures
@@ -414,7 +415,8 @@ function installSignals(): void {
       }
       // A project's hub may also write into the worker's account fixture. Stop
       // writers in every root before removing even the first directory.
-      for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) await rm(dir, { recursive: true, force: true });
+      for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) await identity.beforeRemove?.();
+      for (const [dir, identity] of directories) if (directoryStillOwned(dir, identity)) await removeDirectory(dir, identity.removeTimeoutMs);
     })().finally(() => process.exit(signal === 'SIGINT' ? 130 : 143));
   });
 }
@@ -440,16 +442,32 @@ export function ownProcess(t: TestContext | undefined, pid: number | undefined):
   if (t) onCleanup(t, cleanup);
   return cleanup;
 }
-export function ownDirectory(t: TestContext | undefined, path: string): () => Promise<void> {
+async function removeDirectory(root: string, timeoutMs = 0): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try { await rm(root, { recursive: true, force: true }); return; }
+    catch (error) {
+      if (!timeoutMs || !['ENOTEMPTY', 'EBUSY'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error;
+      if (Date.now() >= deadline) {
+        const remaining = await readdir(root, { recursive: true }).catch(failure => [`<listing failed: ${String(failure)}>`]);
+        throw new Error(`fixture cleanup could not remove ${root} within ${timeoutMs} ms; remaining paths: ${remaining.sort().join(', ') || '<none observed>'}`, { cause: error });
+      }
+      await pause(Math.min(25, deadline - Date.now()));
+    }
+  }
+}
+
+export function ownDirectory(t: TestContext | undefined, path: string, options: DirectoryOptions = {}): () => Promise<void> {
   const root = realpathSync(path);
   const info = statSync(root);
-  const identity = { device: info.dev, inode: info.ino };
+  const identity = { device: info.dev, inode: info.ino, ...options };
   directories.set(root, identity); directoryProcesses.set(root, new Set()); installSignals();
   const cleanup = async () => {
     if (directoryStillOwned(root, identity)) {
+      await options.beforeRemove?.();
       const identities = new Set([...(directoryProcesses.get(root) ?? []), ...(t ? contextProcesses.get(t) ?? [] : [])]);
       await cleanupOwnedProcesses([...identities]);
-      await rm(root, { recursive: true, force: true });
+      await removeDirectory(root, options.removeTimeoutMs);
     }
     directories.delete(root); directoryProcesses.delete(root);
   };

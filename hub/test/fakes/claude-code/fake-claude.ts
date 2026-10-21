@@ -56,8 +56,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { fakeLogin, login, recordCall } from '../setup-profile.ts';
+import { registerWriter } from './writers.ts';
 
 const HOME = process.env.FAKE_CLAUDE_HOME ?? join(process.env.TMPDIR ?? '/tmp', 'fake-claude-home');
+if (!registerWriter(HOME, process.argv[2] === '__session')) process.exit(0);
 const SESSIONS = join(HOME, 'sessions');
 const JOBS = join(HOME, 'jobs');
 mkdirSync(SESSIONS, { recursive: true });

@@ -34,7 +34,7 @@ import { hubResources } from './hub-resources.ts';
 import { createHub, type Hub, type HubOptions } from '../src/hub/server.ts';
 import { findDiscovery, readDiscovery as readDiscoveryFile } from '../src/project.ts';
 import type { HarnessProcessView } from '../src/protocol.ts';
-import { beforeDirectories, afterCleanup, onCleanup, cleanupOwnedProcesses, ownDirectory, ownProcess, recordedProcess, rememberProcess, rememberResultProcesses } from './process-cleanup.ts';
+import { beforeDirectories, afterCleanup, onCleanup, captureProcess, cleanupOwnedProcesses, ownDirectory, ownProcess, pause, recordedProcess, rememberProcess, rememberResultProcesses, type ProcessIdentity } from './process-cleanup.ts';
 
 export const SPOKE_ENTRY = fileURLToPath(new URL('../bin/cland-spoke.ts', import.meta.url));
 
@@ -747,12 +747,31 @@ export async function fakeClaude(
 ): Promise<FakeClaude> {
   await ensureAccountFixture();
   const home = await realpath(await mkdtemp(join(tmpdir(), 'fake-claude-')));
-  // Adapter polls write calls.jsonl too: remove the home only after hub shutdown,
-  // in the ownership hook that continues disposing fixtures after a failure.
-  ownDirectory(t, home);
+  const writers = join(home, 'writers');
+  await mkdir(writers);
+  await writeFile(join(home, 'writers-open'), '');
+  // All resource and hub shutdown hooks precede directory disposal. Only then
+  // fence launches, stop session groups (hooks/spokes included), and drain CLIs.
+  // Even a drained writer may race the filesystem's directory enumeration on
+  // teardown. Retry only ENOTEMPTY/EBUSY for 1 s, retaining paths on exhaustion.
+  ownDirectory(t, home, { removeTimeoutMs: 1000, beforeRemove: async () => {
+    await rm(join(home, 'writers-open'), { force: true });
+    const identities = async () => Promise.all((await readdir(writers)).filter(file => file.endsWith('.json')).map(async file =>
+      JSON.parse(await readFile(join(writers, file), 'utf8')) as ProcessIdentity & { session: boolean }));
+    const deadline = Date.now() + 5000;
+    for (;;) {
+      const all = await identities();
+      await cleanupOwnedProcesses(all.filter(writer => writer.session));
+      const pending = all.filter(writer => !writer.session && captureProcess(writer.pid)?.started === writer.started);
+      if (!pending.length) break;
+      if (Date.now() >= deadline) { await cleanupOwnedProcesses(pending); break; }
+      await pause(25);
+    }
+  } });
   const env = {
     PATH: `${FAKE_CLAUDE_DIR}:${process.env.PATH ?? ''}`,
     FAKE_CLAUDE_HOME: home,
+    FAKE_CLAUDE_WRITERS: writers,
     CLAND_CLAUDE_AGENTS_MS: String(timings.pollMs ?? 50),
     FAKE_CLAUDE_TURN_MS: String(timings.turnMs ?? 30),
     CLAND_ADAPTER_POLL_MS: String(timings.pollMs ?? 50),
@@ -778,9 +797,6 @@ export async function fakeClaude(
       return [];
     }
   };
-  onCleanup(t, async () => {
-    for (const s of await sessions()) await killDaemon(s.pid);
-  });
   return {
     env,
     home,

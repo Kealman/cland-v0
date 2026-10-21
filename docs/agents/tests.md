@@ -692,6 +692,16 @@ are reserved for one real-binary adapter contract file per harness and T3
 scenarios. They are not the default for routing, roles, subscriptions or tracker
 rules. Existing files migrate under E-677; new tests use the in-process adapter.
 
+`fakeClaude` owns every fake CLI invocation, including adapter polls, through a
+home-local process-identity registry. After resource and hub shutdown it closes
+writer admission, reaps session groups (including hooks and spokes), and allows
+in-flight CLIs up to 5 seconds to exit before reaping them. Only then is the home
+removed. Removal retries ENOTEMPTY/EBUSY for 1 second and reports remaining paths
+if exhausted. A stale fixture environment cannot recreate a closed home.
+`fake-claude-cleanup.test.ts` proves the held-poll late write, orphan hook cleanup,
+closed-home admission and bounded remaining-file diagnostic at the T3 process
+lifecycle seam. The same writer drain applies during signal recovery.
+
 ### Waiting for an observable condition
 
 Use `until(predicate, { what })` from `hub/test/harness.ts` for a condition
