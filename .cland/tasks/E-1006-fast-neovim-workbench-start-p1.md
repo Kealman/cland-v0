@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-20T20:40:15.074Z
+updated: 2026-10-21T06:33:24.100Z
 ---
 
 ## Summary
@@ -51,6 +51,13 @@ stages:
       - - T-1009
         - T-452
       - - T-1010
+  - name: the read loop and the startup replies
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1037
+      - - T-1038
 ```
 
 ## Comments
