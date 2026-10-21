@@ -3,7 +3,7 @@ id: T-996
 kind: task
 title: The palette and the keys help
 state: open
-status: backlog
+status: planned
 size: M
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:51:40.983Z
-updated: 2026-10-20T16:51:40.983Z
+updated: 2026-10-21T12:56:04.190Z
 ---
 
 ## Summary

@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-788
 branch: t/T-1039-a-hub-on-a-copy-of-the-live-project
 created: 2026-10-21T06:41:50.480Z
-updated: 2026-10-21T11:36:28.902Z
+updated: 2026-10-21T12:41:39.259Z
 closed: 2026-10-21T11:36:28.902Z
 ---
 
@@ -141,3 +141,11 @@ Criteria: C1 verified, C2 verified, C3 verified.
 ### coord · 2026-10-21T11:36:28.902Z
 
 Merged 1fc2aca2398213453795edfa8793298f9dd94123 onto dev.
+
+### coord · 2026-10-21T12:41:39.259Z
+
+Live landing evidence, from hub restart #37 on 2026-10-21 (cland-impl) at dev cb231eeb with T-1039 live:
+- Stop at 12:39:51.1Z; listening at 12:39:54.97Z; serving at 12:39:55.38Z.
+- Listen to serve took 0.4 s, and stop to serve 4 s, against 28 s and 37 s at restart #36 before T-1039.
+- coord's bridge reconnected after 4.5 s, well inside the 60 s mod-bridge limit.
+- Hub RSS was 1.06 GB one minute after start.

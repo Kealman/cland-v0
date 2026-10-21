@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-783
 branch: null
 created: 2026-10-14T15:59:18.516Z
-updated: 2026-10-21T09:33:06.714Z
+updated: 2026-10-21T12:56:03.534Z
 ---
 
 ## Summary
@@ -179,3 +179,51 @@ Run qa-2026-10-21-1, stage “the ground”. Actual local macOS arm64, Node v24.
 npm install recovered from two download-host DNS errors using its normal fallback and exited 0. No credential or GUI access. All command captures retained. Final HEAD/dev unchanged and tree clean; own process scan zero, scratch and detached worktree removed. No epic criterion marks.
 
 Durable artifact A-8217: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8217-e-415-ground-stage-10-checks-pass-at-479178b2/report.md
+
+### qa-676 · 2026-10-21T12:56:03.534Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-2
+commit: cb231eeb0824d105824263535c5ee476fe5fc3f5
+stage: the connection, the rail and the droplets
+stage_hash: 0b6c3251be9c659a95df63d69b41d96f8cb43c6c464339b4f2cad35da576d8b8
+findings: [{"severity":"low","text":"M10 storage grep expectation omitted T-989's sessionStorage reload guard in connection.ts:47–48. Approved scope is shell preference storage in interface-state.ts; all relevant guard/preference tests pass.","file":"qa/briefs/E-415-stage-2.md"}]
+finding_counts: {"high":0,"medium":0,"low":1}
+
+| Check | Result | Command / observation |
+| --- | --- | --- |
+| S0 | PASS | Clean detached cb231eeb; all four merges present; isolated scratch HOME/XDG/Git with shared credential filter and system TMPDIR; expected files present. |
+| M1 | PASS | Exact-source build exit0, stamp af90afe7, index/JS/CSS present and worktree clean. |
+| M2 | PASS | Single-use link matches; auth302 HttpOnly SameSiteStrict Path/ MaxAge cookie, no Secure; jar1; reuse401; hub on loopback. |
+| M3 | PASS | Served entry equals built entry; index/JS200 strict CSP, no unsafe tokens; immutable JS; anonymous bundle200; WS no cookie401, cookie101 (curl timeout28 expected). |
+| M4 | PASS | Secret positive control1; all11 bundle files200; auth unknown401 and absentJS404; secret grep no matches exit1 across served resources/auth/headers/cookiejar. |
+| M5 | PASS | Before stop101, stopped000, restarted49939 equals kept49939, persisted cookie WS101; curl timeout28 expected. |
+| M6 | PASS | No local wire.ts/import; connection uses shared/wire; entry/cookie/backoff docs and targeted command match. |
+| M7 | PASS | Connection file4/4 pass incl sign-in/secret confinement/reconnect, stale reload guard, protocol refusal; isolated Headless Shell census0->0. |
+| M8 | PASS | Shell file7/7 pass incl all six rail/top-strip/navigation/storage/focus subtests; Headless Shell census0->0. |
+| M9 | PASS | Smoke file4/4 pass incl CSP, origin confinement and intentional failure trace test; browser census0->0; worktree clean. |
+| M10 | PASS | Keymap1/1 pass; listeners only keyboard.ts, codes only keymap.ts; preferences only interface-state.ts; T-989 sessionStorage reload guard accepted per d6d1d7bb (low brief correction). |
+| M11 | PASS | CSS rail60px below1280 and collapsed; README keymap/storage/commands and tests.md match; tier classifications Web/Web/T1. |
+| M12 | PASS | Prepare-key5/5 pass; provision shell syntax0;21 Headless Shell libraries precede useradd. Static/unit evidence only, no provider or apt actions. |
+| M13 | PASS | Web worker planner1/1 pass (two local/four remote); prepare/restart/receipt docs match. |
+| M14 | PASS | Scratch recorder accepts real-browser, writes one row with screenshot path; unknown surface exit64 writes none; targeted recorder test1/1 pass. Fixture png is synthetic; actual GUI case separately recorded. |
+| M15 | PASS | Good surface lint0; unknown surface1 at line3; actual brief lint0; qa-lint-cli2/2 pass. |
+| M16 | PASS | QA skill/templates describe dedicated-profile computer use, scoped page/prompts, screenshots/tab cleanup; lint docs/usage and authorized HTTP amendment present. Live unauthenticated page is request-specific; no live sign-in link minted. |
+| M17 | PASS | Full typecheck/colour/contrast/hooks/oxlint exit0,0 warnings/errors. |
+| WEB-REAL-001 | PASS | Computer use Chrome native cland QA profile: opened owned tab1158676367 at http://127.0.0.1:56935/; exact af90afe7 source stamps equal, HTTP200; screenshot shows cland/Workbench/Offline and seven named rail areas; no page interaction, no live authentication; closed only owned tab, original1158676307 remains. |
+
+Low finding (brief only): M10, qa/briefs/E-415-stage-2.md, storage grep expectation predates T-989. Actual grep includes connection.ts:47–48 sessionStorage cland-reload-build as well as interface-state.ts's versioned preference localStorage. The former is the deliberate one-reload guard, not shell preference storage. Coordinator decision d6d1d7bb approves judging T-994 C6 against preference storage only. The guard and storage-denial tests pass; no product defect found.
+
+Stage: the connection, the rail and the droplets. Run qa-2026-10-21-2, full tested SHA cb231eeb0824d105824263535c5ee476fe5fc3f5. All19 scoped checks PASS: S0, M1–M17 and WEB-REAL-001. No epic criterion marks.
+
+Fresh local macOS arm64 execution, Node v24.21.0. Automated targeted tests: M7 connection4/4, M8 shell7/7, M9 smoke4/4, M10 keymap1/1, M12 prepare-key5/5, M13 worker planner1/1, M14 recorder1/1, M15 lint2/2; total25, zero failures/cancellations/skips/todo. Headless Shell revision1248 ran in isolated fixture profiles; browser process census was0 before/after each file and final scan0. Other fixture checks used disposable HOME/XDG/Git and shared credential filtering, system TMPDIR retained. Coordinator decision9cc8f008 clarifies cover-quiet means this Mac; local queue was empty before each serial file while the remote cover ran elsewhere. No full suite, droplet, provider, apt or prepare operation was run by QA. T-993 live droplet evidence belongs to the Coordinator and is outside this brief; budget lines are report-only/out of scope.
+
+Actual real-browser case: CUA Chrome extension browser1, native window/profile button cland QA, normal browser environment. Opened one owned tab1158676367 at http://127.0.0.1:56935/, no page clicks/typing/keys. Live root and tested-worktree source stamps both af90afe76ff70b9c0607d8218af6f70ed89d3ca995bc282d2992f0884a9c9cb4; unauthenticated entry HTTP200. Screenshot shows the tested shell: cland, Workbench, Offline, seven named rail areas and top-strip controls. Offline is expected without a cookie; this case does not claim authenticated live connection. No live sign-in link or cookie session was created. Captured before/page/after PNGs, then closed only owned tab; original New Tab1158676307 remains. Before/after PNG bytes identical. No settings, keychain, permissions or profiles changed; no dialog/refusal occurred. M14's synthetic scratch recorder row is unit evidence only, distinct from this actual computer-use run.
+
+All merges present: T-992158e188a, T-994e70309cd, T-993b65fb11b, T-1011102d592d. Final worktree clean and HEAD/dev unchanged at cb231eeb. Scratch hub stopped, own scratch/worktree process scan empty, scratch root and detached worktree removed. Final secret scan found0 matches; scratch auth bearer values redacted from published captures. The intentional failing-case trace test passed; its trace was verified/deleted by the harness, not retained as a real product failure.
+
+Coordinator cover metadata initially reported missing Linux after hub restart#37 (T-1049). Coordinator has replacement117ca925 at this same SHA; closure/cover handling remains the Coordinator's. This verdict reports scoped execution and does not replace or assert a new full-suite receipt.
+
+Durable evidence A-8388: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8388-e-415-stage-2-19-checks-pass-real-chrome-shell-at-cb231eeb/report.md

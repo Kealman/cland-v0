@@ -13,7 +13,7 @@ blocked_by: []
 topic: topic-773
 branch: null
 created: 2026-10-14T15:59:14.015Z
-updated: 2026-10-21T09:39:17.364Z
+updated: 2026-10-21T12:49:19.040Z
 ---
 
 ## Summary
@@ -252,3 +252,59 @@ M15 measured the committed tracker copy, not live sessions: items frame 576811 b
 All exact commands and redacted outputs are retained by case prefix, plus 20 recorder rows. Scratch bearer scan found 0 cookies/capability URLs/auth links in retained evidence. Final HEAD/dev unchanged, worktree clean, scratch hub stopped, own process scan 0; scratch and detached worktree removed. Stage verdict carries no epic criterion marks.
 
 Durable artifact A-8219: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8219-e-412-stage-2-20-checks-pass-at-479178b2/report.md
+
+### qa-676 · 2026-10-21T12:49:19.040Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-2
+commit: cb231eeb0824d105824263535c5ee476fe5fc3f5
+stage: deltas, resume, the network and the door
+stage_hash: 4b14308a46b6372f449c202c580c3fbdfe7a51262791c769a7e788d0ac82417b
+findings: [{"severity":"low","text":"M3 legacy layer-map expectation omitted init categories C-1..C-4; approved full map including categories passes, featured slim frame unchanged.","file":"qa/briefs/E-412-stage-3.md","line":285},{"severity":"low","text":"M19 capability URL uses durable artifact basename A-2-qa-other.txt, not source other.txt; approved correction, all bytes/status/CSP/confinement checks pass.","file":"qa/briefs/E-412-stage-3.md","line":301}]
+finding_counts: {"high":0,"medium":0,"low":2}
+
+| Check | Result | Command / observation |
+| --- | --- | --- |
+| S0 | PASS | Clean detached cb231eeb; four stage merges present; three isolated scratch roots; shared credential filter; exact-source web build exit 0; node_modules shared, system TMPDIR retained |
+| M1 | PASS | Scratch p1 hub; single-use auth 302/401, strict loopback cookie, session row, CSP headers and foreign Host 403 |
+| M2 | PASS | Scratch upgrade no-cookie 401; foreign/null Origin and foreign Host 403; web hello human features[] buildStamp:null, hub.status ok |
+| M3 | PASS | Numbered deltas contiguous seq3..11 after snapshot2; seven domains; slim edit layers{}; three projected visibility rows; legacy full map includes C-1..C-4 per Coordinator 441ee4c7 (low brief correction). |
+| M4 | PASS | Replay exactly five missed T-7..T-11 deltas17..21 from cursor16 before topic.list result; live change22 follows; no snapshot/duplicate/gap. |
+| M5 | PASS | Foreign/future fallback seven snapshots at current epoch; covered cursor no snapshot; explicit replay true then false; missing snapshot resync; bad hello4000. |
+| M6 | PASS | Restart retained port49217 and persisted cookie session; new epoch40c1abbe receives fresh seven-domain snapshot, no replayed task. |
+| M7 | PASS | Live ping intervals30001ms; no-pong socket closed1006 at80471ms after two pings; auto-pong socket three pings alive100705ms. |
+| M8 | PASS | 35-byte and empty binary close4003; exact1048576-byte JSON and next request ok;1048577-byte JSON close1009; hub alive. |
+| M9 | PASS | Stamp read at each welcome: null,a*64,b*64,null; unknown feature dropped; Unix shape unchanged; web999 restart-hub4000, Unix999 update guidance. |
+| M10 | PASS | HTML stamp, receipt, source and archive digest agree af90afe7; protocol and wire mutations each change digest; unrelated shared file does not; doctor matches sources. |
+| M11 | PASS | session.list exposes exactly claude-code,codex,opencode with terminal:none; adapter/type declarations present. |
+| M12 | PASS | IPv6 web bind::1:49327 while spoke127.0.0.1:49326; only two loopback listeners; v6web200,v4web/v6spoke000 exit7. |
+| M13 | PASS | Tunnel Host+exact HTTPS Origin sets Secure; missing Origin and forwarded-header variants do not; tunnel101, other four upgrades403; human status ok. |
+| M14 | PASS | Loopback QR refuses exit1 with reason/0bytes; tunnel QR decodes exact printed link and spends302; conflicting flags exit1; no opener; MIT pinned encoder and no dependency diff. |
+| M15 | PASS | Stopped p3 documentation address warns about cleartext; configured tunnel ok; p1loopback and p2tunnel ok. Doctor overall exit1 is outside row scope. |
+| M16 | PASS | Seven web authority denials cli-neovim-only; allowed send persisted as human at seq2 and Unix exclusive history returns exact row; hub remains alive. |
+| M17 | PASS | One persisted session with exact four columns; ID and SHA256 cookie_hash match; zero empty pattern lines and zero regular-file plaintext-cookie matches. |
+| M18 | PASS | Forward exclusive pages[3,4],[5,6],[7]; backward before5 gives[3,4]; exact message texts, no gaps/duplicates. |
+| M19 | PASS | Page200 sandbox allow-scripts, CSS200, correct other bytes200, cross404/dotdot403 through symlinked ancestor. Durable basename A-2-qa-other.txt accepted by Coordinator56893b7d (low brief correction). |
+| M20 | PASS | All 22 documentation probes match; sections read for numbering, resume, network, liveness, reservations and stamp; no contradiction found. |
+| M21 | PASS | Three hub-start secret patterns, zero empty lines, zero matches in all regular evidence/scratch-bundle/built-bundle files. |
+| M22 | PASS | Exact brief targeted files serial on macOS arm64 at cb231eeb: 80/80 pass, 0 failures/cancelled/skipped/todo; local queue empty before group. |
+| M23 | PASS | Exact brief targeted files serial on macOS arm64 at cb231eeb: 90/90 pass, 0 failures/cancelled/skipped/todo; local queue empty before group. |
+| M24 | PASS | Exact brief Headless Shell connection+smoke files:8/8 pass,0 skips; reconnect, stale-page reload once, protocol action and CSP pass; both browser groups end0. |
+| M25 | PASS | Four landing nvim diffs0; client-component+thread27/27 pass,0 skips on pinned Neovim0.12.5/system TMPDIR. |
+| M26 | PASS | Wire import guard exit0; all typechecks, colours/contrast/hooks and oxlint exit0 with0 warnings/errors. |
+
+Low findings (brief only):
+- M3, qa/briefs/E-412-stage-3.md:285: the expected legacy layer map omitted C-1..C-4 created by cland init. Actual legacy full map has those four plus T-5/T-6; featured edit remains layers:{} and no items key. Coordinator decision 441ee4c7 accepts the full map. Original command/observations retained in M3.raw.txt.
+- M19, qa/briefs/E-412-stage-3.md:301: the brief expected source basename other.txt; actual capability URL uses the durable artifact basename A-2-qa-other.txt. Correct bytes/status/confinement passed. Coordinator decision 56893b7d accepts that basename. M19.raw.txt retained, scratch bearer values redacted.
+
+Stage: deltas, resume, the network and the door. Run qa-2026-10-21-2 at full SHA cb231eeb0824d105824263535c5ee476fe5fc3f5. All 27 scoped checks PASS. No epic criterion marks.
+
+Actual executor local macOS arm64, Node v24.21.0, Neovim v0.12.5; pinned Chrome Headless Shell revision1248 for M24. Fresh targeted tests: M22 80/80, M23 90/90, M24 8/8, M25 27/27: total205, zero failure/cancellation/skip/todo. No full suite, droplet or GUI browser was run by this pass. Headless Shell is the isolated test browser, not the human's Chrome. Queue local:none before each serial group; no tests ran concurrently. Budget lines are report-only and outside this brief; no timing projection is counted as wall time.
+
+S0 used a clean detached worktree, shared node_modules and an exact-source web build (af90afe76ff70b9c0607d8218af6f70ed89d3ca995bc282d2992f0884a9c9cb4). Shared fixtureEnvironment removed credentials before the shell, with disposable HOME/XDG/Git/account paths; system TMPDIR was retained. Scratch p1 and p2 listeners stayed loopback; documentation-address p3 never started. Four merges present: T-985 aeae1f25, T-986 40d0583f, T-988 ff0f6c7f, T-989 80f8f94c. T-1045/T-1046 were outside the stage plan and their T3 tests were not rerun, per request. Coordinator covers Linux bb909399/A-8381 and macOS b73a6fc9/A-8385 are not this pass's execution.
+
+Final HEAD and dev both cb231eeb, worktree clean. Both scratch hubs stopped; own process scan empty; scratch root and detached worktree removed. M21 found zero hub-secret matches before cleanup. Scratch auth tokens, cookies, capability values and QR rows are redacted from published evidence; status, response headers, assertions, digest comparisons and decoder result remain. The trace message in the intentional smoke failure is a passing trace-capture test, not a product failure.
+
+Durable evidence A-8387: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8387-e-412-stage-3-27-checks-pass-at-cb231eeb/report.md

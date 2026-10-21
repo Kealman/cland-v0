@@ -3,7 +3,7 @@ id: T-997
 kind: task
 title: Folds remembered per client, and no explanatory prose
 state: open
-status: backlog
+status: planned
 size: S
 labels:
   - ready-for-agent
@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-20T16:51:41.075Z
-updated: 2026-10-20T16:51:41.075Z
+updated: 2026-10-21T12:56:04.253Z
 ---
 
 ## Summary
