@@ -5,6 +5,13 @@ type Normalize<T> = T extends object ? { [K in keyof T]: Normalize<T[K]> } : T;
 type Equal<A, B> = (<T>() => T extends Normalize<A> ? 1 : 2) extends (<T>() => T extends Normalize<B> ? 1 : 2) ? true : false;
 type Assert<T extends true> = T;
 
+// Adding a human frame requires an explicit web-authority decision. This test
+// fails at typecheck if the protocol and the policy inventory differ.
+export type WebAuthorityConformance = Assert<Equal<
+  (import('../src/protocol.ts').ClientRequest | import('../src/adapters/requests.ts').SessionRequest | import('../src/tracker/requests.ts').TaskRequest)['type'],
+  keyof typeof import('../src/hub/web-authority.ts').WEB_AUTHORITY
+>>;
+
 // Both required and optional fields, literal unions and nested payloads must agree.
 export type WireConformance = [
   Assert<Equal<import('../src/protocol.ts').WebLink, Wire.WebLink>>,

@@ -1,3 +1,4 @@
+import { webAuthorityRefusal } from './web-authority.ts';
 import { PublishError } from '../territory-publish.ts';
 import { sendRecipients } from '../send-input.ts';
 import { defaultConfig } from '../init/config.ts';
@@ -28,7 +29,8 @@ import { DropletExecutor } from '../executor/droplet/droplet.ts';
 //
 // Every spoke tool call passes the permission table here (spec 4.4, `roles/permissions.ts`), by the role the hub
 // holds for the session at call time: a refused call is answered with a typed `forbidden` result and a hub notice
-// in the Agents topic. Every call, a spoke's or a client's (the human, unrestricted), is audited (`audit.ts`).
+// in the Agents topic. Client calls carry human authority; the web edge checks its own explicit policy first.
+// Every call, a spoke's or a client's, is audited (`audit.ts`).
 import { isSubscriptionRequest, subscriptionInput } from '../subscriptions.ts';
 import { randomUUID } from 'node:crypto';
 import type { SubscriptionRequest } from '../protocol.ts';
@@ -1728,6 +1730,13 @@ export class Dispatcher {
           if (frame.type === 'send' && frame.artifacts !== undefined) return attachedSend(frame, () => connection && core.isCurrent(connection) ? connection : null);
           return spokeRequest(frame, connection.name);
         }
+        if (transport.edge === 'web') {
+          const refusal = webAuthorityRefusal(frame);
+          if (refusal) {
+            audit(frame.id, { session: HUMAN_SESSION, sessionId: null, role: HUMAN_SESSION, tool: String(frame.type), args: summarize(frame), client });
+            return peer.send(refusal);
+          }
+        }
         if (replayed(frame)) return;
         // a CLI call acting as a session the hub knows (`as`): checked against that session's role and audited as it,
         // exactly as the session's own tool call would be
@@ -2016,7 +2025,13 @@ export class Dispatcher {
         if (done) return;
         const frame = parseFrame(raw);
         if (!frame) return refuse('bad-hello', 'not a frame');
-        if (kind === null) return hello(frame);
+        if (kind === null) {
+          // A browser cannot carry an actor even on its initial hello. Keep the
+          // hello deadline armed until a valid, actor-free hello is received.
+          const refusal = transport.edge === 'web' && Object.hasOwn(frame, 'as') ? webAuthorityRefusal(frame) : null;
+          if (refusal) return peer.send(refusal);
+          return hello(frame);
+        }
         // the handler's time on the event loop, against the budget: over it is a `slow-request` in the log
         this.#guard.measure(String(frame.type), kind === 'spoke' ? (name ?? '?') : client, () => handle(frame));
       },

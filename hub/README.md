@@ -246,6 +246,33 @@ idle browser connections alive and reap a peer that misses a pong at the next
 sent in bundle files, auth responses or browser frames. The browser uses its
 cookie for every socket; no bearer secret belongs in its JavaScript or storage.
 
+The cookie carries the human's authority subject to the web policy in
+`src/hub/web-authority.ts`. The table has an explicit row for every human
+`ClientRequest`, `TaskRequest` and `SessionRequest`; typecheck's conformance test
+fails if a frame is missing a row. Unknown or unclassified frames are refused
+by default, including prototype names. The dispatcher checks this policy before
+cached replies, actor resolution or any handler runs. Refusals are ordinary
+`result` frames with `ok: false`, `code: "cli-neovim-only"` and an error naming
+the CLI and Neovim.
+
+In 0.2.0, these actions stay in the CLI and Neovim:
+
+- `hub.stop`, `hub.reload`, `release`, `sync`, `push`, `publish`;
+- `config.set`, `crew.set`, `executor.prepare`, `executor.reap`,
+  `executor.retire-legacy`, `task.migrate`, `web.link`;
+- `session.signal`, `worktree.prune`, `artifact.delete`, `suite.forced`,
+  `task.import`, `demo.start`, `demo.exec`, `demo.stop`, `demo.status`;
+- `artifact.create` carrying a `path`, including alongside `content`;
+- every frame carrying an `as` field, including the initial hello, regardless
+  of its value.
+
+Every other classified human request continues through normal dispatch,
+including `merge`, queued `suite.start`, `suite.slot`, `suite.cancel`,
+`suite.classify`, `session.resume`, `session.bridge`, `executor.status`,
+`artifact.promote` and `artifact.move`. Topic messages and inline artifacts are
+recorded as the human's. Unix-socket clients retain their existing authority and
+handler preconditions. There is no `hub.restart` protocol frame.
+
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_KEEPALIVE_MS`, `CLAND_HUB_REQUEST_TIMEOUT_MS` and `CLAND_HUB_WELCOME_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_GATE`, read by `cland hub serve`, names a test-only directory: the next tracker temporary write consumes its `armed` file, writes `entered`, and waits until the test creates `release` before proceeding to rename. Tests arm it after fixture setup, then release it after the competing operation; nothing else sets it. Also for tests only: `CLAND_QUEUE_TTL_MS` shortens the queue TTL (how long a queued message and a remembered name last), and `CLAND_TEST_CRASH_AT=handover-committed` kills the hub right after a handover's transaction committed (`launch-reserved`: right after a launch reserved its role, before the spawn).
 
 The spoke's `session.launch` tool takes `name` and optional `role`, `model`, `harness`, `effort` and `cwd`. `cwd` is an absolute path or a path relative to the project root; omitting it runs the session at the project root. For example, `session.launch {"name":"impl-45","role":"implementer","cwd":".cland/worktrees/T-45"}` launches the Implementer in that worktree. A missing, inaccessible or non-directory path is refused before launch with `{"ok":false,"code":"invalid-cwd","error":"…"}`. With `item` instead (`session.launch {"name":"impl-45","role":"implementer","item":"T-45"}`), the hub makes or reuses the item's task worktree first and starts the session there (Task branches and worktrees, below).

@@ -1524,6 +1524,16 @@ link for a test client. Trade it at `/auth` and supply the returned per-project
 cookie and exact page Origin on `/ws`; the hello is a client hello without a
 secret. Cookie sessions stay in memory until T-982.
 
+Web authority is a separate request boundary: `hub/src/hub/web-authority.ts`
+classifies every human request and denies missing rows before replay or actor
+resolution. `wire-conformance.ts` checks the inventory at typecheck; a new frame
+needs a policy row in the same change. See `hub/README.md` for the 0.2.0 refusal
+list and the `cli-neovim-only` result code. `web-authority-unit.test.ts` covers
+pure policy decisions at T1; `web-authority.test.ts` exercises authenticated
+`/ws` and Unix sockets at T2. The local comparisons preserve normal handler
+preconditions: they do not publish, invoke Git or acquire provider resources.
+Use the scratch hub and filtered HOME/XDG/Git fixture for both edges.
+
 `web-auth-unit.test.ts` covers digest storage, one-time spending and expiry with
 an injected clock at T1. `web-auth.test.ts` covers the executable CLI, HTTP,
 upgrade checks, client/spoke admission and secret leakage at T2 with an
@@ -1560,6 +1570,9 @@ Clause procedure (defaults implementer, project implementer):
 - Use `projectHub(t, root, env?)` from `hub/test/harness.ts` for project tests by default. Keep `startDaemon` only when an assertion concerns the hub process (startup, shutdown, signals, crash/restart, lock/discovery/PID identity, orphan sweeping, watchdog behavior, or CLI behavior with the hub down or unreachable); such tests name the process lifecycle behavior they prove. See docs/agents/tests.md.
 
 ## Web phase
+
+For human-only sign-in and web authority policy tests, follow
+[Browser sign-in fixtures](#browser-sign-in-fixtures).
 
 Browser tests carry `Web` in `hub/test/tiers.json`, outside T0–T3, with a separate
 4 s/test and 40 s/phase budget in `hub/test/durations.json` (report mode follows

@@ -241,4 +241,6 @@ export const QA_LINT_USAGE = `  qa lint <brief>   check a QA brief against this 
 export const WEB_USAGE = `  web [--no-open]  print a one-time browser sign-in link from the running hub
                   opens with open (macOS) or xdg-open (Linux); --no-open only prints
                   human shell only; link expires in five minutes and is spent on first use
+                  web actions follow the deny-by-default authority table in hub/README.md
+                  cli-neovim-only refusals name actions to run in the CLI and Neovim
 `;
