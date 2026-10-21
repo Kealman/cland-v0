@@ -534,6 +534,7 @@
     "nvim/test/explorer.test.ts": "T3",
     "nvim/test/graph-layout.test.ts": "T3",
     "nvim/test/graph.test.ts": "T2",
+    "nvim/test/hub-read-component.test.ts": "T2",
     "nvim/test/inbox-actions.test.ts": "T2",
     "nvim/test/inbox-requests.test.ts": "T2",
     "nvim/test/inbox-sections.test.ts": "T2",

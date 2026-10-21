@@ -50,7 +50,7 @@ function M.new(opts)
     next_id = 1,
     state = 'idle',
     detail = nil,
-    buffer = '',
+    buffer = {},
     retry_ms = 250,
     failures = 0,
     stderr = '',
@@ -244,7 +244,7 @@ function Client:_connect()
   if self.stopping then
     return
   end
-  self.buffer = ''
+  self.buffer = {}
   if self.transport == 'stdio' then
     return self:_spawn()
   end
@@ -356,14 +356,21 @@ function Client:_spawn()
 end
 
 function Client:_data(chunk)
-  self.buffer = self.buffer .. chunk
+  local start = 1
   while true do
-    local nl = self.buffer:find('\n', 1, true)
+    -- Search only the new bytes; incomplete frames keep their chunks without
+    -- copying the accumulated prefix on every read.
+    local nl = chunk:find('\n', start, true)
     if not nl then
+      if start <= #chunk then
+        self.buffer[#self.buffer + 1] = start == 1 and chunk or chunk:sub(start)
+      end
       break
     end
-    local line = self.buffer:sub(1, nl - 1)
-    self.buffer = self.buffer:sub(nl + 1)
+    self.buffer[#self.buffer + 1] = chunk:sub(start, nl - 1)
+    local line = table.concat(self.buffer)
+    self.buffer = {}
+    start = nl + 1
     if line:match('%S') then
       local ok, frame = pcall(vim.json.decode, line, { luanil = { object = true, array = true } })
       if ok and type(frame) == 'table' then
