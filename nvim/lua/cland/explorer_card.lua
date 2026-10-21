@@ -190,7 +190,9 @@ function C.compose(key, width)
     local members = E.kids(ix,it.id)
     if E.is_release(it) then
       local subs = vim.tbl_filter(function(child) return E.is_container(ix,child) end,members)
-      if #subs>0 then members = subs end
+      if #subs>0 or type(it.child_counts)=='table' then members = subs end
+    elseif type(it.child_counts)=='table' then
+      members = vim.tbl_filter(function(child) return child.kind=='task' end,members)
     end
     local statuses, done, blocked = {}, 0, 0
     for _, child in ipairs(members) do
@@ -200,8 +202,12 @@ function C.compose(key, width)
       if status == 'done' then done = done+1 end
       if not E.done(child) and #items.open_blockers(child)>0 then blocked = blocked+1 end
     end
+    local total = #members
+    if type(it.child_counts) == 'table' then
+      done, total, statuses = it.child_counts.done, it.child_counts.total, items.child_statuses(it)
+    end
     section('progress')
-    text(done .. ' of ' .. #members .. ' done','ClandDim')
+    text(done .. ' of ' .. total .. ' done','ClandDim')
     local cells, counts = E.cells(statuses,width)
     rows[#rows+1] = cells
     local words = {}
@@ -251,7 +257,7 @@ function C.compose(key, width)
         if n == current then
           local merged = 0
           for _, id in ipairs(stage.items or {}) do if ix.by[id] and E.done(ix.by[id]) then merged = merged+1 end end
-          value = value .. ' · ' .. merged .. ' of ' .. #(stage.items or {}) .. ' merged · ' .. E.policy(stage.qa or definition.qa)
+          value = value .. ' · ' .. merged .. ' of ' .. #(stage.items or {}) .. ' merged (loaded) · ' .. E.policy(stage.qa or definition.qa)
         elseif stage.state == 'closed' then
           value = value .. ' · ' .. E.when(closed_at(stage))
         end

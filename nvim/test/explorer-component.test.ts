@@ -315,7 +315,7 @@ test('release rows, derived glyphs, rank then close order, folded roots and za c
   await c.waitScreen(s=>s.includes('S1 the tree')&&s.includes('Blocked task'), 'epic expanded');
   assert.equal(await c.lua("local e=require('cland.explorer'); return e.key_at(vim.api.nvim_win_get_cursor(e.tree_win())[1])"),'E-3');
   const tasks=await text(c);
-  for(const expected of ['in work · 4 of 10 merged · review only','S2 the card  planned','not in the plan','✓ done  in the order they closed','rev-11','impl-10','✗ review r2','✓ qa','2/3','merged 2025-12-03','◌ T-21','blocked by T-6']) assert.ok(tasks.includes(expected),expected);
+  for(const expected of ['in work · 4 of 10 merged (loaded) · review only','S2 the card  planned','not in the plan','✓ done  in the order they closed','rev-11','impl-10','✗ review r2','✓ qa','2/3','merged 2025-12-03','◌ T-21','blocked by T-6']) assert.ok(tasks.includes(expected),expected);
   assert.ok(tasks.indexOf('Legacy done')<tasks.indexOf('Earlier done')&&tasks.indexOf('Earlier done')<tasks.indexOf('Task done')&&tasks.indexOf('Task done')<tasks.indexOf('Later done'));
   const requests=(await control({requests:true})).requests;
   assert.equal(requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-')).length,0,'tree never fetches detail for unselected tasks');

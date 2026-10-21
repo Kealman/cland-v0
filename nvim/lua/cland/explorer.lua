@@ -317,7 +317,7 @@ function M.children(ix, node)
         local word = st.state == 'closed' and 'closed' or (busy and 'in work' or planned and 'planned' or 'backlog')
         local dim = word == 'backlog'
         out[#out + 1] = label_row({ { 'S' .. n .. ' ', dim and 'ClandDim' or 'ClandBold' }, { st.name or '', dim and 'ClandDim' or 'ClandText' },
-          { '  ' .. word .. ' · ' .. merged .. ' of ' .. #(st.items or {}) .. ' merged · ' .. policy(st.qa), 'ClandDim' } }, { stage = n })
+          { '  ' .. word .. ' · ' .. merged .. ' of ' .. #(st.items or {}) .. ' merged (loaded) · ' .. policy(st.qa), 'ClandDim' } }, { stage = n })
         add(members)
       end
     end
@@ -563,10 +563,7 @@ local function container_cols(ix, it, cols)
   if type(it.child_counts) == 'table' then
     local counts = it.child_counts
     done_n, total, work = counts.done, counts.total, counts.work
-    statuses = {}
-    for _, st in ipairs(M.BAR_ORDER) do
-      for _ = 1, counts.statuses[st] or 0 do statuses[#statuses + 1] = st end
-    end
+    statuses = items.child_statuses(it)
   end
   local out = {}
   local frac = (total == 0) and '—' or (done_n .. '/' .. total)
@@ -728,18 +725,21 @@ function M.rows_of(ix, scope, width)
     local right
     if items.is_category(it) then
       local live, dn = M.live_done(M.kids(ix,it.id))
-      left[#left+1] = {'  ' .. #live .. ' open · ' .. #dn .. ' done','ClandDim'}
+      local open, done = #live, #dn
+      if type(it.child_counts) == 'table' then open, done = it.child_counts.total - it.child_counts.done, it.child_counts.done end
+      left[#left+1] = {'  ' .. open .. ' open · ' .. done .. ' done','ClandDim'}
       local mark = M.idle_mark(it)
       if mark then left[#left+1] = {'  ' .. mark,'ClandTeal'} end
       local statuses = {}
       for _, task in ipairs(M.leaves(ix,it.id)) do statuses[#statuses+1] = M.leaf_status(task) end
+      statuses = items.child_statuses(it) or statuses
       right = M.cells(statuses,cols.bar)
     else
       right = container and container_cols(ix,it,cols) or leaf_cols(it,cols)
     end
     rows[#rows + 1] = { info = info, left = left, right = right }
     if node.release_root and depth == 0 then
-      -- the release row's second and third lines (P5): its tasks, one cell each, and the count per status
+      -- The release detail rows use the same aggregate members as its fraction.
       local leafs = M.leaves(ix, it.id)
       local statuses, done_n = {}, 0
       for _, k in ipairs(leafs) do
@@ -747,8 +747,12 @@ function M.rows_of(ix, scope, width)
         statuses[#statuses + 1] = st
         if st == 'done' then done_n = done_n + 1 end
       end
+      local total, label = #leafs, 'tasks'
+      if type(it.child_counts) == 'table' then
+        statuses, done_n, total, label = items.child_statuses(it), it.child_counts.done, it.child_counts.total, items.child_label(it)
+      end
       local cells, count = M.cells(statuses, math.max(8, math.min(48, width - 24)))
-      rows[#rows + 1] = { info = { detail = true }, left = append({ { '        ' }, { 'tasks ' .. done_n .. '/' .. #leafs .. '  ', 'ClandDim' } }, cells) }
+      rows[#rows + 1] = { info = { detail = true }, left = append({ { '        ' }, { label .. ' ' .. done_n .. '/' .. total .. '  ', 'ClandDim' } }, cells) }
       local words = {}
       for _, st in ipairs(M.BAR_ORDER) do
         if count[st] then
@@ -756,7 +760,7 @@ function M.rows_of(ix, scope, width)
           words[#words + 1] = { count[st] .. ' ' .. st, M.STATUS_HL[st] }
         end
       end
-      if #words == 0 then words[1] = { 'no tasks yet', 'ClandDim' } end
+      if #words == 0 then words[1] = { 'no ' .. label .. ' yet', 'ClandDim' } end
       rows[#rows + 1] = { info = { detail = true }, left = append({ { '        ' } }, words) }
     end
   end)

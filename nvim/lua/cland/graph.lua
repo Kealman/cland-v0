@@ -76,8 +76,14 @@ local function latest_verdict(it)
   end
 end
 
--- Completion counts the container's children; release activity spans its tasks.
+-- Aggregate progress counts direct members; legacy release activity spans loaded tasks.
 local function container_progress(it)
+  if type(it.child_counts) == 'table' then
+    local counts, work = it.child_counts, 0
+    for _, status in ipairs({ 'in progress', 'review', 'qa', 'ready' }) do work = work + (counts.statuses[status] or 0) end
+    local label = items.child_label(it)
+    return (label ~= 'tasks' and (label .. ': ') or '') .. counts.done .. '/' .. counts.total .. ' · ' .. work .. ' in work'
+  end
   local done, total, work = 0, 0, 0
   local level = items.level_of(it)
   local child_kinds = level and (items.ladder()[level + 1] or { 'task' })

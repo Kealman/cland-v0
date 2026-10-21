@@ -178,6 +178,23 @@ function M.in_work(it)
   return it.kind == 'task' and vim.tbl_contains({ 'planned', 'in progress', 'review', 'qa', 'ready' }, it.status)
 end
 
+--- The progress members described by child_counts, independent of loaded rows.
+function M.child_label(it)
+  local level = M.level_of(it)
+  local ladder = M.ladder()
+  return level and it.kind == state.S.tracker.levels[1] and ladder[level + 1]
+    and (table.concat(ladder[level + 1], '/') .. 's') or 'tasks'
+end
+
+function M.child_statuses(it)
+  if type(it.child_counts) ~= 'table' then return nil end
+  local statuses = {}
+  for status, count in pairs(it.child_counts.statuses) do
+    for _ = 1, count do statuses[#statuses + 1] = status end
+  end
+  return statuses
+end
+
 --- Tasks read their status verbatim. Other kinds have state, never workflow status.
 function M.status(it)
   return present(it.status) and it.status or it.state

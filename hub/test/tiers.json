@@ -558,6 +558,7 @@
     "nvim/test/panel-placement-component.test.ts": "T2",
     "nvim/test/plan-component.test.ts": "T2",
     "nvim/test/plan.test.ts": "T3",
+    "nvim/test/progress-counts-component.test.ts": "T2",
     "nvim/test/qa-shipped.test.ts": "T4",
     "nvim/test/qa.test.ts": "T3",
     "nvim/test/rulebook-component.test.ts": "T2",

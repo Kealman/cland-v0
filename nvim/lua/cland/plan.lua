@@ -306,7 +306,7 @@ local function progress(plan, detail)
       local status = items.status(it)
       local key = status == 'done' and 'done' or status == 'review' and 'review'
         or (status == 'in progress' or status == 'qa' or status == 'ready') and 'work' or 'planned'
-      out.counts[key] = out.counts[key] + 1
+      if it.id then out.counts[key] = out.counts[key] + 1 end
       local item_detail = require('cland.item_view').get(id)
       if metadata.state == 'closed' or (item_detail and not item_detail.failed and item_detail.merged == true) then done = done + 1 end
       local claim = items.claim(it)
@@ -448,7 +448,7 @@ function M.compose(id, w)
       boxed = true
       prose((changes.stages[n] and '△ ' or '') .. 'S' .. n .. ' · ' .. stage.name .. ' · ' .. st.state .. ' · ' .. #stage.lanes .. ' lanes', changes.stages[n] and 'ClandPlanChange' or st.state == 'in work' and 'ClandTeal' or st.state == 'planned' and 'ClandDim' or 'ClandBold')
       local filled = st.total > 0 and math.floor(10 * st.done / st.total) or 0
-      prose('[' .. ('━'):rep(filled) .. ('─'):rep(10 - filled) .. '] ' .. st.done .. '/' .. st.total .. ' merged', tone)
+      prose('[' .. ('━'):rep(filled) .. ('─'):rep(10 - filled) .. '] ' .. st.done .. '/' .. st.total .. ' merged' .. (st.state ~= 'closed' and ' (loaded)' or ''), tone)
       prose('QA: ' .. policy(stage.qa), tone)
       if st.verdict then
         local round = 0
@@ -509,7 +509,7 @@ function M.compose(id, w)
     local started = p.counts.done + p.counts.work + p.counts.review > 0
     if started then
       fields[1] = 'PROGRESS · stage ' .. (p.current or #plan.stages) .. ' of ' .. #plan.stages
-      fields[2] = p.counts.done .. ' done · ' .. p.counts.review .. ' in review · ' .. p.counts.work .. ' in progress · ' .. p.counts.planned .. ' planned'
+      fields[2] = 'loaded: ' .. p.counts.done .. ' done · ' .. p.counts.review .. ' in review · ' .. p.counts.work .. ' in progress · ' .. p.counts.planned .. ' planned'
       fields[3] = p.current and ('Current gate: ' .. gate(plan.stages[p.current], plan)) or 'All stages closed'
       fields[9] = 'QA runs: ' .. #p.runs .. ' so far'
       local remaining = 0
@@ -628,10 +628,11 @@ function M.render_panel(c, id)
     if positions[a.id] or positions[b.id] then return (positions[a.id] or math.huge) < (positions[b.id] or math.huge) end
     return items.compare_rank(a, b)
   end)
-  local done = 0
+  local done, total = 0, #list
   for _, child in ipairs(list) do if child.status == 'done' then done = done + 1 end end
+  if it and type(it.child_counts) == 'table' then done, total = it.child_counts.done, it.child_counts.total end
   c:add({ { ' ' .. id .. ' ' .. (it and it.title or ''), 'ClandBold' } },
-    { { (it and items.claim(it) and session_label(items.claim(it).session, items.claim(it).role) .. ' · ' or '') .. done .. '/' .. #list, 'ClandTeal' } }, { item = id })
+    { { (it and items.claim(it) and session_label(items.claim(it).session, items.claim(it).role) .. ' · ' or '') .. done .. '/' .. total, 'ClandTeal' } }, { item = id })
   local filter = items.filter()
   local layer_filter = vim.tbl_contains(items.LAYERS, filter)
   local background = vim.tbl_filter(function(child) return child.layer == 'background' end, list)

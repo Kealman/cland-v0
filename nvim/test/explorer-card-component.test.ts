@@ -125,8 +125,8 @@ test('epic cards show stage progress, approval, subtree verdict and latest activ
   await shown(c,'E-2','The card passes.');
   let text=await card(c);
   for(const value of ['follows','E-1','1 of 2 done','1 done · 1 review','S1 ■ closed','S2 ■ open','PLAN · STAGE 2 OF 2',
-    '0 of 1 merged','qa full, after the stage','approval human','in its tasks · T-10 Written summary task',
-    'The card passes.','evidence','a message in its topic · T-10']) assert.ok(text.includes(value),value+'\n'+text);
+    '0 of 1 merged (loaded)','qa full, after the stage','approval human','in its tasks · T-10 Written summary task',
+    'The card passes.','evidence','a message in its topic · T-10']) assert.ok(text.replace(/\s+/g,' ').includes(value),value+'\n'+text);
   assert.ok(!text.includes('More details.'));
   const views=(await control({requests:true})).requests.filter(r=>r.type==='task.view'&&r.item?.startsWith('T-'));
   assert.deepEqual(views.map(r=>r.item),['T-10'],'only the subtree verdict owner fetches detail');

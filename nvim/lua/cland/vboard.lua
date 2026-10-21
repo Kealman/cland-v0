@@ -177,7 +177,9 @@ local function row(c, it, bucket, next_id)
   if items.is_container(it) then
     local kids, done = items.children(it.id), 0
     for _, child in ipairs(kids) do if child.state == 'closed' then done = done + 1 end end
-    put({ done .. '/' .. #kids, 'ClandDim' })
+    local total = #kids
+    if type(it.child_counts) == 'table' then done, total = it.child_counts.done, it.child_counts.total end
+    put({ done .. '/' .. total, 'ClandDim' })
   end
   c:add(left, right, { item = it.id, list = bucket })
   if M.follow == it.id then c.cursor_to = #c.lines; M.follow = nil end
@@ -202,7 +204,17 @@ end
 
 function M.summary()
   local b, f = panel_composition(), items.filter()
-  if f == 'board' then return 'board · ' .. b.work .. ' in work · ' .. b.done .. ' done' end
+  if f == 'board' then
+    local owner = M.parent_filter() and state.item(M.parent_filter()) or b.scope
+    local label = owner and type(owner.child_counts) == 'table' and items.child_label(owner) or 'tasks'
+    if owner and type(owner.child_counts) == 'table' then
+      b.done, b.work = owner.child_counts.done, 0
+      for _, status in ipairs({ 'planned', 'in progress', 'review', 'qa', 'ready' }) do
+        b.work = b.work + (owner.child_counts.statuses[status] or 0)
+      end
+    end
+    return 'board · ' .. (label ~= 'tasks' and (label .. ': ') or '') .. b.work .. ' in work · ' .. b.done .. ' done'
+  end
   if f == 'map' then return nil end
   local n = 0
   if f == 'you' then
@@ -290,6 +302,13 @@ local function group_row(c, scope, epic, key, options)
     if vim.tbl_contains({ 'in progress', 'review', 'qa', 'ready' }, it.status) then active = true end
     if it.status == 'planned' then planned = true end
   end
+  local total = #tasks
+  if epic and type(epic.child_counts) == 'table' then
+    counts, done, total = epic.child_counts.statuses, epic.child_counts.done, epic.child_counts.total
+    active = (counts['in progress'] or 0) + (counts.review or 0) + (counts.qa or 0) + (counts.ready or 0) > 0
+    planned = (counts.planned or 0) > 0
+  end
+  local loaded = not epic and type(scope.child_counts) == 'table'
   local closed = state.S.ui.items_folds[key] ~= false
   local left = { { ' ' .. (closed and '▸ ' or '▾ '), 'ClandSection' } }
   if epic then
@@ -298,10 +317,10 @@ local function group_row(c, scope, epic, key, options)
     left[#left + 1] = { glyph[1], glyph[2] }
     left[#left + 1] = { ' ' .. epic.id .. ' ', 'ClandDim' }
     left[#left + 1] = { epic.title or '', epic.state == 'closed' and 'ClandDone' or 'ClandBold' }
-  else left[#left + 1] = { 'Direct tasks (' .. #tasks .. ')', 'ClandSection' } end
+  else left[#left + 1] = { 'Direct tasks (' .. #tasks .. (loaded and ' loaded' or '') .. ')', 'ClandSection' } end
   local right, lead = {}, epic and items.lead_label(epic)
   if lead then right[#right + 1] = { lead .. ' ', 'ClandTeal' } end
-  right[#right + 1] = { done .. '/' .. #tasks, 'ClandDim' }
+  right[#right + 1] = { done .. '/' .. total .. (loaded and ' loaded' or ''), 'ClandDim' }
   local parts = {}
   for _, pair in ipairs({ { 'in progress', '◐' }, { 'review', 'rev' }, { 'qa', 'qa' }, { 'ready', 'ready' }, { 'planned', 'planned' }, { 'backlog', 'backlog' } }) do
     if (counts[pair[1]] or 0) > 0 then parts[#parts + 1] = counts[pair[1]] .. ' ' .. pair[2] end
@@ -336,9 +355,11 @@ function M.render(c)
   if b.scope then
     local kids, done = items.children(b.scope.id), 0
     for _, it in ipairs(kids) do if it.state == 'closed' then done = done + 1 end end
+    local total = #kids
+    if type(b.scope.child_counts) == 'table' then done, total = b.scope.child_counts.done, b.scope.child_counts.total end
     local right, lead = {}, items.lead_label(b.scope)
     if lead then right[#right + 1] = { lead .. ' ', 'ClandTeal' } end
-    right[#right + 1] = { done .. '/' .. #kids, 'ClandDim' }
+    right[#right + 1] = { done .. '/' .. total, 'ClandDim' }
     c:add({ { ' ' .. b.scope.id .. ' ' .. items.display_title(b.scope), 'ClandBold' } }, right, { item = b.scope.id })
   else c:add({ { ' no open container: unscheduled', 'ClandDim' } }) end
   if f == 'board' and b.scope and b.scope.kind == state.S.tracker.levels[1]
