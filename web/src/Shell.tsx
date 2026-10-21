@@ -1,10 +1,11 @@
 // The frame ported from Q-405's App.tsx, connected to the production web edge.
 import { useEffect, useRef, useState } from 'react';
-import { connectHub, type ConnectionState } from './connection.ts';
+import { connectHub, type ConnectionState, type ObjectRow } from './connection.ts';
 import { readInterfaceState, writeInterfaceState } from './interface-state.ts';
-import { areas, areaKey, type Area } from './keymap.ts';
+import { areas, areaKey, actionKeys, displayKey, type Area, type Shortcut } from './keymap.ts';
 import { listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
+import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -41,6 +42,7 @@ function savedShell(): ShellPreferences {
 export function Shell() {
   const [preferences, setPreferences] = useState(savedShell);
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
+  const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
   const [active, setActive] = useState<'primary' | 'secondary'>('primary');
   const split = preferences.secondary !== undefined;
   const area = active === 'secondary' && preferences.secondary ? preferences.secondary : preferences.area;
@@ -70,8 +72,12 @@ export function Shell() {
       ? { ...previous, secondary: previous.area, secondaryRow: selected, secondaryDetail: true, ratio: split ? previous.ratio : 2 / 3 }
       : { ...previous, area: previous.secondary!, row: selected, detail: true });
   };
-  useEffect(() => listenForShortcuts(action => {
-    if (action === 'split') {
+  const paletteControls = useRef<PaletteControls>(null);
+  const runShortcut = (action: Shortcut, fromPalette = false) => {
+    if (action === 'palette') setOverlay('palette');
+    else if (overlay && !fromPalette) paletteControls.current?.run(action);
+    else if (action === 'help') setOverlay('help');
+    else if (action === 'split') {
       if (split) closePane('secondary');
       else setPreferences(previous => ({ ...previous, secondary: previous.area, secondaryRow: undefined, secondaryDetail: false, ratio: 2 / 3 }));
     } else if (action === 'open-other') openOther();
@@ -80,12 +86,25 @@ export function Shell() {
       setArea(action as Area);
       areaButtons.current[action as Area]?.focus();
     }
-  }));
+  };
+  const keyboard = useRef({ run: runShortcut, overlay });
+  useEffect(() => { keyboard.current = { run: runShortcut, overlay }; });
+  useEffect(() => listenForShortcuts(action => keyboard.current.run(action), () => keyboard.current.overlay ?? 'shell'), []);
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
   useEffect(() => connectHub(setConnection), []);
   useEffect(() => {
     document.title = `${connection.needsYou ? `(${connection.needsYou}) ` : ''}${connection.project} · cland`;
   }, [connection.project, connection.needsYou]);
+  const openResult = (target: Area, row: ObjectRow, pane: boolean) => {
+    setPreferences(previous => {
+      if (pane) return active === 'primary'
+        ? { ...previous, secondary: target, secondaryRow: row.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
+        : { ...previous, area: target, row: row.id, detail: true, dismissed: `${target}/${row.id}` };
+      return active === 'secondary' && previous.secondary
+        ? { ...previous, secondary: target, secondaryRow: row.id, secondaryDetail: true }
+        : { ...previous, area: target, row: row.id, detail: false, dismissed: undefined };
+    });
+  };
   const selectedRow = connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
   const drawerOpen = !split && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
@@ -95,6 +114,11 @@ export function Shell() {
     Sessions: connection.approvals, Topics: connection.waitingTopics,
   };
   return <div className={s.app}>
+    {overlay && <PaletteDialog mode={overlay} area={area} connection={connection} controls={paletteControls}
+      close={() => setOverlay(undefined)} run={action => {
+        if (action === 'palette' || action === 'help') setOverlay(action);
+        else { setOverlay(undefined); runShortcut(action, true); }
+      }} open={openResult} />}
     <header className={s.top}>
       <span className={s.brand}>cland</span>
       <span className={s.project} aria-label="Project">{connection.project}</span>
@@ -106,7 +130,7 @@ export function Shell() {
           {releases.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
       </label>
-      <button className={s.search} aria-label="Palette" title="Palette (⌘K)">Search<kbd>⌘K</kbd></button>
+      <button className={s.search} aria-label="Palette" title={`Palette (${actionKeys('palette').map(displayKey).join(' / ')})`} onClick={() => setOverlay('palette')}>Search<kbd>{displayKey(actionKeys('palette')[0]!)}</kbd></button>
       <div className={s.right}>
         <button className={s.coordinator} aria-label="Coordinator" title="Open Coordinator in Sessions" onClick={() => setArea('Sessions')}>
           Coordinator<span className={s.mono}>{connection.coordinator ?? '—'}</span>
@@ -117,7 +141,7 @@ export function Shell() {
         <span className={s.live} role="status" aria-label="Hub connection">
           <span className={s.dot} data-live={connection.live} />{connection.restartRequired ? 'Restart hub' : connection.live ? 'Live' : 'Offline'}
         </span>
-        <button className={s.help} aria-label="Help" title="Area keys">?</button>
+        <button className={s.help} aria-label="Help" title="Area keys" onClick={() => setOverlay('help')}>?</button>
       </div>
     </header>
     <div className={s.body}>

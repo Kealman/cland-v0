@@ -52,8 +52,8 @@ There is no Vite dev server or development bridge. The shell navigates the seven
 areas through the rail or physical `Digit1`–`Digit7` keys. The main area has its
 heading and a stand-in list of hub object IDs and titles; E-416 to E-418 replace
 these lists with the full areas. Dashes represent
-unavailable facts. The palette and help buttons are the controls for the later
-palette/key-help slice.
+unavailable facts. The palette searches the shell’s actions and hub objects; help
+shows the active area’s keys.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
 slice, following spec v0.2 before prototype behaviour before the accepted boards.
 
@@ -125,6 +125,40 @@ All three shortcuts use the shared physical-code map (`Meta+Backslash`,
 `Meta+Enter`, `Escape`). The stand-in lists use read-only list replies and refresh
 on matching hub frames and reconnection; they expose no domain mutations.
 
+## Palette and keys
+
+`⌘K` or `Space p` opens the palette over the dimmed, inert shell. `⌘K` also
+works from a field without changing its draft. One input searches names and IDs
+by case-insensitive character sequence; matching characters are blue. Results
+stay grouped as Actions, Items, Sessions, Artifacts and Topics, with the best
+match selected. Actions show their keys from `src/keymap.ts`. The prefixes `>`,
+`#`, `@`, `~` and `/` select those five kinds in that order. The ordinary read-only
+hub lists supply objects until the snapshot client lands; the palette sends no
+mutation frame. The shell’s stand-in drawer/pane opens the chosen object.
+
+| Key | Shell | Palette |
+| --- | --- | --- |
+| `1`–`7` | Inbox, Items, Sessions, Topics, Events, Artifacts, Accounts in the active pane | Type in the input |
+| `⌘K`, `Space p` | Open palette (`Space p` outside fields) | `⌘K` keeps palette open |
+| `?` | Show current area’s keys, outside fields | Type in the input |
+| `⌘\` | Toggle split | — |
+| `⌘Enter` | Open selected object in the other pane | Open result in the other pane |
+| `Enter` | Native control activation | Open result or run action |
+| `Tab`, `Shift+Tab` | Native focus navigation | Next/previous kind, retaining search |
+| `↓`, `↑` | Native control behaviour | Next/previous result |
+| `Esc` | Close help or drawer | Close without acting |
+
+The top-strip Palette and Help buttons expose the same overlays. Help names the
+active pane’s area and lists the shell keys shared by all current stand-in areas;
+area-specific keys will join the same map as those areas land. Native modal
+focus containment keeps background controls inert; dismissal restores focus.
+The single `keyboard.ts` listener reads physical codes and exact modifiers,
+including both strokes of `Space p`, so Cyrillic key values do not change actions.
+Composition, already-handled events and ordinary field typing remain untouched.
+The leader survives ordinary hub updates at the same focus target; it only
+resolves in the shell outside fields and is cleared by the next stroke.
+Reserved browser window/tab shortcuts remain unbound.
+
 ## Fonts and asset checks
 
 Golos Text (400–900) and JetBrains Mono (100–800), normal variable WOFF2 subsets
@@ -150,6 +184,7 @@ change; the preparation step's `npm ci` installs the pinned shell on a cold imag
 npm run test:web                     # just Web, under the normal suite queue
 node --test web/test/smoke.test.ts    # targeted file; build first with npm run build
 node --test web/test/connection.test.ts # sign-in, connection and hub restart
+node --test web/test/palette.test.ts    # palette, prefixes, keys help and physical-code controls
 node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```

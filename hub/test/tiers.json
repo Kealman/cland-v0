@@ -580,6 +580,7 @@
     "nvim/test/verification-queue.test.ts": "T2",
     "nvim/test/verification-view.test.ts": "T2",
     "web/test/connection.test.ts": "Web",
+    "web/test/palette.test.ts": "Web",
     "web/test/shell.test.ts": "Web",
     "web/test/smoke.test.ts": "Web"
   }
