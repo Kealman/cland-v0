@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T20:03:06.364Z
+updated: 2026-10-21T22:30:54.650Z
 ---
 
 ## Summary
@@ -199,3 +199,11 @@ Reading: the workbench's own idle load is negligible, and the hub's CPU in the w
 C2 quiet sample, 2026-10-21 19:51:24–20:01:24Z, taken by cland-impl, read-only, on the human's live workbench (nvim --embed 45730) and hub 63790.
 - Workbench half met: zero nvim-spoke requests in 10 minutes, so no whole-state re-reads. nvim RSS stayed flat at 47–48 MB, and CPU was 0% in 8 of 10 samples.
 - Hub half not met: steady hub CPU was about 9–12%, with spikes of 67.7% and 42%. The cause is the hub's own idle work, chiefly `session-archive-sweep` scanning 248 rows about every 15 s (41 events), plus the hourly P90 computation. T-1084 fixes it, and C2 is re-sampled afterwards.
+
+### coord · 2026-10-21T22:30:54.650Z
+
+C2 re-sample after T-1084 and hub restart #40, 2026-10-21 22:19:37–22:29:37Z, taken by cland-impl, read-only.
+Setup: hub pid 39496 at 008fc731; the human's live workbench nvim --embed 45730, which reconnected to the new hub by itself at 22:17:39Z.
+- Workbench half met again: zero nvim-spoke requests in 10 minutes, nvim RSS flat at 47–50 MB, CPU 0% in 8 of 10 samples.
+- Hub half met: per-minute CPU 2.9, 1.3, 1.9, 3.0, 3.6, 0.9, 1.6, 91.0, 1.5, 1.6%. The single 91% reading coincides with an executor sweep and a message burst at 22:27:30Z, and the readings right after were 1–4%. RSS fell from 1,015 to 869 MB. session-archive-sweep fired 2 times (41 before T-1084). The residual 1.5–3% is crew message and droplet traffic from two running verifies (T-1081, T-1073), not idle work.
+Before (dbb1604f): steady 9–12%.
