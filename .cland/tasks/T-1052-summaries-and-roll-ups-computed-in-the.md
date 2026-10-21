@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T16:05:48.238Z
+updated: 2026-10-21T18:03:38.024Z
 ---
 
 ## Summary
@@ -33,23 +33,24 @@ Each item summary in the snapshot and the deltas carries the summary text with i
 
 - [x] C1. A differential test runs the hub's summary rule and roll-ups and the Lua's (`explorer_summary.lua` and the Lua roll-ups, through headless Neovim) over every body of a copy of the live tracker and reports zero differences (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
-  - done: impl-1052 · 2026-10-21T15:57:06.871Z
+  - done: impl-1052 · 2026-10-21T17:54:22.445Z
 - [x] C2. A frame client reads an item's summary with its provenance, a container's roll-ups, `blocked` and `next` from the snapshot, with no `task.view` (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
-  - done: impl-1052 · 2026-10-21T15:57:06.891Z
+  - done: impl-1052 · 2026-10-21T17:54:22.466Z
 - [x] C3. A change to one task produces a delta that carries only that task and its ancestors whose fields changed, and the recomputation touches only that chain (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
-  - done: impl-1052 · 2026-10-21T15:57:07.014Z
+  - done: impl-1052 · 2026-10-21T17:54:22.485Z
 - [x] C4. On a thousand-item fixture, recomputing after one task change stays under a measured bound recorded in the test, and the startup reply budgets of T-1038 still hold (test).
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
-  - done: impl-1052 · 2026-10-21T15:57:07.034Z
+  - done: impl-1052 · 2026-10-21T17:54:22.505Z
 - [x] C5. `hub/README.md` describes the new summary fields, their provenance and the incremental rule.
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-2 · 2026-10-21T14:52:30.592Z · commit 3a7b4f034b219461c7e87be4558a944a19fa9bc7
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-3 · 2026-10-21T14:58:35.648Z · commit e79e1231f323b223c469f89c6ed7de485b021c26
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-4 · 2026-10-21T15:42:01.750Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
   - verified: rev-23 [reviewer] · run rev-20261021-1052-final · 2026-10-21T15:53:19.762Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
   - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-source · 2026-10-21T15:56:58.063Z · commit 21c1018922f3564e187ad5ebf44907d01f17a90d
-  - done: impl-1052 · 2026-10-21T15:57:07.058Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-merge-source-2 · 2026-10-21T17:54:15.627Z · commit bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
+  - done: impl-1052 · 2026-10-21T17:54:22.529Z
 
 ## Comments
 
@@ -195,3 +196,35 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Task evidence clear, not final readiness; A-8560. Independently parsed A-8559/43fca595 at reviewed21c10189:2331ordinarytest/357filepass+35loadtest/filepass; all7ownedidentities5distinctpassingfinishes+explicit5/5. Actual Linuxx64c8lon1 T1/allfallbackT2hub+nvim/Web5files exit0;host35dee8c7 reusednotremote,T2workers2/Web4,life433s/$0.0300estimated. Incremental chain0.904ms<100ms; scale whole-test3.542s/maxload4.491s exceed report-only2s, distinct from recomputation. Lint132/59,duration/ratchetreportonly,6missingbaselines; no4sWeb-budgetpass. C1–C4 final settlement remains pending Coordinator-required full pre-merge run5f42dd2c; scheduledafterT1065 per20a90108. C5 source proof retained; A-8555 local merge-head Lua/startup supports but is no full receipt. NoT3/T4/integrated/QA claim from this task run; afterstageQA separate. No Reviewer runtime.
+
+### impl-1052 · 2026-10-21T17:52:51.101Z
+
+Full pre-merge265c0baa at21c10189 failed only stale live-protocol-frames.json attach baseline (A-8569), with T1/T2 green and T3 incomplete/red, no Web. At quiet lift, full npm recorder stopped safely on artifact-browser native consumer with0capturedframes (A-8588); reported separately as S Bugs. Documented existing-recordings refresh then passed real attach recorder1/1, validating catalog/slices (A-8589). Generated diff is exactly9 additive lines for this item's new list fields, no catalog/slice/runtime/assertion changes. Committed/pushed bd3bf94f; delta source review requested before new mode-free run; Coordinator full pre-merge retry remains required.
+
+### rev-23 · 2026-10-21T17:54:15.628Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-merge-source-2
+commit: bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear; A-8590, Standards0/Spec0. Exact origin bd3bf94f/treefeb1c68f, parent21c10189, no dev merge. Entire correction9 JSON additions in live-protocol-frames: empty summary/null from+provenance, no open blockers, blockedfalse, backlog/○. Matches real fixture task (criteria-only body/no blockers) and reviewed projection. No source/assertion/catalogue/slice changes; previous full/merge audits retained, C5 docs reverified. Historical A-8569/265c0baa at21c10189 stays red: actual19668 'live hub protocol drifted; run npm run test:nvim-fixtures',3529pass/1fail/8skip, T1/T2green/T3exit1/noWeb. A-8588 recorder stopped at0frames<1guard; A-8589 documented --from-recordings maintenance/real attach1/1exit0 generated precisely this9-line overlay; local Darwin, not committed-head queued or non-rewrite full evidence. C1–C4 final settlement awaits new same-head mode-free and Coordinator replacement full pre-merge including unchanged live attach assertion. Refresh stale claimant marks before submit. No new Linux/T3/Web/load/QA pass; afterstageQA separate. No Reviewer runtime.
+
+Criteria: C5 verified.
+
+### rev-23 · 2026-10-21T18:03:38.023Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-merge-evidence-2
+commit: bd3bf94fe637e8bd33cbecbc7bd32e0ba069eae8
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Task evidence clear, not final readiness; A-8599. Exact unchanged bd3bf94f/treefeb1c68f. A-8598/f60bea5b raw2331ordinarytest/357filepasses+35loadtest/filepasses, actual T1/allfallbackT2hub+nvim/Web5files exit0. Seven owned identities each5distinctpassingfinishes+explicit5/5; chain work0.661ms<100ms, whole scale4.371s/maxload4.285s remain over report-only2s. Linuxx64 c8lon1 Node24.21/Nvim0.12.5,T2workers2/Web4,life465s/$0.0323estimated; host52dff9ee reusednotremote. Lint132/59,6missingbaselines,duration/resource/ratchet report-only; no4sWeb-tier-budgetpass. NoT3/T4 in task receipt; unchanged non-rewrite live attach T3 assertion still awaits Coordinator replacement full pre-merge run at this head. C1–C4 final evidence pending that full receipt; C5 source proof retained. Historical fullA-8569 stays red at21c10189. No integrated/stage/QA claim; afterstageQA separate. No Reviewer runtime.
