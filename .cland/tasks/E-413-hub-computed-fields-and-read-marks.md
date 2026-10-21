@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:14.313Z
-updated: 2026-10-14T16:04:16.122Z
+updated: 2026-10-21T14:04:25.788Z
 ---
 
 ## Summary
@@ -96,3 +96,27 @@ From this epic on Neovim and the browser agree on what the human has seen: the e
 - Prototype: `prototype/web-shell` (`web/PROTOTYPE.md`; `web/src/summary.ts`, `web/src/explorer.ts`, `web/proto/summary-lua.test.ts`).
 - Mockups: `docs/design/web/Thread.dc.html` (P13), `PhoneThread.dc.html` (P32), `PhoneAsk.dc.html` (P37, P38).
 - GLOSSARY: Summary, Card, Explorer, Ask, Events view.
+
+## Plan
+
+```yaml
+stages:
+  - name: fields
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1052
+        - T-1058
+      - - T-1053
+        - T-1055
+  - name: marks and threads
+    qa:
+      scope: affected
+      when: after-stage
+    lanes:
+      - - T-1054
+      - - T-1056
+      - - T-1057
+        - T-1059
+```
