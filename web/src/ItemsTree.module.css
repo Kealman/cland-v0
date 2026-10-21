@@ -1,0 +1,31 @@
+.explorer { padding: 8px 12px 24px; }
+.filters { display: flex; gap: 12px; align-items: center; padding: 4px 8px 12px; color: var(--muted); font-size: 12px; }
+.filters button { border: 1px solid var(--control-border); border-radius: 4px; padding: 4px 8px; background: var(--control); }
+.filters button[aria-pressed="true"] { color: var(--text-strong); background: var(--selection); }
+.tree { min-width: 800px; }
+.row { width: 100%; display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 5px 8px; border: 0; border-radius: 4px; background: var(--ground); text-align: left; white-space: nowrap; }
+.row:hover { background: var(--row-hover); }
+.row[aria-selected="true"] { background: var(--selection); }
+.row:focus-visible, .filters button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.chevron { flex: 0 0 12px; color: var(--muted); }
+.ordinal { width: 22px; text-align: right; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.id { color: var(--text-soft); font: 12px var(--mono); white-space: nowrap; }
+.title { min-width: 100px; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.fact { color: var(--text-soft); font-size: 11px; white-space: nowrap; }
+.glyph { color: var(--text-soft); }
+.row[data-status="done"] .title { color: var(--done-text); }
+.row[data-status="done"] .glyph { color: var(--done-glyph); }
+.row[data-status="in work"] .glyph, .row[data-status="in progress"] .glyph { color: var(--active); }
+.next { color: var(--active); font-size: 11px; }
+.verdict { color: var(--failed); font-size: 11px; }
+.verdict[data-clear="true"] { color: var(--done-glyph); }
+.verdict[data-current="false"] { color: var(--muted); }
+.stage { display: flex; align-items: baseline; gap: 12px; min-height: 28px; padding-top: 8px; color: var(--muted); font-size: 12px; }
+.stage span:last-child { color: var(--text); }
+.meter { display: flex; gap: 2px; width: 96px; height: 10px; flex-shrink: 0; background: var(--meter-track); }
+.meter i { flex: 1; background: var(--cell-backlog); }
+.meter[data-mode="proportional"] { gap: 0; }
+.meter i[data-status="done"], .meter i[data-status="ready"] { background: var(--done-glyph); }
+.meter i[data-status="in progress"] { background: var(--active); }
+.meter i[data-status="review"], .meter i[data-status="qa"] { background: var(--watch); }
+.meter i[data-status="planned"] { background: var(--text-soft); }

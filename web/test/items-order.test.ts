@@ -1,0 +1,70 @@
+// Web: rank ordering through a minimal real hub; no large-tracker rescan in this UI regression.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { connectUi } from '../../hub/test/harness.ts';
+import { parseItem, serializeItem } from '../../hub/src/tracker/item.ts';
+import type { ExplorerSummary, ItemSummary } from '../../shared/wire/index.ts';
+import { webFixture, pageUntil } from './harness.ts';
+import { seedItem } from './items-fixture.ts';
+
+test('ordinary rank and parent changes invalidate earlier rank-event orders', async t => {
+  const fixture = await webFixture(t, { prepare: async root => {
+    await seedItem(root, 'R-900000', 'release', 'Rank release', { version: '1.0.0' });
+    for (const n of [10, 11]) await seedItem(root, `E-${900000 + n}`, 'epic', `Rank epic ${n}`, { parent: 'R-900000' });
+    for (let n = 100; n < 103; n++) await seedItem(root, `T-${900000 + n}`, 'task', `Rank task ${n}`, { parent: 'E-900010', rank: (n - 99) * 10 });
+    await seedItem(root, 'T-900103', 'task', 'Incoming ranked task', { parent: 'E-900011', rank: -1000 });
+  } });
+  const ui = await connectUi(t, fixture.hub.discovery);
+  assert.equal((await ui.request({ type: 'subscribe' })).ok, true);
+  await fixture.pageCase(t, async page => {
+    await page.keyboard.press('2');
+    await page.getByLabel('Release', { exact: true }).selectOption('R-900000');
+    const tree = page.getByRole('tree', { name: 'Items tree' });
+    await tree.locator('[data-object-id="E-900010"]').click();
+    await page.keyboard.press('l');
+    await tree.locator('[data-object-id="T-900102"]').waitFor();
+    const rendered = () => tree.locator('[data-object-id^="T-90010"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
+    const authoritative = async () => {
+      const result = await ui.request({ type: 'task.list', projection: 'summary', under: 'E-900010' });
+      assert.equal(result.ok, true, result.error);
+      return (result.value as { items: ExplorerSummary[] }).items.filter(item => item.parent === 'E-900010').map(item => item.id);
+    };
+    const movedTop = pageUntil(page, () => [...document.querySelectorAll('[data-object-id^="T-90010"]')][0]?.getAttribute('data-object-id') === 'T-900102', 'rank-event order rendered');
+    void movedTop.catch(() => {});
+    assert.equal((await ui.request({ type: 'task.rank', item: 'T-900102', top: true })).ok, true);
+    await movedTop;
+    assert.deepEqual(await rendered(), ['T-900102', 'T-900100', 'T-900101']);
+    const path = join(fixture.root, '.cland/tasks/T-900101-web-fixture.md');
+    const item = parseItem(await readFile(path, 'utf8'), path);
+    item.fm.rank = -200;
+    const reordered = pageUntil(page, () => [...document.querySelectorAll('[data-object-id^="T-90010"]')][0]?.getAttribute('data-object-id') === 'T-900101', 'ordinary rank edit rendered');
+    void reordered.catch(() => {});
+    const indexedRank = ui.waitFor(frame => frame.type === 'task' && frame.id === 'T-900101' && (frame.item as ItemSummary)?.rank === -200);
+    void indexedRank.catch(() => {});
+    await writeFile(path, serializeItem(item));
+    await indexedRank;
+    const expected = await authoritative();
+    assert.deepEqual(expected, ['T-900101', 'T-900102', 'T-900100']);
+    await reordered;
+    assert.deepEqual(await rendered(), expected);
+    const primed = pageUntil(page, () => [...document.querySelectorAll('[data-object-id^="T-90010"]')][0]?.getAttribute('data-object-id') === 'T-900100', 'fresh rank-event order rendered');
+    void primed.catch(() => {});
+    assert.equal((await ui.request({ type: 'task.rank', item: 'T-900100', top: true })).ok, true);
+    await primed;
+    const incomingPath = join(fixture.root, '.cland/tasks/T-900103-web-fixture.md');
+    const incoming = parseItem(await readFile(incomingPath, 'utf8'), incomingPath);
+    incoming.fm.parent = 'E-900010';
+    const reparented = pageUntil(page, () => [...document.querySelectorAll('[data-object-id^="T-90010"]')][0]?.getAttribute('data-object-id') === 'T-900103', 'incoming lower-ranked child rendered first');
+    void reparented.catch(() => {});
+    const indexedParent = ui.waitFor(frame => frame.type === 'task' && frame.id === 'T-900103' && (frame.item as ItemSummary)?.parent === 'E-900010');
+    void indexedParent.catch(() => {});
+    await writeFile(incomingPath, serializeItem(incoming));
+    await indexedParent;
+    const expectedAfterParent = await authoritative();
+    assert.deepEqual(expectedAfterParent, ['T-900103', 'T-900100', 'T-900101', 'T-900102']);
+    await reparented;
+    assert.deepEqual(await rendered(), expectedAfterParent);
+  });
+});

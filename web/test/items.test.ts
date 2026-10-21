@@ -1,0 +1,221 @@
+// Web: copied tracker -> real scratch hub -> snapshot/deltas -> rendered explorer.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { cp, mkdir } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { webFixture, pageUntil } from './harness.ts';
+import { cland, connectUi, inProcessSpoke } from '../../hub/test/harness.ts';
+import { seedTree } from './items-fixture.ts';
+
+test('the Items tree reads the copied live tracker snapshot', async t => {
+  const fixture = await webFixture(t, { prepare: async root => {
+    await cp(resolve(import.meta.dirname, '../../.cland/tasks'), join(root, '.cland/tasks'), { recursive: true });
+    await seedTree(root);
+  } });
+  await fixture.pageCase(t, async page => {
+    await page.keyboard.press('2');
+    const tree = page.getByRole('tree', { name: 'Items tree' });
+    await tree.waitFor();
+    const release = tree.locator('[data-object-id="R-377"]');
+    await release.waitFor();
+    assert.match(await release.textContent() ?? '', /v0.2/);
+    assert.equal(await release.getAttribute('aria-expanded'), 'true');
+    const epic = tree.locator('[data-object-id="E-416"]');
+    await epic.waitFor();
+    assert.equal(await epic.locator('[role="meter"]').count(), 1);
+    assert.match(await epic.textContent() ?? '', /S1/);
+    for (const key of [':categories', ':unscheduled', ':releases']) {
+      assert.equal(await tree.locator(`[data-tree-key="${key}"]`).getAttribute('aria-expanded'), 'false');
+    }
+    await epic.click();
+    await page.keyboard.press('l');
+    await tree.getByText('tree, card and layout', { exact: true }).waitFor();
+    await tree.locator('[data-object-id="T-1071"]').waitFor();
+    const output = resolve(import.meta.dirname, '../test-results');
+    await mkdir(output, { recursive: true });
+    await page.screenshot({ path: join(output, 'items-tree.png') });
+  });
+  await t.test('CLI status deltas reorder a focused task and change its hub roll-up', async t => {
+    const ui = await connectUi(t, fixture.hub.discovery);
+    await fixture.pageCase(t, async page => {
+      await page.keyboard.press('2');
+      await page.getByLabel('Release', { exact: true }).selectOption('R-900000');
+      const tree = page.getByRole('tree', { name: 'Items tree' });
+      const epic = tree.locator('[data-object-id="E-900001"]');
+      assert.match(await tree.locator('[data-tree-key=":direct:R-900000"]').textContent() ?? '', /Direct tasks.*\(1\)/);
+      const epics = await tree.locator('[data-object-id^="E-"]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
+      assert.deepEqual(epics.slice(-2), ['E-900027', 'E-900026'], 'done epics follow live epics in close order');
+      await epic.click();
+      await page.keyboard.press('l');
+      await tree.getByText('First stage', { exact: true }).waitFor();
+      const task = tree.locator('[data-object-id="T-900002"]');
+      await task.click();
+      assert.match(await task.textContent() ?? '', /review r2/);
+      assert.match(await task.textContent() ?? '', /0\/2/);
+      assert.match(await task.textContent() ?? '', /rank 5/);
+      assert.equal(await task.locator('[title="Ordinal"]').textContent(), '1');
+      const before = await tree.locator('[data-object-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
+      // The durable boundary is the changed row plus the ancestor meter, not the CLI reply.
+      const changed = task.locator('[title="Closed"]').waitFor();
+      const ancestor = epic.locator('[role="meter"][aria-valuenow="2"]').waitFor();
+      void changed.catch(() => {}); void ancestor.catch(() => {});
+      const result = await cland(fixture.root, 'task', 'edit', 'T-900002', '--status', 'done', '--json');
+      assert.equal(result.code, 0, result.stderr);
+      await Promise.all([changed, ancestor]);
+      assert.equal(await epic.locator('[role="meter"]').getAttribute('aria-valuenow'), '2');
+      assert.equal(await task.evaluate(node => document.activeElement === node), true);
+      assert.equal(await task.getAttribute('aria-selected'), 'true');
+      const after = await tree.locator('[data-object-id]').evaluateAll(nodes => nodes.map(node => node.getAttribute('data-object-id')));
+      assert.ok(before.indexOf('T-900002') < before.indexOf('T-900003'));
+      assert.ok(after.indexOf('T-900002') > after.indexOf('T-900003'));
+      assert.equal(await tree.locator('[data-object-id="R-900000"] [role="meter"]').getAttribute('data-mode'), 'proportional');
+      assert.equal(await epic.locator('[role="meter"]').getAttribute('data-mode'), 'cells');
+      assert.deepEqual(await task.locator('[title^="reviewer ·"]').allTextContents(), ['✗ review r2'], 'status delta retains only the latest review and its original round');
+      const nextVerdict = task.getByText('✓ review r3', { exact: true }).waitFor();
+      void nextVerdict.catch(() => {});
+      const posted = await ui.request({ type: 'task.comment', item: 'T-900002', text: 'Third source review',
+        verdict: { verdict: 'review', result: 'clear', run: 'web-r3', scope: 'full', findings: [] } });
+      assert.equal(posted.ok, true, posted.error);
+      await nextVerdict;
+      assert.deepEqual(await task.locator('[title*=" · web-r"]').allTextContents(), ['✓ review r3'], 'a subsequent verdict replaces the prior round');
+    });
+  });
+  await t.test('claims and verifier holds arrive in the task and ancestor rows', async t => {
+    const ui = await connectUi(t, fixture.hub.discovery);
+    await fixture.pageCase(t, async page => {
+      await page.keyboard.press('2');
+      await page.getByLabel('Release', { exact: true }).selectOption('R-900000');
+      const tree = page.getByRole('tree', { name: 'Items tree' });
+      const epic = tree.locator('[data-object-id="E-900001"]');
+      await epic.click();
+      await page.keyboard.press('l');
+      for (const [name, role, tool] of [['tree-worker', 'implementer', 'task.claim'], ['tree-verifier', 'reviewer', 'task.hold']] as const) {
+        const launched = await ui.request({ type: 'session.launch', name, role, harness: 'claude-code' });
+        assert.equal(launched.ok, true, launched.error);
+        const session = await inProcessSpoke(t, { discover: true, cwd: fixture.root, name, role, sessionId: (launched.value as { process: { sessionId: string } }).process.sessionId });
+        t.after(() => session.close());
+        await session.waitForPresence([name]);
+        if (role === 'implementer') assert.equal((await ui.request({ type: 'task.edit', item: 'T-900003', assignee: name })).ok, true);
+        const receipt = epic.getByText(role === 'implementer' ? name : `${role} ${name}`, { exact: true }).waitFor();
+        void receipt.catch(() => {});
+        const held = await session.call<{ ok: boolean; error?: string }>(tool, { id: 'T-900003' });
+        assert.equal(held.ok, true, held.error);
+        await receipt;
+        const task = tree.locator('[data-object-id="T-900003"]');
+        assert.match(await task.textContent() ?? '', new RegExp(name));
+        assert.match(await epic.textContent() ?? '', new RegExp(name));
+      }
+    });
+  });
+  await t.test('category previews, physical keys, D and A persist per client', async t => {
+    const sent: string[] = [];
+    await fixture.pageCase(t, async page => {
+      await page.keyboard.press('2');
+      const tree = page.getByRole('tree', { name: 'Items tree' });
+      const categories = tree.locator('[data-tree-key=":categories"]');
+      await categories.focus();
+      await page.keyboard.press('l');
+      const category = tree.locator('[data-object-id="C-900060"]');
+      await category.waitFor();
+      assert.match(await category.textContent() ?? '', /4 open.*1 done.*idle work/);
+      for (const id of ['T-900061', 'T-900062', 'T-900063', 'T-900065']) await tree.locator(`[data-object-id="${id}"]`).waitFor();
+      assert.equal(await tree.locator('[data-object-id="T-900064"]').count(), 0, 'fourth open item stays behind N more');
+      const more = tree.locator('[data-tree-key=":more:C-900060"]');
+      assert.match(await more.textContent() ?? '', /1 more/);
+      await more.focus();
+      sent.length = 0;
+      await page.keyboard.press('z');
+      await page.keyboard.press('a');
+      await tree.locator('[data-object-id="T-900064"]').waitFor();
+      await page.keyboard.press('j');
+      assert.equal(await tree.locator('[data-object-id="T-900064"]').evaluate(node => document.activeElement === node), true);
+      await page.keyboard.press('k');
+      assert.equal(await more.evaluate(node => document.activeElement === node), true);
+      await page.keyboard.press('h');
+      assert.equal(await more.getAttribute('aria-expanded'), 'false');
+      await page.evaluate(() => document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD', key: 'в', shiftKey: true, bubbles: true, cancelable: true })));
+      await tree.locator('[data-object-id="T-900065"]').waitFor({ state: 'detached' });
+      await tree.getByText('D hides 1 done', { exact: true }).waitFor();
+      assert.deepEqual(sent, [], 'local folds and filters send no hub requests');
+      await page.reload();
+      await category.waitFor();
+      assert.equal(await categories.getAttribute('aria-expanded'), 'true');
+      assert.equal(await more.getAttribute('aria-expanded'), 'false');
+      assert.equal(await tree.locator('[data-object-id="T-900065"]').count(), 0);
+      await tree.getByText('D hides 1 done', { exact: true }).waitFor();
+      await page.keyboard.press('Shift+D');
+      await tree.locator('[data-object-id="T-900065"]').waitFor();
+      const releases = tree.locator('[data-tree-key=":releases"]');
+      await releases.focus();
+      await page.keyboard.press('l');
+      assert.equal(await tree.locator('[data-object-id="R-900090"]').count(), 0);
+      await page.keyboard.press('Shift+A');
+      await tree.locator('[data-object-id="R-900090"]').waitFor();
+      await page.reload();
+      await tree.locator('[data-object-id="R-900090"]').waitFor();
+      assert.equal(await releases.getAttribute('aria-expanded'), 'true');
+      await page.getByRole('button', { name: 'Help', exact: true }).click();
+      const help = page.getByRole('dialog', { name: 'Items keys' });
+      for (const action of ['tree-next','tree-previous','tree-open','tree-close','tree-toggle','tree-done','tree-archive']) {
+        assert.equal(await help.locator(`[data-key-action="${action}"]`).count(), 1);
+      }
+      assert.equal(await help.locator('[data-key-action="tree-toggle"] kbd').textContent(), 'za');
+    }, page => { page.on('websocket', socket => socket.on('framesent', event => sent.push(String(event.payload)))); });
+    await fixture.pageCase(t, async page => {
+      await page.keyboard.press('2');
+      assert.equal(await page.locator('[data-tree-key=":categories"]').getAttribute('aria-expanded'), 'false', 'another client has independent folds');
+      assert.equal(await page.getByRole('button', { name: 'D · Done shown', exact: true }).getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.getByRole('button', { name: 'A · Archive hidden', exact: true }).getAttribute('aria-pressed'), 'false');
+    });
+  });
+});
+
+test('a delta rebuilds the 300-item browser tree within 15 ms', async t => {
+  const { seedItem } = await import('./items-fixture.ts');
+  const fixture = await webFixture(t, { prepare: async root => {
+    await seedItem(root, 'R-1', 'release', 'Scale release', { version: '1.0.0' });
+    await seedItem(root, 'E-2', 'epic', 'Scale epic', { parent: 'R-1' });
+    for (let n = 3; n <= 300; n++) await seedItem(root, `T-${n}`, 'task', `Scale task ${n}`, { parent: 'E-2', status: 'planned' });
+  } });
+  await fixture.pageCase(t, async page => {
+    await page.keyboard.press('2');
+    const tree = page.getByRole('tree', { name: 'Items tree' });
+    await tree.locator('[data-object-id="E-2"]').click();
+    await page.keyboard.press('l');
+    await tree.locator('[data-object-id="T-300"]').waitFor();
+    const task = tree.locator('[data-object-id="T-3"]');
+    const changed = tree.locator('[data-object-id="T-3"][data-status="in progress"]').waitFor();
+    const ancestor = pageUntil(page, () => document.querySelector('[data-object-id="E-2"] [title="in progress"]')?.textContent === '◐ 1', 'epic work count after the status delta');
+    const releaseAncestor = pageUntil(page, () => document.querySelector('[data-object-id="R-1"] [title="in progress"]')?.textContent === '◐ 1', 'release work count after the status delta');
+    void changed.catch(() => {}); void ancestor.catch(() => {}); void releaseAncestor.catch(() => {});
+    await page.evaluate(() => {
+      performance.clearMeasures('cland.items.rebuild');
+      const capture = { entries: [] as Array<{ start: number; duration: number; items: number }>, observer: null as PerformanceObserver | null };
+      capture.observer = new PerformanceObserver(list => {
+        for (const entry of list.getEntries()) if (entry.name === 'cland.items.rebuild') capture.entries.push({ start: entry.startTime, duration: entry.duration, items: (entry as PerformanceMeasure).detail.items });
+      });
+      capture.observer.observe({ type: 'measure' });
+      Object.defineProperty(window, '__treeTimingCapture', { value: capture, configurable: true });
+    });
+    const result = await cland(fixture.root, 'task', 'edit', 'T-3', '--status', 'in progress', '--json');
+    assert.equal(result.code, 0, result.stderr);
+    await Promise.all([changed, ancestor, releaseAncestor]);
+    assert.equal(await task.getAttribute('data-status'), 'in progress');
+    assert.match(await tree.locator('[data-object-id="E-2"]').textContent() ?? '', /◐ 1/);
+    assert.match(await tree.locator('[data-object-id="R-1"]').textContent() ?? '', /◐ 1/);
+    const { measurements, observed } = await page.evaluate(() => {
+      const capture = (window as unknown as { __treeTimingCapture: { entries: Array<{ start: number; duration: number; items: number }>; observer: PerformanceObserver } }).__treeTimingCapture;
+      const project = (entry: PerformanceEntry) => ({ start: entry.startTime, duration: entry.duration, items: (entry as PerformanceMeasure).detail.items as number });
+      capture.entries.push(...capture.observer.takeRecords().filter(entry => entry.name === 'cland.items.rebuild').map(project));
+      capture.observer.disconnect();
+      Reflect.deleteProperty(window, '__treeTimingCapture');
+      return { measurements: performance.getEntriesByName('cland.items.rebuild').map(project), observed: capture.entries };
+    });
+    assert.ok(measurements.length > 0, 'the completed status/ancestor transition has rebuild receipts');
+    assert.deepEqual(measurements, observed, 'no earlier rebuild was erased by a subsequent faster rebuild');
+    assert.ok(measurements.every(entry => entry.items === 300), JSON.stringify(measurements));
+    assert.ok(measurements.every(entry => entry.duration < 15), JSON.stringify(measurements));
+    assert.equal(await tree.locator('[data-object-id]').count(), 300);
+    t.diagnostic(`300-item synchronous model rebuilds after CLI delta: ${JSON.stringify(measurements)} ms; excludes setup, transport and React DOM commit`);
+  });
+});

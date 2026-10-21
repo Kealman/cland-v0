@@ -7,6 +7,7 @@ import { listenForShortcuts } from './keyboard.ts';
 import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
+import { ItemsTree, type TreeControls } from './ItemsTree.tsx';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -74,7 +75,10 @@ export function Shell() {
       : { ...previous, area: previous.secondary!, row: selected, detail: true });
   };
   const paletteControls = useRef<PaletteControls>(null);
+  const primaryTree = useRef<TreeControls>(null);
+  const secondaryTree = useRef<TreeControls>(null);
   const runShortcut = (action: Shortcut, fromPalette = false) => {
+    if (!overlay && area === 'Items' && (active === 'primary' ? primaryTree : secondaryTree).current?.run(action)) return;
     if (runFoldShortcut(action)) return;
     if (action === 'palette') setOverlay('palette');
     else if (overlay && !fromPalette) paletteControls.current?.run(action);
@@ -89,9 +93,9 @@ export function Shell() {
       areaButtons.current[action as Area]?.focus();
     }
   };
-  const keyboard = useRef({ run: runShortcut, overlay });
-  useEffect(() => { keyboard.current = { run: runShortcut, overlay }; });
-  useEffect(() => listenForShortcuts(action => keyboard.current.run(action), () => keyboard.current.overlay ?? 'shell'), []);
+  const keyboard = useRef({ run: runShortcut, overlay, area });
+  useEffect(() => { keyboard.current = { run: runShortcut, overlay, area }; });
+  useEffect(() => listenForShortcuts(action => keyboard.current.run(action), () => keyboard.current.overlay ?? (keyboard.current.area === 'Items' ? 'items' : 'shell')), []);
   const [connection, setConnection] = useState<ConnectionState>({ project: 'Workbench', live: false });
   useEffect(() => connectHub(setConnection), []);
   useEffect(() => {
@@ -185,7 +189,9 @@ export function Shell() {
                     row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail }))}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>
                 </div>}>
-              {!detail && <ul className={s.objects} aria-label={`${paneArea} objects`}>
+              {!detail && paneArea === 'Items' && <ItemsTree connection={connection} release={release?.id} selected={selected}
+                select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
+              {!detail && paneArea !== 'Items' && <ul className={s.objects} aria-label={`${paneArea} objects`}>
                 {rows?.map(object => <li key={object.id}><button className={s.object} data-object-id={object.id}
                   title={object.title} aria-pressed={selected === object.id} onFocus={() => selectRow(pane, object.id)} onClick={() => selectRow(pane, object.id)}>
                   <span className={s.mono}>{object.id}</span> <span>{object.title}</span>

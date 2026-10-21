@@ -8007,6 +8007,13 @@
       "expires": "2026-11-20",
       "reason": "T-670 adds the real shell builder/snapshot/delivery proof, planted-red and failed/dirty prepare controls, and the prepare CLI contract. Base T3 is 2092.229397 s; native A-6845 contributes 16.772127542 s and A-6830 contributes 0.776026333 s, projecting 2109.777550875 s. The 2115 s total cap allows 5.222449125 s of headroom above this measured projection; reduce native lifecycle cost (T-670)."
     },
+    "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": {
+      "seconds": 34,
+      "owner": "E-880",
+      "added": "2026-10-21",
+      "expires": "2026-10-28",
+      "reason": "T-1071: required copied-live-tracker snapshot tree, CLI status/cursor/roll-up, live claims/holds and per-client category/fold/filter checks share one scratch hub and Headless Shell. Linux x64 c-8 lon1 run 1b509837 at ebe7a407 (A-8676), Web workers 4, observed assertion-green parent 22.196711522 s; all 37 Web assertions passed, while the overall receipt remained red solely on this new-identity duration gate. The 34 s cap rounds up about 1.5 times that representative Linux time. Earlier A-8664 parent 31.839846683 s included a task.rank request timeout and is excluded as a green baseline. Ordering now has its own seven-item real-hub fixture (2.835574221 s in A-8676); request/DOM bounds, copied-tracker coverage and teardown remain unchanged. Reduce copied-tracker fixture cost under E-880; the separate 4 s Web report budget and 15 ms model rebuild assertion are unchanged."
+    },
     "web/test/palette.test.ts::the palette and area keys help": {
       "seconds": 12,
       "owner": "E-880",

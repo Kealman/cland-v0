@@ -117,7 +117,7 @@ test('the palette and area keys help', async t => {
         await physical(page, 'Shift+Slash');
         const localHelp = page.getByRole('dialog', { name: `${area} keys`, exact: true });
         await localHelp.waitFor();
-        assert.equal(await localHelp.locator('kbd').count(), 14);
+        assert.equal(await localHelp.locator('kbd').count(), area === 'Items' ? 21 : 14);
         await physical(page, 'Escape');
         await localHelp.waitFor({ state: 'detached' });
       }
@@ -126,7 +126,8 @@ test('the palette and area keys help', async t => {
       await physical(page, 'Meta+Backslash');
       await page.locator('[data-pane="secondary"]').waitFor({ state: 'detached' });
       await physical(page, 'Digit2');
-      await page.getByRole('button', { name: /Palette item/ }).click();
+      await page.locator('[data-tree-key=":unscheduled"]').click();
+      await page.getByRole('treeitem', { name: /Palette item/ }).click();
       await physical(page, 'Meta+Enter');
       await page.locator('[data-pane="secondary"]').getByRole('heading', { name: 'Palette item', exact: true }).waitFor();
       for (const chord of ['Meta+KeyK', 'Space KeyP']) {
@@ -149,10 +150,11 @@ test('the palette and area keys help', async t => {
     await fixture.pageCase(t, async page => {
       await page.keyboard.press('2');
       await page.getByRole('heading', { name: 'Items', exact: true }).waitFor();
+      await page.locator('[data-tree-key=":unscheduled"]').click();
       await page.keyboard.press('Space');
       const created = await ui.request({ type: 'task.create', title: 'Between strokes', size: 'S' });
       assert.equal(created.ok, true, created.error);
-      await page.getByRole('button', { name: /Between strokes/ }).waitFor();
+      await page.getByRole('treeitem', { name: /Between strokes/ }).waitFor();
       await page.keyboard.press('p');
       await page.getByRole('dialog', { name: 'Palette', exact: true }).waitFor();
     });

@@ -190,8 +190,9 @@ test('the shell rail, top strip and physical-code navigation', async t => {
     const sent: string[] = [];
     await fixture.pageCase(t, async page => {
       await page.keyboard.press('2');
-      const first = page.getByRole('button', { name: /T-4 Drawer first/ });
-      const second = page.getByRole('button', { name: /T-5 Drawer second/ });
+      await page.locator('[data-tree-key=":unscheduled"]').click();
+      const first = page.getByRole('treeitem', { name: /T-4 Drawer first/ });
+      const second = page.getByRole('treeitem', { name: /T-5 Drawer second/ });
       await first.waitFor();
       const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
       assert.equal(await drawer.count(), 0, 'no selection');

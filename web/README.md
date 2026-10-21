@@ -50,8 +50,8 @@ The welcome reads the served receipt at connection time, including a configured
 The development loop uses a build and reload, with E-412's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven
 areas through the rail or physical `Digit1`–`Digit7` keys. The main area has its
-heading and a stand-in list of hub object IDs and titles; E-416 to E-418 replace
-these lists with the full areas. Dashes represent
+heading, the Items tree, and stand-in lists of other hub object IDs and titles;
+E-416 to E-418 replace the remaining lists with the full areas. Dashes represent
 unavailable facts. The palette searches the shell’s actions and hub objects; help
 shows the active area’s keys.
 Ported from `prototype/web-shell`'s frame and tokens, slice by
@@ -88,11 +88,72 @@ needs-you count (a green check at zero) and connection state. A nonzero
 needs-you count prefixes the tab title. The Coordinator and needs-you controls
 navigate to Sessions and Inbox respectively.
 
-Until the snapshot client lands, the connection subscribes to ordinary hub
-frames and reads `hub.status`, `inbox.list` and summary `task.list` for open
-releases. Inbox pushes update attention immediately; presence/Coordinator
-changes refresh status, and release changes refresh the picker. Reconnection
-reads those facts again, retaining the previous display while offline.
+The connection negotiates snapshots, numbered deltas and slim frames. The initial
+snapshot supplies tracker configuration, item summaries, sessions, topics, inbox,
+events and accounts; `hub.status` supplies the project name and `artifact.list`
+the artifact inventory. Item deltas replace or remove rows directly, without a
+`task.list` reread. Reconnection takes a fresh snapshot, retaining the previous
+display while offline. Inbox pushes update attention immediately;
+presence/Coordinator changes refresh status.
+Task deltas carry full verdict history: the client selects the latest per kind
+and retains its history round, matching the snapshot projection. Any item
+replacement/removal invalidates cached sibling orders for its old and new
+parent before applying a fresh order supplied by a rank event.
+
+## Items tree
+
+The lowest open release version (or the release picker choice) is the root.
+Epics appear by rank, followed by done epics in close order. Direct leaf items
+sit under **Direct tasks (N)**. **Categories**, **Unscheduled** (maps first) and
+**Other releases** start folded. Archived releases and root categories/items
+appear with `A`; `D` hides done rows throughout the tree.
+
+The hub supplies status glyphs, blocked and next facts, child counts, work counts,
+the current stage, claims, holds and verdict rounds. Bars have one cell per child
+up to 16 children and proportional segments beyond 16. Rows show their ordinal;
+raw rank appears only when set by hand. An unfolded epic reads its plan once,
+groups live tasks by stage, and puts done tasks after them in close order.
+Changes to that epic refresh its plan. An unfolded category shows its top three
+open items, a folded **N more**, open/done counts, the `idle_from` mark and a
+count of done items hidden by `D`.
+
+Closed task children pass through `ConnectionState.closedTasks(parent)` and
+`loadClosed(parent)`. T-1071 backs these with snapshot rows; T-1081 can replace
+that source with bounded container pages. Progress and category totals keep
+using the hub's counts when only part of the closed child list is loaded.
+
+| Physical keys | Action |
+| --- | --- |
+| `j`, `k` | Move to the next or previous row |
+| `l` | Unfold a row, or enter its children |
+| `h` | Fold a row, or go to and fold its parent |
+| `za` | Toggle the row's fold (a leaf folds its parent) |
+| `D` | Hide/show done items |
+| `A` | Show/hide archived roots |
+| `?` | Show the active area's keys |
+
+Click a row to select it; click its chevron or double-click to fold/unfold it.
+The current release stays unfolded. The browser keeps tree folds, `D` and `A`
+under `cland.ui.items.v1`, alongside the area's other fold preferences. Two panes
+share them; a different browser client starts independently. Folding and filtering
+send no hub writes. Cursor identity survives item reordering across deltas.
+
+`web/test/items.test.ts` copies the repository tracker into the scratch fixture
+before starting its hub, then adds deterministic rows for ordering, stage groups,
+bar modes and category/archive edges. A separate 300-item scratch fixture measures
+the synchronous whole-model rebuild after a CLI status delta through the browser's
+`cland.items.rebuild` PerformanceMeasure. The asserted 15 ms excludes fixture setup,
+transport and the React DOM commit; the test separately observes the changed row
+and both ancestor counts. It clears measures once before mutation and compares
+the retained measures with an independent PerformanceObserver capture so that a
+later fast rebuild cannot erase an earlier slow sample. This is a rebuild bound,
+not a page latency claim.
+
+`web/test/items-order.test.ts` keeps the rank-event → ordinary rank edit →
+reparent regression in a seven-item scratch hub. It retains the same real
+protocol/browser seam, request/DOM bounds and authoritative sibling comparison;
+the copied-tracker test owns the large model. This keeps unrelated full-tracker
+rescans outside the ordering regression's setup.
 
 The button collapses the rail to a 60 px icon column; below 1280 px CSS forces
 that width without overwriting the button choice. Icons keep native tooltips,
@@ -211,6 +272,8 @@ node --test web/test/connection.test.ts # sign-in, connection and hub restart
 node --test web/test/palette.test.ts    # palette, prefixes, keys help and physical-code controls
 node --test web/test/folds.test.ts      # local folds, zero fold frames and visible-prose guard
 node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
+node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 300-item rebuild
+node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
 

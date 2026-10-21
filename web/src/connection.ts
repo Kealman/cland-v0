@@ -1,7 +1,19 @@
-import { PROTOCOL_VERSION, type AccountList, type Artifact, type ClientHello, type EventsPage, type HarnessProcessView, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
+import { PROTOCOL_VERSION, type AccountList, type Artifact, type ClientHello, type EventsPage, type HarnessProcessView, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import type { Area } from './keymap.ts';
 
 export type ObjectRow = { id: string; title: string };
+export type PlanStages = Array<{ name: string; state: 'open' | 'closed'; items: string[]; qa: { scope: string; when: string } }>;
+
+/** Task deltas retain full verdict history; snapshots already carry the compact projection. */
+function explorerItem(item: ItemSummary): ExplorerSummary {
+  const rounds = { review: 0, qa: 0 };
+  const latest = new Map<string, ExplorerSummary['verdicts'][number]>();
+  for (const verdict of item.verdicts) {
+    latest.delete(verdict.verdict);
+    latest.set(verdict.verdict, { ...verdict, round: ++rounds[verdict.verdict] });
+  }
+  return { ...item, open_blockers: item.open_blockers ?? [], verdicts: [...latest.values()] };
+}
 
 
 export type ConnectionState = {
@@ -11,7 +23,16 @@ export type ConnectionState = {
   approvals?: number;
   plans?: number;
   waitingTopics?: number;
-  releases?: ItemSummary[];
+  releases?: ExplorerSummary[];
+  items?: ExplorerSummary[];
+  /** Closed task children are read through this boundary; T-1081 can back it with pages. */
+  closedTasks?: (parent: string) => readonly ExplorerSummary[];
+  loadClosed?: (parent: string) => void;
+  tracker?: SnapshotValues['tracker'];
+  idleFrom?: string[];
+  plansById?: Record<string, PlanStages>;
+  siblingOrders?: Record<string, string[]>;
+  loadPlan?: (id: string) => void;
   rows?: Partial<Record<Area, ObjectRow[]>>;
 };
 
@@ -25,18 +46,32 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   let retry: ReturnType<typeof setTimeout> | undefined;
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let backoff = 250;
+  const requestedPlans = new Set<string>();
   function request(frame: WorkbenchRequest) { socket.send(JSON.stringify(frame)); }
   function rows(area: Area, value: ObjectRow[]) {
     state = { ...state, rows: { ...state.rows, [area]: value } };
     changed(state);
   }
   function readObjects() {
-    request({ type: 'task.list', id: 'shell-items', state: 'open', projection: 'summary' });
     request({ type: 'session.list', id: 'shell-sessions' });
     request({ type: 'topic.list', id: 'shell-topics' });
     request({ type: 'events.list', id: 'shell-events', limit: 200 });
     request({ type: 'artifact.list', id: 'shell-artifacts' });
     request({ type: 'account.list', id: 'shell-accounts' });
+  }
+  function items(value: ExplorerSummary[]) {
+    const closed = new Map<string, ExplorerSummary[]>();
+    const ids = new Set(value.map(row => row.id));
+    for (const row of value) if (row.kind === 'task' && row.state === 'closed') {
+      const parent = row.parent && ids.has(row.parent) ? row.parent : '';
+      if (!closed.has(parent)) closed.set(parent, []);
+      closed.get(parent)!.push(row);
+    }
+    // Snapshot-backed today. A paged source replaces these two functions without changing the tree.
+    state = { ...state, items: value, closedTasks: parent => closed.get(parent) ?? [], loadClosed: () => {},
+      releases: value.filter(row => row.kind === state.tracker?.levels[0] && row.state === 'open')
+      .sort((a, b) => (a.version ?? '').localeCompare(b.version ?? '', undefined, { numeric: true }) || (a.rank ?? 0) - (b.rank ?? 0)) };
+    rows('Items', value);
   }
   function inbox(value: Inbox) {
     state = { ...state, needsYou: value.needsYou, approvals: value.approvals.length,
@@ -51,11 +86,17 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     ]);
   }
   function connect() {
+    requestedPlans.clear();
+    state = { ...state, loadPlan: id => {
+      if (requestedPlans.has(id) || socket.readyState !== WebSocket.OPEN) return;
+      requestedPlans.add(id);
+      request({ type: 'task.plan', id: `tree-plan:${id}`, item: id, op: 'show' });
+    } };
     socket = new WebSocket(url);
     // An open socket alone is not authenticated readiness. Bound the hello/status too.
     deadline = setTimeout(() => socket.close(), 5000);
     socket.onopen = () => {
-      const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, client: 'ui', features: [] };
+      const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, client: 'ui', features: ['snapshot', 'numbered-deltas', 'slim-frames'] };
       socket.send(JSON.stringify(hello));
     };
     socket.onmessage = event => {
@@ -73,11 +114,21 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           } catch { /* Storage may be unavailable; keep the current page usable. */ }
           if (reload) { stopped = true; clearTimeout(deadline); socket.close(); location.reload(); return; }
         }
-        request({ type: 'subscribe', id: 'shell-subscribe' });
-        readObjects();
         request({ type: 'hub.status', id: 'connection-status' });
-        request({ type: 'inbox.list', id: 'shell-inbox' });
-        request({ type: 'task.list', id: 'shell-releases', kind: 'release', state: 'open', projection: 'summary' });
+        request({ type: 'artifact.list', id: 'shell-artifacts' });
+      } else if (frame.type === 'snapshot') {
+        if (frame.domain === 'tracker') state = { ...state, tracker: frame.value, siblingOrders: {}, plansById: {} };
+        else if (frame.domain === 'items') items(frame.value.items);
+        else if (frame.domain === 'sessions') {
+          state = { ...state, coordinator: frame.value.coordinator, idleFrom: frame.value.crew.config.idle_from ?? [] };
+          rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
+        } else if (frame.domain === 'inbox') inbox(frame.value);
+        else if (frame.domain === 'topics') rows('Topics', frame.value.topics);
+        else if (frame.domain === 'events') rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text })));
+        else if (frame.domain === 'accounts') rows('Accounts', frame.value.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
+        changed(state);
+      } else if (frame.type === 'resync' || frame.type === 'snapshot.refused') {
+        socket.close();
       } else if (frame.type === 'result' && frame.id === 'connection-status' && frame.ok) {
         const status = frame.value as HubStatus;
         if (typeof status?.root !== 'string') { socket.close(); return; }
@@ -88,11 +139,10 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-inbox') {
         inbox(frame.value as Inbox);
-      } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-releases') {
-        state = { ...state, releases: (frame.value as { items: ItemSummary[] }).items };
+      } else if (frame.type === 'result' && frame.id.startsWith('tree-plan:')) {
+        const id = frame.id.slice('tree-plan:'.length);
+        state = { ...state, plansById: { ...state.plansById, [id]: frame.ok ? (frame.value as { stages: PlanStages }).stages : [] } };
         changed(state);
-      } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-items') {
-        rows('Items', (frame.value as { items: ItemSummary[] }).items.map(row => ({ id: row.id, title: row.title })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-sessions') {
         rows('Sessions', (frame.value as { processes: HarnessProcessView[] }).processes.map(row => ({ id: row.name, title: row.label ?? row.name })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-topics') {
@@ -104,14 +154,23 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-accounts') {
         rows('Accounts', (frame.value as AccountList).accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
       } else if (frame.type === 'inbox') inbox(frame.inbox);
+      else if (frame.type === 'crew') { state = { ...state, idleFrom: frame.config.idle_from }; changed(state); }
       else if (frame.type === 'role.filled' || frame.type === 'role.vacant' || frame.type === 'presence') {
         request({ type: 'hub.status', id: 'connection-status' });
         request({ type: 'session.list', id: 'shell-sessions' });
-      } else if (frame.type === 'task' && (frame.item?.kind === 'release' || state.releases?.some(item => item.id === frame.id))) {
-        request({ type: 'task.list', id: 'shell-releases', kind: 'release', state: 'open', projection: 'summary' });
-        request({ type: 'task.list', id: 'shell-items', state: 'open', projection: 'summary' });
       } else if (frame.type === 'task') {
-        request({ type: 'task.list', id: 'shell-items', state: 'open', projection: 'summary' });
+        const value = new Map(state.items?.map(row => [row.id, row]));
+        const oldParent = value.get(frame.id)?.parent ?? '';
+        const newParent = frame.item?.parent ?? '';
+        const siblingOrders = { ...state.siblingOrders };
+        delete siblingOrders[oldParent];
+        delete siblingOrders[newParent];
+        if (frame.siblings) siblingOrders[newParent] = frame.siblings;
+        state = { ...state, siblingOrders };
+        if (frame.item) value.set(frame.id, explorerItem(frame.item));
+        else value.delete(frame.id);
+        if (requestedPlans.delete(frame.id)) state.loadPlan?.(frame.id);
+        items([...value.values()]);
       } else if (frame.type === 'topic') {
         request({ type: 'topic.list', id: 'shell-topics' });
       } else if (frame.type === 'event') {

@@ -1,6 +1,7 @@
 export const areas = ['Inbox', 'Items', 'Sessions', 'Topics', 'Events', 'Artifacts', 'Accounts'] as const;
 export type Area = typeof areas[number];
-export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open';
+export type Shortcut = Area | 'split' | 'open-other' | 'dismiss' | 'palette' | 'leader' | 'help' | 'accept' | 'next-kind' | 'previous-kind' | 'next-result' | 'previous-result' | 'fold-close' | 'fold-open'
+  | 'tree-next' | 'tree-previous' | 'tree-open' | 'tree-close' | 'tree-leader' | 'tree-toggle' | 'tree-done' | 'tree-archive';
 type KeyStroke = { code: string; metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean };
 
 /** The single physical-code/modifier table; also the source for displayed area keys. */
@@ -12,11 +13,13 @@ export const keyMap: Readonly<Record<string, Shortcut>> = {
   Enter: 'accept', Tab: 'next-kind', 'Shift+Tab': 'previous-kind',
   ArrowDown: 'next-result', ArrowUp: 'previous-result',
   ArrowLeft: 'fold-close', ArrowRight: 'fold-open',
+  KeyJ: 'tree-next', KeyK: 'tree-previous', KeyL: 'tree-open', KeyH: 'tree-close',
+  KeyZ: 'tree-leader', 'KeyZ KeyA': 'tree-toggle', 'Shift+KeyD': 'tree-done', 'Shift+KeyA': 'tree-archive',
 };
 
-export function shortcut(event: KeyStroke, leader = false): Shortcut | undefined {
+export function shortcut(event: KeyStroke, leader: boolean | 'KeyZ' = false): Shortcut | undefined {
   const chord = `${event.metaKey ? 'Meta+' : ''}${event.ctrlKey ? 'Control+' : ''}${event.altKey ? 'Alt+' : ''}${event.shiftKey ? 'Shift+' : ''}${event.code}`;
-  return keyMap[leader ? `Space ${chord}` : chord];
+  return keyMap[leader ? `${leader === true ? 'Space' : leader} ${chord}` : chord];
 }
 
 export function areaKey(area: Area): string {
@@ -28,8 +31,9 @@ export function actionKeys(action: Shortcut): string[] {
   return Object.entries(keyMap).filter(([, value]) => value === action).map(([chord]) => chord);
 }
 export function displayKey(chord: string): string {
+  if (/^Key[HJKL]$/.test(chord)) return chord.slice(3).toLowerCase();
   return chord.replace(/Space Key([A-Z])/g, (_, letter: string) => `Space ${letter.toLowerCase()}`).replace('Meta+', '⌘').replace('Shift+Slash', '?')
-    .replace('Shift+', '⇧').replace('Backslash', '\\').replace('Key', '').replace('Digit', '')
+    .replace(/KeyZ KeyA/g, 'za').replace(/Shift\+Key([AD])/g, '$1').replace('Shift+', '⇧').replace('Backslash', '\\').replace('Key', '').replace('Digit', '')
     .replace('ArrowDown', '↓').replace('ArrowUp', '↑').replace('ArrowLeft', '←').replace('ArrowRight', '→').replace('Escape', 'Esc');
 }
 
@@ -48,4 +52,10 @@ export const paletteActions: ReadonlyArray<{ action: Shortcut; label: string }> 
 ];
 export const foldActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
   { action: 'fold-close', label: 'Fold group' }, { action: 'fold-open', label: 'Unfold group' },
+];
+export const treeActions: ReadonlyArray<{ action: Shortcut; label: string }> = [
+  { action: 'tree-next', label: 'Next item' }, { action: 'tree-previous', label: 'Previous item' },
+  { action: 'tree-open', label: 'Unfold or enter children' }, { action: 'tree-close', label: 'Fold or go to parent' },
+  { action: 'tree-toggle', label: 'Toggle item fold' }, { action: 'tree-done', label: 'Hide done items' },
+  { action: 'tree-archive', label: 'Show archived roots' },
 ];
