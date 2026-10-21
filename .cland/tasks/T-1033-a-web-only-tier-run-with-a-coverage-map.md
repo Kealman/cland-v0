@@ -2,8 +2,8 @@
 id: T-1033
 kind: task
 title: A Web-only tier run with a coverage map crashes reducing an absent raw directory
-state: open
-status: review
+state: closed
+status: done
 size: S
 criterion_seq: 2
 labels:
@@ -16,7 +16,8 @@ regression_of: T-991
 topic: topic-784
 branch: t/T-1033-a-web-only-tier-run-with-a-coverage-map
 created: 2026-10-21T05:59:43.464Z
-updated: 2026-10-21T06:04:20.624Z
+updated: 2026-10-21T06:18:06.513Z
+closed: 2026-10-21T06:18:06.513Z
 ---
 
 ## Summary
@@ -33,8 +34,10 @@ Evidence: macOS stage cover ed78ee36 at 8f9e38c0 (A-8146): T1–T4 exit 0 with 3
 
 - [x] C1. A `--tier Web` run with coverage recording and no `hub/` test files exits with its tests' code and leaves the existing coverage map intact (test).
   - done: impl-1033 · 2026-10-21T06:02:46.013Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1033-final · 2026-10-21T06:13:21.017Z · commit 742010d92ca2021e99bfc4ad5939d46f7d786e6c
 - [x] C2. A hub tier run still writes its coverage map as before (the existing coverage tests pass unchanged).
   - done: impl-1033 · 2026-10-21T06:02:46.024Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1033-final · 2026-10-21T06:13:21.017Z · commit 742010d92ca2021e99bfc4ad5939d46f7d786e6c
 
 ## Comments
 
@@ -54,3 +57,22 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; Standards/Spec audit A-8148 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8148-t-1033-source-review-at-742010d9.md). Guard requires collected hub test files before coverage reduction/publication; actual hub reducer/append behavior and error returns unchanged. Trivial Web runner fixtures cover append/non-append and pass/fail exits, exact seeded-map preservation/no raw dir, with owned env and bounded completion. Existing hub capture/attribution tests unchanged. Coordinator authorized no-browser seam; lint qualifies existing T3 file. No findings. A-8147 local targeted T3 4/4/check/lint summary is scoped, not full gate or stage cover. C1/C2 remain runtime-unverified pending same-head configured mode-free receipt alongside targeted T3 evidence. No Reviewer runtime; QA scope none.
+
+### rev-23 · 2026-10-21T06:13:21.017Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1033-final
+commit: 742010d92ca2021e99bfc4ad5939d46f7d786e6c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear; audit A-8154 (/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8154-t-1033-final-evidence-review-at-742010d9.md). Same-head configured 475ff630/A-8153 completes Linux T1/all-T2 fallback: 2,199 ordinary passes/337 files, no load records. Web NOT RUN for missing libraries; T3 coverage file not selected. C1/C2 specifically established by A-8147's separate matching-source local macOS targeted T3 4/4: append/non-append Web runner cases preserve map/test exits and unchanged native hub coverage cases pass. No Linux T3/browser/stage-cover/integrated/timing pass inferred. Host check 4d9637cd not repeated remotely; lint/duration/ratchet report-only, two missing baselines. No findings; verify C1/C2. QA scope none.
+
+Criteria: C1 verified, C2 verified.
+
+### coord · 2026-10-21T06:18:06.513Z
+
+Merged 480be275bbd2f936685d47a6c71845878b4127ad onto dev.
