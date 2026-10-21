@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-789
 branch: t/T-993-the-web-phase-on-droplets
 created: 2026-10-20T16:51:40.674Z
-updated: 2026-10-21T10:13:50.767Z
+updated: 2026-10-21T13:18:58.243Z
 closed: 2026-10-21T10:13:50.767Z
 ---
 
@@ -91,3 +91,9 @@ Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
 ### coord · 2026-10-21T10:13:50.767Z
 
 Merged b65fb11ba31808e94eb9337b49fdf4fe98b52df8 onto dev.
+
+### coord · 2026-10-21T13:18:58.243Z
+
+Landing evidence for C3: after hub restart #37 (12:39Z, cb231eeb, T-993's provision.sh live) and `cland executor prepare`, the new snapshot is cland-v0-f0edf9aa1be5 (image 250816619, prepare done at about 12:50Z).
+
+Linux droplet run 463d3186 (T-1031's task verify at c0cffde0, A-8411, cland-v0-cf0761c5, c-8 lon1) ran the actual Web phase on Linux, green: 2,293 passed with no failures or skips. Before this image every Linux droplet run reported "Web not run: Linux Headless Shell libraries missing". The Web phase on droplets now works.

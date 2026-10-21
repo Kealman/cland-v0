@@ -3,7 +3,7 @@ id: T-996
 kind: task
 title: The palette and the keys help
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-415
 blocked_by:
   - T-995
-topic: null
-branch: null
+topic: topic-802
+branch: t/T-996-the-palette-and-the-keys-help
 created: 2026-10-20T16:51:40.983Z
-updated: 2026-10-21T12:56:04.190Z
+updated: 2026-10-21T13:16:07.177Z
 ---
 
 ## Summary
