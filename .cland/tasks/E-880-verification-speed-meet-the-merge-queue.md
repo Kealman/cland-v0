@@ -13,7 +13,7 @@ blocked_by: []
 topic: null
 branch: null
 created: 2026-10-19T15:24:04.550Z
-updated: 2026-10-20T05:13:55.343Z
+updated: 2026-10-21T09:49:24.058Z
 ---
 
 ## Summary
@@ -60,3 +60,15 @@ Carried from the v0.1.4 DoD demos (2026-10-20, all at the release candidate 8241
 - E-578 C6: T-393's 20 migrated files −2.1 % against −20 %.
 - E-578 C4 / T-394: selected-run suite median 2.0 min (8/10 under 5 min); end-to-end verify overhead (queue, delivery, collection) not measured; T-394 C7's ≤ 15 % coverage-recording overhead was never measured.
 - E-678 C1/C2/C3/C5/C7: see A-7035 (task-body median 12.9 min, 2.31 runs per merge, red 15 %, batch median 40 s, soak timeout and budget red, no coverage maps).
+
+### coord · 2026-10-21T09:49:24.058Z
+
+The stage covers and task runs of 2026-10-21 (A-8189, A-8205, A-8211, A-8228) report these duration regressions. Report-only; none failed:
+- hub/test/executor-prepare-retry.test.ts, "prepare retries transient builder deletion failures within its release window": baseline 0.544 s, measured 1.6 s on the macOS covers and 2.625 s in T-992's local verify 96babba6, above the 2 s T2 budget.
+- territory-cli.test.ts: 22.6 s → 42–44 s.
+- init.test.ts: 9.3 s → 19–24 s.
+- merge-policy.test.ts: 10.7 s → 21–23 s.
+- release.test.ts: 63.9 s → 72–87 s, over 60 s.
+- tracker-summary.test.ts: 0.044 s → 2.3–2.9 s; the old baseline predates T-1007.
+
+They are for this epic's next budget pass, not a ticket each.

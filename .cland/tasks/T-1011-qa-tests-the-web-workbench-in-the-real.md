@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-765
 branch: t/T-1011-qa-tests-the-web-workbench-in-the-real
 created: 2026-10-20T17:02:15.802Z
-updated: 2026-10-21T06:39:33.712Z
+updated: 2026-10-21T09:52:31.159Z
 ---
 
 ## Summary
@@ -45,6 +45,7 @@ QA for the web workbench also tests in the human's real local browser through co
 - [x] C3. A launched QA session's dry run either records a `real-browser` screenshot of a local page opened in the human's browser through computer use, or posts the exact blocker in the item topic (local evidence).
   - done: impl-1011 · 2026-10-21T06:38:55.414Z
   - verified: qa-676 [qa] · run qa-2026-10-21-1 · 2026-10-21T06:39:33.694Z · commit d1acaacc51510bf13df49561434913fb27838712
+  - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T09:52:31.159Z · commit d1acaacc51510bf13df49561434913fb27838712
 - [x] C4. `cland qa lint` accepts a brief with a `real-browser` case (test).
   - done: impl-1011 · 2026-10-20T18:41:28.218Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
@@ -132,3 +133,62 @@ No browser or tab was opened; no tab cleanup was needed. No profile, browser set
 Scope: WEB-DRY-001, M1, M2 only. Further browser access awaits an authorized capability change; no retry or workaround was attempted.
 
 Evidence A-8162: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8162-t-1011-c3-real-browser-dry-run-exact-computer-use-blocker-no-screenshot/report.md
+
+### qa-676 · 2026-10-21T09:49:04.135Z
+
+verdict: qa
+result: not clear
+by: qa-676 [qa]
+run: qa-2026-10-21-2
+commit: d1acaacc51510bf13df49561434913fb27838712
+findings: [{"severity":"medium","text":"WEB-DRY-001 blocked by Browser use URL policy on file:// local page. Chrome cland QA profile and before screenshot confirmed; no page navigation/screenshot succeeded. Stopped without workaround."}]
+finding_counts: {"high":0,"medium":1,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| M1 | hub-api | PASS | Clean T-1011 worktree; HEAD and branch tip d1acaacc51510bf13df49561434913fb27838712. M1.txt. |
+| WEB-DRY-001 | real-browser | BLOCKED | Chrome cland QA profile confirmed by native AX; before screenshot saved; file:// navigation rejected by Browser use URL policy. WEB-DRY-001-blocker.txt contains exact refusal; WEB-DRY-001-before.png is only a before screenshot. |
+| M2 | hub-api | PASS | Exactly one real-browser receipt appended to project runs.jsonl; both referenced evidence files exist. No page screenshot claimed. |
+
+Medium blocker — WEB-DRY-001: `cua.createBrowserTab("chrome", "file:///tmp/qa-t1011-wh95bdmb/index.html", {sessionName:"🧪 T-1011 QA"})` returned:
+> Browser Use rejected this action due to browser security policy. Reason: The browser URL policy blocks this action. Browser use cannot visit the requested page because its URL is blocked by the Browser use URL policy. The agent must not attempt to achieve the same outcome via workaround, indirect execution, raw CDP or browser commands, alternate browser surfaces, or policy circumvention. Proceed only with a materially safer alternative that does not require this blocked browser action; if none exists, stop and request user input.
+
+This is a not-clear browser attempt, run qa-2026-10-21-2, not a product failure or a browser PASS. No local page navigation or page screenshot succeeded. The tool returned no tab handle. No alternate URL, browser surface, native navigation or profile was attempted after refusal. QA changed no browser profile, default-browser setting, permissions or keychain. The pre-existing default-browser infobar was untouched.
+
+Chrome was available this time. Inventory labelled the extension browser “Your Chrome”; native AX independently confirmed “New Tab - Google Chrome - cland QA” and the “cland QA” profile button before navigation. The human's authorized profile was used; no default profile fallback.
+
+C3 accepts an exact posted blocker as an alternative, so C3 is not failed by this attempt. Per the Coordinator's newer 0fbe99ab-020b-4165-bffe-d771e4f8d911 instruction, any separate evidence-only verdict will follow the E-795 epic verdict and cite both attempts. This report makes no new criterion marks.
+
+Scratch /tmp/qa-t1011-wh95bdmb removed; task worktree remains unchanged at the full tested SHA. Browser interactions used computer use only; no full suite or headless browser test ran. The before screenshot is 60430 bytes; no after screenshot was taken after the stop-on-refusal boundary.
+
+Durable evidence A-8230: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8230-t-1011-chrome-cland-qa-dry-run-file-url-policy-blocker-and-before-screenshot/report.md
+
+### qa-676 · 2026-10-21T09:52:31.159Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-3
+commit: d1acaacc51510bf13df49561434913fb27838712
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface | Result | Evidence |
+| --- | --- | --- | --- |
+| M1 | hub-api | PASS | Clean T-1011 worktree; HEAD and branch tip equal d1acaacc51510bf13df49561434913fb27838712. |
+| WEB-DRY-001 | real-browser | PASS | Native Chrome AX confirms cland QA profile. New tab 1158676365 opened authorized http://127.0.0.1:56935/; screenshot shows cland workbench, Inbox and seven areas. Tab closed; original New Tab 1158676307 remains. |
+| M2 | hub-api | PASS | One real-browser recorder row with before/page/after screenshot paths; all evidence files exist; final item worktree clean. |
+
+Findings: none in this dry-run scope.
+
+Run qa-2026-10-21-3, tested T-1011 implementation SHA d1acaacc51510bf13df49561434913fb27838712. Brief read from amended dev commit cbc6c623; Coordinator request feb88f15-b747-42a1-963f-865f74c820d1 documents the human-authorized origin allowlist change. This run uses the amendment's HTTP page and expected cland shell, not the earlier file:// heading/run-id expectation. The served live bundle is not claimed to be built from d1acaacc: d1acaacc is the recorder/surface implementation under test. No full web workbench functional verdict is made.
+
+Actual local macOS computer-use execution through Chrome extension browser 1. Chrome's native AX window/title and profile button say cland QA; the extension metadata's generic “Your Chrome” label was not used as profile proof. Before screenshot retained. createBrowserTab opened one owned tab; its AX title is cland and URL is http://127.0.0.1:56935/. WEB-DRY-001.png (18762 bytes) is the screenshot captured from that exact tab. The page shows Offline because this check opened the public bundle without an authenticated session; authentication and data loading are outside the amended smoke scope.
+
+A native-app capture taken during the run still showed the original New Tab window; it is retained as WEB-DRY-001-original-window.png and is not the page evidence. The correct owned-tab screenshot is WEB-DRY-001.png. After qaDryTab3.close(), getState confirms only the original New Tab 1158676307 remains in browser 1; before/after native screenshots are identical. No unrelated tab/window was closed. No prompt or refusal occurred in this run, and QA changed no permissions, security settings, profile, keychain or default-browser setting.
+
+Criteria verified: C3 only, by a successful real-browser screenshot/recorder dry run. C1/C2/C4 remain the existing review marks. Earlier qa-2026-10-21-1 and qa-2026-10-21-2 remain historical not-clear attempts (browser availability and file URL policy respectively); this run does not relabel them. No separate evidence-only verdict is needed to claim a browser success now. No scratch file page was created for the amended HTTP case; item worktree unchanged.
+
+Durable artifact A-8233: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8233-t-1011-real-browser-dry-run-pass-chrome-cland-qa-loopback-page-and-tab-cleanup/report.md
+
+Criteria: C3 verified.

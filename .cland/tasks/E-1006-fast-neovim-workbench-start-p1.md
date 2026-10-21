@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T09:43:08.904Z
+updated: 2026-10-21T09:52:44.616Z
 ---
 
 ## Summary
@@ -182,3 +182,14 @@ C1 live evidence: the human's Mac, 2026-10-21 09:40:37Z, dev 7c5e4028 (hub pid 9
 ### coord · 2026-10-21T09:43:08.904Z
 
 C1 figure from the human, relayed by the stand-in cland-impl at 09:4xZ on 2026-10-21: «Ну он запустился меньше чем за 3с, точнее посчитать не успеваю». The workbench was usable in under 3 s on the human's Mac with the live tracker (1,036 items), too fast to time more precisely. Together with the 09:40Z samples above, I consider C1 met. The epic's QA demo verifies C1 from this local evidence; C2 waits for the 10-minute idle sampler.
+
+### coord · 2026-10-21T09:52:44.616Z
+
+C2 live evidence: the human's live workbench idle-sampled for 10 minutes, 2026-10-21 09:41:49–09:51:50Z, by the stand-in cland-impl. Read-only ps and journal, dev 7c5e4028, hub pid 92080.
+
+- Neovim (`nvim --embed`, pid 14642): RSS 35 MB after 11.5 min, and CPU 0.0–0.2 % at every per-minute sample.
+- Neovim spoke requests in the 10 minutes: task.plan 84, topic.read 7, task.view 6, topic.send 4, account.poll 2. None of task.list, hub.status, session.list, events.list, topic.history, artifact.list, rule.list or account.list was re-read, so the C2 condition of no full re-read of the item list or any other whole-state list holds.
+- The task.plan calls are event-driven, not polling: nvim/lua/cland/plan.lua `M.get` refetches an epic's plan only when that epic's `updated` changes, or when a child item invalidates it. During the window the crew was changing items in the open epics constantly.
+- Hub CPU per minute: 2.6, 90.7, 30.4, 35.8, 13.3, 17.2, 16.6, 49.9, 12.2 and 9.4 %; RSS 390–945 MB. The journal shows the crew's load, not the workbench's: cli 284 requests, nvim 103, unattributed 89, suite 2. Three implementers, QA and the reviewers were working.
+
+Reading: the workbench's own idle load is negligible, and the hub's CPU in the window came from crew traffic. A crew-quiet control sample would prove that clause directly; the stand-in has offered one.

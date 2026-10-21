@@ -2,7 +2,7 @@
 id: E-795
 kind: epic
 title: Rendered Markdown artifacts in the Neovim workbench
-state: open
+state: closed
 criterion_seq: 3
 labels:
   - epic
@@ -13,7 +13,8 @@ blocked_by: []
 topic: topic-782
 branch: null
 created: 2026-10-18T10:14:36.459Z
-updated: 2026-10-21T09:42:54.505Z
+updated: 2026-10-21T10:05:11.523Z
+closed: 2026-10-21T10:05:11.523Z
 ---
 
 ## Summary
@@ -23,8 +24,11 @@ The human, 2026-10-18 10:14Z in General: an opened artifact shows raw Markdown a
 ## Definition of done
 
 - [ ] C1. A Markdown artifact opened in the workbench renders like a thread message (headings, emphasis, inline and fenced code, lists, links, quotes, tables readable), with a key that toggles the raw source.
+  - verified: qa-676 [qa] · run qa-2026-10-21-2 · 2026-10-21T10:04:52.949Z · commit 13ee21c235886618b4ea5f082414377264618ad8
 - [ ] C2. Long artifacts open and scroll without a visible delay. Rendering is cached per artifact version and never blocks the UI.
+  - verified: qa-676 [qa] · run qa-2026-10-21-2 · 2026-10-21T10:04:52.949Z · commit 13ee21c235886618b4ea5f082414377264618ad8
 - [ ] C3. Headless-grid cases cover a rendered artifact and the raw toggle.
+  - verified: qa-676 [qa] · run qa-2026-10-21-2 · 2026-10-21T10:04:52.949Z · commit 13ee21c235886618b4ea5f082414377264618ad8
 
 ## Plan
 
@@ -87,3 +91,37 @@ All four merges verified: T-796 8ef8ff4d, T-1003 ea8b43af, T-1004 e58f0c45, T-10
 Final HEAD/dev unchanged and worktree clean. Own scratch/worktree process scan 0, scratch and detached worktree removed. Fourteen recorder rows, exact commands/output and grid/state captures retained. No epic criterion marks: C1–C3 mapping is evidence for a separate epic DoD run, not verification by this stage verdict.
 
 Durable artifact A-8222: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8222-e-795-rendered-artifacts-stage-14-checks-pass-at-479178b2/report.md
+
+### qa-676 · 2026-10-21T10:04:52.949Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-2
+commit: 13ee21c235886618b4ea5f082414377264618ad8
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| C1 | PASS | A-8222 ARTIFACT-001/002, M1/M4/M5/M6/M7/M8/M10: rendered Markdown including tables and exact raw toggle, all openers, focused split and version refresh. |
+| C2 | PASS | A-8222 M2/M3/M4: 2,000-line G scroll and 20,000-line gg / 10001Gzt / G start-middle-end rendered grids; input handled while render pending; bounded slices, version cache and zero new parsers on unchanged reopen. |
+| C3 | PASS | A-8222 ARTIFACT-001/002 and M9: direct headless grids and all 31 shipped cases passed. |
+| Epic receipt | PASS with stated scope limits | Fresh suite 9b18c0ab at full target SHA: exit 0, 3503 tests / 3495 pass / 0 fail / 8 skipped. Required artifact-render, artifacts, thread and qa-shipped files passed with no scoped skips. |
+| Freshness | PASS | demo status E-795 --commit 13ee21c235886618b4ea5f082414377264618ad8 --json returned current:true. Relevant source diff from stage is empty. |
+
+Findings in E-795 scope: none.
+
+Criterion marks: C1,C2,C3 verified in qa-2026-10-21-2. Coordinator request 565e0526 and decision 7d74e9f1 explicitly authorize reuse of A-8222 where exact. Its 14 checks, two direct grid cases and 80 targeted tests actually ran at 479178b25c78ccbb54f908ef7cc7c05c18426cd0 on local macOS arm64, Node24.21.0 / Neovim0.12.5, with zero skips and completed cleanup. These checks were reused, not rerun at the target. C2's explicit scrolling is proven by the recorded stage tests and retained source audit. No new demo lease was required.
+
+Fresh epic suite: 13ee21c235886618b4ea5f082414377264618ad8, tree aa2e2d067dc348cb44bfc5cb4094555d00a393c4, occasion epic, mode full, two Linux x64 droplets, kernel6.8.0-142-generic, Node24.21.0, Neovim0.12.5, workers2. Merged A-8240; shard1 A-8241 on cland-v0-6e945401 c-8 lon1: 1026.99s admission-to-remote-finish, 21.38s collection, lifetime1013s, $0.0704. Shard2 A-8242 on cland-v0-4928d1c9 c-8 lon1: 983.99s, 25.83s collection, lifetime974s, $0.0677. Actual total wall1048.63s and hub-rounded total cost$0.1380. Coverage A-8243.
+
+Limits: Web did NOT RUN (missing Linux HeadlessShell libraries), outside this Neovim epic; not a pass or zero-time result. T4's 10 files ran in the base phase only; load repetitions were skipped. Eight skips are outside E-795: one macOS idle-sleep, two unavailable OpenCode, five sandbox-exec cases. Test lint (131 findings/59 files), four test budget exceedances, T3 projected-wall excess and final T3 ratchet are REPORT only. No enforced-gate pass or actual wall is inferred from projections.
+
+Final evidence A-8244: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8244-e-795-epic-dod-clear-at-13ee21c2-c1-c3-and-completed-epic-receipts/report.md. Includes exact reuse mapping, scrolling excerpts, receipt excerpts and scoped file results.
+
+Criteria: C1 verified, C2 verified, C3 verified.
+
+### coord · 2026-10-21T10:05:11.523Z
+
+Closed on QA clear qa-2026-10-21-2 at 13ee21c2 (C1–C3 verified, A-8244), with epic suite 9b18c0ab green (A-8240: 3,495 passed, 0 failed) and stage verdict qa-2026-10-21-1 at 479178b2 (A-8222).
