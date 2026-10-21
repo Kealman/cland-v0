@@ -2,8 +2,8 @@
 id: T-992
 kind: task
 title: The shell connects to the hub's web edge
-state: open
-status: ready
+state: closed
+status: done
 size: M
 criterion_seq: 6
 labels:
@@ -16,7 +16,8 @@ blocked_by:
 topic: topic-790
 branch: t/T-992-the-shell-connects-to-the-hub-s-web-edge
 created: 2026-10-20T16:51:40.575Z
-updated: 2026-10-21T09:48:49.453Z
+updated: 2026-10-21T10:13:38.172Z
+closed: 2026-10-21T10:13:38.172Z
 ---
 
 ## Summary
@@ -102,3 +103,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; C1–C6 verified. Independently audited A-8228/run 96babba6: exact ac3c67e9, actual local Darwin arm64 Node24.21/Neovim0.12.5; check, all T1, all T2 fallback in both packages and Web each exit 0. Structured records: 2234 ordinary test passes/344 file passes, no failure/skip/cancel. Web actually executes connection 1.027759125 s and smoke parent 1.07326275 s (plus three smoke subtests), all passing; actual Web wall 1.511 s, not the 1.267 s projection. Both browser groups empty and scratch hubs stopped. Root check actually typechecks/builds at this head; lint/budgets/ratchet report-only. T3/T4 not run, no Linux claim; after-stage QA separate. No remaining task findings. Original raw receipt, criteria map and qualifications: A-8229 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8229-t-992-final-clear-at-ac3c67e9-actual-local-web-reconnect-proof.md. Unchanged executor-prepare-retry T2 report-only budget diagnostic is reported aside to the lead, outside T-992.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.
+
+### coord · 2026-10-21T10:13:38.172Z
+
+Merged 158e188a60319dc6bce4c1f8f837121b7cd153f0 onto dev.

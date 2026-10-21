@@ -3,7 +3,7 @@ id: T-1011
 kind: task
 title: QA tests the web workbench in the real browser through computer use
 state: open
-status: ready
+status: qa
 size: S
 criterion_seq: 4
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-765
 branch: t/T-1011-qa-tests-the-web-workbench-in-the-real
 created: 2026-10-20T17:02:15.802Z
-updated: 2026-10-21T09:52:31.159Z
+updated: 2026-10-21T10:12:38.933Z
 ---
 
 ## Summary
@@ -42,10 +42,12 @@ QA for the web workbench also tests in the human's real local browser through co
   - done: impl-1011 · 2026-10-20T18:41:27.583Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-source-1 · 2026-10-20T18:43:13.655Z · commit d1acaacc51510bf13df49561434913fb27838712
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
+  - verified: rev-26 [reviewer] · run rev-20261021-1011-source-delta-1 · 2026-10-21T10:11:38.106Z · commit be011de3a4145b3399ab547317581e90880bdb55
 - [x] C3. A launched QA session's dry run either records a `real-browser` screenshot of a local page opened in the human's browser through computer use, or posts the exact blocker in the item topic (local evidence).
   - done: impl-1011 · 2026-10-21T06:38:55.414Z
   - verified: qa-676 [qa] · run qa-2026-10-21-1 · 2026-10-21T06:39:33.694Z · commit d1acaacc51510bf13df49561434913fb27838712
   - verified: qa-676 [qa] · run qa-2026-10-21-3 · 2026-10-21T09:52:31.159Z · commit d1acaacc51510bf13df49561434913fb27838712
+  - verified: qa-676 [qa] · run qa-2026-10-21-4 · 2026-10-21T10:12:38.933Z · commit be011de3a4145b3399ab547317581e90880bdb55
 - [x] C4. `cland qa lint` accepts a brief with a `real-browser` case (test).
   - done: impl-1011 · 2026-10-20T18:41:28.218Z
   - verified: rev-26 [reviewer] · run rev-20261020-1011-evidence-1 · 2026-10-20T18:52:07.768Z · commit d1acaacc51510bf13df49561434913fb27838712
@@ -190,5 +192,55 @@ A native-app capture taken during the run still showed the original New Tab wind
 Criteria verified: C3 only, by a successful real-browser screenshot/recorder dry run. C1/C2/C4 remain the existing review marks. Earlier qa-2026-10-21-1 and qa-2026-10-21-2 remain historical not-clear attempts (browser availability and file URL policy respectively); this run does not relabel them. No separate evidence-only verdict is needed to claim a browser success now. No scratch file page was created for the amended HTTP case; item worktree unchanged.
 
 Durable artifact A-8233: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8233-t-1011-real-browser-dry-run-pass-chrome-cland-qa-loopback-page-and-tab-cleanup/report.md
+
+Criteria: C3 verified.
+
+### impl-1011 · 2026-10-21T10:10:37.260Z
+
+Per Coordinator 1fda87c1, merged origin/dev 4f0623b7 once and pushed be011de3. Removed the Implementer GUI/real-browser line from default/project role clauses; QA/browser instructions and reserve assertions unchanged. Local macOS targeted roles-clauses.test.ts passed 27/27 before commit (ff7c335d + two line deletions; no dirty-tree hash recorded). Fresh source review requested before mode-free verification. Prior C3 browser PASS qa-2026-10-21-3 retained as historical evidence; current criterion marks are stale at the changed head, reported to the Coordinator for any required QA settlement.
+
+### rev-26 · 2026-10-21T10:11:38.106Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261021-1011-source-delta-1
+commit: be011de3a4145b3399ab547317581e90880bdb55
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear after Coordinator-authorized single dev merge ff7c335d (dev4f0623b7) and exactly two Implementer clause line deletions. Default/project copies agree; QA role, real-browser procedure, recorder/lint/tests and brief templates retained. Only incoming qa-skill change versus d1acaacc is Web verification cadence wording; Web briefs path unchanged. C2 verified by source; C1/C4 await new-head mode-free receipt. C3 remains QA-owned: Coordinator25956e9b assigned qa-676 new-head evidence settlement reusing A-8233, no GUI rerun. A-8253 original 27/27 clause receipt is precommit ff7c335d+two unstaged deletions, no dirty-tree hash; qualified targeted evidence, not exact-head suite. Full audit: A-8259 at /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8259-t-1011-delta-source-clear-at-be011de3-clause-reserve-retained.md. No Reviewer tests/edits/browser execution.
+
+Criteria: C2 verified.
+
+### qa-676 · 2026-10-21T10:12:38.933Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-2026-10-21-4
+commit: be011de3a4145b3399ab547317581e90880bdb55
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| E1 | PASS | Clean item HEAD be011de3a4145b3399ab547317581e90880bdb55. Diff from d1acaacc51510bf13df49561434913fb27838712 is empty for .agents/skills/qa/qa-record.sh, hub/src/qa-lint.ts, .agents/skills/qa/BRIEF.md and STAGE-BRIEF.md. |
+| E2 | PASS | git diff cbc6c623 be011de3 -- qa/briefs/T-1011.md is empty: identical to the amended brief actually used in A-8233. |
+| E3 | PASS | SKILL.md has exactly one changed line, line 74's cland verify paragraph adding the separate Web phase. The Web briefs real-browser procedure is unchanged. |
+| C3 reuse | PASS | A-8233, run qa-2026-10-21-3: actual Chrome cland QA profile, successful loopback page screenshot, owned tab closed, original tab retained. |
+
+Findings: none under the clarified evidence scope.
+
+Run qa-2026-10-21-4, evidence audit at be011de3a4145b3399ab547317581e90880bdb55. Coordinator decision 9309a7b3-e0c9-4171-82c9-4ce08947bfc8 authorizes these exact three comparisons and reuse. The initial broad condition was not met; A-8260 preserves that stopped audit. The subsequent narrowed condition is met; no exception was inferred before the decision.
+
+C3 only is verified. This is evidence reuse, not a GUI rerun or a new browser success. The actual browser execution was local macOS computer use in run qa-2026-10-21-3 against recorder implementation d1acaacc51510bf13df49561434913fb27838712 and amended brief cbc6c623. A-8233 contains the before/page/after screenshots and successful tab cleanup. The served public bundle was not claimed built from that implementation SHA; authentication and data loading were outside the smoke scope. Historical blocked runs 1 and 2 remain not clear; no blocked outcome is relabelled.
+
+Three local read-only comparison receipts were recorded for this run. No browser, test suite or droplet ran; no new timing, coverage or execution-cost claim is made. No permissions or settings changed. Existing item worktree was left at the same clean head.
+
+Reused evidence: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8233-t-1011-real-browser-dry-run-pass-chrome-cland-qa-loopback-page-and-tab-cleanup/report.md.
+
+Evidence audit A-8261: /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-8261-t-1011-run-4-three-reuse-checks-pass-at-be011de3.md
 
 Criteria: C3 verified.

@@ -3,7 +3,7 @@ id: T-988
 kind: task
 title: The network, the tunnel and the phone's link
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 6
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-792
 branch: t/T-988-the-network-the-tunnel-and-the-phone-s
 created: 2026-10-20T16:50:00.743Z
-updated: 2026-10-21T09:59:01.686Z
+updated: 2026-10-21T10:08:55.478Z
 ---
 
 ## Summary
@@ -30,18 +30,24 @@ updated: 2026-10-21T09:59:01.686Z
 
 - [x] C1. With `[web] bind` set to a LAN address, the web edge listens there while the spokes' edge stays on 127.0.0.1 (test reads both bound addresses).
   - done: impl-988 · 2026-10-21T09:52:18.939Z
+  - verified: rev-23 [reviewer] · run rev-20261021-988-final · 2026-10-21T10:08:55.422Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
 - [x] C2. `[web] origin` adds its host to the Host allow-list and passes the Origin check, and a cookie issued for a request whose Host and Origin match `[web] origin` carries `Secure`; forwarded headers are not read (test).
   - done: impl-988 · 2026-10-21T09:52:43.506Z
+  - verified: rev-23 [reviewer] · run rev-20261021-988-final · 2026-10-21T10:08:55.422Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
 - [x] C3. `cland web --qr` prints the tunnel's link when `[web] origin` is set, else the LAN link, as a half-block QR code, and refuses with the reason on loopback alone (CLI test; the encoder's test vectors decode back to the link).
   - done: impl-988 · 2026-10-21T09:58:09.693Z
+  - verified: rev-23 [reviewer] · run rev-20261021-988-final · 2026-10-21T10:08:55.422Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
 - [x] C4. The QR encoder is vendored with its MIT licence, and `package.json` gains no runtime dependency.
   - done: impl-988 · 2026-10-21T09:52:43.876Z
   - verified: rev-23 [reviewer] · run rev-20261021-988-source-2 · 2026-10-21T09:59:01.686Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
+  - verified: rev-23 [reviewer] · run rev-20261021-988-final · 2026-10-21T10:08:55.422Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
 - [x] C5. `cland doctor` warns when the web edge is bound to a network address without `[web] origin` (doctor test).
   - done: impl-988 · 2026-10-21T09:52:43.993Z
+  - verified: rev-23 [reviewer] · run rev-20261021-988-final · 2026-10-21T10:08:55.422Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
 - [x] C6. ADR 0003 carries a dated amendment for `[web] bind`, and `hub/README.md` documents `[web] bind`, `[web] origin` and `--qr`.
   - done: impl-988 · 2026-10-21T09:52:44.129Z
   - verified: rev-23 [reviewer] · run rev-20261021-988-source-2 · 2026-10-21T09:59:01.686Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
+  - verified: rev-23 [reviewer] · run rev-20261021-988-final · 2026-10-21T10:08:55.422Z · commit c6e33d4e08d6084f4931a4053600994d7d0482e2
 
 ## Comments
 
@@ -82,3 +88,18 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Corrected source clear; M1 closed, no remaining findings. A-8239 retains the full first-pass audit A-8236 and reviews the four-file correction: skip scoped/link-local fe80::/10 and unusable candidates, fall through to LAN/ULA, accurate refusal and preserved tunnel priority; new pure tests exercise each path. No dev merge or unrelated implementation change. C4 MIT vendor/no package dependency and C6 dated ADR/docs/help/guidance verified from source. C1/C2/C3/C5 await same-head configured execution. Secure is checked against the explicitly supplied Host+Origin rule, including documented missing-Origin GET behavior; forwarded headers confer no trust. A-8238 targeted macOS/static evidence is separate from full-suite/browser evidence. Proceed with normal mode-free verification at this exact unchanged head.
 
 Criteria: C4 verified, C6 verified.
+
+### rev-23 · 2026-10-21T10:08:55.422Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-988-final
+commit: c6e33d4e08d6084f4931a4053600994d7d0482e2
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final same-head clear; A-8251 audits A-8245/run 82a1276a at unchanged source-clear c6e33d4e. Linux x64 c-8 lon1 T1/all-T2 fallback across both packages exit 0: 2240 ordinary passes/343 files plus 55 load-test passes; all eleven new identities have five distinct passing load finishes. C1 actual web/spoke address test, C2 tunnel Host/exact Origin/Secure/no forwarded trust, C3 CLI refusal/tunnel/recorded-LAN plus independent QR vectors and corrected M1 wildcard policy, C5 stopped-hub and pure doctor warnings all passed; C4/C6 retain source proof. Recorded LAN case is synthetic, not actual phone/LAN/browser proof. No findings. Host check reference faa2c5cc682cea2b7ef4fcefa3b996a6f5ebc454 not repeated remotely; lint/duration/ratchet report-only, one missing baseline. Web explicitly not run for missing libraries/T-993; no T3/T4/stage/QA pass claimed. Coordinator ee908e3a-7029-4d28-bdc3-329adf312144 accepts this Linux receipt for enqueue and assigns Web to E-412 stage 3 macOS covers. Lifetime 447s, reported cost $0.0310.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified.

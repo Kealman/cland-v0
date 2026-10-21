@@ -2,8 +2,8 @@
 id: T-993
 kind: task
 title: The web phase on droplets
-state: open
-status: ready
+state: closed
+status: done
 size: S
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-789
 branch: t/T-993-the-web-phase-on-droplets
 created: 2026-10-20T16:51:40.674Z
-updated: 2026-10-21T09:51:51.639Z
+updated: 2026-10-21T10:13:50.767Z
+closed: 2026-10-21T10:13:50.767Z
 ---
 
 ## Summary
@@ -86,3 +87,7 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head clear; no findings. A-8232 audits A-8231/run 4a280f27-1de1-4d18-813e-35e582b7c03d at the unchanged source-reviewed head: configured Linux x64 c-8 lon1, T1 plus fallback all T2 across both packages, exit 0, 2232 ordinary passing test finishes/342 files, plus 15 load passes. All three new prepare-key identities have distinct 5/5 load finishes and summaries at lines 2214/2221/2357; all five ordinary prepare-key tests and existing 4-droplet/2-local planner test pass. C1 and revised C3 pre-merge unit proof established; C2/C4 retained. Host typecheck reference 74039d7f92349fbc24c84c10865ec533f81e913e was not repeated remotely; lint/duration/ratchet report-only. Web explicitly NOT RUN because the existing image lacks libraries, supplying no browser pass. Per Coordinator decision 87fa0856-6914-4c8d-8129-68b07e4bd11d/current C3, live Linux Web remains Coordinator-owned landing evidence after hub restart and executor prepare. No T3/T4/stage/after-stage QA pass claimed. Lifetime 408s, reported cost $0.0283.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-21T10:13:50.767Z
+
+Merged b65fb11ba31808e94eb9337b49fdf4fe98b52df8 onto dev.

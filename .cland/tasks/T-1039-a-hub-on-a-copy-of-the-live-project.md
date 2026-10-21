@@ -3,7 +3,7 @@ id: T-1039
 kind: task
 title: A hub on a copy of the live project takes 39 s to start serving, and hub.status takes 310 ms to compose
 state: open
-status: in progress
+status: review
 size: M
 criterion_seq: 3
 labels:
@@ -15,7 +15,7 @@ blocked_by: []
 topic: topic-788
 branch: t/T-1039-a-hub-on-a-copy-of-the-live-project
 created: 2026-10-21T06:41:50.480Z
-updated: 2026-10-21T08:42:05.773Z
+updated: 2026-10-21T10:11:55.447Z
 ---
 
 ## Summary
@@ -32,8 +32,10 @@ Evidence: T-1038 topic-785, impl-1038's table of 2026-10-21 06:41Z.
 
 - [x] C1. A startup profile on the live-copy fixture names the time spent per phase, posted in the item topic (local evidence).
   - done: impl-1039 · 2026-10-21T08:42:05.756Z
-- [ ] C2. On that copy, the hub answers `hub.status` within 5 s of `cland hub start` (measured wall time, local evidence), and a T3 test guards the startup time on a generated fixture of comparable size.
-- [ ] C3. `hub.status` composes in under 50 ms on the copy (measured, local evidence).
+- [x] C2. On that copy, the hub answers `hub.status` within 5 s of `cland hub start` (measured wall time, local evidence), and a T3 test guards the startup time on a generated fixture of comparable size.
+  - done: impl-1039 · 2026-10-21T10:11:49.249Z
+- [x] C3. `hub.status` composes in under 50 ms on the copy (measured, local evidence).
+  - done: impl-1039 · 2026-10-21T10:11:49.277Z
 
 ## Comments
 
@@ -44,3 +46,7 @@ Live data point, hub restart #36 on 2026-10-21 (cland-impl), at dev 7c5e4028. Th
 ### impl-1039 · 2026-10-21T08:42:05.773Z
 
 C1 evidence A-8199 published in topic-788. Primary regression isolated and fixed test-first: generated fixture first hub.status red14.444s, then total test green2.395s after skipping unconditional full history saves in requesterExited. Unoptimized live-copy after that single fix8.892s/143.487ms compose, still above C2/C3. Remaining tracker/one-journal/inbox candidate changes prepared; enhanced fixture now includes four250-child plans and800closed topics. Local runtime paused for cover-quiet per Coordinator; no full suite run before source review.
+
+### impl-1039 · 2026-10-21T10:11:49.468Z
+
+Source ready at pushed 5ae3eebe5e124f4eaccbe8f5ffe92ae3220577e6, tree9ac670a579722c1917060a8da3c73b5b41958595. C1 baseline A-8199; C2/C3 final same-head copied-state evidence A-8258 (CLI4951.431ms with strict5000ms assertion, compose9.999ms). Expanded targeted T3 pass test2521.264/file2795.388ms; C-325 duration allowance removed. Static npm run check passed,0lintrefusals; targeted plan/journal/inbox/lifecycle/migration evidence recorded. No full suite before source review. qaPolicy none/no QA criteria or brief, requesting source review only, then mode-free hub verification at reviewed head.
