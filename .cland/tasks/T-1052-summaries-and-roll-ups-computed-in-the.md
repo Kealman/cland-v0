@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-805
 branch: t/T-1052-summaries-and-roll-ups-computed-in-the
 created: 2026-10-21T14:04:14.472Z
-updated: 2026-10-21T14:58:35.648Z
+updated: 2026-10-21T15:42:01.750Z
 ---
 
 ## Summary
@@ -32,17 +32,18 @@ Each item summary in the snapshot and the deltas carries the summary text with i
 ## Acceptance criteria
 
 - [x] C1. A differential test runs the hub's summary rule and roll-ups and the Lua's (`explorer_summary.lua` and the Lua roll-ups, through headless Neovim) over every body of a copy of the live tracker and reports zero differences (test).
-  - done: impl-1052 · 2026-10-21T14:57:52.054Z
+  - done: impl-1052 · 2026-10-21T15:39:43.940Z
 - [x] C2. A frame client reads an item's summary with its provenance, a container's roll-ups, `blocked` and `next` from the snapshot, with no `task.view` (test).
-  - done: impl-1052 · 2026-10-21T14:57:52.075Z
+  - done: impl-1052 · 2026-10-21T15:39:43.962Z
 - [x] C3. A change to one task produces a delta that carries only that task and its ancestors whose fields changed, and the recomputation touches only that chain (test).
-  - done: impl-1052 · 2026-10-21T14:57:52.095Z
+  - done: impl-1052 · 2026-10-21T15:39:43.983Z
 - [x] C4. On a thousand-item fixture, recomputing after one task change stays under a measured bound recorded in the test, and the startup reply budgets of T-1038 still hold (test).
-  - done: impl-1052 · 2026-10-21T14:57:52.115Z
+  - done: impl-1052 · 2026-10-21T15:39:44.003Z
 - [x] C5. `hub/README.md` describes the new summary fields, their provenance and the incremental rule.
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-2 · 2026-10-21T14:52:30.592Z · commit 3a7b4f034b219461c7e87be4558a944a19fa9bc7
-  - done: impl-1052 · 2026-10-21T14:57:52.134Z
   - verified: rev-23 [reviewer] · run rev-20261021-1052-source-3 · 2026-10-21T14:58:35.648Z · commit e79e1231f323b223c469f89c6ed7de485b021c26
+  - done: impl-1052 · 2026-10-21T15:39:44.024Z
+  - verified: rev-23 [reviewer] · run rev-20261021-1052-source-4 · 2026-10-21T15:42:01.750Z · commit ada57feabc11c66dc531cb83c07fe1f03b2a3813
 
 ## Comments
 
@@ -107,5 +108,37 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Source clear; one-line deletion resolves M3. Exact origin e79e1231/tree43e82996; default-roles.ts equals incoming-dev baseline, existing Implementer skill pointer and full skill procedure/metadata/README guidance retained. No reserve/assertion/unrelated requirement edits or dev merge. Prior full source A-8488 and corrected design A-8498 remain applicable; M1/M2 runtime/tests unchanged. A-8507 original targeted Darwin27/27 clause output supports source fix, reported execution overlay is precisely this deletion. C5 reverified. Qualified corrected-Lua overlay A-8503 and clean3a7b4f03 startup-byte stdout A-8505 retained; neither is a current Linux T3 suite claim, and clause-only deletion changes no oracle/startup runtime dependency. C1-C4 final settlement awaits replacement exact-head mode-free test/load receipt. A-8504 remains historical red, noT2/Web. No Reviewer runtime; QA after-stage separate.
+
+Criteria: C5 verified.
+
+### impl-1052 · 2026-10-21T15:39:20.126Z
+
+Cancelled hung droplet verify 56752f57 at e79e1231 through the hub at Coordinator request; A-8525 retains Linux T1 green and incomplete T2 with 3 failures, no Web. A-8534 records exact targeted red assertions after cover-quiet lifted. Fixed each independently in ada57fea: lazy hydrate projection rows added through the real index adapter after startup, refresh cached source rows when restored receipt lookup binds, preserve internal write notifications for idempotent writes while HubCore still deduplicates unchanged client deltas. Original three targeted assertions now pass, including task-prefixes exiting normally without force-exit; complete affected files and summary guards are being validated. Fresh source review precedes replacement verification.
+
+### rev-23 · 2026-10-21T15:40:50.765Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-evidence-red-2
+commit: e79e1231f323b223c469f89c6ed7de485b021c26
+scope: evidence
+findings: [{"severity":"medium","text":"Cached projection can return an incomplete row for an indexed item absent from explorer.rows; task-prefixes workload subsequently throws on verdicts.length in #tipsMoved and its file does not exit. Hydrate cache misses while preserving bounded per-publication work.","file":"hub/src/tracker/tracker.ts","line":2004},{"severity":"medium","text":"Binding restored verification lookup after cached rows exist does not refresh verify facts; suite-admission's reopen assertion reads a null card. Refresh cached source facts on binding and retain the existing reopen assertions.","file":"hub/src/tracker/tracker.ts","line":2085},{"severity":"medium","text":"Whole-row equality suppresses internal tracker write observers as well as client deltas; inbox-workload's archive sweep assertion reports0 instead of1. Preserve internal write notifications while deduplicating unchanged external frames/ancestor work.","file":"hub/src/tracker/tracker.ts","line":668}]
+finding_counts: {"high":0,"medium":3,"low":0}
+
+Historical not clear: A-8525/56752f57 cancelled143 with completed T2 failures despite T1green/owned7x5loadpasses. Parsed ordinary1970pass/3fail, files309pass/2fail plus unfinishedtask-prefixes1837s; noWeb/T3/T4. A-8534 actual same-head pre-edit reds: TypeError undefined.length at #tipsMoved548; archive sweep0!==1 at inbox-archive-workload106; null.id at suite-admission49 reopened verify card. Three medium cache/observer compatibility findings: missing indexed-row hydration, stale lookup binding, suppressed internal idempotent-write observers. Runtime criteria remain unverified; own item checks passed individually, compatibility failures prevent final clearance. No extra done-mark resets for tests outside own criterion checks. Linuxx64c8lon1life2143s/$0.1488,host25acf65d reused; lint/durationreportonly,scale whole-test3.494s over2s not recompute measurement. New ada57fea correction request already arrived and awaits fresh source review; this is only historical e79e1231. No Reviewer execution.
+
+### rev-23 · 2026-10-21T15:42:01.750Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261021-1052-source-4
+commit: ada57feabc11c66dc531cb83c07fe1f03b2a3813
+scope: full
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Corrected source clear at exact originada57fea/treef5c4cebc; one-file13add/3delete sincee79e1231, no dev merge. Original full source/design audits remain applicable. Missing indexed rows hydrate on cache miss; useVerify refreshes cached source facts when restored lookup binds; #changed preserves internal idempotent-write observers while ordinary ancestor/freshness equality and HubCore client-delta dedup stay intact. Historical three compatibility failures resolved without changing their assertions. A-8537 exact clean-head localDarwin64 targeted passes across9files, normal exits/no force-exit, checkexit0/lintreportonly; wrong nonexistent stage filename ran no tests, corrected invocation5passesexplicitlylogged. A-8538 fresh exact-head targetedT3 Lua1063copied+3regression rows0differences/833088bytes and startup8replyguard1/1exit0 now replace old provenance-qualified support. No integrated/LinuxT3 claim; whole-test timings not startup latency. C5 docs reverified; C1-C4 final settlement awaits replacement same-head mode-free/load evidence. A-8525 remains historicalcancelled/incompleteT2red/noWeb; A-8542 records that verdict. No Reviewer runtime; after-stage QA separate.
 
 Criteria: C5 verified.
