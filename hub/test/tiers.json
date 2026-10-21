@@ -212,6 +212,7 @@
     "hub/test/nvim-item-prefixes-rules.test.ts": "T2",
     "hub/test/nvim-items-rules.test.ts": "T2",
     "hub/test/nvim-needs-you-rules.test.ts": "T2",
+    "hub/test/nvim-observation.test.ts": "T1",
     "hub/test/nvim-sessions-rules.test.ts": "T2",
     "hub/test/open.test.ts": "T3",
     "hub/test/opencode-adapter.test.ts": {

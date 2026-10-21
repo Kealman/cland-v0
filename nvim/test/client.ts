@@ -212,7 +212,7 @@ export async function createClient(t: TestContext, bin: string, root: string, en
       while (Date.now() < until) {
         last = await client.screen();
         const text = last.join('\n');
-        if (predicate(text)) return text;
+        if (predicate(text) && Date.now() < until) return text;
         await sleep(opts.screenPollMs ?? 40);
       }
       throw new Error(`the screen never showed ${what} within ${timeoutMs} ms:\n${last.map((l) => `|${l}|`).join('\n')}\n${stderr}`);

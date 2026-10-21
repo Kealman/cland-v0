@@ -487,6 +487,16 @@ line break can split a phrase such as `1 blocked` without changing its value.
 Keep the final value assertions and cover a deliberately narrow card so wrapping
 is exercised on every run (`test/progress-counts-component.test.ts`).
 
+Establish the panel layout before testing a fixed card width. A 90-column left
+panel retained across a screen resize can make the card occupy the 50-column
+right slot even with a saved width of 72. The progress test records that pending
+manual resize, then uses the Steady preset before exercising 72/42-column cards.
+Its explorer readiness observes the scoped tree, so matching text in the Items
+panel cannot satisfy it. Card observations include the selected/drawn identity,
+physical width, matching counts and buffer text in timeout diagnostics, with a
+one-second bound per observation. `eventually` and `waitScreen` reject a ready
+result received at or after their deadline; there is no timeout fallback.
+
 ```sh
 npm run test:nvim          # from the repository root; `npm test` runs it after the hub's tests
 ```

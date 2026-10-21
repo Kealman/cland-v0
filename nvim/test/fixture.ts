@@ -51,8 +51,13 @@ export async function eventually<T>(what: string, check: () => Promise<T | undef
   const deadline = Date.now() + timeoutMs;
   let last: unknown;
   while (Date.now() < deadline) {
-    try { const value = await check(); if (value !== undefined) return value; }
+    try {
+      const value = await check();
+      if (Date.now() < deadline && value !== undefined) return value;
+      if (value !== undefined) last = `late observation: ${JSON.stringify(value)}`;
+    }
     catch (error) { last = error; }
+    if (Date.now() >= deadline) break;
     await poll(50); // lint-allow-wall-clock: bounded polling of a client/control observation
   }
   throw new Error(`${what}: not within ${timeoutMs} ms${last ? ` (last error: ${String(last)})` : ''}`);

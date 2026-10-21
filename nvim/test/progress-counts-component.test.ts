@@ -66,9 +66,21 @@ test('board fractions and header include closed children before loading closed r
 
 test('release and epic cards preserve aggregate progress and open blocker counts across wrapped resizes', { skip }, async t => {
   const c = await start(t);
+  // Force the setup's manual 90-column panel resize to be recorded before the
+  // screen expands. This used to depend on when WinResized ran. Steady removes
+  // that panel so the responsive right-slot card cannot constrain 72 to 50.
+  await c.lua("local l=require('cland.layout'); l.flush_resize(); l.preset('steady')");
   await c.rpc.request('nvim_ui_try_resize', 260, 50);
   await c.input(':Cland explorer R-1<CR>');
-  await c.waitScreen(s => s.includes('Mixed progress') && s.includes('Completed children'), 'release explorer rows');
+  await eventually('release explorer rows', async () => {
+    const observed = await c.lua<{ scope: string | false; tree: boolean; rows: string[] }>(`local e=require('cland.explorer'); local w=e.tree_win()
+      return {view=require('cland.state').S.ui.view, scope=e.drawn_scope or false,
+        tree=w~=-1, rows=e.lines or {}}`);
+    assert.ok(observed.scope === 'R-1' && observed.tree
+      && observed.rows.some(line => line.includes('Mixed progress'))
+      && observed.rows.some(line => line.includes('Completed children')), JSON.stringify(observed));
+    return observed;
+  }, 1000);
   for (const [id, fraction, breakdown, width] of [
     ['R-1', '1 of 4 done', '1 done · 1 in progress · 1 planned · 1 backlog, 1 blocked', 72],
     ['R-1', '1 of 4 done', '1 done · 1 in progress · 1 planned · 1 backlog, 1 blocked', 42],
@@ -79,21 +91,27 @@ test('release and epic cards preserve aggregate progress and open blocker counts
     // Arm the observation before selection/resize. A drawn_key alone can still
     // name a render from the previous geometry; observe the progress itself.
     const drawn = eventually('aggregate progress rendered for ' + id + ' at width ' + width, async () => {
-      const lines = await c.lua<string[] | false>(`
-        local id, counts, width=...; local e=require('cland.explorer'); local card=e.card
-        local it=require('cland.state').item(id)
-        if not it or not vim.deep_equal(it.child_counts,counts) or card.key~=id or card.drawn_key~=id
-          or not card.win or not vim.api.nvim_win_is_valid(card.win)
-          or vim.api.nvim_win_get_width(card.win)~=width then return false end
-        return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(card.win),0,-1,false)
-      `, id, counts, width);
-      if (!lines) return;
-      const progress = lines.join('\n').split('\nPROGRESS\n')[1]?.split('\n\n')[0];
-      if (!progress) return;
+      const observed = await c.lua<{ counts: boolean; selected: string | false; key: string | false;
+        drawn: string | false; width: number | false; lines: string[] }>(`
+        local id, counts=...; local e=require('cland.explorer'); local card=e.card
+        local it=require('cland.state').item(id); local w=e.tree_win()
+        local valid=card.win and vim.api.nvim_win_is_valid(card.win)
+        return {counts=it~=nil and vim.deep_equal(it.child_counts,counts),
+          selected=w~=-1 and e.key_at(vim.api.nvim_win_get_cursor(w)[1]) or false,
+          key=card.key or false, drawn=card.drawn_key or false,
+          width=valid and vim.api.nvim_win_get_width(card.win) or false,
+          lines=valid and vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(card.win),0,-1,false) or {}}
+      `, id, counts);
+      const diagnostic = JSON.stringify(observed);
+      assert.ok(observed.counts && observed.selected === id && observed.key === id
+        && observed.drawn === id && observed.width === width, diagnostic);
+      const progress = observed.lines.join('\n').split('\nPROGRESS\n')[1]?.split('\n\n')[0];
+      assert.ok(progress, diagnostic);
       const text = progress.replace(/\s+/g, ' ').trim();
-      if (id === 'R-1' && width === 42 && progress.includes(breakdown)) return;
-      return text.includes(fraction) && text.includes(breakdown) ? { text, progress } : undefined;
-    });
+      assert.ok(text.includes(fraction) && text.includes(breakdown), diagnostic);
+      if (id === 'R-1' && width === 42) assert.ok(!progress.includes(breakdown), diagnostic);
+      return { text, progress };
+    }, 1000);
     await c.lua("local width=...; local e=require('cland.explorer'); e.ui().card_width=width; e.sync(e.tree_win())", width);
     await c.lua(`local id=...; local e=require('cland.explorer'); local w=e.tree_win(); vim.api.nvim_set_current_win(w);
       for n,row in ipairs(e.rows) do if row.key==id then vim.api.nvim_win_set_cursor(w,{n,0}); return end end; error('missing '..id)`, id);
