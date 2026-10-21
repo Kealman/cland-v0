@@ -19,6 +19,7 @@ export const WEB_AUTHORITY = {
   'artifact.list': true,
   'artifact.move': true,
   'artifact.promote': true,
+  'artifact.url': true,
   'config.set': 'changes project configuration',
   'crew.set': 'changes crew policy',
   'crew.show': true,

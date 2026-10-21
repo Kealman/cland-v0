@@ -14,6 +14,8 @@ export type WebAuthorityConformance = Assert<Equal<
 
 // Both required and optional fields, literal unions and nested payloads must agree.
 export type WireConformance = [
+  Assert<Equal<import('../src/protocol.ts').ArtifactUrl, Wire.ArtifactUrl>>,
+  Assert<Equal<import('../src/protocol.ts').ArtifactUrlResult, Wire.ArtifactUrlResult>>,
   Assert<Equal<typeof import('../src/protocol.ts').SNAPSHOT_LIMITS, typeof Wire.SNAPSHOT_LIMITS>>,
   Assert<Equal<import('../src/protocol.ts').ClientHello, Wire.ClientHello>>,
   Assert<Equal<import('../src/protocol.ts').SnapshotFrame, Wire.SnapshotFrame>>,

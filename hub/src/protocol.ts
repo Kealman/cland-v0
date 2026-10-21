@@ -589,6 +589,8 @@ export type DemoRequest =
   | { type: 'demo.exec'; id: string; epic: string; command: string[] }
   | { type: 'demo.stop' | 'demo.status'; id: string; epic: string; commit?: string };
 
+export type ArtifactUrl = { type: 'artifact.url'; id: string; artifact: string };
+export type ArtifactUrlResult = { url: string };
 export type WebLink = { type: 'web.link'; id: string };
 export type WebLinkResult = { url: string };
 export type WebSessions = { type: 'web.sessions'; id: string };
@@ -598,7 +600,7 @@ export type WebSessionsResult = { sessions: WebSession[] };
 export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
-  | WebLink | WebSessions | WebRevoke
+  | ArtifactUrl | WebLink | WebSessions | WebRevoke
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
@@ -909,6 +911,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return true;
     case 'merge':
       return typeof f.item === 'string' && (f.override === undefined || typeof f.override === 'string') && (f.cancel === undefined || typeof f.cancel === 'boolean');
+    case 'artifact.url':
     case 'artifact.delete':
       return typeof f.artifact === 'string' && /^A-[1-9][0-9]*$/.test(f.artifact);
     case 'artifact.create':

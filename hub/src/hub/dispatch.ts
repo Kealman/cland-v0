@@ -944,7 +944,7 @@ export class Dispatcher {
     });
   }
 
-  open(wire: Peer, transport: { authenticated: boolean; edge: string }): Conversation {
+  open(wire: Peer, transport: { authenticated: boolean; edge: string; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
     const core = this.#options.core;
     const log = this.#log;
     /** The calls in flight, by request id, waiting for their result to be audited. */
@@ -1628,6 +1628,10 @@ export class Dispatcher {
             break;
           case 'merge.queue':
             later('merge.queue', (this.#mergeQueue?.refresh() ?? Promise.resolve([])).then(entries => ({ type: 'result', id: frame.id, ok: true, value: { entries, batch: this.#batches?.snapshot() ?? null } })));
+            break;
+          case 'artifact.url':
+            if (transport.edge !== 'web' || !transport.artifactUrl) throw new Error('artifact.url requires the authenticated web edge');
+            peer.send({ type: 'result', id: frame.id, ok: true, value: transport.artifactUrl(frame.artifact) });
             break;
           case 'web.sessions':
             if (transport.edge !== 'socket') throw new Error('web.sessions requires the local Unix socket');

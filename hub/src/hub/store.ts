@@ -27,6 +27,12 @@ create table if not exists web_sessions (
   created_at integer not null, last_used_at integer not null
 );
 create index if not exists web_sessions_created on web_sessions (created_at);
+create table if not exists web_capabilities (
+  capability_hash text primary key,
+  session_id text not null references web_sessions (id) on delete cascade,
+  artifact_id text not null
+);
+create index if not exists web_capabilities_session on web_capabilities (session_id);
 create table if not exists merge_queue (
   number integer primary key autoincrement, item text not null unique, value text not null
 );
@@ -428,6 +434,19 @@ export class Store implements HygieneMemory {
   webSessions(): Array<{ id: string; createdAt: number; lastUsedAt: number }> {
     return (this.#prepare('select id, created_at, last_used_at from web_sessions order by created_at, id').all() as Row[])
       .map(row => ({ id: row.id as string, createdAt: row.created_at as number, lastUsedAt: row.last_used_at as number }));
+  }
+
+  createWebCapability(hash: string, session: string, artifact: string): void {
+    this.#prepare('insert into web_capabilities (capability_hash, session_id, artifact_id) values (?, ?, ?)').run(hash, session, artifact);
+  }
+
+  webCapability(hash: string): { session: string; artifact: string } | null {
+    const row = this.#prepare('select session_id, artifact_id from web_capabilities where capability_hash = ?').get(hash);
+    return row ? { session: row.session_id as string, artifact: row.artifact_id as string } : null;
+  }
+
+  webSessionActive(id: string, createdAfter: number): boolean {
+    return !!this.#prepare('select 1 from web_sessions where id = ? and created_at > ?').get(id, createdAfter);
   }
 
   revokeWebSession(id: string): boolean {

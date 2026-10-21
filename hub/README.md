@@ -292,6 +292,36 @@ including `merge`, queued `suite.start`, `suite.slot`, `suite.cancel`,
 recorded as the human's. Unix-socket clients retain their existing authority and
 handler preconditions. There is no `hub.restart` protocol frame.
 
+An authenticated web client mints an artifact bearer URL with
+`artifact.url {artifact: "A-3"}`; the result is `{url}` on the same page origin,
+for example `http://127.0.0.1:<webPort>/a/<random-capability>/index.html`.
+This frame requires a cookie-authenticated web connection; Unix sockets, stdio
+and agent sessions cannot mint it. Each mint creates an independent random
+256-bit capability tied to that connection's cookie session and one artifact.
+Every mint returns a new capability. Only its SHA-256 digest, session id and
+artifact id are persisted in `hub.db`; the URL survives a hub restart. Capability
+rows cascade away when their session is deleted or pruned. A URL stops working
+immediately when its cookie session is revoked or reaches its fixed 30-day
+expiry, including on an already-open minting connection.
+
+`GET` and `HEAD /a/<capability>/<file>` require no cookie. A file artifact exposes
+only its file name; a folder exposes its regular files, with the entry file in
+the minted URL. Relative references such as `style.css` retain the capability
+and resolve from the page's directory. Moved artifact ids resolve to their file
+inside the owning folder, without granting the rest of that folder. Unknown,
+deleted, expired or revoked capabilities return 404; dot segments, traversal,
+backslashes and symlink escapes are refused. MIME types follow the extension
+(with `application/octet-stream` for unknown extensions). Responses use
+`Cache-Control: no-store`, `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: no-referrer` and `Content-Security-Policy: sandbox allow-scripts`.
+HTML can run scripts and load its own relative assets in an opaque origin;
+never combine `allow-scripts` with `allow-same-origin` on an artifact iframe.
+File opens reject symlinks in every ancestor: Linux walks directory descriptors
+through `/proc/self/fd` (procfs is required), while macOS uses `O_NOFOLLOW_ANY`.
+A directory renamed after admission cannot redirect an opened Linux parent;
+macOS checks the entire path during open. Other platforms refuse artifact reads.
+Treat the whole URL as a bearer credential and avoid sharing or logging it.
+
 The spoke finds its hub through `.cland/hub.json` (`CLAND_HUB_FILE` names it, else the nearest one walking up from its cwd), and reads it again before every reconnect, so it follows a restarted hub to its new port. `CLAND_HUB_URL` and `CLAND_HUB_SECRET` override discovery. `CLAND_SESSION_ID`, `CLAND_SESSION_NAME` and `CLAND_ROLE` are optional; on a project's hub `CLAND_ROLE` is only a request (see Roles). `CLAND_HUB_RECONNECT_MS`, `CLAND_HUB_KEEPALIVE_MS`, `CLAND_HUB_REQUEST_TIMEOUT_MS` and `CLAND_HUB_WELCOME_TIMEOUT_MS` set the timings, for tests. A session an adapter launched sets `CLAND_DELIVERY=adapter`: the spoke then only accepts deliveries and the adapter injects them. Otherwise the spoke delivers into the session as a Claude Code channel notification (a research preview, kept small and isolated in `spoke.ts`). `CLAND_TEST_TASK_WRITE_GATE`, read by `cland hub serve`, names a test-only directory: the next tracker temporary write consumes its `armed` file, writes `entered`, and waits until the test creates `release` before proceeding to rename. Tests arm it after fixture setup, then release it after the competing operation; nothing else sets it. Also for tests only: `CLAND_QUEUE_TTL_MS` shortens the queue TTL (how long a queued message and a remembered name last), and `CLAND_TEST_CRASH_AT=handover-committed` kills the hub right after a handover's transaction committed (`launch-reserved`: right after a launch reserved its role, before the spawn).
 
 The spoke's `session.launch` tool takes `name` and optional `role`, `model`, `harness`, `effort` and `cwd`. `cwd` is an absolute path or a path relative to the project root; omitting it runs the session at the project root. For example, `session.launch {"name":"impl-45","role":"implementer","cwd":".cland/worktrees/T-45"}` launches the Implementer in that worktree. A missing, inaccessible or non-directory path is refused before launch with `{"ok":false,"code":"invalid-cwd","error":"…"}`. With `item` instead (`session.launch {"name":"impl-45","role":"implementer","item":"T-45"}`), the hub makes or reuses the item's task worktree first and starts the session there (Task branches and worktrees, below).

@@ -1,0 +1,44 @@
+// T1: the explicitly required digest-only persistence and cascade storage boundary.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { Store } from '../src/hub/store.ts';
+import { WebAuth } from '../src/hub/web-auth.ts';
+import { WebArtifacts } from '../src/hub/web-artifacts.ts';
+
+test('capability rows persist only digests and cascade away with revoked or expired sessions', t => {
+  const root = mkdtempSync(join(tmpdir(), 'cland-capabilities-'));
+  const path = join(root, 'hub.db');
+  let store = new Store(path);
+  const reader = new DatabaseSync(path, { readOnly: true });
+  t.after(() => { reader.close(); store.close(); rmSync(root, { recursive: true, force: true }); });
+  let now = 1000;
+  const auth = new WebAuth(root, store, () => now);
+  const cookie = auth.redeem(auth.mint())!;
+  const session = auth.session(`${auth.cookieName}=${cookie}`)!;
+  const a = store.registerArtifact(id => ({ id, title: 'Persisted file', kind: 'page', path: '/fixture/page.html', creator: 'human', creatorKind: 'human', topic: 'general', status: 'shared', time: new Date(now).toISOString() }), () => {});
+  const capabilities = new WebArtifacts(store, auth);
+  const { url } = capabilities.mint(session, a.id, 'http://127.0.0.1:1234');
+  const token = new URL(url).pathname.split('/')[2]!;
+  const hash = createHash('sha256').update(token).digest('hex');
+  const rows = () => reader.prepare('select * from web_capabilities').all().map(row => ({ ...row }));
+  assert.deepEqual(rows(), [{ capability_hash: hash, session_id: session, artifact_id: a.id }]);
+  assert.ok(!JSON.stringify(rows()).includes(token));
+  store.close();
+  store = new Store(path);
+  assert.deepEqual(store.webCapability(hash), { session, artifact: a.id });
+  const reopened = new WebAuth(root, store, () => now);
+  assert.equal(reopened.revoke(session), true);
+  assert.deepEqual(rows(), []);
+  const nextCookie = reopened.redeem(reopened.mint())!;
+  const nextSession = reopened.session(`${reopened.cookieName}=${nextCookie}`)!;
+  new WebArtifacts(store, reopened).mint(nextSession, a.id, 'http://127.0.0.1:1234');
+  assert.equal(rows().length, 1);
+  now += 30 * 24 * 60 * 60 * 1000;
+  assert.equal(reopened.active(nextSession), false);
+  assert.deepEqual(rows(), []);
+});

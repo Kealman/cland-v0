@@ -1554,6 +1554,18 @@ and filtered environments through the shared fixtures. Both `open` and
 cannot launch the human's browser or touch its keychain. Real browser checks
 belong to the dedicated headless web phase (T-991/T-992).
 
+`web-artifacts.test.ts` exercises `artifact.url` on a cookie-authenticated web
+client and cookie-free HTTP reads at T2. It covers extension types, file/folder
+confinement, traversal and symlink refusal, HTML sandbox headers, relative
+stylesheets, revocation and the fixed session expiry with an injected clock.
+It also restarts the in-process hub to prove capability persistence and covers
+moved-file owning-folder substitution. The injected filesystem open port swaps
+a folder parent at the final open boundary: Linux must serve the already-anchored
+file, macOS must refuse the symlink, and neither can return the outside bytes.
+`web-artifacts-unit.test.ts` checks digest-only database rows and cascading
+removal on revocation and expiry at T1. The frame is web-only; local test clients create source artifacts and manage
+sessions through the Unix socket. Capability digests persist beside their cookie sessions across hub restarts.
+
 ## Thread history pages
 
 `hub/src/hub/store.test.ts` covers numeric `topic.history` pagination at T1 through

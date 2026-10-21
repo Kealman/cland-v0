@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
 import { MAX_FRAME_BYTES } from '../protocol.ts';
 import type { WebEdgeStatus, WebLinkResult, WebSessionsResult, WebRevokeResult } from '../protocol.ts';
+import { WebArtifacts } from './web-artifacts.ts';
 import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
@@ -22,6 +23,10 @@ const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json',
   '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml',
+  '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
+  '.htm': 'text/html; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
+  '.pdf': 'application/pdf', '.wasm': 'application/wasm',
   '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
 };
 
@@ -31,7 +36,7 @@ function allowedHost(req: IncomingMessage): boolean {
   return hosts.length === 1 && [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`].includes(req.headers.host?.toLowerCase() ?? '');
 }
 
-async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth): Promise<void> {
+async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: string, auth: WebAuth, artifacts: WebArtifacts): Promise<void> {
   // Supply Date directly: Node's automatic Date cache creates a process-global timer.
   res.setHeader('Date', new Date().toUTCString());
   res.setHeader('Content-Security-Policy', CSP);
@@ -56,6 +61,20 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
   catch { reply(400, 'Malformed path'); return; }
   if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\') || path.includes('\0') || path.split('/').includes('..')) {
     reply(403, 'Path outside the web bundle');
+    return;
+  }
+  if (path.startsWith('/a/')) {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const file = await artifacts.read(path);
+      if (!file) { reply(404, 'Artifact file not found'); return; }
+      const mime = MIME[extname(file.name).toLowerCase()] ?? 'application/octet-stream';
+      // The response policy applies even when opened outside the workbench iframe.
+      res.setHeader('Content-Security-Policy', 'sandbox allow-scripts');
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Length', file.body.length);
+      res.writeHead(200).end(req.method === 'HEAD' ? undefined : file.body);
+    } catch { reply(404, 'Artifact file not found'); }
     return;
   }
   if (path === '/auth') {
@@ -120,9 +139,10 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
 }
 
 /** A selected origin never drifts when its port is occupied. The daemon holds the project lock. */
-export async function createWebEdge(options: { root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; dist?: string }): Promise<WebEdge> {
+export async function createWebEdge(options: { artifactOpen?: typeof import('node:fs/promises').open; root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; dist?: string }): Promise<WebEdge> {
   const clock = options.clock ?? realClock;
   const auth = new WebAuth(await realpath(options.root), options.store, () => clock.now().getTime());
+  const artifacts = new WebArtifacts(options.store, auth, options.artifactOpen);
   const link = () => {
     if (!http.listening) throw new Error('the web edge is unavailable');
     return { url: `http://127.0.0.1:${port}/auth?token=${auth.mint()}` };
@@ -130,7 +150,7 @@ export async function createWebEdge(options: { root: string; store: Store; dispa
   const file = join(options.stateDir, 'web-port');
   let port = options.port ?? 0;
   const dist = resolve(options.dist ?? fileURLToPath(new URL('../../../web/dist/', import.meta.url)));
-  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth); });
+  const http = createServer((req, res) => { void serveBundle(req, res, dist, auth, artifacts); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
   const sockets = new Map<WebSocket, { alive: boolean; session: string }>();
   http.on('upgrade', (req, socket, head) => {
@@ -143,16 +163,16 @@ export async function createWebEdge(options: { root: string; store: Store; dispa
     if (req.url !== '/ws') { refuse(404, 'Not Found'); return; }
     const session = auth.session(req.headers.cookie);
     if (!session) { refuse(401, 'Unauthorized'); return; }
-    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session));
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session, req.headers.host!));
   });
-  wss.on('connection', (ws: WebSocket, session: string) => {
+  wss.on('connection', (ws: WebSocket, session: string, host: string) => {
     const state = { alive: true, session };
     sockets.set(ws, state);
     const conversation = options.dispatcher.open({
       send: frame => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),
       isOpen: () => ws.readyState === WebSocket.OPEN,
-    }, { authenticated: true, edge: 'web' });
+    }, { authenticated: true, edge: 'web', artifactUrl: id => artifacts.mint(session, id, `http://${host}`) });
     ws.on('message', data => conversation.receive(data.toString()));
     ws.on('pong', () => { state.alive = true; });
     ws.on('close', () => {

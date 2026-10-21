@@ -396,6 +396,7 @@ export async function isolateVerification(root: string): Promise<void> {
 }
 
 export type ProjectHubOptions = {
+  artifactOpen?: typeof import('node:fs/promises').open;
   syntheticProvider?: SyntheticProvider;
   scratchAccountPaths?: ScratchAccountPaths;
   scratchGitConfig?: ScratchGitConfig;

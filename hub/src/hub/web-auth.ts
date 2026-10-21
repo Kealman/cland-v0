@@ -59,5 +59,11 @@ export class WebAuth {
     return this.#store.webSessions().map(row => ({ id: row.id, createdAt: new Date(row.createdAt).toISOString(), lastUsedAt: new Date(row.lastUsedAt).toISOString() }));
   }
 
+  /** Capabilities check the same fixed session lifetime without requiring its cookie. */
+  active(id: string): boolean {
+    this.#prune();
+    return this.#store.webSessionActive(id, this.#now() - WEB_SESSION_SECONDS * 1000);
+  }
+
   revoke(id: string): boolean { return this.#store.revokeWebSession(id); }
 }
