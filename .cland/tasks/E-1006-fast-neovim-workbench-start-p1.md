@@ -12,7 +12,7 @@ blocked_by: []
 topic: topic-772
 branch: null
 created: 2026-10-20T17:00:31.060Z
-updated: 2026-10-21T09:42:05.926Z
+updated: 2026-10-21T09:43:08.904Z
 ---
 
 ## Summary
@@ -178,3 +178,7 @@ C1 live evidence: the human's Mac, 2026-10-21 09:40:37Z, dev 7c5e4028 (hub pid 9
 - Hub RSS was 678 MB, with one CPU spike to 28 % for under 5 s and no macOS memory pressure.
 - Hub audit of the Neovim spoke, 09:40:37–09:41:24Z: the startup set was issued exactly once, against three times each in the failed run. The calls were subscribe, topic.list, hub.status, role.list, inbox.list, rule.list, session.list, artifact.list, task.list, account.list and events.list once each; topic.history, account.poll, task.view and topic.read twice each; task.plan 12 times; topic.send once.
 - C2: cland-impl's 10-minute idle sampler is running on this Neovim, and its figures follow.
+
+### coord · 2026-10-21T09:43:08.904Z
+
+C1 figure from the human, relayed by the stand-in cland-impl at 09:4xZ on 2026-10-21: «Ну он запустился меньше чем за 3с, точнее посчитать не успеваю». The workbench was usable in under 3 s on the human's Mac with the live tracker (1,036 items), too fast to time more precisely. Together with the 09:40Z samples above, I consider C1 met. The epic's QA demo verifies C1 from this local evidence; C2 waits for the 10-minute idle sampler.
