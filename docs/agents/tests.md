@@ -1522,7 +1522,10 @@ never remove the live session's identity to mint a link. In a disposable project
 `projectHub` plus `askHubFrame(discovery, {type: 'web.link'}, 3000, {})` mints a
 link for a test client. Trade it at `/auth` and supply the returned per-project
 cookie and exact page Origin on `/ws`; the hello is a client hello without a
-secret. Cookie sessions stay in memory until T-982.
+secret. Cookie sessions persist in `hub.db` as SHA-256 hashes, with public ids
+and creation/last-use timestamps; expiry is fixed at 30 days after creation, not renewed by admission.
+`web.sessions` and `web.revoke` also require a human test client on the Unix
+socket. Session shells, browser sockets and stdio cannot manage browser sessions.
 
 Web authority is a separate request boundary: `hub/src/hub/web-authority.ts`
 classifies every human request and denies missing rows before replay or actor
@@ -1535,9 +1538,15 @@ preconditions: they do not publish, invoke Git or acquire provider resources.
 Use the scratch hub and filtered HOME/XDG/Git fixture for both edges.
 
 `web-auth-unit.test.ts` covers digest storage, one-time spending and expiry with
-an injected clock at T1. `web-auth.test.ts` covers the executable CLI, HTTP,
-upgrade checks, client/spoke admission and secret leakage at T2 with an
-in-process project hub. Run `npm run build` before that targeted file: the leak
+an injected clock at T1. It also reads the explicit acceptance row to verify
+cookie hash-only persistence and last-use updates across store reopenings.
+`web-auth.test.ts` restarts an in-process hub twice on one disposable project to
+prove cookie persistence; no process lifecycle assertion requires a daemon.
+Its executable `web --sessions`/`--revoke` tests count sockets, arm close observers
+before revoking, assert the server `web-session-socket-closed` receipts by CLI
+return, and separately bound client closure plus cookie refusal. It also
+covers HTTP upgrade checks, client/spoke admission and secret leakage at T2
+with an in-process project hub. Run `npm run build` before that targeted file: the leak
 scan requests every file of the actual installed bundle. The root check already
 builds it before suite tests. The tests use scratch HOME/XDG/Git configuration
 and filtered environments through the shared fixtures. Both `open` and
@@ -1571,7 +1580,7 @@ Clause procedure (defaults implementer, project implementer):
 
 ## Web phase
 
-For human-only sign-in and web authority policy tests, follow
+For human-only sign-in, session management and web authority policy tests, follow
 [Browser sign-in fixtures](#browser-sign-in-fixtures).
 
 Browser tests carry `Web` in `hub/test/tiers.json`, outside T0–T3, with a separate

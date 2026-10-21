@@ -1,16 +1,29 @@
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
-import type { WebLinkResult } from '../protocol.ts';
+import type { WebLinkResult, WebSessionsResult, WebRevokeResult } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 import { WEB_USAGE } from './usage.ts';
 
 export async function runWeb(args: string[], cwd = process.cwd()): Promise<number> {
-  const { values } = parseArgs({ args, options: { 'no-open': { type: 'boolean' }, help: { type: 'boolean', short: 'h' } } });
+  const { values } = parseArgs({ args, options: { 'no-open': { type: 'boolean' }, sessions: { type: 'boolean' }, revoke: { type: 'string' }, help: { type: 'boolean', short: 'h' } } });
   if (values.help) { process.stdout.write(WEB_USAGE); return 0; }
+  if ([values['no-open'], values.sessions, values.revoke !== undefined].filter(Boolean).length > 1) throw new Error('--no-open, --sessions and --revoke cannot be combined');
+  if (values.revoke === '') throw new Error('--revoke needs a session id');
   const d = readDiscovery(hubDiscovery(cwd));
   if (!d) throw new Error('no hub runs for this project — run `cland hub start`');
   // askHubFrame includes the shell's CLAND_SESSION_* actor; the hub refuses it.
+  if (values.sessions) {
+    const { sessions } = await askHubFrame(d, { type: 'web.sessions' }) as WebSessionsResult;
+    process.stdout.write('ID  CREATED  LAST USED  SOCKETS\n');
+    for (const session of sessions) process.stdout.write(`${session.id}  ${session.createdAt}  ${session.lastUsedAt}  ${session.sockets}\n`);
+    return 0;
+  }
+  if (values.revoke !== undefined) {
+    const { revoked } = await askHubFrame(d, { type: 'web.revoke', session: values.revoke }) as WebRevokeResult;
+    process.stdout.write(`Revoked ${revoked}\n`);
+    return 0;
+  }
   const { url } = await askHubFrame(d, { type: 'web.link' }) as WebLinkResult;
   process.stdout.write(`${url}\n`);
   if (values['no-open']) return 0;

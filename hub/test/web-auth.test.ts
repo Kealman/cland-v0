@@ -56,10 +56,10 @@ test('cland web --no-open prints a single-use link; auth sets the cookie and red
   assert.equal((await get(url.replace(/token=.*/, 'token=unknown'))).status, 401);
 });
 
-async function signIn(t: TestContext) {
+async function signIn(t: TestContext, log: (entry: Record<string, unknown>) => void = () => {}) {
   const root = await tempProject(t);
   const clock = new FakeClock();
-  const hub = await projectHub(t, root, {}, { clock });
+  const hub = await projectHub(t, root, {}, { clock, log });
   const { url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
   const response = await get(url);
   return { root, hub, clock, url, origin: new URL(url).origin, cookie: response.headers['set-cookie']![0]!.split(';')[0]! };
@@ -127,7 +127,7 @@ test("web.link refuses a session's shell even with an unknown identity", async t
   const root = await tempProject(t);
   const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
   await assert.rejects(askHubFrame(hub.discovery, { type: 'web.link' }, 3000, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }), /only the human/);
-  const result = await clandWithEnv(root, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }, 'web', '--no-open');
+  const result = await clandWithEnv(root, { ...await openers(root), CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }, 'web', '--no-open');
   assert.equal(result.code, 1);
   assert.equal(result.stdout, '');
   assert.match(result.stderr, /only the human/);
@@ -191,3 +191,92 @@ test('server pings reap a browser that does not return a pong', async t => {
   await clock.advance(30_000);
   assert.equal((await closed)[0], 1006);
 });
+
+// C1: restart the served hub on the same project, with no real hub process needed.
+test('a persisted cookie opens /ws after two hub starts on one project', async t => {
+  const { root, hub: first, origin, cookie } = await signIn(t);
+  const before = await browser(t, origin, cookie);
+  const welcome = before.client.waitFor(frame => frame.type === 'welcome');
+  before.client.send({ type: 'hello', protocol: 2, client: 'web' });
+  await welcome;
+  const closed = once(before.ws, 'close', { signal: AbortSignal.timeout(2000) });
+  await first.stop();
+  await closed;
+  const second = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const after = await browser(t, origin, cookie);
+  const welcomed = after.client.waitFor(frame => frame.type === 'welcome');
+  after.client.send({ type: 'hello', protocol: 2, client: 'web' });
+  assert.equal((await welcomed).name, 'human');
+  assert.equal((await after.client.request({ type: 'hub.status' })).ok, true);
+  const listing = await askHubFrame(second.discovery, { type: 'web.sessions' }, 3000, {}) as { sessions: Array<{ sockets: number }> };
+  assert.equal(listing.sessions.length, 1);
+  assert.equal(listing.sessions[0]!.sockets, 1);
+});
+
+test('cland web lists timestamps and socket counts and revokes only the chosen session within the call', async t => {
+  const serverCloses: string[] = [];
+  const { root, hub, clock, origin, cookie } = await signIn(t, entry => {
+    if (entry.event === 'web-session-socket-closed') serverCloses.push(String(entry.session));
+  });
+  const env = await openers(root);
+  const initial = await clandWithEnv(root, env, 'web', '--sessions');
+  assert.equal(initial.code, 0, initial.stderr);
+  const fields = initial.stdout.trim().split('\n')[1]!.trim().split(/\s+/);
+  const [id, createdAt, lastUsedAt, sockets] = fields;
+  assert.match(id!, /^[a-f0-9-]{36}$/);
+  assert.equal(createdAt, clock.now().toISOString());
+  assert.equal(lastUsedAt, createdAt);
+  assert.equal(sockets, '0');
+  await clock.advance(1000);
+  const first = await browser(t, origin, cookie, false);
+  const second = await browser(t, origin, cookie, false);
+  const { url } = await askHubFrame(hub.discovery, { type: 'web.link' }, 3000, {}) as { url: string };
+  const otherCookie = (await get(url)).headers['set-cookie']![0]!.split(';')[0]!;
+  const other = await browser(t, origin, otherCookie);
+  const listed = await clandWithEnv(root, env, 'web', '--sessions');
+  assert.equal(listed.code, 0, listed.stderr);
+  assert.ok(listed.stdout.includes(`${id}  ${createdAt}  ${clock.now().toISOString()}  2`), listed.stdout);
+  // Arm client waits before the action, but assert the server's own close
+  // receipts at CLI return; notifications on separate client sockets may lag.
+  const closes = [first.ws, second.ws].map(ws => once(ws, 'close', { signal: AbortSignal.timeout(2000) }));
+  const revoked = await clandWithEnv(root, env, 'web', '--revoke', id!);
+  assert.equal(revoked.code, 0, revoked.stderr);
+  assert.deepEqual(serverCloses, [id, id], 'selected server sockets closed before CLI return');
+  await Promise.all(closes);
+  assert.equal(first.ws.readyState, WebSocket.CLOSED);
+  assert.equal(second.ws.readyState, WebSocket.CLOSED);
+  assert.equal(other.ws.readyState, WebSocket.OPEN);
+  const remaining = await askHubFrame(hub.discovery, { type: 'web.sessions' }, 3000, {}) as { sessions: Array<{ id: string; sockets: number }> };
+  assert.equal(remaining.sessions.length, 1);
+  assert.notEqual(remaining.sessions[0]!.id, id);
+  assert.equal(remaining.sessions[0]!.sockets, 1);
+  const refused = await get(`${origin}/ws`, {
+    Origin: origin, Cookie: cookie, Connection: 'Upgrade', Upgrade: 'websocket',
+    'Sec-WebSocket-Version': '13', 'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+  });
+  assert.equal(refused.status, 401);
+  assert.equal((await clandWithEnv(root, env, 'web', '--revoke', id!)).code, 1);
+  await assert.rejects(readFile(join(root, 'opened')), { code: 'ENOENT' });
+});
+
+for (const type of ['web.sessions', 'web.revoke'] as const) {
+  test(`${type} refuses browser and session-shell requests`, async t => {
+    const { root, hub, origin, cookie } = await signIn(t);
+    const frame = type === 'web.revoke' ? { type, session: 'unknown' } : { type };
+    await assert.rejects(askHubFrame(hub.discovery, frame, 3000, { CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }), /only the human/);
+    const flags = type === 'web.revoke' ? ['--revoke', 'unknown'] : ['--sessions'];
+    const env = await openers(root);
+    const result = await clandWithEnv(root, { ...env, CLAND_SESSION_ID: 'unknown', CLAND_SESSION_NAME: 'session' }, 'web', ...flags);
+    await assert.rejects(readFile(join(root, 'opened')), { code: 'ENOENT' });
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /only the human/);
+    const { client } = await browser(t, origin, cookie);
+    const welcome = client.waitFor(frame => frame.type === 'welcome');
+    client.send({ type: 'hello', protocol: 2, client: 'web' });
+    await welcome;
+    const refused = await client.request(frame) as { ok: boolean; error?: string; code?: string };
+    assert.equal(refused.ok, false);
+    assert.equal(refused.code, 'cli-neovim-only');
+    assert.match(refused.error!, /CLI and Neovim/);
+  });
+}

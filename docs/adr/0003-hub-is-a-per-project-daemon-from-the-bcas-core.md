@@ -39,6 +39,8 @@ request over the Unix socket mints a one-time link, `/auth` trades it for the
 per-project `cland_<key>` HttpOnly, SameSite=Strict cookie, and `/ws` checks
 Host, exact Origin and cookie before accepting a secret-free client hello as
 the human. `<key>` is the first 12 hex digits of SHA-256 of the canonical
-project root; cookies are not isolated by port. Links and cookie sessions are
-held as digests in memory here; T-982 adds session persistence. The hub secret
+project root; cookies are not isolated by port. Links stay in memory as digests. T-982 persists cookie-session digests with ids,
+creation and last-use times in `hub.db`; they survive restarts and expire 30 days
+after creation. Human-only Unix-socket `web.sessions` and `web.revoke` list them
+and revoke one with its sockets closed before returning. The hub secret
 never crosses the browser edge.

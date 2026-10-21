@@ -22,6 +22,11 @@ export type ReleasedDigest = { trigger: string; session: string; notes: string[]
 
 export type HeartbeatSchedule = { sessionId: string; role: string; interval: number; last: number; next: number };
 const SCHEMA = `
+create table if not exists web_sessions (
+  id text primary key, cookie_hash text not null unique,
+  created_at integer not null, last_used_at integer not null
+);
+create index if not exists web_sessions_created on web_sessions (created_at);
 create table if not exists merge_queue (
   number integer primary key autoincrement, item text not null unique, value text not null
 );
@@ -409,6 +414,28 @@ export class Store implements HygieneMemory {
         have.add(column);
       }
     }
+  }
+
+  createWebSession(id: string, cookieHash: string, now: number): void {
+    this.#prepare('insert into web_sessions (id, cookie_hash, created_at, last_used_at) values (?, ?, ?, ?)').run(id, cookieHash, now, now);
+  }
+
+  useWebSession(cookieHash: string, now: number, createdAfter: number): string | null {
+    const row = this.#prepare('update web_sessions set last_used_at = ? where cookie_hash = ? and created_at > ? returning id').get(now, cookieHash, createdAfter);
+    return row ? row.id as string : null;
+  }
+
+  webSessions(): Array<{ id: string; createdAt: number; lastUsedAt: number }> {
+    return (this.#prepare('select id, created_at, last_used_at from web_sessions order by created_at, id').all() as Row[])
+      .map(row => ({ id: row.id as string, createdAt: row.created_at as number, lastUsedAt: row.last_used_at as number }));
+  }
+
+  revokeWebSession(id: string): boolean {
+    return this.#prepare('delete from web_sessions where id = ?').run(id).changes > 0;
+  }
+
+  pruneWebSessions(createdThrough: number): void {
+    this.#prepare('delete from web_sessions where created_at <= ?').run(createdThrough);
   }
 
   mergeQueue(): MergeQueueEntry[] {

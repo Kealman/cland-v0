@@ -187,6 +187,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
   let adapters: ProjectSessions | null = null;
   let accountPoller: AccountPoller | null = null;
   let web: WebEdge | null = null;
+  let store: Store;
   let ws: WebSocketEdge | null = null;
   let edge: SocketEdge | null = null;
   try {
@@ -224,7 +225,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
       log({ event: 'events-restore-failed', error: err instanceof Error ? err.message : String(err) });
     }
     log({ event: 'hub-startup-step', step: 'restoring hub state', pid: process.pid });
-    const store = new Store(l.db, options.openDatabase);
+    store = new Store(l.db, options.openDatabase);
     log({ event: 'hub-startup-storage', suiteJobsBytes: Buffer.byteLength(store.meta('suite-jobs') ?? '[]', 'utf8'), pid: process.pid });
     hub = createHubBase({
       clock,
@@ -260,6 +261,14 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
       // tests only: how long a queued message and a remembered name last (the default is a day)
       ...(Number(env.CLAND_QUEUE_TTL_MS) > 0 ? { queueTtlMs: Number(env.CLAND_QUEUE_TTL_MS) } : {}),
       control: {
+        webSessions: () => {
+          if (!web) throw new Error('the web edge is unavailable');
+          return web.sessions();
+        },
+        webRevoke: id => {
+          if (!web) throw new Error('the web edge is unavailable');
+          return web.revoke(id);
+        },
         webLink: () => {
           if (!web?.status.available) throw new Error('the web edge is unavailable');
           return web.link();
@@ -380,7 +389,7 @@ export async function serveProject(root: string, options: { priorityProbe?: () =
     return { layout: l, discovery: null, hub, log, stopped, storageFailed, stop, reload: () => roles.reload(), get storageAbandoned() { return tracker.storageStatus().abandoned.length > 0; } };
   }
 
-  web = await createWebEdge({ root, dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
+  web = await createWebEdge({ root, store, log, dispatcher: hub.dispatcher, clock, stateDir: l.dir, ...(config ? { port: config.web.port, ...(config.web.dist ? { dist: resolve(root, config.web.dist) } : {}) } : {}) });
   if (!web.status.available) log({ event: 'web-unavailable', ...web.status });
 
   // the adapters: launched harness sessions, re-found after a restart once the hub is reachable again

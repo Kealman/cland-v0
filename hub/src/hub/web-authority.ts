@@ -100,6 +100,8 @@ export const WEB_AUTHORITY = {
   'topic.send': true,
   'visibility.set': true,
   'web.link': 'mints a local sign-in link',
+  'web.sessions': 'lists local browser sessions',
+  'web.revoke': 'revokes a local browser session',
   'worktree.list': true,
   'worktree.prune': 'deletes worktrees and branches',
 } satisfies Record<HumanRequest['type'], WebRule>;

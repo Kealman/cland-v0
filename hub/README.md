@@ -230,9 +230,28 @@ HEAD returns 405 without spending the link. Auth responses use `no-store` and
 The cookie is `cland_<key>`, where `<key>` is the first 12 hex digits of SHA-256
 of the project's canonical root, with `Path=/`, `HttpOnly`, `SameSite=Strict`
 and `Max-Age=2592000` (30 days). Its value is a separate random credential,
-held only as a digest in memory. Cookie names differ across projects because
-cookies are not isolated by port. Restarting the hub clears links and browser
-sessions in this version; persistence follows under T-982.
+stored only as a SHA-256 digest in `hub.db`'s `web_sessions` table, with a separate
+public UUID, creation time and last-use time. Cookie names differ across projects
+because cookies are not isolated by port. Restarting the hub clears unused links
+but keeps browser sessions. A session expires exactly 30 days after creation;
+using it never extends that lifetime. Last use records a successful `/ws` admission.
+The additive table/index migration does not rewrite or backfill message history.
+
+`cland web --sessions` prints `ID`, `CREATED`, `LAST USED` (UTC ISO timestamps)
+and `SOCKETS` for each unexpired cookie session, including sessions with no open
+sockets. `cland web --revoke <id>` deletes that session's admission and terminates
+all its sockets, waiting for their server-side close events before returning.
+The process log records `web-session-socket-closed` with the public session id
+after each server socket closes and its conversation is cleaned up.
+Other sessions stay connected; the deleted cookie is refused immediately and
+after a restart. Unknown ids fail. These commands never open a browser or mint
+a link; `--no-open`, `--sessions` and `--revoke` cannot be combined.
+
+Like `web.link`, `{type: "web.sessions", id}` and
+`{type: "web.revoke", id, session: "<uuid>"}` require the human's local Unix
+socket (not browser, spoke or stdio). Their result values are
+`{sessions: [{id, createdAt, lastUsedAt, sockets}]}` and `{revoked: "<uuid>"}`.
+No cookie or digest is returned by listing. Session shells are refused.
 
 Every `/ws` upgrade checks the exact loopback Host and port, an Origin exactly
 matching `http://<Host>`, and the project's unexpired cookie before accepting
@@ -259,7 +278,7 @@ In 0.2.0, these actions stay in the CLI and Neovim:
 
 - `hub.stop`, `hub.reload`, `release`, `sync`, `push`, `publish`;
 - `config.set`, `crew.set`, `executor.prepare`, `executor.reap`,
-  `executor.retire-legacy`, `task.migrate`, `web.link`;
+  `executor.retire-legacy`, `task.migrate`, `web.link`, `web.sessions`, `web.revoke`;
 - `session.signal`, `worktree.prune`, `artifact.delete`, `suite.forced`,
   `task.import`, `demo.start`, `demo.exec`, `demo.stop`, `demo.status`;
 - `artifact.create` carrying a `path`, including alongside `content`;

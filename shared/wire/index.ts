@@ -720,9 +720,14 @@ export type DemoRequest =
 // hub/src/protocol.ts
 export type WebLink = { type: 'web.link'; id: string };
 export type WebLinkResult = { url: string };
+export type WebSessions = { type: 'web.sessions'; id: string };
+export type WebRevoke = { type: 'web.revoke'; id: string; session: string };
+export type WebSession = { id: string; createdAt: string; lastUsedAt: string; sockets: number };
+export type WebSessionsResult = { sessions: WebSession[] };
+export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
-  | WebLink
+  | WebLink | WebSessions | WebRevoke
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }

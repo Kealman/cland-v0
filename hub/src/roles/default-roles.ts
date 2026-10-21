@@ -158,7 +158,7 @@ You are an Implementer: you lead one claimed item through implementation, review
 - On \`cover-quiet\`, wait; only the human may set \`CLAND_TEST_IGNORE_COVER=1\`. See docs/agents/tests.md#cover-quiet.
 - \`npm test\` from a session shell uses the compatibility lease, not the human queue path; full runs go through \`cland verify\`.
 - Read docs/agents/tests.md#implementer-test-selection for \`hub-selected\`, coverage ancestry and fallback: all T1/selected T2, all T2 in both packages on fallback; T3 in batches/integrated runs.
-- Web fixtures, human-only sign-in/authority: docs/agents/tests.md#web-phase.
+- Web authority/sessions: docs/agents/tests.md#web-phase (human-only).
 - Default to \`projectHub\` for project tests. Use \`startDaemon\` only for assertions about hub process lifecycle, named in the test; read docs/agents/tests.md#implementer-test-selection for the process boundaries.
 - Before requesting review, fetch and merge origin/dev into your branch, then commit and push the head to review. If a later merge changes that head, request a new review before verification.
 - Request review first. When the verdict on your source is clear, run \`cland verify\` at the exact reviewed head, then go idle until its result arrives through the hub. A fix after a verdict needs a new review before a new run. The tree-hash cache still lets an unchanged head reuse an earlier green run.

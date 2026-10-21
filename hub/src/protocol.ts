@@ -559,9 +559,14 @@ export type DemoRequest =
 
 export type WebLink = { type: 'web.link'; id: string };
 export type WebLinkResult = { url: string };
+export type WebSessions = { type: 'web.sessions'; id: string };
+export type WebRevoke = { type: 'web.revoke'; id: string; session: string };
+export type WebSession = { id: string; createdAt: string; lastUsedAt: string; sockets: number };
+export type WebSessionsResult = { sessions: WebSession[] };
+export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
-  | WebLink
+  | WebLink | WebSessions | WebRevoke
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
@@ -895,12 +900,15 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
     case 'config.set':
     case 'crew.set':
       return typeof f.key === 'string' && f.value !== undefined;
+    case 'web.revoke':
+      return typeof f.session === 'string' && f.session.length > 0;
     case 'task.migrate':
       return f.dryRun === true;
     case 'crew.show':
     case 'executor.status':
     case 'executor.reap':
     case 'hub.subscriptions':
+    case 'web.sessions':
     case 'web.link':
     case 'hub.status':
     case 'hub.stop':

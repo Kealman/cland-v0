@@ -1,4 +1,7 @@
 // The browser's listener is independent of the authenticated spoke edge.
+import { once } from 'node:events';
+import type { Store } from './store.ts';
+import type { LogFn } from '../log.ts';
 import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile, realpath, rename, stat, writeFile } from 'node:fs/promises';
@@ -7,12 +10,12 @@ import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
 import { MAX_FRAME_BYTES } from '../protocol.ts';
-import type { WebEdgeStatus, WebLinkResult } from '../protocol.ts';
+import type { WebEdgeStatus, WebLinkResult, WebSessionsResult, WebRevokeResult } from '../protocol.ts';
 import { WebAuth, WEB_SESSION_SECONDS } from './web-auth.ts';
 import { realClock, type Clock } from './clock.ts';
 import type { Dispatcher } from './dispatch.ts';
 
-export type WebEdge = { status: WebEdgeStatus; link: () => WebLinkResult; close: () => Promise<void> };
+export type WebEdge = { status: WebEdgeStatus; link: () => WebLinkResult; sessions: () => WebSessionsResult; revoke: (id: string) => Promise<WebRevokeResult>; close: () => Promise<void> };
 
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const MIME: Record<string, string> = {
@@ -117,9 +120,9 @@ async function serveBundle(req: IncomingMessage, res: ServerResponse, dist: stri
 }
 
 /** A selected origin never drifts when its port is occupied. The daemon holds the project lock. */
-export async function createWebEdge(options: { root: string; dispatcher: Dispatcher; clock?: Clock; stateDir: string; port?: number; dist?: string }): Promise<WebEdge> {
+export async function createWebEdge(options: { root: string; store: Store; dispatcher: Dispatcher; log?: LogFn; clock?: Clock; stateDir: string; port?: number; dist?: string }): Promise<WebEdge> {
   const clock = options.clock ?? realClock;
-  const auth = new WebAuth(await realpath(options.root), () => clock.now().getTime());
+  const auth = new WebAuth(await realpath(options.root), options.store, () => clock.now().getTime());
   const link = () => {
     if (!http.listening) throw new Error('the web edge is unavailable');
     return { url: `http://127.0.0.1:${port}/auth?token=${auth.mint()}` };
@@ -129,7 +132,7 @@ export async function createWebEdge(options: { root: string; dispatcher: Dispatc
   const dist = resolve(options.dist ?? fileURLToPath(new URL('../../../web/dist/', import.meta.url)));
   const http = createServer((req, res) => { void serveBundle(req, res, dist, auth); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_FRAME_BYTES });
-  const sockets = new Map<WebSocket, boolean>();
+  const sockets = new Map<WebSocket, { alive: boolean; session: string }>();
   http.on('upgrade', (req, socket, head) => {
     const refuse = (code: number, reason: string) => {
       socket.write(`HTTP/1.1 ${code} ${reason}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
@@ -138,31 +141,53 @@ export async function createWebEdge(options: { root: string; dispatcher: Dispatc
     // Match the actual page origin, including its Host spelling and port.
     if (!allowedHost(req) || req.headers.origin !== `http://${req.headers.host}`) { refuse(403, 'Forbidden'); return; }
     if (req.url !== '/ws') { refuse(404, 'Not Found'); return; }
-    if (!auth.accepts(req.headers.cookie)) { refuse(401, 'Unauthorized'); return; }
-    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws));
+    const session = auth.session(req.headers.cookie);
+    if (!session) { refuse(401, 'Unauthorized'); return; }
+    wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, session));
   });
-  wss.on('connection', (ws: WebSocket) => {
-    sockets.set(ws, true);
+  wss.on('connection', (ws: WebSocket, session: string) => {
+    const state = { alive: true, session };
+    sockets.set(ws, state);
     const conversation = options.dispatcher.open({
       send: frame => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),
       isOpen: () => ws.readyState === WebSocket.OPEN,
     }, { authenticated: true, edge: 'web' });
     ws.on('message', data => conversation.receive(data.toString()));
-    ws.on('pong', () => sockets.set(ws, true));
-    ws.on('close', () => { sockets.delete(ws); conversation.closed(); });
+    ws.on('pong', () => { state.alive = true; });
+    ws.on('close', () => {
+      sockets.delete(ws);
+      conversation.closed();
+      options.log?.({ event: 'web-session-socket-closed', session });
+    });
     ws.on('error', () => { /* close follows */ });
   });
   // Browsers cannot send protocol pings themselves. Two missed server pings
   // reap a disconnected page without requiring application keepalive frames.
   const ping = clock.setInterval(() => {
-    for (const [ws, alive] of sockets) {
-      if (!alive) { ws.terminate(); continue; }
-      sockets.set(ws, false);
+    for (const [ws, state] of sockets) {
+      if (!state.alive) { ws.terminate(); continue; }
+      state.alive = false;
       if (ws.readyState === WebSocket.OPEN) ws.ping();
     }
   }, 30_000);
   ping.unref();
+  const sessions = (): WebSessionsResult => ({ sessions: auth.sessions().map(session => ({
+    ...session, sockets: [...sockets].filter(([ws, state]) => state.session === session.id && ws.readyState === WebSocket.OPEN).length,
+  })) });
+  const revoke = async (id: string): Promise<WebRevokeResult> => {
+    // Delete admission first, then observe every server close before replying. A
+    // hard close also covers peers that never complete a close handshake.
+    if (!auth.revoke(id)) throw new Error(`unknown web session: ${id}`);
+    const closed: Promise<unknown>[] = [];
+    for (const [ws, state] of sockets) {
+      if (state.session !== id) continue;
+      closed.push(once(ws, 'close'));
+      ws.terminate();
+    }
+    await Promise.all(closed);
+    return { revoked: id };
+  };
   let closing: Promise<void> | undefined;
   const close = () => closing ??= (async () => {
     clock.clearInterval(ping);
@@ -193,9 +218,9 @@ export async function createWebEdge(options: { root: string; dispatcher: Dispatc
       await writeFile(`${file}.tmp`, `${port}\n`, { mode: 0o600 });
       await rename(`${file}.tmp`, file);
     }
-    return { status: { port, available: true }, link, close };
+    return { status: { port, available: true }, link, sessions, revoke, close };
   } catch (error) {
     await close();
-    return { status: { port, available: false, reason: error instanceof Error ? error.message : String(error) }, link, close };
+    return { status: { port, available: false, reason: error instanceof Error ? error.message : String(error) }, link, sessions, revoke, close };
   }
 }
