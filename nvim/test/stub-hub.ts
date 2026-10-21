@@ -462,7 +462,7 @@ function answer(f: Frame) {
       if (scenario.summaryLists) {
         items = items.filter(i => !f.state || i.state === f.state);
         if (f.projection === 'summary') {
-          const fields = new Set(['id','kind','title','state','status','size','labels','parent','blocked_by','open_blockers','claim','holds','criteria','updated','closed','version','rank','rank_set','verdicts']);
+          const fields = new Set(['id','kind','title','state','status','size','labels','parent','blocked_by','open_blockers','claim','holds','criteria','updated','closed','version','rank','rank_set','verdicts','child_counts']);
           items = items.map(i => {
             const row = Object.fromEntries(Object.entries(i).filter(([key]) => fields.has(key)));
             const latest = new Map<string, Record<string, unknown>>(), rounds = new Map<string, number>();

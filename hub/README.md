@@ -2302,7 +2302,7 @@ The optional `summary` projection returns id, kind, title, state, task status an
 labels, parent, blockers, claim, verifier holds and criteria counts.
 `open_blockers` resolves the still-open blocker ids in the hub's complete index.
 Task events carry this field too; closing, reopening or deleting a blocker refreshes
-its dependents. Unknown blockers remain open. The default list shape stays unchanged.
+its dependents. Unknown blockers remain open.
 It retains version, explicit rank, updated/closed times for ordering and cache invalidation, and only the
 latest verdict per kind in file order, including its original `round`. Verdict reasons,
 findings, bodies, comments, full criteria, plans, verification and index bookkeeping
@@ -2310,6 +2310,14 @@ are excluded; selected cards read those through `task.view`. State and other exi
 filters combine normally. Unknown projections refuse. Omitting `projection` preserves
 the existing response, including the CLI's `cland task list --json`; the CLI adds no
 projection flag. Neovim requests open summaries first and closed summaries on demand.
+Container summaries (including default lists and task events) include `child_counts`:
+`total`, `done`, a sparse `statuses` histogram and `work` counts for `in progress`,
+`review` and `qa`. The complete tracker index supplies these before list filters
+apply, so unloaded closed children count from the first render. Progress counts a
+release's direct containers and other containers' direct tasks; release work counts
+all descendant tasks. Other work counts direct tasks. Closing, reopening, moving,
+creating or removing a child publishes refreshed parent/ancestor task events;
+clients do not need to re-read the list. Closed rows still load only on demand.
 
 Lane order is a separate `follows` list beside `blocked_by` in epic frontmatter. Set it with `cland task create "Next epic" --kind epic --follows E-1`, or `cland task link E-2 --follows E-1`; remove an edge with `--unfollow E-1`. Repeated flags and the matching `task.create` / `task.link` tool fields take multiple ids. Any recognized prefix or bare number resolves to the canonical epic id; non-epic endpoints and cycles refuse. `task.view`, the card and explorer show follows beside blockers. Only `blocked_by` marks an item blocked.
 

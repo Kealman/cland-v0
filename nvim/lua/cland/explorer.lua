@@ -559,8 +559,17 @@ local function container_cols(ix, it, cols)
     local st = M.leaf_status(k)
     if work[st] then work[st] = work[st] + 1 end
   end
+  local total = #members
+  if type(it.child_counts) == 'table' then
+    local counts = it.child_counts
+    done_n, total, work = counts.done, counts.total, counts.work
+    statuses = {}
+    for _, st in ipairs(M.BAR_ORDER) do
+      for _ = 1, counts.statuses[st] or 0 do statuses[#statuses + 1] = st end
+    end
+  end
   local out = {}
-  local frac = (#members == 0) and '—' or (done_n .. '/' .. #members)
+  local frac = (total == 0) and '—' or (done_n .. '/' .. total)
   append(out, col({ { frac, M.done(it) and 'ClandDone' or 'ClandDim' } }, 5))
   out[#out + 1] = { ' ' }
   append(out, col(M.cells(statuses, cols.bar), cols.bar, 'left'))

@@ -459,9 +459,11 @@ export type LimitWindow = { id: string; label: string; usedPercent: number; rese
 export type LimitSource = { kind: 'session'; session: string } | { kind: 'poll' };
 
 // hub/src/tracker/tracker.ts
-export type ItemSummary = IndexedItem & { plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+export type ChildCounts = { total: number; done: number; statuses: Partial<Record<Status, number>>; work: Record<'in progress' | 'review' | 'qa', number> };
 
-export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set'> & {
+export type ItemSummary = IndexedItem & { child_counts?: ChildCounts; plan?: EpicPlan | null; planError?: string; approval?: { required: boolean; state: 'pending' | 'approved' | 'not required'; by?: string; at?: string }; open_blockers?: string[]; criteria: CriteriaCounts; verify?: VerifyResult | null; layer?: Layer; claim: Claim | null; holds: VerifierHold[]; verdicts: IndexedVerdict[]; verdictBase: string | null };
+
+export type ExplorerSummary = Pick<ItemSummary, 'id' | 'kind' | 'title' | 'state' | 'status' | 'size' | 'labels' | 'parent' | 'blocked_by' | 'claim' | 'holds' | 'criteria' | 'updated' | 'closed' | 'version' | 'rank_set' | 'child_counts'> & {
   open_blockers: string[];
   rank?: number;
   verdicts: Array<Pick<IndexedVerdict, 'verdict' | 'result' | 'by' | 'run' | 'at' | 'scope' | 'current'> & { round: number }>;

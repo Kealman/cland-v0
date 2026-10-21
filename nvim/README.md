@@ -796,3 +796,9 @@ General history keeps complete messages within a byte-capped page. `A` in its
 thread reads older pages, including pages shorter than 200 messages. The startup
 smoke guards every reply at 256 KiB and all eight reads at 1 MiB, retaining the
 stricter 128 KiB first-item and three-second rendered-startup limits.
+Container progress and status bars read the hub's `child_counts`, computed from
+all indexed children before filtering, so closed tasks count before their rows
+are loaded. Parent task events refresh these counts without another list read;
+closed summaries remain lazy. Release progress counts its direct containers,
+while its work columns count descendant tasks; epic/category progress counts
+direct tasks.

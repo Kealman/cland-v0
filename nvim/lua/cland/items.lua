@@ -501,11 +501,13 @@ local function right_of(it, container)
     for _, k in ipairs(kids) do
       done = done + (k.state == 'closed' and 1 or 0)
     end
+    local total = #kids
+    if type(it.child_counts) == 'table' then done, total = it.child_counts.done, it.child_counts.total end
     local lead = M.lead_label(it)
     if lead then
       out[#out + 1] = { lead .. ' ', 'ClandTeal' }
     end
-    out[#out + 1] = { done .. '/' .. #kids, 'ClandDim' }
+    out[#out + 1] = { done .. '/' .. total, 'ClandDim' }
   else
     local c = M.claim(it)
     if c then

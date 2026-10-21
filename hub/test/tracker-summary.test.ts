@@ -143,9 +143,9 @@ test('summary projection bounds the first open payload in a thousand-item tracke
   const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), git: async () => null, readBase: async () => null });
   t.after(async () => { await tracker.stop(); await rm(root, { recursive: true, force: true }); });
   const at = '2026-01-01T00:00:00.000Z';
-  for (let n = 1; n <= 1000; n++) await writeFile(join(root, `.cland/tasks/T-${n}-fixture.md`), serializeItem({
-    fm: { id: `T-${n}`, kind: 'task', title: `Fixture item ${n}`, state: n <= 100 ? 'open' : 'closed',
-      status: n <= 100 ? 'planned' : 'done', size: 'M', labels: [], assignee: null, parent: null,
+  for (let n = 1; n <= 1000; n++) await writeFile(join(root, `.cland/tasks/${n === 99 || n === 100 ? 'E' : 'T'}-${n}-fixture.md`), serializeItem({
+    fm: { id: `${n === 99 || n === 100 ? 'E' : 'T'}-${n}`, kind: n === 99 || n === 100 ? 'epic' : 'task', title: `Fixture item ${n}`, state: n <= 100 ? 'open' : 'closed',
+      ...(n === 99 || n === 100 ? {} : { status: n <= 100 ? 'planned' : 'done', size: 'M' }), labels: [], assignee: null, parent: n === 99 || n === 100 ? null : n <= 500 ? 'E-99' : 'E-100',
       blocked_by: n === 1 ? ['T-1000'] : [], topic: null, branch: null, created: at, updated: at },
     body: '## Summary\n' + 'Long agents text. '.repeat(100) + '\n\n## Acceptance criteria\n- [ ] C1. Works.',
     comments: [1, 2, 3].map(round => ({ author: 'reviewer', at, text: 'A long verdict reason. '.repeat(10),
@@ -158,6 +158,8 @@ test('summary projection bounds the first open payload in a thousand-item tracke
   assert.deepEqual(full.items, tracker.list(), 'no projection keeps the existing list contract');
   const open = await list({ projection: 'summary', state: 'open' });
   assert.equal(open.items.length, 100);
+  assert.equal((open.items.find(i => i.id === 'E-99')?.child_counts as { total: number }).total, 498);
+  assert.equal((open.items.find(i => i.id === 'E-100')?.child_counts as { done: number }).done, 500);
   assert.deepEqual(open.items[0]?.blocked_by, ['T-1000']);
   assert.deepEqual(open.items[0]?.open_blockers, [], 'closed blocker stays resolved without loading its row');
   assert.ok(Buffer.byteLength(JSON.stringify(open)) < 60_000, 'first open-only payload stays under 60 KB');
@@ -181,4 +183,78 @@ test('summary projection bounds the first open payload in a thousand-item tracke
   changes.length = 0;
   await tracker.edit(human, 'T-1000', { state: 'closed' });
   assert.ok(changes.some(c => c.id === 'T-1' && c.item?.open_blockers?.length === 0), 'closing refreshes the dependent event');
+});
+
+// T1: the public summary projection counts children absent from an open-only list.
+test('open summaries count closed children in mixed and completed epics', async t => {
+  const root = await tempProject(t);
+  const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), git: async () => null, readBase: async () => null });
+  t.after(() => tracker.stop());
+  const at = '2026-01-01T00:00:00.000Z';
+  const rows = [
+    { id: 'R-1', kind: 'release', parent: null },
+    { id: 'E-2', kind: 'epic', parent: 'R-1' },
+    { id: 'E-3', kind: 'epic', parent: 'R-1' },
+    { id: 'C-4', kind: 'category', parent: null },
+    { id: 'E-5', kind: 'epic', parent: 'R-1', state: 'closed' as const },
+    { id: 'T-6', kind: 'task', parent: 'C-4', status: 'qa' as const },
+    { id: 'T-7', kind: 'task', parent: 'C-4', status: 'in progress' as const },
+    { id: 'Q-8', kind: 'question', parent: 'C-4' },
+    ...Array.from({ length: 18 }, (_, n) => ({ id: `T-${n + 10}`, kind: 'task', parent: n < 13 ? 'E-2' : 'E-3',
+      state: n < 9 || n >= 13 ? 'closed' as const : 'open' as const, status: n < 9 || n >= 13 ? 'done' as const : n === 9 ? 'review' as const : 'planned' as const })),
+  ];
+  for (const row of rows) await writeFile(join(root, `.cland/tasks/${row.id}-fixture.md`), serializeItem({
+    fm: { title: row.id, state: 'open', labels: [], assignee: null, blocked_by: [], topic: null, branch: null, created: at, updated: at, ...row },
+    body: '', comments: [],
+  }));
+  tracker.rescan();
+  const result = await handleTaskRequest(tracker, { type: 'task.list', id: 'list', projection: 'summary', state: 'open' },
+    { id: 'human', name: 'human', role: null }) as { items: Array<Record<string, unknown>> };
+  const counts = (id: string) => result.items.find(row => row.id === id)?.child_counts;
+  assert.deepEqual(counts('E-2'), { total: 13, done: 9, statuses: { done: 9, review: 1, planned: 3 }, work: { 'in progress': 0, review: 1, qa: 0 } });
+  assert.deepEqual(counts('E-3'), { total: 5, done: 5, statuses: { done: 5 }, work: { 'in progress': 0, review: 0, qa: 0 } });
+  assert.deepEqual(counts('R-1'), { total: 3, done: 1, statuses: { 'in progress': 1, backlog: 1, done: 1 }, work: { 'in progress': 0, review: 1, qa: 0 } });
+  assert.deepEqual(counts('C-4'), { total: 2, done: 0, statuses: { qa: 1, 'in progress': 1 }, work: { 'in progress': 1, review: 0, qa: 1 } });
+  assert.deepEqual(tracker.listSummaries({ state: 'closed', kind: 'epic' })[0]?.child_counts,
+    { total: 0, done: 0, statuses: {}, work: { 'in progress': 0, review: 0, qa: 0 } });
+  assert.equal(result.items.some(row => row.state === 'closed'), false);
+  assert.equal(result.items.some(row => row.kind === 'task' && Object.hasOwn(row, 'child_counts')), false);
+});
+
+// T1: existing task change notifications carry refreshed aggregates, without a list request.
+test('task events refresh both container paths when a child changes state or parent', async t => {
+  const root = await tempProject(t);
+  const tracker = new Tracker({ root, db: ':memory:', clock: new FakeClock(), git: async () => null, readBase: async () => null });
+  t.after(() => tracker.stop());
+  const human = { id: 'human', name: 'human', role: null, human: true };
+  const release = await tracker.create(human, { kind: 'release', title: 'Release' });
+  const epic = await tracker.create(human, { kind: 'epic', title: 'Epic', parent: release.id });
+  const other = await tracker.create(human, { kind: 'epic', title: 'Other', parent: release.id });
+  const child = await tracker.create(human, { title: 'Task', size: 'S', parent: epic.id });
+  const changes: ItemChange[] = [];
+  tracker.onChange(change => changes.push(change));
+  await tracker.edit(human, child.id, { title: 'Renamed child' });
+  assert.deepEqual(changes.map(c => c.id), [child.id], 'unchanged parent aggregates do not emit task frames');
+  changes.length = 0;
+  await tracker.edit(human, child.id, { state: 'closed' });
+  assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.done, 1);
+  assert.equal(changes.find(c => c.id === release.id)?.item?.child_counts?.work.review, 0);
+  changes.length = 0;
+  await tracker.edit(human, child.id, { state: 'open', status: 'review' });
+  assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.done, 0);
+  assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.work.review, 1);
+  assert.equal(changes.find(c => c.id === release.id)?.item?.child_counts?.work.review, 1);
+  changes.length = 0;
+  await tracker.link(human, child.id, { parent: other.id });
+  assert.equal(changes.find(c => c.id === epic.id)?.item?.child_counts?.total, 0);
+  assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.total, 1);
+  assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.work.review, 1);
+  assert.equal(changes.find(c => c.id === release.id)?.item?.child_counts?.work.review, 1);
+  changes.length = 0;
+  const extra = await tracker.create(human, { title: 'New child', size: 'S', parent: other.id });
+  assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.total, 2);
+  changes.length = 0;
+  await rm(join(root, extra.path));
+  tracker.rescan();
+  assert.equal(changes.find(c => c.id === other.id)?.item?.child_counts?.total, 1);
 });

@@ -103,6 +103,41 @@ test('explorer fetches open summaries first, closed summaries on expansion, and 
   await c.waitScreen(s => s.includes('Editable item body.'), 'edit resolves file from task.view');
 });
 
+// T2: counts are protocol facts; the first render has no closed task rows.
+test('container progress includes unloaded closed children and follows parent task events', {skip}, async t => {
+  const mixed = {id:'E-2',kind:'epic',title:'Mixed progress',parent:'R-1',state:'open',
+    child_counts:{total:13,done:9,statuses:{done:9,review:1,planned:3},work:{'in progress':0,review:1,qa:0}}};
+  const complete = {id:'E-3',kind:'epic',title:'Completed children',parent:'R-1',state:'open',
+    child_counts:{total:5,done:5,statuses:{done:5},work:{'in progress':0,review:0,qa:0}}};
+  const {c,control} = await stub(t,{...fixture,summaryLists:true,items:[
+    {id:'R-1',kind:'release',title:'Progress release',state:'open'},mixed,complete,
+    ...Array.from({length:18},(_,n)=>({id:`T-${n+10}`,kind:'task',title:`Child ${n}`,parent:n<13?'E-2':'E-3',
+      state:n<9||n>=13?'closed':'open',status:n<9||n>=13?'done':n===9?'review':'planned'})),
+  ]});
+  const row = (id:string) => c.lua<string>("local id=...;local e=require('cland.explorer');for n,r in ipairs(e.rows) do if r.key==id then return vim.api.nvim_buf_get_lines(e.b,n-1,n,false)[1] end end;error('missing row '..id)",id);
+  await c.waitScreen(s=>s.includes('Mixed progress')&&s.includes('Completed children'),'container rows rendered');
+  assert.match(await row('E-2'), /9\/13/);
+  assert.match(await row('E-3'), /5\/5/);
+  assert.equal(await c.lua("return require('cland.state').item('T-10') ~= nil"),false);
+  assert.equal(await c.lua("return require('cland.state').S.closed_items_loaded"),false);
+  const changed = {...mixed,child_counts:{total:13,done:10,statuses:{done:10,planned:3},work:{'in progress':0,review:0,qa:0}}};
+  const updated = c.waitScreen(s=>/Mixed progress[^\n]*10\/13/.test(s),'updated parent progress');
+  await control({emits:[
+    {type:'task',id:'T-19',item:{id:'T-19',kind:'task',title:'Child 9',parent:'E-2',state:'closed',status:'done'}},
+    {type:'task',id:'E-2',item:changed},
+  ]});
+  await updated;
+  assert.match(await row('E-2'), /10\/13/);
+  assert.deepEqual((await control({requests:true})).requests.filter(r=>r.type==='task.list').map(r=>[r.projection,r.state]),[['summary','open']]);
+  await c.input('<Esc><Space>i6zR');
+  await eventually('items panel renders the same complete progress', async () => await c.lua<boolean>(`
+    local p=require('cland.panels');local b=p.buf('items')
+    if not b or not vim.api.nvim_buf_is_valid(b) then return false end
+    local text=table.concat(vim.api.nvim_buf_get_lines(b,0,-1,false),'\\n')
+    return text:match('Mixed progress[^\\n]*10/13')~=nil and text:match('Completed children[^\\n]*5/5')~=nil
+  `) || undefined);
+});
+
 test('item search loads closed summaries without a startup closed request', {skip}, async t => {
   const {c,control} = await stub(t,{...fixture,summaryLists:true,items:[
     {id:'R-1',kind:'release',title:'Current release',state:'open',version:'0.2.0'},

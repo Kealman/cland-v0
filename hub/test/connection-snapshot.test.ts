@@ -155,7 +155,8 @@ test('slim task frames carry only changed layers, including changes to other ite
   assert.equal((delta.item as { title: string }).title, 'Renamed first');
   assert.equal(Object.hasOwn(delta, 'items'), false);
   assert.deepEqual(delta.layers, {}, 'unchanged layers are not resent');
-  const movedFrame = featured.waitFor(f => f.type === 'task' && f.id === first);
+  const movedFrame = featured.waitFor(f => f.type === 'task' && f.id === first
+    && (f.item as { version?: string } | null)?.version === '3.0.0');
   const edited = await ui.request({ type: 'task.edit', item: first, version: '3.0.0' });
   assert.equal(edited.ok, true, edited.error);
   const moved = await movedFrame;
