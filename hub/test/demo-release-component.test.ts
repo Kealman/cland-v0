@@ -5,13 +5,14 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { flushProjectLogs } from './harness.ts';
 import { fixture } from './remote-fixture.ts';
+import { startDemo } from './demo-start.ts';
 import { readLease } from '../src/executor/droplet/lease.ts';
 import { drive } from './remote-clock.ts';
 
 test('demo stop keeps an accepted active deletion pending beyond two seconds and confirms a later 404', async t => {
   const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100' } });
   const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Slow deleting demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
-  const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
+  const started = await drive(f, startDemo(t, f.root, f.ui, { epic })); assert.equal(started.ok, true, started.error);
   const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
   f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = true;
   const stopped = await drive(f, f.ui.request({ type: 'demo.stop', epic })); assert.equal(stopped.ok, true, stopped.error);
@@ -40,7 +41,7 @@ test('demo stop reports accepted deletion timeouts with either tag state', async
     assert.equal((await drive(f, f.ui.request({ type: 'role.set', session: 'demo-coord', role: 'coordinator' }))).ok, true);
     const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Stuck deleting demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
     const topic = ((await drive(f, f.ui.request({ type: 'topic.create', item: epic, title: 'Stuck deleting demo' }))).value as { topic: { id: string } }).topic.id;
-    const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
+    const started = await drive(f, startDemo(t, f.root, f.ui, { epic })); assert.equal(started.ok, true, started.error);
     const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
     f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = stripTags;
     try {
@@ -76,7 +77,7 @@ test('demo stop reports accepted deletion timeouts with either tag state', async
 test('demo stop confirms a slow earlier deletion with empty tags and frees its slot and reservation', async t => {
   const f = await fixture(t, { machine: 'scripted', config: 'remote_budget = 1\n', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '5000', CLAND_TEST_DROPLET_POLL_MS: '1000' } });
   const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Already deleting demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
-  const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
+  const started = await drive(f, startDemo(t, f.root, f.ui, { epic })); assert.equal(started.ok, true, started.error);
   const lease = (started.value as { lease: string }).lease;
   const other = ((await f.ui.request({ type: 'task.create', title: 'Next demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const blocked = await f.ui.request({ type: 'demo.start', epic: other });
@@ -108,7 +109,7 @@ test('demo stop confirms a slow earlier deletion with empty tags and frees its s
   assert.deepEqual(value.leases, []);
   assert.equal(value.spend.reserved, 0); assert.ok(value.spend.spent > 0);
   f.api.faults.deletePolls = 0;
-  const next = await drive(f, f.ui.request({ type: 'demo.start', epic: other })); assert.equal(next.ok, true, next.error);
+  const next = await drive(f, startDemo(t, f.root, f.ui, { epic: other })); assert.equal(next.ok, true, next.error);
   const finished = await drive(f, f.ui.request({ type: 'demo.stop', epic: other })); assert.equal(finished.ok, true, finished.error);
   assert.equal((finished.value as { state: string }).state, 'released');
   await flushProjectLogs(t, f.root);
@@ -120,7 +121,7 @@ test('demo stop refuses changed resource identities after accepted deletion', as
   for (const field of ['id', 'name', 'tags'] as const) {
     f.api.requests.length = 0; // Each table row retains the original per-lease request census.
     const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Changed deleting demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
-    assert.equal((await drive(f, f.ui.request({ type: 'demo.start', epic }))).ok, true);
+    assert.equal((await drive(f, startDemo(t, f.root, f.ui, { epic }))).ok, true);
     const droplet = f.api.droplets[0]!;
     f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER; f.api.faults.stripTagsOnDelete = true;
     try {
@@ -145,7 +146,7 @@ test('demo stop clears persistent mismatch attention after provider absence', as
   for (const field of ['tags', 'id'] as const) {
     f.api.requests.length = 0; // Each table row retains the original per-lease request census.
     const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Mismatched demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
-    const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
+    const started = await drive(f, startDemo(t, f.root, f.ui, { epic })); assert.equal(started.ok, true, started.error);
     const droplet = f.api.droplets[0]!;
     if (field === 'tags') droplet.tags = ['cland', 'cland-p-foreign'];
     else f.api.faults.dropletResponseId = droplet.id + 1;
@@ -172,7 +173,7 @@ test('demo stop clears persistent mismatch attention after provider absence', as
 test('demo stop confirms provider absence on retry after an accepted delete', async t => {
   const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
   const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Absent demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
-  const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
+  const started = await drive(f, startDemo(t, f.root, f.ui, { epic })); assert.equal(started.ok, true, started.error);
   const lease = (started.value as { lease: string }).lease;
   // The droplet is deleted, but its key is still present past this release attempt.
   f.api.beforeKeyList(async () => { f.api.droplets.splice(0); });
@@ -192,7 +193,7 @@ test('demo identity mismatch preserves the resource and exposes operator attenti
   assert.equal((await drive(f, f.ui.request({ type: 'role.set', session: 'demo-coord', role: 'coordinator' }))).ok, true);
   const epic = ((await drive(f, f.ui.request({ type: 'task.create', title: 'Foreign demo', kind: 'epic' }))).value as { item: { id: string } }).item.id;
   const topic = ((await drive(f, f.ui.request({ type: 'topic.create', item: epic, title: 'Foreign demo' }))).value as { topic: { id: string } }).topic.id;
-  const started = await drive(f, f.ui.request({ type: 'demo.start', epic })); assert.equal(started.ok, true, started.error);
+  const started = await drive(f, startDemo(t, f.root, f.ui, { epic })); assert.equal(started.ok, true, started.error);
   const droplet = f.api.droplets[0]!;
   const originalName = droplet.name;
   const originalTags = [...droplet.tags];
@@ -234,7 +235,7 @@ test('demo identity mismatch preserves the resource and exposes operator attenti
 test('demo release keeps virtual time frozen while provider I/O is held', { timeout: 15000 }, async t => {
   const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '500' } });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Held provider demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const started = await f.ui.request({ type: 'demo.start', epic }); assert.equal(started.ok, true, started.error);
+  const started = await startDemo(t, f.root, f.ui, { epic }); assert.equal(started.ok, true, started.error);
   const entered = Promise.withResolvers<void>(), resume = Promise.withResolvers<void>(), completed = Promise.withResolvers<void>();
   let held = false;
   f.api.beforeKeyList(async () => {
@@ -271,7 +272,7 @@ test('demo release keeps virtual time frozen while provider I/O is held', { time
 test('an unconfirmed demo release confirms provider absence within six minutes without another stop', async t => {
   const f = await fixture(t, { machine: 'scripted', env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_RELEASE_MS: '100' } });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Automatically recovered demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const started = await drive(f, f.ui.request({ type: 'demo.start', epic }));
+  const started = await drive(f, startDemo(t, f.root, f.ui, { epic }));
   assert.equal(started.ok, true, started.error);
   const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
   f.api.faults.deletePolls = Number.MAX_SAFE_INTEGER;

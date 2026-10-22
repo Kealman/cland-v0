@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { eventually, inProcessSpoke } from './harness.ts';
 import { drive } from './remote-clock.ts';
 import { fixture } from './remote-fixture.ts';
+import { startDemo } from './demo-start.ts';
 
 test('demo daily cap refuses before creating any droplet', async t => {
   const f = await fixture(t, { machine: 'scripted', config: 'daily_spend_usd = 0.001\n' });
@@ -28,7 +29,7 @@ test('demo authorization, shared slot refusals and verdict cleanup use the same 
   const noHold = await ui.request({ type: 'demo.start', as, epic });
   assert.equal(noHold.ok, false); assert.match(noHold.error ?? '', /forbidden/);
   assert.equal((await qa.call<{ ok: boolean }>('task.hold', { id: epic })).ok, true);
-  const start = await drive(f, ui.request({ type: 'demo.start', as, epic }));
+  const start = await drive(f, startDemo(t, root, ui, { as, epic }));
   assert.equal(start.ok, true, start.error);
   const blocked = await ui.request({ type: 'demo.start', epic: other });
   assert.equal(blocked.ok, false); assert.match(blocked.error ?? '', /remote budget full/);

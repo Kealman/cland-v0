@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { eventually, pidAlive, nativeProjectHub as projectHub } from './harness.ts';
 import { fixture } from './remote-fixture.ts';
+import { startDemo } from './demo-start.ts';
 import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
 import { armWatchdog, stopWatchdog } from '../src/executor/droplet/watchdog.ts';
 import { ownProcess } from './process-cleanup.ts';
@@ -12,7 +13,7 @@ import { ownProcess } from './process-cleanup.ts';
 test('the detached demo watchdog confirms an active droplet losing tags during its delete', async t => {
   const f = await fixture(t, { hub: projectHub, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000', CLAND_TEST_DROPLET_WATCHDOG_POLL_MS: '20', CLAND_TEST_DROPLET_MACHINE_MS: '2000' } });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Watchdog demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const started = await f.ui.request({ type: 'demo.start', epic }); assert.equal(started.ok, true, started.error);
+  const started = await startDemo(t, f.root, f.ui, { epic }); assert.equal(started.ok, true, started.error);
   const dir = join(f.root, '.cland/run/executor/leases', (started.value as { lease: string }).lease);
   const lease = await readLease(dir);
   await f.stop();
@@ -39,7 +40,7 @@ test('the detached demo watchdog confirms an active droplet losing tags during i
 test('demo stop waits for an archived droplet with stripped tags to become absent', async t => {
   const f = await fixture(t, { hub: projectHub, env: { CLAND_TEST_EXECUTOR_SWEEP_MS: '600000' } });
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Deleting demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const started = await f.ui.request({ type: 'demo.start', epic }); assert.equal(started.ok, true, started.error);
+  const started = await startDemo(t, f.root, f.ui, { epic }); assert.equal(started.ok, true, started.error);
   f.api.faults.deletePolls = 2;
   f.api.faults.archiveOnDelete = true;
   const stopped = await f.ui.request({ type: 'demo.stop', epic }); assert.equal(stopped.ok, true, stopped.error);

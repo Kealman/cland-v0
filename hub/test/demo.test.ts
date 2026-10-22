@@ -9,6 +9,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import { startDaemon, nativeProjectHub as projectHub, connectUi, clandWithEnv, killDaemon, eventually } from './harness.ts';
 import { ownProcess } from './process-cleanup.ts';
 import { fixture } from './remote-fixture.ts';
+import { startDemo } from './demo-start.ts';
 import { readLease, writeLease } from '../src/executor/droplet/lease.ts';
 import { parseConfig, renderConfig } from '../src/init/config.ts';
 
@@ -26,7 +27,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   const made = await ui.request({ type: 'task.create', title: 'Demo', kind: 'epic' });
   const epic = (made.value as { item: { id: string } }).item.id;
   const head = execFileSync('git', ['rev-parse', 'dev'], { cwd: root, encoding: 'utf8' }).trim();
-  const started = await ui.request({ type: 'demo.start', epic }, 15000);
+  const started = await startDemo(t, root, ui, { epic });
   assert.equal(started.ok, true, started.error);
   assert.equal((started.value as { commit: string }).commit, head);
   assert.ok((started.value as { lease: string }).lease);
@@ -63,7 +64,7 @@ test('demo frames deliver a named dev commit, preserve command results and stop 
   // The next demo is a new admission; retire the first admission's failure injection.
   Object.assign(config.verification, commands, { test_unit: 'printf admitted-unit', test_soak: 'printf admitted-soak' });
   await writeFile(configPath, renderConfig(config));
-  const repeated = await next.request({ type: 'demo.start', epic, commit: head });
+  const repeated = await startDemo(t, root, next, { epic, commit: head });
   assert.equal(repeated.ok, true, repeated.error);
   assert.notEqual((repeated.value as { lease: string }).lease, (started.value as { lease: string }).lease);
   assert.deepEqual((await readLease(join(root, '.cland/run/executor/leases', (repeated.value as { lease: string }).lease))).demo?.commands, pinned);
@@ -86,7 +87,7 @@ for (const bound of ['run timeout', 'machine lifetime']) test(`demo ${bound} des
   f.api.faults.keyDeleteFailures.push(403);
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Timed demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
   const beforeStart = Date.now();
-  const started = await f.ui.request({ type: 'demo.start', epic }, 20000);
+  const started = await startDemo(t, f.root, f.ui, { epic });
   assert.equal(started.ok, true, started.error);
   const leaseId = (started.value as { lease: string }).lease;
   const dir = join(f.root, '.cland/run/executor/leases', leaseId);
@@ -138,7 +139,7 @@ console.log(JSON.stringify({result:'PASS',evidence,message:out}));
   await f.git('add', 'hub/bin'); await f.git('commit', '-qm', 'Demo headless fixture');
   await f.git('update-ref', 'refs/heads/dev', await f.git('rev-parse', 'HEAD'));
   const epic = ((await f.ui.request({ type: 'task.create', title: 'Recorded demo', kind: 'epic' })).value as { item: { id: string } }).item.id;
-  const start = await f.ui.request({ type: 'demo.start', epic }); assert.equal(start.ok, true, start.error);
+  const start = await startDemo(t, f.root, f.ui, { epic }); assert.equal(start.ok, true, start.error);
   const record = (run: string, id: string) => promisify(execFile)('sh', [resolve('.agents/skills/qa/qa-record.sh'), 'run', epic, run, id], {
     cwd: f.root, env: { ...process.env, CLAND_SESSION_NAME: '', CLAND_SESSION_ID: '', CLAND_HUB_FILE: join(f.root, '.cland/hub.json'), CLAND: resolve('hub/bin/cland.ts'), QA_DEMO_EPIC: epic }, maxBuffer: 1024 * 1024 });
   return { ...f, epic, record };

@@ -777,6 +777,17 @@ Rule 9's boundary depends on the assertion. Worked examples:
   and `status === 'review'`. Assert the resulting claim/status as before; request
   acceptance or an attempt timestamp does not prove the continuation published
   its result (`hub/test/tracker-ready.test.ts`).
+- **Demo setup:** successful `demo.start` calls use `startDemo` from
+  `hub/test/demo-start.ts`. It arms a lease observer before sending and waits
+  for a new matching lease with `state: active`, `execution.delivered` and
+  `demo.ready`, excluding leases from earlier starts. Setup has the remote
+  fixture's load-scaled 30-second bound; the correlated result has a separate
+  load-scaled five-second bound after that durable receipt. Keep the caller's
+  result and behaviour assertions. Refusal tests use the ordinary request seam
+  because a refused start must never produce a ready lease. Set
+  `CLAND_TEST_DEMO_START_TIMINGS=1` for observed lease/provision/delivery/ready/reply
+  times and persisted preparation/provider timings. Observation times are
+  sampled upper bounds; scripted lease timestamps use the fake clock.
 
 ### Real-binary adapter contract checklist
 
