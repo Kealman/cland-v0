@@ -3,8 +3,9 @@ id: T-1133
 kind: task
 title: The verify line and the queue view
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-874
 branch: t/T-1133-the-verify-line-and-the-queue-view
 created: 2026-10-22T15:16:15.253Z
-updated: 2026-10-22T23:09:51.970Z
+updated: 2026-10-22T23:18:00.209Z
 ---
 
 ## Summary
@@ -35,8 +36,19 @@ A pure model turns a queue, the elapsed time and the executor status into the li
 
 ## Acceptance criteria
 
-- [ ] C1. With a hand run holding the local slot and one waiter, the line reads the holder, its running time and one waiting, and Enter opens the queue view in place with the holder and the waiter with its executor, wait and ETA (Web test).
-- [ ] C2. The queue model renders remote slots with their droplet's name, size and region, the waiters in order, the last-20 metrics and today's spend against the cap from recorded frames (T1 test).
-- [ ] C3. Without a new frame the holder's running time and the waiter's wait advance from the frame's receipt, and a `verification.queue` frame replaces the view (Web test).
-- [ ] C4. The queue view's open state survives a reload (Web test).
-- [ ] C5. `web/README.md` describes the verify line and the queue view (docs).
+- [x] C1. With a hand run holding the local slot and one waiter, the line reads the holder, its running time and one waiting, and Enter opens the queue view in place with the holder and the waiter with its executor, wait and ETA (Web test).
+  - done: impl-1133 · 2026-10-22T23:17:40.640Z
+- [x] C2. The queue model renders remote slots with their droplet's name, size and region, the waiters in order, the last-20 metrics and today's spend against the cap from recorded frames (T1 test).
+  - done: impl-1133 · 2026-10-22T23:17:40.803Z
+- [x] C3. Without a new frame the holder's running time and the waiter's wait advance from the frame's receipt, and a `verification.queue` frame replaces the view (Web test).
+  - done: impl-1133 · 2026-10-22T23:17:41.128Z
+- [x] C4. The queue view's open state survives a reload (Web test).
+  - done: impl-1133 · 2026-10-22T23:17:41.468Z
+- [x] C5. `web/README.md` describes the verify line and the queue view (docs).
+  - done: impl-1133 · 2026-10-22T23:17:41.639Z
+
+## Comments
+
+### impl-1133 · 2026-10-22T23:17:01.014Z
+
+Implemented the pure queue presentation model first against committed recorded verification.queue and executor.status frames from sealed scratch fixtures, then the Sessions in-place queue using shared Fold persistence and session-open dispatch. Targeted T1 and Web C1/C3/C4 pass on macOS; existing Sessions/folds/key-contexts/palette regressions pass. web/README and test-seam docs updated. Merged origin/dev before first source review; final same-head static and targeted checks underway. No live queue or real droplet touched.

@@ -3,8 +3,9 @@ id: T-1139
 kind: task
 title: "The Artifacts area: the tree, keep and archive"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 5
 labels:
   - ready-for-agent
 assignee: null
@@ -14,7 +15,7 @@ blocked_by:
 topic: topic-876
 branch: t/T-1139-the-artifacts-area-the-tree-keep-and
 created: 2026-10-22T15:16:16.169Z
-updated: 2026-10-22T23:10:06.949Z
+updated: 2026-10-22T23:17:29.716Z
 ---
 
 ## Summary
@@ -35,8 +36,19 @@ Creating, moving, promoting, deleting and editing in place stay in Neovim and th
 
 ## Acceptance criteria
 
-- [ ] C1. With artifacts by the human, an Aide, each crew role and one archived, each lands in its section of Mine, Kept, By role and Archived, with By role and Archived folded (Web test).
-- [ ] C2. `k` on an agent's artifact moves it to Kept and `k` again unkeeps it, as the hub's artifact list reads (Web test).
-- [ ] C3. `d` archives an artifact into Archived, and Enter on a folder artifact lists its files (Web test).
-- [ ] C4. A folded section stays folded after a reload, and ↑ moves the cursor up while `k` keeps (Web test).
-- [ ] C5. `web/README.md` gains an Artifacts section with the sections and the keys (docs).
+- [x] C1. With artifacts by the human, an Aide, each crew role and one archived, each lands in its section of Mine, Kept, By role and Archived, with By role and Archived folded (Web test).
+  - done: impl-1139 · 2026-10-22T23:16:53.336Z
+- [x] C2. `k` on an agent's artifact moves it to Kept and `k` again unkeeps it, as the hub's artifact list reads (Web test).
+  - done: impl-1139 · 2026-10-22T23:16:53.426Z
+- [x] C3. `d` archives an artifact into Archived, and Enter on a folder artifact lists its files (Web test).
+  - done: impl-1139 · 2026-10-22T23:16:53.679Z
+- [x] C4. A folded section stays folded after a reload, and ↑ moves the cursor up while `k` keeps (Web test).
+  - done: impl-1139 · 2026-10-22T23:16:53.783Z
+- [x] C5. `web/README.md` gains an Artifacts section with the sections and the keys (docs).
+  - done: impl-1139 · 2026-10-22T23:16:53.875Z
+
+## Comments
+
+### impl-1139 · 2026-10-22T23:16:10.379Z
+
+Implemented the Artifacts pane with Mine/Kept/By role/Archived folds, provenance/status rows, visible-row navigation, keep/archive commands and lazy folder files. Extended the existing bounded inventory with More artifacts; live replacements win over pending pages and reconnect invalidates old page replies. TDD reds were observed before each slice. Targeted local macOS Web tests pass (4 tests, worst 1.034 s); callback T1 passes (9 tests). T0 and existing slot/help regression checks in progress. QA policy is after-stage, so no per-item QA request.
