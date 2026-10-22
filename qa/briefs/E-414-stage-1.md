@@ -108,17 +108,48 @@ hubstart() { env PATH="$FCC:$FCX:$FOC:$PATH" CLAND_OPENCODE_BIN="$FOC/opencode" 
 # st <name>: a launched session's state; waitst <name> <state>: wait up to 120 s for it
 st() { cland session list --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const p=JSON.parse(s).processes.find(x=>x.name===process.argv[1]);console.log(p?p.state:"absent")})' "$1"; }
 waitst() { for i in $(seq 1 240); do [ "$(st "$1")" = "$2" ] && return 0; sleep 0.5; done; echo "timeout: $1 is $(st "$1"), not $2"; return 1; }
-# rc <name> < command.json: hand one command to the rig and wait for its log line
-rc() { cat > "$QA_Q/rig/cmd/$1.tmp" && mv "$QA_Q/rig/cmd/$1.tmp" "$QA_Q/rig/cmd/$1.json" && seen "$QA_Q/rig/log.jsonl" "\"n\":\"$1.json\""; }
+# alive <pidfile>: the process named in the file still runs
+alive() { [ -s "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
+# rc <name> < command.json: hand one command to the rig and wait for its log line (on a timeout, say whether the rig still runs)
+rc() { cat > "$QA_Q/rig/cmd/$1.tmp" && mv "$QA_Q/rig/cmd/$1.tmp" "$QA_Q/rig/cmd/$1.json" && { seen "$QA_Q/rig/log.jsonl" "\"n\":\"$1.json\"" || { alive "$QA_Q/rig.pid" && echo "rig alive" || echo "rig NOT alive: see rig.log"; return 1; }; }; }
+# Long-lived helpers (the streaming clients S1 and R1, the rig) start detached through bg.cjs, in a session of their own:
+# a command runner that ends a row's process group when the row returns cannot end them. Never start one with `&`.
+# cap <name>: the current capture file of streaming client <name> (s1 or r1)
+cap() { cat "$QA_Q/$1.cap"; }
+# stream <name> <capture> <hold ms>: (re)start streaming client <name>: subscribed, detached, until $QA_Q/stop-<name> exists
+stream() { echo "$2" > "$QA_Q/$1.cap"; env QA_STREAM=1 QA_HOLD_MS="$3" QA_STOP="$QA_Q/stop-$1" node "$QA_Q/bg.cjs" "$QA_Q/$1.pid" "$2" "$QA_Q/steps/subscribe.jsonl" node "$QA_Q/fc.cjs" && seen "$2" '"type":"result","id":"q1"'; }
+# live <name> <tag>: say whether streaming client <name> still runs; if not, record what its capture and stderr end with
+# and start a replacement capture <capture>-<tag>.jsonl (the row judges deltas from `cap <name>` after this call)
+live() { if alive "$QA_Q/$1.pid"; then echo "$1 alive at $2 (pid $(cat "$QA_Q/$1.pid"), $(grep -c . "$(cap "$1")") lines)"; else c=$(cap "$1"); echo "$1 NOT alive at $2: $(grep -c . "$c") lines, last $(tail -n 1 "$c" | cut -c1-80); stderr $(tail -n 3 "$c.err" 2>/dev/null | tr '\n' ' '); restarting as ${c%.jsonl}-$2.jsonl"; stream "$1" "${c%.jsonl}-$2.jsonl" 2700000; fi; }
+# closed <record id> <capture>: poll a fresh frame client's archive every second, up to 60 s, until the record is archived;
+# the last poll is kept in <capture>
+closed() { for i in $(seq 1 60); do printf '{"type":"inbox.list","archive":true}\n' | fc > "$2"; q "$2" 'res("q1").value.archive.some(r=>r.id===A[0])' "$1" | grep -q true && return 0; sleep 1; done; echo "timeout: $1 not archived after 60 s"; return 1; }
 ENV
 : > "$Q/home/.gitconfig"
 printf '{"type":"subscribe"}\n' > "$Q/steps/subscribe.jsonl"
 grep -c '^unset ' "$Q/env.sh"; ( . "$Q/env.sh"; prefix_count=$(env | cut -d= -f1 | grep -c -E '^(CLAND_|DIGITALOCEAN_|ANTHROPIC_|OPENAI_|GH_|GITHUB_)'); echo "$prefix_count"; test "$prefix_count" -eq 0 ) || exit 1   # confirm 0 before any scratch process starts
 ```
 
-The helpers. `fc.cjs` is a frame client on a scratch hub's Unix socket (the local human, so the hub records its answers `via: neovim`); `q.cjs` reads captures; `drv.mjs` is a driver session (a real spoke started through the test harness, with a role) that calls session tools; `wc.mjs` is the browser's edge without a browser: it mints a sign-in link on the Unix socket, takes the cookie and speaks on `/ws`; `rig.test.mjs` is the rig.
+The helpers. `fc.cjs` is a frame client on a scratch hub's Unix socket (the local human, so the hub records its answers `via: neovim`); `q.cjs` reads captures; `drv.mjs` is a driver session (a real spoke started through the test harness, with a role) that calls session tools; `wc.mjs` is the browser's edge without a browser: it mints a sign-in link on the Unix socket, takes the cookie and speaks on `/ws`; `rig.test.mjs` is the rig; `bg.cjs` starts a long-lived helper detached.
 
 ```sh
+cat > "$Q/bg.cjs" <<'JS'
+'use strict';
+// node "$QA_Q/bg.cjs" <pidfile> <out> <stdin file | -> <command> [args…]: starts the command detached, as the leader of
+// a session and process group of its own, so that a runner which ends a row's process group when the row returns
+// cannot end it. Stdin from the file (nothing for -), stdout to <out>, stderr to <out>.err (both appended), the
+// current directory and environment inherited. Writes the pid to <pidfile>, appends it to $QA_Q/pids (the census),
+// prints "started <pid>" and returns at once.
+const fs = require('node:fs');
+const { spawn } = require('node:child_process');
+const [pidfile, out, input, cmd, ...args] = process.argv.slice(2);
+const child = spawn(cmd, args, { detached: true, stdio: [input === '-' ? 'ignore' : fs.openSync(input, 'r'), fs.openSync(out, 'a'), fs.openSync(`${out}.err`, 'a')] });
+fs.writeFileSync(pidfile, `${child.pid}\n`);
+if (process.env.QA_Q) fs.appendFileSync(`${process.env.QA_Q}/pids`, `${child.pid}\n`);
+console.log(`started ${child.pid}`);
+child.unref();
+process.exit(0);
+JS
 cat > "$Q/fc.cjs" <<'JS'
 'use strict';
 // QA frame client (E-414 stage record and gate). It prints what a scratch hub sends and asserts nothing.
@@ -386,7 +417,7 @@ test('QA rig, E-414 stage record and gate', { timeout: 46 * 60_000 }, async t =>
   }
 });
 JS
-node --check "$Q/fc.cjs" && node --check "$Q/q.cjs" && node --check "$Q/drv.mjs" && node --check "$Q/wc.mjs" && node --check "$Q/rig.test.mjs" && echo "helpers parse"
+node --check "$Q/bg.cjs" && node --check "$Q/fc.cjs" && node --check "$Q/q.cjs" && node --check "$Q/drv.mjs" && node --check "$Q/wc.mjs" && node --check "$Q/rig.test.mjs" && echo "helpers parse"
 ```
 
 Project p1. `cland init` may start a scratch hub: record its pid and stop it before editing the config. Point the existing `lock_path` and `executor` keys at a scratch lock and the local executor (edit the keys init wrote; never add a second table), then start p1's hub with the fakes.
@@ -405,8 +436,7 @@ The check functions. Define them in QA's own shell (paste the block once). Each 
 k06() {   # p1: a fake Claude Code session waits for approval; one record in a fresh snapshot
   cland session launch qa-cc --role implementer --harness claude-code > "$EV/E414S1-06-launch.txt" 2>&1; echo "launch exit $?"
   waitst qa-cc idle || return 1
-  QA_STREAM=1 QA_HOLD_MS=1800000 QA_STOP="$Q/stop-s1" fc < "$Q/steps/subscribe.jsonl" > "$EV/E414S1-S1.jsonl" &   # S1 streams until E414S1-10
-  seen "$EV/E414S1-S1.jsonl" '"type":"result","id":"q1"' || return 1
+  stream s1 "$EV/E414S1-S1.jsonl" 1800000 || return 1   # S1, detached, streams until E414S1-10
   printf '{"type":"topic.send","topic":"general","text":"QA needs approval","to":["qa-cc"]}\n' | fc > "$EV/E414S1-06-send.jsonl"
   waitst qa-cc 'waiting for approval' || return 1
   sleep 2
@@ -422,34 +452,62 @@ k07() {   # p1: the record shows once over time; cland inbox
   printf 'id mentions: '; grep -c -F "$ID" "$EV/E414S1-07-inbox.txt"
   tail -n 1 "$EV/E414S1-07-inbox.txt"
   node -e 'console.log("json needsYou "+JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).needsYou)' "$EV/E414S1-07-inbox.json"
-  q "$EV/E414S1-S1.jsonl" '(()=>{const mine=F.filter(f=>f.type==="approval"&&f.approval.session==="qa-cc").map(f=>f.approval);const pend=mine.filter(a=>a.state==="pending").map(a=>JSON.stringify(a));const per=F.filter(f=>f.type==="inbox").map(f=>f.inbox.approvals.filter(a=>a.session==="qa-cc").length);return {ids: [...new Set(mine.map(a=>a.id))], pending: pend.length, identical: new Set(pend).size===1, inboxFrames: per.length, maxRows: Math.max(0,...per)};})()'
-  printf 'private: '; cat "$EV"/E414S1-06* "$EV"/E414S1-07* "$EV/E414S1-S1.jsonl" | grep -c -F 'PRIVATE-TOOL-INPUT'
+  live s1 07
+  q "$(cap s1)" '(()=>{const mine=F.filter(f=>f.type==="approval"&&f.approval.session==="qa-cc").map(f=>f.approval);const pend=mine.filter(a=>a.state==="pending").map(a=>JSON.stringify(a));const per=F.filter(f=>f.type==="inbox").map(f=>f.inbox.approvals.filter(a=>a.session==="qa-cc").length);return {ids: [...new Set(mine.map(a=>a.id))], pending: pend.length, identical: new Set(pend).size===1, inboxFrames: per.length, maxRows: Math.max(0,...per)};})()'
+  printf 'private: '; cat "$EV"/E414S1-06* "$EV"/E414S1-07* "$EV"/E414S1-S1*.jsonl | grep -c -F 'PRIVATE-TOOL-INPUT'
 }
 k08() {   # p1: answers to a TUI-only record, an unknown record and a malformed choice are refused
   ID=$(cat "$Q/rec-cc1")
   printf '{"type":"inbox.list"}\n{"type":"approval.answer","approval":"%s","choice":"once"}\n{"type":"approval.answer","approval":"%s","choice":"deny","note":"QA no"}\n{"type":"approval.answer","approval":"qa-no-such:1","choice":"once"}\n{"type":"approval.answer","approval":"%s","choice":"maybe"}\n{"type":"inbox.list"}\n' "$ID" "$ID" "$ID" | fc > "$EV/E414S1-08.jsonl"
   q "$EV/E414S1-08.jsonl" '({once: [res("q2").ok, res("q2").error], deny: [res("q3").ok, res("q3").error], unknown: [res("q4").ok, res("q4").error], malformed: [res("q5").ok, res("q5").error], unchanged: JSON.stringify(res("q1").value.approvals)===JSON.stringify(res("q6").value.approvals), state: res("q6").value.approvals.find(a=>a.id===A[0])?.state})' "$ID"
 }
+tuipid() {   # p1, k09's helper: before a TUI answer, the fake's own listing and the hub's process row must name one live, waiting process; sets PID
+  "$FCC/claude" agents --json > "$EV/E414S1-09-agents-$1.json" 2> "$EV/E414S1-09-agents-$1.err"
+  cland session list --json > "$EV/E414S1-09-sessions-$1.json"
+  cp "$FAKE_CLAUDE_HOME/sessions/$HID.json" "$EV/E414S1-09-fakesession-$1.json" 2>/dev/null
+  node -e 'const fs=require("fs");const [a,s,h]=process.argv.slice(1);let list=[];try{list=JSON.parse(fs.readFileSync(a,"utf8"))}catch{}const ag=list.find(x=>x.id===h);const p=JSON.parse(fs.readFileSync(s,"utf8")).processes.find(x=>x.name==="qa-cc");let alive=false;try{process.kill(ag.pid,0);alive=true}catch{}console.log(JSON.stringify({agentPid: ag?.pid ?? null, hubPid: p?.pid ?? null, samePid: Boolean(ag)&&ag.pid===p?.pid, alive, status: ag?.status ?? null, waitingFor: ag?.waitingFor ?? null, hubState: p?.state ?? null}))' "$EV/E414S1-09-agents-$1.json" "$EV/E414S1-09-sessions-$1.json" "$HID" | tee "$EV/E414S1-09-tui-$1.txt"
+  PID=$(node -e 'const v=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));if(v.samePid&&v.alive&&v.status==="waiting"&&v.hubState==="waiting for approval")console.log(v.agentPid)' "$EV/E414S1-09-tui-$1.txt")
+  [ -n "$PID" ] || { echo "BLOCKED: before the $1 TUI answer the fake session is not one live process waiting for approval"; return 1; }
+  echo "$PID" >> "$Q/pids"
+}
+tuiclosed() {   # p1, k09's helper: <record id> <tag> <fake log lines before the signal> <expected reply>: judge the TUI answer from fresh reads, not from a stream
+  closed "$1" "$EV/E414S1-09-closed-$2.jsonl"; waitst qa-cc idle
+  tail -n +$(($3 + 1)) "$FLOG" > "$EV/E414S1-09-fake-$2.log"
+  printf '{"type":"topic.history","topic":"general"}\n' | fc > "$EV/E414S1-09-history-$2.jsonl"
+  q "$EV/E414S1-09-closed-$2.jsonl" '({tag: A[1], listed: res("q1").value.approvals.some(a=>a.id===A[0]), archive: res("q1").value.archive.filter(r=>r.id===A[0]).map(r=>[r.kind, r.reason, r.outcome])})' "$1" "$2"
+  printf '%s fake log after the signal: PostToolUse %s, send ok %s\n' "$2" "$(grep -c -F 'hooks PostToolUse done' "$EV/E414S1-09-fake-$2.log")" "$(grep -c -F 'tool send → {"ok":true' "$EV/E414S1-09-fake-$2.log")"
+  printf '%s reply in General: ' "$2"; q "$EV/E414S1-09-history-$2.jsonl" 'res("q1").value.messages.filter(m=>m.from==="qa-cc"&&m.text===A[0]).length' "$4"
+  printf '%s state: ' "$2"; st qa-cc
+}
 k09() {   # p1: nothing answers by itself; the TUI answer closes the record; a later answer is refused; a new episode
   ID=$(cat "$Q/rec-cc1")
+  HID=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).processes.find(p=>p.name==="qa-cc").harnessId)' "$EV/E414S1-06-sessions.json")
+  FLOG="$FAKE_CLAUDE_HOME/jobs/$HID.log"
   printf '{"type":"inbox.list"}\n' | fc > "$EV/E414S1-09-before.jsonl"
   AGE=$(qv "$EV/E414S1-09-before.jsonl" 'Math.floor((Date.now()-Date.parse(res("q1").value.approvals.find(a=>a.id===A[0]).since))/1000)' "$ID")
   [ "$AGE" -ge 180 ] || sleep $((180 - AGE))
   printf '{"type":"inbox.list"}\n' | fc > "$EV/E414S1-09-waited.jsonl"
-  HID=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).processes.find(p=>p.name==="qa-cc").harnessId)' "$EV/E414S1-06-sessions.json")
-  PID=$(node -e 'const fs=require("fs"),d=process.env.FAKE_CLAUDE_HOME+"/sessions";const m=fs.readdirSync(d).filter(n=>n.endsWith(".json")).map(n=>JSON.parse(fs.readFileSync(d+"/"+n,"utf8"))).find(s=>s.id===process.argv[1]||s.sessionId===process.argv[1]);console.log(m?m.pid:"")' "$HID")
-  [ -n "$PID" ] || { echo "BLOCKED: no fake Claude Code session file for $HID"; return 1; }
-  echo "$PID" >> "$Q/pids"; echo "fake session pid $PID"
-  kill -USR1 "$PID"                                                            # the human approves in the harness's TUI
-  seen "$EV/E414S1-S1.jsonl" '"text":"pong: QA needs approval"'; waitst qa-cc idle; sleep 2
+  # first episode: the human approves in the harness's TUI (SIGUSR1 to the fake session)
+  live s1 09a; CAP1=$(cap s1)
+  tuipid first || return 1
+  N=$(wc -l < "$FLOG"); echo "signal first: pid $PID at $(now)"; kill -USR1 "$PID"
+  tuiclosed "$ID" first "$N" "pong: QA needs approval"
+  live s1 09b
+  q "$CAP1" '({stream: "first", states: ap(A[0]).map(a=>a.state), closed: ap(A[0]).filter(a=>a.state==="closed").map(a=>a.outcome)})' "$ID"
   printf '{"type":"approval.answer","approval":"%s","choice":"once"}\n{"type":"inbox.list","archive":true}\n' "$ID" | fc > "$EV/E414S1-09-late.jsonl"
   cland inbox --archive > "$EV/E414S1-09-archive.txt"
+  # second episode: a later wait is a new record, closed the same way
+  live s1 09c; CAP2=$(cap s1)
   printf '{"type":"topic.send","topic":"general","text":"QA needs approval again","to":["qa-cc"]}\n' | fc > "$EV/E414S1-09-send2.jsonl"
   waitst qa-cc 'waiting for approval'; sleep 2
   printf '{"type":"inbox.list"}\n' | fc > "$EV/E414S1-09-second.jsonl"
-  kill -USR1 "$PID"; seen "$EV/E414S1-S1.jsonl" '"text":"pong: QA needs approval again"'; waitst qa-cc idle
+  ID2=$(qv "$EV/E414S1-09-second.jsonl" 'res("q1").value.approvals.find(a=>a.session==="qa-cc")?.id ?? ""')
+  tuipid second || return 1
+  N=$(wc -l < "$FLOG"); echo "signal second: pid $PID at $(now)"; kill -USR1 "$PID"
+  tuiclosed "$ID2" second "$N" "pong: QA needs approval again"
+  live s1 09d
+  q "$CAP2" '({stream: "second", states: ap(A[0]).map(a=>a.state), closed: ap(A[0]).filter(a=>a.state==="closed").map(a=>a.outcome)})' "$ID2"
   q "$EV/E414S1-09-waited.jsonl" '(()=>{const b=fs.readFileSync(A[1],"utf8").split("\n").filter(Boolean).map(l=>JSON.parse(l)).find(f=>f.type==="result"&&f.id==="q1").value.approvals.find(x=>x.id===A[0]);const a=res("q1").value.approvals.find(x=>x.id===A[0]);return {state: a?.state, outcome: a?.outcome ?? null, waitedS: Math.floor((Date.now()-Date.parse(a.since))/1000), sameAsBefore: JSON.stringify(a)===JSON.stringify(b)};})()' "$ID" "$EV/E414S1-09-before.jsonl"
-  q "$EV/E414S1-S1.jsonl" '({states: ap(A[0]).map(a=>a.state), closed: ap(A[0]).filter(a=>a.state==="closed").map(a=>a.outcome)})' "$ID"
   q "$EV/E414S1-09-late.jsonl" '({late: [res("q1").ok, res("q1").error], listed: res("q2").value.approvals.some(a=>a.id===A[0]), archive: res("q2").value.archive.filter(r=>r.id===A[0]).map(r=>[r.kind, r.reason, r.outcome])})' "$ID"
   printf 'archive lines: '; grep -c -F "  approval $ID  qa-cc  touch approved  · closed  answered in the harness by harness via harness at " "$EV/E414S1-09-archive.txt"
   q "$EV/E414S1-09-second.jsonl" '(()=>{const m=res("q1").value.approvals.filter(a=>a.session==="qa-cc");return {rows: m.length, newId: m[0]?.id!==A[0], sameSession: String(m[0]?.id).startsWith(A[0].slice(0, A[0].lastIndexOf(":")+1)), state: m[0]?.state, answerIn: m[0]?.answerIn};})()' "$ID"
@@ -467,13 +525,12 @@ k10() {   # p1: the archived approvals survive a hub restart
   printf 'approval lines: '; wc -l < "$Q/k10-before"
   cmp -s "$Q/k10-before" "$Q/k10-after" && echo "approval archive unchanged across the restart" || diff "$Q/k10-before" "$Q/k10-after"
 }
-rigstart() {   # sealed, in $W: start the rig in the background and wait for it to serve
-  ( node --test --test-reporter=tap "$Q/rig.test.mjs" > "$EV/rig.log" 2>&1; echo "exit $?" >> "$EV/rig.log" ) &
+rigstart() {   # sealed, in $W: start the rig detached (a session of its own) and wait for it to serve
+  node "$Q/bg.cjs" "$Q/rig.pid" "$EV/rig.out" - sh -c 'node --test --test-reporter=tap "$0" > "$1" 2>&1; echo "exit $?" >> "$1"' "$Q/rig.test.mjs" "$EV/rig.log"
   seen "$Q/rig/ready" '"root"'
 }
 k11() {   # p2: the second streaming client, three fake sessions, and a request left alone for E414S1-23
-  QA_STREAM=1 QA_HOLD_MS=2700000 QA_STOP="$Q/stop-r1" fc < "$Q/steps/subscribe.jsonl" > "$EV/E414S1-R1.jsonl" &   # R1 streams until E414S1-25
-  seen "$EV/E414S1-R1.jsonl" '"type":"result","id":"q1"' || return 1
+  stream r1 "$EV/E414S1-R1.jsonl" 2700000 || return 1   # R1, detached, streams until E414S1-25
   printf '%s\n' '{"type":"inbox.list"}' '{"type":"session.launch","name":"qa-codex","harness":"codex","role":"implementer"}' '{"type":"session.launch","name":"qa-codex2","harness":"codex","role":"implementer"}' '{"type":"session.launch","name":"qa-oc","harness":"opencode","role":"implementer"}' | fc > "$EV/E414S1-11-launch.jsonl"
   for n in 2:qa-codex 3:qa-codex2 4:qa-oc; do qv "$EV/E414S1-11-launch.jsonl" "res(\"q${n%%:*}\").value.process.sessionId" > "$Q/sid-${n#*:}"; done
   printf '{"op":"raise","harness":"codex","session":"qa-codex2","request":{"id":"idle-1","kind":"command","subject":{"command":"echo idle"},"choices":["once","deny"]}}\n' | rc 11-idle
@@ -484,13 +541,14 @@ k11() {   # p2: the second streaming client, three fake sessions, and a request 
   tail -n 1 "$Q/rig/log.jsonl"
 }
 k12() {   # p2: a native request arrives as one delta and one inbox row; its close arrives with the outcome
+  live r1 12
   SID=$(cat "$Q/sid-qa-codex")
   printf '{"op":"raise","harness":"codex","session":"qa-codex","request":{"id":"rec-1","kind":"command","subject":{"command":"git status\\nprintf done","cwd":"%s","reason":"QA read worktree","privateInput":"PRIVATE-QA-SUBJECT"},"choices":["once","always","deny"],"topic":"general","privateInput":"PRIVATE-QA-INPUT"}}\n' "$PWD" | rc 12-raise
   sleep 2; AT=$(now); echo "$AT" > "$Q/at-rec1"
   printf '{"op":"close","harness":"codex","session":"qa-codex","request":"rec-1","outcome":{"choice":"deny","note":"Keep the tree","by":"human","via":"harness","at":"%s"}}\n' "$AT" | rc 12-close
   sleep 2; printf '{"type":"inbox.list","archive":true}\n' | fc > "$EV/E414S1-12-after.jsonl"
   echo "AT=$AT"
-  q "$EV/E414S1-R1.jsonl" '({states: ap(A[0]).map(a=>a.state), first: ap(A[0])[0], closed: ap(A[0]).filter(a=>a.state==="closed").map(a=>a.outcome), inboxWithRow: rows(A[0]).filter(n=>n===1).length, inboxWithMore: rows(A[0]).filter(n=>n>1).length})' "$SID:rec-1"
+  q "$(cap r1)" '({states: ap(A[0]).map(a=>a.state), first: ap(A[0])[0], closed: ap(A[0]).filter(a=>a.state==="closed").map(a=>a.outcome), inboxWithRow: rows(A[0]).filter(n=>n===1).length, inboxWithMore: rows(A[0]).filter(n=>n>1).length})' "$SID:rec-1"
   q "$EV/E414S1-12-after.jsonl" '({listed: res("q1").value.approvals.some(a=>a.id===A[0]), archive: res("q1").value.archive.filter(r=>r.id===A[0]).map(r=>[r.kind, r.subject, r.text, r.reason, r.outcome])})' "$SID:rec-1"
 }
 k13() {   # p2: two requests of one session are two records; replay adds none; needsYou counts each once
@@ -523,15 +581,17 @@ k15() {   # p2: cland inbox and cland inbox --archive against the rig
   node -e 'console.log("json needsYou "+JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).needsYou)' "$EV/E414S1-15-inbox.json"
 }
 k16() {   # p2: Approve once reaches the adapter once; the answering client and R1 read the same closed outcome
+  live r1 16
   SID=$(cat "$Q/sid-qa-codex")
   printf '{"op":"raise","harness":"codex","session":"qa-codex","request":{"id":"once-1","kind":"command","subject":{"command":"echo safe"},"choices":["once","deny"]}}\n' | rc 16-raise
   printf '{"type":"approval.answer","approval":"%s","choice":"once"}\n{"type":"inbox.list"}\n' "$SID:once-1" | fc > "$EV/E414S1-16.jsonl"
   sleep 2; printf '{"op":"answers"}\n' | rc 16-answers
   q "$EV/E414S1-16.jsonl" '({result: [res("q1").ok, res("q1").value?.approval?.id===A[0], res("q1").value?.approval?.state, res("q1").value?.approval?.outcome], listed: res("q2").value.approvals.some(a=>a.id===A[0])})' "$SID:once-1"
-  q "$EV/E414S1-R1.jsonl" '({states: ap(A[0]).map(a=>a.state), outcomes: ap(A[0]).filter(a=>a.state!=="pending").map(a=>a.outcome)})' "$SID:once-1"
-  q "$EV/E414S1-R1.jsonl" 'answers("codex","once-1")'
+  q "$(cap r1)" '({states: ap(A[0]).map(a=>a.state), outcomes: ap(A[0]).filter(a=>a.state!=="pending").map(a=>a.outcome)})' "$SID:once-1"
+  q "$(cap r1)" 'answers("codex","once-1")'
 }
 k17() {   # p2: two clients answer one request on one start line; the adapter holds; exactly one wins
+  live r1 17
   SID=$(cat "$Q/sid-qa-codex"); RID="$SID:race-1"
   printf '{"op":"raise","harness":"codex","session":"qa-codex","request":{"id":"race-1","kind":"command","subject":{"command":"echo race"},"choices":["once","always","deny"]}}\n' | rc 17-raise
   printf '{"op":"script","harness":"codex","outcomes":["hold"]}\n' | rc 17-hold
@@ -544,9 +604,9 @@ k17() {   # p2: two clients answer one request on one start line; the adapter ho
   wait
   printf '{"type":"approval.answer","approval":"%s","choice":"always"}\n{"type":"inbox.list","archive":true}\n' "$RID" | fc > "$EV/E414S1-17-late.jsonl"
   for c in A B; do q "$EV/E414S1-17-$c.jsonl" '[A[0], res("q2")?.ok ?? null, res("q2")?.error ?? null, res("q2")?.value?.approval?.outcome ?? null, F.find(f=>f.type==="qa-file")?.at]' "$c"; done
-  q "$EV/E414S1-R1.jsonl" '({states: ap(A[0]).map(a=>a.state), outcomes: ap(A[0]).filter(a=>a.state!=="pending").map(a=>a.outcome)})' "$RID"
+  q "$(cap r1)" '({states: ap(A[0]).map(a=>a.state), outcomes: ap(A[0]).filter(a=>a.state!=="pending").map(a=>a.outcome)})' "$RID"
   q "$EV/E414S1-17-late.jsonl" '({late: [res("q1").ok, res("q1").error], archive: res("q2").value.archive.filter(r=>r.id===A[0]).map(r=>r.outcome)})' "$RID"
-  q "$EV/E414S1-R1.jsonl" 'rig().filter(r=>["17-before-settle.json","17-settle.json"].includes(r.n)).map(r=>[r.n, (r.answers.codex??[]).filter(a=>a.requestId==="race-1").map(a=>a.choice)])'
+  q "$(cap r1)" 'rig().filter(r=>["17-before-settle.json","17-settle.json"].includes(r.n)).map(r=>[r.n, (r.answers.codex??[]).filter(a=>a.requestId==="race-1").map(a=>a.choice)])'
 }
 k18() {   # p2: an unoffered choice and a closed record are refused; nothing changes; nothing reaches the adapter
   SID=$(cat "$Q/sid-qa-codex")
@@ -554,7 +614,7 @@ k18() {   # p2: an unoffered choice and a closed record are refused; nothing cha
   printf '{"type":"inbox.list"}\n{"type":"approval.answer","approval":"%s","choice":"always"}\n{"type":"inbox.list"}\n{"type":"approval.answer","approval":"%s","choice":"deny"}\n' "$SID:limited-1" "$SID:once-1" | fc > "$EV/E414S1-18.jsonl"
   printf '{"op":"answers"}\n' | rc 18-answers
   q "$EV/E414S1-18.jsonl" '({unoffered: [res("q2").ok, res("q2").error], unchanged: JSON.stringify(res("q1").value.approvals)===JSON.stringify(res("q3").value.approvals), limitedState: res("q3").value.approvals.find(a=>a.id===A[0])?.state, closed: [res("q4").ok, res("q4").error]})' "$SID:limited-1"
-  q "$EV/E414S1-R1.jsonl" '[answers("codex","limited-1").length, answers("codex","once-1").length]'
+  q "$(cap r1)" '[answers("codex","limited-1").length, answers("codex","once-1").length]'
 }
 k19() {   # p2: every agent role is refused, on the socket (as) and through two real spokes (Implementer, Aide)
   SID=$(cat "$Q/sid-qa-codex"); RID="$SID:agent-1"; echo "$RID" > "$Q/rec19"
@@ -574,7 +634,7 @@ k19() {   # p2: every agent role is refused, on the socket (as) and through two 
   q "$EV/E414S1-19-as.jsonl" '(()=>{const n=F.filter(f=>f.type==="qa-send").length, out=[];for(let i=2;i<n;i++){const r=res("q"+i), fr=F.find(f=>f.type==="qa-send"&&f.frame.id==="q"+i).frame;out.push([fr.as.name, r.ok, r.error])}return {answers: out, unchanged: JSON.stringify(res("q1").value.approvals)===JSON.stringify(res("q"+n).value.approvals)};})()'
   for r in implementer aide; do q "$EV/E414S1-19-drv-$r.txt" '[A[0], F.some(f=>f.ready), F.filter(f=>f.tool==="approval.answer"||f.step).map(f=>f.tool ? ["tool", f.result?.ok ?? null, f.result?.error ?? null] : ["error", f.error])]' "$r"; done
   q "$EV/E414S1-19-after.jsonl" 'res("q1").value.approvals.find(a=>a.id===A[0])?.state' "$RID"
-  q "$EV/E414S1-R1.jsonl" 'answers("codex","agent-1").length'
+  q "$(cap r1)" 'answers("codex","agent-1").length'
 }
 k20() {   # p2: the web edge's cookie client answers as the human; `as` on the web edge is refused
   SID=$(cat "$Q/sid-qa-codex")
@@ -584,17 +644,18 @@ k20() {   # p2: the web edge's cookie client answers as the human; `as` on the w
   printf '{"op":"answers"}\n' | rc 20-answers
   q "$EV/E414S1-20-web.jsonl" '({signedIn: F.some(f=>f.type==="qa-signed-in"), welcome: F.find(f=>f.type==="welcome")?.name, w1: [res("w1")?.ok, res("w1")?.value?.approval?.state, res("w1")?.value?.approval?.outcome], w2: [res("w2")?.ok, res("w2")?.code, res("w2")?.error]})'
   q "$EV/E414S1-20-local.jsonl" '({late: [res("q1").ok, res("q1").error], web2: res("q2").value.approvals.find(a=>a.id===A[0])?.state})' "$SID:web-2"
-  q "$EV/E414S1-R1.jsonl" '[answers("codex","web-1").map(a=>[a.choice, a.note]), answers("codex","web-2").length]'
+  q "$(cap r1)" '[answers("codex","web-1").map(a=>[a.choice, a.note]), answers("codex","web-2").length]'
 }
 k21() {   # p2: a failed delivery returns the record to pending, refuses with the reason and journals a warning
+  live r1 21
   SID=$(cat "$Q/sid-qa-codex"); RID="$SID:fail-1"
   printf '{"op":"raise","harness":"codex","session":"qa-codex","request":{"id":"fail-1","kind":"command","subject":{"command":"echo retry"},"choices":["once","deny"]}}\n' | rc 21-raise
   printf '{"op":"script","harness":"codex","outcomes":["fail"]}\n' | rc 21-fail
   printf '{"type":"inbox.list"}\n{"type":"approval.answer","approval":"%s","choice":"deny","note":"Keep it local"}\n{"type":"inbox.list"}\n{"type":"events.list"}\n{"type":"approval.answer","approval":"%s","choice":"deny"}\n{"type":"inbox.list","archive":true}\n' "$RID" "$RID" | fc > "$EV/E414S1-21.jsonl"
   sleep 1; printf '{"op":"answers"}\n' | rc 21-answers
   q "$EV/E414S1-21.jsonl" '(()=>{const before=res("q1").value.approvals.find(a=>a.id===A[0]), after=res("q3").value.approvals.find(a=>a.id===A[0]), warn=res("q4").value.rows.filter(r=>String(r.text).includes("approval answer failed: fake approval delivery failed"));return {refused: [res("q2").ok, res("q2").error], restored: JSON.stringify(before)===JSON.stringify(after), state: after?.state, outcome: after?.outcome ?? null, warnRows: warn.map(r=>[r.id, r.warning]), retry: [res("q5").ok, res("q5").value?.approval?.outcome], archive: res("q6").value.archive.filter(r=>r.id===A[0]).map(r=>r.outcome)};})()' "$RID"
-  q "$EV/E414S1-R1.jsonl" '({states: ap(A[0]).map(a=>[a.state, a.outcome?.choice ?? null, a.outcome?.note ?? null]), events: F.filter(f=>f.type==="event"&&String(f.row?.text).includes("approval answer failed")).map(f=>[f.row.id, f.row.warning, f.row.text])})' "$RID"
-  q "$EV/E414S1-R1.jsonl" 'answers("codex","fail-1").map(a=>[a.choice, a.note ?? null])'
+  q "$(cap r1)" '({states: ap(A[0]).map(a=>[a.state, a.outcome?.choice ?? null, a.outcome?.note ?? null]), events: F.filter(f=>f.type==="event"&&String(f.row?.text).includes("approval answer failed")).map(f=>[f.row.id, f.row.warning, f.row.text])})' "$RID"
+  q "$(cap r1)" 'answers("codex","fail-1").map(a=>[a.choice, a.note ?? null])'
 }
 k22() {   # p2: a Deny note the native protocol cannot carry becomes the human's message; the byte cap is checked first
   SOC=$(cat "$Q/sid-qa-oc")
@@ -609,15 +670,16 @@ k22() {   # p2: a Deny note the native protocol cannot carry becomes the human's
   printf '{"op":"answers"}\n' | rc 22-answers
   q "$EV/E414S1-22-a.jsonl" '({oversize: [res("q2").ok, res("q2").error], unchanged: JSON.stringify(res("q1").value.approvals)===JSON.stringify(res("q3").value.approvals), corrected: [res("q4").ok, res("q4").value?.approval?.outcome], notes: res("q5").value.messages.filter(m=>m.text==="QA keep this file").map(m=>({from: m.from, fromKind: m.fromKind, to: m.to}))})'
   q "$EV/E414S1-22-b.jsonl" '({native: [res("q1").ok, res("q1").value?.approval?.outcome?.note], posted: res("q2").value.messages.filter(m=>m.text==="QA native note").length})'
-  q "$EV/E414S1-R1.jsonl" '({mid: (rig().find(r=>r.n==="22-mid.json").answers.opencode??[]).filter(a=>a.requestId==="note-1").map(a=>[a.choice, a.note]), note1: answers("opencode","note-1").map(a=>[a.choice, a.note]), note2: answers("opencode","note-2").map(a=>[a.choice, a.note])})'
+  q "$(cap r1)" '({mid: (rig().find(r=>r.n==="22-mid.json").answers.opencode??[]).filter(a=>a.requestId==="note-1").map(a=>[a.choice, a.note]), note1: answers("opencode","note-1").map(a=>[a.choice, a.note]), note2: answers("opencode","note-2").map(a=>[a.choice, a.note])})'
 }
 k23() {   # p2: ten minutes later the untouched request is still pending, unanswered; no private input anywhere
   S2=$(cat "$Q/sid-qa-codex2"); T0=$(cat "$Q/idle-raised"); NOW=$(date -u +%s)
   [ $((NOW - T0)) -ge 600 ] || sleep $((600 - NOW + T0))
+  live r1 23
   printf '{"type":"inbox.list"}\n' | fc > "$EV/E414S1-23.jsonl"
   printf '{"op":"answers"}\n' | rc 23-answers
   q "$EV/E414S1-23.jsonl" '(()=>{const a=res("q1").value.approvals.find(x=>x.id===A[0]), b=fs.readFileSync(A[1],"utf8").split("\n").filter(Boolean).map(l=>JSON.parse(l)).find(f=>f.type==="result"&&f.id==="q1").value.approvals.find(x=>x.id===A[0]), core=r=>JSON.stringify([r.id,r.sessionId,r.harness,r.kind,r.subject,r.choices,r.answerIn,r.since,r.state,r.outcome??null]);return {waitedS: Math.floor((Date.now()-Date.parse(a.since))/1000), state: a.state, outcome: a.outcome ?? null, sameAsRaised: JSON.stringify(a)===JSON.stringify(b), sameCore: core(a)===core(b)};})()' "$S2:idle-1" "$EV/E414S1-11-idle.jsonl"
-  q "$EV/E414S1-R1.jsonl" '[answers("codex","idle-1").length, ap(A[0]).map(a=>a.state)]' "$S2:idle-1"
+  q "$(cap r1)" '[answers("codex","idle-1").length, ap(A[0]).map(a=>a.state)]' "$S2:idle-1"
   printf 'private in captures: '; cat "$EV"/E414S1-* | grep -c -E 'PRIVATE-(QA|NATIVE|TOOL|FILE)'
 }
 k24() {   # docs, in QA's own shell
@@ -668,7 +730,7 @@ How to run a row, by its `where`:
 - **test $W**: in QA's own shell; `nt` runs `quiet` first and seals the test run itself. Judge each by its `exit` line, the TAP summary counts and the named tests on `ok` lines (`oks <id>` lists them; a name that appears on no `ok` line proves nothing).
 - **docs** and **QA shell**: in QA's own shell, as QA; E414S1-00's plan read is the only check that touches the live hub, and only to read.
 
-Order: E414S1-00, then the rows in id order. Values later rows reuse live in `$Q` (record and session ids) and `$EV` captures. E414S1-06 starts the streaming client S1 (p1) and E414S1-11 the streaming client R1 (p2); they run until E414S1-10 and E414S1-25 stop them. E414S1-09 waits until p1's record has waited 180 s; E414S1-23 waits until 600 s after E414S1-11 raised `idle-1`.
+Order: E414S1-00, then the rows in id order. Values later rows reuse live in `$Q` (record and session ids) and `$EV` captures. E414S1-06 starts the streaming client S1 (p1) and E414S1-11 the streaming client R1 (p2), both detached through `bg.cjs`; they run until E414S1-10 and E414S1-25 stop them. E414S1-09 waits until p1's record has waited 180 s; E414S1-23 waits until 600 s after E414S1-11 raised `idle-1`.
 
 | id | surface | via | where | command | expected |
 | --- | --- | --- | --- | --- | --- |
@@ -678,26 +740,26 @@ Order: E414S1-00, then the rows in id order. Values later rows reuse live in `$Q
 | E414S1-03 | hub-api | named tests (headless Neovim against the stub hub's recorded frames; recorded frames against an in-process real hub); git | test $W | `nt E414S1-03 nvim/test/inbox-actions.test.ts; oks E414S1-03; nt E414S1-03-drift --test-name-pattern='recorded protocol fixtures match the live hub attach frames' nvim/test/scenarios/workbench.test.ts; oks E414S1-03-drift; git -C "$W" show --stat --format=%H $(git -C "$W" log --first-parent --format=%H --grep 'Item: T-1109' dev) -- nvim/test/fixtures nvim/test/inbox-actions.test.ts` | T-1109 C7 and C8. First run: `exit 0`; `# fail 0`, `# cancelled 0`, `# skipped 0` (a skip means no pinned Neovim: BLOCKED, not PASS), `# pass` equal to `# tests`; "Enter on a recorded Claude Code approval requests attachment of that session" `ok` (Enter on a recorded `answerIn: tui` row with `command: echo review me` sends `session.attach` for `worker` and the centre view becomes that session). Second run: `exit 0`; `# tests 1`, `# pass 1`, `# fail 0`, `# skipped 0`; "recorded protocol fixtures match the live hub attach frames" `ok`: every recorded Neovim protocol frame, the refreshed inbox recordings included, is what a real hub produces at this build. The `git show --stat` of T-1109's landing commit lists `nvim/test/fixtures/protocol-frames.json`, `nvim/test/fixtures/protocol-frames/inbox-actions.json` and `nvim/test/inbox-actions.test.ts`: the recordings were refreshed with the item |
 | E414S1-04 | hub-api | named tests (regression for the changed fake clock, fake adapter, inbox and needs-you) | test $W | `nt E414S1-04 hub/test/clock.test.ts hub/test/project-clock.test.ts hub/test/fake-harness.test.ts hub/test/inbox-requests.test.ts hub/test/inbox-requests-component.test.ts nvim/test/needs-you.test.ts nvim/test/inbox-requests.test.ts; oks E414S1-04 \| grep -F 'FakeClock delivers a blocked interval once'` | Regression. `exit 0`; `# fail 0`, `# cancelled 0`, `# skipped 0` (a Neovim skip is BLOCKED), `# pass` equal to `# tests`. "FakeClock delivers a blocked interval once at wakeup and schedules its next tick in the future" is on an `ok` line (T-1110 changed `FakeClock` so an overdue interval fires once; the 24-hour no-default test in E414S1-01 relies on it). `hub/test/inbox-requests.test.ts` (changed by T-1109) passes with approval departures journaled as `approval:answered` |
 | E414S1-05 | hub-api | static checks | test $W | `quiet && ( . "$Q/env.sh"; cd "$W" && node hub/test/lint-wire-imports.ts; echo "lint exit $?"; npm run typecheck > "$EV/E414S1-05.log" 2>&1; echo "typecheck exit $?" )` | Regression for the shared wire changes (`shared/wire/index.ts` and `hub/test/wire-conformance.ts` changed in T-1109; `shared/wire/index.ts` in T-1110). `lint exit 0` and `typecheck exit 0` with no diagnostics in the log |
-| E414S1-06 | hub-api | CLI; frame clients (S1 streaming, one fresh featured); the production Claude Code adapter with the fake `claude` | p1 | `k06` | T-1109 C1, live. `launch exit 0`; no `timeout` line. The fresh snapshot's `inbox` section: `rows: 1`; `sessionId: true` and `idScoped: true` (the record's `sessionId` is the launched session's, its id is `<sessionId>:<episode>`); `harness: "claude-code"`, `kind: "command"`, `command: "touch approved"`, `subject: {command: "touch approved"}` (nothing else: no `content`), `answerIn: "tui"`, `choices: []`, `state: "pending"`, `outcome: null`; `attach` a non-empty string ending ` attach <harnessId>` with the printed `harnessId`; `needsYou` at least `1` |
-| E414S1-07 | hub-api | CLI; frame client S1's stream | p1 | `k07` | The Claude Code approval shows once, marked to answer in Neovim (T-1109 C1, C5, C6). `row lines: 1`, `id mentions: 1`: `cland inbox` prints one row `approval <id>  qa-cc  touch approved  pending  answer in Neovim  from <label>  · <age>` under `Asks and approvals (n)`; its last line `needs you: N` with N equal to the printed `json needsYou`. S1: `ids` is exactly `[<the E414S1-06 id>]`, `pending` at least `1` and `identical: true` (every pending `approval` delta for it carries the same record), `inboxFrames` at least `1` and `maxRows: 1` (no inbox delta lists it twice). `private: 0`: the fake's `PRIVATE-TOOL-INPUT` (its `tool_input.content`) is in no frame |
+| E414S1-06 | hub-api | CLI; frame clients (S1 streaming, one fresh featured); the production Claude Code adapter with the fake `claude` | p1 | `k06` | T-1109 C1, live. `launch exit 0`; a `started <pid>` line (S1 runs detached); no `timeout` line. The fresh snapshot's `inbox` section: `rows: 1`; `sessionId: true` and `idScoped: true` (the record's `sessionId` is the launched session's, its id is `<sessionId>:<episode>`); `harness: "claude-code"`, `kind: "command"`, `command: "touch approved"`, `subject: {command: "touch approved"}` (nothing else: no `content`), `answerIn: "tui"`, `choices: []`, `state: "pending"`, `outcome: null`; `attach` a non-empty string ending ` attach <harnessId>` with the printed `harnessId`; `needsYou` at least `1` |
+| E414S1-07 | hub-api | CLI; frame client S1's stream | p1 | `k07` | The Claude Code approval shows once, marked to answer in Neovim (T-1109 C1, C5, C6). `row lines: 1`, `id mentions: 1`: `cland inbox` prints one row `approval <id>  qa-cc  touch approved  pending  answer in Neovim  from <label>  · <age>` under `Asks and approvals (n)`; its last line `needs you: N` with N equal to the printed `json needsYou`. S1: `ids` is exactly `[<the E414S1-06 id>]`, `pending` at least `1` and `identical: true` (every pending `approval` delta for it carries the same record), `inboxFrames` at least `1` and `maxRows: 1` (no inbox delta lists it twice). `private: 0`: the fake's `PRIVATE-TOOL-INPUT` (its `tool_input.content`) is in no frame. The `s1 alive at 07` line is expected; a `s1 NOT alive` line is a fixture finding (record it with the line), not a product failure, and S1's judgement then comes from the replacement capture |
 | E414S1-08 | hub-api | frame client (the local human) | p1 | `k08` | T-1110 C3 for a TUI-only record, live. `once` and `deny` are each `[false, "this approval stays in the harness TUI; answer in Neovim"]`; `unknown` is `[false, "no pending approval"]`; `malformed` (choice `maybe`) is `[false, "unknown request type \"approval.answer\""]` (the frame fails validation); `unchanged: true`; `state: "pending"` |
-| E414S1-09 | hub-api | frame clients; CLI; a TUI answer by `SIGUSR1` to the fake session | p1 | `k09` | T-1110 C7 (live wait), T-1109 C4 and C6, T-1110 C3 for a closed record, live. Waited: `state: "pending"`, `outcome: null`, `waitedS` at least `180`, `sameAsBefore: true` (nothing answered the record by itself). A `fake session pid` line, no `BLOCKED` line. S1: `states` ends `"pending"` then `"closed"` (pending deltas may repeat, all identical per E414S1-07), and `closed` is one outcome `{choice: "answered in the harness", by: "harness", via: "harness", at: T}`. Late: `[false, "approval already answered by harness via harness at T"]` with the same T; `listed: false`; `archive` one row `["approval", "answered", <that outcome>]`. `archive lines: 1` (`cland inbox --archive` prints `… approval <id>  qa-cc  touch approved  · closed  answered in the harness by harness via harness at T`). Second episode: `rows: 1`, `newId: true`, `sameSession: true`, `state: "pending"`, `answerIn: "tui"` (a later wait gets its own record) |
+| E414S1-09 | hub-api | frame clients; CLI; a TUI answer by `SIGUSR1` to the fake session | p1 | `k09` | T-1110 C7 (live wait), T-1109 C4 and C6, T-1110 C3 for a closed record, live; closure is judged from fresh reads, never from a stream alone. Waited: `state: "pending"`, `outcome: null`, `waitedS` at least `180`, `sameAsBefore: true` (nothing answered the record by itself). For each episode (`first`, `second`), before the signal the `tui` line has `samePid: true` (the fake's `claude agents --json` entry for the session's `harnessId` and the hub's `session list` row name the same pid), `alive: true`, `status: "waiting"`, `waitingFor: "permission prompt"`, `hubState: "waiting for approval"`; a `BLOCKED` line there means the fake was not waiting, so the signal was not sent (record the `E414S1-09-agents-*`, `-sessions-*` and `-fakesession-*` files). After the signal, with no `timeout` line: `listed: false` and `archive` one row `["approval", "answered", O]` with O = `{choice: "answered in the harness", by: "harness", via: "harness", at: T}`; the fake's log slice has `PostToolUse 1, send ok 1` (the fake took the signal, ran the tool and replied); `reply in General: 1` (`pong: QA needs approval`, then `pong: QA needs approval again`); `state: idle`. Streams: each `s1 … at 09a`…`09d` line says `alive` or records a replacement (a dead S1 is a fixture finding, not a product failure); each `stream` summary's `closed` is `[O]` with the same O as that episode's archive (its `states` end with `"closed"`; a replacement capture started after the record was raised has no `pending` entry). Late: `[false, "approval already answered by harness via harness at T"]` with the first episode's T; `listed: false`; `archive` one row `["approval", "answered", O]`. `archive lines: 1` (`cland inbox --archive` prints `… approval <id>  qa-cc  touch approved  · closed  answered in the harness by harness via harness at T`). Second episode's record: `rows: 1`, `newId: true`, `sameSession: true`, `state: "pending"`, `answerIn: "tui"` (a later wait gets its own record) |
 | E414S1-10 | hub-api | CLI; hub restart | p1 | `k10` | T-1109 C4 durability. `session stop exit 0`; `old hub <pid> exited`; `hub start exit 0` and `NEW` differs from `OLD`; `approval lines: 2` (the two episodes of E414S1-09) and `approval archive unchanged across the restart` |
-| E414S1-11 | hub-api | the rig; frame clients (R1 streaming; launches) | QA shell; p2 | `quiet && ( . "$Q/env.sh"; cd "$W" && rigstart ) && P2=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).root)' "$Q/rig/ready") && case "$P2" in "$Q"/p2-*) echo "P2=$P2";; *) echo "BLOCKED: rig root $P2"; false;; esac && ( . "$Q/env.sh"; cd "$P2" && k11 )` | The rig serves (`P2=` under `$Q/p2-`) and takes commands. `launched`: three rows `[true, "qa-codex", "codex"]`, `[true, "qa-codex2", "codex"]`, `[true, "qa-oc", "opencode"]`. The `idle-1` record: id `<qa-codex2 sessionId>:idle-1`, `session: "qa-codex2"`, `harness: "codex"`, `kind: "command"`, `subject: {command: "echo idle"}`, `choices: ["once","deny"]`, `answerIn: "hub"`, `state: "pending"`, no outcome; `needsYou` equals `needsYou0 + 1`. The rig log's last line has `"ok":true` |
-| E414S1-12 | hub-api | rig commands; frame clients (R1 stream, a fresh reader) | p2 | `k12` | T-1109 C2, C4 and C5, live. R1 for `<qa-codex sessionId>:rec-1`: `states` `["pending","closed"]`; `first` is the pending record with `sessionId` = qa-codex's, `session: "qa-codex"`, `harness: "codex"`, `kind: "command"`, `subject` exactly `{command: "git status\nprintf done", cwd: $P2, reason: "QA read worktree"}` (no `privateInput`), `command: "git status\nprintf done"`, `choices: ["once","always","deny"]`, `answerIn: "hub"`, `topic: "general"`; `closed` one outcome `{choice: "deny", note: "Keep the tree", by: "human", via: "harness", at: AT}` with the printed AT; `inboxWithRow` at least `1`, `inboxWithMore: 0`. After: `listed: false`; `archive` one row `["approval", "qa-codex", "git status", "answered", <that outcome>]` |
+| E414S1-11 | hub-api | the rig; frame clients (R1 streaming; launches) | QA shell; p2 | `quiet && ( . "$Q/env.sh"; cd "$W" && rigstart ) && P2=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).root)' "$Q/rig/ready") && case "$P2" in "$Q"/p2-*) echo "P2=$P2";; *) echo "BLOCKED: rig root $P2"; false;; esac && ( . "$Q/env.sh"; cd "$P2" && k11 )` | The rig serves (`P2=` under `$Q/p2-`; `started <pid>` lines for the rig and R1, both detached) and takes commands. `launched`: three rows `[true, "qa-codex", "codex"]`, `[true, "qa-codex2", "codex"]`, `[true, "qa-oc", "opencode"]`. The `idle-1` record: id `<qa-codex2 sessionId>:idle-1`, `session: "qa-codex2"`, `harness: "codex"`, `kind: "command"`, `subject: {command: "echo idle"}`, `choices: ["once","deny"]`, `answerIn: "hub"`, `state: "pending"`, no outcome; `needsYou` equals `needsYou0 + 1`. The rig log's last line has `"ok":true` |
+| E414S1-12 | hub-api | rig commands; frame clients (R1 stream, a fresh reader) | p2 | `k12` | T-1109 C2, C4 and C5, live. R1 for `<qa-codex sessionId>:rec-1`: `states` `["pending","closed"]`; `first` is the pending record with `sessionId` = qa-codex's, `session: "qa-codex"`, `harness: "codex"`, `kind: "command"`, `subject` exactly `{command: "git status\nprintf done", cwd: $P2, reason: "QA read worktree"}` (no `privateInput`), `command: "git status\nprintf done"`, `choices: ["once","always","deny"]`, `answerIn: "hub"`, `topic: "general"`; `closed` one outcome `{choice: "deny", note: "Keep the tree", by: "human", via: "harness", at: AT}` with the printed AT; `inboxWithRow` at least `1`, `inboxWithMore: 0`. After: `listed: false`; `archive` one row `["approval", "qa-codex", "git status", "answered", <that outcome>]`. The row first prints `r1 alive at 12`; a `r1 NOT alive` line is a fixture finding (record it), and R1's expectations are then judged on the replacement capture it started |
 | E414S1-13 | hub-api | rig commands; frame client | p2 | `k13` | T-1109 C3, live. With N = base `needsYou` (two reports of `dup` already in: a replay adds no row, so base `ocRows` is one row `<qa-oc>:dup`): `two` has `needsYou` N+1 and `ocRows` two rows, `[<qa-oc>:dup, "command", {command: "echo one"}]` and `[<qa-oc>:fc-1, "file change", {files: ["a.txt"], change: "+hello\n-world"}]` (the state-only `waiting` signal adds no third row); `three` has N+2 and `dupIds` two different ids, `<qa-oc sessionId>:dup` and `<qa-codex sessionId>:dup` (native ids are scoped to their session); `after` (qa-oc's `dup` closed) has N+1 and `ocRows` only `fc-1`. In every stage `status` equals `needsYou` (`hub.status` agrees) |
 | E414S1-14 | hub-api | rig commands; a fresh featured frame client | p2 | `k14` | T-1109 C5, the decision's 64 KB cap. `underCap: true` (`hugeBytes` at most `65536`), `prefix: true`, `cut: true`, `topEqualsSubject: true`, `loneHighSurrogateAtEnd: false`; `hugeKeys` includes `command` and only names from `command`, `cwd`, `files`, `reason`, `change`; `patch` exactly `{cwd: $P2, files: ["one.ts","two.ts"], change: "+new\n-old", reason: "Review patch"}`; `privateInSnapshot: false` |
 | E414S1-15 | hub-api | CLI | p2 | `k15` | T-1109 C6 for records answered in the hub. `idle row: 1` (`approval <id>  qa-codex2  echo idle  pending  once, deny  from …`), `file change row: 1` (a file change shows its change's first line), `archived rec-1: 1` (`… approval <id>  qa-codex  git status  · closed  deny by human via harness at AT: Keep the tree`); the last inbox line is `needs you: N` with N equal to `json needsYou` |
-| E414S1-16 | hub-api | frame client A (the local human); R1; the rig's adapter log | p2 | `k16` | T-1110 C1, live. `result` `[true, true, "closed", O]` with O = `{choice: "once", by: "human", via: "neovim", at: T}` (where: Neovim's local connection; when: T); `listed: false`. R1 (the second client): `states` `["pending","answering","closed"]` and `outcomes` `[O, O]`. The adapter got exactly one answer: `[{sessionId: <qa-codex>, requestId: "once-1", choice: "once"}]` |
-| E414S1-17 | hub-api | two frame clients released by one file; R1; rig hold and settle | p2 | `k17` | T-1110 C2, live (the same-tick case is E414S1-01's). Of the two `[client, ok, error, outcome, released at]` rows, exactly one is `[_, true, null, O]` and the other `[_, false, "approval already answered by human via neovim at <O.at>", null]`, where O = `{choice: <the winner's choice: once for A, deny for B>, by: "human", via: "neovim", at}`; the two `released at` times are within 1 s. R1: `states` `["pending","answering","closed"]`, `outcomes` `[O, O]`. Late answer: `[false, "approval already answered by human via neovim at <O.at>"]`; `archive` `[O]`. The adapter: before settle and after, exactly one answer for `race-1`, `[O.choice]` (the loser never reached it) |
+| E414S1-16 | hub-api | frame client A (the local human); R1; the rig's adapter log | p2 | `k16` | T-1110 C1, live. `result` `[true, true, "closed", O]` with O = `{choice: "once", by: "human", via: "neovim", at: T}` (where: Neovim's local connection; when: T); `listed: false`. R1 (the second client): `states` `["pending","answering","closed"]` and `outcomes` `[O, O]`. The adapter got exactly one answer: `[{sessionId: <qa-codex>, requestId: "once-1", choice: "once"}]`. The row first prints `r1 alive at 16`; a `r1 NOT alive` line is a fixture finding (record it), and R1's expectations are then judged on the replacement capture it started |
+| E414S1-17 | hub-api | two frame clients released by one file; R1; rig hold and settle | p2 | `k17` | T-1110 C2, live (the same-tick case is E414S1-01's). Of the two `[client, ok, error, outcome, released at]` rows, exactly one is `[_, true, null, O]` and the other `[_, false, "approval already answered by human via neovim at <O.at>", null]`, where O = `{choice: <the winner's choice: once for A, deny for B>, by: "human", via: "neovim", at}`; the two `released at` times are within 1 s. R1: `states` `["pending","answering","closed"]`, `outcomes` `[O, O]`. Late answer: `[false, "approval already answered by human via neovim at <O.at>"]`; `archive` `[O]`. The adapter: before settle and after, exactly one answer for `race-1`, `[O.choice]` (the loser never reached it). The row first prints `r1 alive at 17`; a `r1 NOT alive` line is a fixture finding (record it), and R1's expectations are then judged on the replacement capture it started |
 | E414S1-18 | hub-api | frame client; rig log | p2 | `k18` | T-1110 C3, live. `unoffered` `[false, "choice always is not offered by this approval"]`; `unchanged: true`; `limitedState: "pending"`; `closed` `[false, "approval already answered by human via neovim at <E414S1-16's T>"]`; adapter answers `[0, 1]` (none for `limited-1`; still only E414S1-16's for `once-1`) |
 | E414S1-19 | hub-api | frame clients acting `as` every launched session; two driver sessions (Implementer, Aide) | p2 | `k19` | T-1110 C4 (agents), live, per the decision (only the human answers; Aides refused). Launches: five `[true, "agent-…"]` rows (coordinator, reviewer, qa, aide, lead). `answers`: one row per session in `session.list` (qa-codex, qa-codex2, qa-oc and the five agents), each `[<name>, false, <error matching /human\|permission\|forbidden/i>]`; `unchanged: true`. Each driver: `[<role>, true, [<one entry>]]` whose entry is `["tool", false or null, …]` or `["error", …]` (there is no agent tool for answering: an unknown-tool error is the expected refusal), never `["tool", true, …]`; a driver that never printed `ready` (second field `false`) makes the row INCONCLUSIVE with its `.err` file, not FAIL. The record's state is `"pending"`; adapter answers for `agent-1`: `0` |
 | E414S1-20 | hub-api | cookie client on the web edge (no browser); frame client; rig log | p2 | `k20` | T-1110 C4 (web), live. `signedIn: true`, `welcome: "human"`; `w1` `[true, "closed", O]` with O = `{choice: "always", note: "QA web", by: "human", via: "web", at: T}`; `w2` `[false, "cli-neovim-only", "approval.answer lives in the CLI and Neovim: acts as another identity"]`. Local late answer: `[false, "approval already answered by human via web at T"]`; `web2: "pending"` (the refused `as` frame changed nothing). Adapter: `[[["always","QA web"]], 0]` |
-| E414S1-21 | hub-api | frame client; R1 (events and deltas); rig script `fail` | p2 | `k21` | T-1110 C5, live. `refused` `[false, "fake approval delivery failed"]`; `restored: true`, `state: "pending"`, `outcome: null`; `warnRows` at least one `[<row id>, true]`; `retry` `[true, {choice: "deny", by: "human", via: "neovim", at}]` (no note); `archive` that outcome once. R1 `states`: `["pending",null,null]`, `["answering","deny","Keep it local"]`, `["pending",null,null]`, `["answering","deny",null]`, `["closed","deny",null]` in that order; `events` at least one `[<a warnRows id>, true, "approval answer failed: fake approval delivery failed"]`. Adapter: `[["deny","Keep it local"],["deny",null]]` (a Deny stayed a Deny) |
+| E414S1-21 | hub-api | frame client; R1 (events and deltas); rig script `fail` | p2 | `k21` | T-1110 C5, live. `refused` `[false, "fake approval delivery failed"]`; `restored: true`, `state: "pending"`, `outcome: null`; `warnRows` at least one `[<row id>, true]`; `retry` `[true, {choice: "deny", by: "human", via: "neovim", at}]` (no note); `archive` that outcome once. R1 `states`: `["pending",null,null]`, `["answering","deny","Keep it local"]`, `["pending",null,null]`, `["answering","deny",null]`, `["closed","deny",null]` in that order; `events` at least one `[<a warnRows id>, true, "approval answer failed: fake approval delivery failed"]`. Adapter: `[["deny","Keep it local"],["deny",null]]` (a Deny stayed a Deny). The row first prints `r1 alive at 21`; a `r1 NOT alive` line is a fixture finding (record it), and R1's expectations are then judged on the replacement capture it started |
 | E414S1-22 | hub-api | frame client; rig notes switch | p2 | `k22` | T-1110 C6, live. `oversize` `[false, <error containing "8196 bytes; the cap is 8192">]`; `unchanged: true`; `corrected` `[true, {choice: "deny", note: "QA keep this file", by: "human", via: "neovim", at}]`; `notes` exactly one `{from: "human", fromKind: "human", to: ["qa-oc"]}` (qa-oc has no item: General). `native` `[true, "QA native note"]` and `posted: 0` (a note the protocol carries is not repeated as a message). Adapter: `mid` `[["deny","QA keep this file"]]` (the oversized note never reached it), `note1` the same, `note2` `[["deny","QA native note"]]` |
-| E414S1-23 | hub-api | frame client; R1; rig log | p2 | `k23` | T-1110 C7 (live wait) and T-1109 C5 (sweep). `waitedS` at least `600`, `state: "pending"`, `outcome: null`, `sameCore: true` (`sameAsRaised: false` is not a failure when only `label`, `role` or `attach` changed). Adapter answers for `idle-1`: `0`, and its R1 states are only `"pending"`. `private in captures: 0` (no `PRIVATE-QA-*`, `PRIVATE-NATIVE-*`, `PRIVATE-TOOL-*` or `PRIVATE-FILE-*` text in any capture of this run) |
+| E414S1-23 | hub-api | frame client; R1; rig log | p2 | `k23` | T-1110 C7 (live wait) and T-1109 C5 (sweep). `waitedS` at least `600`, `state: "pending"`, `outcome: null`, `sameCore: true` (`sameAsRaised: false` is not a failure when only `label`, `role` or `attach` changed). Adapter answers for `idle-1`: `0`, and its R1 states are only `"pending"`. `private in captures: 0` (no `PRIVATE-QA-*`, `PRIVATE-NATIVE-*`, `PRIVATE-TOOL-*` or `PRIVATE-FILE-*` text in any capture of this run). The row first prints `r1 alive at 23`; a `r1 NOT alive` line is a fixture finding (record it), and R1's expectations are then judged on the replacement capture it started (for `idle-1`, its `states` may be empty) |
 | E414S1-24 | hub-api | docs | docs | `k24` | T-1109 C9 and T-1110 C8. Every count is at least `1`: `hub/README.md` describes the record, its id, the 64 KiB allowlist, the `approval` delta, the outcome, the Claude Code capability row, `approval.answer`, the human-only rule, the synchronous reservation and the refusal naming the winner, no default answer, the warn journal and the note fallback; `nvim/README.md` the TUI row and Enter; the CLI usage the archive outcome and who answers. Read the sections around each hit and record any statement that contradicts E414S1-06 to E414S1-23 as a finding |
-| E414S1-25 | hub-api | process census | QA shell; p1; p2 | `( . "$Q/env.sh"; cd "$Q/p1" && k25 )` | Cleanup, judged by the fixture-owned census only (never a machine-wide `pgrep`). The rig's log ends `exit 0` with `# tests 1`, `# pass 1`, `# fail 0`; p1's hub stops; no `alive` line names a fixture process (a `cland` hub, `hub serve`, `fc.cjs`, `wc.mjs`, `drv.mjs`, `rig.test.mjs`, `cland-spoke` or `fake-claude` command); the census line counts every pid this run recorded. An `alive` line whose command is unrelated is pid reuse: record it, it is not a failure. Then remove `$Q` and the worktree as Setup says |
+| E414S1-25 | hub-api | process census | QA shell; p1; p2 | `( . "$Q/env.sh"; cd "$Q/p1" && k25 )` | Cleanup, judged by the fixture-owned census only (never a machine-wide `pgrep`). The rig's log ends `exit 0` with `# tests 1`, `# pass 1`, `# fail 0`; p1's hub stops; no `alive` line names a fixture process (a `cland` hub, `hub serve`, `fc.cjs`, `wc.mjs`, `drv.mjs`, `rig.test.mjs`, `cland-spoke` or `fake-claude` command); the census line counts every pid this run recorded. An `alive` line whose command is unrelated is pid reuse: record it, it is not a failure. Then remove `$Q` and the worktree as Setup says. Any `r1 NOT alive` or `s1 NOT alive` line recorded by earlier rows is listed in the verdict as a fixture finding |
 
 Re-check helper, test and file names with grep at the tested build: renames happen, and T-1110 landed after writing.
 
@@ -713,6 +775,7 @@ Before requesting QA, run `cland qa lint <brief>` with this filled brief at the 
 - E414S1-17's two clients run in separate processes, so their answers arrive milliseconds apart, not in one event-loop tick; the rig holds the winner's delivery so the outcome does not depend on which arrives first. The literal one-tick race is E414S1-01's "two clients in one tick …" test.
 - The rig's fake adapters run inside the rig's process by design (the items' own seam, `docs/agents/tests.md`, "Approval record changes"); the native Codex and OpenCode relays are stage 2. A finding about the fakes themselves is outside this stage.
 - An `outcome.at` is the hub's clock (or, for E414S1-12's harness close, the time QA passed in): compare it across the delta, the result, the refusal text, the archive and the CLI line, never with a message's `ts`.
+- A command runner can end a row's whole process group when the row returns, which silently kills a helper started with `&` (the first run's S1 died that way: its capture stopped without `qa-end` or `qa-closed`, while the fake's log and the archive show the TUI answer closed the record). Long-lived helpers therefore start through `bg.cjs` in a session of their own, and every row that judges a stream after a wait checks it with `live` first; closure is judged from fresh reads.
 - `QA_STREAM=1` captures are complete only after their client ends (`qa-end`); `q.cjs` leaves out an unfinished last line of a capture still being written. Without `QA_STREAM` a client prints everything at the end.
 - A `sameAsRaised: false` in E414S1-23 can come from a presence refresh of `label`, `role` or `attach`; `sameCore` is the judgement.
 - `nt` runs Node's TAP reporter so the `# tests`/`# pass` counters exist; the default spec reporter prints none. The named tests check the live hub's cover slot (`suite.slot` check) before running: an admission timeout is BLOCKED; retry after `quiet`. The rig is a `node --test` file and runs that same read-only check once at its start.
