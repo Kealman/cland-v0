@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
+import { PROTOCOL_VERSION, type Artifact, type Capabilities, type ClientHello, type EventsPage, type HubFrame, type HubStatus, type Inbox, type ItemSummary, type ExplorerSummary, type SnapshotValues, type SessionListRows, type Topic, type WorkbenchRequest } from '../../shared/wire/index.ts';
 import { replaceSession, sessionSnapshot, type SessionsState } from './sessions/state.ts';
 import { replaceAccount, type AccountsState } from './accounts/state.ts';
 import { replaceArtifact, type ArtifactsState } from './artifacts/state.ts';
@@ -178,6 +178,22 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     state = { ...state, rows: { ...state.rows, [area]: value } };
     changed(state);
   }
+  let archiveWanted = false;
+  let archiveRead = 0;
+  function loadArchivedSessions() {
+    archiveWanted = true;
+    const serial = ++archiveRead;
+    state = { ...state, archivedSessionsError: undefined };
+    void command<SessionListRows & { archived: number }>({ type: 'session.list', archived: true }).then(value => {
+      if (serial !== archiveRead) return;
+      state = { ...state, archivedSessionRows: value.rows, archivedSessions: value.archived };
+      changed(state);
+    }, error => {
+      if (serial !== archiveRead) return;
+      state = { ...state, archivedSessionsError: String(error.message) };
+      changed(state);
+    });
+  }
   function readObjects() {
     request({ type: 'topic.list', id: 'shell-topics' });
     request({ type: 'events.list', id: 'shell-events', limit: 200 });
@@ -189,7 +205,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     rows('Items', value);
   }
   function inbox(value: Inbox) {
-    state = { ...state, needsYou: value.needsYou, approvals: value.approvals.length,
+    state = { ...state, sessionAsks: value.asks, needsYou: value.needsYou, approvals: value.approvals.length,
       plans: value.plans.length, waitingTopics: value.waiting.length };
     rows('Inbox', [
       ...value.asks.map(row => ({ id: row.id, title: row.question })),
@@ -201,7 +217,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     ]);
   }
   function connect() {
-    state = { ...state, command, resolveItem, loadItems, threads };
+    state = { ...state, command, resolveItem, loadItems, loadArchivedSessions, threads };
     requestedPlans.clear();
     closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
@@ -317,7 +333,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'marks') { state = { ...state, marks: frame.marks }; changed(state); }
       else if (frame.type === 'inbox') inbox(frame.inbox);
       else if (frame.type === 'session.row') {
-        state = { ...state, sessions: replaceSession(state.sessions ?? [], frame.key, frame.row) };
+        state = { ...state, sessions: replaceSession(state.sessions ?? [], frame.key, frame.row), archivedSessionRows: frame.row ? state.archivedSessionRows?.filter(row => row.key !== frame.key) ?? [] : state.archivedSessionRows ?? [] };
         rows('Sessions', state.sessions!.map(row => ({ id: row.name, title: row.label })));
       }
       else if (frame.type === 'session.usage') { state = { ...state, sessions: (state.sessions ?? []).map(row => row.sessionId === frame.sessionId ? { ...row, usage: frame.usage } : row) }; changed(state); }
@@ -370,7 +386,9 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         rows('Accounts', state.accounts!.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
       } else if (frame.type === 'session.process') {
         if (frame.archived !== undefined) { state = { ...state, archivedSessions: frame.archived }; changed(state); }
+        if (archiveWanted && state.live && (frame.process.archived || state.archivedSessionRows?.some(row => row.sessionId === frame.process.sessionId))) loadArchivedSessions();
       } else if (frame.type === 'sessions.pruned') {
+        if (archiveWanted && state.live) loadArchivedSessions();
         state = { ...state, archivedSessions: frame.archived, sessions: (state.sessions ?? []).filter(row => !frame.sessionIds.includes(row.sessionId)) };
         rows('Sessions', state.sessions!.map(row => ({ id: row.name, title: row.label })));
       } else if (frame.type === 'visibility') {

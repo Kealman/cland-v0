@@ -1,0 +1,30 @@
+.header { display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 20px; color: var(--muted); font-size: 12px; }
+.row { width: 100%; text-align: left; border: 0; background: none; padding: 8px; border-radius: 6px;
+  display: grid; grid-template-columns: 16px minmax(76px, 1fr) 88px minmax(100px, 1.7fr) 124px minmax(150px, 1.5fr) 65px; gap: 10px; align-items: center; min-height: 34px; font-size: 12px; }
+.row:hover { background: var(--row-hover); }
+.row[aria-pressed="true"] { background: var(--selection); }
+.row:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.name { font-family: var(--mono); color: var(--text-strong); overflow-wrap: anywhere; }
+.role { color: var(--role-other); }
+.role[data-session-role="aide"] { color: var(--role-aide); }
+.role[data-session-role="coordinator"] { color: var(--role-coordinator); }
+.role[data-session-role="lead"] { color: var(--role-lead); }
+.role[data-session-role="implementer"] { color: var(--role-implementer); }
+.role[data-session-role="reviewer"] { color: var(--role-reviewer); }
+.role[data-session-role="qa"] { color: var(--role-qa); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted); }
+.meta span { overflow-wrap: anywhere; }
+.item { font-family: var(--mono); color: var(--active); white-space: nowrap; }
+.item[data-item-requested="true"] { color: var(--muted); }
+.state, .age, .usage { color: var(--muted); }
+.age, .usage { font-family: var(--mono); white-space: nowrap; }
+.usage { text-align: right; }
+.glyph { color: var(--muted); }
+.session[data-state="busy"] .glyph { color: var(--active); }
+.session[data-state^="waiting"] .glyph, .session[data-state^="waiting"] .state { color: var(--needs-human); }
+.session[data-state="stopped"] .glyph, .session[data-state="died"] .glyph { color: var(--failed); }
+.detail { display: flex; flex-direction: column; gap: 6px; padding: 8px 34px 12px; color: var(--muted); background: var(--selection); border-radius: 0 0 6px 6px; }
+.detail code { font-family: var(--mono); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+.header button { margin-left: auto; padding: 3px 8px; border: 1px solid var(--control-border); border-radius: 6px; background: var(--control); color: var(--muted); }
+.header button:hover { background: var(--control-hover); }
+.header button[aria-pressed="true"] { background: var(--selection); color: var(--text); }

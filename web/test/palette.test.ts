@@ -118,13 +118,16 @@ test('the palette and area keys help', async t => {
         await physical(page, 'Shift+Slash');
         const localHelp = page.getByRole('dialog', { name: `${area} keys`, exact: true });
         await localHelp.waitFor();
-        assert.equal(await localHelp.locator('kbd').count(), area === 'Items' ? 33 : area === 'Topics' ? 18 : 14);
+        assert.equal(await localHelp.locator('kbd').count(), area === 'Items' ? 33 : area === 'Topics' ? 18 : area === 'Sessions' ? 17 : 14);
         if (area === 'Topics') {
           assert.deepEqual(await localHelp.locator('[data-key-action^="topic-"] dt').allTextContents(), [
             'Next topic or group', 'Previous topic or group', 'Enter thread or unfold group', 'Fold topic group',
           ]);
         }
         assert.equal(await localHelp.locator('[data-key-action="dismiss"]').count(), 1, 'one contextual row per action');
+        if (area === 'Sessions') {
+          assert.deepEqual(await localHelp.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Show archived sessions']);
+        }
         if (area === 'Items') {
           assert.equal(await localHelp.locator('[data-key-action="accept"] kbd').textContent(), 'Enter');
           assert.equal(await localHelp.locator('[data-key-action="dismiss"] dt').textContent(), 'Return from card or close drawer');

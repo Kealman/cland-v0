@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page } from 'playwright-core';
 import { accountFixtureEnvironment } from '../../hub/test/account-fixture-env.ts';
-import { clandWithEnv, projectHub, tempProject } from '../../hub/test/harness.ts';
+import { clandWithEnv, projectHub, tempProject, type ProjectHubOptions } from '../../hub/test/harness.ts';
 import { onCleanup, ownProcess, captureProcess } from '../../hub/test/process-cleanup.ts';
 import { until } from '../../hub/test/until.ts';
 import { browserCache, webPrerequisite } from './prerequisite.ts';
@@ -23,7 +23,7 @@ export async function pageUntil(page: Page, predicate: () => boolean, what: stri
   assert.equal(await page.evaluate(predicate), true, what);
 }
 
-export async function webFixture(t: TestContext, options: { cliLink?: boolean; prepare?: (root: string) => Promise<void> } = {}) {
+export async function webFixture(t: TestContext, options: { cliLink?: boolean; clock?: ProjectHubOptions['clock']; prepare?: (root: string) => Promise<void> } = {}) {
   const root = await tempProject(t, 'w-');
   // Playwright creates its own --user-data-dir using os.tmpdir() in this worker.
   // Keep it short and owned, including the browser's artifacts and crash paths.
@@ -33,7 +33,8 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; p
   process.env.PLAYWRIGHT_BROWSERS_PATH = browserCache;
   const env = await accountFixtureEnvironment({ TMPDIR: root, TMP: root, TEMP: root, PLAYWRIGHT_BROWSERS_PATH: browserCache });
   await options.prepare?.(root);
-  let hub = await projectHub(t, root);
+  const hubOptions = options.clock ? { clock: options.clock } : {};
+  let hub = await projectHub(t, root, {}, hubOptions);
   const openers = join(root, 'openers');
   if (options.cliLink) {
     await mkdir(openers);
@@ -140,7 +141,7 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; p
   const restartHub = async () => {
     await hub.stop();
     await hub.stopped;
-    hub = await projectHub(t, root);
+    hub = await projectHub(t, root, {}, hubOptions);
   };
   return { root, get fakes() { return hub.fakes; }, get hub() { return hub; }, restartHub, browser, server, close, pageCase, tracePaths };
 }

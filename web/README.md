@@ -181,19 +181,18 @@ Sessions and Artifacts mutation keys remain inactive until their slices implemen
 them. Modules mark their own content with the matching `data-key-context`.
 
 Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
-`src/artifacts/`. They retain the ID/title inventories and details for now, shared
-through `AreaObjects.tsx`. Inbox and Events keep their existing stand-ins;
-Topics owns its grouped list and thread module.
-Items retains its tree, views and card. Sessions reserves separate component files
-for `SessionsHeader`, `AccountsStrip`, `VerifyLine` and `SessionGroups`, all empty
-until their following slices land; each receives the same area props so those
-lanes can grow independently of the shell.
+`src/artifacts/`. Sessions owns its counts, grouped rows and unfolded selection
+through `SessionsHeader` and `SessionGroups`. Its page/drawer and the Accounts
+and Artifacts areas retain the ID/title details from `AreaObjects.tsx`.
+`AccountsStrip` and `VerifyLine` remain reserved slots for their following slices.
+Inbox and Events keep their existing stand-ins; Topics owns its grouped list and
+thread module. Items retains its tree, views and card.
 
 `ConnectionState` includes the state types from each area's `state.ts`:
 
 | Area | Hub state available to its slots |
 | --- | --- |
-| Sessions | `sessions` (complete merged rows by stable key), `archivedSessions`, `roles` including launch defaults, `adapters`, and `verification` with `queue` and client `receivedAt` milliseconds |
+| Sessions | `sessions` (complete merged rows by stable key), `archivedSessions`, on-demand `archivedSessionRows`/`loadArchivedSessions`, inbox `sessionAsks`, `roles` including launch defaults, `adapters`, and `verification` with `queue` and client `receivedAt` milliseconds |
 | Accounts, and the Sessions strip | `accounts`: registry path, optional registry error and complete views in registry order, including windows, source, reading time and limited mark |
 | Artifacts | `artifacts`: complete inventory records, including status, author, kept and layer facts |
 | Topics | `topics` with authoritative unread counts and read positions, `marks`, and the per-topic `threads` cache |
@@ -201,7 +200,9 @@ lanes can grow independently of the shell.
 Session snapshots replace the merged rows, archived count, roles and queue.
 `session.row` replaces/removes by stable key; usage updates match the launch ID,
 and process/prune frames carry archived counts. Presence and process changes do
-not trigger `session.list`: their merged rows arrive through `session.row`.
+supply merged rows through `session.row`. Opening the archive reads
+`session.list` with `archived: true`; archive and prune changes refresh that
+loaded archive without composing raw process and presence facts in the browser.
 `account` replaces one complete view at its registry position, `verification.queue`
 replaces the queue and its receipt time, and `artifact` replaces one complete
 record by ID, with no inventory reread; a moved artifact leaves the top-level
@@ -441,9 +442,9 @@ context key runs no action and never falls back to a shell binding; native
 control activation is preserved. Declared fields reserve their context chords. An area opts in with `handledActions` when its component implements the
 action. Labels live in `contextActions`; help and palette combine shell actions
 with the handled actions, and derive the displayed chords from the focused
-context's table. Sessions and Artifacts already declare their future keys and
-labels, including Artifacts' `k` for Keep and `↑` for moving up, but their
-stand-ins expose none of those actions.
+context's table. Sessions enables its implemented navigation and archive keys.
+Its future action keys and Artifacts' keys remain reserved, including Artifacts' `k` for Keep and
+`↑` for moving up.
 
 The top-strip Palette and Help buttons expose the same overlays. Help names the
 active pane’s area and lists the shell keys shared by all current stand-in areas;
@@ -455,6 +456,35 @@ Composition, already-handled events and ordinary field typing remain untouched.
 The leader survives ordinary hub updates at the same focus target; it only
 resolves outside fields and modals, in the same context, and is cleared by the next stroke.
 Reserved browser window/tab shortcuts remain unbound.
+
+## Sessions
+
+Sessions reads the hub's merged rows from the snapshot and `session.row` deltas.
+The header and the folds show Yours, Waiting, Busy, Idle and Stopped counts.
+Live Aides belong to Yours; stopped Aides belong to Stopped. Waiting contains
+both approval and human waits. Stopped shows the latest 20, newest first, and
+the archived count. Each fold uses the browser's `cland.ui.sessions.v1` record;
+folding sends no hub request.
+
+A row shows its state glyph, name, role in its role colour, harness, model,
+account, item, state and age, and cost or token usage. The hub supplies the claim
+or latest verifier hold with its role and additional-hold count. Requested work
+stays muted until a hold exists. Unknown facts show a dash. Selecting a row
+unfolds its full pending approval command or the topic of its open human ask.
+The launch, session actions and thread drawer arrive in following slices.
+
+| Key | Action |
+| --- | --- |
+| `j`, `↓` | Next visible session |
+| `k`, `↑` | Previous visible session |
+| `←`, `→` | Fold or unfold the focused group |
+| `A` | Show or hide archived sessions |
+| `?` | Sessions keys |
+
+`gs` from an item selects its claimed session and unfolds its group. The Archive
+button shares `A`'s toggle; showing it reads `session.list` with `archived: true`
+and consumes its hub-merged `rows` field. It never composes raw processes with
+presence in the browser. There is no Attach in Sessions.
 
 ## Folds and factual labels
 
@@ -516,6 +546,7 @@ node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
 node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 300-item rebuild
 node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
+node --test web/test/sessions.test.ts # groups, folds, merged row facts, waiting detail and archive
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords

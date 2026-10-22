@@ -43,7 +43,7 @@ test('declared composer fields own their keys while ordinary fields retain nativ
   });
 });
 
-test('stand-in areas keep selection and drawers while unhandled session keys stay absent from help and palette', async t => {
+test('area modules keep selection and drawers while unimplemented session actions stay absent from help and palette', async t => {
   const fixture = await webFixture(t);
   const ui = await connectUi(t, fixture.hub.discovery);
   assert.equal((await ui.request({ type: 'session.launch', name: 'context-session', harness: 'codex' })).ok, true);
@@ -58,14 +58,14 @@ test('stand-in areas keep selection and drawers while unhandled session keys sta
     await row.click();
     const drawer = page.getByRole('complementary', { name: 'Drawer', exact: true });
     await drawer.waitFor();
-    for (const key of ['l', 'a', 'x', 'r', 'd', 'c', 'Shift+a', 'j', 'k', 'Enter']) await row.press(key);
+    for (const key of ['l', 'a', 'x', 'r', 'd', 'c', 'Enter']) await row.press(key);
     assert.equal(await row.getAttribute('aria-pressed'), 'true');
     assert.equal(await drawer.count(), 1);
     await row.press('Shift+/');
     const help = page.getByRole('dialog', { name: 'Sessions keys', exact: true });
     await help.waitFor();
-    assert.equal(await help.locator('[data-key-action^="session-"]').count(), 0);
-    assert.equal(await help.locator('kbd').count(), 14);
+    assert.deepEqual(await help.locator('[data-key-action^="session-"] dt').allTextContents(), ['Next session', 'Previous session', 'Show archived sessions']);
+    assert.equal(await help.locator('kbd').count(), 17);
     await page.keyboard.press('Escape');
     await page.keyboard.press('Meta+k');
     const palette = page.getByRole('dialog', { name: 'Palette', exact: true });

@@ -1,6 +1,10 @@
-import type { Capabilities, SnapshotValues, VerificationQueue } from '../../../shared/wire/index.ts';
+import type { Capabilities, InboxAsk, SnapshotValues, VerificationQueue } from '../../../shared/wire/index.ts';
 
 export type SessionsState = {
+  sessionAsks?: InboxAsk[];
+  archivedSessionRows?: SnapshotValues['sessions']['rows'];
+  archivedSessionsError?: string | undefined;
+  loadArchivedSessions?: () => void;
   adapters?: Record<string, Capabilities>;
   sessions?: SnapshotValues['sessions']['rows'];
   archivedSessions?: number;
@@ -17,4 +21,13 @@ export function replaceSession(rows: NonNullable<SessionsState['sessions']>, key
   if (!row) return rows.filter(value => value.key !== key);
   return rows.some(value => value.key === key)
     ? rows.map(value => value.key === key ? row : value) : [...rows, row];
+}
+
+export const groupNames = ['Yours', 'Waiting', 'Busy', 'Idle', 'Stopped'] as const;
+export function sessionGroups(rows: NonNullable<SessionsState['sessions']>) {
+  return groupNames.map(name => ({ name, rows: rows.filter(row => {
+    const group = !row.live ? 'Stopped' : row.role === 'aide' ? 'Yours'
+      : row.state.startsWith('waiting') ? 'Waiting' : row.state === 'busy' ? 'Busy' : 'Idle';
+    return group === name;
+  }).sort((a, b) => name === 'Stopped' ? (b.stoppedAt ?? b.startedAt ?? '').localeCompare(a.stoppedAt ?? a.startedAt ?? '') || a.name.localeCompare(b.name) : 0) }));
 }
