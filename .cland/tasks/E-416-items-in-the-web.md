@@ -2,7 +2,8 @@
 id: E-416
 kind: epic
 title: Items in the web
-state: open
+state: closed
+criterion_seq: 8
 labels:
   - epic
   - v0.2
@@ -15,7 +16,8 @@ blocked_by:
 topic: topic-830
 branch: null
 created: 2026-10-14T15:59:23.825Z
-updated: 2026-10-22T14:24:51.886Z
+updated: 2026-10-22T15:00:13.431Z
+closed: 2026-10-22T15:00:13.431Z
 ---
 
 ## Summary
@@ -69,13 +71,21 @@ QA runs the demo below on `dev`, playing the human's part through the `cland` CL
 In a scratch project holding a copy of the live tracker, the fake harnesses and `[plan] approval = "human"`, QA opens the web at 1440x900 through `cland web --no-open`: the Items area shows the current release with its epics, their bars and stages, Direct tasks and the folded roots. QA moves with `j` and `k`, unfolds an epic with `l`, scopes to it with `s` and comes back with `␣␣`, hides done items with `D` and shows the archived roots with `A`; it reads a task's card in the drawer (the summary, the facts, the criteria, the latest verdict with its reason and round, the branch and the verify result, the relations, the Decision block) and opens the agents' text. QA selects three rows and presses `m`, and reads one message in General with one line per item; `M` on an item without a topic creates the topic and sends there. QA switches to Board, Graph and Plan and back, keeping the scope and the selection; in the Plan view of an epic waiting for approval it presses `a`, and `cland task plan show` reads the plan approved by the human. QA adds a criterion on the card and reads it with `cland task view`. A status change made through the CLI moves its row while the cursor stays on its item. An unfolded category shows its top three, "N more" and the idle-work mark.
 
 - [ ] C1. The tree shows the current release and the folded roots (Categories with the top three, "N more" and the idle-work mark; Unscheduled; Other releases behind `A`), with rows per level, cells or a proportional bar past 16 children, stage groups, claims, holds, verdicts with their round and verified/total; `D` and the folds are kept per client.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C2. The card in the drawer shows what v0.1.2 §3.9 lists from the snapshot's facts with no request per card, with the ordinal on the row and the rank fact only when set by hand.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C3. `s` scopes with breadcrumbs and a back stack, the cursor stays on its item across deltas, and an item id in any text opens the item.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C4. `m` sends to General with the item's context, `M` to the item's topic (created when missing), and a selection to General with one line per item.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C5. Board, Graph and Plan sit in the Items header as views that keep the scope, the filter and the selection; the Board shows the release scope's epics as folded rows, and the Graph draws done and container nodes as v0.1.2 §3.3 says.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C6. The Plan view shows the selected epic's plan with the changes since the human's last look, and approves a waiting plan on `a` at desktop width.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C7. The only hand edits in the Items area are the messages, the plan approval and the criteria edits; nothing ranks or moves with the mouse.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 - [ ] C8. `web/README.md` and `?` describe the Items area and its keys.
+  - verified: qa-676 [qa] · run qa-dod-2026-10-22-1 · 2026-10-22T14:59:50.906Z · commit e46f03175f33a3c569b9a269ee2bd709340b1c72
 
 ## Dogfooding
 
@@ -325,3 +335,118 @@ demo 54213beb-bbd4-40e4-aa5a-abbab419e57d created: droplet cland-v0-54213beb, co
 ### hub · 2026-10-22T14:24:51.886Z
 
 demo 54213beb-bbd4-40e4-aa5a-abbab419e57d destroyed: lifetime 525420 ms; cost $0.0365.
+
+### qa-676 · 2026-10-22T14:59:50.906Z
+
+verdict: qa
+result: clear
+by: qa-676 [qa]
+run: qa-dod-2026-10-22-1
+commit: e46f03175f33a3c569b9a269ee2bd709340b1c72
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+| Case | Surface / executor | Result | Evidence |
+| --- | --- | --- | --- |
+| G0 | hub-api / local | PASS | [G0-all.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/G0-all.txt) |
+| G1 | hub-api / local | PASS | [G1-epic.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/G1-epic.txt), [G1-children.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/G1-children.txt) |
+| G2 | hub-api / local | PASS | [G2.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/G2.txt) |
+| S0 | hub-api / local | PASS | [S0.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/S0.txt) |
+| D0 | hub-api / droplet | PASS | [D0-start.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/D0-start.json), [D0-status.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/D0-status.json) |
+| D1 | hub-api / droplet | PASS | [D1.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/D1.txt) |
+| E416-D01 | hub-api / droplet | PASS | [E416-D01.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D01.txt) |
+| E416-D02 | hub-api / droplet | PASS | [E416-D02-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D02-summary.txt), [E416-D02a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D02a.log) |
+| E416-D03 | hub-api / droplet | PASS | [E416-D03.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D03.log), [E416-D03-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D03-summary.txt) |
+| E416-D04 | hub-api / droplet | PASS | [E416-D04-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D04-summary.txt), [E416-D04a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D04a.log) |
+| E416-D05 | hub-api / droplet | PASS | [E416-D05-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D05-summary.txt), [E416-D05a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D05a.log) |
+| E416-D06 | hub-api / droplet | PASS | [E416-D06-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D06-summary.txt), [E416-D06a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D06a.log) |
+| E416-D07 | hub-api / droplet | PASS | [E416-D07-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D07-summary.txt), [E416-D07a.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D07a.log) |
+| E416-D08 | hub-api / droplet | PASS | [E416-D08.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D08.log), [E416-D08-summary.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/E416-D08-summary.txt) |
+| L01 | hub-api / local | PASS | [L01-result.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/L01-result.txt), [L01.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/L01.log) |
+| D15 | hub-api / local | PASS | [D15-stop.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/D15-stop.json), [D15-after.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/D15-after.json) |
+| G0-corrected | hub-api / local | PASS | [G0-all.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/G0-all.txt), [source-diff.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/source-diff.txt) |
+| S0-corrected | hub-api / local | PASS | [brief.md](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/brief.md) |
+| L01-corrected | hub-api / local | PASS | [L01-result.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/L01-result.txt), [L01-stamp.json](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/L01-stamp.json) |
+| E416-WALK | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log) |
+| E416-DOD-01 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-01-tree.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-01-tree.png) |
+| E416-DOD-02 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-02-card.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-02-card.png) |
+| E416-DOD-03 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-03-moved.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-03-moved.png) |
+| E416-DOD-04 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-04-messages.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-04-messages.png) |
+| E416-DOD-05 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-05-board.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-05-board.png) |
+| E416-DOD-06 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-06-plan-pending.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-06-plan-pending.png) |
+| E416-DOD-07 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-07-criteria.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-07-criteria.png) |
+| E416-DOD-08 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log), [E416-WALK-08-help.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK-08-help.png) |
+| E416-DOD-09 | hub-api / local | PASS | [E416-WALK.log](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-WALK.log) |
+| E416-L02 | hub-api / local | PASS | [E416-L02.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-L02.txt) |
+| E416-L03 | hub-api / local | PASS | [E416-L03.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-L03.txt), [E416-L03-plant.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-L03-plant.txt) |
+| WEB-REAL-01 | real-browser / local | PASS | [WEB-REAL-01.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-01.png), [WEB-REAL-01-stamps.txt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-01-stamps.txt) |
+| WEB-REAL-02 | real-browser / local | PASS | [WEB-REAL-02-ad.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-02-ad.png), [WEB-REAL-02-board-d.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-02-board-d.png) |
+| WEB-REAL-03 | real-browser / local | PASS | [WEB-REAL-03-plan-bottom.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-03-plan-bottom.png), [WEB-REAL-03-plan.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-03-plan.png) |
+| WEB-REAL-04 | real-browser / local | PASS | [WEB-REAL-04-drag.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-04-drag.png), [WEB-REAL-04-ead.png](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/WEB-REAL-04-ead.png) |
+| E416-COVER | Linux droplet, epic occasion | PASS | [Receipt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/E416-COVER.txt), A-9192/A-9193/A-9194 |
+| D14 final | Hub freshness | PASS | [Freshness current true](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/D14-status.json) |
+
+Product findings: none (high, medium, low). Every scoped case passed. Final freshness is current. QA verdict: clear; verified C1–C8.
+
+Builds and authorized correction
+
+- Verdict/demo build S: e46f03175f33a3c569b9a269ee2bd709340b1c72.
+- Part D tested 8580e0432a19d9d7182c1733ca2a14e72c3bb4ef. Its 88 tests passed on Linux x64, Node v24.21.0, in one demo lease. They were not rerun. The diff to S excludes tracker and changes only qa/briefs/E-416.md (3 additions, 2 removals); everything Part D exercised is identical. See [source diff](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/source-diff.txt).
+- Epic cover submitted from clean root dev 0e52d02e307968ae1de382395cc8e0fed910d1c9, equal to fetched origin/dev, tracker-only after S. Coordinator authorized both build distinctions in decision f6fab3a3-d899-45be-b77f-1228c5066f1c.
+- Live hub fae121eca210c1385acac6e9b1e30c89c5e8f469 has no hub/src, hub/bin or shared diff against S. Served and tested web sources both 2e0b568b9e2effa9ea7ed972d535d5a22cc7915845d27a0cc9e224a71a908c29; index and stamp returned 200.
+
+Retained brief defect, not a product finding
+
+The first walkthrough at 8580e043 failed DOD-03: `assert.ok(f.after.indexOf('T-900206') > f.before.indexOf('T-900206'))` returned false. Both flattened lists were 201,202,203,204,205,206; focus remained T-900206. Default ranks already placed 206 after 205, so the test's premise was false. Coordinator corrected the committed brief to seed hand rank 9002045. The full fresh walkthrough at S passed 10/10 (nine DoD subchecks and the parent), zero skipped; before order 201,202,203,204,206,205 changed to 201,202,203,204,205,206 while focus and selection stayed on 206. Original log, screenshots and failure trace are retained beside the corrected directory. This is explicitly not a product finding under that ruling.
+
+Probe/recording corrections, separate from product outcomes
+
+- D15's comment-read wrapper initially reported `bash: cl: command not found`; the lease stop itself succeeded and was not repeated. [Corrected read](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/D15-comments-corrected.txt) retains the created and destroyed comments. Original empty capture and probe-error note remain.
+- The L02 wrapper path was absent; the prescribed docs block was then invoked directly once from the sealed environment. No product test was repeated.
+- Native accessibility snapshots were retained, then transcribed into label/key pairs for help: Plan 16, Tree 33. The recording named a combined help-note path before its note was written; the file is now present with the observed counts. Raw snapshots remain as separate .ax.txt files.
+
+What the cases establish
+
+The isolated macOS walkthrough copied 1108 tracker items and exercised release/epic/stage rows, Direct tasks, category top-three/N-more, proportional cells, D/A and independent client folds; snapshot-backed cards without task.view per cursor, manual rank and ordinal, by-id closed cards and on-demand agents text; scope/back, delta focus, one contextual General message for three selected tasks and a new bound topic for M; Board/Graph/Plan shared scope and selection; human plan approval confirmed by CLI; criterion addition preserving C1/C2; and inert rank/move drag. All 14 walkthrough screenshots were inspected. The browser fixture census ended after 0 and scratch hub stopped.
+
+Part D: items/card/order 15, actions 7, Board/Graph 8, Plan/criteria 8, palette/shell 20, summary/keymap/geometry 26, Lua graph differential 4 = 88 passes; no skips, failures, cancellations or todos. The build and typecheck passed with token/contrast/hooks guards. Fixture-owned Web census lines all ended after 0; no machine-wide process count was used.
+
+Local docs and source checks found all prescribed strings and key rows; the single keyboard listener was in keyboard.ts; allowed frame/plan/criterion operations only. The CSS guard passed clean, refused the intentional ItemsTree.module.css line 34 plant with `use var(--token)`, then passed after the plant was reverted. Worktree source remained clean.
+
+Real Chrome cland QA stayed anonymous at the authorized live edge. Offline, empty roots and no live item data were expected. Tree/Board/Graph carried Done state, Plan persisted after reload, a/d in empty Plan were inert. Plan help had 16 labels, Tree 33, exactly one Esc and no rank/move entries; both final rows are visibly reachable in bottom screenshots. e/a/d/s/x/m/Shift+M and dragging Unscheduled onto Other releases changed no product state. No browser settings, zoom, window size, keyboard layout, credentials or permissions changed. The page was restored to one unfolded Inbox pane with the original rail; only the newly opened tab was closed.
+
+Shown in part / scope limits
+
+- A populated verify fact is proven by the transport test; the walkthrough card shows `none`, not a populated verify result.
+- Real Chrome is anonymous only. Live authenticated cards/messages/approval/criteria were out of scope; those behaviors passed in isolated headless Chromium against the scratch tracker.
+- Below-desktop approval is covered by the isolated tests, not a resized real browser. No CSS viewport measurement was obtained from native Chrome; all 16 Plan labels were visible in its help. Screenshot image dimensions are not treated as CSS dimensions.
+- Full-suite duration/lint/ratchet budgets are report-only; projections are not actual wall times. T4 repetitions are out of scope.
+
+Demo resource accounting
+
+Lease 54213beb-bbd4-40e4-aa5a-abbab419e57d, machine cland-v0-54213beb, Linux x64, created 2026-10-22T14:15:53.763Z, deadline 15:30:51.846Z. Destruction confirmed released: 525420 ms lifetime, $0.0364875. Local macOS arm64 checks have no droplet cost. Epic cover accounting follows; no duration or cost is inferred from estimates.
+
+Criteria map: C1 tree/folds → DOD01/08,D02,WEB01; C2 card → DOD02,D02/D07; C3 scope/delta → DOD02/03,D02/D03; C4 messaging → DOD04,D03; C5 views → DOD05,D04/D08,WEB02; C6 plan → DOD06,D05,WEB03; C7 edits → DOD07/09,L03,D04/D05/D07,WEB04; C8 docs/help → DOD08,L02,D06,WEB03. All eight are established by this run and are included in the clear verdict marks.
+
+Rule proposal sent to Coordinator: assert deterministic ordering preconditions before a walkthrough mutation, especially where default ranks can make a before/after comparison vacuous.
+
+Epic cover final receipt
+
+Run 2bab66ff-ca09-4910-b4dd-0f2701e284a0, occasion epic, full integrated dev at 0e52d02e307968ae1de382395cc8e0fed910d1c9. Merged log A-9192 and both shard logs A-9193/A-9194 finish exit 0. 3743 tests: 3735 pass, 8 skips, 0 fail/cancelled/todo. The 8 suite skips are reported as skips, not passes; all 88 scoped Part D tests and the 10 walkthrough tests had no skips. Linux x64 6.8.0-142-generic, Node v24.21.0, Neovim v0.12.5. T1, T2, T3, T4 base phase and Web ran; T4 repetitions were skipped per the occasion's load gate and are out of scope. Actual Web ran on shard 1, 13 files/29 tests, exit 0; shard 2's Web phase had no assigned files.
+
+| Shard | Log | Machine | Duration admission→remote finish | Collection | Lifetime | Cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | A-9193 | cland-v0-8fc2143a, c-8 lon1 | 1233.72 s | 27.52 s | 1229 s | $0.0854 |
+| 2 | A-9194 | cland-v0-10377daa, c-8 lon1 | 1103.72 s | 17.98 s | 1089 s | $0.0756 |
+
+Total epic suite cost $0.1610, actual overall wall 1261.48 s from admission through collection. Demo plus epic cost approximately $0.1975 (suite figures are rounded). Demo lifetime 525.420 s and suite wall are separate measures, not summed into end-to-end QA elapsed time. Lint 132 findings/59 files, tier/duration budget warnings and T3 ratchet are report-only; no enforcement pass is claimed for those warnings. T3 projected wall 1086.409 s is a projection, not the actual suite wall.
+
+Final cleanup: [receipt](/Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/corrected/cleanup.txt). Both detached worktrees were clean, both owned scratch roots removed, the fixture-owned process censuses were zero, the real browser tab was closed and demo lease released. Final demo freshness at S returned current:true after fetched origin. No product changes were made by QA.
+
+Durable evidence: A-9196, /Users/evgeniyivanov/Projects/cland/v0/.cland/artifacts/A-9196-e-416-dod-at-e46f0317-clear-c1-c8-scoped-checks-and-epic-cover-passed/report.md. Earlier pending snapshot A-9191 is historical.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
+
+### coord · 2026-10-22T15:00:13.431Z
+
+Closed on the epic DoD demo qa-dod-2026-10-22-1, clear at e46f0317 (A-9196). C1–C8 are verified. The walkthrough passed 10/10 and all four anonymous real-Chrome checks passed. Part D's 88/88 at 8580e043 stand because only the brief differs; the brief-defect first walkthrough was fixed in e46f0317. The epic cover 2bab66ff at 0e52d02e passed 3735 with 0 failures and 8 skips. All three stages were closed earlier.

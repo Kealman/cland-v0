@@ -3,7 +3,7 @@ id: T-1104
 kind: task
 title: Hub startup recomputes the explorer per item during the planned check and delays serving by 15 s
 state: open
-status: backlog
+status: in progress
 size: S
 criterion_seq: 2
 labels:
@@ -12,10 +12,10 @@ labels:
 assignee: null
 parent: R-377
 blocked_by: []
-topic: null
-branch: null
+topic: topic-850
+branch: t/T-1104-hub-startup-recomputes-the-explorer-per
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T14:58:59.095Z
+updated: 2026-10-22T14:59:54.141Z
 ---
 
 ## Summary
