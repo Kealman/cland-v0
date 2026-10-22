@@ -29,3 +29,5 @@
 .meter i[data-status="in progress"] { background: var(--active); }
 .meter i[data-status="review"], .meter i[data-status="qa"] { background: var(--watch); }
 .meter i[data-status="planned"] { background: var(--text-soft); }
+
+.row[data-marked="true"] { box-shadow: inset 3px 0 var(--link); }

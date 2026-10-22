@@ -2,6 +2,7 @@ import { PROTOCOL_VERSION, type AccountList, type Artifact, type ClientHello, ty
 import type { Area } from './keymap.ts';
 
 export type ObjectRow = { id: string; title: string };
+type Command<T> = T extends unknown ? Omit<T, 'id'> : never;
 export type PlanStages = Array<{ name: string; state: 'open' | 'closed'; items: string[]; qa: { scope: string; when: string } }>;
 
 /** Task deltas retain full verdict history; snapshots already carry the compact projection. */
@@ -18,7 +19,10 @@ function explorerItem(item: ItemSummary): ExplorerSummary {
 
 export type ConnectionState = {
   project: string; live: boolean; restartRequired?: boolean;
+  command?: <T>(frame: Command<WorkbenchRequest>) => Promise<T>;
+  resolveItem?: (id: string) => Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined>;
   coordinator?: string | null;
+  topics?: Topic[];
   needsYou?: number;
   approvals?: number;
   plans?: number;
@@ -71,6 +75,45 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   let retry: ReturnType<typeof setTimeout> | undefined;
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let backoff = 250;
+  let commandSerial = 0;
+  const commands = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  function rejectCommands() {
+    for (const pending of commands.values()) { clearTimeout(pending.timer); pending.reject(new Error('Connection lost; check topic history before retrying')); }
+    commands.clear();
+  }
+  async function command<T>(frame: Command<WorkbenchRequest>): Promise<T> {
+    if (!state.live || socket.readyState !== WebSocket.OPEN) throw new Error('Hub offline');
+    return new Promise<T>((resolve, reject) => {
+      const id = `action:${++commandSerial}`;
+      const timer = setTimeout(() => { commands.delete(id); reject(new Error('No receipt; check topic history before retrying')); }, 10_000);
+      commands.set(id, { resolve: value => resolve(value as T), reject, timer });
+      request({ ...frame, id } as WorkbenchRequest);
+    });
+  }
+  async function resolveItem(id: string): Promise<{ item: ExplorerSummary; ancestors: ExplorerSummary[] } | undefined> {
+    const number = id.split('-').at(-1);
+    let row = itemRows(state).find(item => item.id.split('-').at(-1) === number);
+    if (!row) {
+      const result = await command<{ items: ExplorerSummary[] }>({ type: 'task.list', ids: [id], projection: 'summary' });
+      row = result.items[0];
+      if (row) items([...state.items ?? [], row]);
+    }
+    const target = row;
+    const ancestors: ExplorerSummary[] = [];
+    const seen = new Set<string>();
+    while (row?.parent && !seen.has(row.parent)) {
+      seen.add(row.parent);
+      const parent = findItem(state, row.parent);
+      if (parent) row = parent;
+      else {
+        const result = await command<{ items: ExplorerSummary[] }>({ type: 'task.list', ids: [row.parent], projection: 'summary' });
+        row = result.items[0];
+        if (row) items([...state.items ?? [], row]);
+      }
+      if (row) ancestors.push(row);
+    }
+    return target ? { item: target, ancestors } : undefined;
+  }
   const requestedPlans = new Set<string>();
   const closed = new Map<string, ExplorerSummary[]>();
   const closedLoads = new Map<string, {rows:Map<string,ExplorerSummary>;deltas:Map<string,ExplorerSummary|null>}>();
@@ -133,6 +176,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     ]);
   }
   function connect() {
+    state = { ...state, command, resolveItem };
     requestedPlans.clear();
     closed.clear();closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
@@ -153,7 +197,12 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       let frame: HubFrame;
       try { frame = JSON.parse(String(event.data)) as HubFrame; }
       catch { socket.close(); return; }
-      if (frame.type === 'welcome') {
+      if (frame.type === 'result' && commands.has(frame.id)) {
+        const pending = commands.get(frame.id)!;
+        commands.delete(frame.id); clearTimeout(pending.timer);
+        if (frame.ok) pending.resolve(frame.value);
+        else pending.reject(new Error(frame.error ?? 'Request failed'));
+      } else if (frame.type === 'welcome') {
         const loaded = document.querySelector('meta[name="cland-build-stamp"]')?.getAttribute('content');
         if (loaded && frame.buildStamp && loaded !== frame.buildStamp) {
           // One reload per target build, even if a proxy keeps serving old entry HTML.
@@ -177,7 +226,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           state = { ...state, coordinator: frame.value.coordinator, idleFrom: frame.value.crew.config.idle_from ?? [] };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
         } else if (frame.domain === 'inbox') inbox(frame.value);
-        else if (frame.domain === 'topics') rows('Topics', frame.value.topics);
+        else if (frame.domain === 'topics') { state = { ...state, topics: frame.value.topics }; rows('Topics', frame.value.topics); }
         else if (frame.domain === 'events') rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text })));
         else if (frame.domain === 'accounts') rows('Accounts', frame.value.accounts.map(row => ({ id: `${row.harness}/${row.name}`, title: row.name })));
         changed(state);
@@ -221,7 +270,8 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-sessions') {
         rows('Sessions', (frame.value as { processes: HarnessProcessView[] }).processes.map(row => ({ id: row.name, title: row.label ?? row.name })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-topics') {
-        rows('Topics', (frame.value as { topics: Topic[] }).topics.map(row => ({ id: row.id, title: row.title })));
+        state = { ...state, topics: (frame.value as { topics: Topic[] }).topics };
+        rows('Topics', state.topics!);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-events') {
         rows('Events', (frame.value as EventsPage).rows.map(row => ({ id: row.id, title: row.text })));
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-artifacts') {
@@ -281,6 +331,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     socket.onerror = () => socket.close();
     socket.onclose = () => {
       clearTimeout(deadline);
+      rejectCommands();
       state = { ...state, live: false };
       changed(state);
       if (!stopped) {
@@ -294,6 +345,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     stopped = true;
     clearTimeout(retry);
     clearTimeout(deadline);
+    rejectCommands();
     socket.onopen = socket.onmessage = socket.onclose = socket.onerror = null;
     socket.close();
   };

@@ -2185,7 +2185,7 @@ export class Tracker {
   }
 
   /** Explicit by-id pages carry closed summary text and card facts; the envelope stays below 256 KiB. */
-  summaryPage(ids: string[]): { items: Array<CardTransport & Pick<CardFields,'agents_text' | 'decision'> & {id: string; summary: SummaryText; verdicts: ExplorerSummary['verdicts']}>; remaining: string[] } {
+  summaryPage(ids: string[]): { items: ExplorerSummary[]; remaining: string[] } {
     this.#ensureExplorer();
     const resolved = [...new Set(ids.map(raw => {
       const id = this.resolveId(raw);
@@ -2197,7 +2197,7 @@ export class Tracker {
     for (const id of resolved) {
       const source = this.#ensureExplorer().rows.get(id)!;
       const {agents_text,decision} = this.#cards.get(id) ?? {};
-      const row = {...this.#cardTransport(source),id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null},
+      const row = {...this.#compactSummary(source),...this.#cardTransport(source),id,summary:this.#summaries.get(id) ?? {text:'',from:null,provenance:null},
         ...(agents_text ? {agents_text} : {}),...(decision ? {decision} : {}),verdicts:this.#compactVerdicts(source.verdicts,true)};
       const size = Buffer.byteLength(JSON.stringify(row)) + 1;
       if (bytes + size > 250 * 1024) {

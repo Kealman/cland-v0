@@ -11,3 +11,5 @@
 .node[data-status="done"] .title { fill: var(--done-text); }
 .node[data-status="done"] .glyph { fill: var(--done-glyph); }
 .node[data-status="in work"] .glyph, .node[data-status="in progress"] .glyph { fill: var(--active); }
+
+.node[data-marked="true"] rect { stroke: var(--link); stroke-width: 3px; }

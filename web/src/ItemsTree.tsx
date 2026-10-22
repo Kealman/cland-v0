@@ -1,6 +1,6 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore, type Ref } from 'react';
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
-import type { ConnectionState } from './connection.ts';
+import { findItem, type ConnectionState } from './connection.ts';
 import type { Shortcut } from './keymap.ts';
 import { itemsSnapshot, subscribeItems, saveItems as save } from './items-state.ts';
 import { buildItemsTree, done } from './items-tree.ts';
@@ -47,7 +47,7 @@ export function ItemFacts({ item, coordinator, showRank = true }: { item: Explor
 /** Actions arrive from the shell's single physical-code dispatcher. */
 export function ItemsTree({ connection, release, selected, select, controls }: {
   connection: ConnectionState; release: string | undefined; selected: string | undefined;
-  select: (id: string) => void; controls: Ref<TreeControls>;
+  select: (id: string) => void; controls: Ref<TreeControls>; onNavigate?: (() => void) | undefined;
 }) {
   const preferences = useSyncExternalStore(subscribeItems, itemsSnapshot);
   const rows = useMemo(() => {
@@ -60,6 +60,8 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
   const cursor = useRef<string | undefined>(undefined);
   const [cursorKey, setCursorKey] = useState<string>();
   const previousRows = useRef(rows);
+  const previousSelected = useRef(selected);
+  const pendingSelected = useRef(selected);
   const focus = (key: string) => {
     cursor.current = key;
     setCursorKey(key);
@@ -68,6 +70,11 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
     button?.scrollIntoView({ block: 'nearest' });
   };
   useEffect(() => {
+    if (selected !== previousSelected.current) { previousSelected.current = selected; pendingSelected.current = selected; }
+    if (pendingSelected.current && rows.some(row => row.key === pendingSelected.current)) {
+      if (cursor.current !== pendingSelected.current) focus(pendingSelected.current);
+      pendingSelected.current = undefined;
+    }
     if (cursor.current && !rows.some(row => row.key === cursor.current)) {
       const parent = previousRows.current.find(row => row.key === cursor.current)?.parent;
       const target = rows.find(row => row.key === parent) ?? rows.find(row => !row.note);
@@ -78,17 +85,31 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
       if (!preferences.hideDone || preferences.archive && row.key === ':releases') connection.loadClosed?.(row.item ? row.key : row.parent ?? '');
       if (row.item?.kind === connection.tracker?.levels[1]) connection.loadPlan?.(row.key);
     }
-  }, [rows, connection, preferences.hideDone, preferences.archive]);
+  }, [rows, connection, preferences.hideDone, preferences.archive, selected]);
   useImperativeHandle(controls, () => ({ run(action) {
-    if (!['tree-next','tree-previous','tree-open','tree-close','tree-toggle','tree-done','tree-archive'].includes(action)) return false;
-    if (action === 'tree-done') save({ ...preferences, hideDone: !preferences.hideDone });
+    if (!['tree-next','tree-previous','tree-open','tree-close','tree-toggle','tree-done','tree-archive','tree-select','tree-extend-next','tree-extend-previous','dismiss','tree-scope','tree-back'].includes(action)) return false;
+    if (action === 'tree-back') {
+      if (preferences.back.length) save({ ...preferences, scope: preferences.back.at(-1), back: preferences.back.slice(0, -1) });
+    } else if (action === 'dismiss') {
+      if (!preferences.selection.length) return false;
+      save({ ...preferences, selection: [] });
+    } else if (action === 'tree-done') save({ ...preferences, hideDone: !preferences.hideDone });
     else if (action === 'tree-archive') save({ ...preferences, archive: !preferences.archive });
     else {
       const targets = rows.filter(row => !row.note);
       const index = Math.max(0, targets.findIndex(row => row.key === (cursor.current ?? selected)));
       const row = targets[index];
       if (!row) return true;
-      if (action === 'tree-next' || action === 'tree-previous') focus(targets[Math.max(0, Math.min(targets.length - 1, index + (action === 'tree-next' ? 1 : -1)))]!.key);
+      if (action === 'tree-scope') {
+        const scope = row.expandable && row.item ? row.key : row.item?.parent ?? row.parent;
+        if (scope && scope !== preferences.scope) save({ ...preferences, scope, back: [...preferences.back, preferences.scope] });
+      } else if (action === 'tree-select') {
+        if (row.item) save({ ...preferences, selection: preferences.selection.includes(row.key) ? preferences.selection.filter(id => id !== row.key) : [...preferences.selection, row.key] });
+      } else if (action === 'tree-extend-next' || action === 'tree-extend-previous') {
+        const target = targets[Math.max(0, Math.min(targets.length - 1, index + (action === 'tree-extend-next' ? 1 : -1)))]!;
+        save({ ...preferences, selection: [...new Set([...preferences.selection, ...[row, target].filter(value => value.item).map(value => value.key)])] });
+        focus(target.key);
+      } else if (action === 'tree-next' || action === 'tree-previous') focus(targets[Math.max(0, Math.min(targets.length - 1, index + (action === 'tree-next' ? 1 : -1)))]!.key);
       else if (action === 'tree-open' && row.open) {
         const child = targets[index + 1];
         if (child?.parent === row.key) focus(child.key);
@@ -100,16 +121,18 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
     return true;
   } }));
   return <div className={s.explorer}>
+    <ScopeBreadcrumbs connection={connection} />
     <div className={s.filters}>
       <button aria-pressed={preferences.hideDone} onClick={() => save({ ...preferences, hideDone: !preferences.hideDone })} title="Hide done items (D)">D · {preferences.hideDone ? 'Done hidden' : 'Done shown'}</button>
       <button aria-pressed={preferences.archive} onClick={() => save({ ...preferences, archive: !preferences.archive })} title="Show archived roots (A)">A · {preferences.archive ? 'Archive shown' : 'Archive hidden'}</button>
-      {preferences.hideDone && <span>{connection.doneItems ?? connection.items?.filter(done).length ?? 0} done hidden</span>}
+      {preferences.hideDone && <span>{findItem(connection, preferences.scope)?.child_counts?.done ?? connection.doneItems ?? connection.items?.filter(done).length ?? 0} done hidden</span>}
+      {!!preferences.selection.length && <span>{preferences.selection.length} selected</span>}
     </div>
     <div ref={root} role="tree" aria-label="Items tree" className={s.tree}>
       {rows.map(row => row.note ? <div key={row.key} className={s.stage} style={{ paddingLeft: 16 + row.depth * 20 }}>
         {row.facts?.map(fact => <span key={fact}>{fact}</span>)}<span>{row.title}</span>
       </div> : <button key={row.key} role="treeitem" aria-level={row.depth + 1} aria-expanded={row.expandable ? row.open : undefined}
-        aria-selected={(cursorKey ?? selected) === row.key} data-tree-key={row.key} data-object-id={row.item?.id} data-status={row.item?.derived_status ?? row.item?.status}
+        aria-selected={(cursorKey ?? selected) === row.key} data-marked={preferences.selection.includes(row.key)} data-tree-key={row.key} data-object-id={row.item?.id} data-status={row.item?.derived_status ?? row.item?.status}
         className={s.row} style={{ paddingLeft: 12 + row.depth * 20 }} tabIndex={(cursorKey ?? selected) === row.key || !selected && !cursorKey && row === rows[0] ? 0 : -1}
         title={row.item?.summary?.text ?? row.title} onFocus={() => { cursor.current = row.key; setCursorKey(row.key); if (row.item) select(row.key); }}
         onClick={event => {
@@ -129,4 +152,18 @@ export function ItemsTree({ connection, release, selected, select, controls }: {
       </button>)}
     </div>
   </div>;
+}
+
+/** Scope navigation is shared by the Tree and Board views. */
+export function ScopeBreadcrumbs({ connection }: { connection: ConnectionState }) {
+  const preferences = useSyncExternalStore(subscribeItems, itemsSnapshot);
+  const ancestors = [];
+  const seen = new Set<string>();
+  let ancestor = findItem(connection, preferences.scope);
+  while (ancestor && !seen.has(ancestor.id)) { seen.add(ancestor.id); ancestors.unshift(ancestor); ancestor = findItem(connection, ancestor.parent ?? undefined); }
+  return <nav className={s.filters} aria-label="Item scope">
+      <button aria-current={!preferences.scope ? 'page' : undefined} onClick={() => save({ ...preferences, scope: undefined, back: [...preferences.back, preferences.scope] })}>Items</button>
+      {ancestors.map(item => <button key={item.id} title={item.title} aria-current={item.id === preferences.scope ? 'page' : undefined}
+        onClick={() => save({ ...preferences, scope: item.id, back: [...preferences.back, preferences.scope] })}>{item.id}</button>)}
+    </nav>;
 }

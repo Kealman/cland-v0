@@ -309,6 +309,13 @@ test('card transport facts stay compact and defer closed facts to by-id pages', 
   const closed = tracker.listSummaries()[0]!;
   for (const field of ['created', 'branch', 'verify', 'regression_of', 'follows']) assert.equal(Object.hasOwn(closed, field), false, field);
   const page = tracker.summaryPage([item.id]).items[0]!;
+  assert.equal(page.id, item.id);
+  assert.equal(page.kind, 'task');
+  assert.equal(page.title, 'Card transport');
+  assert.equal(page.state, 'closed');
+  assert.equal(page.parent, null);
+  assert.deepEqual(page.labels, []);
+  assert.deepEqual(page.holds, []);
   assert.equal(page.branch, 't/card');
   assert.equal(page.created, item.created);
   assert.equal(page.regression_of, 'T-999');

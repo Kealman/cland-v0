@@ -2408,7 +2408,10 @@ For open items, card facts also travel in snapshots, summary lists and task delt
   state, result, head, finished, cached?:true}`. It omits artifact paths and the
   full cache lineage. These transport-only fields travel in open item snapshots
   and deltas; ordinary `task.list` summaries omit them to protect Neovim's first
-  payload budget. By-id pages include them for any item; closed rows receive
+  payload budget. By-id pages include the complete compact tree row (identity, kind, title, state,
+  parent, counts and relations) alongside those card facts for any item, so item-id
+  links can load a missing row and walk its ancestors without reading its body.
+  Each page retains the 256 KiB bound. Closed rows receive
   them only on that page.
 - `agents_text: {sections, words}` lists the body's level-two headings in order
   and its whitespace-delimited word count, matching `explorer_summary.outline`.

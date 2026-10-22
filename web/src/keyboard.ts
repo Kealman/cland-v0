@@ -4,7 +4,7 @@ export type KeyContext = 'shell' | 'items' | 'palette' | 'help';
 /** The shell's only key listener, including modal controls and leader sequences. */
 export function listenForShortcuts(run: (action: Shortcut) => void, context: () => KeyContext = () => 'shell'): () => void {
   let leaderTarget: EventTarget | null = null;
-  let prefix: boolean | 'KeyZ' = true;
+  let prefix: boolean | 'KeyZ' | 'KeyG' = true;
   const keydown = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing) { leaderTarget = null; return; }
     const mode = context();
@@ -27,6 +27,7 @@ export function listenForShortcuts(run: (action: Shortcut) => void, context: () 
     if (mode === 'help' && action !== 'dismiss' && action !== 'palette') return;
     event.preventDefault();
     if (action === 'leader') { prefix = true; leaderTarget = event.repeat ? null : event.target; return; }
+    if (action === 'jump-leader') { prefix = 'KeyG'; leaderTarget = event.repeat ? null : event.target; return; }
     if (action === 'tree-leader') { prefix = 'KeyZ'; leaderTarget = event.repeat ? null : event.target; return; }
     prefix = true;
     run(action);

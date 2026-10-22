@@ -23,17 +23,17 @@ function snapshot(): View {
   return current;
 }
 function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
-function change(view: View) {
+export function showItemsView(view: View) {
   current = view;
   const saved = readInterfaceState('items');
   writeInterfaceState('items', { ...(saved && typeof saved === 'object' ? saved : {}), view });
   listeners.forEach(listener => listener());
 }
-export function ItemsViewSwitcher() {
+export function ItemsViewSwitcher({ onChange }: { onChange?: () => void } = {}) {
   const view = useSyncExternalStore(subscribe, snapshot);
   return <div className={s.switcher} role="group" aria-label="Items view">
     {itemViews.map(option => <button key={option.id} disabled={!option.enabled} aria-pressed={view === option.id}
-      title={option.enabled ? option.label : `${option.label} unavailable`} onClick={() => change(option.id)}>{option.label}</button>)}
+      title={option.enabled ? option.label : `${option.label} unavailable`} onClick={() => { onChange?.(); showItemsView(option.id); }}>{option.label}</button>)}
   </div>;
 }
 export function ItemsView(props: ComponentProps<typeof ItemsTree>) {

@@ -1,34 +1,57 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore, type ComponentProps } from 'react';
-import { ItemsTree, ItemFacts } from './ItemsTree.tsx';
+import { ItemsTree, ItemFacts, ScopeBreadcrumbs } from './ItemsTree.tsx';
 import { buildItemsBoard } from './items-board.ts';
 import { itemsSnapshot, subscribeItems, saveItems } from './items-state.ts';
 import s from './ItemsTree.module.css';
 import b from './ItemsBoard.module.css';
 
 /** Read-only Board; keyboard actions enter through the shell's shared dispatcher. */
-export function ItemsBoard({ connection, release, selected, select, controls }: ComponentProps<typeof ItemsTree>) {
+export function ItemsBoard({ connection, release, selected, select, controls, onNavigate }: ComponentProps<typeof ItemsTree>) {
   const preferences = useSyncExternalStore(subscribeItems, itemsSnapshot);
   const [parent, setParent] = useState<string>();
   const model = useMemo(() => buildItemsBoard(connection, preferences, release, parent), [connection, preferences, release, parent]);
   const root = useRef<HTMLDivElement>(null);
-  const cursor = useRef<string | undefined>(selected);
+  const cursor = useRef<string | undefined>(model.rows.find(row => row.item?.id === selected)?.key);
+  const previousSelected = useRef(selected);
   const [groupCursor, setGroupCursor] = useState<string>();
   const focus = (key: string) => {
     cursor.current = key;
     const node = [...root.current?.querySelectorAll<HTMLButtonElement>('[data-board-key]') ?? []].find(node => node.dataset.boardKey === key);
     node?.focus(); node?.scrollIntoView({ block: 'nearest' });
   };
+  useEffect(() => {
+    if (selected !== previousSelected.current || !model.rows.some(row => row.key === cursor.current)) {
+      cursor.current = model.rows.find(row => row.item?.id === selected)?.key;
+      previousSelected.current = selected;
+    }
+  }, [model, selected]);
   useEffect(() => { for (const id of model.loads) connection.loadClosed?.(id); }, [model, connection]);
   useImperativeHandle(controls, () => ({ run(action) {
-    if (!['tree-next', 'tree-previous', 'tree-open', 'tree-close', 'tree-toggle', 'tree-done', 'tree-archive'].includes(action)) return false;
-    if (action === 'tree-done') saveItems({ ...preferences, hideDone: !preferences.hideDone });
+    if (!['tree-next', 'tree-previous', 'tree-open', 'tree-close', 'tree-toggle', 'tree-done', 'tree-archive', 'tree-select', 'tree-extend-next', 'tree-extend-previous', 'tree-scope', 'tree-back', 'dismiss'].includes(action)) return false;
+    if (action === 'tree-back') {
+      if (preferences.back.length) saveItems({ ...preferences, scope: preferences.back.at(-1), back: preferences.back.slice(0, -1) });
+    } else if (action === 'dismiss') {
+      if (!preferences.selection.length) return false;
+      saveItems({ ...preferences, selection: [] });
+    } else if (action === 'tree-done') saveItems({ ...preferences, hideDone: !preferences.hideDone });
     else if (action === 'tree-archive') saveItems({ ...preferences, archive: !preferences.archive });
     else {
       const targets = model.rows.filter(row => !row.note);
-      const index = Math.max(0, targets.findIndex(row => row.key === (cursor.current ?? selected)));
+      const cursorIndex = targets.findIndex(row => row.key === cursor.current);
+      const index = Math.max(0, cursorIndex < 0 ? targets.findIndex(row => row.item?.id === selected) : cursorIndex);
       const row = targets[index];
       if (!row) return true;
-      if (action === 'tree-next' || action === 'tree-previous') focus(targets[Math.max(0, Math.min(targets.length - 1, index + (action === 'tree-next' ? 1 : -1)))]!.key);
+      if (action === 'tree-scope') {
+        const scope = row.expandable && row.item ? row.item.id : row.item?.parent;
+        if (scope && scope !== preferences.scope) saveItems({ ...preferences, scope, back: [...preferences.back, preferences.scope] });
+      } else if (action === 'tree-select') {
+        const id = row.item?.id;
+        if (id) saveItems({ ...preferences, selection: preferences.selection.includes(id) ? preferences.selection.filter(value => value !== id) : [...preferences.selection, id] });
+      } else if (action === 'tree-extend-next' || action === 'tree-extend-previous') {
+        const target = targets[Math.max(0, Math.min(targets.length - 1, index + (action === 'tree-extend-next' ? 1 : -1)))]!;
+        saveItems({ ...preferences, selection: [...new Set([...preferences.selection, ...[row, target].flatMap(value => value.item ? [value.item.id] : [])])] });
+        focus(target.key);
+      } else if (action === 'tree-next' || action === 'tree-previous') focus(targets[Math.max(0, Math.min(targets.length - 1, index + (action === 'tree-next' ? 1 : -1)))]!.key);
       else if (action === 'tree-open' && row.open) {
         const child = targets[index + 1]; if (child?.parent === row.key) focus(child.key);
       } else if (row.parent && (action === 'tree-close' && !row.open || action === 'tree-toggle' && !row.expandable)) {
@@ -37,16 +60,19 @@ export function ItemsBoard({ connection, release, selected, select, controls }: 
     }
     return true;
   } }));
+  const chooseTab = (id: string | undefined) => { onNavigate?.(); setParent(id); };
   const toggle = (key: string, open: boolean) => saveItems({ ...preferences, open: { ...preferences.open, [key]: !open } });
   return <div className={s.explorer}>
+    <ScopeBreadcrumbs connection={connection} />
     <div className={s.filters}>
       <button aria-pressed={preferences.hideDone} title="Hide done items (D)" onClick={() => saveItems({ ...preferences, hideDone: !preferences.hideDone })}>D · {preferences.hideDone ? 'Done hidden' : 'Done shown'}</button>
       <button aria-pressed={preferences.archive} title="Show archived roots (A)" onClick={() => saveItems({ ...preferences, archive: !preferences.archive })}>A · {preferences.archive ? 'Archive shown' : 'Archive hidden'}</button>
-      {preferences.hideDone && <span>{connection.doneItems ?? 0} done hidden</span>}
+      {preferences.hideDone && <span>{model.scope?.child_counts?.done ?? connection.doneItems ?? 0} done hidden</span>}
+      {!!preferences.selection.length && <span>{preferences.selection.length} selected</span>}
     </div>
     <div className={b.tabs} role="group" aria-label="Board epic tabs">
-      <button aria-pressed={!model.tab} aria-label="All epics" onClick={() => setParent(undefined)}>All</button>
-      {model.tabs.map(item => <button key={item.id} aria-pressed={model.tab?.id === item.id} onClick={() => setParent(item.id)}>{item.id} {item.title}</button>)}
+      <button aria-pressed={!model.tab} aria-label="All epics" onClick={() => chooseTab(undefined)}>All</button>
+      {model.tabs.map(item => <button key={item.id} aria-pressed={model.tab?.id === item.id} onClick={() => chooseTab(item.id)}>{item.id} {item.title}</button>)}
     </div>
     <div className={b.scope} aria-label="Board scope"><span>{model.scope ? `${model.scope.id} ${model.scope.title}` : 'Unscheduled'}</span>
       {model.scope?.child_counts && <span>{model.scope.child_counts.done}/{model.scope.child_counts.total}</span>}
@@ -54,7 +80,7 @@ export function ItemsBoard({ connection, release, selected, select, controls }: 
     <div ref={root} role="tree" aria-label="Items board" className={s.tree}>
       {model.rows.map(row => row.note ? <div key={row.key} className={s.stage} data-board-section style={{ paddingLeft: 16 + row.depth * 20 }}>{row.title}</div>
         : <button key={row.key} role="treeitem" aria-level={row.depth + 1} aria-expanded={row.expandable ? row.open : undefined}
-          aria-selected={row.item ? selected === row.item.id : groupCursor === row.key} data-board-key={row.key} data-tree-key={row.key}
+          aria-selected={row.item ? selected === row.item.id : groupCursor === row.key} data-marked={preferences.selection.includes(row.item?.id ?? row.key)} data-board-key={row.key} data-tree-key={row.key}
           data-object-id={row.item?.id} data-status={row.item?.derived_status ?? row.item?.status}
           className={s.row} style={{ paddingLeft: 12 + row.depth * 20 }} tabIndex={selected === row.item?.id || !selected && row === model.rows[0] ? 0 : -1}
           title={row.item?.summary?.text ?? row.title} onFocus={() => { cursor.current = row.key; setGroupCursor(row.key); if (row.item) select(row.item.id); }}

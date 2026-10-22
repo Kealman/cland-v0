@@ -101,7 +101,9 @@ Workbench clients read hub-computed summaries and roll-ups from snapshots and
 task deltas. Open items include `summary.text`; closed items retain provenance
 and facts and fetch full summaries with `task.list` frames carrying
 `projection: "summary", ids: [...]` (at most 100). Repeat with the returned
-`remaining` ids; each reply stays within 256 KiB. This uses the existing read
+`remaining` ids; each reply stays within 256 KiB. By-id pages also include the
+compact tree row (including canonical id and parent), allowing links to load
+missing items and their ancestors without fetching bodies. This uses the existing read
 permission and adds no CLI flag. See hub/README.md, the summary projection, for
 field definitions and incremental invalidation. Full bodies and acceptance
 criteria still require `task.view` when reviewing an item.

@@ -8,8 +8,11 @@ import s from './Shell.module.css';
 import { PaletteDialog, type PaletteControls } from './Palette.tsx';
 import { Fold, runFoldShortcut } from './Fold.tsx';
 import { ItemCard } from './ItemCard.tsx';
+import { ItemNavigation, ItemText } from './ItemText.tsx';
+import { itemsSnapshot, saveItems, subscribeItems } from './items-state.ts';
+import type { MessageTarget } from './QuickMessage.tsx';
 import { type TreeControls } from './ItemsTree.tsx';
-import { ItemsView, ItemsViewSwitcher } from './ItemsView.tsx';
+import { ItemsView, ItemsViewSwitcher, showItemsView } from './ItemsView.tsx';
 
 const iconPaths = [
   'M4 4h16v16H4z M4 14h5l2 3h2l2-3h5',
@@ -48,20 +51,30 @@ export function Shell() {
   useEffect(() => writeInterfaceState('shell', preferences), [preferences]);
   const [overlay, setOverlay] = useState<'palette' | 'help' | undefined>();
   const [active, setActive] = useState<'primary' | 'secondary'>('primary');
+  const navigationSerial = useRef(0);
+  useEffect(() => subscribeItems(() => { navigationSerial.current++; }), []);
+  const focusPane = (pane: 'primary' | 'secondary') => {
+    if (pane !== active) navigationSerial.current++;
+    setActive(pane);
+  };
   const split = preferences.secondary !== undefined;
   const area = active === 'secondary' && preferences.secondary ? preferences.secondary : preferences.area;
-  const setArea = (selected: Area) => setPreferences(previous => active === 'secondary' && previous.secondary
-    ? { ...previous, secondary: selected, secondaryRow: undefined, secondaryDetail: false } : { ...previous, area: selected, row: undefined, detail: false });
+  const setArea = (selected: Area) => {
+    navigationSerial.current++;
+    setPreferences(previous => active === 'secondary' && previous.secondary
+      ? { ...previous, secondary: selected, secondaryRow: undefined, secondaryDetail: false } : { ...previous, area: selected, row: undefined, detail: false });
+  };
   const dismissed = preferences.dismissed;
   const setDismissed = (key: string | undefined) => setPreferences(previous => ({ ...previous, dismissed: key }));
   const selectionKey = `${preferences.area}/${preferences.row ?? ''}`;
   const selectRow = (pane: 'primary' | 'secondary', id: string) => {
-    if (id !== (pane === 'primary' ? preferences.row : preferences.secondaryRow)) setDismissed(undefined);
+    if (id !== (pane === 'primary' ? preferences.row : preferences.secondaryRow)) { navigationSerial.current++; setDismissed(undefined); setMessage(undefined); }
     setPreferences(previous => pane === 'primary' ? { ...previous, row: id } : { ...previous, secondaryRow: id });
   };
   const areaButtons = useRef<Partial<Record<Area, HTMLButtonElement>>>({});
   const workspace = useRef<HTMLDivElement>(null);
   const closePane = (pane: 'primary' | 'secondary') => {
+    navigationSerial.current++;
     setDismissed(selectionKey);
     setPreferences(previous => pane === 'primary'
       ? { ...previous, area: previous.secondary ?? previous.area, row: previous.secondaryRow, detail: previous.secondaryDetail, secondary: undefined, secondaryRow: undefined, dismissed: `${previous.secondary}/${previous.secondaryRow ?? ''}` }
@@ -69,6 +82,7 @@ export function Shell() {
     setActive('primary');
   };
   const openOther = () => {
+    navigationSerial.current++;
     const selected = active === 'primary' ? preferences.row : preferences.secondaryRow;
     if (!selected) return;
     setDismissed(selectionKey);
@@ -80,7 +94,34 @@ export function Shell() {
   const cardOrigin = useRef<{ item: string; pane: string } | null>(null);
   const primaryTree = useRef<TreeControls>(null);
   const secondaryTree = useRef<TreeControls>(null);
+  const [navigationError, setNavigationError] = useState('');
+  const [message, setMessage] = useState<MessageTarget>();
   const runShortcut = (action: Shortcut, fromPalette = false) => {
+    if (!overlay && action.startsWith('jump-')) {
+      const focused = document.activeElement?.closest('[data-item-link]')?.getAttribute('data-item-link');
+      const selectedId = focused ?? (active === 'primary' ? preferences.row : preferences.secondaryRow);
+      const id = connection.topics?.find(topic => topic.id === selectedId)?.item ?? selectedId;
+      const item = findItem(connection, id);
+      if (action === 'jump-item' && id) void openItem(id);
+      else if (action === 'jump-topic' && item) {
+        const topic = connection.topics?.find(value => value.item === item.id);
+        if (topic) openResult('Topics', topic, false);
+      } else if (action === 'jump-session' && (item?.claim?.session || connection.coordinator)) {
+        const name = item?.claim?.session ?? connection.coordinator!;
+        openResult('Sessions', { id: name, title: name }, false);
+      }
+      return;
+    }
+    if (!overlay && area === 'Items' && (action === 'tree-message' || action === 'tree-topic-message')) {
+      const id = active === 'primary' ? preferences.row : preferences.secondaryRow;
+      if (id) {
+        const selection = itemsSnapshot().selection;
+        setDismissed(undefined);
+        if (split) openOther();
+        setMessage({ card: id, ids: selection.length ? selection : [id], topic: action === 'tree-topic-message', selection: selection.length > 0, serial: (message?.serial ?? 0) + 1 });
+      }
+      return;
+    }
     if (!overlay && area === 'Items') {
       const focused = document.activeElement;
       const inCard = focused?.closest('[aria-label="Item card"]');
@@ -93,7 +134,7 @@ export function Shell() {
         target?.focus();
         return;
       }
-      if (action === 'accept' && focused?.getAttribute('role') === 'treeitem') {
+      if ((action === 'accept' || action === 'tree-open' && !focused?.hasAttribute('aria-expanded')) && focused?.getAttribute('role') === 'treeitem') {
         const item = focused.getAttribute('data-object-id');
         if (!item) return;
         const pane = focused.closest('[data-pane]')?.getAttribute('data-pane') ?? active;
@@ -134,6 +175,8 @@ export function Shell() {
     document.title = `${connection.needsYou ? `(${connection.needsYou}) ` : ''}${connection.project} · cland`;
   }, [connection.project, connection.needsYou]);
   const openResult = (target: Area, row: ObjectRow, pane: boolean) => {
+    navigationSerial.current++;
+    setMessage(undefined);
     setPreferences(previous => {
       if (pane) return active === 'primary'
         ? { ...previous, secondary: target, secondaryRow: row.id, secondaryDetail: true, dismissed: selectionKey, ratio: split ? previous.ratio : 2 / 3 }
@@ -151,7 +194,30 @@ export function Shell() {
     Inbox: connection.needsYou, Items: connection.plans,
     Sessions: connection.approvals, Topics: connection.waitingTopics,
   };
-  return <div className={s.app}>
+  const openItem = async (id: string) => {
+    const serial = ++navigationSerial.current;
+    setNavigationError('');
+    setMessage(undefined);
+    try {
+      const result = await connection.resolveItem?.(id);
+      if (serial !== navigationSerial.current) return;
+      if (!result) { setNavigationError(id); return; }
+      const { item, ancestors } = result;
+      const state = itemsSnapshot();
+      const open: Record<string, boolean> = { ...state.open, ':categories': true, ':unscheduled': true, ':releases': true };
+      let releaseId: string | undefined;
+      for (const parent of [item, ...ancestors]) {
+        open[parent.id] = true; open[`:direct:${parent.id}`] = true; open[`:more:${parent.id}`] = true;
+        if (parent.kind === connection.tracker?.levels[0]) releaseId = parent.id;
+      }
+      showItemsView('tree');
+      saveItems({ ...state, open, scope: undefined, hideDone: false, archive: true, back: [...state.back, state.scope] });
+      setPreferences(previous => active === 'primary' ? { ...previous, area: 'Items', row: item.id, detail: false, dismissed: undefined, release: releaseId ?? previous.release }
+        : { ...previous, secondary: 'Items', secondaryRow: item.id, secondaryDetail: false, dismissed: undefined, release: releaseId ?? previous.release });
+    } catch { if (serial === navigationSerial.current) setNavigationError(id); }
+  };
+  return <ItemNavigation.Provider value={{ open: id => { void openItem(id); }, prefixes: ['T', ...Object.values(connection.tracker?.prefixes ?? {})] }}><div className={s.app}>
+    {navigationError && <div role="alert" title={`Could not open ${navigationError}`}>Item unavailable · {navigationError}</div>}
     {overlay && <PaletteDialog mode={overlay} area={area} connection={connection} controls={paletteControls}
       close={() => setOverlay(undefined)} run={action => {
         if (action === 'palette' || action === 'help') setOverlay(action);
@@ -163,7 +229,7 @@ export function Shell() {
       <label className={s.release}>
         <span className={s.mono} data-item-id>{release?.id ?? '—'}</span>
         <select aria-label="Release" value={release?.id ?? ''} title={release?.title ?? 'No open release'}
-          onChange={event => setPreferences({ ...preferences, release: event.target.value })}>
+          onChange={event => { navigationSerial.current++; setPreferences({ ...preferences, release: event.target.value }); }}>
           {!releases.length && <option value="">Release —</option>}
           {releases.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>
@@ -213,15 +279,15 @@ export function Shell() {
             const row = paneArea === 'Items' ? findItem(connection, selected) : rows?.find(object => object.id === selected);
             return <section key={pane} className={s.pane} data-pane={pane} aria-label={`${pane} pane`} tabIndex={-1}
               style={{ flex: split ? `${pane === 'primary' ? preferences.ratio : 1 - preferences.ratio} 1 0` : '1' }}
-              onPointerDown={() => setActive(pane)} onFocus={() => setActive(pane)}>
+              onPointerDown={() => focusPane(pane)} onFocus={() => focusPane(pane)}>
               <Fold area={paneArea.toLowerCase()} id={detail ? `detail:${selected}` : 'objects'}
                 label={detail && row ? row.title : paneArea} count={detail ? 1 : rows?.length ?? '—'} level={1}
-                actions={<>{!detail && paneArea === 'Items' && <ItemsViewSwitcher />}{split && <div className={s.actions}>
-                  <button onClick={() => setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
-                    row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail }))}>Swap</button>
+                actions={<>{!detail && paneArea === 'Items' && <ItemsViewSwitcher onChange={() => { navigationSerial.current++; }} />}{split && <div className={s.actions}>
+                  <button onClick={() => { navigationSerial.current++; setPreferences(previous => ({ ...previous, area: previous.secondary!, secondary: previous.area,
+                    row: previous.secondaryRow, secondaryRow: previous.row, detail: previous.secondaryDetail, secondaryDetail: previous.detail })); }}>Swap</button>
                   <button onClick={() => closePane(pane)}>Close</button>
                 </div>}</>}>
-              {!detail && paneArea === 'Items' && <ItemsView connection={connection} release={release?.id} selected={selected}
+              {!detail && paneArea === 'Items' && <ItemsView onNavigate={() => { navigationSerial.current++; }} connection={connection} release={release?.id} selected={selected}
                 select={id => selectRow(pane, id)} controls={pane === 'primary' ? primaryTree : secondaryTree} />}
               {!detail && paneArea !== 'Items' && <ul className={s.objects} aria-label={`${paneArea} objects`}>
                 {rows?.map(object => <li key={object.id}><button className={s.object} data-object-id={object.id}
@@ -230,8 +296,8 @@ export function Shell() {
                 </button></li>)}
               </ul>}
               {detail && row && (paneArea === 'Items' && findItem(connection, row.id)
-                ? <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} />
-                : <div className={s.detail}><span className={s.mono}>{row.id}</span><p>{row.title}</p></div>)}
+                ? <ItemCard key={row.id} item={findItem(connection, row.id)!} connection={connection} message={message?.card === row.id ? message : undefined} />
+                : <div className={s.detail}><span className={s.mono}>{row.id}</span><p><ItemText text={row.title} /></p></div>)}
               </Fold>
               {pane === 'primary' && split && <div className={s.divider} role="separator" aria-label="Pane divider"
                 aria-orientation="vertical" aria-valuemin={20} aria-valuemax={80} aria-valuenow={Math.round(preferences.ratio * 100)}
@@ -251,11 +317,11 @@ export function Shell() {
             <button onClick={() => { setDismissed(selectionKey); areaButtons.current[preferences.area]?.focus(); }}>Close</button>
           </div>}>
           {preferences.area === 'Items' && findItem(connection, selectedRow.id)
-            ? <ItemCard key={selectedRow.id} item={findItem(connection, selectedRow.id)!} connection={connection} />
-            : <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p>{selectedRow.title}</p></div>}
+            ? <ItemCard key={selectedRow.id} item={findItem(connection, selectedRow.id)!} connection={connection} message={message?.card === selectedRow.id ? message : undefined} />
+            : <div className={s.detail}><span className={s.mono}>{selectedRow.id}</span><p><ItemText text={selectedRow.title} /></p></div>}
           </Fold>
         </aside>}
       </main>
     </div>
-  </div>;
+  </div></ItemNavigation.Provider>;
 }

@@ -1,0 +1,6 @@
+.form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 12px 0; }
+.form label { display: grid; gap: 6px; flex: 1; min-width: 120px; font-size: 12px; color: var(--text-soft); }
+.form input { min-width: 0; width: 100%; padding: 6px; color: var(--text); background: var(--ground); border: 1px solid var(--control-border); }
+.form button { padding: 6px 10px; border: 1px solid var(--control-border); background: var(--control); border-radius: 4px; }
+.form :focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+.form [role="alert"] { color: var(--failed); }

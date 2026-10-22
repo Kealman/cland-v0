@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import type { ExplorerSummary } from '../../shared/wire/index.ts';
 import { itemRows, type ConnectionState } from './connection.ts';
 import s from './ItemCard.module.css';
+import { ItemText } from './ItemText.tsx';
+import { QuickMessage, type MessageTarget } from './QuickMessage.tsx';
 import { numberOf } from './items-tree.ts';
 
 /** Snapshot facts remain independent from the body, fetched only on expansion. */
-export function ItemCard({ item: row, connection }: { item: ExplorerSummary; connection: ConnectionState }) {
+export function ItemCard({ item: row, connection, message }: { item: ExplorerSummary; connection: ConnectionState; message?: MessageTarget | undefined }) {
   const items = itemRows(connection);
   const item = { ...row, ...connection.cardFacts?.[row.id] };
   const [bodyOpen, setBodyOpen] = useState(false);
@@ -33,8 +35,9 @@ export function ItemCard({ item: row, connection }: { item: ExplorerSummary; con
   const body = connection.bodies?.[item.id];
   return <section className={s.card} role="region" aria-label="Item card" data-item-id={item.id} tabIndex={-1}>
     <span className={s.id}>{item.id}</span>
+    {message && <QuickMessage connection={connection} target={message} />}
     <h3>Summary</h3>
-    <p>{item.summary?.text ?? (connection.cardErrors?.[item.id] || (item.state === 'closed' ? 'Loading…' : 'No summary'))}</p>
+    <p><ItemText text={item.summary?.text ?? (connection.cardErrors?.[item.id] || (item.state === 'closed' ? 'Loading…' : 'No summary'))} /></p>
     {item.summary?.provenance && <small>{item.summary.provenance}</small>}
     <h3>Facts</h3>
     <dl>
@@ -42,7 +45,7 @@ export function ItemCard({ item: row, connection }: { item: ExplorerSummary; con
       <dt>Layer</dt><dd>{item.rollup?.layer ?? item.layer ?? '—'}</dd>
       <dt>Labels</dt><dd>{item.labels.join(' · ') || '—'}</dd>
       <dt>Size</dt><dd>{item.size ?? '—'}</dd>
-      <dt>Parent</dt><dd>{parent ? `${parent.id} ${parent.title}` : item.parent ?? '—'}</dd>
+      <dt>Parent</dt><dd><ItemText text={parent ? `${parent.id} ${parent.title}` : item.parent ?? '—'} /></dd>
       <dt>Lead</dt><dd>{item.claim?.session ?? (item.child_counts ? connection.coordinator : null) ?? '—'}</dd>
       <dt>Claim</dt><dd>{item.claim ? `${item.claim.session} · ${item.claim.role}` : 'none'}</dd>
       <dt>Holds</dt><dd>{item.holds.map(value => `${value.session} · ${value.role}`).join('\n') || 'none'}</dd>
@@ -65,13 +68,13 @@ export function ItemCard({ item: row, connection }: { item: ExplorerSummary; con
       {rolled && <small>{rolled.item} · {rolled.title}</small>}
       <strong>{verdict.result === 'clear' ? '✓' : '✗'} {verdict.verdict} · {verdict.result}</strong>
       <p>{verdict.by} · r{verdict.round ?? '—'} · {verdict.scope ?? '—'}{verdict.current === false ? ' · stale' : ''}</p>
-      <p>{verdict.reason ?? 'No reason'}</p><small>{verdict.run} · {verdict.at}</small>
+      <p><ItemText text={verdict.reason ?? 'No reason'} /></p><small>{verdict.run} · {verdict.at}</small>
     </div> : <p>none</p>}
     <h3>Relations</h3>
-    <dl><dt>Blocked by</dt><dd>{relations(item.blocked_by)}</dd>
-      <dt>Blocks</dt><dd>{relations(items.filter(value => value.blocked_by.includes(item.id)).map(value => value.id) ?? [])}</dd>
-      {item.follows?.length ? <><dt>Follows</dt><dd>{relations(item.follows)}</dd></> : null}
-      {item.regression_of && <><dt>Regression of</dt><dd>{relations([item.regression_of])}</dd></>}
+    <dl><dt>Blocked by</dt><dd><ItemText text={relations(item.blocked_by)} /></dd>
+      <dt>Blocks</dt><dd><ItemText text={relations(items.filter(value => value.blocked_by.includes(item.id)).map(value => value.id) ?? [])} /></dd>
+      {item.follows?.length ? <><dt>Follows</dt><dd><ItemText text={relations(item.follows)} /></dd></> : null}
+      {item.regression_of && <><dt>Regression of</dt><dd><ItemText text={relations([item.regression_of])} /></dd></>}
     </dl>
     {item.kind === 'task' && <><h3>Branch and suite</h3><dl>
       <dt>Branch</dt><dd>{item.branch ?? '—'}</dd>
@@ -81,11 +84,11 @@ export function ItemCard({ item: row, connection }: { item: ExplorerSummary; con
       {item.closed && <><dt>Closed</dt><dd>{item.closed}</dd></>}
       <dt>Last activity</dt><dd>{activity ? `${activity.at} · ${activity.source} · ${activity.item}` : `${item.updated} · item updated`}</dd>
     </dl>
-    {item.decision && <><h3>Decision</h3><p>{item.decision.text}</p><small>{item.decision.by} · {item.decision.at}</small></>}
+    {item.decision && <><h3>Decision</h3><p><ItemText text={item.decision.text} /></p><small>{item.decision.by} · {item.decision.at}</small></>}
     <h3><button className={s.bodyToggle} aria-expanded={bodyOpen} onClick={() => setBodyOpen(!bodyOpen)}>
       {bodyOpen ? '▾' : '▸'} Agents’ text
     </button></h3>
     <small>{item.agents_text?.sections.join(', ') || 'No sections'} · {item.agents_text?.words ?? 0} words</small>
-    {bodyOpen && <pre className={s.body}>{body?.text ?? body?.error ?? 'Loading…'}</pre>}
+    {bodyOpen && <pre className={s.body}><ItemText text={body?.text ?? body?.error ?? 'Loading…'} /></pre>}
   </section>;
 }

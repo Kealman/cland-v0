@@ -142,5 +142,5 @@ export async function webFixture(t: TestContext, options: { cliLink?: boolean; p
     await hub.stopped;
     hub = await projectHub(t, root);
   };
-  return { root, get hub() { return hub; }, restartHub, browser, server, close, pageCase, tracePaths };
+  return { root, get fakes() { return hub.fakes; }, get hub() { return hub; }, restartHub, browser, server, close, pageCase, tracePaths };
 }

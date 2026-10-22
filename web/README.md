@@ -129,9 +129,33 @@ using the hub's counts when only part of the closed child list is loaded.
 | `za` | Toggle the row's fold (a leaf folds its parent) |
 | `D` | Hide/show done items |
 | `A` | Show/hide archived roots |
+| `s` | Scope to a container (a leaf uses its parent) |
+| `Space Space` | Return to the previous scope |
+| `x`, `Shift+j`, `Shift+k` | Toggle a selected row or extend the selection |
+| `Esc` | Clear the row selection |
+| `m`, `M` | Message General or the item topic |
+| `gi`, `gt`, `gs` | Jump to the item, its topic or its session/Coordinator |
 | `Enter` | Enter the card or return to the tree |
 | `Esc`, `h` in the card | Return to its tree row |
 | `?` | Show the active area's keys |
+
+The scope breadcrumbs open an ancestor or the project roots; each scope change
+keeps a back-stack entry for `Space Space`. Scope and filters are shared with
+other Items views; Tree, Board and Graph share the breadcrumbs and selection keys.
+Selection and the back stack last for the page. Item ids in
+card prose, relations, agents’ text and other detail text are links. Opening one switches to Tree,
+resolves its canonical display id, loads missing closed ancestors through bounded
+summary pages, unfolds its ancestors and focuses its row. A later navigation supersedes a
+pending link lookup. `gi` also opens a
+topic’s bound item; `gt` opens the existing item topic; `gs` opens the claimant
+or the Coordinator in Sessions.
+
+`m` focuses a one-line field in the card. Enter or Send posts the draft with one
+context line per item, explicitly addressed to the Coordinator. Moving the cursor
+to an unmarked row keeps the marked selection as the message context. `M` or **Item topic**
+uses a task/epic topic, creating it when missing; a multiple-row selection always
+goes to General. The field retains the draft on a failed send and never retries a
+mutation automatically. Offline sending is disabled. No tracker fields are edited.
 
 Click a row to select it; click its chevron or double-click to fold/unfold it.
 The current release stays unfolded. The browser keeps tree folds, `D` and `A`
@@ -331,6 +355,7 @@ node --test web/test/folds.test.ts      # local folds, zero fold frames and visi
 node --test web/test/shell.test.ts      # rail, top strip, state, keys and focus
 node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 300-item rebuild
 node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
+node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
