@@ -617,6 +617,7 @@
     "web/test/palette.test.ts": "Web",
     "web/test/plan.test.ts": "Web",
     "web/test/shell.test.ts": "Web",
-    "web/test/smoke.test.ts": "Web"
+    "web/test/smoke.test.ts": "Web",
+    "web/test/topics.test.ts": "Web"
   }
 }

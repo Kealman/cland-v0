@@ -223,7 +223,7 @@ export function Shell() {
     });
   };
   const selectedRow = preferences.area === 'Items' ? findItem(connection, preferences.row) : connection.rows?.[preferences.area]?.find(row => row.id === preferences.row);
-  const drawerOpen = !split && selectedRow && dismissed !== selectionKey && !preferences.detail;
+  const drawerOpen = !split && preferences.area !== 'Topics' && selectedRow && dismissed !== selectionKey && !preferences.detail;
   const releases = connection.releases ?? [];
   const release = releases.find(item => item.id === preferences.release) ?? releases[0];
   const counts: Partial<Record<Area, number | undefined>> = {

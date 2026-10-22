@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { connectHub, type ConnectionState } from '../../web/src/connection.ts';
-import type { AccountView, Artifact, Capabilities, HubFrame, SessionRow, SnapshotValues, VerificationQueue, WorkbenchRequest } from '../../shared/wire/index.ts';
+import type { AccountView, Artifact, Capabilities, HubFrame, SessionRow, SnapshotValues, Topic, VerificationQueue, WorkbenchRequest } from '../../shared/wire/index.ts';
 
 const account = (name: string): AccountView => ({ name, harness: 'codex', path: `/scratch/${name}`, variable: 'CODEX_HOME', windows: [], at: null, source: null });
 const artifact = (title: string): Artifact => ({ id: 'A-1', title, kind: 'note', path: '/scratch/note.md', creator: 'human', time: '2026-10-22T10:00:00Z', topic: 'general', status: 'shared' });
@@ -120,10 +120,16 @@ test('reconnect and resync replace the areas from fresh hub snapshots and invent
 test('visibility reprojects artifacts by id without dropping the rest or rereading inventories', t => {
   const client = scripted(t);
   const first = artifact('One'), second = { ...artifact('Two'), id: 'A-2' };
+  const topic: Topic = { id: 'general', title: 'General', standing: true, status: 'open', item: null, createdAt: '2026-10-22T10:00:00Z', updatedAt: '2026-10-22T10:00:00Z', lastMessageAt: null, unread: 0 };
+  const otherTopic: Topic = { ...topic, id: 'agents', title: 'Agents' };
+  client.socket.receive({ type: 'snapshot', epoch: 'one', seq: 0, domain: 'topics', value: { topics: [topic, otherTopic], marks: { events: null, plans: {}, imported: true } } });
   client.socket.receive({ type: 'result', id: 'shell-artifacts', ok: true, value: { artifacts: [first, second] } });
-  client.socket.receive({ type: 'visibility', rows: { artifacts: [{ ...first, layer: 'watch' }], topics: [], sessions: [], processes: [], messages: [] } });
+  client.socket.sent.length = 0;
+  client.socket.receive({ type: 'visibility', rows: { artifacts: [{ ...first, layer: 'watch' }], topics: [{ ...topic, layer: 'watch' }], sessions: [], processes: [], messages: [] } });
   assert.deepEqual(client.state.artifacts, [{ ...first, layer: 'watch' }, second]);
+  assert.deepEqual(client.state.topics, [{ ...topic, layer: 'watch' }, otherTopic]);
   assert.equal(client.socket.sent.some(frame => ['session.list', 'account.list', 'artifact.list'].includes(frame.type)), false);
+  assert.deepEqual(client.socket.sent, [], 'topic and artifact visibility apply together without list rereads');
 });
 
 test('moving an artifact removes its top-level inventory row and never adds an unseen moved child', t => {

@@ -1,0 +1,12 @@
+.thread { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.heading { flex: none; min-height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+.heading h2 { font: 600 14px var(--prose); margin: 0; }
+.heading span { color: var(--muted); }
+.messages { overflow: auto; overflow-anchor: none; flex: 1; min-height: 0; }
+.messages:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.message { padding: 16px 20px; border-bottom: 1px solid var(--border-soft); }
+.message:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+.message header { display: flex; gap: 12px; align-items: baseline; color: var(--muted); font: 11px var(--mono); }
+.message strong { color: var(--text); }
+.message time { margin-left: auto; }
+.message p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 0; }

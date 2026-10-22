@@ -50,7 +50,7 @@ The welcome reads the served receipt at connection time, including a configured
 The development loop uses a build and reload, with E-412's same-origin web edge.
 There is no Vite dev server or development bridge. The shell navigates the seven
 areas through the rail or physical `Digit1`–`Digit7` keys. The main area has its
-heading, the Items tree, and stand-in lists of other hub object IDs and titles;
+heading, the Items views, Topics with threads, and stand-in lists of remaining hub objects;
 E-416 to E-418 replace the remaining lists with the full areas. Dashes represent
 unavailable facts. The palette searches the shell’s actions and hub objects; help
 shows the active area’s keys.
@@ -122,12 +122,52 @@ merged sessions, roles, the verification queue, topics, inbox, events and accoun
 views. `hub.status` supplies the project name; one `session.list` reads adapter
 capabilities and one `artifact.list` reads the artifact inventory per connection.
 Item deltas replace or remove rows directly, without a `task.list` reread.
-Reconnection takes fresh snapshots, retaining the previous display while offline.
+Reconnection resumes numbered deltas or takes fresh snapshots, retaining the
+previous display while offline.
 Inbox pushes update attention immediately; Coordinator changes refresh status.
 Task deltas carry full verdict history: the client selects the latest per kind
 and retains its history round, matching the snapshot projection. Any item
 replacement/removal invalidates cached sibling orders for its old and new
 parent before applying a fresh order supplied by a rank event.
+
+## Topics and threads
+
+Topics renders through `AreaSlot` with its own `topics` context. Waiting topics
+come first, followed by General and Agents on the standing surface, open item
+discussions (including unbound discussions), then Closed. Standing topics keep
+their distinct row treatment when waiting. Groups use the shared `Fold`; Closed
+starts folded, and saved explicit choices override that default. Rows show the
+hub's unread count, item and latest message time, with the full timestamp in a
+tooltip. Within each group, latest activity comes first.
+
+Selecting a topic opens its thread beside the list, without a drawer. `j`/`k`
+and the vertical arrows move across topics and group headers; Enter or `l`
+enters the thread or unfolds a group, and `h` folds a group. In a thread,
+`j`/`k` and the vertical arrows focus messages; `h` or Escape returns to the
+topic list. `⌘Enter` opens the thread alone in the other pane. Help and palette
+derive these actions from the same physical-code key map.
+
+`topic-threads.ts` owns each topic's cached messages and hub-built run facts.
+Threads open at their end with the latest 100 messages and request exclusive
+numeric `before` pages on upward scrolling. Identity merges keep live messages
+and newer delivery/ask facts when a page reply races them. Prepending keeps the
+reader's top message in place, including when a live message arrives during the
+fetch or an earlier-page error is retried. New messages follow the end only while the reader is already there.
+Messages are plain sender/time/text blocks with item links in this slice.
+
+The connection applies topic, message, delivery and ask frames directly; none
+triggers a topic-list or history reread. Reconnect sends its last completed
+snapshot/numbered-delta cursor and retains cached data during ring replay. A
+fresh snapshot invalidates thread history; an open thread reloads its latest
+page. A reset generation restarts a pending initial load even when its loaded
+flag remains false; stale replies cannot populate the replacement cache. An
+incomplete replacement snapshot cannot become a resume cursor.
+
+After the same last visible message has been on screen for one continuous
+second with the document visible, `topic.read` names that message explicitly.
+Changing the last visible message, hiding, folding and disconnecting cancel an incomplete interval;
+messages below the viewport stay unread. The hub's updated topic row supplies
+the shared unread count. Failed writes are never replayed automatically.
 
 ## Area modules and live state
 
@@ -142,7 +182,8 @@ them. Modules mark their own content with the matching `data-key-context`.
 
 Sessions, Accounts and Artifacts live in `src/sessions/`, `src/accounts/` and
 `src/artifacts/`. They retain the ID/title inventories and details for now, shared
-through `AreaObjects.tsx`. Inbox, Topics and Events keep their existing stand-ins;
+through `AreaObjects.tsx`. Inbox and Events keep their existing stand-ins;
+Topics owns its grouped list and thread module.
 Items retains its tree, views and card. Sessions reserves separate component files
 for `SessionsHeader`, `AccountsStrip`, `VerifyLine` and `SessionGroups`, all empty
 until their following slices land; each receives the same area props so those
@@ -155,6 +196,7 @@ lanes can grow independently of the shell.
 | Sessions | `sessions` (complete merged rows by stable key), `archivedSessions`, `roles` including launch defaults, `adapters`, and `verification` with `queue` and client `receivedAt` milliseconds |
 | Accounts, and the Sessions strip | `accounts`: registry path, optional registry error and complete views in registry order, including windows, source, reading time and limited mark |
 | Artifacts | `artifacts`: complete inventory records, including status, author, kept and layer facts |
+| Topics | `topics` with authoritative unread counts and read positions, `marks`, and the per-topic `threads` cache |
 
 Session snapshots replace the merged rows, archived count, roles and queue.
 `session.row` replaces/removes by stable key; usage updates match the launch ID,
@@ -163,7 +205,8 @@ not trigger `session.list`: their merged rows arrive through `session.row`.
 `account` replaces one complete view at its registry position, `verification.queue`
 replaces the queue and its receipt time, and `artifact` replaces one complete
 record by ID, with no inventory reread; a moved artifact leaves the top-level
-inventory, matching `artifact.list`. Visibility reprojects artifacts by ID.
+inventory, matching `artifact.list`. Visibility reprojects topics and artifacts
+by ID together, without modern inventory rereads.
 A resync reconnects, and fresh hub snapshots/inventories replace earlier state,
 including clearing registry errors and rows absent from the new hub.
 
@@ -426,7 +469,8 @@ fields keep their normal typing and cursor movement.
 
 Folds live in the area's `cland.ui.<area>.v1` record under `folds`, keyed by the
 stable fold ID. Updates preserve other fields and fold IDs, and both panes agree
-on the same area's fold. Invalid fields default to unfolded. Denied reads or
+on the same area's fold. Invalid fields use the block's default (unfolded unless
+`defaultFolded` is supplied). Denied reads or
 writes leave folds working in memory for the page. No fold sends a hub frame
 or changes Neovim's `ui.json`.
 
@@ -473,6 +517,7 @@ node --test web/test/items.test.ts      # snapshot tree, CLI deltas, folds and 3
 node --test web/test/item-card.test.ts # snapshot facts, lazy text, closed deltas and focus
 node --test web/test/items-actions.test.ts # scope, selection, quick messages and item links
 node --test web/test/items-order.test.ts # rank-event cache invalidation on a minimal real hub
+node --test web/test/topics.test.ts    # groups, numeric pages, live races, resume and visible read marks
 node --test hub/test/web-keymap.test.ts # T1 shortcut resolution and reserved chords
 ```
 

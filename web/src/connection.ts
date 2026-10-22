@@ -4,6 +4,7 @@ import { replaceAccount, type AccountsState } from './accounts/state.ts';
 import { replaceArtifact, type ArtifactsState } from './artifacts/state.ts';
 import type { Area } from './keymap.ts';
 import { compareReleases } from './current-release.ts';
+import { TopicThreads, type ThreadPage } from './topic-threads.ts';
 
 export type ObjectRow = { id: string; title: string };
 type Command<T> = T extends unknown ? Omit<T, 'id'> : never;
@@ -28,6 +29,7 @@ export type ConnectionState = SessionsState & AccountsState & ArtifactsState & {
   loadItems?: (ids: string[]) => Promise<void>;
   coordinator?: string | null;
   topics?: Topic[];
+  threads?: TopicThreads;
   marks?: SnapshotValues['topics']['marks'];
   crew?: SnapshotValues['sessions']['crew']['config'];
   needsYou?: number;
@@ -83,6 +85,8 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let backoff = 250;
   let commandSerial = 0;
+  let cursor: { epoch: string; seq: number } | undefined;
+  const threads = new TopicThreads((topic, before) => command<ThreadPage>({ type: 'topic.history', topic, limit: 100, ...(before === undefined ? {} : { before }) }), () => { state = { ...state }; changed(state); });
   const commands = new Map<string, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   function rejectCommands() {
     for (const pending of commands.values()) { clearTimeout(pending.timer); pending.reject(new Error('Connection lost; check topic history before retrying')); }
@@ -197,12 +201,11 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     ]);
   }
   function connect() {
-    state = { ...state, command, resolveItem, loadItems };
+    state = { ...state, command, resolveItem, loadItems, threads };
     requestedPlans.clear();
-    itemRevisions.clear(); retainedItems.clear();
-    closed.clear();closedLoads.clear();
+    closedLoads.clear();
     cardRequests.clear(); pendingCards.clear(); pendingBodies.clear();
-    state = { ...state, cardFacts: {}, bodies: {}, cardErrors: {}, loadCard: id => loadCardData(id, false), loadBody: id => loadCardData(id, true) };
+    state = { ...state, loadCard: id => loadCardData(id, false), loadBody: id => loadCardData(id, true) };
     state = { ...state, loadPlan: id => {
       if (requestedPlans.has(id) || socket.readyState !== WebSocket.OPEN) return;
       requestedPlans.add(id);
@@ -212,13 +215,15 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
     // An open socket alone is not authenticated readiness. Bound the hello/status too.
     deadline = setTimeout(() => socket.close(), 5000);
     socket.onopen = () => {
-      const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, client: 'ui', features: ['snapshot', 'numbered-deltas', 'slim-frames'] };
+      const hello: ClientHello = { type: 'hello', protocol: PROTOCOL_VERSION, client: 'ui', features: ['snapshot', 'numbered-deltas', 'slim-frames'], ...(cursor ? { resume: cursor } : {}) };
       socket.send(JSON.stringify(hello));
     };
     socket.onmessage = event => {
       let frame: HubFrame;
       try { frame = JSON.parse(String(event.data)) as HubFrame; }
       catch { socket.close(); return; }
+      if (frame.type === 'snapshot.end' || ('epoch' in frame && 'seq' in frame && frame.type !== 'snapshot')) cursor = { epoch: frame.epoch, seq: frame.seq };
+      threads.apply(frame);
       if (frame.type === 'result' && commands.has(frame.id)) {
         const pending = commands.get(frame.id)!;
         commands.delete(frame.id); clearTimeout(pending.timer);
@@ -239,7 +244,11 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         request({ type: 'session.list', id: 'shell-sessions' });
         request({ type: 'artifact.list', id: 'shell-artifacts' });
       } else if (frame.type === 'snapshot') {
-        if (frame.domain === 'tracker') state = { ...state, tracker: frame.value, siblingOrders: {}, plansById: {} };
+        if (frame.domain === 'tracker') {
+          cursor = undefined; // A partial replacement must never be resumed as a complete model.
+          itemRevisions.clear(); retainedItems.clear(); closed.clear();
+          state = { ...state, tracker: frame.value, siblingOrders: {}, plansById: {}, cardFacts: {}, bodies: {}, cardErrors: {} };
+        }
         else if (frame.domain === 'items') {
           state = {...state,doneItems:frame.value.done_items};
           items(frame.value.items);
@@ -249,7 +258,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
           state = { ...state, coordinator: frame.value.coordinator, ...sessionSnapshot(frame.value, Date.now()), crew: frame.value.crew.config, idleFrom: frame.value.crew.config.idle_from ?? [] };
           rows('Sessions', frame.value.rows.map(row => ({ id: row.name, title: row.label ?? row.name })));
         } else if (frame.domain === 'inbox') inbox(frame.value);
-        else if (frame.domain === 'topics') { state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
+        else if (frame.domain === 'topics') { threads.reset(); state = { ...state, topics: frame.value.topics, marks: frame.value.marks }; rows('Topics', frame.value.topics); }
         else if (frame.domain === 'events') rows('Events', frame.value.rows.map(row => ({ id: row.id, title: row.text })));
         else if (frame.domain === 'accounts') {
           state = { ...state, accounts: frame.value };
@@ -265,6 +274,7 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         backoff = 250;
         state = { ...state, project: status.root.split(/[\\/]/).filter(Boolean).at(-1) ?? status.root,
           live: true, coordinator: status.coordinator ?? null, needsYou: status.needsYou ?? 0 };
+        for (const parent of closedWanted) loadClosed(parent);
         changed(state);
       } else if (frame.type === 'result' && frame.ok && frame.id === 'shell-inbox') {
         inbox(frame.value as Inbox);
@@ -340,7 +350,13 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         if (requestedPlans.delete(frame.id)) state.loadPlan?.(frame.id);
         items([...value.values()]);
       } else if (frame.type === 'topic') {
-        request({ type: 'topic.list', id: 'shell-topics' });
+        state = { ...state, topics: [...(state.topics ?? []).filter(row => row.id !== frame.topic.id), frame.topic] };
+        rows('Topics', state.topics!);
+      } else if (frame.type === 'message') {
+        state = { ...state, topics: (state.topics ?? []).map(row => row.id === frame.topic.id ? { ...row, ...frame.topic } : row) };
+        rows('Topics', state.topics ?? []);
+      } else if (frame.type === 'delivery' || frame.type === 'ask') {
+        state = { ...state }; changed(state);
       } else if (frame.type === 'event') {
         request({ type: 'events.list', id: 'shell-events', limit: 200 });
       } else if (frame.type === 'artifact') {
@@ -359,10 +375,12 @@ export function connectHub(changed: (state: ConnectionState) => void): () => voi
         rows('Sessions', state.sessions!.map(row => ({ id: row.name, title: row.label })));
       } else if (frame.type === 'visibility') {
         if ('rows' in frame) {
-          state = { ...state, artifacts: frame.rows.artifacts.reduce((rows, artifact) => replaceArtifact(rows, artifact), state.artifacts ?? []) };
+          const topics = new Map(state.topics?.map(row => [row.id, row]));
+          for (const row of frame.rows.topics) topics.set(row.id, row);
+          state = { ...state, topics: [...topics.values()], artifacts: frame.rows.artifacts.reduce((rows, artifact) => replaceArtifact(rows, artifact), state.artifacts ?? []) };
+          rows('Topics', state.topics!);
           rows('Artifacts', state.artifacts!.map(row => ({ id: row.id, title: row.title })));
-        }
-        readObjects();
+        } else readObjects();
       } else if (frame.type === 'error') {
         if (frame.code === 'version') {
           stopped = true;

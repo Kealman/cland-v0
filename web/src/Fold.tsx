@@ -8,9 +8,10 @@ const volatile = new Map<string, Map<string, boolean>>();
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
-function folded(area: string, id: string): boolean {
+function folded(area: string, id: string, defaultFolded: boolean): boolean {
   const saved = readInterfaceState(area);
-  return volatile.get(area)?.get(id) ?? (record(record(saved).folds)[id] === true);
+  const value = record(record(saved).folds)[id];
+  return volatile.get(area)?.get(id) ?? (typeof value === 'boolean' ? value : defaultFolded);
 }
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -18,11 +19,12 @@ function subscribe(listener: () => void) {
 }
 
 /** Browser-only group/block, sharing the area's versioned preference key. */
-export function Fold({ area, id, label, count, level = 2, actions, children }: {
+export function Fold({ area, id, label, count, level = 2, defaultFolded = false, actions, children }: {
   area: string; id: string; label: string; count: number | string; level?: 1 | 2;
+  defaultFolded?: boolean;
   actions?: ReactNode; children: ReactNode;
 }) {
-  const closed = useSyncExternalStore(subscribe, () => folded(area, id));
+  const closed = useSyncExternalStore(subscribe, () => folded(area, id, defaultFolded));
   const content = useId();
   const Heading = level === 1 ? 'h1' : 'h2';
   const toggle = () => {

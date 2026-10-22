@@ -1,6 +1,7 @@
 import type { ComponentType, Ref } from 'react';
 import { areaContext, type Area, type KeyContext, type Shortcut } from './keymap.ts';
 import type { ConnectionState, ObjectRow } from './connection.ts';
+import { topicsModule } from './TopicsArea.tsx';
 import { AreaObjects, AreaObjectDetail } from './AreaObjects.tsx';
 import { sessionsModule } from './sessions/SessionsArea.tsx';
 import { accountsModule } from './accounts/AccountsArea.tsx';
@@ -28,7 +29,7 @@ const standIn = (area: SlottedArea): AreaModule => ({ context: areaContext(area)
 
 /** Each area's module owns its content and declares only the actions it implements. */
 export const areaModules: Readonly<Record<SlottedArea, AreaModule>> = {
-  Inbox: standIn('Inbox'), Sessions: sessionsModule, Topics: standIn('Topics'),
+  Inbox: standIn('Inbox'), Sessions: sessionsModule, Topics: topicsModule,
   Events: standIn('Events'), Artifacts: artifactsModule, Accounts: accountsModule,
 };
 
