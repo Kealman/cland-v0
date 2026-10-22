@@ -24,9 +24,11 @@
       "A-8570",
       "A-8574",
       "A-8963",
-      "A-8967"
+      "A-8967",
+      "A-9079",
+      "A-9083"
     ],
-    "commit": "918951c2ecd592394ef613e10ba7cdc6a00c8e82"
+    "commit": "7887f694ace91db414735b9af93ab20bedbc8c45"
   },
   "budget": {
     "testSeconds": 5,
@@ -2283,6 +2285,34 @@
     "web/test/items.test.ts": {
       "seconds": 19.076396,
       "tests": 5
+    },
+    "hub/test/ask-outcomes.test.ts": {
+      "seconds": 0.544582,
+      "tests": 6
+    },
+    "hub/test/human-marks.test.ts": {
+      "seconds": 0.345507,
+      "tests": 2
+    },
+    "hub/test/thread-runs-store.test.ts": {
+      "seconds": 0.118187,
+      "tests": 3
+    },
+    "hub/test/thread-runs.test.ts": {
+      "seconds": 1.025718,
+      "tests": 5
+    },
+    "hub/test/web-release.test.ts": {
+      "seconds": 0.002787,
+      "tests": 2
+    },
+    "nvim/test/declined-ask-component.test.ts": {
+      "seconds": 0.214594,
+      "tests": 1
+    },
+    "nvim/test/human-marks-component.test.ts": {
+      "seconds": 0.921319,
+      "tests": 3
     }
   },
   "tests": {
@@ -5879,7 +5909,32 @@
     "web/test/items.test.ts::closed container pages restore nested archives once and preserve unloaded release progress": 1.415704,
     "web/test/items.test.ts::closed epic children arrive through bounded pages and remain current after close and reconnect": 0.897708,
     "web/test/items.test.ts::hidden done rows retain hub stage and total counts without loading closed pages": 0.608083,
-    "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": 14.752851
+    "web/test/items.test.ts::the Items tree reads the copied live tracker snapshot": 14.752851,
+    "hub/src/hub/store.test.ts::ask outcomes and inbox departures preserve option and free-text decisions across Store reopen": 0.023074,
+    "hub/test/ask-outcomes.test.ts::C1: an option outcome stays on the thread entry in live cards and later history": 0.077158,
+    "hub/test/ask-outcomes.test.ts::C2: the inbox publishes an answered departure with the thread outcome and keeps it in the archive": 0.076128,
+    "hub/test/ask-outcomes.test.ts::C3: a free answer retains its full text and answerer in the thread and departure before the first inbox tick": 0.024967,
+    "hub/test/ask-outcomes.test.ts::declining C1: an Implementer receives the declined answer through its lead and the topic takes its next ask": 0.220785,
+    "hub/test/ask-outcomes.test.ts::declining C2: missing or blank reasons are refused without settling the ask": 0.073802,
+    "hub/test/ask-outcomes.test.ts::declining C3: thread and inbox departure retain the reason, answerer and time": 0.071742,
+    "hub/test/human-marks.test.ts::C1: clients share monotonic events, plan receipts and topic read positions": 0.24924,
+    "hub/test/human-marks.test.ts::C4: human marks survive reopening the hub with their topic positions and import receipt": 0.096267,
+    "hub/test/suite-runner.test.ts::a hub-only shard builds the bundle before its doctor CLI worker starts": 0.638889,
+    "hub/test/thread-runs-store.test.ts::an older store lazily restores full runs across multiple backfill pages": 0.045653,
+    "hub/test/thread-runs-store.test.ts::history byte pages include run metadata without gaps": 0.035721,
+    "hub/test/thread-runs-store.test.ts::run identity survives reopen with recipient role boundaries preserved": 0.036813,
+    "hub/test/thread-runs.test.ts::a fifth message updates the same run by delta without another history read": 0.114096,
+    "hub/test/thread-runs.test.ts::four Implementer–Reviewer messages share one factual fold line": 0.310618,
+    "hub/test/thread-runs.test.ts::history pages beginning mid-run carry its full identity and fold line": 0.178126,
+    "hub/test/thread-runs.test.ts::never-fold messages and day changes end a run": 0.236945,
+    "hub/test/thread-runs.test.ts::queued verifier assignment refreshes participants in its same-id run delta": 0.185933,
+    "hub/test/web-release.test.ts::current release uses semver precedence before unversioned rank and id": 0.00256,
+    "hub/test/web-release.test.ts::selected open release overrides defaults while closed and other kinds are excluded": 0.000227,
+    "nvim/test/declined-ask-component.test.ts::declining C4: a declined ask folds in place with its reason on history and live updates": 0.214594,
+    "nvim/test/human-marks-component.test.ts::C2: visiting events publishes the shared last look; a peer reading a topic clears its Neovim row": 0.278806,
+    "nvim/test/human-marks-component.test.ts::C3: legacy marks import once before their ui.json keys are removed": 0.416835,
+    "nvim/test/human-marks-component.test.ts::marks.get replays a peer delta received before its held older response": 0.225678,
+    "web/test/palette.test.ts::Items help contains all 32 rows within small viewports during complete keyboard scrolls": 3.480305
   },
   "allow": {
     "web/test/palette.test.ts::Items help contains all 32 rows within small viewports during complete keyboard scrolls": {
