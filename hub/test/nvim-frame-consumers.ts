@@ -2,6 +2,10 @@ import type { FixtureSource } from './source-fixture.ts';
 import { posix } from 'node:path';
 import ts from 'typescript';
 
+// These clients exercise local Lua only. Startup may finish incidentally, but
+// neither file awaits a stub frame, so it cannot promise recording coverage.
+const localLuaChecks = new Set(['nvim/test/explorer-summary.test.ts', 'nvim/test/hub-read-component.test.ts']);
+
 function dependencies(file: string, text: string): string[] {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const specifiers: string[] = [];
@@ -26,6 +30,7 @@ export async function frameConsumers(files: readonly string[], read: FixtureSour
   const selected = new Set<string>();
   const graph = new Map<string, string[]>();
   for (const entry of files) {
+    if (localLuaChecks.has(entry)) continue;
     const pending = [entry];
     const seen = new Set<string>();
     while (pending.length) {

@@ -3128,6 +3128,9 @@ and package commands describe cland's own suite.
 discovery selects runtime stub consumers through imports and launch URLs, rather
 than test tiers, and excludes native clients that only share the command-validating
 launcher (such as `artifact-browser.test.ts`) and type-only stub references. It
+also names `explorer-summary.test.ts` and `hub-read-component.test.ts` as local
+Lua checks that never await stub frames; incidental startup traffic does not make
+them recording consumers. Every selected file must still record at least one frame. It
 captures and validates all requested files before replacing fixtures, refusing
 skipped or incomplete runs and captures below the existing frame counts. See the
 [fixture maintenance guidance](../docs/agents/tests.md) for full, retained and

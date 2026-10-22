@@ -45,3 +45,12 @@ test('full refresh excludes native clients sharing the launcher and type-only st
   };
   assert.deepEqual(await frameConsumers(Object.keys(sources).filter(file => file.endsWith('.test.ts')), async file => sources[file]), ['nvim/test/component.test.ts']);
 });
+
+test('full refresh excludes local Lua checks that never await a stub frame', async () => {
+  const sources: Record<string, string> = {
+    'nvim/test/explorer-summary.test.ts': "const stub = new URL('./stub-hub.ts', import.meta.url);",
+    'nvim/test/hub-read-component.test.ts': "const stub = new URL('./stub-hub.ts', import.meta.url);",
+    'nvim/test/component.test.ts': "const stub = new URL('./stub-hub.ts', import.meta.url);",
+  };
+  assert.deepEqual(await frameConsumers(Object.keys(sources), async file => sources[file]), ['nvim/test/component.test.ts']);
+});

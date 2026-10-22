@@ -579,6 +579,11 @@ launch URLs through helpers, including non-T2 consumers. Test tiers alone do not
 select recording files. Type-only dependencies and the shared client launcher
 (`nvim/test/client.ts`, which only validates the stub command) do not make a
 native real-hub test a recording consumer; `artifact-browser.test.ts` is excluded.
+The named local-only checks `explorer-summary.test.ts` and
+`hub-read-component.test.ts` are also excluded: they launch the stub client but
+assert local Lua summary/decoder results without awaiting a stub frame. Incidental
+startup traffic is not recording coverage. Other selected consumers still fail
+if they record zero frames.
 This maintenance command requires one-minute load below 15. A trailing test file refreshes that file while retaining the
 catalog; `--from-recordings` regenerates existing inputs and the live baseline
 without replaying client assertions. Use the full command after adding scenarios.

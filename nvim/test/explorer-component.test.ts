@@ -280,6 +280,18 @@ test('invalid explorer preferences reset alone and are reported while other ui.j
     assert.equal(saved.items_filter,'all'); assert.deepEqual(saved.sizes,{right:46});
     assert.deepEqual(saved.future_preference,{kept:true});
   }
+  // Reloading invalid preferences can redraw either card while resetting folds.
+  // Observe both detail receipts so their recording is independent of that race.
+  assert.ok(c);
+  const client = c;
+  await client.input('zR');
+  for (const id of ['R-1','T-10']) {
+    const detail = eventually(`card detail after preference reset: ${id}`, async () =>
+      await client.lua<boolean>("local id=...; return (require('cland.item_view').detail[id] or {}).id==id",id) || undefined);
+    await select(client,id); await client.input('<CR>h');
+    await detail;
+    assert.equal(await client.lua("return require('cland.explorer').card.key"),id);
+  }
 });
 
 test('the explorer registry, key help and status hint advertise every outline action', {skip}, async t => {
