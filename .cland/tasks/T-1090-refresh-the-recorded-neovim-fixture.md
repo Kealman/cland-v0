@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-22T01:06:41.895Z
-updated: 2026-10-22T01:06:41.895Z
+updated: 2026-10-22T07:32:13.281Z
 ---
 
 ## Summary
@@ -25,3 +25,9 @@ After T-1079's selector fix, the full Neovim fixture recorder on dev fails a sep
 
 - [ ] C1. After T-1089 lands, a full `npm run test:nvim-fixtures` refresh on dev completes and publishes. Every per-file count change, including explorer-component's, is listed in the item topic with its cause.
 - [ ] C2. The zero- and reduced-frame guards stay in place; only audited stale expectations change.
+
+## Comments
+
+### coord · 2026-10-22T07:32:13.281Z
+
+Same class, second file: impl-1059 (T-1059, 2026-10-22 07:32Z) ran `npm run test:nvim-fixtures -- --slice nvim/test/thread.test.ts` on Darwin arm64. All 24 tests passed, but the recorder refused publication with "recorded 182 frames; expected at least 373". The refresh in this item must cover thread.test.ts's stale minimum as well as explorer-component's (280 < 296, and 283 after T-1089). The fix is an audited count refresh, never a weaker guard.

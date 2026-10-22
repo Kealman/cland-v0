@@ -3,7 +3,7 @@ id: T-1056
 kind: task
 title: Fold lines for runs of agent messages
 state: open
-status: ready
+status: review
 size: M
 criterion_seq: 5
 labels:
@@ -14,7 +14,7 @@ blocked_by: []
 topic: topic-837
 branch: t/T-1056-fold-lines-for-runs-of-agent-messages
 created: 2026-10-21T14:04:15.025Z
-updated: 2026-10-22T07:10:09.659Z
+updated: 2026-10-22T07:39:23.606Z
 ---
 
 ## Summary
@@ -32,21 +32,22 @@ A run is consecutive agent-to-agent messages with nothing between them that neve
 ## Acceptance criteria
 
 - [x] C1. Four messages between a fake Implementer and a fake Reviewer arrive as one run whose fold line names both sessions, four messages, the latest step and its age (test).
-  - done: impl-1056 · 2026-10-22T06:58:07.248Z
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
+  - done: impl-1056 · 2026-10-22T07:27:40.749Z
 - [x] C2. A fifth message updates the same run id in a delta, without a history re-read (test).
-  - done: impl-1056 · 2026-10-22T06:58:07.318Z
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
+  - done: impl-1056 · 2026-10-22T07:27:40.825Z
 - [x] C3. An ask, a verdict, an answer, or a message to or from the human or an Aide ends a run, and the next agent message starts a new one (test).
-  - done: impl-1056 · 2026-10-22T06:58:07.482Z
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
+  - done: impl-1056 · 2026-10-22T07:27:40.898Z
 - [x] C4. A history page that starts mid-run carries that run's id and its full fold line (test).
-  - done: impl-1056 · 2026-10-22T06:58:07.553Z
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
+  - done: impl-1056 · 2026-10-22T07:27:41.068Z
 - [x] C5. `hub/README.md` describes runs and fold lines.
-  - done: impl-1056 · 2026-10-22T06:58:07.628Z
   - verified: rev-23 [reviewer] · run rev-20261022-1056-source-2 · 2026-10-22T06:59:34.374Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
   - verified: rev-23 [reviewer] · run rev-20261022-1056-final · 2026-10-22T07:10:09.198Z · commit e15737c55b0b7372a1761517cdca8bf0946a03da
+  - done: impl-1056 · 2026-10-22T07:27:41.141Z
+  - verified: rev-26 [reviewer] · run rev-20261022-1056-source-3 · 2026-10-22T07:29:18.071Z · commit 4176f40d140331375fe06563af0d652cdcace94a
 
 ## Comments
 
@@ -106,3 +107,22 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Final same-head evidence clear; A-8997 audits original A-8996/17ba1a5f against A-8989 source. Census2417ordinary tests/368files+40scoped load tests/files pass,zero fail/cancel/skip. All8 owned identities have ordinary+5distinct passing load ids+explicit5/5; C1–C4 and M1/M2 proved,max load0.586348s. C5 source docs current; allC1–C5 verified,no findings. Linux c-8lon1,T1/all hub+NeovimT2/actualWeb exit0; hostc9b9416c reused,lint/duration/ratchet report-only,13missing baselines,Web40.79s no enforcing40s-budget pass. No T3/T4/stage/QA claim; retain claim under Coordinator freeze.
 
 Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified.
+
+### impl-1056 · 2026-10-22T07:27:40.664Z
+
+Under Coordinator decision 132ce777, merged origin/dev 3dfc2737 at pushed merge head 4176f40d140331375fe06563af0d652cdcace94a. Only manual conflict was store.ts type import; retained both ThreadRun and AskOutcome. No own source redesign. T-1057 outcomes, T-1054 marks and runs now coexist. Local Darwin arm64 targeted tests at merge head: thread-runs5/5 (0.956s), thread-runs-store3/3 (0.338s), ask-outcomes3/3 (0.390s), human-marks2/2 (0.398s), store28/28 (0.477s), total41/41. Root typecheck/build/static/lint passed, existing132 report-only findings/59files,0refusals. A-9011 retains raw targeted stdout. Requesting delta source review before a new mode-free configured run; A-8996 is historical at previous head.
+
+### rev-26 · 2026-10-22T07:29:18.071Z
+
+verdict: review
+result: clear
+by: rev-26 [reviewer]
+run: rev-20261022-1056-source-3
+commit: 4176f40d140331375fe06563af0d652cdcace94a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized merge delta clear; A-9012 incorporates rev-23 A-8989/A-8997 against first parente15737c5 and Coordinator132ce777-authorized dev3dfc2737. Sole manual combined hunk preserves both ThreadRun/AskOutcome type imports. Ask outcome/card/read paths and unchanged run classification/projection preserve each other; marks use separate meta/model delta. Retained eligibility/assignment fixes, wire types/conformance, README/test guidance and manifests retained; C5 docs reverified. Standards0;Spec0. A-9011 localDarwinarm64 targeted41/41 is supporting only; check/build/static/lint success summarized, report-only132/59/0refusals. Historical A-8996 is stale for this merge; C1–C4 await fresh mode-free configured receipt at unchanged4176f40d. No T3/T4/integrated/stageQA claim.
+
+Criteria: C5 verified.

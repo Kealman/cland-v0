@@ -3,7 +3,7 @@ id: T-1059
 kind: task
 title: Declining an ask is an answer with a reason
 state: open
-status: planned
+status: in progress
 size: S
 labels:
   - ready-for-agent
@@ -11,10 +11,10 @@ assignee: null
 parent: E-413
 blocked_by:
   - T-1057
-topic: null
-branch: null
+topic: topic-840
+branch: t/T-1059-declining-an-ask-is-an-answer-with-a
 created: 2026-10-21T14:04:19.059Z
-updated: 2026-10-22T06:33:33.261Z
+updated: 2026-10-22T07:26:29.428Z
 ---
 
 ## Summary
