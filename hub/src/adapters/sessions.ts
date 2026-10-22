@@ -424,6 +424,8 @@ export class Sessions {
       log: this.#log,
       adapterState: { read: key => this.#core.store.meta(key), write: (key, value) => this.#core.store.setMeta(key, value) },
       limitHit: (sessionId, hit) => this.#limitHit(sessionId, hit),
+      approvalRequested: (sessionId, request) => this.#core.inbox.requestApproval(sessionId, request),
+      approvalClosed: (sessionId, requestId, outcome) => this.#core.inbox.closeApproval(sessionId, requestId, outcome),
       usageChanged: (sessionId) => this.#usageChanged(sessionId),
       signal: (sessionId, signal) => this.#signal(sessionId, signal, false),
       turnFailed: (sessionId, error, messages) => this.#turnFailed(sessionId, error, messages),

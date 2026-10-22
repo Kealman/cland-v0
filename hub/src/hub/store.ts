@@ -1681,7 +1681,7 @@ export class Store implements HygieneMemory {
     return this.#prepare('select 1 from inbox_departures where kind = ? and id = ? limit 1').get(kind, id) !== undefined;
   }
 
-  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = '', outcome?: AskOutcome): InboxDeparture | null {
+  departInbox(row: InboxWait, reason: InboxDeparture['reason'], ts: string, text = '', outcome?: InboxDeparture['outcome']): InboxDeparture | null {
     return this.#transaction(() => {
       const waiting = this.#prepare('delete from inbox_waits where kind = ? and id = ?').run(row.kind, row.id).changes;
       // A request replied to before the coalesced tick still belongs in the archive, once.
@@ -1696,7 +1696,7 @@ export class Store implements HygieneMemory {
     const rows = this.#prepare(`select d.kind, d.id, d.subject, d.since, d.ts, d.reason, d.outcome_json,
       coalesce(nullif(d.text, ''), (select m.text from messages m where m.id = d.id), '') as text
       from inbox_departures d where d.ts >= ? order by d.ts desc, d.number desc`).all(after) as unknown as Array<InboxDeparture & { outcome_json: string | null }>;
-    return rows.map(({ outcome_json, ...row }) => ({ ...row, text: row.text?.split(/\r?\n/, 1)[0] ?? '', ...(outcome_json ? { outcome: JSON.parse(outcome_json) as AskOutcome } : {}) }));
+    return rows.map(({ outcome_json, ...row }) => ({ ...row, text: row.text?.split(/\r?\n/, 1)[0] ?? '', ...(outcome_json ? { outcome: JSON.parse(outcome_json) as NonNullable<InboxDeparture['outcome']> } : {}) }));
   }
 
   inboxDeparturesToday(after: string): number {

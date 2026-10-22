@@ -2,7 +2,7 @@
 import { actorOf } from './actor.ts';
 import { parseArgs } from 'node:util';
 import { hubDiscovery, readDiscovery } from '../project.ts';
-import type { Inbox, Topic, TopicMessage } from '../protocol.ts';
+import type { ApprovalOutcome, Inbox, Topic, TopicMessage } from '../protocol.ts';
 import { askHubFrame } from './socket-client.ts';
 
 export { INBOX_USAGE } from './usage.ts';
@@ -10,6 +10,7 @@ import { TOPIC_USAGE } from './usage.ts';
 export { TOPIC_USAGE } from './usage.ts';
 const NO_HUB = 'cland: no hub runs for this project — run `cland hub start`\n';
 
+const approvalOutcome = (o: ApprovalOutcome): string => `${o.choice} by ${o.by} via ${o.via} at ${o.at}${o.note ? `: ${firstLine(o.note)}` : ''}`;
 const firstLine = (text: string): string => text.split(/\r?\n/, 1)[0] ?? '';
 function age(since: string, now: number): string {
   const minutes = Math.max(0, Math.floor((now - Date.parse(since)) / 60_000));
@@ -26,7 +27,7 @@ function describe(v: Inbox): string {
   const sections = [
     { title: 'Asks and approvals', rows: [
       ...v.asks.filter(a => !a.layer || a.layer === 'now').map(a => ({ since: a.since, text: `ask ${a.id}  ${a.topic.title}${a.topic.item ? ` (${a.topic.item})` : ''}  ${firstLine(a.question)}  from ${a.label}` })),
-      ...v.approvals.filter(a => !a.layer || a.layer === 'now').map(a => ({ since: a.since, text: `approval ${a.id}  ${a.session}  ${firstLine(a.command ?? 'waiting for approval')}  from ${a.label}` })),
+      ...v.approvals.filter(a => !a.layer || a.layer === 'now').map(a => ({ since: a.since, text: `approval ${a.id}  ${a.session}  ${firstLine(a.command ?? a.subject.change ?? 'waiting for approval')}  ${a.state}  ${a.answerIn === 'tui' ? 'answer in Neovim' : a.choices.join(', ')}  from ${a.label}` })),
     ] },
     { title: 'Plan approvals', rows: (v.plans ?? []).map(p => ({ since: p.since, text: `plan ${p.id}  ${p.title}  ${p.stages ?? '?'} stages · ${p.lanes ?? '?'} lanes · ${p.items ?? '?'} items` })) },
     { title: 'Requests to you', rows: (v.requests ?? []).map(r => ({ since: r.since, text: `${r.request} ${r.id}  ${r.subject}  ${firstLine(r.text)}  from ${sender(r.from, r.fromRole)}` })) },
@@ -51,7 +52,7 @@ export async function runInbox(args: string[], cwd: string = process.cwd()): Pro
   const json = args.includes('--json');
   const archive = args.includes('--archive');
   const v = (await askHubFrame(d, { type: 'inbox.list', ...(archive ? { archive: true } : {}) })) as Inbox;
-  const text = archive ? (v.archive ?? []).map(r => `${r.ts}  ${r.kind} ${r.id}  ${r.subject}  ${firstLine(r.text ?? '')}  · ${r.reason}`).join('\n') : describe(v);
+  const text = archive ? (v.archive ?? []).map(r => `${r.ts}  ${r.kind} ${r.id}  ${r.subject}  ${firstLine(r.text ?? '')}  · ${r.kind === 'approval' && r.outcome && 'choice' in r.outcome ? `closed  ${approvalOutcome(r.outcome)}` : r.reason}`).join('\n') : describe(v);
   process.stdout.write(`${json ? JSON.stringify(v) : text}\n`);
   return 0;
 }

@@ -177,9 +177,10 @@ export const CREW_USAGE = `  crew show       effective staffing policy and summa
 
 export const INBOX_USAGE = `  inbox [--json] [--archive] four sections: asks and approvals, plan approvals, requests to you, messages to you
                           newest first, all rows with ids, subjects, senders and waiting ages;
-                          last 'needs you: <n>'
+                          approvals: state, choices or 'answer in Neovim'; last 'needs you: <n>'
                           (--json for the hub's Inbox frame)
-                          --archive prints departures from the last seven days, newest first, with when and why
+                          --archive prints departures from the last seven days, newest first, with when and why;
+                          closed approvals include outcome, who answered and when
 `;
 
 export const TOPIC_USAGE = `  topic create <title> [--item T-n] [--json] [--as <name>]

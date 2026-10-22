@@ -5,7 +5,7 @@
 // Optional: history, usage, setModel, approval relay — each declared in the capability table and never
 // emulated when declared `none`. Every state signal is published with its reliability too.
 import type { Resumed } from '../hub/worktrees.ts';
-import type { Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
+import type { ApprovalChoice, ApprovalOutcome, ApprovalRecord, ApprovalSubject, Message, SessionState, SessionUsage, TopicRef } from '../protocol.ts';
 
 /** How far a signal or a capability can be trusted. `none`: the adapter does not have it, and nothing pretends it does. */
 export type Reliability = 'reliable' | 'heuristic' | 'none';
@@ -139,6 +139,9 @@ export type SubagentLaunch = { id?: string; type?: string; model?: string };
 /** A harness report with optional state and launch metadata. State ordering drops older signals. */
 export type StateSignal = { state?: SessionState; source: string; at: number; approvalCommand?: string; model?: string; subagent?: SubagentLaunch; moved?: { directory: string } };
 
+/** Only these public request fields cross the adapter boundary; the hub copies an allowlist. */
+export type ApprovalRequest = { id: string; kind: ApprovalRecord['kind']; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn?: 'hub' | 'tui'; topic?: string };
+
 /** What the hub gives an adapter: the project, how a launched session reaches the hub, and where signals go. */
 export type AdapterHost = {
   root: string;
@@ -156,6 +159,10 @@ export type AdapterHost = {
   adapterState?: { read: (key: string) => string | null; write: (key: string, value: string) => void };
   /** A native harness report (state, model or sub-agent start); hook reports use `session.signal`. */
   signal: (sessionId: string, signal: StateSignal) => void;
+  /** Native request id, scoped by the hub to this session. No other tool input is retained. */
+  approvalRequested?: (sessionId: string, request: ApprovalRequest) => void;
+  /** Native answer or withdrawal; reporting a close never answers a harness request. */
+  approvalClosed?: (sessionId: string, requestId: string, outcome: ApprovalOutcome) => void;
   /** A hard limit classified from the harness's machine-readable error field. */
   limitHit?: (sessionId: string, hit: { reason: string; resetsAt?: string }) => void;
   /** Adapter-owned usage changed; the hub coalesces snapshots per session. */

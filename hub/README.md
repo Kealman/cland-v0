@@ -807,18 +807,24 @@ The **inbox** (v0.1.2 §3.7, `InboxNow.dc.html`) carries four now sections, newe
 | Section | What feeds it |
 | --- | --- |
 | `asks` | The open asks: `{"id","topic":{"id","title","item"?},"question","options","free","from","label","ts"}`. |
-| `approvals` | Launched sessions (the process table) in `waiting for approval`, plus a connected session reporting it: `{"session","label","harness","since","attach"}`; one row per session id (a launched session that renamed itself shows under its new name, with its launch's attach command). The hub does not answer them (spec 4.3): the attach command opens the harness's own prompt. |
+| `approvals` | One pending `ApprovalRecord` per harness request, or one TUI-only record per waiting episode for adapters that report only state. Existing `id`, `session`, `label`, `harness`, `since`, `attach` and `command` fields remain. Enter in Neovim attaches the session. |
 | `plans` | Open epics with a valid plan whose approval is pending under `[plan] approval = "human"`: `{"id","subject","title","since","layer":"now"}`. No row under approval `none`. |
 | `requests` | Unsettled explicit request messages: `{"id","from","fromRole"?,"request","subject","topic","text","ts","since","layer":"now"}`. |
 | `messages` | One row per now message addressed to the human, excluding progress, hub events, asks and requests. A waiting topic without an open ask contributes its latest eligible message. Each row carries `id`, sender/role, subject, topic, text, `ts`, `since` and layer. |
 | `waiting` | Topic metadata for older clients about topics waiting without an open ask; it no longer contributes to needsYou separately. |
+
+An `ApprovalRecord` adds `sessionId`, optional `role` and `topic`, `kind` (`command`, `file change`, `other`), `subject`, `choices` (`once`, `always`, `deny`), `answerIn` (`hub` or `tui`), and `state` (`pending`, `answering`, `closed`). Native record ids are `<sessionId>:<nativeRequestId>`; fallback ids identify the session and waiting episode. They are stable for a request on the current adapter connection; reconnects may re-key a pending request. Two requests from one session are two rows, each counted once. Claude Code always uses `answerIn: tui` with no choices. Codex and OpenCode use that same fallback until their relays report requests.
+
+`AdapterHost.approvalRequested(sessionId, request)` reports a native request and `approvalClosed(sessionId, nativeRequestId, outcome)` reports its close. The hub allowlists the subject's `command`, `cwd`, `reason`, `files` and `change`, limiting the UTF-8 JSON subject to 64 KiB; no other tool input is carried. `command` also stays at the row's top level for existing clients. A request's record travels in the snapshot's inbox and an `approval {approval: ApprovalRecord}` delta on each change, beside the coalesced `inbox` delta. Repeated request/close reports are idempotent. The in-process fake adapter exposes `raiseApproval` and `closeApproval` to drive this boundary.
+
+A closed record carries `outcome: {choice, note?, by, via, at}`, where `choice` is one of the choices above, `answered in the harness`, or `withdrawn`; `via` is `neovim`, `web` or `harness`. The closed delta folds the record to its outcome; the pending row leaves for the durable seven-day inbox archive with that outcome and attribution. State-only fallback closes report `answered in the harness`, without inferring consent. Nothing answers a request on a timer. This record transport adds no answering command or role permission; the human-only answer gate and native relays are separate slices of E-414.
 
 `needsYou` is the sum of now asks, command approvals, pending plans, open requests and now messages. `inbox.list`, pushed `inbox` events and `hub.status` agree. The workbench chip uses this count; the workbench and CLI render the four sections. Informational notifications appear only in the events view and never count, even when a project override raises them to `now`. A not-clear verdict and a session death appear there as warnings (D17). See [visibility classification](../docs/visibility.md). Human pin/mute choices use `visibility.set` (`surface: topics|sessions|artifacts`, `target`, `mode: pin|mute`), persist under `visibility` in `.cland/ui.json`, and publish a `visibility` invalidation event. They apply in the shared classifier to history, snapshots, live frames and now counts; session callers cannot set them. Preference writes are async and serialized with resumed-request measurement. Hub and Neovim share a nonempty directory lock at `ui.json.lock`; recovery removes only the dead owner's unique file, so a replacement writer is preserved. Uncertain PID owners remain held. Retention never removes an open ask or its message, or a waiting inbox request/message, whatever its age; an answered, withdrawn or cancelled ask goes with its message. Deleting a topic (its asks go with it) and a prune both publish the inbox again. `hub.status` carries it as `needsYou`, so the top bar shows it without computing.
 
 Rows leave by these rules:
 
 - Ask: answered, withdrawn or cancelled (`answered`, `withdrawn`, `cancelled`).
-- Command approval: the session stops waiting (`approved`).
+- Command approval: its adapter reports a close (`answered` or `withdrawn`), or a state-only session leaves its waiting episode (`answered`, with `answered in the harness` as the outcome).
 - Plan: approval in the plan view or `task plan approve` (`approved`), epic closure (`closed`), or a plan that stops being valid (`invalidated`).
 - Request: a human reply to it, any later human message in its topic, or a human review/QA verdict on its subject item (`replied`); `inbox.decline` settles it as `declined` and sends its author one hub notice naming the request. An agent verdict does not settle it; reading the topic does not settle it either.
 - Message: `inbox.read` for that single id or `topic.read` past its id (`read`), or a later human message in the topic (`answered`).
@@ -829,14 +835,14 @@ Each departure passes through the existing log tap as `{"event":"inbox-departure
 | --- | --- |
 | `{"type":"topic.answer","id":…,"ask":"<ask id>","option":2}` or `"text":"…"` | `{"message":TopicMessage,"outcomes":[…]}` |
 | `{"type":"inbox.list","id":…}` | `Inbox`: `{"asks","approvals","plans","requests","messages","waiting","needsYou"}`. Response rows carry their classified layers before the hub compares inbox publications, so a pin/mute publishes new placement even when `needsYou` stays unchanged (T-235). |
-| `{"type":"inbox.list","id":…, "archive":true}` | `Inbox` with `archive`: rows carry `kind`, `id`, `subject`, first-line `text`, wait start `since`, departure time `ts`, `reason`, and an answered ask’s `outcome`. |
+| `{"type":"inbox.list","id":…, "archive":true}` | `Inbox` with `archive`: rows carry `kind`, `id`, `subject`, first-line `text`, wait start `since`, departure time `ts`, `reason`, and the ask or approval’s `outcome`. |
 | `{"type":"inbox.decline","id":…, "request":"<message id>"}` | `Inbox`; human-only. Declines one waiting request and queues a named hub notice to its sender, including an offline sender. An unknown or already-left id is refused by name. |
 | `{"type":"inbox.read","id":…, "message":"<message id>"}` | `Inbox`; human-only. Marks only that waiting message read; other messages in its topic keep their rows and unread counts. An unknown or already-left id is refused by name. |
 
 | Command | What it does |
 | --- | --- |
-| `cland inbox [--json]` | Four now-layer sections, in order: asks and approvals, plan approvals, requests to you, messages to you. Nonempty headers carry counts; rows are newest first, uncapped, with id, subject/topic, first line, sender and waiting age. Plans show their title and stage/lane/item counts. The final line is `needs you: <n>`. `--json` prints the unchanged hub frame. |
-| `cland inbox --archive [--json]` | One line per departure in the last seven days: time, kind/id, subject, first line and reason, newest first. `--json` prints the full archive frame. |
+| `cland inbox [--json]` | Four now-layer sections, in order: asks and approvals, plan approvals, requests to you, messages to you. Nonempty headers carry counts; rows are newest first, uncapped, with id, subject/topic, first line, sender and waiting age. Approvals show state and offered choices or `answer in Neovim`; plans show their title and stage/lane/item counts. The final line is `needs you: <n>`. `--json` prints the unchanged hub frame. |
+| `cland inbox --archive [--json]` | One line per departure in the last seven days: time, kind/id, subject, first line and reason, newest first. A closed approval includes its outcome, who answered, via, time and optional note. `--json` prints the full archive frame. |
 | `cland topic create <title> [--item T-n] [--json] [--as <name>]` | Opens a topic through `topic.create`, optionally binding it to the item. Prints `created <topic id>: <title>`; `--json` prints `{topic: Topic}`. The shell retains its session identity and role permissions: an Implementer may open only its own item's topic. Refusals print `cland: <error>` with exit code 1. |
 | `cland topic answer <ask id> <option number> [--as <name>]` | Answers an ask with its option n (1-based): prints `answered <ask id> in <topic title>: <the answer>`. |
 | `cland topic answer <ask id> --text "<free answer>" [--as <name>]` | Answers an ask with a free answer (refused when the ask takes options only). The hub's refusals (an ask that is not open, an option out of range, a free answer to an options-only ask) print `cland: <error>` with exit code 1. |
@@ -2042,7 +2048,7 @@ On every launch and relaunch, the adapter reads `.claude/settings.json` and `.cl
 | history | none: the transcript format is internal to Claude Code |
 | usage | reliable: the mod's `turn.complete`, summed into `usage.total`, with the turn under `usage.last` |
 | setModel | none |
-| approvalRelay | none: approvals stay in the harness's TUI (spec 4.3) |
+| approvalRelay | none: approvals stay in the TUI; their records carry `answerIn: tui`, shown as `answer in Neovim` |
 | busy, idle, waiting for approval | reliable (hooks, the mod) |
 | waiting for human | heuristic (AskUserQuestion through PermissionRequest, Elicitation, `waitingFor`) |
 

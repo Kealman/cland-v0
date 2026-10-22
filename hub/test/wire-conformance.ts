@@ -79,6 +79,8 @@ export type WireConformance = [
   Assert<Equal<Extract<import('../src/protocol.ts').ClientRequest, { type: 'topic.history' }>, Extract<Wire.ClientRequest, { type: 'topic.history' }>>>,
   Assert<Equal<import('../src/protocol.ts').InboxAsk, Wire.InboxAsk>>,
   Assert<Equal<import('../src/protocol.ts').InboxApproval, Wire.InboxApproval>>,
+  Assert<Equal<import('../src/protocol.ts').ApprovalRecord, Wire.ApprovalRecord>>,
+  Assert<Equal<import('../src/protocol.ts').ApprovalOutcome, Wire.ApprovalOutcome>>,
   Assert<Equal<import('../src/protocol.ts').InboxPlan, Wire.InboxPlan>>,
   Assert<Equal<import('../src/protocol.ts').InboxRequest, Wire.InboxRequest>>,
   Assert<Equal<import('../src/protocol.ts').InboxMessage, Wire.InboxMessage>>,

@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { CLAUDE_CODE_CAPABILITIES, CLAUDE_CODE_CLAUSE_AT_SPAWN, interpret as claudeInterpret } from '../../src/adapters/claude-code.ts';
 import { CODEX_CAPABILITIES, CODEX_CLAUSE_AT_SPAWN } from '../../src/adapters/codex.ts';
 import { OPENCODE_CAPABILITIES, OPENCODE_CLAUSE_AT_SPAWN } from '../../src/adapters/opencode.ts';
-import { InjectUncertain, type AdapterHost, type HarnessAdapter, type HarnessProcess, type SpawnRequest, type ResumeResult } from '../../src/adapters/contract.ts';
+import { InjectUncertain, type ApprovalRequest, type AdapterHost, type HarnessAdapter, type HarnessProcess, type SpawnRequest, type ResumeResult } from '../../src/adapters/contract.ts';
 import { realClock, type Clock, type ClockTimer } from '../../src/hub/clock.ts';
-import type { Message, SessionState, SessionUsage, TopicRef } from '../../src/protocol.ts';
+import type { ApprovalOutcome, Message, SessionState, SessionUsage, TopicRef } from '../../src/protocol.ts';
 
 export const FAKE_FLAVOURS = ['claude-code', 'codex', 'opencode'] as const;
 export type FakeFlavour = typeof FAKE_FLAVOURS[number];
@@ -110,6 +110,12 @@ export class FakeHarness implements HarnessAdapter {
   busy(name: string): void { this.#signal(name, 'busy'); }
   idle(name: string): void { this.#signal(name, 'idle'); }
   waitingForApproval(name: string): void { this.#signal(name, 'waiting for approval'); }
+  raiseApproval(name: string, request: ApprovalRequest & { subject: ApprovalRequest['subject'] & Record<string, unknown> } & Record<string, unknown>): void {
+    this.#host?.approvalRequested?.(this.#session(name).process.sessionId, request);
+  }
+  closeApproval(name: string, requestId: string, outcome: ApprovalOutcome): void {
+    this.#host?.approvalClosed?.(this.#session(name).process.sessionId, requestId, outcome);
+  }
   turn(name: string, options: { afterMs?: number; usage?: SessionUsage; model?: string } = {}): void {
     this.#signal(name, 'busy', options.model);
     const sessionId = this.#session(name).process.sessionId;

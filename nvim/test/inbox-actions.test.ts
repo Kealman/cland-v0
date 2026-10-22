@@ -124,3 +124,22 @@ test('r gives a free ask answer and failed row replies retain their draft and ta
   assert.ok(frames.some(f => f.type === 'topic.answer' && f.ask === 'ask' && f.text === 'Free answer'));
   assert.deepEqual(frames.filter(f => f.type === 'topic.send').map(f => [f.replyTo, f.text]), [['message', 'Saved draft'], ['message', 'Saved draft']]);
 });
+
+test('Enter on a recorded Claude Code approval requests attachment of that session', { skip }, async t => {
+  const root = await tempProject(t), path = join(root, 'stub.sock');
+  const record = { id: 'worker-id:episode-1', sessionId: 'worker-id', session: 'worker', harness: 'claude-code',
+    label: 'worker [Implementer]', role: 'implementer', kind: 'command', subject: { command: 'echo review me' },
+    command: 'echo review me', choices: [], answerIn: 'tui', attach: null, state: 'pending', since: ts };
+  // The stub refuses attachment instead of launching a shell. Real terminal transport is covered at T3.
+  const c = await startClient(t, bin, root, { CLAND_HUB_TRANSPORT: 'stdio', CLAND_COMMAND: JSON.stringify([process.execPath, STUB]), CLAND_STUB_CONTROL: path,
+    CLAND_STUB_SCENARIO_JSON: JSON.stringify({ attach: {}, inbox: { approvals: [record] } }) });
+  await c.waitScreen(s => s.includes('hub: connected'), 'connected');
+  await focus(c, 'panel');
+  await c.waitScreen(s => s.includes('echo review me'), 'Claude approval row');
+  await select(c, 'echo review me');
+  await c.input('<CR>');
+  await c.waitScreen(s => s.includes('cannot attach worker'), 'approval Enter reaches attachment boundary');
+  const frames = (await control(path, { requests: true })).requests as Array<Record<string, unknown>>;
+  assert.ok(frames.some(f => f.type === 'session.attach' && f.session === 'worker'));
+  assert.deepEqual(await c.lua("return require('cland.qa').state().view"), { kind: 'session', id: 'worker' });
+});

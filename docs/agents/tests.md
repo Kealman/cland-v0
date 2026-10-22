@@ -912,6 +912,8 @@ checks inherited pagination and snapshot fallback, and verifies contiguous live
 and replay cursors via row-free `model.advance` deltas. An omitted filter resets
 the subscription; an explicit `events.list` filter overrides only that read.
 
+Approval record changes use `hub/test/approval-records.test.ts`: sealed `projectHub`, real frame clients and the in-process fake's `raiseApproval`/`closeApproval`. Observe the `approval` delta before advancing the fake clock for its coalesced inbox publication. The same file covers snapshots, per-request counts, UTF-8 subject limits, archive persistence and the CLI. `nvim/test/inbox-actions.test.ts` checks Enter's `session.attach` request on a recorded Claude Code row, with attachment refused at the stub edge to avoid a T2 shell; T3 terminal transport remains in the existing session scenarios. Refresh its slice and the inbox recordings through the Neovim recording workflow above.
+
 Hub scheduling tests pass one complete clock at the fixture boundary:
 `projectHub(t, root, env, { clock: new FakeClock() })` (`hub/test/fake-clock.ts`).
 `await clock.advance(ms)` runs due hub timers in deadline order and yields to

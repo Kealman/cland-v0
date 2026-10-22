@@ -1,13 +1,16 @@
+import type { ApprovalRequest } from '../adapters/contract.ts';
+import { approvalSubject } from './approval-subject.ts';
 import { realClock, type Clock, type ClockTimer } from './clock.ts';
 import type { Finding, FindingCounts } from '../tracker/findings.ts';
 // The inbox (§3.7): asks/command approvals, pending plans, requests and messages.
 // Each row records when its wait began; departures persist in hub.db and reach the journal
 // through the log tap. Publications are coalesced over 250 ms; explicit reads always settle current waits.
 import { messageVerdict, OLD_MESSAGE_MS, type Visibility } from './visibility.ts';
+import { isDeepStrictEqual } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parse } from 'smol-toml';
-import type { HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
+import type { ApprovalOutcome, HarnessProcessView, HubEvent, Inbox, InboxApproval, InboxAsk, InboxRequest, InboxMessage, InboxPlan, InboxDeparture, NotificationKind, Presence, SessionState, Topic } from '../protocol.ts';
 import type { LogFn } from '../log.ts';
 import { ROLE_LABELS, withRole } from '../names.ts';
 import type { ItemSummary } from '../tracker/tracker.ts';
@@ -70,6 +73,10 @@ export class InboxBoard {
   #processes: (() => HarnessProcessView[]) | null = null;
   /** When each session entered `waiting for approval`, by session id. */
   readonly #since = new Map<string, string>();
+  readonly #fallbacks = new Map<string, InboxApproval>();
+  readonly #approvals = new Map<string, InboxApproval>();
+  readonly #reported = new Set<string>();
+  #syncingApprovals = false;
   /** One timer per idle session, by session id. */
   readonly #idle = new Map<string, ClockTimer>();
   readonly #deaths = new Set<string>();
@@ -165,6 +172,10 @@ export class InboxBoard {
     }
     // The sections are recomputed once per publication window by #changed; a synchronous list() here ran the full
     // inbox query on every hub event, which stalled startup for minutes on a project with 200 remembered processes
+    const approvalFacts = event.type === 'session.state' && (event.state === 'waiting for approval' || this.#fallbacks.has(event.sessionId))
+      || event.type === 'session.process' && (event.process.state === 'waiting for approval' || this.#approvals.size > 0)
+      || event.type === 'presence' && (this.#approvals.size > 0 || event.sessions.some(s => s.state === 'waiting for approval'));
+    if (approvalFacts) this.#syncApprovals();
     this.#changed(invalidateCount);
   }
 
@@ -245,29 +256,8 @@ export class InboxBoard {
     const asked = new Set(open.map((a) => a.topic));
     const waiting = topics.filter((t) => t.status === 'waiting for human' && !asked.has(t.id)).sort((a, b) => (a.updatedAt < b.updatedAt ? -1 : a.updatedAt > b.updatedAt ? 1 : 0))
       .map(t => p.visibility.place('inbox', t, 'waiting'));
-    const approvals: InboxApproval[] = [];
-    // one approval per session, by its id: a launched session that renamed itself is its process row (the launch
-    // name, with the attach command) and its presence (the name it has now) at once
-    const presence = p.presence();
-    const live = new Map(presence.map((s) => [s.sessionId, s]));
-    const seen = new Set<string>();
-    this.#approvalProcesses.clear();
-    for (const proc of this.#processes?.() ?? []) {
-      if (proc.status !== 'running' || proc.state !== 'waiting for approval') continue;
-      this.#approvalProcesses.add(proc.sessionId);
-      seen.add(proc.sessionId);
-      const now = live.get(proc.sessionId);
-      const name = now?.name ?? proc.name;
-      const role = now?.role ?? proc.role;
-      approvals.push({ id: proc.sessionId, session: name, ...(role ? { role } : {}), label: now?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, since: this.#since.get(proc.sessionId) ?? p.now().toISOString(), attach: proc.attach, ...(proc.approvalCommand ? { command: proc.approvalCommand } : {}) });
-    }
-    // a session the adapters did not launch has no state of its own; one that has (a resumed launch under another name) still counts
-    for (const s of presence) {
-      if (s.state !== 'waiting for approval' || seen.has(s.sessionId)) continue;
-      seen.add(s.sessionId);
-      approvals.push({ id: s.sessionId, session: s.name, ...(s.role ? { role: s.role } : {}), label: s.label ?? withRole(s.name, s.role), harness: null, since: this.#since.get(s.sessionId) ?? p.now().toISOString(), attach: null });
-    }
-    const placedApprovals = approvals.map(a => p.visibility.place('inbox', a, 'approval'));
+    this.#syncApprovals();
+    const placedApprovals = [...this.#approvals.values()].map(a => p.visibility.place('inbox', a, 'approval'));
     const candidates = p.store.inboxMessages();
     const requests: InboxRequest[] = [];
     const messages: InboxMessage[] = [];
@@ -312,8 +302,7 @@ export class InboxBoard {
         const ask = p.store.ask(row.id);
         if (ask && ask.state !== 'open') reason = ask.outcome?.status === 'declined' ? 'declined' : ask.state;
       } else if (row.kind === 'approval') {
-        const proc = this.#processes?.().find(s => s.sessionId === row.id);
-        if ((proc?.state ?? p.stateOf(row.id)) !== 'waiting for approval') reason = 'approved';
+        // Approval closes settle their own exact record, independently of session state.
       } else if (row.kind === 'plan') {
         const item = items.find(i => i.id === row.id);
         if (item?.state === 'closed') reason = 'closed';
@@ -350,12 +339,115 @@ export class InboxBoard {
       ...(archive ? { archive: p.store.inboxDepartures(new Date(now.getTime() - 7 * 86400_000).toISOString()) } : {}) };
   }
 
+  /** One pending native request; duplicate replay is idempotent at this connection's id. */
+  requestApproval(sessionId: string, request: ApprovalRequest): void {
+    const proc = this.#processes?.().find(p => p.sessionId === sessionId && p.status === 'running');
+    if (!proc) return;
+    const id = `${sessionId}:${request.id}`;
+    if (this.#approvals.has(id) || this.#port.store.leftInbox('approval', id)) return;
+    this.#reported.add(sessionId);
+    const fallback = this.#fallbacks.get(sessionId);
+    if (fallback) this.#closeApproval(fallback, { choice: 'withdrawn', by: 'harness', via: 'harness', at: this.#port.now().toISOString() });
+    const subject = approvalSubject(request.subject);
+    const tui = proc.harness === 'claude-code' || request.answerIn === 'tui';
+    const record: InboxApproval = { id, sessionId, session: proc.name, ...(proc.role ? { role: proc.role } : {}),
+      label: proc.label ?? withRole(proc.name, proc.role), harness: proc.harness, kind: request.kind, subject,
+      ...(subject.command !== undefined ? { command: subject.command } : {}),
+      choices: tui ? [] : [...new Set(request.choices.filter(c => c === 'once' || c === 'always' || c === 'deny'))],
+      answerIn: tui ? 'tui' : 'hub', attach: proc.attach, since: this.#port.now().toISOString(),
+      ...(request.topic !== undefined ? { topic: request.topic } : {}), state: 'pending' };
+    this.#approvals.set(id, record);
+    this.#waitApproval(record);
+    this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', record, 'approval') });
+    this.#changed();
+  }
+
+  closeApproval(sessionId: string, requestId: string, outcome: ApprovalOutcome): void {
+    const record = this.#approvals.get(`${sessionId}:${requestId}`);
+    if (record) this.#closeApproval(record, outcome);
+  }
+
+  #waitApproval(record: InboxApproval): void {
+    this.#port.store.waitInInbox({ kind: 'approval', id: record.id, subject: record.session, since: record.since,
+      text: record.command ?? record.subject.change ?? 'waiting for approval' });
+  }
+
+  #closeApproval(record: InboxApproval, reported: ApprovalOutcome): void {
+    // Copy the outcome too: adapters must not smuggle arbitrary native payload into a delta or archive.
+    const outcome: ApprovalOutcome = { choice: reported.choice, by: reported.by, via: reported.via, at: reported.at,
+      ...(reported.note !== undefined ? { note: reported.note } : {}) };
+    const closed: InboxApproval = { ...record, state: 'closed', outcome };
+    this.#approvals.set(record.id, closed);
+    this.#waitApproval(record);
+    this.#depart({ kind: 'approval', id: record.id, subject: record.session, since: record.since,
+      text: record.command ?? record.subject.change ?? 'waiting for approval' }, outcome.choice === 'withdrawn' ? 'withdrawn' : 'answered', outcome.at);
+    this.#approvals.delete(record.id);
+    if (this.#fallbacks.get(record.sessionId)?.id === record.id) this.#fallbacks.delete(record.sessionId);
+    this.#port.emit({ type: 'approval', approval: this.#port.visibility.place('inbox', closed, 'approval') });
+    this.#changed();
+  }
+
+  #syncApprovals(): void {
+    if (this.#syncingApprovals) return;
+    this.#syncingApprovals = true;
+    try {
+      const p = this.#port, presence = p.presence(), live = new Map(presence.map(s => [s.sessionId, s]));
+      const processes = this.#processes?.() ?? [];
+      const byId = new Map(processes.map(proc => [proc.sessionId, proc]));
+      for (const [id, record] of this.#approvals) {
+        if (!this.#reported.has(record.sessionId)) continue;
+        const current = live.get(record.sessionId), proc = byId.get(record.sessionId);
+        const session = current?.name ?? proc?.name ?? record.session;
+        const role = current?.role ?? proc?.role;
+        const { role: _oldRole, ...facts } = record;
+        const updated: InboxApproval = { ...facts, session, ...(role ? { role } : {}),
+          label: current?.label ?? proc?.label ?? withRole(session, role), attach: proc?.attach ?? record.attach };
+        if (isDeepStrictEqual(updated, record)) continue;
+        this.#approvals.set(id, updated);
+        p.emit({ type: 'approval', approval: p.visibility.place('inbox', updated, 'approval') });
+      }
+      const candidates = new Map<string, Pick<InboxApproval, 'sessionId' | 'session' | 'role' | 'label' | 'harness' | 'since' | 'attach' | 'command'>>();
+      this.#approvalProcesses.clear();
+      for (const proc of processes) {
+        if (proc.status !== 'running' || proc.state !== 'waiting for approval') continue;
+        this.#approvalProcesses.add(proc.sessionId);
+        const current = live.get(proc.sessionId), role = current?.role ?? proc.role;
+        candidates.set(proc.sessionId, { sessionId: proc.sessionId, session: current?.name ?? proc.name,
+          ...(role ? { role } : {}), label: current?.label ?? proc.label ?? withRole(proc.name, proc.role), harness: proc.harness,
+          since: this.#since.get(proc.sessionId) ?? p.now().toISOString(), attach: proc.attach,
+          ...(proc.approvalCommand !== undefined ? { command: proc.approvalCommand } : {}) });
+      }
+      for (const current of presence) {
+        if (current.state !== 'waiting for approval' || candidates.has(current.sessionId)) continue;
+        candidates.set(current.sessionId, { sessionId: current.sessionId, session: current.name, ...(current.role ? { role: current.role } : {}),
+          label: current.label ?? withRole(current.name, current.role), harness: null, attach: null,
+          since: this.#since.get(current.sessionId) ?? p.now().toISOString() });
+      }
+      for (const [sessionId, previous] of this.#fallbacks) if (!candidates.has(sessionId)) {
+        this.#closeApproval(previous, { choice: 'answered in the harness', by: 'harness', via: 'harness', at: p.now().toISOString() });
+      }
+      for (const [sessionId, row] of candidates) {
+        if (this.#reported.has(sessionId)) continue;
+        const previous = this.#fallbacks.get(sessionId), subject = approvalSubject(row.command !== undefined ? { command: row.command } : {});
+        const record: InboxApproval = { ...row, id: previous?.id ?? `${sessionId}:${randomUUID()}`, since: previous?.since ?? row.since,
+          ...(subject.command !== undefined ? { command: subject.command } : {}),
+          kind: row.command ? 'command' : 'other', subject, choices: [], answerIn: 'tui', state: 'pending' };
+        this.#fallbacks.set(sessionId, record);
+        this.#approvals.set(record.id, record);
+        if (!isDeepStrictEqual(previous, record)) {
+          this.#waitApproval(record);
+          p.emit({ type: 'approval', approval: p.visibility.place('inbox', record, 'approval') });
+        }
+      }
+    } finally { this.#syncingApprovals = false; }
+  }
+
   #depart(row: InboxWait, reason: InboxDeparture['reason'], at?: string): void {
     const p = this.#port;
-    const text = row.text || (row.kind === 'approval' ? this.#processes?.().find(s => s.sessionId === row.id)?.approvalCommand ?? 'waiting for approval'
+    const text = row.text || (row.kind === 'approval' ? this.#approvals.get(row.id)?.command ?? 'waiting for approval'
       : row.kind === 'plan' ? p.items().find(i => i.id === row.id)?.title
       : p.store.message(row.id)?.text ?? p.store.ask(row.id)?.question) || '';
-    const outcome = row.kind === 'ask' ? p.store.ask(row.id)?.outcome : undefined;
+    const outcome = row.kind === 'ask' ? p.store.ask(row.id)?.outcome : row.kind === 'approval' ? this.#approvals.get(row.id)?.outcome : undefined;
     const departure = p.store.departInbox(row, reason, at ?? outcome?.at ?? p.now().toISOString(), text.split(/\r?\n/, 1)[0], outcome);
     if (departure) {
       this.#departures.push(departure);

@@ -229,13 +229,18 @@ export type AskCard = {
 /** An open ask as the inbox lists it. */
 export type InboxAsk = { layer?: Layer; id: string; topic: TopicRef; question: string; options: string[]; free: boolean; from: string; fromRole?: string; label: string; ts: string; since: string };
 
-/** A session waiting for approval: answered in the session itself (spec 4.3), so the row attaches it. */
-export type InboxApproval = { layer?: Layer; id: string; session: string; role?: string; label: string; harness: string | null; since: string; attach: string | null; command?: string };
+/** The harness choices and durable outcome shared by approval records and their departures. */
+export type ApprovalChoice = 'once' | 'always' | 'deny';
+export type ApprovalOutcome = { choice: ApprovalChoice | 'answered in the harness' | 'withdrawn'; note?: string; by: string; via: 'neovim' | 'web' | 'harness'; at: string };
+export type ApprovalSubject = { command?: string; cwd?: string; reason?: string; files?: string[]; change?: string };
+/** One harness request, retaining the original inbox fields for existing clients. */
+export type ApprovalRecord = { layer?: Layer; id: string; session: string; sessionId: string; role?: string; label: string; harness: string | null; kind: 'command' | 'file change' | 'other'; subject: ApprovalSubject; choices: ApprovalChoice[]; answerIn: 'hub' | 'tui'; attach: string | null; since: string; topic?: string; state: 'pending' | 'answering' | 'closed'; outcome?: ApprovalOutcome; command?: string };
+export type InboxApproval = ApprovalRecord;
 export type InboxPlan = { layer?: Layer; id: string; subject: string; title: string; stages?: number; lanes?: number; items?: number; since: string };
 export type InboxRequest = { layer?: Layer; id: string; from: string; fromRole?: string; request: RequestKind; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxMessage = { layer?: Layer; severity?: 'warn'; id: string; from: string; fromRole?: string; subject: string; topic: TopicRef; ts: string; since: string; text: string };
 export type InboxRowKind = 'ask' | 'approval' | 'plan' | 'request' | 'message';
-export type InboxDeparture = { outcome?: AskOutcome; kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
+export type InboxDeparture = { outcome?: AskOutcome | ApprovalOutcome; kind: InboxRowKind; id: string; subject: string; since: string; ts: string; text?: string; reason: 'answered' | 'withdrawn' | 'cancelled' | 'approved' | 'closed' | 'invalidated' | 'replied' | 'declined' | 'read' };
 
 export type NotificationKind = 'account-limited' | 'executor-fallback' | 'plan' | 'verdict' | 'role' | 'death' | 'idle' | 'delivery-stalled' | 'delivery-uncertain' | 'turn-failed' | 'release' | 'import';
 
@@ -294,6 +299,7 @@ export type HubEvent =
   | { type: 'ask'; topic: string; ask: string; card: AskCard }
   /** The inbox changed (an ask, an approval, a plan, a request, a message): all of it, as `inbox.list` answers. */
   | { type: 'inbox'; inbox: Inbox }
+  | { type: 'approval'; approval: ApprovalRecord }
   /** No live session holds the Coordinator any more: the UI shows "no coordinator". */
   | { type: 'role.vacant'; role: 'coordinator'; ts: string }
   /** A live session holds the Coordinator again. */
