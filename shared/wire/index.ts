@@ -858,8 +858,13 @@ export type DemoRequest =
 // hub/src/protocol.ts
 export type ArtifactUrl = { type: 'artifact.url'; id: string; artifact: string };
 export type ArtifactUrlResult = { url: string };
+export type SessionHistory = { type: 'session.history'; id: string; session: string; limit?: number; before?: number };
+export type SessionHistoryResult = { messages: Array<Message & { seq: number }>; more: boolean; before?: number };
+
 export type WebLink = { type: 'web.link'; id: string; qr?: boolean };
 export type WebLinkResult = { url: string };
+export type WebSessionRequest = { type: 'web.session'; id: string };
+export type WebSessionResult = { createdAt: string; lastUsedAt: string; expiresAt: string };
 export type WebSessions = { type: 'web.sessions'; id: string };
 export type WebRevoke = { type: 'web.revoke'; id: string; session: string };
 export type WebSession = { id: string; createdAt: string; lastUsedAt: string; sockets: number };
@@ -868,7 +873,7 @@ export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
   | { type: 'resume'; id: string; epoch: string; seq: number }
-  | ArtifactUrl | WebLink | WebSessions | WebRevoke
+  | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }

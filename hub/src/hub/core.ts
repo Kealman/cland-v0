@@ -1994,6 +1994,22 @@ export class HubCore {
     return gone;
   }
 
+  /** Count and byte bounded human pages; agent history keeps its existing contract. */
+  sessionHistoryPage(session: string, limit = HISTORY_LIMIT, before?: number): import('../protocol.ts').SessionHistoryResult {
+    const n = Math.min(limit, HISTORY_LIMIT);
+    const all = this.#store.sessionMessages(session, n + 1, before);
+    const messages: Array<Message & { seq: number }> = [];
+    let bytes = 1024;
+    for (const message of [...all].reverse()) {
+      const size = Buffer.byteLength(JSON.stringify(message)) + 1;
+      if (messages.length && (messages.length === n || bytes + size > 255 * 1024)) break;
+      messages.unshift(message);
+      bytes += size;
+    }
+    const more = all.length > messages.length;
+    return { messages, more, ...(more ? { before: messages[0]!.seq } : {}) };
+  }
+
   history(session: string, limit?: number, counterpart?: string): Message[] {
     const n = Math.min(Math.max(1, Math.floor(limit ?? HISTORY_LIMIT)), HISTORY_LIMIT);
     return this.#store.history(session, n, counterpart?.replace(/^@/, ''));

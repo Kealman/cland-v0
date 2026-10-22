@@ -62,8 +62,9 @@ export const WEB_AUTHORITY = {
   'session.archive': true,
   'session.attach': true,
   'session.bridge': true,
-  'session.launch': true,
+  'session.launch': (frame: Record<string, unknown>) => Object.hasOwn(frame, 'cwd') ? 'sets a launch directory' : null,
   'session.list': true, // Includes the archived merged-row read.
+  'session.history': true,
   'session.prune': true,
   'session.resume': true,
   'session.retry': true,
@@ -106,6 +107,7 @@ export const WEB_AUTHORITY = {
   'topic.withdraw': true,
   'visibility.set': true,
   'web.link': 'mints a local sign-in link',
+  'web.session': true,
   'web.sessions': 'lists local browser sessions',
   'web.revoke': 'revokes a local browser session',
   'worktree.list': true,

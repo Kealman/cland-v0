@@ -638,8 +638,13 @@ export type DemoRequest =
 
 export type ArtifactUrl = { type: 'artifact.url'; id: string; artifact: string };
 export type ArtifactUrlResult = { url: string };
+export type SessionHistory = { type: 'session.history'; id: string; session: string; limit?: number; before?: number };
+export type SessionHistoryResult = { messages: Array<Message & { seq: number }>; more: boolean; before?: number };
+
 export type WebLink = { type: 'web.link'; id: string; qr?: boolean };
 export type WebLinkResult = { url: string };
+export type WebSessionRequest = { type: 'web.session'; id: string };
+export type WebSessionResult = { createdAt: string; lastUsedAt: string; expiresAt: string };
 export type WebSessions = { type: 'web.sessions'; id: string };
 export type WebRevoke = { type: 'web.revoke'; id: string; session: string };
 export type WebSession = { id: string; createdAt: string; lastUsedAt: string; sockets: number };
@@ -648,7 +653,7 @@ export type WebRevokeResult = { revoked: string };
 
 export type ClientRequest =
   | { type: 'resume'; id: string; epoch: string; seq: number }
-  | ArtifactUrl | WebLink | WebSessions | WebRevoke
+  | ArtifactUrl | WebLink | WebSessions | WebRevoke | SessionHistory | WebSessionRequest
   | DemoRequest
   | RuleRequest
   | { type: 'account.clear'; id: string; account: string }
@@ -1036,6 +1041,7 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return (f.history === undefined || typeof f.history === 'boolean') && (f.flushLogs === undefined || typeof f.flushLogs === 'boolean');
     case 'web.link':
       return f.qr === undefined || typeof f.qr === 'boolean';
+    case 'web.session':
     case 'web.sessions':
     case 'hub.stop':
     case 'hub.reload':
@@ -1072,6 +1078,8 @@ export function isClientRequest(f: Record<string, unknown>): f is ClientRequest 
       return typeof f.role === 'string' && (f.session === undefined || typeof f.session === 'string');
     case 'role.clear':
       return typeof f.session === 'string';
+    case 'session.history':
+      return typeof f.session === 'string' && f.session.length > 0 && (f.limit === undefined || typeof f.limit === 'number' && Number.isSafeInteger(f.limit) && f.limit > 0) && (f.before === undefined || isMessageSeq(f.before));
     case 'topic.history':
       return typeof f.topic === 'string' && (f.limit === undefined || typeof f.limit === 'number') && (f.before === undefined || typeof f.before === 'string' || isMessageSeq(f.before)) && (f.after === undefined || isMessageSeq(f.after)) && (f.before === undefined || f.after === undefined) && isAgentsHistoryFilter(f);
     case 'topic.withdraw':

@@ -1643,6 +1643,14 @@ pure policy decisions at T1; `web-authority.test.ts` exercises authenticated
 `/ws` and Unix sockets at T2. The local comparisons preserve normal handler
 preconditions: they do not publish, invoke Git or acquire provider resources.
 Use the scratch hub and filtered HOME/XDG/Git fixture for both edges.
+The same T2 file covers human `session.history` on Unix and web (both traffic
+directions across topics, exclusive numeric pages, count/byte bounds and
+unchanged spoke `history`), web-only `web.session` with two independent cookies
+and a reconnect (own creation/last-use/fixed expiry, no identity selector), and
+web launch-directory refusal with a root launch and a local-directory comparison.
+Use fake adapters for launches and fake time for sign-in expiry; do not probe
+these requests against the live hub. The T1 authority file classifies the two
+reads and refuses every own `session.launch.cwd` field before dispatch.
 
 `web-auth-unit.test.ts` covers digest storage, one-time spending and expiry with
 an injected clock at T1. It also reads the explicit acceptance row to verify

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { WEB_AUTHORITY, webAuthorityRefusal } from '../src/hub/web-authority.ts';
 
 test('the web allows human workbench reads, writes, queued verification and merge', () => {
-  for (const type of ['resume', 'approval.answer', 'topic.send', 'task.create', 'task.edit', 'session.resume', 'session.stop', 'session.bridge', 'suite.start', 'suite.slot', 'suite.cancel', 'suite.classify', 'merge', 'executor.status', 'artifact.promote', 'artifact.move', 'artifact.url']) {
+  for (const type of ['session.history', 'web.session', 'resume', 'topic.send', 'task.create', 'task.edit', 'session.resume', 'session.stop', 'session.bridge', 'suite.start', 'suite.slot', 'suite.cancel', 'suite.classify', 'merge', 'executor.status', 'artifact.promote', 'artifact.move', 'artifact.url', 'approval.answer']) {
     assert.equal(webAuthorityRefusal({ type, id: 'request' }), null, type);
   }
   assert.equal(webAuthorityRefusal({ type: 'artifact.create', id: 'inline', content: 'web bytes' }), null);
@@ -35,5 +35,14 @@ test('the web denies absent rows and prototype names, including malformed reques
       type: 'result', id: '?', ok: false, code: 'cli-neovim-only',
       error: `${String(type)} lives in the CLI and Neovim: has no web authority classification`,
     });
+  }
+});
+
+test('web launch directories are refused before dispatch, including malformed fields', () => {
+  assert.equal(webAuthorityRefusal({ type: 'session.launch', id: 'root', name: 'worker' }), null);
+  for (const cwd of [undefined, null, false, '', '/fixture']) {
+    const refusal = webAuthorityRefusal({ type: 'session.launch', id: 'directory', name: 'worker', cwd });
+    assert.equal(refusal?.code, 'cli-neovim-only');
+    assert.match(refusal?.error ?? '', /directory/);
   }
 });

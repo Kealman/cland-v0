@@ -293,6 +293,15 @@ socket (not browser, spoke or stdio). Their result values are
 `{sessions: [{id, createdAt, lastUsedAt, sockets}]}` and `{revoked: "<uuid>"}`.
 No cookie or digest is returned by listing. Session shells are refused.
 
+The web-only human request `{type: "web.session", id}` returns
+`{createdAt, lastUsedAt, expiresAt}` for the cookie session authenticated at
+that socket's upgrade. It accepts no identity selector: extra fields cannot
+select another browser. Times are UTC ISO timestamps; last use is the latest
+successful `/ws` admission with that cookie, and expiry stays 30 days after
+creation. An expired or revoked sign-in has no readable record. No session id,
+cookie, digest or other browser's record is returned. Local Unix and spoke
+clients cannot use this request; listing and revoking remain local-only.
+
 Every `/ws` upgrade checks an allowed Host and its exact port, an Origin exactly
 matching `http://<Host>` (or the configured HTTPS tunnel origin for its Host), and the project's unexpired cookie before accepting
 any frames. Missing, foreign and `null` Origins are refused with 403; a missing
@@ -322,6 +331,9 @@ In 0.2.0, these actions stay in the CLI and Neovim:
 - `session.signal`, `worktree.prune`, `artifact.delete`, `suite.forced`,
   `task.import`, `demo.start`, `demo.exec`, `demo.stop`, `demo.status`;
 - `artifact.create` carrying a `path`, including alongside `content`;
+- `session.launch` carrying a `cwd` field, even an empty or malformed value;
+  a web launch without it uses the project root, or the item's task worktree
+  when `item` is supplied. Local CLI and Neovim launches retain `cwd`;
 - every frame carrying an `as` field, including the initial hello, regardless
   of its value.
 
@@ -707,6 +719,17 @@ Held notes and their digest membership live in the existing SQLite delivery queu
 Unbound progress keeps the existing queue TTL: expired notes are dropped and journalled before binding. Once bound, a note follows its trigger's TTL, and the batch expires together. Retention preserves every member of a pending batch. If a trigger is deleted, surviving pending notes are released to the same queue with their original TTL and the release is journalled. Injected or dropped notes lose their binding and stay settled. Renaming onto a name with any queued, delivered, uncertain or injected delivery is refused with the target and its unacknowledged count before any mutation. A rename also refuses any duplicate message delivery row between the source and target, regardless of state, naming the target and collision count. Other renames follow the existing behavior.
 
 ## Thread runs and fold lines
+
+`session.history` reads the named session's sent messages and deliveries across
+all topics, using the same traffic membership as the session's own `history`.
+It defaults to 50 messages and clamps larger limits to 50. `limit` must be a
+positive safe integer; `before` is an exclusive non-negative safe-integer message
+number (`seq`), independent of timestamps. Pages select the latest matching
+messages and return them oldest first. `more` and the first message's numeric
+`before` cursor let a client page back. Empty histories return
+`{messages: [], more: false}`. Whole-message pages stay below 256 KiB, with the
+same single oversized-message exception as topic history. The spoke's own
+`history` request, filters and limit are unchanged.
 
 `topic.history` pages include `runs: ThreadRun[]`. Each foldable `TopicMessage`
 has `runId`; the page includes exactly one complete run for every referenced id,
@@ -1955,6 +1978,7 @@ read. See `nvim/README.md`, “Hub data” and snapshot replay, for the client c
 | --- | --- |
 | `{"type":"hub.status","id":…}` | Hub state, including `keys: {layouts}` for keyboard layouts and `tracker: {levels, ladder}` for loaded container levels, ordered top-down. `ladder` is the nested array of all kinds at each level; `levels` keeps only each level's first kind for older clients. The UI reads the current values on connect/refresh; no config push event is added. Missing/unreadable config reports the levels in use by the running tracker. |
 | `{"type":"topic.list","id":…}` | `{"topics":[Topic…]}`, standing topics first, then those waiting for the human, then by latest activity; a topic with no message last |
+| `{"type":"session.history","id":…, "session":"impl-12","limit":50,"before":123}` | `{messages: (Message & {seq:number})[], more:boolean, before?:number}`; human clients on Unix or web, sent and received traffic across topics, newest last |
 | `{"type":"topic.history","id":…,"topic":"general","limit":50,"after":0}` | `{"topic":Topic,"messages":[TopicMessage…],"runs":[ThreadRun…],"more"?:true,"before"?:messageId,"after"?:seq}`, oldest first, at most 200 and byte-capped (see Startup replies) |
 | `{"type":"topic.withdraw","id":…, "topic":"general","message":"<message id>"}` | `{text, message:TopicMessage}`; human-only, before adapter submission; emits `withdrawn` |
 | `{"type":"topic.send","id":…,"topic":"general","text":"…","to":["…"],"replyTo":"<message id>","kind":"question"}` | `{"message":TopicMessage,"outcomes":[…]}`; `to` is optional (the mentions in the text, else the Coordinator); in Agents only a reply is accepted, and it addresses the sender of `replyTo` |

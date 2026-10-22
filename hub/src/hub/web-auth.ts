@@ -54,6 +54,18 @@ export class WebAuth {
     return this.#store.useWebSession(digest(matches[0]!.slice(this.cookieName.length + 1)), now, now - WEB_SESSION_SECONDS * 1000);
   }
 
+  /** Read only the identity captured at this socket's authenticated upgrade. */
+  profile(id: string): import('../protocol.ts').WebSessionResult {
+    this.#prune();
+    const row = this.#store.webSession(id);
+    if (!row) throw new Error('this browser sign-in has expired or was revoked');
+    return {
+      createdAt: new Date(row.createdAt).toISOString(),
+      lastUsedAt: new Date(row.lastUsedAt).toISOString(),
+      expiresAt: new Date(row.createdAt + WEB_SESSION_SECONDS * 1000).toISOString(),
+    };
+  }
+
   sessions(): Array<{ id: string; createdAt: string; lastUsedAt: string }> {
     this.#prune();
     return this.#store.webSessions().map(row => ({ id: row.id, createdAt: new Date(row.createdAt).toISOString(), lastUsedAt: new Date(row.lastUsedAt).toISOString() }));

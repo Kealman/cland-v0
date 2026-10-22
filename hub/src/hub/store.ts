@@ -473,6 +473,11 @@ export class Store implements HygieneMemory {
     return row ? row.id as string : null;
   }
 
+  webSession(id: string): { createdAt: number; lastUsedAt: number } | null {
+    const row = this.#prepare('select created_at, last_used_at from web_sessions where id = ?').get(id);
+    return row ? { createdAt: row.created_at as number, lastUsedAt: row.last_used_at as number } : null;
+  }
+
   webSessions(): Array<{ id: string; createdAt: number; lastUsedAt: number }> {
     return (this.#prepare('select id, created_at, last_used_at from web_sessions order by created_at, id').all() as Row[])
       .map(row => ({ id: row.id as string, createdAt: row.created_at as number, lastUsedAt: row.last_used_at as number }));
@@ -1824,6 +1829,15 @@ export class Store implements HygieneMemory {
       if (result.gone) this.#prepare('delete from asks where id not in (select id from messages)').run();
       return result;
     });
+  }
+
+  /** Human session pages use the durable message number, independent of timestamps. */
+  sessionMessages(session: string, limit: number, before?: number): Array<Message & { seq: number }> {
+    const rows = this.#prepare(`select m.* from messages m
+      where (m.from_name = :session or exists (select 1 from deliveries d where d.message_id = m.id and d.session = :session))
+        and (:before is null or m.seq < :before)
+      order by m.seq desc limit :limit`).all({ session, before: before ?? null, limit }) as Row[];
+    return rows.map(row => ({ ...toMessage(row), seq: Number(row.seq) })).reverse();
   }
 
   /** A session's traffic — sent by it or addressed to it — newest last, optionally with one counterpart only.

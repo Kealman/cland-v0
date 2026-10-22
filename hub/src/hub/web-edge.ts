@@ -194,7 +194,7 @@ export async function createWebEdge(options: { artifactOpen?: typeof import('nod
       send: (frame, serialized) => { if (ws.readyState === WebSocket.OPEN) ws.send(serialized ?? JSON.stringify(frame)); },
       close: (code, reason) => ws.close(code, reason),
       isOpen: () => ws.readyState === WebSocket.OPEN,
-    }, { authenticated: true, edge: 'web', buildStamp, artifactUrl: id => artifacts.mint(session, id, page) });
+    }, { authenticated: true, edge: 'web', buildStamp, webSession: () => auth.profile(session), artifactUrl: id => artifacts.mint(session, id, page) });
     ws.on('message', (data, binary) => {
       if (binary) { ws.close(BINARY_RESERVED_CLOSE_CODE, 'binary frames reserved for streams'); return; }
       conversation.receive(data.toString());

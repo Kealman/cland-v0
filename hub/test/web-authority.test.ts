@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createHubBase } from '../src/hub/server.ts';
 import { createSocketEdge } from '../src/hub/socket.ts';
 import { WebSocket } from 'ws';
-import { connectUi, frameClient, projectHub, tempProject } from './harness.ts';
+import { connectUi, frameClient, inProcessSpoke, projectHub, tempProject } from './harness.ts';
 import { defaultConfig, renderConfig } from '../src/init/config.ts';
 import type { FrameClient } from './harness.ts';
 import { onCleanup } from './process-cleanup.ts';
@@ -19,14 +19,21 @@ function withCodes(client: FrameClient) {
   return { ...client, request: (frame: { type: string } & Record<string, unknown>) => client.request(frame) as Promise<{ ok: boolean; value?: unknown; error?: string; code?: string }> };
 }
 
-async function clients(t: TestContext, greet = true) {
+async function clients(t: TestContext, greet = true, largeTraffic = false) {
   const root = await tempProject(t);
   await mkdir(join(root, '.cland'));
   const config = defaultConfig('Web authority fixture');
   config.verification.lockPath = join(root, 'suite.lock');
+  if (largeTraffic) { config.hygiene.loopBreaker.max = 100; config.hygiene.rateLimit.max = 100; }
   await writeFile(join(root, '.cland/config.toml'), renderConfig(config));
-  const hub = await projectHub(t, root, {}, { clock: new FakeClock() });
+  const clock = new FakeClock();
+  const hub = await projectHub(t, root, {}, { clock });
   const local = await connectUi(t, hub.discovery);
+  const browser = await signIn(t, local, greet);
+  return { root, hub, clock, local: withCodes(local), ...browser, newBrowser: () => signIn(t, local) };
+}
+
+async function signIn(t: TestContext, local: FrameClient, greet = true) {
   const link = await local.request({ type: 'web.link' });
   assert.equal(link.ok, true, link.error);
   const { url } = link.value as { url: string };
@@ -40,6 +47,10 @@ async function clients(t: TestContext, greet = true) {
     req.on('error', reject);
   });
   const origin = new URL(url).origin;
+  return { ...await browserSocket(t, origin, cookie, greet), cookie, origin };
+}
+
+async function browserSocket(t: TestContext, origin: string, cookie: string, greet = true) {
   const ws = new WebSocket(`${origin.replace('http:', 'ws:')}/ws`, { origin, headers: { Cookie: cookie } });
   onCleanup(t, () => ws.terminate());
   const web = frameClient(line => ws.send(line.trim()), fn => ws.on('message', data => fn(`${data.toString()}\n`)), () => ws.terminate());
@@ -49,8 +60,9 @@ async function clients(t: TestContext, greet = true) {
     web.send({ type: 'hello', protocol: 2, client: 'pretend-session' });
     assert.equal((await welcome).name, 'human');
   }
-  return { root, hub, local: withCodes(local), web: withCodes(web) };
+  return { web: withCodes(web) };
 }
+
 
 test('web refuses hub.reload with CLI and Neovim guidance; the Unix socket still reloads', async t => {
   const { web, local } = await clients(t);
@@ -202,6 +214,138 @@ test('web refuses as on the initial hello and still requires a valid human hello
   const welcome = web.waitFor(frame => frame.type === 'welcome');
   web.send({ type: 'hello', protocol: 2, client: 'web' });
   assert.equal((await welcome).name, 'human');
+});
+
+
+test('human clients page a session’s sent and received traffic across topics without changing its own history', async t => {
+  const { root, web, local } = await clients(t, true, true);
+  const worker = await inProcessSpoke(t, { cwd: root, discover: true, name: 'worker', role: 'implementer', sessionId: 'worker' });
+  const coord = await inProcessSpoke(t, { cwd: root, discover: true, name: 'coord', role: 'coordinator', sessionId: 'coord' });
+  await worker.waitForPresence(['worker', 'coord']);
+  const created = await local.request({ type: 'topic.create', title: 'Another topic' });
+  assert.equal(created.ok, true, created.error);
+  const topic = (created.value as { topic: { id: string } }).topic.id;
+  const texts: string[] = [];
+  for (let i = 0; i < 55; i++) {
+    const sent = i % 2 === 0
+      ? await worker.call<{ ok: boolean }>('send', { to: 'coord', text: `sent ${i}`, topic })
+      : await coord.call<{ ok: boolean }>('send', { to: 'worker', text: `received ${i}` });
+    assert.equal(sent.ok, true);
+    texts.push(i % 2 === 0 ? `sent ${i}` : `received ${i}`);
+  }
+  assert.equal((await local.request({ type: 'topic.send', topic: 'general', to: ['coord'], text: 'unrelated' })).ok, true);
+  type Page = { messages: Array<{ id: string; text: string; seq: number; topic: string; kind?: string }>; more: boolean; before?: number };
+  const latest = await web.request({ type: 'session.history', session: 'worker', limit: 2 });
+  assert.equal(latest.ok, true, latest.error);
+  const page = latest.value as Page;
+  assert.deepEqual(page.messages.map(m => m.text), texts.slice(-2));
+  assert.equal(page.more, true);
+  assert.equal(page.before, page.messages[0]!.seq);
+  assert.ok(page.messages[0]!.seq < page.messages[1]!.seq);
+  const previous = await local.request({ type: 'session.history', session: 'worker', before: page.before, limit: 2 });
+  assert.equal(previous.ok, true, previous.error);
+  assert.deepEqual((previous.value as Page).messages.map(m => m.text), texts.slice(-4, -2));
+  const bounded = await web.request({ type: 'session.history', session: 'worker', limit: 1000 });
+  assert.equal(bounded.ok, true, bounded.error);
+  assert.deepEqual((bounded.value as Page).messages.map(m => m.text), texts.slice(-50));
+  assert.deepEqual(new Set((bounded.value as Page).messages.map(m => m.topic)), new Set([topic, 'agents']));
+  const own = await worker.call<{ ok: boolean; messages: Array<{ text: string }> }>('history', { limit: 1000 });
+  assert.equal(own.ok, true);
+  assert.deepEqual(own.messages.map(m => m.text), texts.slice(-50));
+  const oldest = await web.request({ type: 'session.history', session: 'worker', before: (bounded.value as Page).messages[0]!.seq });
+  assert.equal(oldest.ok, true, oldest.error);
+  assert.deepEqual((oldest.value as Page).messages.filter(m => m.kind !== 'role').map(m => m.text), texts.slice(0, 5));
+  assert.equal((oldest.value as Page).more, false);
+  const empty = await web.request({ type: 'session.history', session: 'absent' });
+  assert.deepEqual(empty.value, { messages: [], more: false });
+});
+
+
+test('web.session exposes only the asking browser’s sign-in and its fixed expiry', async t => {
+  const { web, local, clock, newBrowser, origin, cookie } = await clients(t);
+  clock.block(1000);
+  const other = await newBrowser();
+  clock.block(1000);
+  const reconnected = await browserSocket(t, origin, cookie);
+  const expected = { createdAt: '2026-10-16T12:00:00.000Z', lastUsedAt: '2026-10-16T12:00:02.000Z', expiresAt: '2026-11-15T12:00:00.000Z' };
+  const own = await web.request({ type: 'web.session' });
+  assert.equal(own.ok, true, own.error);
+  assert.deepEqual(own.value, expected);
+  assert.deepEqual((await reconnected.web.request({ type: 'web.session' })).value, expected);
+  const second = await other.web.request({ type: 'web.session' });
+  assert.deepEqual(second.value, { createdAt: '2026-10-16T12:00:01.000Z', lastUsedAt: '2026-10-16T12:00:01.000Z', expiresAt: '2026-11-15T12:00:01.000Z' });
+  const listed = await local.request({ type: 'web.sessions' });
+  assert.equal(listed.ok, true, listed.error);
+  const sessions = (listed.value as { sessions: Array<{ id: string; createdAt: string }> }).sessions;
+  assert.equal(sessions.length, 2);
+  const otherId = sessions.find(row => row.createdAt === '2026-10-16T12:00:01.000Z')!.id;
+  assert.deepEqual((await web.request({ type: 'web.session', session: otherId })).value, expected);
+  for (const type of ['web.sessions', 'web.revoke']) {
+    const result = await web.request({ type, session: otherId });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'cli-neovim-only');
+  }
+  const unix = await local.request({ type: 'web.session' });
+  assert.equal(unix.ok, false);
+  assert.match(unix.error!, /authenticated web edge/);
+  // Advance the credential lifetime without running liveness timers: an already
+  // admitted socket must not disclose a pruned session's record at its expiry.
+  clock.block(30 * 24 * 60 * 60 * 1000 - 2000);
+  assert.equal((await web.request({ type: 'web.session' })).ok, false);
+  assert.equal((await other.web.request({ type: 'web.session' })).ok, true);
+});
+
+test('web launches in the project root and refuses a directory while Unix keeps that field', async t => {
+  const { root, web, local } = await clients(t);
+  const cwd = join(root, 'local-directory');
+  await mkdir(cwd);
+  const frame = { type: 'session.launch', name: 'worker', harness: 'codex' };
+  const refused = await web.request({ ...frame, cwd });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.code, 'cli-neovim-only');
+  assert.match(refused.error!, /CLI and Neovim.*directory/);
+  const before = await local.request({ type: 'session.list' });
+  assert.equal(before.ok, true, before.error);
+  assert.equal((before.value as { processes: unknown[] }).processes.length, 0);
+  const launched = await web.request(frame);
+  assert.equal(launched.ok, true, launched.error);
+  assert.equal((launched.value as { process: { cwd: string } }).process.cwd, root);
+  const unix = await local.request({ ...frame, name: 'local-worker', cwd });
+  assert.equal(unix.ok, true, unix.error);
+  const listed = await local.request({ type: 'session.list' });
+  assert.equal(listed.ok, true, listed.error);
+  assert.deepEqual((listed.value as { processes: Array<{ name: string; cwd: string }> }).processes.map(p => [p.name, p.cwd]).sort(([a], [b]) => a!.localeCompare(b!)), [['local-worker', cwd], ['worker', root]]);
+});
+
+test('session history pages keep whole messages under the byte cap and page back without gaps', async t => {
+  const { root, web, local } = await clients(t);
+  await inProcessSpoke(t, { cwd: root, discover: true, name: 'worker', role: 'implementer', sessionId: 'worker' });
+  const ids: string[] = [];
+  for (let i = 0; i < 36; i++) {
+    const sent = await local.request({ type: 'topic.send', topic: 'general', to: ['worker'], text: `${i}:`.padEnd(8000, 'x') });
+    assert.equal(sent.ok, true, sent.error);
+    ids.push((sent.value as { message: { id: string } }).message.id);
+  }
+  type Page = { messages: Array<{ id: string; fromKind: string; text: string; seq: number }>; more: boolean; before?: number };
+  const latest = await web.request({ type: 'session.history', session: 'worker' });
+  assert.equal(latest.ok, true, latest.error);
+  assert.ok(Buffer.byteLength(JSON.stringify(latest)) < 256 * 1024);
+  const page = latest.value as Page;
+  assert.equal(page.more, true);
+  assert.ok(page.messages.length < ids.length);
+  assert.ok(page.messages.every(m => m.text.length === 8000));
+  const older = await web.request({ type: 'session.history', session: 'worker', before: page.before });
+  assert.equal(older.ok, true, older.error);
+  const previous = older.value as Page;
+  assert.equal(previous.more, false);
+  assert.deepEqual([...previous.messages, ...page.messages].filter(m => m.fromKind === 'human').map(m => m.id), ids);
+});
+
+test('session history remains a human-client read even from an Aide’s attributed shell', async t => {
+  const { root, local } = await clients(t);
+  await inProcessSpoke(t, { cwd: root, discover: true, name: 'helper', role: 'aide', sessionId: 'helper' });
+  const result = await local.request({ type: 'session.history', session: 'someone-else', as: { name: 'helper', sessionId: 'helper', shell: true } });
+  assert.equal(result.ok, false);
 });
 
 test('the authenticated web cookie answers an approval as the human through the common gate', async t => {

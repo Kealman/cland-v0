@@ -947,7 +947,7 @@ export class Dispatcher {
     });
   }
 
-  open(wire: Peer, transport: { authenticated: boolean; edge: string; buildStamp?: () => string | null; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
+  open(wire: Peer, transport: { authenticated: boolean; edge: string; buildStamp?: () => string | null; webSession?: () => import('../protocol.ts').WebSessionResult; artifactUrl?: (artifact: string) => import('../protocol.ts').ArtifactUrlResult }): Conversation {
     const core = this.#options.core;
     const log = this.#log;
     /** The calls in flight, by request id, waiting for their result to be audited. */
@@ -1589,6 +1589,8 @@ export class Dispatcher {
           }
           case 'topic.list':
             return answer({ topics: core.topics() });
+          case 'session.history':
+            return answer(core.sessionHistoryPage(frame.session, frame.limit, frame.before));
           case 'topic.history':
             return answer(core.topicHistoryPage(frame.topic, frame.limit, frame));
           case 'topic.withdraw': {
@@ -1743,6 +1745,9 @@ export class Dispatcher {
             if (transport.edge !== 'web' || !transport.artifactUrl) throw new Error('artifact.url requires the authenticated web edge');
             peer.send({ type: 'result', id: frame.id, ok: true, value: transport.artifactUrl(frame.artifact) });
             break;
+          case 'web.session':
+            if (transport.edge !== 'web' || !transport.webSession) throw new Error('web.session requires the authenticated web edge');
+            return answer(transport.webSession());
           case 'web.sessions':
             if (transport.edge !== 'socket') throw new Error('web.sessions requires the local Unix socket');
             if (!control.webSessions) throw new Error('the web edge is unavailable');
