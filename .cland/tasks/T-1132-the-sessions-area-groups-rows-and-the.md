@@ -3,8 +3,9 @@ id: T-1132
 kind: task
 title: "The Sessions area: groups, rows and the unfolded row"
 state: open
-status: in progress
+status: review
 size: M
+criterion_seq: 6
 labels:
   - ready-for-agent
 assignee: null
@@ -15,7 +16,7 @@ blocked_by:
 topic: topic-860
 branch: t/T-1132-the-sessions-area-groups-rows-and-the
 created: 2026-10-22T15:16:15.097Z
-updated: 2026-10-22T17:04:54.205Z
+updated: 2026-10-22T17:22:33.360Z
 ---
 
 ## Summary
@@ -37,12 +38,18 @@ There is no Attach anywhere in the area. Rows come from the hub's merged session
 
 ## Acceptance criteria
 
-- [ ] C1. With fake sessions in every state (an Aide, one waiting for approval, busy, idle and stopped), each of Yours, Waiting, Busy, Idle and Stopped lists its sessions with its count in the group and the header (Web test with the fake harness).
-- [ ] C2. Idle folded stays folded after a reload, and folding sends no hub request (Web test).
-- [ ] C3. A row shows the glyph, name, role, harness, model, account, item, state with its age and usage from the hub's merged row, with a verifier's hold and +N and a requested item dimmed (Web test).
-- [ ] C4. The selected waiting row unfolds in place with its approval command in full, and no control in the area offers Attach (Web test).
-- [ ] C5. Stopped lists at most the latest 20 with the archived count, and `A`, which `?` lists in Sessions, shows the archived sessions (Web test).
-- [ ] C6. `web/README.md` gains a Sessions section with the groups, the row and the keys (docs).
+- [x] C1. With fake sessions in every state (an Aide, one waiting for approval, busy, idle and stopped), each of Yours, Waiting, Busy, Idle and Stopped lists its sessions with its count in the group and the header (Web test with the fake harness).
+  - done: impl-1132 · 2026-10-22T17:21:52.924Z
+- [x] C2. Idle folded stays folded after a reload, and folding sends no hub request (Web test).
+  - done: impl-1132 · 2026-10-22T17:21:53.022Z
+- [x] C3. A row shows the glyph, name, role, harness, model, account, item, state with its age and usage from the hub's merged row, with a verifier's hold and +N and a requested item dimmed (Web test).
+  - done: impl-1132 · 2026-10-22T17:21:53.114Z
+- [x] C4. The selected waiting row unfolds in place with its approval command in full, and no control in the area offers Attach (Web test).
+  - done: impl-1132 · 2026-10-22T17:21:53.327Z
+- [x] C5. Stopped lists at most the latest 20 with the archived count, and `A`, which `?` lists in Sessions, shows the archived sessions (Web test).
+  - done: impl-1132 · 2026-10-22T17:21:53.416Z
+- [x] C6. `web/README.md` gains a Sessions section with the groups, the row and the keys (docs).
+  - done: impl-1132 · 2026-10-22T17:21:53.517Z
 
 ## Comments
 
