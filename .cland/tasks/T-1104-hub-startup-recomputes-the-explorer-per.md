@@ -5,16 +5,17 @@ title: Hub startup recomputes the explorer per item during the planned check and
 state: open
 status: backlog
 size: S
+criterion_seq: 2
 labels:
-  - needs-triage
   - bug
+  - ready-for-agent
 assignee: null
-parent: C-325
+parent: R-377
 blocked_by: []
 topic: null
 branch: null
 created: 2026-10-22T10:11:00.318Z
-updated: 2026-10-22T13:23:38.319Z
+updated: 2026-10-22T14:58:59.095Z
 ---
 
 ## Summary
@@ -24,7 +25,7 @@ Hub restart #43 at dev 7887f694 (2026-10-22 10:08Z) took 20 s from stop to servi
 ## Acceptance criteria
 
 - [ ] C1. A hub start on a copy of the live tracker recomputes explorer summaries once per startup batch (or lazily), not once per item: a regression counts recompute events on a thousand-item fixture with a planned epic (test).
-- [ ] C2. The startup planned check does not block "serving": a copied-live-tracker start reaches serving within 2 s of listening on the Linux droplet, and the receipt is listed in the item topic (test).
+- [ ] C2. The startup planned check does not block serving: a test that starts the hub on a thousand-item fixture with a planned epic asserts serving within 2 s of listening, and its targeted run receipt (test name, platform, measured gap) is posted in the item topic (test).
 
 ## Comments
 
