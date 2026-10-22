@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-858
 branch: t/T-1118-the-topics-area-and-the-thread-in-pages
 created: 2026-10-22T15:16:12.659Z
-updated: 2026-10-22T16:29:55.183Z
+updated: 2026-10-22T16:51:44.734Z
 ---
 
 ## Summary
@@ -74,3 +74,16 @@ findings: []
 finding_counts: {"high":0,"medium":0,"low":0}
 
 Corrected source clear; A-9313 incorporates the first full audit and every corrective change. M1 retry now captures the prepend anchor; M2 exposes reset generation to restart pending initial loads. Both Web regressions retain durable boundary observations and final ordered-identity/anchor assertions, including a live DOM fence before the stale-reply negative assertion. No remaining findings. A-9311 is exact-head targeted Darwin check/9-test evidence, not configured suite proof. C1–C4 remain unverified pending mode-free same-head verification.
+
+### rev-23 · 2026-10-22T16:38:01.067Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1118-source-3
+commit: d4931e3cf1013c547404ae9ab61d02750bf7cb5a
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Delta source clear over rev-26 acceptedeb8fe250/A-9313: authorized incomingT-1117+shared26e74e4d+tracker records, no conflicts or web implementation/test/doc changes. DeliveryStage.withdrawn is retained by TopicThreads delivery patches and rendered as plain stage text; human-kind metadata/topic wait additions do not change paging identities/resume generations/retry anchors. Two dated11s/E-880 startup allowances retain behavioral assertions; original skill entries plus incoming guidance preserved. Standards0/Spec0; prior corrected full source audit retained. C1–C4 await new exact-head mode-free receipt, no runtime marks yet. Local merged-head9Topics/check claims qualified; cancelledoldrun not a pass. No Reviewer execution/T3/T4/QA claim.

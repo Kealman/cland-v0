@@ -2,8 +2,8 @@
 id: T-1130
 kind: task
 title: Area modules and their hub state for Sessions, Accounts and Artifacts
-state: open
-status: in progress
+state: closed
+status: done
 size: M
 criterion_seq: 4
 labels:
@@ -15,7 +15,8 @@ blocked_by:
 topic: topic-857
 branch: t/T-1130-area-modules-and-their-hub-state-for
 created: 2026-10-22T15:16:14.835Z
-updated: 2026-10-22T16:34:11.019Z
+updated: 2026-10-22T16:48:59.800Z
+closed: 2026-10-22T16:48:59.800Z
 ---
 
 ## Summary
@@ -37,15 +38,20 @@ Inbox, Topics and Events stay as they are; E-417 owns them and may adopt the sam
 
 ## Acceptance criteria
 
-- [ ] C1. Sessions, Accounts and Artifacts render through their own area modules in a pane, in the other pane's page and in the drawer, and Items, Inbox, Topics and Events render as before (Web test).
-  - failed: rev-23 [reviewer] · 2026-10-22T16:34:11.019Z · note A-9316 T2 exits1 on enforced startup whole-test duration gates; Web not run, final runtime evidence incomplete.
-- [ ] C2. A pushed `verification.queue`, `account` or `artifact` frame updates the client in place, and no `session.list`, `account.list` or `artifact.list` request follows it on the socket (Web test).
-  - failed: rev-23 [reviewer] · 2026-10-22T16:34:11.019Z · note A-9316 T2 exits1 on enforced startup whole-test duration gates; Web not run, final runtime evidence incomplete.
-- [ ] C3. After a hub restart the Sessions and Accounts areas show the new hub's rows without a page reload and keep none from before the drop (Web test).
-  - failed: rev-23 [reviewer] · 2026-10-22T16:34:11.019Z · note A-9316 T2 exits1 on enforced startup whole-test duration gates; Web not run, final runtime evidence incomplete.
+- [x] C1. Sessions, Accounts and Artifacts render through their own area modules in a pane, in the other pane's page and in the drawer, and Items, Inbox, Topics and Events render as before (Web test).
+  - done: impl-1130 · 2026-10-22T16:35:47.100Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1130-final · 2026-10-22T16:42:42.853Z · commit 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
+- [x] C2. A pushed `verification.queue`, `account` or `artifact` frame updates the client in place, and no `session.list`, `account.list` or `artifact.list` request follows it on the socket (Web test).
+  - done: impl-1130 · 2026-10-22T16:35:47.193Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1130-final · 2026-10-22T16:42:42.853Z · commit 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
+- [x] C3. After a hub restart the Sessions and Accounts areas show the new hub's rows without a page reload and keep none from before the drop (Web test).
+  - done: impl-1130 · 2026-10-22T16:35:47.276Z
+  - verified: rev-31 [reviewer] · run rev-20261022-1130-final · 2026-10-22T16:42:42.853Z · commit 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
 - [x] C4. `web/README.md` describes the area modules, their slots and the hub state each area reads (docs).
   - done: impl-1130 · 2026-10-22T16:18:03.680Z
   - verified: rev-23 [reviewer] · run rev-20261022-1130-source-2 · 2026-10-22T16:24:12.603Z · commit 48b6bef9771ef6997203cfa3b558ab49207e3c81
+  - verified: rev-31 [reviewer] · run rev-20261022-1130-delta · 2026-10-22T16:37:21.683Z · commit 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
+  - verified: rev-31 [reviewer] · run rev-20261022-1130-final · 2026-10-22T16:42:42.853Z · commit 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
 
 ## Comments
 
@@ -105,3 +111,37 @@ finding_counts: {"high":0,"medium":0,"low":0}
 814f79d4/A-9316 not clear: actual enforced `planned startup batches explorer recomputation 7.025s>5s` and `planned hub serves within two seconds...7.413s>5s` in item-summary-scale.test.ts (11800–11801). Whole-test gates, not behavioral serving-gap failures or report-only2s budgets. Parsed2073ordinary passes plus40load passes, no assertion failures; eight new callback cases each5/5. T1exit0/incompleteT2exit1/Webnotrun. Actual Linuxx64 droplet c-8blr1,workers2; host80d33a0check reused/not repeated. Otherlint/duration/ratchet report-only. Source48b6bef9/A-9303 and C4 stand; C1–C3 final evidence pending shared-defect decision/replacement. No new source findings, Reviewer execution, LinuxWeb/T3/T4/QA or retry authorization.
 
 Criteria: C1 failed (A-9316 T2 exits1 on enforced startup whole-test duration gates; Web not run, final runtime evidence incomplete.), C2 failed (A-9316 T2 exits1 on enforced startup whole-test duration gates; Web not run, final runtime evidence incomplete.), C3 failed (A-9316 T2 exits1 on enforced startup whole-test duration gates; Web not run, final runtime evidence incomplete.).
+
+### rev-31 · 2026-10-22T16:37:21.683Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1130-delta
+commit: 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Authorized delta source clear, A-9327; no findings. Prior full/corrected review rev-23/A-9299/A-9303 retained. Coordinator c1e27c35 shared26e74e4d supplies exactly two dated11s E-880 startup allowances; assertions/baselines unchanged. Clean auto-merge imports T-1117 wire changes; owned area modules/browser/callback tests/docs unchanged. C4 carried forward; C1–C3 await fresh mode-free evidence. Historical A-9316 T2 hard duration failure/Web not run remains not clear; A-9322 local8T1/check claim is supporting, not configured Web proof. No merge enqueue.
+
+Criteria: C4 verified.
+
+### rev-31 · 2026-10-22T16:42:42.853Z
+
+verdict: review
+result: clear
+by: rev-31 [reviewer]
+run: rev-20261022-1130-final
+commit: 6b241b9b57a17a9a1fa0fd3d107be79d9ae9119c
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final clear, A-9331; C1–C4 verified,no findings. Exact unchanged6b241b9b:a341197b/A-9330 automatic local fallback exits0,2490/2490,zero fail/cancel/skip,T0/T1/all-T2/Web complete. All eight callback identities have five distinct raw load-gate passes/explicit5/5; Web parent and three slots/push/restart cases pass. Actual local darwin arm64 workers4/Web2; no Linux claim. Prior source rev-23/A-9303 and delta A-9327 current; old A-9316 failed duration/Web-unexecuted evidence remains historical. Report-only diagnostics,T3 deferred/noT4/separate after-stageQA qualified. No merge enqueue.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified.
+
+### coord · 2026-10-22T16:48:59.800Z
+
+Merged 4e727545dc15df49429f8ce07a15a48585626a71 onto dev.

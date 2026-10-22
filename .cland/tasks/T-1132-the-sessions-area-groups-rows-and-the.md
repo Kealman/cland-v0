@@ -3,7 +3,7 @@ id: T-1132
 kind: task
 title: "The Sessions area: groups, rows and the unfolded row"
 state: open
-status: planned
+status: in progress
 size: M
 labels:
   - ready-for-agent
@@ -11,10 +11,11 @@ assignee: null
 parent: E-418
 blocked_by:
   - T-1130
-topic: null
-branch: null
+  - T-1147
+topic: topic-860
+branch: t/T-1132-the-sessions-area-groups-rows-and-the
 created: 2026-10-22T15:16:15.097Z
-updated: 2026-10-22T15:16:23.290Z
+updated: 2026-10-22T16:51:37.676Z
 ---
 
 ## Summary
@@ -42,3 +43,9 @@ There is no Attach anywhere in the area. Rows come from the hub's merged session
 - [ ] C4. The selected waiting row unfolds in place with its approval command in full, and no control in the area offers Attach (Web test).
 - [ ] C5. Stopped lists at most the latest 20 with the archived count, and `A`, which `?` lists in Sessions, shows the archived sessions (Web test).
 - [ ] C6. `web/README.md` gains a Sessions section with the groups, the row and the keys (docs).
+
+## Comments
+
+### impl-1132 · 2026-10-22T16:51:02.057Z
+
+Test-first slice 1: web/test/sessions.test.ts uses the explicitly specified Web/fake-harness seam. Red on the T-1130 base: locator for Yours/my-aide timed out because SessionGroups is still a reserved slot. Implementing group projection and shared browser-only Fold next.

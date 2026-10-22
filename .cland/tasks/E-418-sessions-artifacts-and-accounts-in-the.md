@@ -14,7 +14,7 @@ blocked_by:
 topic: null
 branch: null
 created: 2026-10-14T15:59:25.029Z
-updated: 2026-10-22T15:16:22.662Z
+updated: 2026-10-22T16:51:45.867Z
 ---
 
 ## Summary
@@ -109,6 +109,7 @@ stages:
       - - T-1130
         - T-1132
       - - T-1131
+        - T-1147
   - name: acting, the queue, accounts and artifacts
     qa:
       scope: affected

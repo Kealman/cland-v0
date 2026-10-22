@@ -3,7 +3,7 @@ id: T-1110
 kind: task
 title: "The answer gate: one answer per approval, and the first wins"
 state: open
-status: review
+status: ready
 size: M
 criterion_seq: 8
 labels:
@@ -15,7 +15,7 @@ blocked_by:
 topic: topic-856
 branch: t/T-1110-the-answer-gate-one-answer-per-approval
 created: 2026-10-22T15:16:11.165Z
-updated: 2026-10-22T16:34:26.090Z
+updated: 2026-10-22T16:46:56.117Z
 ---
 
 ## Summary
@@ -39,31 +39,33 @@ The in-process fake adapter gets a scripted answer path (accept, fail, hold), so
 ## Acceptance criteria
 
 - [x] C1. A frame client's Approve once on a fake adapter's request reaches the adapter once. Both that client and a second frame client read the record closed as "once", by the human, with where and when (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:11.724Z
+  - done: impl-1110 · 2026-10-22T16:35:15.428Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C2. When two frame clients answer the same request in one tick, the adapter gets one answer and one outcome is recorded. The second client is refused with who answered and when (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:11.806Z
+  - done: impl-1110 · 2026-10-22T16:35:15.508Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C3. An answer is refused, and the record left unchanged, when its choice is not offered, when the record is closed, or when the record is answered in the TUI (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:11.892Z
+  - done: impl-1110 · 2026-10-22T16:35:15.587Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C4. An agent session's `approval.answer` is refused, and a browser client holding the cookie answers through the web edge (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:11.981Z
+  - done: impl-1110 · 2026-10-22T16:35:15.668Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C5. When the adapter fails to deliver an answer, the record returns to pending, the client is refused with the reason, and a warn-level event is journaled (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:12.186Z
+  - done: impl-1110 · 2026-10-22T16:35:15.847Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C6. Deny with a note, to an adapter whose protocol carries no note, delivers a deny to the adapter and posts the note into the session's topic as the human's message to that session (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:12.281Z
+  - done: impl-1110 · 2026-10-22T16:35:15.930Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C7. A pending request stays pending with no answer sent to the adapter after the fake clock advances 24 hours (test).
-  - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
-  - done: impl-1110 · 2026-10-22T16:26:12.375Z
+  - done: impl-1110 · 2026-10-22T16:35:16.005Z
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 - [x] C8. `hub/README.md` describes `approval.answer`, the gate, the refusal naming the winner and the rule that nothing answers by default (docs).
   - done: impl-1110 · 2026-10-22T16:09:13.913Z
   - verified: rev-23 [reviewer] · run rev-20261022-1110-source-2 · 2026-10-22T16:15:28.281Z · commit 48e798b0b99412920361c454069475768308d5fe
   - verified: rev-23 [reviewer] · run rev-20261022-1110-final · 2026-10-22T16:23:11.489Z · commit 48e798b0b99412920361c454069475768308d5fe
   - verified: rev-23 [reviewer] · run rev-20261022-1110-source-3 · 2026-10-22T16:26:05.529Z · commit b0df2398e60b11878f43b6044c85576bca26b33f
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-source-4 · 2026-10-22T16:35:50.260Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
+  - verified: rev-23 [reviewer] · run rev-20261022-1110-final-2 · 2026-10-22T16:46:55.762Z · commit fd6434b588a1938c5dd70b049ff3a426d6d21ce7
 
 ## Comments
 
@@ -130,3 +132,48 @@ finding_counts: {"high":0,"medium":0,"low":0}
 Delta source clear atb0df2398/tree2739475d over accepted48e798b0+incoming31bd45bc. Conflict resolutions preserve every skill provenance entry and both guidance paragraphs; web-authority tests retain approval cookie/late-attribution and incoming decision/withdrawal cases. Authority keeps approval.answer plus topic.send/withdraw and original own-as/unknown/prototype/CLI-only refusals. Inbox approval gate/preflight/contract/approval tests/FakeClock files byte-unchanged; incoming human-message kind/busy/withdrawal fences inspected at fallback note intersection without issue. Standards0/Spec0. C8 refreshed; C1–C7 final marks await exact-head new mode-free receipt. Old A-9296 is historical head evidence, local merged-head targeted claims qualified; no Reviewer execution or new QA/suite claim.
 
 Criteria: C8 verified.
+
+### rev-23 · 2026-10-22T16:34:57.033Z
+
+verdict: review
+result: not clear
+by: rev-23 [reviewer]
+run: rev-20261022-1110-duration-evidence
+commit: b0df2398e60b11878f43b6044c85576bca26b33f
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Merged-head8d77765b/A-9318 not clear: actual item-summary-scale enforced whole-test gates `planned startup batches...6.002s>5s` and `planned hub serves...6.606s>5s` (12058–12059). No assertion failures;2088ordinary passes/324file passes plus65load passes,13identities each5unique; approval18/18 retained. T1exit0/incompleteT2exit1/noWeb, not a completed all-T2/Neovim run. Linuxx64 c-8blr1 workers2; host9d1b3d7acheck reused/not repeated; otherdiagnosticsreport-only. Source/C8A-9307 stand; C1–C7 await accepted merged-head evidence. OldA-9296 green applies only48e798b0. Shared candidate routed to lead; no flakiness/cause classification, retry or branch fix authorized. No new source findings/Reviewer execution/T3/T4/QA claim.
+
+Criteria: C1 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.), C2 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.), C3 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.), C4 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.), C5 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.), C6 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.), C7 failed (A-9318 incomplete T2 exits1 on enforced startup whole-test duration gates; Web unexecuted, merged-head final evidence incomplete.).
+
+### rev-23 · 2026-10-22T16:35:50.260Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1110-source-4
+commit: fd6434b588a1938c5dd70b049ff3a426d6d21ce7
+scope: delta
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Shared-fix delta clear: only14durations.json additions from source-clearb0df2398/Coordinator26e74e4d. Exact two T-1104 startup identities get seconds11, ownerE-880, dated2026-10-22/expires2026-10-29, actual LinuxA-9316 samples7.025/7.413s and rationale. No production/test assertion/authority/skill change;2s serving-gap assertion and report-only tier budget remain. Standards0/Spec0. C8 unchanged docs refreshed; C1–C7 require new mode-free receipt atfd6434b5. A-9318 remains historicalfailedpartial, no Reviewer execution or new passing evidence/QA claim.
+
+Criteria: C8 verified.
+
+### rev-23 · 2026-10-22T16:46:55.762Z
+
+verdict: review
+result: clear
+by: rev-23 [reviewer]
+run: rev-20261022-1110-final-2
+commit: fd6434b588a1938c5dd70b049ff3a426d6d21ce7
+scope: evidence
+findings: []
+finding_counts: {"high":0,"medium":0,"low":0}
+
+Final merged-head clear from 68fb5b00/A-9332 plus source A-9323. Parsed 2491 ordinary tests/379 files passed; zero fail/cancel/skip. Approval18/18, clock12/project-clock4, web-authority34/unit4 and withdrawal6 file receipts inspected. Thirteen new identities each five unique load passes+explicit5/5,65total,max0.377776975s. Actual Linuxx64 c-8blr1,Node24.21.0/Neovim0.12.5,T2workers2/Web4; allT1/fallback allT2 both packages/actualWeb exit0. Host2d055f26check reused, not repeated remotely. General lint/duration/ratchet/6missing baselines remain report-only; Web48.28s>40s report budget, not an enforcing-budget pass. Reviewed startup11s allowances retain behavior assertions. C1–C8 verified, no remaining Standards/Spec findings. Historical old-head failures retained; no Reviewer execution, Web repetitions, native relay,T3/T4/QA/full-cover claim; after-stage QA/landing Coordinator-owned.
+
+Criteria: C1 verified, C2 verified, C3 verified, C4 verified, C5 verified, C6 verified, C7 verified, C8 verified.
