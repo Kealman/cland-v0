@@ -11,10 +11,10 @@ assignee: null
 parent: E-413
 blocked_by: []
 regression_of: T-1081
-topic: null
+topic: topic-828
 branch: t/T-1089-closed-containers-push-neovim-s-first
 created: 2026-10-22T01:04:50.220Z
-updated: 2026-10-22T01:05:02.144Z
+updated: 2026-10-22T01:05:27.006Z
 ---
 
 ## Summary

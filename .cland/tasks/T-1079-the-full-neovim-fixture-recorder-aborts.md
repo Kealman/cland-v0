@@ -5,6 +5,7 @@ title: The full Neovim fixture recorder aborts on a native test file that record
 state: open
 status: in progress
 size: S
+criterion_seq: 2
 labels:
   - ready-for-agent
 assignee: null
@@ -13,7 +14,7 @@ blocked_by: []
 topic: topic-826
 branch: t/T-1079-the-full-neovim-fixture-recorder-aborts
 created: 2026-10-21T17:52:08.489Z
-updated: 2026-10-22T01:03:33.808Z
+updated: 2026-10-22T01:06:41.646Z
 ---
 
 ## Summary
@@ -22,5 +23,5 @@ updated: 2026-10-22T01:03:33.808Z
 
 ## Acceptance criteria
 
-- [ ] C1. The full recorder selects only files that record frames, or skips a native consumer that records none and names it, and completes on dev (test).
+- [ ] C1. The full recorder selects only files that record frames, or skips a native consumer that records none and names it; on dev it no longer aborts on artifact-browser.test.ts, and any remaining completeness failure is reported by file, not masked (test).
 - [ ] C2. A file meant to record that records zero frames still fails the refresh (test).
